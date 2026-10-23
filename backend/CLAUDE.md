@@ -1155,19 +1155,24 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   (non-admins who can read the value today), `unreadCount` (those among them counted as unused access) and
   `ghostReaderCount`. It also returns the ghost readers (readers in the window who can no longer read it, named
   from the project's members, else from the user or identity row, else null), which the UI does not show.
-- **The Insights card is per principal.** `$loadSecretSummarizer` is the one place a secret's readers, unread
-  readers and ghost readers are derived, used by both the per-secret endpoint and the project computation.
-  The computation (`$computeUnusedAccess`) walks every secret once and tallies, per user, machine identity and
-  group, how many secrets it can read and how many it has not read, the environments involved, its latest read,
-  and how it has the access (roles, additional privileges, groups; custom roles by name, the one lookup beyond the
-  permissions already loaded). Group members are checked with the group's permission (`getProjectPermissions`
-  lists only direct members) and count once however many ways they qualify; a group's own access to a secret is
-  unused when none of its members read it, and its access date is its project membership's. It is cached per
-  project for a day (`insights-cache:<projectId>:unused-access`, under a per-project lock on a cold cache): every
-  principal's row, plus the unread secret ids for the 200 principals with the most, capped at 200 each; a
-  principal past that is computed alone when opened and cached per principal. Served by
+- **The Insights card is per actor** (a user or machine identity; a group is never a row, only an access path).
+  `summarizeSecretAccess` (in `secret-read-activity-fns.ts`) is the one place a secret's readers, unread readers and
+  ghost readers are derived, from the project's access loaded once by `$loadProjectAccess`; both the per-secret
+  endpoint and the project scan use it. `$tallyUnusedAccess` scans every secret once and tallies, per actor, how many
+  secrets it can read, how many it has not read, the environments involved and its latest read; `$computeUnusedAccess`
+  ranks the tallies into rows. Each row carries `accessPaths` as data: `roles` it holds directly (`id`/`slug`/`name`,
+  where a custom role has the slug `custom` and its own id), `groups` it belongs to with the roles each one gives,
+  and `additionalPrivileges` as `id`/`name`; the UI decides how to label them. Custom role ids and names come from
+  `getProjectPermissions`, so the scan makes no role lookup of its own. Group members are checked with the group's
+  permission (`getProjectPermissions` lists only direct members) and count once however many ways they qualify. It
+  is cached per project for a day (`insights-cache:<projectId>:unused-access`, under a per-project lock on a cold
+  cache): every actor's row, plus the unread secret ids for the 200 actors with the most, capped at 200 each; an
+  actor past that is scanned for alone when opened and cached per actor. Served by
   `GET /insights/:projectId/secrets/unused-access` (ranked by unread count, searchable by name) and
-  `/unused-access/:principalType/:principalId`, whose secrets go through a per-caller DescribeSecret recheck.
+  `/unused-access/:actorType/:actorId` (`user` or `identity`), whose secrets go through a per-caller DescribeSecret
+  recheck. The audit event keeps `principalType`/`principalId`/`principalName` for the viewed actor, so they do not
+  read as the event's own actor. The scans are synchronous CPU work, so they `await setImmediate()` (from
+  `node:timers/promises`) between secrets to let other requests on the instance run.
 
 ### Audit Log Event Classes and Settings
 
