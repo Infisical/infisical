@@ -336,6 +336,7 @@ const DEFAULT_FILTER_STATE = {
 // const DEFAULT_COLLAPSED_HEADER_HEIGHT = 120;
 
 const OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
+const OVERVIEW_REVEAL_ON_OPEN_KEY = "overview-reveal-values-on-open";
 
 // Every overview row type is rendered into the same TableBody, so their React keys share one
 // namespace. Resource names are arbitrary user input, so a string prefix cannot separate them: a
@@ -518,14 +519,6 @@ const OverviewPageContent = () => {
   // Maps a revealed secret key to the identity of the secrets that were revealed, so the reveal
   // is dropped when the underlying secrets are swapped out. See secretRowIdentities below.
   const [visibleSecretRows, setVisibleSecretRows] = useState<Map<string, string>>(() => new Map());
-
-  const toggleSecretRowExpand = useCallback((key: string) => {
-    setExpandedSecretRows((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(key)) next.add(key);
-      return next;
-    });
-  }, []);
 
   const resetSecretRowStates = useCallback(() => {
     setExpandedSecretRows(new Set());
@@ -1275,6 +1268,46 @@ const OverviewPageContent = () => {
       previousTelemetry.current.telemetry.cancelOpenFlows();
     previousTelemetry.current = { telemetry: overviewTelemetry, flows: telemetryFlows };
   }, [overviewTelemetry, telemetryFlows]);
+
+  const [isRevealOnOpen, setIsRevealOnOpen] = useState(
+    () => localStorage.getItem(OVERVIEW_REVEAL_ON_OPEN_KEY) === "true"
+  );
+
+  const toggleSecretRowExpand = useCallback(
+    (key: string) => {
+      if (isRevealOnOpen && !expandedSecretRows.has(key)) {
+        const identity = getSecretRowIdentity(key);
+        setVisibleSecretRows((prev) => new Map(prev).set(key, identity));
+      }
+      setExpandedSecretRows((prev) => {
+        const next = new Set(prev);
+        if (!next.delete(key)) next.add(key);
+        return next;
+      });
+    },
+    [isRevealOnOpen, expandedSecretRows, getSecretRowIdentity]
+  );
+
+  const toggleRevealOnOpen = () => {
+    const next = !isRevealOnOpen;
+    overviewTelemetry.interaction({
+      action: next ? "reveal" : "hide",
+      source: "header",
+      resourceType: "secret"
+    });
+    if (next) {
+      localStorage.setItem(OVERVIEW_REVEAL_ON_OPEN_KEY, "true");
+      setVisibleSecretRows((prev) => {
+        const visible = new Map(prev);
+        expandedSecretRows.forEach((key) => visible.set(key, getSecretRowIdentity(key)));
+        return visible;
+      });
+    } else {
+      localStorage.removeItem(OVERVIEW_REVEAL_ON_OPEN_KEY);
+      setVisibleSecretRows(new Map());
+    }
+    setIsRevealOnOpen(next);
+  };
   const viewedProjectRef = useRef<string>(undefined);
   const loadedProjectRef = useRef<string>(undefined);
   useEffect(() => {
@@ -3605,6 +3638,27 @@ const OverviewPageContent = () => {
             )}
           >
             <FolderBreadcrumb secretPath={secretPath} />
+            {isTableVisible && !isSingleEnvView && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={isRevealOnOpen ? "project" : "ghost"}
+                    size="xs"
+                    className="mr-1.5 shrink-0"
+                    aria-pressed={isRevealOnOpen}
+                    onClick={toggleRevealOnOpen}
+                  >
+                    <EyeIcon />
+                    Reveal on Open
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isRevealOnOpen
+                    ? "Values show as soon as you open a secret. Select to keep them hidden."
+                    : "Show values as soon as you open a secret."}
+                </TooltipContent>
+              </Tooltip>
+            )}
             {canManageCurrentFolderAccess && (
               <Button
                 variant="ghost"
