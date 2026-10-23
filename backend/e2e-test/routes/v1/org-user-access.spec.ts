@@ -1,7 +1,8 @@
-import { AccessScope, OrgMembershipRole, TableName } from "@app/db/schemas";
+import { OrgMembershipRole } from "@app/db/schemas";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
+import { addUsersToGroup, createOrgGroup } from "../../testUtils/groups";
 import { addUserMembership, createUser, deleteUsers } from "../../testUtils/users";
 
 type TUserAccessRow = {
@@ -21,32 +22,6 @@ describe("Organization user access listing", () => {
   let groupOnlyUser: { userId: string; username: string };
   let adminGroupId: string;
   let memberGroupId: string;
-
-  // Group rows go straight into the database: the API only adds a user to a group once they are an org
-  // member, and the case under test is a user whose only way into the org is the group.
-  const createOrgGroup = async (
-    name: string,
-    role: OrgMembershipRole,
-    temporaryRole?: { role: OrgMembershipRole; endsAt: Date }
-  ) => {
-    const [group] = await testDb(TableName.Groups).insert({ orgId, name, slug: name }).returning("*");
-    const [membership] = await testDb(TableName.Membership)
-      .insert({ scope: AccessScope.Organization, scopeOrgId: orgId, actorGroupId: group.id, isActive: true })
-      .returning("*");
-    await testDb(TableName.MembershipRole).insert({ membershipId: membership.id, role });
-    if (temporaryRole) {
-      await testDb(TableName.MembershipRole).insert({
-        membershipId: membership.id,
-        role: temporaryRole.role,
-        isTemporary: true,
-        temporaryMode: "relative",
-        temporaryRange: "1h",
-        temporaryAccessStartTime: new Date(temporaryRole.endsAt.getTime() - HOUR_MS),
-        temporaryAccessEndTime: temporaryRole.endsAt
-      });
-    }
-    return group.id as string;
-  };
 
   const listUserAccess = async () => {
     const res = await testServer.inject({
@@ -69,24 +44,25 @@ describe("Organization user access listing", () => {
     await addUserMembership({ userId: directUser.userId, orgId, role: OrgMembershipRole.Member });
     await addUserMembership({ userId: directAndGroupUser.userId, orgId, role: OrgMembershipRole.Member });
 
-    adminGroupId = await createOrgGroup(`engineering-${suffix}`, OrgMembershipRole.Admin, {
-      role: OrgMembershipRole.Member,
-      endsAt: new Date(Date.now() - HOUR_MS)
-    });
-    memberGroupId = await createOrgGroup(`qa-team-${suffix}`, OrgMembershipRole.Member, {
+    adminGroupId = await createOrgGroup({
+      orgId,
+      name: `engineering-${suffix}`,
       role: OrgMembershipRole.Admin,
-      endsAt: new Date(Date.now() + HOUR_MS)
+      temporaryRole: { role: OrgMembershipRole.Member, endsAt: new Date(Date.now() - HOUR_MS) }
+    });
+    memberGroupId = await createOrgGroup({
+      orgId,
+      name: `qa-team-${suffix}`,
+      role: OrgMembershipRole.Member,
+      temporaryRole: { role: OrgMembershipRole.Admin, endsAt: new Date(Date.now() + HOUR_MS) }
     });
 
-    await testDb(TableName.UserGroupMembership).insert([
-      { userId: directAndGroupUser.userId, groupId: adminGroupId },
-      { userId: groupOnlyUser.userId, groupId: adminGroupId },
-      { userId: groupOnlyUser.userId, groupId: memberGroupId }
-    ]);
+    await addUsersToGroup(adminGroupId, [directAndGroupUser.userId, groupOnlyUser.userId]);
+    await addUsersToGroup(memberGroupId, [groupOnlyUser.userId]);
   });
 
+  // Deleting the org cascades the groups and their membership rows.
   afterAll(async () => {
-    await testDb(TableName.UserGroupMembership).whereIn("groupId", [adminGroupId, memberGroupId]).del();
     await deleteUsers([directUser.userId, directAndGroupUser.userId, groupOnlyUser.userId]);
     await cleanup();
   });

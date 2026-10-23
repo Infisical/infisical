@@ -463,7 +463,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       description:
         "List every user with access to the organization, through a direct membership, through groups, or both",
       params: z.object({
-        organizationId: z.string().trim().uuid()
+        organizationId: z.string().trim().uuid().describe(ORGANIZATIONS.LIST_USER_ACCESS.organizationId)
       }),
       response: {
         200: z.object({
@@ -475,7 +475,9 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
                 firstName: true,
                 lastName: true,
                 id: true
-              }).merge(z.object({ publicKey: z.string().nullable().optional(), superAdmin: z.boolean().nullish() })),
+              })
+                .merge(z.object({ publicKey: z.string().nullable().optional(), superAdmin: z.boolean().nullish() }))
+                .describe(ORGANIZATIONS.LIST_USER_ACCESS.user),
               membership: OrgMembershipsSchema.pick({
                 id: true,
                 role: true,
@@ -485,15 +487,24 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
                 isActive: true,
                 lastLoginAuthMethod: true,
                 lastLoginTime: true
-              }).nullable(),
+              })
+                .nullable()
+                .describe(ORGANIZATIONS.LIST_USER_ACCESS.membership),
               groups: z
                 .object({
-                  id: z.string().uuid(),
-                  name: z.string(),
-                  slug: z.string(),
-                  roles: z.object({ role: z.string(), roleId: z.string().uuid().nullable() }).array()
+                  id: z.string().uuid().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupId),
+                  name: z.string().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupName),
+                  slug: z.string().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupSlug),
+                  roles: z
+                    .object({
+                      role: z.string().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupRole),
+                      roleId: z.string().uuid().nullable().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupRoleId)
+                    })
+                    .array()
+                    .describe(ORGANIZATIONS.LIST_USER_ACCESS.groupRoles)
                 })
                 .array()
+                .describe(ORGANIZATIONS.LIST_USER_ACCESS.groups)
             })
             .array()
         })

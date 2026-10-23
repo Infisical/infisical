@@ -877,6 +877,19 @@ export const ORGANIZATIONS = {
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."
   },
+  LIST_USER_ACCESS: {
+    organizationId: "The ID of the organization to list user access for.",
+    user: "The user who can reach the organization.",
+    membership:
+      "The user's direct organization membership, or null when they only reach the organization through groups.",
+    groups: "The groups holding an organization membership that the user belongs to.",
+    groupId: "The ID of the group.",
+    groupName: "The name of the group.",
+    groupSlug: "The slug of the group.",
+    groupRoles: "The group's active organization roles. Expired temporary roles are left out.",
+    groupRole: "The role slug, or 'custom' when it is a custom role.",
+    groupRoleId: "The ID of the custom role, or null for a built-in role."
+  },
   GET_USER_MEMBERSHIP: {
     organizationId: "The ID of the organization to get the membership for.",
     membershipId: "The ID of the membership to get."
