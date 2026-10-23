@@ -45,9 +45,8 @@ const getManagedUnavailableDescription = (reason: HoneyTokenManagedUnavailableRe
       return "Not available on this instance: HONEY_TOKEN_MANAGED_AWS_ACCESS_KEY_ID and HONEY_TOKEN_MANAGED_AWS_SECRET_ACCESS_KEY must be set together. Ask your instance administrator to fix this.";
     case HoneyTokenManagedUnavailableReason.InvalidRoleArn:
       return "Not available on this instance: HONEY_TOKEN_MANAGED_AWS_ROLE_ARN must be an IAM role ARN (arn:aws:iam::<account-id>:role/<name>). Ask your instance administrator to fix this.";
-    case HoneyTokenManagedUnavailableReason.NotConfigured:
     default:
-      return "Not set up on this instance. Ask your instance administrator to set HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY.";
+      return "Not available on this instance. Ask your instance administrator to check the managed honey token settings.";
   }
 };
 
@@ -57,7 +56,12 @@ type Props = {
 };
 
 export const HoneyTokenConfigurationFields = ({ environments, hostingOptions }: Props) => {
-  const { control, setValue, clearErrors } = useFormContext<THoneyTokenForm>();
+  const {
+    control,
+    setValue,
+    clearErrors,
+    formState: { errors }
+  } = useFormContext<THoneyTokenForm>();
   const { currentOrg } = useOrganization();
   const { permission } = useOrgPermission();
   const hosting = useWatch({ control, name: "hosting" });
@@ -66,8 +70,14 @@ export const HoneyTokenConfigurationFields = ({ environments, hostingOptions }: 
     OrgPermissionHoneyTokenActions.Setup,
     OrgPermissionSubjects.HoneyTokens
   );
-  // Treated as available until the options load, so the card does not flash an unavailable message.
-  const isManagedAvailable = hostingOptions?.infisicalManaged.isAvailable ?? true;
+  const isManagedAvailable = Boolean(hostingOptions?.infisicalManaged.isAvailable);
+  // An instance that never set up managed honey tokens only has the customer's own account, so there is
+  // nothing to choose. A misconfigured one still shows the chooser, with the reason managed is unavailable.
+  // Waiting for the options keeps the chooser from appearing and then vanishing.
+  const isHostingChoiceShown =
+    Boolean(hostingOptions) &&
+    hostingOptions?.infisicalManaged.unavailableReason !==
+      HoneyTokenManagedUnavailableReason.NotConfigured;
   const customerAccountStatus = hostingOptions?.customerAccount.configStatus ?? null;
   const isCustomerAccountReady = customerAccountStatus === HoneyTokenConfigStatus.Complete;
 
@@ -93,45 +103,47 @@ export const HoneyTokenConfigurationFields = ({ environments, hostingOptions }: 
 
   return (
     <>
-      <Controller
-        control={control}
-        name="hosting"
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <Field>
-            <FieldLabel>AWS account</FieldLabel>
-            <RadioGroup
-              value={value}
-              onValueChange={(nextValue) => {
-                clearErrors("hosting");
-                onChange(nextValue);
-              }}
-              aria-label="AWS account"
-            >
-              {hostingChoices.map((choice) => (
-                <FieldLabel
-                  key={choice.value}
-                  htmlFor={`honey-token-hosting-${choice.value}`}
-                  variant="project"
-                >
-                  <Field orientation="horizontal" data-disabled={choice.isDisabled}>
-                    <FieldContent>
-                      <FieldTitle>{choice.title}</FieldTitle>
-                      <FieldDescription>{choice.description}</FieldDescription>
-                    </FieldContent>
-                    <RadioGroupItem
-                      id={`honey-token-hosting-${choice.value}`}
-                      value={choice.value}
-                      disabled={choice.isDisabled}
-                      isError={Boolean(error)}
-                    />
-                  </Field>
-                </FieldLabel>
-              ))}
-            </RadioGroup>
-            {error && <FieldError>{error.message}</FieldError>}
-          </Field>
-        )}
-      />
+      {isHostingChoiceShown && (
+        <Controller
+          control={control}
+          name="hosting"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field>
+              <FieldLabel>AWS account</FieldLabel>
+              <RadioGroup
+                value={value}
+                onValueChange={(nextValue) => {
+                  clearErrors("hosting");
+                  onChange(nextValue);
+                }}
+                aria-label="AWS account"
+              >
+                {hostingChoices.map((choice) => (
+                  <FieldLabel
+                    key={choice.value}
+                    htmlFor={`honey-token-hosting-${choice.value}`}
+                    variant="project"
+                  >
+                    <Field orientation="horizontal" data-disabled={choice.isDisabled}>
+                      <FieldContent>
+                        <FieldTitle>{choice.title}</FieldTitle>
+                        <FieldDescription>{choice.description}</FieldDescription>
+                      </FieldContent>
+                      <RadioGroupItem
+                        id={`honey-token-hosting-${choice.value}`}
+                        value={choice.value}
+                        disabled={choice.isDisabled}
+                        isError={Boolean(error)}
+                      />
+                    </Field>
+                  </FieldLabel>
+                ))}
+              </RadioGroup>
+              {error && <FieldError>{error.message}</FieldError>}
+            </Field>
+          )}
+        />
+      )}
       {hostingOptions &&
         hosting === HoneyTokenHosting.CustomerAccount &&
         !isCustomerAccountReady && (
@@ -158,6 +170,7 @@ export const HoneyTokenConfigurationFields = ({ environments, hostingOptions }: 
             </AlertDescription>
           </Alert>
         )}
+      {!isHostingChoiceShown && errors.hosting && <FieldError>{errors.hosting.message}</FieldError>}
       {environments && (
         <Controller
           control={control}
