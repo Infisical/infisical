@@ -4,6 +4,8 @@ sidebarTitle: "AWS IAM"
 description: "Add and connect to AWS accounts via IAM role assumption."
 ---
 
+import EksPodIdentitySessionTags from "/snippets/aws/eks-pod-identity-session-tags.mdx";
+
 AWS IAM accounts let you manage access to AWS through IAM role assumption. Users can open the AWS console directly or use the CLI to get temporary credentials, and every access is logged.
 
 Infisical assumes the IAM role you configure directly, then returns short-lived STS credentials. Those credentials work with the AWS CLI and can also be exchanged for a federated AWS Management Console sign-in URL.
@@ -76,6 +78,7 @@ Before adding the account in Infisical, create the IAM role in your AWS account 
     <Note>
       **For Self-Hosted Instances**: Use the AWS account ID where your Infisical instance is deployed. This is the account that hosts your Infisical infrastructure and will be assuming the role.
     </Note>
+    <EksPodIdentitySessionTags />
 
     You can find your Infisical Organization ID under **Organization Settings**.
   </Step>

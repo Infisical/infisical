@@ -4,6 +4,8 @@ sidebarTitle: "PostgreSQL"
 description: "Add and connect to PostgreSQL databases."
 ---
 
+import EksPodIdentitySessionTags from "/snippets/aws/eks-pod-identity-session-tags.mdx";
+
 PostgreSQL accounts let you manage access to your PostgreSQL databases. Users connect through Web Access (a browser-based interface) or CLI (a local proxy), and every [session](/documentation/platform/pam/sessions/overview) can be recorded.
 
 ## Creating an account
@@ -98,6 +100,7 @@ Set the following up before creating the account.
     <Note>
       **For Self-Hosted Instances**: use the AWS account ID where your Infisical instance is deployed, since that is the account assuming the role.
     </Note>
+    <EksPodIdentitySessionTags />
   </Step>
   <Step title="Attach permission to connect">
     Attach a policy allowing the role to connect as that database user:
