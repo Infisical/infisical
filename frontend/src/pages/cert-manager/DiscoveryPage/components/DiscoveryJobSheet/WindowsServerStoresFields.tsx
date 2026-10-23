@@ -10,6 +10,7 @@ import {
   FieldLegend,
   FieldSet,
   FieldTitle,
+  Label,
   Toggle
 } from "@app/components/v3";
 import {
@@ -54,7 +55,6 @@ const StoreOptions = ({ stores, value, onChange }: StoreOptionsProps) => (
         <Field key={store} orientation="horizontal">
           <Checkbox
             id={id}
-            aria-labelledby={`${id}-title`}
             variant="project"
             isChecked={value.includes(store)}
             onCheckedChange={(checked) =>
@@ -66,7 +66,11 @@ const StoreOptions = ({ stores, value, onChange }: StoreOptionsProps) => (
             }
           />
           <FieldContent>
-            <FieldTitle id={`${id}-title`}>{WindowsCertificateStoreLabels[store]}</FieldTitle>
+            <FieldTitle>
+              <Label htmlFor={id} className="cursor-pointer">
+                {WindowsCertificateStoreLabels[store]}
+              </Label>
+            </FieldTitle>
             <FieldDescription>{STORE_DESCRIPTIONS[store]}</FieldDescription>
           </FieldContent>
         </Field>
@@ -97,7 +101,11 @@ export const WindowsServerStoresFields = () => {
               render={({ field: { value: includeCa, onChange: setIncludeCa } }) => (
                 <Field orientation="horizontal" className="mt-2">
                   <FieldContent>
-                    <FieldTitle id="import-standalone-ca-title">Include CA Certificates</FieldTitle>
+                    <FieldTitle>
+                      <Label htmlFor="import-standalone-ca" className="cursor-pointer">
+                        Include CA Certificates
+                      </Label>
+                    </FieldTitle>
                     <FieldDescription>
                       Import the CA certificates in the selected stores. A leaf certificate always
                       comes in with its chain.
@@ -105,7 +113,6 @@ export const WindowsServerStoresFields = () => {
                   </FieldContent>
                   <Toggle
                     id="import-standalone-ca"
-                    aria-labelledby="import-standalone-ca-title"
                     variant="project"
                     checked={includeCa}
                     onCheckedChange={(checked) => {
