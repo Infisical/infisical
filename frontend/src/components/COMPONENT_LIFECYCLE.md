@@ -26,7 +26,6 @@ The 2026-10-04 source audit found no external consumers of `Blur`, `CreatableSel
 | Components                     | Status     | Direction                                                             |
 | ------------------------------ | ---------- | --------------------------------------------------------------------- |
 | `PageHeader` | Supported | Owns the normal 40px bottom boundary (`mb-10`). Remove header-boundary parent gaps and redundant caller margins when adopting it; preserve independent body/card spacing in body containers. `className` supports intentional compact/responsive boundaries. See its spacing stories. |
-| `DeleteConfirmDialog` | Deprecated | Renamed to `ConfirmationAlertDialog`, which also covers non-delete confirms. The alias stays only so in-flight branches compile; remove it once no import remains. |
 | `ReactSelect/FilterableSelect` | Deprecated | Use `Combobox`; keep compatibility available while consumers migrate. |
 | `ReactSelect/CreatableSelect`  | Deprecated | Use `Combobox` with inline `creation` for values needing no metadata, or dialog `creation` for caller-owned forms and persistence. Keep compatibility for react-select-specific component overrides; migrate consumers separately. |
 

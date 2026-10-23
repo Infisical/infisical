@@ -118,6 +118,9 @@ export type SubscriptionPlan = {
   honeyTokenLimit: number;
   secretsBrokering: boolean;
   agentVaultByoS3: boolean;
+  agentVaultManagedStorage: boolean;
+  // null means 30 days.
+  agentVaultSessionLogRetentionDays: number | null;
   pam?: boolean | null;
   enterprisePamAccount?: boolean | null;
   maxPamAccounts?: number | null;

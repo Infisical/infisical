@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Controller, UseFormReturn } from "react-hook-form";
-import { SingleValue } from "react-select";
 
-import { AppConnectionOption } from "@app/components/app-connections";
+import { AppConnectionOptionContent } from "@app/components/app-connections";
 import {
   PostQuantumCertificatesUpgradeIntent,
   useUpgradeGate
@@ -10,13 +9,13 @@ import {
 import { AwsRegionSelect } from "@app/components/secret-syncs/forms/SecretSyncDestinationFields/shared/AwsRegionSelect";
 import {
   Badge,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Input,
   Select,
   SelectContent,
@@ -24,28 +23,22 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
-import { useProject, useProjectPermission, useSubscription } from "@app/context";
+import { useProjectPermission, useSubscription } from "@app/context";
 import {
-  ProjectPermissionAppConnectionActions,
   ProjectPermissionHsmConnectorActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { InternalCaType } from "@app/hooks/api/ca/enums";
 import { certKeyAlgorithms, isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { CertKeySource } from "@app/hooks/api/signers";
-import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
+import { CreateHsmConnectorWizard } from "@app/pages/cert-manager/SettingsPage/components/HsmConnectorsTab/CreateHsmConnectorWizard";
 
+import { useConnectionCreation } from "../CaInstallCertModal/useConnectionCreation";
 import { CaWizardForm } from "./schemas";
 import { HsmConnectorOption, isKeyAlgorithmSupportedByKeySource } from "./types";
-
-const CREATE_AWS_CONNECTION_OPTION = {
-  id: `_create:${AppConnection.AWS}`,
-  name: `Create ${APP_CONNECTION_MAP[AppConnection.AWS].name} Connection`
-};
 
 const KEY_SOURCE_DESCRIPTIONS: Record<CertKeySource, string> = {
   [CertKeySource.Infisical]: "Infisical generates and manages the CA keypair for you.",
@@ -74,18 +67,22 @@ export const KeyValidityStep = ({
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const isHsmLicensed = Boolean(subscription?.hsm);
   const isAwsKmsLicensed = Boolean(subscription?.pkiAwsKmsSigning);
-  const { currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const [isCreateAwsConnectionOpen, setIsCreateAwsConnectionOpen] = useState(false);
   const [createdAwsConnection, setCreatedAwsConnection] = useState<TAvailableAppConnection | null>(
     null
   );
-  const canCreateAppConnection = permission.can(
-    ProjectPermissionAppConnectionActions.Create,
-    ProjectPermissionSub.AppConnections
-  );
+  const [isCreateHsmConnectorOpen, setIsCreateHsmConnectorOpen] = useState(false);
+  const [createdHsmConnector, setCreatedHsmConnector] = useState<HsmConnectorOption | null>(null);
+  const connectionCreation = useConnectionCreation(AppConnection.AWS, (connection) => {
+    setCreatedAwsConnection(connection);
+    form.setValue("appConnectionId", connection.id, { shouldValidate: true });
+  });
   const canAttachHsm = permission.can(
     ProjectPermissionHsmConnectorActions.Attach,
+    ProjectPermissionSub.HsmConnectors
+  );
+  const canCreateHsm = permission.can(
+    ProjectPermissionHsmConnectorActions.Create,
     ProjectPermissionSub.HsmConnectors
   );
 
@@ -160,18 +157,35 @@ export const KeyValidityStep = ({
                 HSM Connector <span className="text-danger">*</span>
               </FieldLabel>
               <FieldContent>
-                <FilterableSelect<HsmConnectorOption>
+                <Combobox<HsmConnectorOption>
+                  isClearable={false}
+                  name={field.name}
+                  onBlur={field.onBlur}
+                  ref={field.ref}
                   isLoading={isHsmConnectorsLoading}
                   options={hsmConnectorOptions}
-                  value={hsmConnectorOptions.find((o) => o.id === field.value) ?? null}
-                  onChange={(selected) => {
-                    const opt = selected as HsmConnectorOption | null;
-                    field.onChange(opt?.id ?? null);
+                  value={
+                    [...hsmConnectorOptions, createdHsmConnector].find(
+                      (option) => option?.id === field.value
+                    ) ?? null
+                  }
+                  onValueChange={(selected) => {
+                    field.onChange(selected.id);
                   }}
                   getOptionLabel={(opt) => `${opt.name} (${opt.slotLabel})`}
                   getOptionValue={(opt) => opt.id}
                   placeholder="Select an HSM Connector..."
-                  noOptionsMessage={() =>
+                  creation={
+                    isHsmLicensed && canAttachHsm && canCreateHsm
+                      ? {
+                          mode: "action",
+                          emptyLabel: "Create HSM Connector",
+                          formatLabel: () => "Create HSM Connector",
+                          onAction: () => setIsCreateHsmConnectorOpen(true)
+                        }
+                      : undefined
+                  }
+                  emptyMessage={() =>
                     hsmConnectorOptions.length === 0
                       ? "No HSM Connectors configured. Add one in Cert Manager Settings → HSM Connectors."
                       : "No match."
@@ -199,30 +213,28 @@ export const KeyValidityStep = ({
                   AWS Connection <span className="text-danger">*</span>
                 </FieldLabel>
                 <FieldContent>
-                  <FilterableSelect
+                  <Combobox
+                    isClearable={false}
+                    includeMissingSelectedOptions={false}
+                    name={field.name}
+                    onBlur={field.onBlur}
+                    ref={field.ref}
                     isLoading={isAwsConnectionsLoading}
-                    options={[
-                      ...(canCreateAppConnection ? [CREATE_AWS_CONNECTION_OPTION] : []),
-                      ...awsConnectionOptions
-                    ]}
+                    options={awsConnectionOptions}
                     value={
                       [...awsConnectionOptions, createdAwsConnection].find(
                         (option) => option?.id === field.value
                       ) ?? null
                     }
-                    onChange={(newValue) => {
-                      const selected = newValue as SingleValue<{ id: string }>;
-                      if (selected?.id === CREATE_AWS_CONNECTION_OPTION.id) {
-                        setIsCreateAwsConnectionOpen(true);
-                        return;
-                      }
-                      field.onChange(selected?.id ?? null);
+                    onValueChange={(selected) => {
+                      field.onChange(selected.id);
                     }}
                     getOptionLabel={(option) => option.name}
                     getOptionValue={(option) => option.id}
-                    components={{ Option: AppConnectionOption }}
+                    renderOption={(option) => <AppConnectionOptionContent data={option} />}
+                    creation={connectionCreation}
                     placeholder="Select an AWS connection..."
-                    noOptionsMessage={() =>
+                    emptyMessage={() =>
                       "No AWS connections available. Contact an admin to create one."
                     }
                     isError={Boolean(error)}
@@ -364,20 +376,22 @@ export const KeyValidityStep = ({
           />
         </>
       )}
-      {isAwsKms && (
-        <AddAppConnectionModal
-          isOpen={isCreateAwsConnectionOpen}
-          onOpenChange={setIsCreateAwsConnectionOpen}
-          projectType={currentProject.type}
-          projectId={currentProject.id}
-          app={AppConnection.AWS}
-          onComplete={(connection) => {
-            setCreatedAwsConnection(connection);
-            form.setValue("appConnectionId", connection.id, { shouldValidate: true });
-          }}
-        />
-      )}
       {upgradeGate}
+      <CreateHsmConnectorWizard
+        isOpen={isCreateHsmConnectorOpen}
+        onOpenChange={setIsCreateHsmConnectorOpen}
+        onCreated={(connector) => {
+          setCreatedHsmConnector({
+            id: connector.id,
+            name: connector.name,
+            slotLabel: connector.slotLabel
+          });
+          form.setValue("hsmConnectorId", connector.id, {
+            shouldDirty: true,
+            shouldValidate: true
+          });
+        }}
+      />
     </FieldGroup>
   );
 };

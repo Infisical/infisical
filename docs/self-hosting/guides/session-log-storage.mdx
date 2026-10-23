@@ -1,0 +1,128 @@
+---
+title: "Default storage for session logs"
+sidebarTitle: "Session log storage"
+description: "Give your instance an Amazon S3 bucket so organizations can record Agent Vault session logs without a bucket of their own"
+---
+
+Agent Vault [session logs](/documentation/platform/agent-vault/session-logs) record every request an AI agent makes. Organizations can store them in their own S3 bucket, called external storage, or in default storage: one S3 bucket that you set up for the whole instance.
+
+After you set up default storage, organizations on your instance can record session logs with nothing to set up.
+
+## Prerequisites
+
+- An AWS account where you can create an [S3 bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html), an IAM policy, and [S3 Lifecycle rules](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html)
+- Access to the [environment variables](/self-hosting/configuration/envars) of your Infisical instances
+
+## Step 1: Create the bucket
+
+Create a [general purpose S3 bucket](https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html) for session logs. Directory buckets don't work. Keep **Block all public access** turned on, because browsers download session logs through signed links that don't need public access.
+
+## Step 2: Add a CORS rule
+
+Browsers download session logs directly from the bucket, so the bucket has to accept requests from your Infisical URL.
+
+<Steps>
+  <Step>
+    In the Amazon S3 console, open the bucket, go to **Permissions**, and select **Edit** under **Cross-origin resource sharing (CORS)**.
+  </Step>
+  <Step>
+    Paste this rule with your instance's URL in `AllowedOrigins`, then select **Save changes**:
+
+    ```json
+    [
+      {
+        "AllowedHeaders": ["*"],
+        "AllowedMethods": ["GET"],
+        "AllowedOrigins": ["https://<your-infisical-url>"],
+        "MaxAgeSeconds": 3000
+      }
+    ]
+    ```
+  </Step>
+</Steps>
+
+## Step 3: Add lifecycle rules
+
+Infisical tags each session log with the retention period of the organization's plan, as `retention=<days>d`. The retention period is 30 days unless your license sets a different one. Infisical doesn't delete files itself: an S3 Lifecycle rule for each tag deletes them.
+
+Add one rule for `retention=30d`, and one more rule for each other retention period your license uses. If no rule matches a tag, the files with that tag are never deleted.
+
+<Steps>
+  <Step>
+    In the Amazon S3 console, open the bucket, go to **Management**, and select **Create lifecycle rule**.
+  </Step>
+  <Step>
+    Enter a **Lifecycle rule name**, such as `session-logs-30d`, and select **Limit the scope of this rule using one or more filters**.
+  </Step>
+  <Step>
+    Under **Object tags**, select **Add tag**, and enter `retention` as the key and `30d` as the value.
+  </Step>
+  <Step>
+    Under **Lifecycle rule actions**, select **Expire current versions of objects**, and enter `30` in **Days after object creation**.
+
+    If the bucket has versioning turned on, also select **Permanently delete noncurrent versions of objects**, or expired session logs stay in the bucket as noncurrent versions.
+  </Step>
+  <Step>
+    Select **Create rule**.
+  </Step>
+</Steps>
+
+## Step 4: Give Infisical access to the bucket
+
+Infisical stores session logs under `<prefix>/` in the bucket, where `<prefix>` is the optional `OBJECT_STORAGE_S3_PREFIX` you set in [Step 5](#step-5-configure-infisical). Create this IAM policy, with your bucket and prefix in place of the placeholders:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowSessionLogObjects",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:PutObjectTagging", "s3:GetObject"],
+      "Resource": "arn:aws:s3:::<bucket>/<prefix>/*"
+    },
+    {
+      "Sid": "AllowSessionLogBucket",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::<bucket>",
+      "Condition": { "StringLike": { "s3:prefix": "<prefix>/*" } }
+    }
+  ]
+}
+```
+
+If you won't set a prefix, delete `<prefix>/` in both places. Infisical needs `s3:PutObjectTagging` to add the retention tag to each upload.
+
+Attach the policy to the identity Infisical uses for default storage:
+
+- The role your Infisical instances already run as, such as an EC2 instance profile or an EKS service account role
+- An IAM user whose access key you set in [Step 5](#step-5-configure-infisical)
+
+## Step 5: Configure Infisical
+
+Set these [environment variables](/self-hosting/configuration/envars#object-storage-optional) on every Infisical instance, then restart the instances:
+
+```bash
+OBJECT_STORAGE_S3_BUCKET=<bucket>
+OBJECT_STORAGE_S3_REGION=<region>
+# Optional: the folder in the bucket to store session logs under
+OBJECT_STORAGE_S3_PREFIX=<prefix>
+# Optional: only if Infisical doesn't run as a role with the policy from Step 4
+OBJECT_STORAGE_S3_ACCESS_KEY_ID=<access-key-id>
+OBJECT_STORAGE_S3_SECRET_ACCESS_KEY=<secret-access-key>
+```
+
+If you leave out the access key variables, Infisical finds credentials the way the AWS SDK does by default, for example from the instance's role.
+
+If you set only some of the variables, such as a bucket without a region or an access key ID without its secret, Infisical doesn't start, and its log names the missing variable.
+
+<Note>
+  If your instance runs in FIPS mode, Infisical reaches the bucket through the [S3 FIPS endpoint](https://aws.amazon.com/compliance/fips/) of the bucket's region, so choose a region that has one.
+</Note>
+
+## Check default storage
+
+In an organization on your instance, go to Agent Vault, then **Administration** > **Settings**. The **Session Logs** card shows that session logs are on in default storage.
+
+When Infisical starts, it checks that it can list the bucket, write a tagged test file under `<prefix>/` and read it back, and that the bucket's CORS rule allows downloads from your `SITE_URL`. If a check fails, Infisical logs an error that names the step, such as a missing `s3:PutObjectTagging`, a missing `s3:GetObject` or a missing CORS rule. Organizations don't see this error, so check the Infisical logs after you set up the bucket.

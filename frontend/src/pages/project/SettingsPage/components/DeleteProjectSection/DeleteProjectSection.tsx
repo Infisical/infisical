@@ -233,6 +233,7 @@ export const DeleteProjectSection = () => {
       </Card>
 
       <AlertDialog
+        isPending={isDeleting}
         open={popUp.deleteWorkspace.isOpen}
         confirmationValue={CONFIRM_KEYWORD}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteWorkspace", isOpen)}
@@ -252,14 +253,13 @@ export const DeleteProjectSection = () => {
           <AlertDialogConfirmationField
             inputProps={{ placeholder: `Type ${CONFIRM_KEYWORD} here` }}
             onConfirm={() => {
-              if (!isDeleting) handleDeleteWorkspaceSubmit();
+              handleDeleteWorkspaceSubmit();
             }}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={isDeleting}
               onClick={(event) => {
                 event.preventDefault();
                 handleDeleteWorkspaceSubmit();
@@ -272,6 +272,7 @@ export const DeleteProjectSection = () => {
       </AlertDialog>
 
       <AlertDialog
+        isPending={isLeaving}
         open={popUp.leaveWorkspace.isOpen}
         confirmationValue={CONFIRM_KEYWORD}
         onOpenChange={(isOpen) => handlePopUpToggle("leaveWorkspace", isOpen)}
@@ -291,14 +292,13 @@ export const DeleteProjectSection = () => {
           <AlertDialogConfirmationField
             inputProps={{ placeholder: `Type ${CONFIRM_KEYWORD} here` }}
             onConfirm={() => {
-              if (!isLeaving) handleLeaveWorkspaceSubmit();
+              handleLeaveWorkspaceSubmit();
             }}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isLeaving}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="warning"
-              isPending={isLeaving}
               onClick={(event) => {
                 event.preventDefault();
                 handleLeaveWorkspaceSubmit();

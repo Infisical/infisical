@@ -3,20 +3,21 @@ import { useQueries } from "@tanstack/react-query";
 import { HardDriveIcon, UserIcon, UsersIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
 import {
   Button,
   ButtonGroup,
+  Combobox,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DiscardChangesAlertDialog,
   Field,
   FieldLabel
 } from "@app/components/v3";
-import { FilterableSelect } from "@app/components/v3/generic/ReactSelect";
 import { apiRequest } from "@app/config/request";
 import { useProject } from "@app/context";
 import {
@@ -27,6 +28,7 @@ import {
 import { useListProjectIdentityMemberships } from "@app/hooks/api/projectIdentityMembership";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api/projects/queries";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
 type ActorType = "user" | "identity" | "group";
 
@@ -58,12 +60,6 @@ const APP_ROLES: AppRoleOption[] = [
     description: "View certificates, members, and activity on this application."
   }
 ];
-
-const formatMemberOptionLabel = (option: Option, meta: { context: "menu" | "value" }) => (
-  <span className={meta.context === "value" ? "block max-w-[22rem] truncate" : "block truncate"}>
-    {option.label}
-  </span>
-);
 
 const runSequential = async <T,>(items: T[], fn: (item: T) => Promise<void>): Promise<void> => {
   await items.reduce<Promise<void>>(async (prev, item) => {
@@ -272,123 +268,158 @@ export const AddApplicationMemberModal = ({
     group: selectedGroups.length
   };
   const selectedCount = selectedByType[type];
+  const { requestDiscard, confirmDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({
+      isDirty: selectedCount > 0 || role !== "operator",
+      onDiscard: () => handleClose(false)
+    });
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Add Member</DialogTitle>
-          <DialogDescription>
-            Grant access to this Application. Select existing members, identities, or groups to
-            attach. New members must first be granted access from the Access Control page.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (open) handleClose(true);
+          else requestDiscard();
+        }}
+      >
+        <DialogContent isPending={submitting}>
+          <DialogHeader>
+            <DialogTitle>Add Member</DialogTitle>
+            <DialogDescription>
+              Grant access to this Application. Select existing members, identities, or groups to
+              attach. New members must first be granted access from the Access Control page.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <ButtonGroup className="w-full">
-            {TYPE_OPTIONS.map((opt) => {
-              const Icon = opt.icon;
-              const active = type === opt.value;
-              return (
-                <Button
-                  key={opt.value}
-                  type="button"
-                  variant={active ? "project" : "outline"}
-                  size="sm"
-                  className="flex-1"
-                  onClick={() => handleTypeChange(opt.value)}
-                  aria-pressed={active}
-                >
-                  <Icon />
-                  {opt.label}
-                </Button>
-              );
-            })}
-          </ButtonGroup>
-
-          {type === "user" && (
-            <Field>
-              <FieldLabel htmlFor={memberSelectId}>Users</FieldLabel>
-              <FilterableSelect
-                inputId={memberSelectId}
-                isMulti
-                isLoading={usersQuery.isPending}
-                options={userOptions}
-                value={selectedUsers}
-                onChange={(v) => setSelectedUsers((v ?? []) as Option[])}
-                placeholder="Select existing members…"
-                formatOptionLabel={formatMemberOptionLabel}
-                noOptionsMessage={NoUserOptions}
-              />
-            </Field>
-          )}
-
-          {type === "identity" && (
-            <Field>
-              <FieldLabel htmlFor={memberSelectId}>Machine Identities</FieldLabel>
-              <FilterableSelect
-                inputId={memberSelectId}
-                isMulti
-                isLoading={identitiesQuery.isPending}
-                options={identityOptions}
-                value={selectedIdentities}
-                onChange={(v) => setSelectedIdentities((v ?? []) as Option[])}
-                placeholder="Select existing identities…"
-                formatOptionLabel={formatMemberOptionLabel}
-                noOptionsMessage={NoIdentityOptions}
-              />
-            </Field>
-          )}
-
-          {type === "group" && (
-            <Field>
-              <FieldLabel htmlFor={memberSelectId}>Groups</FieldLabel>
-              <FilterableSelect
-                inputId={memberSelectId}
-                isMulti
-                isLoading={groupsQuery.isPending}
-                options={groupOptions}
-                value={selectedGroups}
-                onChange={(v) => setSelectedGroups((v ?? []) as Option[])}
-                placeholder="Select groups…"
-                formatOptionLabel={formatMemberOptionLabel}
-                noOptionsMessage={NoGroupOptions}
-              />
-            </Field>
-          )}
-
-          <Field>
-            <FieldLabel htmlFor={roleSelectId}>Role</FieldLabel>
-            <FilterableSelect
-              inputId={roleSelectId}
-              options={APP_ROLES}
-              value={APP_ROLES.find((r) => r.slug === role) ?? null}
-              onChange={(v) => {
-                const next = v as AppRoleOption | null;
-                if (next) setRole(next.slug);
-              }}
-              getOptionValue={(option) => option.slug}
-              getOptionLabel={(option) => option.name}
-              components={{ Option: RoleOption }}
-              isClearable={false}
-            />
-          </Field>
-        </div>
-
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => handleClose(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="project"
-            isDisabled={selectedCount === 0 || submitting}
-            isPending={submitting}
-            onClick={handleSubmit}
+          <form
+            className="flex min-h-0 flex-1 flex-col gap-6"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (selectedCount > 0 && !submitting) handleSubmit();
+            }}
           >
-            Add Member{selectedCount > 1 ? "s" : ""}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            <DialogBody>
+              <fieldset disabled={submitting} className="min-w-0 space-y-4">
+                <ButtonGroup className="w-full">
+                  {TYPE_OPTIONS.map((opt) => {
+                    const Icon = opt.icon;
+                    const active = type === opt.value;
+                    return (
+                      <Button
+                        key={opt.value}
+                        type="button"
+                        variant={active ? "project" : "outline"}
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleTypeChange(opt.value)}
+                        aria-pressed={active}
+                      >
+                        <Icon />
+                        {opt.label}
+                      </Button>
+                    );
+                  })}
+                </ButtonGroup>
+
+                {type === "user" && (
+                  <Field>
+                    <FieldLabel htmlFor={memberSelectId}>Users</FieldLabel>
+                    <Combobox
+                      id={memberSelectId}
+                      multiple
+                      isLoading={usersQuery.isPending}
+                      options={userOptions}
+                      value={selectedUsers}
+                      onValueChange={setSelectedUsers}
+                      getOptionValue={(option) => option.value}
+                      getOptionLabel={(option) => option.label}
+                      placeholder="Select existing members…"
+                      emptyMessage={<NoUserOptions />}
+                    />
+                  </Field>
+                )}
+
+                {type === "identity" && (
+                  <Field>
+                    <FieldLabel htmlFor={memberSelectId}>Machine Identities</FieldLabel>
+                    <Combobox
+                      id={memberSelectId}
+                      multiple
+                      isLoading={identitiesQuery.isPending}
+                      options={identityOptions}
+                      value={selectedIdentities}
+                      onValueChange={setSelectedIdentities}
+                      getOptionValue={(option) => option.value}
+                      getOptionLabel={(option) => option.label}
+                      placeholder="Select existing identities…"
+                      emptyMessage={<NoIdentityOptions />}
+                    />
+                  </Field>
+                )}
+
+                {type === "group" && (
+                  <Field>
+                    <FieldLabel htmlFor={memberSelectId}>Groups</FieldLabel>
+                    <Combobox
+                      id={memberSelectId}
+                      multiple
+                      isLoading={groupsQuery.isPending}
+                      options={groupOptions}
+                      value={selectedGroups}
+                      onValueChange={setSelectedGroups}
+                      getOptionValue={(option) => option.value}
+                      getOptionLabel={(option) => option.label}
+                      placeholder="Select groups…"
+                      emptyMessage={<NoGroupOptions />}
+                    />
+                  </Field>
+                )}
+
+                <Field>
+                  <FieldLabel htmlFor={roleSelectId}>Role</FieldLabel>
+                  <Combobox
+                    id={roleSelectId}
+                    options={APP_ROLES}
+                    value={APP_ROLES.find((r) => r.slug === role) ?? null}
+                    onValueChange={(next) => setRole(next.slug)}
+                    getOptionValue={(option) => option.slug}
+                    getOptionLabel={(option) => option.name}
+                    renderOption={(option) => (
+                      <div className="flex flex-col gap-1">
+                        <span>{option.name}</span>
+                        <span className="text-xs text-muted">{option.description}</span>
+                      </div>
+                    )}
+                    isClearable={false}
+                  />
+                </Field>
+              </fieldset>
+            </DialogBody>
+
+            <DialogFooter>
+              <Button variant="ghost" isDisabled={submitting} onClick={requestDiscard}>
+                Cancel
+              </Button>
+              <Button
+                variant="project"
+                isDisabled={selectedCount === 0 || submitting}
+                isPending={submitting}
+                type="submit"
+              >
+                Add Member{selectedCount > 1 ? "s" : ""}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Member Changes?"
+        description="Your pending member selection will be lost."
+      />
+    </>
   );
 };

@@ -243,6 +243,7 @@ export type TGetDashboardProjectSecretsByKeys = {
   environment: string;
   keys: string[];
   viewSecretValue?: boolean;
+  hideUnreadableValues?: boolean;
 };
 
 export type TGetAccessibleSecretsDTO = {

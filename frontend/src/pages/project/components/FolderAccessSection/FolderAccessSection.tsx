@@ -367,6 +367,7 @@ export const FolderAccessSection = ({ actor, hideActions = false }: Props) => {
         }}
       />
       <RemoveFolderAccessDialog
+        isRoleContextKnown={false}
         actor={dialogActor}
         onOpenChange={(isOpen) => {
           if (!isOpen) setDeleteTarget(null);

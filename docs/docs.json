@@ -389,40 +389,6 @@
             ]
           },
           {
-            "item": "Secret Scanning",
-            "icon": "radar",
-            "pages": [
-              "documentation/platform/secret-scanning/overview",
-              "documentation/platform/secret-scanning/concepts/secret-scanning",
-              {
-                "group": "Scanning locally",
-                "pages": [
-                  "documentation/platform/secret-scanning/scan-locally",
-                  "documentation/platform/secret-scanning/pre-commit-hook",
-                  "documentation/platform/secret-scanning/ignore-findings",
-                  "documentation/platform/secret-scanning/local-configuration"
-                ]
-              },
-              {
-                "group": "Scanning repositories",
-                "pages": [
-                  "documentation/platform/secret-scanning/scan-repositories",
-                  {
-                    "group": "Data sources",
-                    "expanded": true,
-                    "pages": [
-                      "documentation/platform/secret-scanning/github",
-                      "documentation/platform/secret-scanning/gitlab",
-                      "documentation/platform/secret-scanning/bitbucket"
-                    ]
-                  },
-                  "documentation/platform/secret-scanning/findings",
-                  "documentation/platform/secret-scanning/configuration"
-                ]
-              }
-            ]
-          },
-          {
             "item": "Certificate Management",
             "icon": "file-key",
             "pages": [
@@ -609,42 +575,7 @@
             ]
           },
           {
-            "item": "KMS",
-            "icon": "lock",
-            "pages": [
-              "documentation/platform/kms/overview",
-              "documentation/platform/kms/concepts",
-              {
-                "group": "Key management",
-                "pages": [
-                  "documentation/platform/kms/keys",
-                  "documentation/platform/kms/encrypt-decrypt",
-                  "documentation/platform/kms/sign-verify",
-                  "documentation/platform/kms/mac",
-                  "documentation/platform/kms/key-rotation",
-                  "documentation/platform/kms/export-import"
-                ]
-              },
-              {
-                "group": "KMIP",
-                "pages": [
-                  "documentation/platform/kms/kmip",
-                  "documentation/platform/kms/kmip-server",
-                  "documentation/platform/kms/kmip-clients",
-                  "documentation/platform/kms/kmip-dell-poweredge"
-                ]
-              },
-              {
-                "group": "Integrations",
-                "pages": [
-                  "documentation/platform/kms/kubernetes-encryption",
-                  "documentation/platform/kms/sigstore-cosign"
-                ]
-              }
-            ]
-          },
-          {
-            "item": "Privileged Access Management",
+            "item": "Privileged Access Management (PAM)",
             "icon": "users",
             "pages": [
               "documentation/platform/pam/overview",
@@ -805,6 +736,75 @@
                   },
                   "documentation/platform/agent-vault/proxies",
                   "documentation/platform/agent-vault/access-control"
+                ]
+              }
+            ]
+          },
+          {
+            "item": "Key Management Service (KMS)",
+            "icon": "lock",
+            "pages": [
+              "documentation/platform/kms/overview",
+              "documentation/platform/kms/concepts",
+              {
+                "group": "Key management",
+                "pages": [
+                  "documentation/platform/kms/keys",
+                  "documentation/platform/kms/encrypt-decrypt",
+                  "documentation/platform/kms/sign-verify",
+                  "documentation/platform/kms/mac",
+                  "documentation/platform/kms/key-rotation",
+                  "documentation/platform/kms/export-import"
+                ]
+              },
+              {
+                "group": "KMIP",
+                "pages": [
+                  "documentation/platform/kms/kmip",
+                  "documentation/platform/kms/kmip-server",
+                  "documentation/platform/kms/kmip-clients",
+                  "documentation/platform/kms/kmip-dell-poweredge"
+                ]
+              },
+              {
+                "group": "Integrations",
+                "pages": [
+                  "documentation/platform/kms/kubernetes-encryption",
+                  "documentation/platform/kms/sigstore-cosign"
+                ]
+              }
+            ]
+          },
+          {
+            "item": "Secret Scanning",
+            "icon": "radar",
+            "pages": [
+              "documentation/platform/secret-scanning/overview",
+              "documentation/platform/secret-scanning/concepts/secret-scanning",
+              {
+                "group": "Scanning locally",
+                "pages": [
+                  "documentation/platform/secret-scanning/scan-locally",
+                  "documentation/platform/secret-scanning/pre-commit-hook",
+                  "documentation/platform/secret-scanning/ignore-findings",
+                  "documentation/platform/secret-scanning/local-configuration"
+                ]
+              },
+              {
+                "group": "Scanning repositories",
+                "pages": [
+                  "documentation/platform/secret-scanning/scan-repositories",
+                  {
+                    "group": "Data sources",
+                    "expanded": true,
+                    "pages": [
+                      "documentation/platform/secret-scanning/github",
+                      "documentation/platform/secret-scanning/gitlab",
+                      "documentation/platform/secret-scanning/bitbucket"
+                    ]
+                  },
+                  "documentation/platform/secret-scanning/findings",
+                  "documentation/platform/secret-scanning/configuration"
                 ]
               }
             ]
@@ -1222,7 +1222,8 @@
                   "self-hosting/guides/custom-certificates",
                   "self-hosting/guides/hsm-integration",
                   "self-hosting/guides/automated-bootstrapping",
-                  "self-hosting/guides/cdn-caching"
+                  "self-hosting/guides/cdn-caching",
+                  "self-hosting/guides/session-log-storage"
                 ]
               },
               {
@@ -1308,7 +1309,6 @@
             "pages": [
               "cli/overview",
               "cli/cloudsmith-migration",
-              "cli/project-config-migration",
               {
                 "group": "Get started",
                 "pages": [
@@ -1334,6 +1334,7 @@
                   "cli/reference/kmip",
                   "cli/reference/login",
                   "cli/reference/logout",
+                  "cli/reference/migrate-config",
                   "cli/reference/org",
                   "cli/reference/pam",
                   "cli/reference/profile",
@@ -2788,7 +2789,7 @@
                 ]
               },
               {
-                "group": "Secrets management",
+                "group": "Secrets Management",
                 "boost": 0.25,
                 "pages": [
                   {
@@ -4009,7 +4010,7 @@
                 ]
               },
               {
-                "group": "Certificate management",
+                "group": "Certificate Management",
                 "boost": 0.25,
                 "pages": [
                   {
@@ -4498,49 +4499,6 @@
                 ]
               },
               {
-                "group": "Infisical KMS",
-                "boost": 0.25,
-                "pages": [
-                  {
-                    "group": "Keys",
-                    "pages": [
-                      "api-reference/endpoints/kms/keys/list",
-                      "api-reference/endpoints/kms/keys/get-by-id",
-                      "api-reference/endpoints/kms/keys/get-by-name",
-                      "api-reference/endpoints/kms/keys/create",
-                      "api-reference/endpoints/kms/keys/update",
-                      "api-reference/endpoints/kms/keys/rotate",
-                      "api-reference/endpoints/kms/keys/delete",
-                      "api-reference/endpoints/kms/keys/public-key",
-                      "api-reference/endpoints/kms/keys/private-key",
-                      "api-reference/endpoints/kms/keys/bulk-export-private-keys"
-                    ]
-                  },
-                  {
-                    "group": "Encryption",
-                    "pages": [
-                      "api-reference/endpoints/kms/encryption/encrypt",
-                      "api-reference/endpoints/kms/encryption/decrypt"
-                    ]
-                  },
-                  {
-                    "group": "Signing",
-                    "pages": [
-                      "api-reference/endpoints/kms/signing/sign",
-                      "api-reference/endpoints/kms/signing/verify",
-                      "api-reference/endpoints/kms/signing/signing-algorithms"
-                    ]
-                  },
-                  {
-                    "group": "Message authentication",
-                    "pages": [
-                      "api-reference/endpoints/kms/mac/generate-mac",
-                      "api-reference/endpoints/kms/mac/verify-mac"
-                    ]
-                  }
-                ]
-              },
-              {
                 "group": "Agent Vault",
                 "pages": [
                   {
@@ -4597,7 +4555,7 @@
                       "api-reference/endpoints/agent-vault-proxies/create",
                       "api-reference/endpoints/agent-vault-proxies/update",
                       "api-reference/endpoints/agent-vault-proxies/delete",
-                      "api-reference/endpoints/agent-vault-proxies/enrollment-token",
+                      "api-reference/endpoints/agent-vault-proxies/rotate-token",
                       "api-reference/endpoints/agent-vault-proxies/revoke"
                     ]
                   },
@@ -4627,6 +4585,49 @@
                       "api-reference/endpoints/agent-vault-app-connections/create",
                       "api-reference/endpoints/agent-vault-app-connections/update",
                       "api-reference/endpoints/agent-vault-app-connections/delete"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Key Management Service (KMS)",
+                "boost": 0.25,
+                "pages": [
+                  {
+                    "group": "Keys",
+                    "pages": [
+                      "api-reference/endpoints/kms/keys/list",
+                      "api-reference/endpoints/kms/keys/get-by-id",
+                      "api-reference/endpoints/kms/keys/get-by-name",
+                      "api-reference/endpoints/kms/keys/create",
+                      "api-reference/endpoints/kms/keys/update",
+                      "api-reference/endpoints/kms/keys/rotate",
+                      "api-reference/endpoints/kms/keys/delete",
+                      "api-reference/endpoints/kms/keys/public-key",
+                      "api-reference/endpoints/kms/keys/private-key",
+                      "api-reference/endpoints/kms/keys/bulk-export-private-keys"
+                    ]
+                  },
+                  {
+                    "group": "Encryption",
+                    "pages": [
+                      "api-reference/endpoints/kms/encryption/encrypt",
+                      "api-reference/endpoints/kms/encryption/decrypt"
+                    ]
+                  },
+                  {
+                    "group": "Signing",
+                    "pages": [
+                      "api-reference/endpoints/kms/signing/sign",
+                      "api-reference/endpoints/kms/signing/verify",
+                      "api-reference/endpoints/kms/signing/signing-algorithms"
+                    ]
+                  },
+                  {
+                    "group": "Message authentication",
+                    "pages": [
+                      "api-reference/endpoints/kms/mac/generate-mac",
+                      "api-reference/endpoints/kms/mac/verify-mac"
                     ]
                   }
                 ]
@@ -4762,8 +4763,24 @@
         "header": "PRODUCT",
         "items": [
           {
-            "label": "Secret Management",
-            "href": "https://infisical.com/"
+            "label": "Secrets Management",
+            "href": "https://infisical.com/platform/secrets-management"
+          },
+          {
+            "label": "Certificate Management",
+            "href": "https://infisical.com/platform/certificate-management"
+          },
+          {
+            "label": "Privileged Access Management (PAM)",
+            "href": "https://infisical.com/platform/pam"
+          },
+          {
+            "label": "Agent Vault",
+            "href": "https://infisical.com/platform/agent-vault"
+          },
+          {
+            "label": "Key Management Service (KMS)",
+            "href": "https://infisical.com/docs/documentation/platform/kms/overview"
           },
           {
             "label": "Secret Scanning",
@@ -4938,6 +4955,10 @@
   },
   "redirects": [
     {
+      "source": "/api-reference/endpoints/agent-vault-proxies/enrollment-token",
+      "destination": "/api-reference/endpoints/agent-vault-proxies/rotate-token"
+    },
+    {
       "source": "/documentation/platform/secret-scanning/usage",
       "destination": "/documentation/platform/secret-scanning/scan-repositories"
     },
@@ -4992,6 +5013,10 @@
     {
       "source": "/cli/commands/init",
       "destination": "/cli/reference#init"
+    },
+    {
+      "source": "/cli/project-config-migration",
+      "destination": "/cli/project-config"
     },
     {
       "source": "/cli/commands/kmip",

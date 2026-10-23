@@ -158,17 +158,23 @@ describe("cert manager alert provider", () => {
     });
   });
 
-  test("filters must be non-empty UUID lists and are stored as sent", () => {
+  test("filters must be non-empty UUID lists and are stored lowercased", () => {
     const schema = expiryConditionSchema(buildProvider().provider);
     expect(
       schema.safeParse({ alertBefore: "30d", applicationIds: [APPLICATION_ID], profileIds: [PROFILE_ID] }).success
     ).toBe(true);
     expect(schema.safeParse({ alertBefore: "30d", applicationIds: ["not-a-uuid"] }).success).toBe(false);
-    expect(schema.safeParse({ alertBefore: "30d", applicationIds: [] }).success).toBe(false);
+    expect(schema.safeParse({ alertBefore: "30d", applicationIds: [] }).error?.issues[0].message).toBe(
+      "applicationIds must list at least one application. To cover them all, leave applicationIds out."
+    );
+    expect(
+      schema.safeParse({
+        alertBefore: "30d",
+        applicationIds: Array.from({ length: 101 }, (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`)
+      }).error?.issues[0].message
+    ).toBe("applicationIds can list at most 100 applications");
     const upper = schema.safeParse({ alertBefore: "30d", applicationIds: [APPLICATION_ID.toUpperCase()] });
-    expect(upper.success && (upper.data as { applicationIds: string[] }).applicationIds).toEqual([
-      APPLICATION_ID.toUpperCase()
-    ]);
+    expect(upper.success && (upper.data as { applicationIds: string[] }).applicationIds).toEqual([APPLICATION_ID]);
   });
 
   test("filters reject an ID listed twice, in any case, instead of storing the duplicate", () => {
@@ -179,7 +185,7 @@ describe("cert manager alert provider", () => {
     });
     expect(duplicated.success).toBe(false);
     expect(duplicated.error?.issues[0].message).toBe(
-      `applicationIds lists the same ID more than once: '${APPLICATION_ID.toUpperCase()}'`
+      `applicationIds lists the same ID more than once: '${APPLICATION_ID}'`
     );
     expect(schema.safeParse({ alertBefore: "30d", profileIds: [PROFILE_ID, PROFILE_ID] }).success).toBe(false);
   });
@@ -208,7 +214,7 @@ describe("cert manager alert provider", () => {
       alerts: [{ id: "alert-1", condition: { applicationIds: [APPLICATION_ID.toUpperCase()] } }]
     });
     expect(names?.get("alert-1")).toEqual({
-      applications: [{ id: APPLICATION_ID.toUpperCase(), name: "payments-api" }],
+      applications: [{ id: APPLICATION_ID, name: "payments-api" }],
       profiles: []
     });
   });
