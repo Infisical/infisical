@@ -303,7 +303,8 @@ export const delegatedApprovalDispatchConsumerFactory = ({
   // Events for one request run serially, so two of them cannot both pass the providerRequestId check.
   const handle = (events: TEvent[]): Promise<TEventConsumerResult[]> =>
     runEventsConcurrentlyByKey(events, {
-      keyOf: (event) => DelegatedApprovalDispatchRequestedPayloadSchema.safeParse(event.payload).data?.delegatedRequestId,
+      keyOf: (event) =>
+        DelegatedApprovalDispatchRequestedPayloadSchema.safeParse(event.payload).data?.delegatedRequestId,
       concurrency: DELEGATED_APPROVAL_DISPATCH_CONCURRENCY,
       handleEvent: $handleEvent
     });
