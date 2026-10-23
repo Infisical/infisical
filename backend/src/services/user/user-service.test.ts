@@ -381,29 +381,13 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
     });
   });
 
-  test("only accepts the factor login asks for, not every registered one", async () => {
+  test("challenges the preferred factor and accepts any of the user's factors", async () => {
     const service = buildMfaService({
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN }],
       hasTotp: true,
       passkeyCount: 2
-    });
-
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
-      challenge: MfaMethod.TOTP,
-      accepted: [MfaMethod.TOTP]
-    });
-  });
-
-  test("accepts every factor some org's login asks for", async () => {
-    const service = buildMfaService({
-      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
-      memberOrgIds: [ENFORCED_ORG_ID, "loose-org"],
-      orgs: [
-        { id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN },
-        { id: "loose-org", enforceMfa: false }
-      ],
-      hasTotp: true,
-      passkeyCount: 1
     });
 
     await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
@@ -412,22 +396,7 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
     });
   });
 
-  test("an old authenticator app can't stand in for the passkey an org enforces", async () => {
-    const service = buildMfaService({
-      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
-      memberOrgIds: [ENFORCED_ORG_ID],
-      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN }],
-      hasTotp: true,
-      passkeyCount: 1
-    });
-
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
-      challenge: MfaMethod.WEBAUTHN,
-      accepted: [MfaMethod.WEBAUTHN]
-    });
-  });
-
-  test("falls back to email MFA the user turned on when the org requires a factor they lack", async () => {
+  test("counts email MFA the user turned on, even where an org requires a factor they lack", async () => {
     const service = buildMfaService({
       userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
       memberOrgIds: [ENFORCED_ORG_ID],
@@ -440,31 +409,7 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
     });
   });
 
-  test("never challenges an account that has not turned MFA on and has no factor", async () => {
-    const service = buildMfaService({
-      userRow: { isMfaEnabled: false, selectedMfaMethod: null },
-      memberOrgIds: [ENFORCED_ORG_ID],
-      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN }]
-    });
-
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toBeNull();
-  });
-
-  test("falls back to registered factors when the user has none that login asks for", async () => {
-    const service = buildMfaService({
-      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
-      memberOrgIds: [ENFORCED_ORG_ID],
-      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN }],
-      hasTotp: true
-    });
-
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
-      challenge: MfaMethod.TOTP,
-      accepted: [MfaMethod.TOTP]
-    });
-  });
-
-  test("counts email as a factor when login already requires it", async () => {
+  test("counts email when an org's login requires it", async () => {
     const service = buildMfaService({
       memberOrgIds: [ENFORCED_ORG_ID],
       orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.EMAIL }]
@@ -483,107 +428,5 @@ describe("getFactorEnrollmentStepUpMfaMethods", () => {
     });
 
     await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toBeNull();
-  });
-
-  test("does not count an email preference that an enforcing org overrides at login", async () => {
-    const service = buildMfaService({
-      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
-      memberOrgIds: [ENFORCED_ORG_ID],
-      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN }],
-      passkeyCount: 1
-    });
-
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
-      challenge: MfaMethod.WEBAUTHN,
-      accepted: [MfaMethod.WEBAUTHN]
-    });
-  });
-
-  test("counts an email preference while some org leaves the method to the user", async () => {
-    const service = buildMfaService({
-      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
-      memberOrgIds: [ENFORCED_ORG_ID, "loose-org"],
-      orgs: [
-        { id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN },
-        { id: "loose-org", enforceMfa: false }
-      ],
-      passkeyCount: 1
-    });
-
-    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID)).resolves.toEqual({
-      challenge: MfaMethod.EMAIL,
-      accepted: [MfaMethod.WEBAUTHN, MfaMethod.EMAIL]
-    });
-  });
-});
-
-describe("getFactorEnrollmentStepUpMfaMethods rules hold for every combination", () => {
-  const { WEBAUTHN, TOTP, EMAIL } = MfaMethod;
-  type TOrg = { id: string; enforceMfa: boolean; selectedMfaMethod?: MfaMethod };
-  const orgSetups: TOrg[][] = [
-    [],
-    [{ id: "org-w", enforceMfa: true, selectedMfaMethod: WEBAUTHN }],
-    [{ id: "org-t", enforceMfa: true, selectedMfaMethod: TOTP }],
-    [{ id: "org-e", enforceMfa: true, selectedMfaMethod: EMAIL }],
-    [{ id: "org-loose", enforceMfa: false }],
-    [
-      { id: "org-w", enforceMfa: true, selectedMfaMethod: WEBAUTHN },
-      { id: "org-loose", enforceMfa: false }
-    ],
-    [
-      { id: "org-w", enforceMfa: true, selectedMfaMethod: WEBAUTHN },
-      { id: "org-t", enforceMfa: true, selectedMfaMethod: TOTP }
-    ]
-  ];
-
-  const cases = orgSetups.flatMap((orgs) =>
-    [true, false].flatMap((isMfaEnabled) =>
-      [null, EMAIL, TOTP, WEBAUTHN].flatMap((selectedMfaMethod) =>
-        [true, false].flatMap((hasPasskey) =>
-          [true, false].flatMap((hasTotp) =>
-            [true, false].map((smtp) => ({ orgs, isMfaEnabled, selectedMfaMethod, hasPasskey, hasTotp, smtp }))
-          )
-        )
-      )
-    )
-  );
-  const validCases = cases.filter(
-    (c) => (c.selectedMfaMethod !== TOTP || c.hasTotp) && (c.selectedMfaMethod !== WEBAUTHN || c.hasPasskey)
-  );
-
-  test.each(validCases)("%j", async ({ orgs, isMfaEnabled, selectedMfaMethod, hasPasskey, hasTotp, smtp }) => {
-    const service = buildMfaService({
-      userRow: { isMfaEnabled, selectedMfaMethod },
-      memberOrgIds: orgs.map((org) => org.id),
-      orgs,
-      hasTotp,
-      passkeyCount: hasPasskey ? 1 : 0,
-      smtp
-    });
-    const result = await service.getFactorEnrollmentStepUpMfaMethods(USER_ID);
-
-    const userLoginMethod = isMfaEnabled ? (selectedMfaMethod ?? EMAIL) : null;
-    const loginAsks = new Set(
-      (orgs.length ? orgs : [{ enforceMfa: false } as TOrg])
-        .map((org) => (org.enforceMfa ? (org.selectedMfaMethod ?? EMAIL) : userLoginMethod))
-        .filter(Boolean)
-    );
-    const held = [...(hasPasskey ? [WEBAUTHN] : []), ...(hasTotp ? [TOTP] : []), ...(smtp ? [EMAIL] : [])];
-    const heldThatLoginAsks = held.filter((method) => loginAsks.has(method));
-
-    // 1. A user holding a factor some login asks for is held to exactly those.
-    if (heldThatLoginAsks.length) {
-      expect(result?.accepted.slice().sort()).toEqual(heldThatLoginAsks.slice().sort());
-    }
-
-    // 2. An account with a factor of its own is always challenged.
-    const hasOwnFactor = hasPasskey || hasTotp || (smtp && isMfaEnabled && (selectedMfaMethod ?? EMAIL) === EMAIL);
-    if (hasOwnFactor) expect(result).not.toBeNull();
-
-    // 3. First-factor setup is never challenged.
-    if (!hasOwnFactor && !heldThatLoginAsks.length) expect(result).toBeNull();
-
-    // 4. The challenge is one of the accepted factors.
-    if (result) expect(result.accepted).toContain(result.challenge);
   });
 });

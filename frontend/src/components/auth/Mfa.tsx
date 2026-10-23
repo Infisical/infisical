@@ -33,7 +33,7 @@ import { getMfaTempToken } from "@app/hooks/api/reactQuery";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
 import { useGenerateAuthenticationOptions, useVerifyAuthentication } from "@app/hooks/api/webauthn";
 
-import { RecoveryCodesStep } from "../mfa/setup";
+import { MFA_METHOD_LABELS, RecoveryCodesStep } from "../mfa/setup";
 import { AuthPageLayout } from "./AuthPageLayout";
 import { AuthPagePanel } from "./AuthPagePanel";
 import { waitForMinimumAuthVerificationLoading } from "./authTiming";
@@ -64,6 +64,10 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
   const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[] | null>(null);
   const [hasSavedRecoveryCodes, setHasSavedRecoveryCodes] = useState(false);
   const wasMfaEnabledRef = useRef(true);
+  // Factor setup clears the MFA token so its calls run on the access token; a recovery-code
+  // login out of setup needs it back.
+  const mfaTokenRef = useRef(getMfaTempToken());
+  const [isRecoveringFromSetup, setIsRecoveringFromSetup] = useState(false);
   const { mutateAsync: activateMfa } = useActivateMfa();
   const logout = useLogoutUser();
 
@@ -106,7 +110,21 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
 
   const isCodeComplete = mfaCode.length === getExpectedCodeLength();
 
+  const showFactorSetup = () => {
+    if (method === MfaMethod.TOTP) setShouldShowTotpRegistration(true);
+    else setShouldShowWebAuthnRegistration(true);
+  };
+
+  const switchToRecoveryCode = () => {
+    SecurityClient.setMfaToken(mfaTokenRef.current);
+    setShouldShowTotpRegistration(false);
+    setShouldShowWebAuthnRegistration(false);
+    setShowRecoveryCodeInput(true);
+    setIsRecoveringFromSetup(true);
+  };
+
   const getRecoveryToggleLabel = () => {
+    if (isRecoveringFromSetup) return "Back to setup";
     if (!showRecoveryCodeInput) return "Use a recovery code";
     if (method === MfaMethod.WEBAUTHN) return "Use passkey instead";
     if (method === MfaMethod.EMAIL) return "Use email code";
@@ -117,6 +135,14 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
     await successCallback();
     if (closeMfa) {
       closeMfa();
+    }
+    // The recovery code got the user in, but the method the org requires is still not set up.
+    if (isRecoveringFromSetup) {
+      createNotification({
+        text: `Set up your ${MFA_METHOD_LABELS[method].toLowerCase()} now. Your organization requires it to sign in.`,
+        type: "info"
+      });
+      navigate({ to: "/personal-settings", search: { selectedTab: "authentication" } });
     }
   };
 
@@ -328,6 +354,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
             setShouldShowWebAuthnRegistration(false);
             await successCallback();
           }}
+          onUseRecoveryCode={switchToRecoveryCode}
         />
       </AuthPageLayout>
     );
@@ -392,8 +419,15 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
       <button
         type="button"
         onClick={() => {
-          setShowRecoveryCodeInput(!showRecoveryCodeInput);
           setMfaCode("");
+          if (isRecoveringFromSetup) {
+            SecurityClient.setMfaToken("");
+            setShowRecoveryCodeInput(false);
+            setIsRecoveringFromSetup(false);
+            showFactorSetup();
+            return;
+          }
+          setShowRecoveryCodeInput(!showRecoveryCodeInput);
         }}
         className="ml-auto cursor-pointer text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
       >

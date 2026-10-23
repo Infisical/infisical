@@ -235,7 +235,7 @@ export const userServiceFactory = ({
     return { user: updatedUser, recoveryCodes };
   };
 
-  const findMemberRootOrgs = async (userId: string) => {
+  const findMfaEnforcingOrgs = async (userId: string) => {
     const memberships = await orgDAL.findActiveEffectiveOrgMembershipsByUserId(userId);
     if (!memberships.length) return [];
 
@@ -243,11 +243,9 @@ export const userServiceFactory = ({
       $in: { id: unique(memberships.map((membership) => membership.scopeOrgId)) }
     });
     const rootOrgIds = unique(memberOrgs.map((org) => org.rootOrgId ?? org.id));
-    return orgDAL.find({ $in: { id: rootOrgIds } });
+    const rootOrgs = await orgDAL.find({ $in: { id: rootOrgIds } });
+    return rootOrgs.filter((org) => org.enforceMfa);
   };
-
-  const findMfaEnforcingOrgs = async (userId: string) =>
-    (await findMemberRootOrgs(userId)).filter((org) => org.enforceMfa);
 
   const hasMfaEnforcingOrg = async (userId: string) => (await findMfaEnforcingOrgs(userId)).length > 0;
 
@@ -694,42 +692,31 @@ export const userServiceFactory = ({
     return { challenge: replacement, accepted: [requiredMfaMethod, replacement] };
   };
 
-  // Adding a factor must be proven with one the account already relies on, or a
-  // password-only session could plant its own. A factor only counts if some org's login
-  // would ask for it (an enforcing org overrides the user's preference), otherwise a
-  // factor login ignores could be used to get around that org's enforcement. Without any
-  // such factor, the user's own factors still beat the password alone. Email only counts
-  // there if the user turned email MFA on: every account has an address, so counting it
-  // otherwise would challenge every first-factor onboarding at login.
+  // Adding a factor must be proven with one the account already has, or a password-only
+  // session could plant its own. Any of the user's factors will do: org enforcement governs
+  // how a user logs in, not which factor proves it is them. Returns null for an account
+  // with none, so enforced-MFA onboarding at login can still enroll the first one.
   const getFactorEnrollmentStepUpMfaMethods = async (
     userId: string
   ): Promise<{ challenge: MfaMethod; accepted: MfaMethod[] } | null> => {
     const user = await userDAL.findById(userId);
     if (!user) throw new NotFoundError({ message: "User not found" });
 
-    const [hasPasskey, hasTotp, hasEmail, rootOrgs] = await Promise.all([
+    const [hasPasskey, hasTotp, enforcingOrgs] = await Promise.all([
       isMfaMethodConfigured(user, MfaMethod.WEBAUTHN),
       isMfaMethodConfigured(user, MfaMethod.TOTP),
-      isMfaMethodConfigured(user, MfaMethod.EMAIL),
-      findMemberRootOrgs(userId)
+      findMfaEnforcingOrgs(userId)
     ]);
+    const isEmailRequiredAtLogin =
+      (user.isMfaEnabled && (user.selectedMfaMethod ?? MfaMethod.EMAIL) === MfaMethod.EMAIL) ||
+      enforcingOrgs.some((org) => (org.selectedMfaMethod ?? MfaMethod.EMAIL) === MfaMethod.EMAIL);
+    const hasEmail = isEmailRequiredAtLogin && (await isMfaMethodConfigured(user, MfaMethod.EMAIL));
 
-    const loginMfaMethods = new Set(
-      (rootOrgs.length ? rootOrgs : [{}])
-        .map((org) => getRequiredMfaMethod(org, user))
-        .filter(({ isMfaRequired }) => isMfaRequired)
-        .map(({ requiredMfaMethod }) => requiredMfaMethod)
-    );
-    const registeredFactors = [...(hasPasskey ? [MfaMethod.WEBAUTHN] : []), ...(hasTotp ? [MfaMethod.TOTP] : [])];
-    const loginFactors = [...registeredFactors, ...(hasEmail ? [MfaMethod.EMAIL] : [])].filter((method) =>
-      loginMfaMethods.has(method)
-    );
-
-    const hasPersonalEmailMfa =
-      hasEmail && user.isMfaEnabled && (user.selectedMfaMethod ?? MfaMethod.EMAIL) === MfaMethod.EMAIL;
-    const accepted = loginFactors.length
-      ? loginFactors
-      : [...registeredFactors, ...(hasPersonalEmailMfa ? [MfaMethod.EMAIL] : [])];
+    const accepted = [
+      ...(hasPasskey ? [MfaMethod.WEBAUTHN] : []),
+      ...(hasTotp ? [MfaMethod.TOTP] : []),
+      ...(hasEmail ? [MfaMethod.EMAIL] : [])
+    ];
     if (!accepted.length) return null;
 
     const preferred = accepted.find((method) => method === user.selectedMfaMethod);
