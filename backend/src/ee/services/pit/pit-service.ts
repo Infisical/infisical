@@ -699,7 +699,10 @@ export const pitServiceFactory = ({
       await scanSecretPolicyViolations(
         projectId,
         secretPath,
-        secretsToScan.map((el) => ({ secretKey: el.secretKey, secretValue: el.secretValue as string })),
+        secretsToScan.map((el) => ({
+          secretKey: "newSecretName" in el && el.newSecretName ? el.newSecretName : el.secretKey,
+          secretValue: el.secretValue as string
+        })),
         project.secretDetectionIgnoreValues || []
       );
     }
