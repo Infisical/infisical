@@ -80,6 +80,15 @@ Secret Scanning has one active project per organization (the newest). Like Certi
 
 Alerting (`backend/src/services/alert/`) and approvals (`backend/src/services/approval-policy/`) are shared modules. Do not stand up a per-product alert or approval service; see [`backend/AGENTS.md`](backend/AGENTS.md) for how to plug into each, including the rule that deleting an alertable resource must reap its alerts.
 
+### Object Storage
+
+New product files go to S3 through `backend/src/services/object-storage/`, not a product's own S3 client (PAM
+recordings predate it and haven't moved). A product
+registers a namespace (record-first path like `sessions/{sessionId}/logs/{file}`, checked for naming collisions at
+boot) and the layer builds org-first keys, signs links, and applies the retention tag and, for default storage on Infisical Cloud, a daily upload cap. Storage is
+`default` (the instance's bucket, `OBJECT_STORAGE_S3_*`) or `external` (the customer's, through an AWS connection);
+use those two words everywhere.
+
 ## Issue and PR Guidelines
 
 - Never create a GitHub issue.

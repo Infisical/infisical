@@ -1215,7 +1215,8 @@
                   "self-hosting/guides/custom-certificates",
                   "self-hosting/guides/hsm-integration",
                   "self-hosting/guides/automated-bootstrapping",
-                  "self-hosting/guides/cdn-caching"
+                  "self-hosting/guides/cdn-caching",
+                  "self-hosting/guides/session-log-storage"
                 ]
               },
               {
@@ -1301,7 +1302,6 @@
             "pages": [
               "cli/overview",
               "cli/cloudsmith-migration",
-              "cli/project-config-migration",
               {
                 "group": "Get started",
                 "pages": [
@@ -4993,6 +4993,10 @@
     {
       "source": "/cli/commands/init",
       "destination": "/cli/reference#init"
+    },
+    {
+      "source": "/cli/project-config-migration",
+      "destination": "/cli/project-config"
     },
     {
       "source": "/cli/commands/kmip",

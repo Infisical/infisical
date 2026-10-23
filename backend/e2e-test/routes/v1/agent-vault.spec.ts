@@ -2907,6 +2907,7 @@ describe("Agent Vault V1 Router", async () => {
       findOne: () =>
         Promise.resolve({
           enabled,
+          storageType: "external",
           appConnectionId: crypto.randomUUID(),
           bucket: "session-logs",
           region: "us-east-1",
