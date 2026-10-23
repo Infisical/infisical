@@ -88,17 +88,21 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
 
   const $resolveApprovers = async (
     approvers: TApproverInput,
-    { projectId, orgId }: { projectId: string; orgId: string }
+    { projectId, orgId }: { projectId: string; orgId: string },
+    tx?: Knex
   ) => {
     const { groupApprovers, userApprovers, userApproverNames } = $splitApprovers(approvers);
 
     let approverUserIds = userApprovers;
     if (userApproverNames.length) {
-      const approverUsersInDB = await userDAL.find({
-        $in: {
-          username: userApproverNames.map((el) => el.username)
-        }
-      });
+      const approverUsersInDB = await userDAL.find(
+        {
+          $in: {
+            username: userApproverNames.map((el) => el.username)
+          }
+        },
+        { tx }
+      );
       const approverUsersInDBGroupByUsername = groupBy(approverUsersInDB, (i) => i.username);
       const invalidUsernames = userApproverNames.filter((el) => !approverUsersInDBGroupByUsername?.[el.username]?.[0]);
 
@@ -121,7 +125,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
         userIds: approverUserIds.map((au) => au.id),
         groupIds: groupApprovers.map((ga) => ga.id).filter(Boolean),
         orgId,
-        projectId
+        projectId,
+        tx
       });
     }
 
@@ -130,7 +135,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
 
   const $resolveBypassers = async (
     bypassers: TBypasserInput | undefined,
-    { projectId, orgId }: { projectId: string; orgId: string }
+    { projectId, orgId }: { projectId: string; orgId: string },
+    tx?: Knex
   ) => {
     let groupBypassers: string[] = [];
     let bypasserUserIds: string[] = [];
@@ -155,11 +161,14 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
 
       bypasserUserIds = userBypassers;
       if (userBypasserNames.length) {
-        const bypasserUsers = await userDAL.find({
-          $in: {
-            username: userBypasserNames
-          }
-        });
+        const bypasserUsers = await userDAL.find(
+          {
+            $in: {
+              username: userBypasserNames
+            }
+          },
+          { tx }
+        );
 
         const bypasserNamesFromDb = bypasserUsers.map((user) => user.username);
         const invalidUsernames = userBypasserNames.filter((username) => !bypasserNamesFromDb.includes(username));
@@ -175,10 +184,13 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       bypasserUserIds = [...new Set(bypasserUserIds)];
 
       if (groupBypassers.length > 0) {
-        const orgGroups = await groupDAL.find({
-          $in: { id: groupBypassers },
-          orgId
-        });
+        const orgGroups = await groupDAL.find(
+          {
+            $in: { id: groupBypassers },
+            orgId
+          },
+          { tx }
+        );
 
         if (orgGroups.length !== groupBypassers.length) {
           const foundGroupIdsInOrg = new Set(orgGroups.map((group) => group.id));
@@ -194,7 +206,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
           userIds: bypasserUserIds,
           groupIds: [],
           orgId,
-          projectId
+          projectId,
+          tx
         });
       }
     }
@@ -281,7 +294,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
       approvals?: number;
     },
-    scope: { projectId: string; orgId: string }
+    scope: { projectId: string; orgId: string },
+    tx?: Knex
   ): Promise<TPolicyReviewers> => {
     if (delegatedApproval) {
       assertDelegatedApprovalPolicyConstraints({ enforcementLevel, approvers, bypassers, allowedSelfApprovals });
@@ -289,8 +303,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     }
 
     if (!approvers.length) throw new BadRequestError({ message: "At least one approver should be provided" });
-    const { approverUserIds, groupApprovers } = await $resolveApprovers(approvers, scope);
-    const { bypasserUserIds, groupBypassers } = await $resolveBypassers(bypassers, scope);
+    const { approverUserIds, groupApprovers } = await $resolveApprovers(approvers, scope, tx);
+    const { bypasserUserIds, groupBypassers } = await $resolveBypassers(bypassers, scope, tx);
     const steps = $buildSteps({ approverUserIds, groupApprovers, approvalsRequired, approvals });
     return { steps, bypasserUserIds, groupBypassers };
   };
@@ -344,11 +358,14 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     await approvalRequestDAL.update({ $in: { id: requestIds } }, { currentStep: 1 }, tx);
   };
 
-  const $findPolicyById = async (policyId: string, organizationId: string, message: string) => {
-    const [policy] = await secretAccessApprovalGlobalPolicyBridgeDAL.findSecretAccessPolicies({
-      policyId,
-      organizationId
-    });
+  const $findPolicyById = async (policyId: string, organizationId: string, message: string, tx?: Knex) => {
+    const [policy] = await secretAccessApprovalGlobalPolicyBridgeDAL.findSecretAccessPolicies(
+      {
+        policyId,
+        organizationId
+      },
+      tx
+    );
     if (!policy) throw new NotFoundError({ message });
     return policy;
   };
@@ -599,25 +616,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       (envs.length !== currentEnvSlugs.size || envs.some((env) => !currentEnvSlugs.has(env.slug)));
     const scopeChanged = nextSecretPath !== policy.secretPath || environmentsChanged;
 
-    const existingDelegatedApproval = policy.delegatedApproval;
-    const delegatedApprovalAfterUpdate =
-      delegatedApproval === undefined ? existingDelegatedApproval : delegatedApproval;
-    const involvesDelegatedApproval = Boolean(existingDelegatedApproval || delegatedApprovalAfterUpdate);
-    const allowedSelfApprovals = allowedSelfApprovalsInput ?? !delegatedApprovalAfterUpdate;
-
-    const reviewers = await $resolveReviewers(
-      {
-        delegatedApproval: delegatedApprovalAfterUpdate,
-        enforcementLevel: enforcementLevel ?? policy.enforcementLevel,
-        allowedSelfApprovals,
-        approvers,
-        bypassers,
-        approvalsRequired,
-        approvals: approvals ?? policy.approvals
-      },
-      { projectId: policy.projectId, orgId: actorOrgId }
-    );
-    if (delegatedApproval && isDelegatedApprovalChanged(existingDelegatedApproval, delegatedApproval)) {
+    if (delegatedApproval && isDelegatedApprovalChanged(policy.delegatedApproval, delegatedApproval)) {
       await delegatedApprovalService.validateConnection(
         { ...delegatedApproval, projectId: policy.projectId },
         orgActor
@@ -629,7 +628,32 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       if (!lockedPolicy) {
         throw new NotFoundError({ message: `Access approval policy with ID '${policyId}' not found` });
       }
-      if (involvesDelegatedApproval) await $assertNoPendingRequests(policy, tx);
+
+      const current = await $findPolicyById(
+        policy.id,
+        actorOrgId,
+        `Access approval policy with ID '${policyId}' not found`,
+        tx
+      );
+      const existingDelegatedApproval = current.delegatedApproval;
+      const delegatedApprovalAfterUpdate =
+        delegatedApproval === undefined ? existingDelegatedApproval : delegatedApproval;
+      const involvesDelegatedApproval = Boolean(existingDelegatedApproval || delegatedApprovalAfterUpdate);
+      const allowedSelfApprovals = allowedSelfApprovalsInput ?? !delegatedApprovalAfterUpdate;
+      const reviewers = await $resolveReviewers(
+        {
+          delegatedApproval: delegatedApprovalAfterUpdate,
+          enforcementLevel: enforcementLevel ?? current.enforcementLevel,
+          allowedSelfApprovals,
+          approvers,
+          bypassers,
+          approvalsRequired,
+          approvals: approvals ?? current.approvals
+        },
+        { projectId: current.projectId, orgId: actorOrgId },
+        tx
+      );
+      if (involvesDelegatedApproval) await $assertNoPendingRequests(current, tx);
 
       await approvalPolicyDAL.updateById(
         policy.id,
@@ -641,8 +665,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
             constraints: {
               allowedSelfApprovals,
               requestExpirationTime:
-                requestExpirationTime === undefined ? policy.requestExpirationTime : requestExpirationTime,
-              maxTimePeriod: maxTimePeriod === undefined ? policy.maxTimePeriod : maxTimePeriod
+                requestExpirationTime === undefined ? current.requestExpirationTime : requestExpirationTime,
+              maxTimePeriod: maxTimePeriod === undefined ? current.maxTimePeriod : maxTimePeriod
             }
           }
         },
