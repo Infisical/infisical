@@ -70,6 +70,9 @@ import {
 } from "../../OverviewTelemetry";
 import { didAllSecretCreationsSucceed } from "./createSecretFormState";
 
+const MAX_SECRETS_PER_COMMIT = 1000;
+const MAX_TAGS_PER_COMMITTED_SECRET = 100;
+
 const formSchema = (enforceEncryptedMetadata: boolean) =>
   z
     .object({
@@ -354,6 +357,21 @@ export const CreateSecretForm = ({
         text: `A pending change already uses ${conflictingKeys.map((key) => `"${key}"`).join(", ")}. Save or discard that change first.`
       });
       return;
+    }
+    if (selectedEnv.length === 1 && secrets.length > 1) {
+      const overTagLimitKeys = secrets
+        .filter((secret) => (secret.tags?.length ?? 0) > MAX_TAGS_PER_COMMITTED_SECRET)
+        .map((secret) => secret.key);
+      let limitError: string | undefined;
+      if (secrets.length > MAX_SECRETS_PER_COMMIT)
+        limitError = `You can create up to ${MAX_SECRETS_PER_COMMIT} secrets at once, and this has ${secrets.length}. Split them into smaller batches.`;
+      else if (overTagLimitKeys.length)
+        limitError = `A secret can have up to ${MAX_TAGS_PER_COMMITTED_SECRET} tags. Remove tags from ${overTagLimitKeys.map((key) => `"${key}"`).join(", ")}.`;
+      if (limitError) {
+        attempt.flow({ ...flow, phase: "failed" });
+        createNotification({ type: "error", text: limitError });
+        return;
+      }
     }
     await Promise.all(
       selectedEnv.map(async (env) => {
