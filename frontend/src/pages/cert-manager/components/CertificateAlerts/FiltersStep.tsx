@@ -30,6 +30,7 @@ import {
 } from "./CertificateFilterSelects";
 import {
   CERTIFICATE_FILTER_DEFINITIONS,
+  CERTIFICATE_FILTER_KINDS,
   CertificateFilterKind,
   getFilterKinds,
   getNoFiltersDescription,
@@ -38,12 +39,6 @@ import {
 } from "./types";
 
 const MATCHED_PAGE_SIZE = 20;
-
-const CERTIFICATE_FILTER_KINDS = [
-  CertificateFilterKind.Applications,
-  CertificateFilterKind.Profiles,
-  CertificateFilterKind.Sources
-] as const;
 
 const FILTER_SELECTS = {
   [CertificateFilterKind.Applications]: ApplicationFilterSelect,
@@ -207,7 +202,7 @@ export const FiltersStep = ({ form, projectId }: Props) => {
         <p className="text-sm font-medium text-foreground">Filters</p>
         <p className="mt-0.5 text-xs text-muted">
           {isSignerEvent
-            ? "Only the certificates of the signers selected below are covered."
+            ? "The alert covers only the signers selected below."
             : "A certificate is covered only when it matches every filter below."}
         </p>
       </div>
@@ -233,7 +228,6 @@ export const FiltersStep = ({ form, projectId }: Props) => {
                       <Select
                         value={filters[kind] ?? []}
                         conditionNames={conditionNames}
-                        projectId={projectId}
                         onChange={(selected) => {
                           if (kind !== CertificateFilterKind.Sources) {
                             form.setValue("conditionNames", {

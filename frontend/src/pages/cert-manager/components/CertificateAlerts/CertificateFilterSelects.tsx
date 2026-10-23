@@ -1,21 +1,26 @@
-import { useMemo, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
 
-import { Combobox } from "@app/components/v3";
+import { Badge, Combobox } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import { MAX_CERTIFICATE_ALERT_FILTER_IDS } from "@app/hooks/api/alerts";
 import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { CertSource } from "@app/hooks/api/certificates/enums";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
-import { useListSigners } from "@app/hooks/api/signers";
+import {
+  getSignerStatusBadgeVariant,
+  SignerStatus,
+  signerStatusLabels,
+  useListSigners
+} from "@app/hooks/api/signers";
 
 import { CertificateFilterKind, getFilterName } from "./types";
 
-type TFilterOption = { id: string; name: string };
+type TFilterOption = { id: string; name: string; status?: SignerStatus };
 
 type Props = {
   value: string[];
   conditionNames: Record<string, string>;
-  projectId: string;
   onChange: (selected: TFilterOption[]) => void;
 };
 
@@ -27,16 +32,18 @@ const FilterCombobox = ({
   options,
   isLoading,
   onSearchChange,
-  placeholder
-}: Omit<Props, "projectId"> & {
+  placeholder,
+  renderOption
+}: Props & {
   kind: CertificateFilterKind;
   options: TFilterOption[];
   isLoading: boolean;
   onSearchChange?: (search: string) => void;
   placeholder: string;
+  renderOption?: (option: TFilterOption) => ReactNode;
 }) => {
-  const optionNames = useMemo(
-    () => new Map(options.map((option) => [option.id, option.name])),
+  const optionsById = useMemo(
+    () => new Map(options.map((option) => [option.id, option])),
     [options]
   );
 
@@ -45,14 +52,14 @@ const FilterCombobox = ({
       multiple
       isClearable
       options={options}
-      value={value.map((id) => ({
-        id,
-        name: optionNames.get(id) ?? getFilterName(kind, id, conditionNames)
-      }))}
+      value={value.map(
+        (id) => optionsById.get(id) ?? { id, name: getFilterName(kind, id, conditionNames) }
+      )}
       onValueChange={(selected) => onChange([...selected])}
       getOptionValue={(option) => option.id}
       getOptionLabel={(option) => option.name}
       onSearchChange={onSearchChange}
+      renderOption={renderOption}
       isLoading={isLoading}
       placeholder={placeholder}
     />
@@ -107,7 +114,8 @@ export const ProfileFilterSelect = (props: Props) => {
   );
 };
 
-export const SignerFilterSelect = ({ projectId, ...props }: Props) => {
+export const SignerFilterSelect = (props: Props) => {
+  const { projectId } = useProject();
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const { data, isPending } = useListSigners({
@@ -116,7 +124,7 @@ export const SignerFilterSelect = ({ projectId, ...props }: Props) => {
     ...(debouncedSearch ? { search: debouncedSearch } : {})
   });
   const options = useMemo(
-    () => (data?.signers ?? []).map(({ id, name }) => ({ id, name })),
+    () => (data?.signers ?? []).map(({ id, name, status }) => ({ id, name, status })),
     [data]
   );
 
@@ -128,6 +136,16 @@ export const SignerFilterSelect = ({ projectId, ...props }: Props) => {
       isLoading={isPending}
       onSearchChange={setSearch}
       placeholder="Select signers"
+      renderOption={({ name, status }) => (
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate">{name}</span>
+          {status && status !== SignerStatus.Active && (
+            <Badge variant={getSignerStatusBadgeVariant(status)}>
+              {signerStatusLabels[status] ?? status}
+            </Badge>
+          )}
+        </span>
+      )}
     />
   );
 };

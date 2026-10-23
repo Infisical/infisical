@@ -189,14 +189,14 @@ export enum CertificateFilterKind {
   Signers = "signerIds"
 }
 
-export const getFilterKinds = (eventType: TCertificateAlertEventType) =>
-  isSignerEventType(eventType)
-    ? [CertificateFilterKind.Signers]
-    : [
-        CertificateFilterKind.Applications,
-        CertificateFilterKind.Profiles,
-        CertificateFilterKind.Sources
-      ];
+export const CERTIFICATE_FILTER_KINDS = [
+  CertificateFilterKind.Applications,
+  CertificateFilterKind.Profiles,
+  CertificateFilterKind.Sources
+] as const;
+
+export const getFilterKinds = (eventType: TCertificateAlertEventType): CertificateFilterKind[] =>
+  isSignerEventType(eventType) ? [CertificateFilterKind.Signers] : [...CERTIFICATE_FILTER_KINDS];
 
 export const CERTIFICATE_FILTER_DEFINITIONS: Record<
   CertificateFilterKind,

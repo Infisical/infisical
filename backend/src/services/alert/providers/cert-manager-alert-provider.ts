@@ -63,7 +63,7 @@ const CertificateFilterSchema = z.object({
   profileIds: filterIdsSchema("profileIds", "profile"),
   sources: z
     .array(z.nativeEnum(CertificateSource))
-    .min(1, "sources must list at least one source. Omit it to cover every source.")
+    .min(1, "sources must list at least one source. To cover them all, leave sources out.")
     .refine((sources) => new Set(sources).size === sources.length, "sources lists the same source more than once")
     .optional()
 });
