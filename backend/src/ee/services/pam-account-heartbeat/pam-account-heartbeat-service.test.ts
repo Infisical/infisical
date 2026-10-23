@@ -62,6 +62,7 @@ const buildService = (
   const rotationHandlers = {
     [PamAccountType.Postgres]: handler,
     [PamAccountType.MySQL]: handler,
+    [PamAccountType.MariaDB]: handler,
     [PamAccountType.MsSQL]: handler,
     [PamAccountType.OracleDB]: handler,
     [PamAccountType.Windows]: handler,

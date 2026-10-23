@@ -21,6 +21,13 @@ export const pamAccountTypes = [
     browserAccess: true,
   },
   {
+    name: "MariaDB",
+    path: "/documentation/platform/pam/accounts/mariadb",
+    description: "Give people and agents access to a MariaDB database without sharing its credentials.",
+    category: "Databases",
+    browserAccess: true,
+  },
+  {
     name: "Microsoft SQL Server",
     path: "/documentation/platform/pam/accounts/mssql",
     description: "Give people and agents access to a Microsoft SQL Server database without sharing its credentials.",
