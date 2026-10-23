@@ -49,7 +49,6 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
     if (!connectionId || !connectionName) return;
 
     const storedFormData = localStorage.getItem("pkiSyncFormData");
-    localStorage.removeItem("pkiSyncFormData");
 
     if (storedFormData) {
       try {
@@ -57,6 +56,7 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
           returnUrl?: string;
         };
         if (form.destination && (!returnUrl || returnUrl.split("?")[0] === pathname)) {
+          localStorage.removeItem("pkiSyncFormData");
           setRestoredSync({
             destination: form.destination,
             initialData: { ...form, connection: { id: connectionId, name: connectionName } }
@@ -64,6 +64,7 @@ export const ApplicationSyncsTab = ({ applicationId, applicationName, projectId 
           setIsAddSyncOpen(true);
         }
       } catch {
+        localStorage.removeItem("pkiSyncFormData");
         setRestoredSync(null);
       }
     }
