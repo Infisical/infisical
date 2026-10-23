@@ -25,6 +25,8 @@ import {
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronsDownUpIcon,
+  ChevronsUpDownIcon,
   ClockArrowDownIcon,
   ClockArrowUpIcon,
   CopyIcon,
@@ -336,7 +338,7 @@ const DEFAULT_FILTER_STATE = {
 // const DEFAULT_COLLAPSED_HEADER_HEIGHT = 120;
 
 const OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
-const OVERVIEW_REVEAL_ON_OPEN_KEY = "overview-reveal-values-on-open";
+const OVERVIEW_REVEAL_ALL_KEY = "overview-reveal-all-values";
 
 // Every overview row type is rendered into the same TableBody, so their React keys share one
 // namespace. Resource names are arbitrary user input, so a string prefix cannot separate them: a
@@ -1269,13 +1271,13 @@ const OverviewPageContent = () => {
     previousTelemetry.current = { telemetry: overviewTelemetry, flows: telemetryFlows };
   }, [overviewTelemetry, telemetryFlows]);
 
-  const [isRevealOnOpen, setIsRevealOnOpen] = useState(
-    () => localStorage.getItem(OVERVIEW_REVEAL_ON_OPEN_KEY) === "true"
+  const [isRevealAll, setIsRevealAll] = useState(
+    () => localStorage.getItem(OVERVIEW_REVEAL_ALL_KEY) === "true"
   );
 
   const toggleSecretRowExpand = useCallback(
     (key: string) => {
-      if (isRevealOnOpen && !expandedSecretRows.has(key)) {
+      if (isRevealAll && !expandedSecretRows.has(key)) {
         const identity = getSecretRowIdentity(key);
         setVisibleSecretRows((prev) => new Map(prev).set(key, identity));
       }
@@ -1285,28 +1287,28 @@ const OverviewPageContent = () => {
         return next;
       });
     },
-    [isRevealOnOpen, expandedSecretRows, getSecretRowIdentity]
+    [isRevealAll, expandedSecretRows, getSecretRowIdentity]
   );
 
-  const toggleRevealOnOpen = () => {
-    const next = !isRevealOnOpen;
+  const toggleRevealAll = () => {
+    const next = !isRevealAll;
     overviewTelemetry.interaction({
       action: next ? "reveal" : "hide",
       source: "header",
       resourceType: "secret"
     });
     if (next) {
-      localStorage.setItem(OVERVIEW_REVEAL_ON_OPEN_KEY, "true");
+      localStorage.setItem(OVERVIEW_REVEAL_ALL_KEY, "true");
       setVisibleSecretRows((prev) => {
         const visible = new Map(prev);
         expandedSecretRows.forEach((key) => visible.set(key, getSecretRowIdentity(key)));
         return visible;
       });
     } else {
-      localStorage.removeItem(OVERVIEW_REVEAL_ON_OPEN_KEY);
+      localStorage.removeItem(OVERVIEW_REVEAL_ALL_KEY);
       setVisibleSecretRows(new Map());
     }
-    setIsRevealOnOpen(next);
+    setIsRevealAll(next);
   };
   const viewedProjectRef = useRef<string>(undefined);
   const loadedProjectRef = useRef<string>(undefined);
@@ -2451,6 +2453,28 @@ const OverviewPageContent = () => {
     isFilteredByResources,
     filter.secret
   ]);
+
+  const areAllSecretRowsExpanded =
+    mergedSecKeys.length > 0 && mergedSecKeys.every((key) => expandedSecretRows.has(key));
+
+  const toggleExpandAllSecretRows = () => {
+    overviewTelemetry.interaction({
+      action: areAllSecretRowsExpanded ? "collapse-all" : "expand-all",
+      source: "header",
+      resourceType: "secret"
+    });
+    if (areAllSecretRowsExpanded) {
+      setExpandedSecretRows(new Set());
+      return;
+    }
+    setExpandedSecretRows((prev) => new Set([...prev, ...mergedSecKeys]));
+    if (isRevealAll)
+      setVisibleSecretRows((prev) => {
+        const visible = new Map(prev);
+        mergedSecKeys.forEach((key) => visible.set(key, getSecretRowIdentity(key)));
+        return visible;
+      });
+  };
 
   const getSecretByKeyWithPending = useCallback(
     (env: string, key: string) => {
@@ -3639,25 +3663,46 @@ const OverviewPageContent = () => {
           >
             <FolderBreadcrumb secretPath={secretPath} />
             {isTableVisible && !isSingleEnvView && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={isRevealOnOpen ? "project" : "ghost"}
-                    size="xs"
-                    className="mr-1.5 shrink-0"
-                    aria-pressed={isRevealOnOpen}
-                    onClick={toggleRevealOnOpen}
-                  >
-                    <EyeIcon />
-                    Reveal on Open
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isRevealOnOpen
-                    ? "Values show as soon as you open a secret. Select to keep them hidden."
-                    : "Show values as soon as you open a secret."}
-                </TooltipContent>
-              </Tooltip>
+              <>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  className="mr-1.5 shrink-0"
+                  disabled={!mergedSecKeys.length}
+                  onClick={toggleExpandAllSecretRows}
+                >
+                  {areAllSecretRowsExpanded ? (
+                    <>
+                      <ChevronsDownUpIcon />
+                      Close All
+                    </>
+                  ) : (
+                    <>
+                      <ChevronsUpDownIcon />
+                      Open All
+                    </>
+                  )}
+                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={isRevealAll ? "project" : "ghost"}
+                      size="xs"
+                      className="mr-1.5 shrink-0"
+                      aria-pressed={isRevealAll}
+                      onClick={toggleRevealAll}
+                    >
+                      <EyeIcon />
+                      Reveal All
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isRevealAll
+                      ? "Values of open secrets are shown. Select to hide them."
+                      : "Show the values of every open secret."}
+                  </TooltipContent>
+                </Tooltip>
+              </>
             )}
             {canManageCurrentFolderAccess && (
               <Button

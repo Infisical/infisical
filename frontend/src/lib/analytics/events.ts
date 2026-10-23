@@ -48,6 +48,8 @@ export type OverviewInteractionProperties = {
     | "select-page"
     | "reveal"
     | "hide"
+    | "expand-all"
+    | "collapse-all"
     | "batch-mode-enabled"
     | "batch-mode-disabled"
     | "pagination"
