@@ -243,6 +243,7 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           expandSecretReferences: req.query.expandSecretReferences,
           includesPersonalOverrides: req.query.includePersonalOverrides,
           notModified,
+          etag,
           secrets,
           imports,
           referencedSecretIds:

@@ -76,6 +76,8 @@ export type TRecordBulkSecretReadDTO = TSecretReader & {
   expandSecretReferences: boolean;
   includesPersonalOverrides?: boolean;
   notModified?: boolean;
+  // The response's ETag, which changes with what the read returned.
+  etag?: string;
   secrets: TReturnedSecret[];
   imports?: { secrets: TReturnedSecret[] }[];
   // Set when references were expanded with the reader's personal overrides: the secrets they resolved to, credited

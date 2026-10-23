@@ -359,6 +359,7 @@ export const registerDeprecatedSecretRouter = async (server: FastifyZodProvider)
           includeImports: req.query.include_imports,
           expandSecretReferences: req.query.expandSecretReferences,
           notModified,
+          etag,
           secrets,
           imports
         });

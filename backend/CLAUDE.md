@@ -1129,7 +1129,9 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   The bulk read caches them with its result (only for these reads, so every other cached payload and ETag is
   unchanged) so a cache hit replays them. A Redis `SET NX` gate (25h TTL) keyed on
   the reader, the day and the request (or the hash of the returned ids) lets only the first identical read
-  per day through. It is keyed on the request, not the ETag, since older clients never send one. Gated reads go to a
+  per day through. It is keyed on the request, not the client's ETag, since older clients never send one; a folder
+  read is also keyed on the response's ETag, so a read that returns more after an access change is recorded again
+  the same day. Gated reads go to a
   Redis stream drained the way the audit log ingest stream is (collect, write, then trim, under a
   non-blocking lock), by the `SecretReadActivityFlush` cron every minute into an upsert.
 - **Partitioned by month, no foreign keys, no index on `lastReadAt`.** The table is range-partitioned on

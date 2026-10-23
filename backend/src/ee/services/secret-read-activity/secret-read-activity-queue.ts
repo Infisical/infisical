@@ -147,6 +147,7 @@ export const secretReadActivityQueueServiceFactory = ({
     expandSecretReferences,
     includesPersonalOverrides,
     notModified,
+    etag,
     secrets,
     imports = [],
     referencedSecretIds
@@ -157,9 +158,11 @@ export const secretReadActivityQueueServiceFactory = ({
       // A personal override replaces the shared value, so a read that returns overrides only covers what it returned.
       if (!isFiltered && includeImports && expandSecretReferences && !includesPersonalOverrides) {
         const normalizedPath = normalizeSecretPath(secretPath);
+        // Keyed on the response's ETag too, so a read that returns more (after the reader got access to another
+        // secret) is recorded again the same day instead of being gated as a repeat.
         await $record(
           { actor, actorId, projectId },
-          `folder:${projectId}:${environment}:${normalizedPath}:${String(recursive)}`,
+          `folder:${projectId}:${environment}:${normalizedPath}:${String(recursive)}:${etag ?? ""}`,
           [{ environment, secretPath: normalizedPath, recursive }]
         );
         return;
