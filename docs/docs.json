@@ -1327,6 +1327,7 @@
                   "cli/reference/kmip",
                   "cli/reference/login",
                   "cli/reference/logout",
+                  "cli/reference/migrate-config",
                   "cli/reference/org",
                   "cli/reference/pam",
                   "cli/reference/profile",
