@@ -1360,7 +1360,11 @@ export const secretScanningV2ServiceFactory = ({
       return secretScanningV2DAL.findings.findByIdWithDetails(findingId, tx);
     });
 
-    return { finding: updatedFinding as TSecretScanningFinding, projectId: finding.projectId };
+    return {
+      finding: updatedFinding as TSecretScanningFinding,
+      projectId: finding.projectId,
+      previousStatus: isStatusChange ? (finding.status as SecretScanningFindingStatus) : undefined
+    };
   };
 
   const findSecretScanningConfigByProjectId = async (projectId: string, actor: OrgServiceActor) => {

@@ -54,6 +54,7 @@ const CapabilityUpgradeDialog = ({
   productPlans?: ProductPlanSummary[];
 }) => {
   const { currentOrg, isSubOrganization } = useOrganization();
+  const { subscription } = useSubscription();
   const route = useRouterState({ select: (state) => state.matches.at(-1)?.routeId ?? "unknown" });
   const { pathname } = useLocation();
   const isAgentVault =
@@ -65,6 +66,7 @@ const CapabilityUpgradeDialog = ({
     paywallText: string;
     route: string;
     isEnterpriseFeature: boolean;
+    plan: string;
   } | null>(null);
 
   useEffect(() => {
@@ -77,7 +79,8 @@ const CapabilityUpgradeDialog = ({
       paywallKey,
       paywallText: intent.description,
       route,
-      isEnterpriseFeature: intent.isEnterpriseFeature
+      isEnterpriseFeature: intent.isEnterpriseFeature,
+      plan: subscription.slug ?? "free"
     };
     eventPropertiesRef.current = eventProperties;
     analytics.captureForOrganization(AnalyticsEvent.PaywallViewed, currentOrg.id, eventProperties);

@@ -306,6 +306,8 @@ export const licenseServiceFactory = ({
 
   // Whether the plan getPlan serves for this org is the fallback above rather than a real answer.
   const isServingFallbackPlan = async (orgId: string) => {
+    // Only a failed cloud plan fetch writes the marker, so off cloud there's nothing to ask Redis.
+    if (instanceType !== InstanceType.Cloud) return false;
     const [marker] = await keyStore.getItems([KeyStorePrefixes.LicenseCloudPlanFallback(orgId)]);
     return Boolean(marker);
   };
