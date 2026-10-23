@@ -294,7 +294,9 @@ export const secretReadActivityServiceFactory = ({
       userIds.length ? userDAL.find({ $in: { id: userIds } }) : [],
       identityIds.length ? identityDAL.find({ $in: { id: identityIds } }) : [],
       userIds.length ? identityMetadataDAL.find({ orgId, $in: { userId: userIds } }) : [],
-      identityIds.length ? identityMetadataDAL.find({ orgId, $in: { identityId: identityIds } }) : []
+      // An identity's metadata lives under the org that owns it, which a linked group's child org is not, so it is
+      // loaded by identity alone, as getProjectPermission does.
+      identityIds.length ? identityMetadataDAL.find({ $in: { identityId: identityIds } }) : []
     ]);
     const metadataByUserId = groupBy(userMetadata, (row) => row.userId ?? "");
     const metadataByIdentityId = groupBy(identityMetadata, (row) => row.identityId ?? "");
