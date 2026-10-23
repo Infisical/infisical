@@ -16,6 +16,7 @@ export type TAgentVaultSessionListRow = {
   id: string;
   userId: string | null;
   identityId: string | null;
+  label: string | null;
   actor: TAgentVaultSessionActor;
   expiresAt: Date | null;
   revokedAt: Date | null;
@@ -156,6 +157,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
 
           void query.where((qb) => {
             void qb
+              .orWhereILike(`${TableName.AgentVaultSession}.label`, term)
               .orWhereILike(`${TableName.Identity}.name`, term)
               .orWhereILike(`${TableName.Users}.username`, term)
               // Covers a first name, a last name and the two together, so no separate checks are needed.
@@ -228,6 +230,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.AgentVaultSession),
           db.ref("userId").withSchema(TableName.AgentVaultSession),
           db.ref("identityId").withSchema(TableName.AgentVaultSession),
+          db.ref("label").withSchema(TableName.AgentVaultSession),
           db.ref("expiresAt").withSchema(TableName.AgentVaultSession),
           db.ref("revokedAt").withSchema(TableName.AgentVaultSession),
           db.ref("createdAt").withSchema(TableName.AgentVaultSession),
@@ -249,6 +252,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         id: string;
         userId: string | null;
         identityId: string | null;
+        label: string | null;
         expiresAt: Date | null;
         revokedAt: Date | null;
         createdAt: Date;
@@ -274,6 +278,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
             id: row.id,
             userId: row.userId,
             identityId: row.identityId,
+            label: row.label,
             actor: toSessionActor(row),
             expiresAt: row.expiresAt,
             revokedAt: row.revokedAt,

@@ -34,6 +34,7 @@ const SessionAccessBundleSchema = z.object({
 
 const SessionSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
+  label: z.string().nullable().describe(AGENT_VAULT.SESSION.label),
   actor: AgentVaultSessionActorSchema,
   status: z.nativeEnum(AgentVaultSessionStatus),
   expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
@@ -161,12 +162,20 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
               });
             }
           })
-          .describe(AGENT_VAULT.SESSION.ttl)
+          .describe(AGENT_VAULT.SESSION.ttl),
+        label: z
+          .string()
+          .trim()
+          .max(128, "Label must be at most 128 characters")
+          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+          .optional()
+          .describe(AGENT_VAULT.SESSION.label)
       }),
       response: {
         200: z.object({
           session: z.object({
             id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
+            label: z.string().nullable().describe(AGENT_VAULT.SESSION.label),
             token: z.string().describe(AGENT_VAULT.SESSION.token),
             expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
             createdAt: z.date(),
@@ -204,6 +213,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           type: EventType.AGENT_VAULT_SESSION_MINT,
           metadata: {
             sessionId: session.id,
+            label: session.label,
             accessBundleId: session.accessBundles[0].id,
             accessBundleName: session.accessBundles[0].name,
             expiresAt: session.expiresAt?.toISOString() ?? null

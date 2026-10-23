@@ -94,6 +94,7 @@ import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
+import { SessionLabel } from "./components/SessionLabel";
 import { SESSION_STATUS_PRESENTATION, SessionStatusBadge } from "./components/SessionStatusBadge";
 
 const STATUS_OPTIONS = [
@@ -288,7 +289,7 @@ export const AgentVaultSessionsPage = () => {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Search by identity, email, or access bundle..."
+                placeholder="Search by label, identity, email, or access bundle..."
               />
             </InputGroup>
             <DropdownMenu>
@@ -369,6 +370,8 @@ export const AgentVaultSessionsPage = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {/* w-px holds the column to its capped content, so a long label truncates at the column's edge */}
+                  <TableHead className="w-px">Label</TableHead>
                   <TableHead>Identity</TableHead>
                   <TableHead>Access Bundle</TableHead>
                   <TableHead>Created</TableHead>
@@ -382,7 +385,7 @@ export const AgentVaultSessionsPage = () => {
                   Array.from({ length: 5 }).map((_, index) => (
                     // eslint-disable-next-line react/no-array-index-key
                     <TableRow key={`session-skeleton-${index}`}>
-                      {Array.from({ length: 6 }).map((__, cell) => (
+                      {Array.from({ length: 7 }).map((__, cell) => (
                         // eslint-disable-next-line react/no-array-index-key
                         <TableCell key={`session-skeleton-${index}-${cell}`}>
                           <Skeleton className="h-4 w-full" />
@@ -397,6 +400,13 @@ export const AgentVaultSessionsPage = () => {
                       onClick={() => openSheet(session.id)}
                       className="cursor-pointer"
                     >
+                      <TableCell>
+                        {session.label ? (
+                          <SessionLabel label={session.label} className="max-w-60" />
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Tooltip>
                           <TooltipTrigger asChild>

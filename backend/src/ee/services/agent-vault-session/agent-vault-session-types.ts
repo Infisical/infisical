@@ -13,6 +13,7 @@ export type TMintSessionDTO = {
   actorName: string;
   actorEmail: string | null;
   ttl: string;
+  label?: string;
 };
 
 export type TListSessionsDTO = {

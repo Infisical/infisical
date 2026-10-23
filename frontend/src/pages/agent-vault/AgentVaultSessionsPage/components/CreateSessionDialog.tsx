@@ -47,6 +47,8 @@ const TTL_PRESETS = [
 ];
 const DEFAULT_TTL_PRESET = "7d";
 
+const MAX_LABEL_LENGTH = 128;
+
 const MIN_TTL_MS = 60 * 1000;
 // Mirrors the API's ceiling: past it the expiry overflows and the request fails with a 500.
 const MAX_TTL_MS = 100 * 365 * 24 * 60 * 60 * 1000;
@@ -85,6 +87,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
   const [selectedBundle, setSelectedBundle] = useState<TAgentVaultAccessBundleListItem | null>(
     null
   );
+  const [label, setLabel] = useState("");
   const [ttlPreset, setTtlPreset] = useState(DEFAULT_TTL_PRESET);
   const [customTtl, setCustomTtl] = useState("");
   const customTtlInputRef = useRef<HTMLInputElement>(null);
@@ -99,6 +102,7 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
   useEffect(() => {
     if (isOpen) {
       setSelectedBundle(null);
+      setLabel("");
       setTtlPreset(DEFAULT_TTL_PRESET);
       setCustomTtl("");
     }
@@ -110,7 +114,8 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
     try {
       const session = await createSession.mutateAsync({
         accessBundles: [selectedBundle.name],
-        ttl
+        ttl,
+        label: label.trim() || undefined
       });
       createNotification({ text: "Session created", type: "success" });
       onCreated(session);
@@ -164,6 +169,20 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
                 onValueChange={setSelectedBundle}
                 onClear={() => setSelectedBundle(null)}
               />
+            </FieldContent>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="agent-vault-session-label">Label</FieldLabel>
+            <FieldContent>
+              <Input
+                id="agent-vault-session-label"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                maxLength={MAX_LABEL_LENGTH}
+                placeholder="Nightly deploy"
+              />
+              <FieldDescription>Optional. Describes what this session is for.</FieldDescription>
             </FieldContent>
           </Field>
 

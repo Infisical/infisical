@@ -2603,6 +2603,48 @@ describe("Agent Vault V1 Router", async () => {
       expect(issues.some((issue) => issue.path.join(".") === "accessBundles")).toBe(true);
     });
 
+    test("a label is optional, trimmed, returned on every read, and searchable", async () => {
+      const bundle = await createAccessBundle(`session-label-${Date.now()}`);
+
+      const unlabeled = await inject("POST", "/api/v1/agent-vault/sessions", {
+        accessBundles: [bundle.name],
+        ttl: "1h"
+      });
+      expect(unlabeled.statusCode).toBe(200);
+      expect(unlabeled.json().session.label).toBeNull();
+
+      const labeled = await inject("POST", "/api/v1/agent-vault/sessions", {
+        accessBundles: [bundle.name],
+        ttl: "1h",
+        label: "  session-label nightly deploy  "
+      });
+      expect(labeled.statusCode).toBe(200);
+      const { session } = labeled.json() as { session: { id: string; label: string | null } };
+      expect(session.label).toBe("session-label nightly deploy");
+
+      const byId = await inject("GET", `/api/v1/agent-vault/sessions/${session.id}`);
+      expect(byId.json().session.label).toBe("session-label nightly deploy");
+
+      const search = await inject("GET", "/api/v1/agent-vault/sessions?search=nightly%20deploy");
+      const found = search.json() as { sessions: { id: string; label: string | null }[]; totalCount: number };
+      expect(found.totalCount).toBe(1);
+      expect(found.sessions[0]).toMatchObject({ id: session.id, label: "session-label nightly deploy" });
+
+      const tooLong = await inject("POST", "/api/v1/agent-vault/sessions", {
+        accessBundles: [bundle.name],
+        ttl: "1h",
+        label: "a".repeat(129)
+      });
+      expect(tooLong.statusCode).toBe(422);
+
+      const withNewline = await inject("POST", "/api/v1/agent-vault/sessions", {
+        accessBundles: [bundle.name],
+        ttl: "1h",
+        label: "line one\nline two"
+      });
+      expect(withNewline.statusCode).toBe(422);
+    });
+
     test("search filters and counts on the server, not just the page", async () => {
       const alpha = await createAccessBundle("search-alpha");
       const beta = await createAccessBundle("search-beta");
