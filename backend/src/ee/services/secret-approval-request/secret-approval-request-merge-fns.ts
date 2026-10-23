@@ -7,6 +7,7 @@ import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
 import { NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -656,20 +657,27 @@ export const secretApprovalRequestMergeFnsFactory = ({
     const recipients = approverUsers.filter((approver) => approver.email).map((approver) => approver.email!);
 
     if (recipients?.length) {
-      await smtpService.sendMail({
-        recipients,
-        subjectLine: "Infisical Secret Change Policy Bypassed",
-        substitutions: {
-          projectName: project.name,
-          requesterFullName: `${requestedByUser.firstName} ${requestedByUser.lastName}`,
-          requesterEmail: requestedByUser.email,
-          bypassReason,
-          secretPath,
-          environment: environmentName,
-          approvalUrl: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/approval`
-        },
-        template: SmtpTemplates.AccessSecretRequestBypassed
-      });
+      try {
+        await smtpService.sendMail({
+          recipients,
+          subjectLine: "Infisical Secret Change Policy Bypassed",
+          substitutions: {
+            projectName: project.name,
+            requesterFullName: `${requestedByUser.firstName} ${requestedByUser.lastName}`,
+            requesterEmail: requestedByUser.email,
+            bypassReason,
+            secretPath,
+            environment: environmentName,
+            approvalUrl: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/approval`
+          },
+          template: SmtpTemplates.AccessSecretRequestBypassed
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to send secret change policy bypass email [projectId=${project.id}] [actorId=${actorId}]`
+        );
+      }
     }
   };
 

@@ -1,20 +1,16 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
 import {
+  Combobox,
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import {
-  TCloudflareZone,
-  useCloudflareConnectionListZones
-} from "@app/hooks/api/appConnections/cloudflare";
+import { useCloudflareConnectionListZones } from "@app/hooks/api/appConnections/cloudflare";
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
@@ -47,7 +43,7 @@ export const CloudflareCustomCertificatePkiSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field className="mb-4">
-            <FieldLabel>
+            <FieldLabel htmlFor="pki-sync-cloudflare-zone">
               Zone
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -59,20 +55,23 @@ export const CloudflareCustomCertificatePkiSyncFields = () => {
                 </TooltipContent>
               </Tooltip>
             </FieldLabel>
-            <FilterableSelect
+            <Combobox
+              id="pki-sync-cloudflare-zone"
               isLoading={isZonesLoading && !!connectionId}
               isDisabled={!connectionId}
               value={
                 zones.find((zone) => zone.id === value) ||
                 (value ? { id: value, name: value } : null)
               }
-              onChange={(option) => {
-                onChange((option as SingleValue<TCloudflareZone>)?.id ?? "");
+              isClearable={false}
+              onValueChange={(option) => {
+                onChange(option.id);
               }}
               options={zones}
               placeholder={connectionId ? "Select a zone..." : "Select a connection first"}
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
+              getOptionKeywords={(option) => [option.id]}
               isError={Boolean(error)}
             />
             <FieldError errors={[error]} />

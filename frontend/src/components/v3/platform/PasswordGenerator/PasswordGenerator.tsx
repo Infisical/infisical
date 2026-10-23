@@ -1,5 +1,4 @@
-import { cloneElement, type ReactElement, useEffect, useMemo, useState } from "react";
-import { components, OptionProps } from "react-select";
+import { cloneElement, type ReactElement, useEffect, useId, useMemo, useState } from "react";
 import {
   CheckIcon,
   CopyIcon,
@@ -23,10 +22,10 @@ import {
 import { Badge } from "../../generic/Badge";
 import { Button } from "../../generic/Button";
 import { Checkbox } from "../../generic/Checkbox";
+import { Combobox } from "../../generic/Combobox";
 import { IconButton } from "../../generic/IconButton";
 import { Label } from "../../generic/Label";
 import { Popover, PopoverContent, PopoverTrigger } from "../../generic/Popover";
-import { FilterableSelect } from "../../generic/ReactSelect";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../generic/Tooltip";
 
 type PasswordOptionsType = {
@@ -122,28 +121,23 @@ const describeConstraints = (constraints: TValueConstraints) => {
   return chips;
 };
 
-const RuleOptionComponent = ({ isSelected, children, ...props }: OptionProps<RuleOption>) => (
-  <components.Option isSelected={isSelected} {...props}>
-    <div className="flex cursor-pointer flex-row items-center justify-between">
-      <div className="flex items-center gap-2 truncate">
-        <p className="truncate">{children}</p>
-        {props.data.matchesCurrentScope && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant="project">
-                <ShieldCheckIcon className="size-3" />
-                Current scope
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              This validation rule applies to the current environment and folder
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </div>
-      {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
-    </div>
-  </components.Option>
+const RuleOptionContent = ({ option }: { option: RuleOption }) => (
+  <div className="flex items-center gap-2 truncate">
+    <p className="truncate">{option.label}</p>
+    {option.matchesCurrentScope && (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant="project">
+            <ShieldCheckIcon className="size-3" />
+            Current scope
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          This validation rule applies to the current environment and folder
+        </TooltipContent>
+      </Tooltip>
+    )}
+  </div>
 );
 
 export type PasswordGeneratorProps = {
@@ -167,6 +161,7 @@ export const PasswordGenerator = ({
   selectedEnvironments,
   trigger
 }: PasswordGeneratorProps) => {
+  const ruleSelectId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [, isCopying, setCopyText] = useTimedReset<string>({
     initialState: "Copy"
@@ -319,22 +314,25 @@ export const PasswordGenerator = ({
 
           {showRuleSelector && (
             <div>
-              <Label className="mb-1.5 flex items-center gap-1.5 text-xs text-accent">
+              <Label
+                htmlFor={ruleSelectId}
+                className="mb-1.5 flex items-center gap-1.5 text-xs text-accent"
+              >
                 <ShieldCheckIcon className="size-3" />
                 Conform to Validation Rule
               </Label>
-              <FilterableSelect<RuleOption>
+              <Combobox
+                id={ruleSelectId}
                 options={ruleOptions}
                 value={selectedRuleOption}
-                onChange={(option) => {
-                  setSelectedRuleId((option as RuleOption | null)?.value || "");
+                onValueChange={(option) => {
+                  setSelectedRuleId(option.value);
                   setRefresh((prev) => !prev);
                 }}
                 getOptionLabel={(o) => o.label}
                 getOptionValue={(o) => o.value}
                 isClearable={false}
-                isSearchable={false}
-                components={{ Option: RuleOptionComponent }}
+                renderOption={(option) => <RuleOptionContent option={option} />}
               />
             </div>
           )}

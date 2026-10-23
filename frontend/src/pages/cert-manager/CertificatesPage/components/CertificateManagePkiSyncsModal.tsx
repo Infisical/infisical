@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { faPlus, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
@@ -10,19 +9,26 @@ import {
 import {
   Button,
   Checkbox,
-  EmptyState,
+  DiscardChangesAlertDialog,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   Input,
-  Modal,
-  ModalContent,
   Pagination,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   Table,
-  TableContainer,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
@@ -32,6 +38,7 @@ import {
   useRemoveCertificatesFromPkiSync
 } from "@app/hooks/api/pkiSyncs";
 import { TPkiSync } from "@app/hooks/api/pkiSyncs/types";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
@@ -106,6 +113,14 @@ export const CertificateManagePkiSyncsModal = ({
     setCurrentPage(1);
   };
 
+  const { isDiscardDialogOpen, setIsDiscardDialogOpen, requestDiscard, confirmDiscard } =
+    useDiscardChangesGuard({
+      isDirty:
+        selectedSyncIds.size !== initialSyncIds.size ||
+        Array.from(selectedSyncIds).some((id) => !initialSyncIds.has(id)),
+      onDiscard: handleClose
+    });
+
   const handleNavigateToPkiSyncs = () => {
     if (!currentProject?.id) return;
 
@@ -133,16 +148,17 @@ export const CertificateManagePkiSyncsModal = ({
   };
 
   useEffect(() => {
-    if (!certificateId || !pkiSyncs || pkiSyncs.length === 0) return;
+    if (!popUp.isOpen || !certificateId || pkiSyncs.length === 0) return;
 
     const currentSyncIds = new Set(
       pkiSyncs.filter((sync) => sync.hasCertificate).map((sync) => sync.id)
     );
     setSelectedSyncIds(currentSyncIds);
     setInitialSyncIds(new Set(currentSyncIds));
-  }, [certificateId, pkiSyncs]);
+  }, [popUp.isOpen, certificateId, pkiSyncs]);
 
   const handleSyncToggle = (syncId: string) => {
+    if (isSubmitting) return;
     setSelectedSyncIds((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(syncId)) {
@@ -199,131 +215,141 @@ export const CertificateManagePkiSyncsModal = ({
   };
 
   return (
-    <Modal isOpen={popUp.isOpen} onOpenChange={handleClose}>
-      <ModalContent
-        title="Manage PKI Syncs"
-        subTitle={`Select which PKI syncs "${commonName}" should be part of`}
-        className="max-w-3xl"
+    <>
+      <Sheet
+        open={popUp.isOpen}
+        onOpenChange={(open) => {
+          if (!open && !isSubmitting) requestDiscard();
+        }}
       >
-        <div className="mb-4">
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search PKI syncs by name..."
-          />
-        </div>
-        <div className="mt-4 max-h-96 overflow-y-auto">
-          {isPending && (
-            <div className="flex h-32 items-center justify-center">
-              <div className="text-label-secondary">Loading PKI syncs...</div>
-            </div>
-          )}
-          {!isPending && pkiSyncs.length === 0 && (
-            <EmptyState title="No PKI syncs available" icon={faPlus}>
-              <div className="mt-1">
-                Create a{" "}
-                <button
-                  type="button"
-                  onClick={handleNavigateToPkiSyncs}
-                  className="cursor-pointer underline hover:text-label"
-                >
-                  PKI sync
-                </button>{" "}
-                first to manage certificate syncing.
+        <SheetContent size="form" isPending={isSubmitting}>
+          <SheetHeader>
+            <SheetTitle>Manage PKI Syncs</SheetTitle>
+            <SheetDescription>{`Select which PKI syncs "${commonName}" should be part of.`}</SheetDescription>
+          </SheetHeader>
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+            <Input
+              aria-label="Search PKI syncs"
+              disabled={isSubmitting}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search PKI syncs by name..."
+            />
+            {isPending && (
+              <div className="flex h-32 items-center justify-center">
+                <div className="text-muted">Loading PKI syncs...</div>
               </div>
-            </EmptyState>
-          )}
-          {!isPending && pkiSyncs.length > 0 && filteredSyncs.length === 0 && searchTerm && (
-            <EmptyState title="No PKI syncs found" icon={faSearch}>
-              <div className="mt-1">
-                No PKI syncs match your search criteria. Try a different search term.
-              </div>
-            </EmptyState>
-          )}
-          {!isPending && filteredSyncs.length > 0 && (
-            <TableContainer>
+            )}
+            {!isPending && pkiSyncs.length === 0 && (
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyTitle>No PKI Syncs Available</EmptyTitle>
+                  <EmptyDescription>
+                    Create a{" "}
+                    <button
+                      type="button"
+                      onClick={handleNavigateToPkiSyncs}
+                      className="cursor-pointer underline"
+                    >
+                      PKI sync
+                    </button>{" "}
+                    first to manage certificate syncing.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+            {!isPending && pkiSyncs.length > 0 && filteredSyncs.length === 0 && searchTerm && (
+              <Empty className="border">
+                <EmptyHeader>
+                  <EmptyTitle>No PKI Syncs Found</EmptyTitle>
+                  <EmptyDescription>
+                    No PKI syncs match your search criteria. Try a different search term.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
+            )}
+            {!isPending && filteredSyncs.length > 0 && (
               <Table>
-                <THead>
-                  <Tr>
-                    <Th className="w-12" />
-                    <Th className="w-1/2">Name</Th>
-                    <Th className="w-1/2">Destination</Th>
-                  </Tr>
-                </THead>
-                <TBody>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12" />
+                    <TableHead className="w-1/2">Name</TableHead>
+                    <TableHead className="w-1/2">Destination</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {paginatedSyncs.map((sync) => {
                     const unavailableReason = getSyncUnavailableReason(sync);
                     const managesItsOwnCertificates = Boolean(unavailableReason);
 
                     return (
-                      <Tr
+                      <TableRow
                         key={sync.id}
-                        className={
-                          managesItsOwnCertificates
-                            ? "opacity-60"
-                            : "cursor-pointer hover:bg-surface-hover"
-                        }
+                        className={managesItsOwnCertificates ? "opacity-60" : "cursor-pointer"}
                         onClick={() => !managesItsOwnCertificates && handleSyncToggle(sync.id)}
                       >
-                        <Td>
+                        <TableCell onClick={(event) => event.stopPropagation()}>
                           <Checkbox
+                            aria-label={`Select ${sync.name}`}
                             isChecked={selectedSyncIds.has(sync.id)}
-                            isDisabled={managesItsOwnCertificates}
+                            isDisabled={managesItsOwnCertificates || isSubmitting}
                             onCheckedChange={() => handleSyncToggle(sync.id)}
                             id={`sync-${sync.id}`}
                           />
-                        </Td>
-                        <Td className="w-1/2 max-w-0">
+                        </TableCell>
+                        <TableCell className="w-1/2 max-w-0">
                           <div className="truncate" title={sync.name}>
                             {sync.name}
                           </div>
                           {unavailableReason && (
                             <div className="truncate text-xs text-muted">{unavailableReason}</div>
                           )}
-                        </Td>
-                        <Td className="w-1/2 max-w-0">
+                        </TableCell>
+                        <TableCell className="w-1/2 max-w-0">
                           <div
                             className="truncate capitalize"
                             title={PKI_SYNC_MAP[sync.destination].name}
                           >
                             {PKI_SYNC_MAP[sync.destination].name}
                           </div>
-                        </Td>
-                      </Tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </TBody>
+                </TableBody>
               </Table>
-            </TableContainer>
-          )}
-          {!isPending && filteredSyncs.length > PER_PAGE && (
-            <div className="mt-4">
-              <Pagination
-                count={filteredSyncs.length}
-                page={currentPage}
-                perPage={PER_PAGE}
-                onChangePage={setCurrentPage}
-                onChangePerPage={() => {}}
-              />
-            </div>
-          )}
-        </div>
+            )}
+            {!isPending && filteredSyncs.length > PER_PAGE && (
+              <div className="mt-4">
+                <Pagination
+                  count={filteredSyncs.length}
+                  page={currentPage}
+                  perPage={PER_PAGE}
+                  perPageList={[PER_PAGE]}
+                  onChangePage={setCurrentPage}
+                  onChangePerPage={() => {}}
+                />
+              </div>
+            )}
+          </div>
 
-        <div className="mt-6 flex justify-end gap-3">
-          <Button variant="outline_bg" onClick={handleClose} isDisabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button
-            variant="solid"
-            colorSchema="primary"
-            onClick={handleSaveChanges}
-            isDisabled={isSubmitting}
-            isLoading={isSubmitting}
-          >
-            Save Changes
-          </Button>
-        </div>
-      </ModalContent>
-    </Modal>
+          <SheetFooter className="justify-end border-t">
+            <Button variant="ghost" onClick={requestDiscard} isDisabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button variant="project" onClick={handleSaveChanges} isPending={isSubmitting}>
+              Save Changes
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your PKI sync selection changes will be lost."
+      />
+    </>
   );
 };

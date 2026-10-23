@@ -35,6 +35,8 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { shouldApplyPolicy } from "../secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "../secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestServiceFactory } from "../secret-approval-request/secret-approval-request-service";
+import { TCreateSecretApprovalSideEffectsDTO } from "../secret-approval-request/secret-approval-request-types";
+import { scanSecretPolicyViolations } from "../secret-scanning-v2/secret-scanning-v2-fns";
 
 type TPitServiceFactoryDep = {
   folderCommitService: TFolderCommitServiceFactory;
@@ -688,6 +690,23 @@ export const pitServiceFactory = ({
       }
     }
 
+    // Secret detection is skipped for writes made inside a caller's transaction (the change request and
+    // createManySecret below), so it runs here first. updateManySecret scans the direct updates itself.
+    const secretsToScan = [
+      ...(changes.secrets?.create ?? []),
+      ...(shouldApplyPolicy(policy, actor) ? (changes.secrets?.update ?? []).filter((el) => el.secretValue) : [])
+    ];
+    if (secretsToScan.length) {
+      await scanSecretPolicyViolations(
+        projectId,
+        secretPath,
+        secretsToScan.map((el) => ({ secretKey: el.secretKey, secretValue: el.secretValue as string })),
+        project.secretDetectionIgnoreValues || []
+      );
+    }
+
+    // Notifying approvers reaches Slack, Teams and SMTP, so it waits until the request has committed
+    let approvalSideEffects: TCreateSecretApprovalSideEffectsDTO | undefined;
     const response = await folderCommitDAL.transaction(async (trx) => {
       const targetFolder = await folderDAL.findBySecretPath(projectId, environment, secretPath, trx);
       if (!targetFolder)
@@ -867,8 +886,28 @@ export const pitServiceFactory = ({
                 changes.secrets?.delete?.map((el) => ({
                   secretKey: el.secretKey
                 })) ?? []
-            }
+            },
+            trx,
+            skipPostProcessing: true
           });
+          approvalSideEffects = {
+            secretApprovalRequest: { id: approval.id, policyId: approval.policyId, commits: approval.commits },
+            projectId,
+            environment,
+            secretPath,
+            secretKeys: [
+              ...new Set(
+                [
+                  ...(changes.secrets?.create ?? []),
+                  ...(changes.secrets?.update ?? []),
+                  ...(changes.secrets?.delete ?? [])
+                ].map((el) => el.secretKey)
+              )
+            ],
+            actor,
+            actorId,
+            actorOrgId
+          };
           return {
             approvalId: approval.id,
             commitId,
@@ -1000,6 +1039,17 @@ export const pitServiceFactory = ({
         secretMutationEvents
       };
     });
+
+    if (approvalSideEffects) {
+      try {
+        await secretApprovalRequestService.createSecretApprovalSideEffects(approvalSideEffects);
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to notify approvers of secret change request [requestId=${approvalSideEffects.secretApprovalRequest.id}] [projectId=${projectId}]`
+        );
+      }
+    }
 
     return response;
   };

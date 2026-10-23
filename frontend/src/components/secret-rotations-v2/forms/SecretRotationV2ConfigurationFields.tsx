@@ -5,12 +5,12 @@ import { TriangleAlertIcon } from "lucide-react";
 import {
   Alert,
   AlertDescription,
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldFeedback,
   FieldLabel,
-  FilterableSelect,
   Input,
   Label,
   Toggle
@@ -44,15 +44,17 @@ export const SecretRotationV2ConfigurationFields = ({ isUpdate, environments }: 
           render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
             <Field data-invalid={Boolean(error)}>
               <FieldLabel htmlFor="secret-rotation-environment">Environment</FieldLabel>
-              <FilterableSelect
-                inputId="secret-rotation-environment"
+              <Combobox
+                id="secret-rotation-environment"
                 value={value ?? null}
                 onBlur={onBlur}
-                onChange={onChange}
+                onValueChange={onChange}
+                isClearable={false}
                 options={environments}
                 placeholder="Select an environment..."
-                getOptionLabel={(option) => option?.name}
-                getOptionValue={(option) => option?.id}
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
                 isError={Boolean(error)}
               />
               <FieldError>{error?.message}</FieldError>
