@@ -97,6 +97,7 @@ export const mfaSessionServiceFactory = ({
 
   const canCompleteFromSession = async (mfaSession: TMfaSession, userId: string, tokenVersionId: string) => {
     if (!mfaSession.initiatingTokenVersionId || mfaSession.initiatingTokenVersionId === tokenVersionId) return true;
+    if (!mfaSession.allowCliHandoff) return false;
 
     const initiatingSession = await tokenService.getUserTokenSessionById(mfaSession.initiatingTokenVersionId, userId);
     return isCliUserAgent(initiatingSession?.userAgent ?? undefined);
@@ -256,7 +257,8 @@ export const mfaSessionServiceFactory = ({
     userId: string,
     resourceId: string,
     mfaMethod: MfaMethod,
-    initiatingTokenVersionId?: string
+    initiatingTokenVersionId?: string,
+    allowCliHandoff?: boolean
   ): Promise<string> => {
     const mfaSessionId = crypto.randomBytes(32).toString("hex");
     const mfaSession: TMfaSession = {
@@ -265,7 +267,8 @@ export const mfaSessionServiceFactory = ({
       resourceId,
       status: MfaSessionStatus.PENDING,
       mfaMethod,
-      initiatingTokenVersionId
+      initiatingTokenVersionId,
+      allowCliHandoff
     };
 
     await keyStore.setItemWithExpiry(
