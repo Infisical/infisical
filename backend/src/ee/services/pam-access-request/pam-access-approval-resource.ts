@@ -841,7 +841,7 @@ export const pamAccessApprovalResourceFactory = ({
       const summary = getAutoApprovalSummary(request.autoApprovalEvidence);
       const ruleName = summary?.ruleName ?? "an auto-approval rule";
       const linkedRecords = summary?.linkedRecords.map(({ label, value }) => `${label} ${value}`).join(", ");
-      const folderUrl = `${accountsUrl}/${encodeURIComponent(inputs.folderId)}`;
+      const folderUrl = `${accountsUrl}?folderId=${encodeURIComponent(inputs.folderId)}&tab=approvals`;
 
       return {
         inApp: {
