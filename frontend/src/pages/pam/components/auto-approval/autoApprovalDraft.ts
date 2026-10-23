@@ -86,6 +86,23 @@ export const findSubject = (
   };
 };
 
+// Fields from two connections of the same app share a label, so the connection name tells them apart
+export const getSubjectDisplayLabel = (
+  inputs: TAutoApprovalDraft["inputs"],
+  catalog: TAutoApprovalCatalogConnection[] | undefined,
+  connectionId: string,
+  subjectId: string
+) => {
+  const { connection, subject } = findSubject(catalog, connectionId, subjectId);
+  if (!subject) return null;
+  const isShared = inputs.some(
+    (input) =>
+      (input.connectionId !== connectionId || input.subject !== subjectId) &&
+      findSubject(catalog, input.connectionId, input.subject).subject?.label === subject.label
+  );
+  return isShared && connection ? `${subject.label} from ${connection.name}` : subject.label;
+};
+
 export const isRequesterSubject = (subjectId: string) =>
   subjectId === AUTO_APPROVAL_REQUESTER_SUBJECT;
 

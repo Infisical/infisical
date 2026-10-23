@@ -30,6 +30,7 @@ import {
   findSubject,
   getConditionError,
   getRuleError,
+  getSubjectDisplayLabel,
   getSubjectsMissingCheck,
   newKey,
   TAutoApprovalDraft,
@@ -37,7 +38,7 @@ import {
   TDraftRule,
   UNUSED_CONSTRAINT
 } from "./autoApprovalDraft";
-import { DisabledReason, SectionLabel } from "./AutoApprovalLabels";
+import { ConnectionIcon, DisabledReason, SectionLabel } from "./AutoApprovalLabels";
 import { AutoApprovalValuePicker } from "./AutoApprovalValuePicker";
 
 type TSubjectChoice = {
@@ -97,6 +98,7 @@ const ConditionRow = ({
   showConnector,
   condition,
   rule,
+  inputs,
   catalog,
   policyType,
   scope,
@@ -108,6 +110,7 @@ const ConditionRow = ({
   showConnector: boolean;
   condition: TDraftCondition;
   rule: TDraftRule;
+  inputs: TAutoApprovalDraft["inputs"];
   catalog: TAutoApprovalCatalogConnection[];
   policyType: ApprovalPolicyType;
   scope: ApprovalPolicyScope;
@@ -116,7 +119,13 @@ const ConditionRow = ({
   onChange: (condition: TDraftCondition) => void;
   onRemove: () => void;
 }) => {
-  const { subject } = findSubject(catalog, condition.connectionId, condition.subject);
+  const { connection, subject } = findSubject(catalog, condition.connectionId, condition.subject);
+  const subjectLabel = getSubjectDisplayLabel(
+    inputs,
+    catalog,
+    condition.connectionId,
+    condition.subject
+  );
   const constraint = subject?.constraints.find(
     (candidate) => candidate.id === condition.constraint
   );
@@ -143,7 +152,10 @@ const ConditionRow = ({
         </span>
       )}
       <div className="flex min-h-7 flex-wrap items-center gap-x-3 gap-y-1">
-        <Badge variant="neutral">{subject?.label ?? "Unavailable record"}</Badge>
+        <Badge variant="neutral">
+          {connection && <ConnectionIcon app={connection.app} className="size-3.5" />}
+          {subjectLabel ?? "Unavailable record"}
+        </Badge>
         <span className="text-sm text-foreground">{constraint?.label ?? condition.constraint}</span>
         {constraint?.value === AutoApprovalConstraintValue.Many && (
           <span className="text-xs text-muted">one of</span>
@@ -297,6 +309,7 @@ export const AutoApprovalRuleCard = ({
                   showConnector={conditionIndex > 0}
                   condition={condition}
                   rule={rule}
+                  inputs={inputs}
                   catalog={catalog}
                   policyType={policyType}
                   scope={scope}
@@ -317,7 +330,12 @@ export const AutoApprovalRuleCard = ({
           )}
 
           {missingChecks.map(({ condition, constraint, message, action }) => {
-            const { subject } = findSubject(catalog, condition.connectionId, condition.subject);
+            const subjectLabel = getSubjectDisplayLabel(
+              inputs,
+              catalog,
+              condition.connectionId,
+              condition.subject
+            );
             return (
               <Alert
                 key={`${condition.connectionId}:${condition.subject}:${constraint}`}
@@ -326,7 +344,7 @@ export const AutoApprovalRuleCard = ({
               >
                 <ShieldAlert />
                 <AlertDescription className="text-xs">
-                  <span>{message(subject?.label ?? "record")}</span>
+                  <span>{message(subjectLabel ?? "record")}</span>
                   <AlertAction>
                     <Button
                       type="button"

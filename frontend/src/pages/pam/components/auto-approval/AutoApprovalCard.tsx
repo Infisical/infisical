@@ -18,15 +18,12 @@ import {
   FieldContent,
   FieldDescription,
   FieldTitle,
-  IconButton,
-  ProviderIcon
+  IconButton
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { OrgPermissionSubjects, useOrgPermission } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { TAppConnection } from "@app/hooks/api/appConnections";
-import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   approvalPolicyQuery,
   ApprovalPolicyScope,
@@ -41,7 +38,7 @@ import {
   newKey,
   TAutoApprovalDraft
 } from "./autoApprovalDraft";
-import { DisabledReason, LogicConnector } from "./AutoApprovalLabels";
+import { ConnectionIcon, DisabledReason, LogicConnector } from "./AutoApprovalLabels";
 import { AutoApprovalRuleCard } from "./AutoApprovalRuleCard";
 
 type Props = {
@@ -52,12 +49,6 @@ type Props = {
   onChange: (draft: TAutoApprovalDraft) => void;
   showErrors: boolean;
   hasApprovers: boolean;
-};
-
-const ConnectionIcon = ({ app }: { app: string }) => {
-  const details = APP_CONNECTION_MAP[app as AppConnection];
-  if (!details) return null;
-  return <ProviderIcon icon={details.image} alt="" className="size-4 shrink-0" />;
 };
 
 export const AutoApprovalCard = ({
@@ -246,6 +237,7 @@ export const AutoApprovalCard = ({
                           key={`${input.connectionId}:${input.subject}`}
                           className="flex items-center gap-3 px-4 py-2.5"
                         >
+                          {connection && <ConnectionIcon app={connection.app} />}
                           <span className="text-sm text-foreground">
                             {subject?.input?.label ?? input.subject}
                           </span>

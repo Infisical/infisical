@@ -1,6 +1,15 @@
 import { ReactElement, ReactNode } from "react";
 
-import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { ProviderIcon, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import { cn } from "@app/components/v3/utils";
+import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+
+export const ConnectionIcon = ({ app, className }: { app: string; className?: string }) => {
+  const details = APP_CONNECTION_MAP[app as AppConnection];
+  if (!details) return null;
+  return <ProviderIcon icon={details.image} alt="" className={cn("size-4 shrink-0", className)} />;
+};
 
 export const SectionLabel = ({ children }: { children: ReactNode }) => (
   <p className="text-xs font-medium tracking-wider text-muted uppercase">{children}</p>
