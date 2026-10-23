@@ -1184,11 +1184,13 @@ export const approvalPolicyServiceFactory = ({
     const resource = $resource(policy.type as ApprovalPolicyType);
 
     const approved = await approvalRequestDAL.transaction(async (tx) => {
-      await approvalPolicyDAL.findByIdForShare(policy.id, tx);
+      const lockedPolicy = await approvalPolicyDAL.findByIdForShare(policy.id, tx);
       const current = (await autoApprovalService.findByPolicyIds([policy.id], tx)).get(policy.id);
-      if (!current?.rules.some((rule) => rule.id === evidence.approvedByRuleId)) {
+      const isPolicyUnchanged =
+        lockedPolicy && new Date(lockedPolicy.updatedAt).getTime() === new Date(policy.updatedAt).getTime();
+      if (!isPolicyUnchanged || !current?.rules.some((rule) => rule.id === evidence.approvedByRuleId)) {
         throw new BadRequestError({
-          message: "The auto-approval rules changed while this request was being checked. Submit it again."
+          message: "This request's approval policy changed while it was being checked. Submit it again."
         });
       }
       const stillAllowed =
@@ -1196,7 +1198,7 @@ export const approvalPolicyServiceFactory = ({
         true;
       if (!stillAllowed) {
         throw new BadRequestError({
-          message: "Auto-approval was turned off for this request while it was being checked. Submit it again."
+          message: "Auto-approval no longer applies to this request. Submit it again."
         });
       }
       await $claimUnusedRecords(policy.id, evidence, tx);
@@ -1292,53 +1294,59 @@ export const approvalPolicyServiceFactory = ({
 
     const resource = $resource(policyType);
 
-    const policy = await resource.matchPolicy(projectId, requestData);
+    const checkAgainstPolicy = async () => {
+      const matched = await resource.matchPolicy(projectId, requestData);
 
-    if (!policy) {
-      throw new ForbiddenRequestError({
-        message:
-          resources[policyType]?.noMatchingPolicyMessage ??
-          "No policies match the requested resource, you can access it without a request"
-      });
-    }
+      if (!matched) {
+        throw new ForbiddenRequestError({
+          message:
+            resources[policyType]?.noMatchingPolicyMessage ??
+            "No policies match the requested resource, you can access it without a request"
+        });
+      }
 
-    const constraintValidation = resource.validateConstraints(policy, requestData);
-    if (!constraintValidation.valid) {
-      const errorMessage = constraintValidation.errors
-        ? `Policy constraints not met: ${constraintValidation.errors.join("; ")}`
-        : "Policy constraints not met";
-      throw new BadRequestError({ message: errorMessage });
-    }
+      const constraintValidation = resource.validateConstraints(matched, requestData);
+      if (!constraintValidation.valid) {
+        const errorMessage = constraintValidation.errors
+          ? `Policy constraints not met: ${constraintValidation.errors.join("; ")}`
+          : "Policy constraints not met";
+        throw new BadRequestError({ message: errorMessage });
+      }
 
-    const storedAutoApproval = (await autoApprovalService.findByPolicyIds([policy.id])).get(policy.id);
+      const stored = (await autoApprovalService.findByPolicyIds([matched.id])).get(matched.id);
 
-    if (assertDomainCanCreateRequest) {
-      await assertDomainCanCreateRequest({
-        projectId,
-        policy,
-        requestData: requestData as TApprovalRequestData,
-        actor,
-        hasAutoApprovalRules: Boolean(storedAutoApproval?.rules.length),
-        skipsAutoApproval: Boolean(skipAutoApproval)
-      });
-    }
+      if (assertDomainCanCreateRequest) {
+        await assertDomainCanCreateRequest({
+          projectId,
+          policy: matched,
+          requestData: requestData as TApprovalRequestData,
+          actor,
+          hasAutoApprovalRules: Boolean(stored?.rules.length),
+          skipsAutoApproval: Boolean(skipAutoApproval)
+        });
+      }
 
-    let expiresAt: Date | undefined;
+      let expires: Date | undefined;
 
-    if (requestDuration) {
-      const ttlMs = ms(requestDuration);
+      if (requestDuration) {
+        const ttlMs = ms(requestDuration);
 
-      expiresAt = new Date(Date.now() + ttlMs);
+        expires = new Date(Date.now() + ttlMs);
 
-      if (policy.maxRequestTtl) {
-        const maxTtlMs = ms(policy.maxRequestTtl);
-        if (ttlMs > maxTtlMs) {
-          throw new BadRequestError({
-            message: `Expiration time exceeds the maximum allowed TTL of ${policy.maxRequestTtl}`
-          });
+        if (matched.maxRequestTtl) {
+          const maxTtlMs = ms(matched.maxRequestTtl);
+          if (ttlMs > maxTtlMs) {
+            throw new BadRequestError({
+              message: `Expiration time exceeds the maximum allowed TTL of ${matched.maxRequestTtl}`
+            });
+          }
         }
       }
-    }
+
+      return { policy: matched, storedAutoApproval: stored, expiresAt: expires };
+    };
+
+    let { policy, storedAutoApproval, expiresAt } = await checkAgainstPolicy();
 
     let autoApprovalEvidence: TAutoApprovalEvidence | null = null;
     if (storedAutoApproval?.rules.length && !skipAutoApproval && actor.type === ActorType.USER) {
@@ -1352,15 +1360,24 @@ export const approvalPolicyServiceFactory = ({
           orgId: actor.orgId,
           projectId
         });
+        const evaluatedPolicyId = policy.id;
         autoApprovalEvidence = await autoApprovalService.evaluate({
           stored: storedAutoApproval,
           parsedInputs,
           isRecordUsed: (record) =>
-            approvalRequestDAL.hasApprovedRequestLinkingRecord({ policyId: policy.id, ...record }),
+            approvalRequestDAL.hasApprovedRequestLinkingRecord({ policyId: evaluatedPolicyId, ...record }),
           orgId: actor.orgId,
           projectId,
           ctx: { requester: { email: requesterEmail || null } }
         });
+
+        const current = await checkAgainstPolicy();
+        if (current.policy.id !== evaluatedPolicyId) {
+          throw new BadRequestError({
+            message: "This request's approval policy changed while it was being checked. Submit it again."
+          });
+        }
+        ({ policy, storedAutoApproval, expiresAt } = current);
       }
     }
 

@@ -506,13 +506,13 @@ export const pamAccessApprovalResourceFactory = ({
     requestData,
     tx
   }) => {
-    const { accountId } = requestData as { accountId?: string };
+    const { accountId, folderId } = requestData as { accountId?: string; folderId?: string };
     if (!accountId) return false;
 
     const account = tx
       ? await pamAccountDAL.findTemplatePoliciesForShare(accountId, tx)
       : await pamAccountDAL.findByIdWithDetails(accountId);
-    if (!account || account.projectId !== projectId) return false;
+    if (!account || account.projectId !== projectId || (account.folderId ?? null) !== (folderId ?? null)) return false;
 
     return resolveAccessControls(account.templatePolicies).allowAutoApproval;
   };

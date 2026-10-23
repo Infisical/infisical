@@ -262,11 +262,14 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       .where({ id: account.templateId })
       .forShare()
       .first("policies");
-    const locked = await tx(TableName.PamAccount).where({ id: accountId }).forShare().first("projectId", "templateId");
+    const locked = await tx(TableName.PamAccount)
+      .where({ id: accountId })
+      .forShare()
+      .first("projectId", "folderId", "templateId");
     // The account moved to another template before it was locked, so these policies may not be its own
     if (!template || !locked || locked.templateId !== account.templateId) return undefined;
 
-    return { projectId: locked.projectId, templatePolicies: template.policies as unknown };
+    return { projectId: locked.projectId, folderId: locked.folderId, templatePolicies: template.policies as unknown };
   };
 
   const findByIdsWithDetails = async (

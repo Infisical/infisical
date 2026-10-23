@@ -33,6 +33,7 @@ import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
 import { OrgPermissionSubjects } from "@app/context";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
+import { isValidEmail } from "@app/helpers/email";
 import { useScopeVariant } from "@app/hooks";
 import { JiraConnectionMethod, TJiraConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
@@ -101,7 +102,7 @@ const formSchema = z.discriminatedUnion("method", [
         .trim()
         .min(1, "Email required")
         .max(320, "Email cannot exceed 320 characters")
-        .email("Email must be a valid email address"),
+        .refine(isValidEmail, "Email must be a valid email address"),
       apiToken: z
         .string()
         .trim()
