@@ -26,6 +26,7 @@ import {
   upsertApprovalRequestStepDecision
 } from "@app/services/approval-policy/approval-request-fns";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -156,6 +157,7 @@ type TSecretChangeGlobalRequestBridgeServiceFactoryDep = {
   secretTagDAL: Pick<TSecretTagDALFactory, "findManyTagsById" | "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
   secretValidationRuleService: Pick<TSecretValidationRuleServiceFactory, "validateSecrets">;
   userDAL: Pick<TUserDALFactory, "findById" | "find" | "findOne">;
@@ -200,6 +202,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
   secretTagDAL,
   resourceMetadataDAL,
   folderCommitService,
+  eventEmitter,
   secretQueueService,
   secretValidationRuleService,
   userDAL,
@@ -237,6 +240,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
     secretTagDAL,
     resourceMetadataDAL,
     folderCommitService,
+    eventEmitter,
     secretQueueService,
     secretApprovalRequestSecretDAL,
     validateSecrets,

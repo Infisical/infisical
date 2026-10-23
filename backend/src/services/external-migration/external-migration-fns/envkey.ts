@@ -5,6 +5,7 @@ import tweetnaclUtil from "tweetnacl-util";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 import { TFolderCommitServiceFactory } from "../../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../../kms/kms-service";
@@ -39,6 +40,7 @@ export type TImportDataIntoInfisicalDTO = {
   projectEnvService: Pick<TProjectEnvServiceFactory, "createEnvironment">;
   secretV2BridgeService: Pick<TSecretV2BridgeServiceFactory, "createManySecret">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "create">;
 
   input: TImportInfisicalDataCreate;

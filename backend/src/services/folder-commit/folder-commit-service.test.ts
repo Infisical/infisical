@@ -96,7 +96,12 @@ describe("folderCommitServiceFactory", () => {
     findById: vi.fn().mockResolvedValue({})
   };
 
+  const mockEventEmitter = {
+    emit: vi.fn().mockResolvedValue(undefined)
+  };
+
   const mockFolderDAL = {
+    findSecretPathByFolderIds: vi.fn().mockResolvedValue([]),
     findByParentId: vi.fn().mockResolvedValue([]),
     findByProjectId: vi.fn().mockResolvedValue([]),
     deleteById: vi.fn().mockResolvedValue({}),
@@ -203,7 +208,8 @@ describe("folderCommitServiceFactory", () => {
       permissionService: mockPermissionService,
       kmsService: mockKmsService,
       secretTagDAL: mockSecretTagDAL,
-      resourceMetadataDAL: mockResourceMetadataDAL
+      resourceMetadataDAL: mockResourceMetadataDAL,
+      eventEmitter: mockEventEmitter
     });
   });
 

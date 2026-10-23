@@ -11,6 +11,7 @@ import {
 } from "@app/db/schemas";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { OrderByDirection, TGenericPermission, TProjectPermission } from "@app/lib/types";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
@@ -483,6 +484,7 @@ export type TCreateManySecretsRawFnFactory = {
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
 };
 
 export type TCreateManySecretsRawFn = {
@@ -521,6 +523,7 @@ export type TUpdateManySecretsRawFnFactory = {
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
 };
 
 export type TUpdateManySecretsRawFn = {

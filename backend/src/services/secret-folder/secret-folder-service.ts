@@ -20,6 +20,8 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { ActorType } from "@app/services/auth/auth-type";
+import { EventModificationType } from "@app/services/event-outbox/event-definition";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
@@ -54,6 +56,7 @@ import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-d
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
+import { FolderModifiedEventV1 } from "./secret-folder-events";
 import {
   TCreateFolderDTO,
   TCreateManyFoldersDTO,
@@ -79,6 +82,7 @@ type TSecretFolderServiceFactoryDep = {
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs" | "find">;
   folderVersionDAL: Pick<TSecretFolderVersionDALFactory, "findLatestFolderVersions" | "create" | "insertMany" | "find">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug">;
   secretApprovalPolicyService: Pick<
     TSecretApprovalPolicyServiceFactory,
@@ -130,6 +134,7 @@ export const secretFolderServiceFactory = ({
   projectEnvDAL,
   folderVersionDAL,
   folderCommitService,
+  eventEmitter,
   projectDAL,
   secretApprovalPolicyService,
   secretV2BridgeDAL,
@@ -209,15 +214,18 @@ export const secretFolderServiceFactory = ({
         }
 
         let currentParentId = parentFolder.id;
+        const createdFolders: { folderId: string; secretPath: string }[] = [];
 
         // build the full path we need by processing each segment
         if (parentFolder.path !== secretPath) {
           const missingSegments = secretPath.substring(parentFolder.path.length).split("/").filter(Boolean);
 
           const newFolders: TSecretFoldersInsert[] = [];
+          let segmentPath = parentFolder.path;
 
           // process each segment sequentially
           for await (const segment of missingSegments) {
+            segmentPath = path.posix.join(segmentPath, segment);
             const existingSegment = await folderDAL.findOne(
               {
                 name: segment,
@@ -242,6 +250,7 @@ export const secretFolderServiceFactory = ({
 
               currentParentId = newFolder.id;
               newFolders.push(newFolder);
+              createdFolders.push({ folderId: newFolder.id, secretPath: segmentPath });
             }
           }
 
@@ -320,6 +329,19 @@ export const secretFolderServiceFactory = ({
             message: `Failed to retrieve path for folder with ID '${doc.id}'`
           });
         }
+
+        createdFolders.push({ folderId: doc.id, secretPath: folderWithFullPath.path });
+        await eventEmitter.emit(
+          createdFolders.map((createdFolder) =>
+            FolderModifiedEventV1.build({
+              ...createdFolder,
+              projectId,
+              environment,
+              modificationType: EventModificationType.Created
+            })
+          ),
+          tx
+        );
 
         return { ...doc, path: folderWithFullPath.path };
       });
@@ -467,6 +489,21 @@ export const secretFolderServiceFactory = ({
             });
           }
 
+          if (doc.name !== folder.name) {
+            await FolderModifiedEventV1.emit(
+              eventEmitter,
+              {
+                folderId: doc.id,
+                projectId: projectId as string,
+                environment,
+                secretPath: path.posix.join(parentFolder.path, doc.name),
+                modificationType: EventModificationType.Updated,
+                previous: { secretPath: path.posix.join(parentFolder.path, folder.name) }
+              },
+              tx
+            );
+          }
+
           return { oldFolder: folder, newFolder: doc };
         })
       );
@@ -598,6 +635,21 @@ export const secretFolderServiceFactory = ({
         throw new NotFoundError({
           message: `Failed to retrieve path for folder with ID '${doc.id}'`
         });
+      }
+
+      if (newFolderWithPath.path !== oldFolderWithPath.path) {
+        await FolderModifiedEventV1.emit(
+          eventEmitter,
+          {
+            folderId: doc.id,
+            projectId,
+            environment: env.slug,
+            secretPath: newFolderWithPath.path,
+            modificationType: EventModificationType.Updated,
+            previous: { secretPath: oldFolderWithPath.path }
+          },
+          tx
+        );
       }
 
       return { newFolder: doc, newFolderPath: newFolderWithPath.path, oldFolderPath: oldFolderWithPath.path };
@@ -850,6 +902,18 @@ export const secretFolderServiceFactory = ({
               folderId: doc.id
             }
           ]
+        },
+        tx
+      );
+
+      await FolderModifiedEventV1.emit(
+        eventEmitter,
+        {
+          folderId: doc.id,
+          projectId,
+          environment,
+          secretPath: path.posix.join(parentFolder.path, doc.name),
+          modificationType: EventModificationType.Deleted
         },
         tx
       );
@@ -1283,13 +1347,16 @@ export const secretFolderServiceFactory = ({
           }
 
           let currentParentId = parentFolder.id;
+          const createdFolderPaths: { folderId: string; secretPath: string }[] = [];
 
           // Build the full path we need by processing each segment
           if (parentFolder.path !== secretPath) {
             const missingSegments = secretPath.substring(parentFolder.path.length).split("/").filter(Boolean);
             const newFolders: TSecretFoldersInsert[] = [];
+            let segmentPath = parentFolder.path;
 
             for (const segment of missingSegments) {
+              segmentPath = path.posix.join(segmentPath, segment);
               const existingSegment = await folderDAL.findOne(
                 {
                   name: segment,
@@ -1313,6 +1380,7 @@ export const secretFolderServiceFactory = ({
 
                 currentParentId = newFolder.id;
                 newFolders.push(newFolder);
+                createdFolderPaths.push({ folderId: newFolder.id, secretPath: segmentPath });
               }
             }
 
@@ -1351,6 +1419,18 @@ export const secretFolderServiceFactory = ({
           // Create the target folder
           const doc = await folderDAL.create(
             { name, envId: env.id, version: 1, parentId: currentParentId, description },
+            tx
+          );
+          createdFolderPaths.push({ folderId: doc.id, secretPath: pathWithFolder });
+          await eventEmitter.emit(
+            createdFolderPaths.map((createdFolder) =>
+              FolderModifiedEventV1.build({
+                ...createdFolder,
+                projectId,
+                environment,
+                modificationType: EventModificationType.Created
+              })
+            ),
             tx
           );
 
@@ -1538,6 +1618,18 @@ export const secretFolderServiceFactory = ({
               tx
             );
           }
+
+          await FolderModifiedEventV1.emit(
+            eventEmitter,
+            {
+              folderId: doc.id,
+              projectId,
+              environment,
+              secretPath: path.posix.join(parentFolder.path, doc.name),
+              modificationType: EventModificationType.Deleted
+            },
+            tx
+          );
 
           deletedFolders.push(doc);
         }
@@ -1967,6 +2059,18 @@ export const secretFolderServiceFactory = ({
         description: entry.description
       }));
       const createdFolders = await folderDAL.insertMany(newFolderRows, tx);
+      await eventEmitter.emit(
+        plan.map((entry) =>
+          FolderModifiedEventV1.build({
+            folderId: entry.newFolderId,
+            projectId,
+            environment: destinationEnvironment,
+            secretPath: entry.destinationAbsPath,
+            modificationType: EventModificationType.Created
+          })
+        ),
+        tx
+      );
 
       // folder-scoped additional privileges must follow the move: the source subtree is deleted below
       // and additional_privileges.folderId cascades on delete, so repoint them at the recreated folders
@@ -2035,6 +2139,7 @@ export const secretFolderServiceFactory = ({
             secretVersionTagDAL,
             resourceMetadataDAL,
             folderCommitService,
+            eventEmitter,
             secretApprovalPolicyService,
             secretApprovalRequestCreationFns,
             secretQueueService,
@@ -2048,6 +2153,17 @@ export const secretFolderServiceFactory = ({
       // removing only the source root removes the entire subtree. the source is always fully emptied here: a
       // subtree governed by a source approval policy was rejected up front, so no secret is left pending.
       const [deletedRoot] = await folderDAL.delete({ id: sourceFolder.id }, tx);
+      await FolderModifiedEventV1.emit(
+        eventEmitter,
+        {
+          folderId: deletedRoot.id,
+          projectId,
+          environment: sourceEnvironment,
+          secretPath: sourceFolderPath,
+          modificationType: EventModificationType.Deleted
+        },
+        tx
+      );
       const latestVersions = await folderVersionDAL.findLatestFolderVersions([deletedRoot.id], tx);
       await folderCommitService.createCommit(
         {
