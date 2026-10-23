@@ -344,7 +344,7 @@ export const AutoApprovalRuleCard = ({
           <DisabledReason reason={addConditionBlocker}>
             <DropdownMenu>
               <DropdownMenuTrigger asChild disabled={Boolean(addConditionBlocker)}>
-                <Button type="button" variant="ghost" size="sm" className="-ml-2.5">
+                <Button type="button" variant="ghost" size="sm">
                   <Plus />
                   Add Condition
                 </Button>
