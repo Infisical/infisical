@@ -8,6 +8,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { getCaKeySourceAuditMetadata } from "@app/services/certificate-authority/certificate-authority-fns";
 import {
   TCertificateAuthority,
   TCertificateAuthorityInput
@@ -142,11 +143,8 @@ export const registerCertificateAuthorityEndpoints = <
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const body = req.body as {
-        projectId?: string;
-        configuration?: { keySource?: string; hsmConnectorId?: string };
-      };
-      const createdOcspSetting = (body as { configuration?: { isOcspEnabled?: boolean } }).configuration?.isOcspEnabled;
+      const body = req.body as { projectId?: string; configuration?: { isOcspEnabled?: boolean } };
+      const createdOcspSetting = body.configuration?.isOcspEnabled;
       const certificateAuthority = (await server.services.certificateAuthority.createCertificateAuthority(
         { ...req.body, projectId: body.projectId ?? req.internalCertManagerProjectId, type: caType },
         req.permission
@@ -160,8 +158,7 @@ export const registerCertificateAuthorityEndpoints = <
           metadata: {
             name: certificateAuthority.name,
             caId: certificateAuthority.id,
-            keySource: body.configuration?.keySource,
-            hsmConnectorId: body.configuration?.hsmConnectorId,
+            ...getCaKeySourceAuditMetadata(certificateAuthority.configuration),
             ...(typeof createdOcspSetting === "boolean" && { isOcspEnabled: createdOcspSetting })
           }
         }
@@ -278,7 +275,8 @@ export const registerCertificateAuthorityEndpoints = <
           type: EventType.DELETE_CA,
           metadata: {
             name: certificateAuthority.name,
-            caId: certificateAuthority.id
+            caId: certificateAuthority.id,
+            ...getCaKeySourceAuditMetadata(certificateAuthority.configuration)
           }
         }
       });

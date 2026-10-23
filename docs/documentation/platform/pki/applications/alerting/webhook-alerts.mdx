@@ -1,5 +1,5 @@
 ---
-title: "Webhook alerts"
+title: "Certificate alerts by webhook"
 sidebarTitle: "Webhook"
 description: "Send certificate alert notifications to a webhook URL."
 ---
@@ -14,7 +14,7 @@ A webhook channel on a certificate [alert](/documentation/platform/pki/applicati
 
 ## Prerequisites
 
-- The Certificate Manager **Admin** role to create a Certificate Manager alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
+- The Certificate Management **Admin** role to create a Certificate Management alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
 - An HTTPS endpoint that accepts POST requests
 
 ## Step 1: Start an alert
@@ -72,9 +72,9 @@ Infisical sends custom headers with each request, such as an `X-Env` header your
 
 ## Webhook event types
 
-Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type` field names the event, and application alerts and Certificate Manager alerts use different values:
+Each request is a [CloudEvents](https://cloudevents.io/) JSON payload. The `type` field names the event, and application alerts and Certificate Management alerts use different values:
 
-| Event | Application alert `type` | Certificate Manager alert `type` |
+| Event | Application alert `type` | Certificate Management alert `type` |
 |-------|--------------------------|----------------------------------|
 | Expiration | `com.infisical.cert-manager.application.certificate.expiry` | `com.infisical.cert-manager.certificate.expiry` |
 | Issuance | `com.infisical.cert-manager.application.certificate.issuance` | `com.infisical.cert-manager.certificate.issuance` |
@@ -91,7 +91,7 @@ The `subject` field is the same value without the `com.infisical.` prefix.
 To find out which kind of alert sent a request, read `data.alert.resourceType`:
 
 - `cert-manager.application`: an application alert, with the application's ID in `data.alert.resourceId`
-- `cert-manager`: a Certificate Manager alert
+- `cert-manager`: a Certificate Management alert
 - `cert-manager.signer`: a signer certificate expiration alert, whose items list the signers in `resource.signerIds` and `resource.signerNames`
 
 <Note>
@@ -210,8 +210,8 @@ To find out which kind of alert sent a request, read `data.alert.resourceType`:
     }
     ```
   </Tab>
-  <Tab title="Certificate Manager alert">
-    A Certificate Manager alert sends the same payload as an application alert, with `resourceType` set to `cert-manager`. This example shows a revocation:
+  <Tab title="Certificate Management alert">
+    A Certificate Management alert sends the same payload as an application alert, with `resourceType` set to `cert-manager`. This example shows a revocation:
 
     ```json expandable
     {

@@ -20,7 +20,7 @@ Infisical is an open-source secret management platform. Monorepo layout:
 infisical/
 ├── backend/               # Fastify 4 API server (see backend/CLAUDE.md)
 ├── backend-go/            # Go API server — partial rewrite (see backend-go/CLAUDE.md)
-├── frontend/              # React 18 SPA (see frontend/CLAUDE.md)
+├── frontend/              # React 19 SPA (see frontend/CLAUDE.md)
 ├── wasm/                  # Rust crates compiled to WASM for the frontend (see wasm/<crate>/CLAUDE.md)
 ├── e2e/                   # External Playwright suite — gates prod deploys against gamma (see e2e/CLAUDE.md)
 ├── tests/                 # Go blackbox suite — real containers, HTTP only (see tests/CLAUDE.md)
@@ -38,7 +38,7 @@ infisical/
 
 - **`backend/`** — Fastify 4 API server, TypeScript, PostgreSQL via Knex, BullMQ queues. See [`backend/CLAUDE.md`](backend/CLAUDE.md) for architecture, patterns, and commands.
 - **`backend-go/`** — Go API server (partial rewrite), chi + chita framework, raw pgx queries, same PostgreSQL database. See [`backend-go/CLAUDE.md`](backend-go/CLAUDE.md) for architecture, patterns, and commands.
-- **`frontend/`** — React 18 SPA, Vite 8, TanStack Router + React Query, Tailwind CSS v4. See [`frontend/CLAUDE.md`](frontend/CLAUDE.md) for architecture, patterns, and commands.
+- **`frontend/`** — React 19 SPA, Vite 8, TanStack Router + React Query, Tailwind CSS v4. See [`frontend/CLAUDE.md`](frontend/CLAUDE.md) for architecture, patterns, and commands.
 - **`wasm/`** — Rust crates that compile to WASM for the frontend. Generated bindings are committed under `frontend/src/lib/<crate>/` so the frontend builds without a Rust toolchain. Each crate has its own `CLAUDE.md` with the rebuild command (e.g. [`wasm/ironrdp-decoder/CLAUDE.md`](wasm/ironrdp-decoder/CLAUDE.md)) — run it after any change to that crate's `src/` or `Cargo.toml` so source and bindings stay in sync.
 - **`docs/`** — Product documentation site. Has its own Dockerfile for building. Reference docs for up-to-date feature descriptions and API usage.
 - **`e2e/`** — Playwright suite that runs against a deployed environment (gamma) between deploy and prod promotion. Distinct from `backend/e2e-test/` (in-process Vitest). Failure blocks every prod-deploy job. Covers SCIM + SAML flows (SP-initiated, IdP-initiated, deactivation, response rejection) against a mock IdP we control — see [`e2e/CLAUDE.md`](e2e/CLAUDE.md) for the harness and the one-time gamma bootstrap.
@@ -147,6 +147,15 @@ converging away from. A product-facing service on top of it (PAM's `pam-access-r
 for product vocabulary only: resolving the resource a request names, notifications, and read models.
 Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
 stop agreeing.
+
+### Object Storage
+
+New product files go to S3 through `backend/src/services/object-storage/`, not a product's own S3 client (PAM
+recordings predate it and haven't moved). A product
+registers a namespace (record-first path like `sessions/{sessionId}/logs/{file}`, checked for naming collisions at
+boot) and the layer builds org-first keys, signs links, and applies the retention tag and, for default storage on Infisical Cloud, a daily upload cap. Storage is
+`default` (the instance's bucket, `OBJECT_STORAGE_S3_*`) or `external` (the customer's, through an AWS connection);
+use those two words everywhere.
 
 ### API Layer (Frontend)
 

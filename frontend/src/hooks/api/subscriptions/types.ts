@@ -31,6 +31,7 @@ export type SubscriptionPlan = {
   id: string;
   memberLimit: number;
   identityLimit: number;
+  enforceIdentityLimit?: boolean;
   auditLogs: boolean;
   dynamicSecret: boolean;
   auditLogsRetentionDays: number | null;
@@ -83,6 +84,7 @@ export type SubscriptionPlan = {
   pkiPqc: boolean;
   caCrl: boolean;
   pkiOcsp: boolean;
+  pkiAwsKmsSigning: boolean;
   pkiEnterpriseCaIntegrations: boolean;
   pkiExternalIntermediateCa: boolean;
   pkiDiscovery: boolean;
@@ -116,6 +118,9 @@ export type SubscriptionPlan = {
   honeyTokenLimit: number;
   secretsBrokering: boolean;
   agentVaultByoS3: boolean;
+  agentVaultManagedStorage: boolean;
+  // null means 30 days.
+  agentVaultSessionLogRetentionDays: number | null;
   pam?: boolean | null;
   enterprisePamAccount?: boolean | null;
   maxPamAccounts?: number | null;

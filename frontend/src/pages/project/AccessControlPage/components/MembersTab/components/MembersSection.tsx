@@ -13,7 +13,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge,
   Tooltip,
   TooltipContent,
@@ -26,7 +26,7 @@ import {
   useProject
 } from "@app/context";
 import { getProjectLabel, hidesProjects } from "@app/helpers/project";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useDeleteUserFromWorkspace } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 
@@ -34,6 +34,7 @@ import { AddMemberModal } from "./AddMemberModal";
 import { MembersTable } from "./MembersTable";
 
 export const MembersSection = () => {
+  const scopeVariant = useScopeVariant();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const productLabel = getProjectLabel(currentProject?.type);
@@ -86,7 +87,7 @@ export const MembersSection = () => {
               {(isAllowed) => {
                 const button = (
                   <Button
-                    variant="project"
+                    variant={scopeVariant}
                     onClick={() => handlePopUpOpen("addMember")}
                     isDisabled={!isAllowed}
                   >
@@ -118,7 +119,7 @@ export const MembersSection = () => {
         </CardContent>
       </Card>
       <AddMemberModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.removeMember.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("removeMember", isOpen);

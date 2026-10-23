@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { type JSX, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FolderOpen, MoreHorizontal, Pencil, Trash2, UserPlus } from "lucide-react";

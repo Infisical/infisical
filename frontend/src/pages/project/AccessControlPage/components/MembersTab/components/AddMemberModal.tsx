@@ -7,13 +7,13 @@ import { CircleAlertIcon, RefreshCwIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
+import { RoleOptionContent } from "@app/components/roles";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
   Button,
-  CreatableSelect,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -23,8 +23,7 @@ import {
   Field,
   FieldContent,
   FieldError,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import {
   OrgPermissionMemberActions,
@@ -36,7 +35,9 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
+import { isValidEmail } from "@app/helpers/email";
 import { getProjectLabel, hidesProjects } from "@app/helpers/project";
+import { useScopeVariant } from "@app/hooks";
 import {
   useAddUserToWsNonE2EE,
   useGetOrgUsers,
@@ -69,6 +70,7 @@ type Props = {
 };
 
 export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { t } = useTranslation();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
@@ -310,62 +312,65 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
                 </FieldLabel>
                 <FieldContent>
                   {canInviteNewMembers ? (
-                    <CreatableSelect
-                      /* eslint-disable-next-line react/no-unstable-nested-components */
-                      noOptionsMessage={() => (
-                        <>
-                          {!projectInviteList.list.length && (
-                            <p>
-                              All organization members are already assigned to{" "}
-                              {projectsHidden ? productLabel : "this project"}.
-                            </p>
-                          )}
-                          <p>
-                            Invite new users to your organization by typing out their email address.
-                          </p>
-                        </>
-                      )}
-                      onCreateOption={(inputValue) =>
-                        append({ label: inputValue, value: inputValue, isNewInvitee: true })
+                    <Combobox
+                      listFooter={
+                        projectInviteList.list.length ? undefined : (
+                          <>
+                            All organization members are already assigned to{" "}
+                            {projectsHidden ? productLabel : "this project"}.
+                          </>
+                        )
                       }
-                      formatCreateLabel={(inputValue) => `Invite "${inputValue}"`}
-                      isValidNewOption={(input) =>
-                        Boolean(input) &&
-                        z.string().email().safeParse(input).success &&
-                        !orgUsers
-                          ?.flatMap(({ user }) => {
-                            const emails: string[] = [];
+                      creation={{
+                        mode: "inline",
+                        onCreate: (inputValue) =>
+                          append({ label: inputValue, value: inputValue, isNewInvitee: true }),
+                        formatLabel: (inputValue) => `Invite "${inputValue}"`,
+                        emptyLabel:
+                          "Invite new users to your organization by typing out their email address.",
+                        isValid: (input) =>
+                          Boolean(input) &&
+                          isValidEmail(input) &&
+                          !orgUsers
+                            ?.flatMap(({ user }) => {
+                              const emails: string[] = [];
 
-                            if (user.email) {
-                              emails.push(user.email);
-                            }
+                              if (user.email) {
+                                emails.push(user.email);
+                              }
 
-                            if (user.username) {
-                              emails.push(user.username);
-                            }
+                              if (user.username) {
+                                emails.push(user.username);
+                              }
 
-                            return emails;
-                          })
-                          .includes(input)
-                      }
+                              return emails;
+                            })
+                            .includes(input)
+                      }}
                       placeholder="Add one or more users..."
-                      isMulti
+                      searchAriaLabel="Search users"
+                      multiple
                       name="members"
                       options={projectInviteList.list}
                       value={field.value}
-                      onChange={field.onChange}
+                      onValueChange={field.onChange}
+                      getOptionValue={(option) => option.value}
+                      getOptionLabel={(option) => option.label}
                       isError={!!errors.orgMemberships?.length}
                       isLoading={isReferenceDataLoading}
                       isDisabled={!canAddMembers || hasReferenceDataError}
                     />
                   ) : (
-                    <FilterableSelect
+                    <Combobox
                       placeholder="Add one or more users..."
-                      isMulti
+                      searchAriaLabel="Search users"
+                      multiple
                       name="members"
                       options={projectInviteList.list}
                       value={field.value}
-                      onChange={field.onChange}
+                      onValueChange={field.onChange}
+                      getOptionValue={(option) => option.value}
+                      getOptionLabel={(option) => option.label}
                       isError={!!errors.orgMemberships?.length}
                       isLoading={isReferenceDataLoading}
                       isDisabled={!canAddMembers || hasReferenceDataError}
@@ -383,14 +388,16 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
               <Field>
                 <FieldLabel className="sr-only">Select roles</FieldLabel>
                 <FieldContent>
-                  <FilterableSelect
+                  <Combobox
                     options={filteredRoles}
-                    components={{ Option: RoleOption }}
+                    renderOption={(option) => <RoleOptionContent role={option} />}
                     placeholder="Select roles..."
+                    searchAriaLabel="Search roles"
                     value={value}
-                    onChange={onChange}
-                    isMulti
+                    onValueChange={onChange}
+                    multiple
                     getOptionValue={(option) => option.slug}
+                    getOptionKeywords={(option) => [option.slug]}
                     getOptionLabel={(option) => option.name}
                     isError={Boolean(error)}
                     isLoading={isReferenceDataLoading}
@@ -430,7 +437,7 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
             </Button>
             <Button
               type="submit"
-              variant="project"
+              variant={scopeVariant}
               isPending={isSubmitting}
               isDisabled={
                 isSubmitting ||

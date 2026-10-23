@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
-import { MultiValue } from "react-select";
 import { ArrowDown, Box, FolderIcon, Layers, Plus, Trash2, X } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Combobox,
   Field,
   FieldGroup,
-  FilterableSelect,
   IconButton,
   SecretPathInput,
   Select,
@@ -465,10 +464,10 @@ export const ShareSecretsSheet = ({
                     <span className="text-sm">{editData!.targetProjectName}</span>
                   </div>
                 ) : (
-                  <FilterableSelect
-                    isMulti
+                  <Combobox
+                    multiple
                     value={targetProjects}
-                    onChange={(options) => setTargetProjects([...(options as MultiValue<Project>)])}
+                    onValueChange={setTargetProjects}
                     isLoading={isProjectsLoading}
                     options={availableProjects}
                     placeholder="Search projects..."

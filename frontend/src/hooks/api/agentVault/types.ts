@@ -3,6 +3,7 @@ import {
   AgentVaultHttpMethod,
   AgentVaultMemberType,
   AgentVaultSessionLogDecision,
+  AgentVaultSessionLogStorageType,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
   AgentVaultSubstitutionSurface,
@@ -138,6 +139,16 @@ export type TListAgentVaultAccessBundlesDTO = Omit<TListAgentVaultProxiesDTO, "o
   orderBy?: "name" | "serviceCount" | "createdAt";
 };
 
+export type TListAgentVaultVariablesDTO = {
+  search?: string;
+  /** Exact keys. A key that doesn't exist is left out of the response. */
+  keys?: string[];
+  orderBy?: "key" | "serviceCount";
+  orderDirection?: "asc" | "desc";
+  limit?: number;
+  offset?: number;
+};
+
 export type TListAgentVaultMembersDTO = {
   actorType?: AgentVaultMemberType;
   search?: string;
@@ -230,9 +241,12 @@ export type TAgentVaultProxy = {
   createdAt?: string;
 };
 
-export type TAgentVaultEnrollment = {
-  token: string;
-  expiresAt: string;
+export type TAgentVaultProxyToken = {
+  proxyToken: string;
+};
+
+export type TAgentVaultProxyWithToken = TAgentVaultProxyToken & {
+  proxy: TAgentVaultProxy;
 };
 
 export type TListAgentVaultSessionsDTO = {
@@ -293,12 +307,27 @@ export type TAgentVaultProxySettingsDTO = {
   pollInterval?: number;
 };
 
+export type TAgentVaultSessionLogExternalStorage = {
+  type: AgentVaultSessionLogStorageType.External;
+  appConnectionId: string;
+  bucket: string;
+  region: string;
+  keyPrefix: string | null;
+};
+
+export type TAgentVaultSessionLogStorage =
+  | { type: AgentVaultSessionLogStorageType.Default }
+  | TAgentVaultSessionLogExternalStorage;
+
 export type TAgentVaultSessionLogSettings = {
   enabled: boolean;
-  appConnectionId: string | null;
-  bucket: string | null;
-  region: string | null;
-  keyPrefix: string | null;
+  storage: TAgentVaultSessionLogStorage;
+};
+
+// settings is null when the instance has no default storage and no external bucket is saved.
+export type TAgentVaultSessionLogSettingsState = {
+  settings: TAgentVaultSessionLogSettings | null;
+  defaultStorage: { configured: boolean };
 };
 
 export type TAgentVaultSessionLogHealth = {
@@ -321,13 +350,13 @@ export type TAgentVaultSessionLogReadCheck = {
   host: string;
 };
 
-export type TUpdateAgentVaultSessionLogSettingsDTO = {
-  enabled?: boolean;
-  appConnectionId?: string | null;
-  bucket?: string;
-  region?: string;
-  keyPrefix?: string;
-};
+export type TAgentVaultSessionLogStorageInput =
+  | { type: AgentVaultSessionLogStorageType.Default }
+  | (Omit<TAgentVaultSessionLogExternalStorage, "keyPrefix"> & { keyPrefix?: string });
+
+export type TUpdateAgentVaultSessionLogSettingsDTO =
+  | { enabled: false }
+  | { enabled: true; storage: TAgentVaultSessionLogStorageInput };
 
 export type TAgentVaultSessionLogChunk = {
   chunkId: string;
@@ -336,8 +365,12 @@ export type TAgentVaultSessionLogChunk = {
   presignedGetUrl: string;
 };
 
+export type TAgentVaultSessionLogDisabledReason = "off" | "not-on-plan";
+
 export type TAgentVaultSessionLog = {
   enabled: boolean;
+  disabledReason: TAgentVaultSessionLogDisabledReason | null;
+  storageType: AgentVaultSessionLogStorageType | null;
   isRecordable: boolean;
   sessionKey: string | null;
 };
@@ -396,27 +429,30 @@ export type TAgentVaultDecryptedSessionLogPage<
   decrypted: Record<string, TAgentVaultDecryptedChunk>;
 };
 
+export type TAgentVaultVariableUsedByService = {
+  id: string;
+  name: string;
+  hostPattern: string;
+  accessBundleId: string;
+  accessBundleName: string;
+};
+
 export type TAgentVaultVariable = {
   id: string;
-  accessBundleId: string;
   key: string;
-  serviceIds: string[];
+  // Every service that references the variable, across all access bundles.
+  usedByServices: TAgentVaultVariableUsedByService[];
   createdAt: string;
   updatedAt: string;
 };
 
-export type TAgentVaultVariableRef = {
-  accessBundleId: string;
-  variableId: string;
-};
-
 export type TCreateAgentVaultVariableDTO = {
-  accessBundleId: string;
   key: string;
   value: string;
 };
 
-export type TUpdateAgentVaultVariableDTO = TAgentVaultVariableRef & {
+export type TUpdateAgentVaultVariableDTO = {
+  variableId: string;
   key?: string;
   value?: string;
 };

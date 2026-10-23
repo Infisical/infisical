@@ -70,7 +70,7 @@ The SDK methods are organized into the following high-level categories:
 - `Client::builder()`: The main entry point for creating a client.
 - `client.login()`: Allows client to make authenticated requests to the API.
 - `client.secrets()`: Provides access to all CRUD operations for secrets.
-- `client.kms()`: Provides access to all KMS (Key Management Service) operations.
+- `client.kms()`: Provides access to all Key Management Service (KMS) operations.
 
 ### Helper functions
 
@@ -224,7 +224,7 @@ let deleted_secret = client.secrets().delete(request).await?;
 
 ### `kms`
 
-All KMS (Key Management Service) operations are accessed via `client.kms()`. Each operation has a dedicated request builder.
+All Key Management Service (KMS) operations are accessed via `client.kms()`. Each operation has a dedicated request builder.
 
 #### List KMS keys
 

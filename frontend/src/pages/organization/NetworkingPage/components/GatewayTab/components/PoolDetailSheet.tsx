@@ -19,11 +19,11 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Combobox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  FilterableSelect,
   IconButton,
   Sheet,
   SheetContent,
@@ -176,18 +176,20 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                   const isDisabled = !isAllowed || availableGateways.length === 0;
                   return (
                     <div className="flex min-w-0 items-start gap-2">
-                      <FilterableSelect<GatewayOption>
-                        isMulti
-                        value={selectedGateways}
-                        onChange={(value) =>
-                          setSelectedGateways(Array.isArray(value) ? [...value] : [])
-                        }
-                        options={gatewayOptions}
-                        placeholder="Select gateways..."
-                        isDisabled={isDisabled || addGateway.isPending}
-                        menuPosition="fixed"
-                        className="w-64"
-                      />
+                      <div className="w-64">
+                        <Combobox
+                          multiple
+                          value={selectedGateways}
+                          onValueChange={setSelectedGateways}
+                          options={gatewayOptions}
+                          placeholder="Select gateways..."
+                          searchAriaLabel="Select gateways"
+                          isDisabled={isDisabled || addGateway.isPending}
+                          getOptionLabel={(option) => option.label}
+                          getOptionValue={(option) => option.value}
+                          getOptionKeywords={(option) => [option.value]}
+                        />
+                      </div>
                       <Button
                         variant="outline"
                         size="sm"

@@ -9,9 +9,10 @@ import { BadRequestError } from "@app/lib/errors";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { HsmKeyAlgorithm } from "@app/services/signer/signer-enums";
 
-// @peculiar/x509's generators require a local CryptoKey, so for HSM-backed CAs we build the
-// structure with a throwaway key of the matching algorithm, then swap in a signature the HSM
-// produces over the TBS bytes (same pattern as build-csr-with-external-signer).
+// @peculiar/x509's generators require a local CryptoKey, so for CAs whose key lives outside
+// Infisical (HSM, AWS KMS) we build the structure with a throwaway key of the matching algorithm,
+// then swap in a signature the key holder produces over the TBS bytes (same pattern as
+// build-csr-with-external-signer).
 
 type TCertCreateParams = Parameters<typeof x509.X509CertificateGenerator.create>[0];
 type TCsrCreateParams = Parameters<typeof x509.Pkcs10CertificateRequestGenerator.create>[0];
@@ -141,21 +142,91 @@ const HSM_MECHANISM_BY_HASH: Record<"rsa" | "ecdsa", Record<string, string>> = {
   }
 };
 
-const algorithmHashName = (alg: Algorithm): string | undefined => {
+export type TEphemeralKeyCache = (
+  keyGenParams: Algorithm,
+  generate: () => Promise<CryptoKeyPair>
+) => Promise<CryptoKeyPair>;
+
+export const createEphemeralKeyCache = (): TEphemeralKeyCache => {
+  const keyPairs = new Map<string, Promise<CryptoKeyPair>>();
+  return (keyGenParams, generate) => {
+    const cacheKey = JSON.stringify(keyGenParams);
+    const cached = keyPairs.get(cacheKey);
+    if (cached) return cached;
+
+    const keyPair = generate();
+    keyPairs.set(cacheKey, keyPair);
+    keyPair.catch(() => keyPairs.delete(cacheKey));
+    return keyPair;
+  };
+};
+
+export const algorithmHashName = (alg: Algorithm): string | undefined => {
   const { hash } = alg as { hash?: string | { name?: string } };
   return typeof hash === "string" ? hash : hash?.name;
 };
+
+export const buildExternalCaSigner = ({
+  caPublicKey,
+  signingAlgorithm,
+  generateEphemeralKey,
+  signTbs
+}: {
+  caPublicKey: CryptoKey;
+  signingAlgorithm: Algorithm;
+  generateEphemeralKey: () => Promise<CryptoKeyPair>;
+  signTbs: (tbs: Buffer) => Promise<ArrayBuffer>;
+}): TCaSigner => ({
+  caPublicKey,
+  signingAlgorithm,
+  createCertificate: async (params) => {
+    const ephemeral = await generateEphemeralKey();
+    const built = await x509.X509CertificateGenerator.create({
+      ...params,
+      signingKey: ephemeral.privateKey,
+      signingAlgorithm
+    });
+    const cert = AsnConvert.parse(built.rawData, Certificate);
+    cert.signatureValue = await signTbs(Buffer.from(AsnConvert.serialize(cert.tbsCertificate)));
+    return new x509.X509Certificate(AsnConvert.serialize(cert));
+  },
+  createCsr: async (params) => {
+    const ephemeral = await generateEphemeralKey();
+    const built = await x509.Pkcs10CertificateRequestGenerator.create({
+      ...params,
+      keys: { privateKey: ephemeral.privateKey, publicKey: caPublicKey },
+      signingAlgorithm
+    });
+    const csr = AsnConvert.parse(built.rawData, CertificationRequest);
+    csr.signature = await signTbs(Buffer.from(AsnConvert.serialize(csr.certificationRequestInfo)));
+    return new x509.Pkcs10CertificateRequest(AsnConvert.serialize(csr));
+  },
+  createCrl: async (params) => {
+    const ephemeral = await generateEphemeralKey();
+    const built = await x509.X509CrlGenerator.create({
+      ...params,
+      signingKey: ephemeral.privateKey,
+      signingAlgorithm
+    });
+    const crl = AsnConvert.parse(built.rawData, CertificateList);
+    crl.signature = await signTbs(Buffer.from(AsnConvert.serialize(crl.tbsCertList)));
+    return new x509.X509Crl(AsnConvert.serialize(crl));
+  },
+  signTbs
+});
 
 export const buildHsmCaSigner = ({
   caPublicKey,
   keyAlgorithm,
   signingAlgorithm,
-  sign
+  sign,
+  ephemeralKeys
 }: {
   caPublicKey: CryptoKey;
   keyAlgorithm: CertKeyAlgorithm | string;
   signingAlgorithm?: Algorithm;
   sign: TCaExternalSignFn;
+  ephemeralKeys: TEphemeralKeyCache;
 }): TCaSigner => {
   const shape = caKeyAlgorithmToHsmShape(keyAlgorithm);
 
@@ -187,45 +258,13 @@ export const buildHsmCaSigner = ({
     return bufferToArrayBuffer(signature);
   };
 
-  const generateEphemeralKey = () =>
-    crypto.nativeCrypto.subtle.generateKey(keyGenParams as RsaHashedKeyGenParams, true, ["sign", "verify"]);
-
-  return {
+  return buildExternalCaSigner({
     caPublicKey,
     signingAlgorithm: certSigningAlgorithm,
-    createCertificate: async (params) => {
-      const ephemeral = await generateEphemeralKey();
-      const built = await x509.X509CertificateGenerator.create({
-        ...params,
-        signingKey: ephemeral.privateKey,
-        signingAlgorithm: certSigningAlgorithm
-      });
-      const cert = AsnConvert.parse(built.rawData, Certificate);
-      cert.signatureValue = await signTbs(Buffer.from(AsnConvert.serialize(cert.tbsCertificate)));
-      return new x509.X509Certificate(AsnConvert.serialize(cert));
-    },
-    createCsr: async (params) => {
-      const ephemeral = await generateEphemeralKey();
-      const built = await x509.Pkcs10CertificateRequestGenerator.create({
-        ...params,
-        keys: { privateKey: ephemeral.privateKey, publicKey: caPublicKey },
-        signingAlgorithm: certSigningAlgorithm
-      });
-      const csr = AsnConvert.parse(built.rawData, CertificationRequest);
-      csr.signature = await signTbs(Buffer.from(AsnConvert.serialize(csr.certificationRequestInfo)));
-      return new x509.Pkcs10CertificateRequest(AsnConvert.serialize(csr));
-    },
-    createCrl: async (params) => {
-      const ephemeral = await generateEphemeralKey();
-      const built = await x509.X509CrlGenerator.create({
-        ...params,
-        signingKey: ephemeral.privateKey,
-        signingAlgorithm: certSigningAlgorithm
-      });
-      const crl = AsnConvert.parse(built.rawData, CertificateList);
-      crl.signature = await signTbs(Buffer.from(AsnConvert.serialize(crl.tbsCertList)));
-      return new x509.X509Crl(AsnConvert.serialize(crl));
-    },
+    generateEphemeralKey: () =>
+      ephemeralKeys(keyGenParams, () =>
+        crypto.nativeCrypto.subtle.generateKey(keyGenParams as RsaHashedKeyGenParams, true, ["sign", "verify"])
+      ),
     signTbs
-  };
+  });
 };

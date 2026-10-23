@@ -6,12 +6,12 @@ import { z } from "zod";
 
 import {
   Button,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   TextArea,
   Toggle,
@@ -21,12 +21,12 @@ import {
 } from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker/GatewayPicker";
 import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 
 import {
   NETWORKING_AUTH_METHOD_OPTIONS,
   NetworkingAuthMethod,
-  NetworkingAuthMethodOption,
-  NetworkingAuthMethodSingleValue
+  NetworkingAuthMethodLabel
 } from "./NetworkingAuthMethodLabel";
 
 const GCP_AUTH_TYPE_OPTIONS = [
@@ -247,6 +247,7 @@ export const NetworkingAuthMethodForm = ({
   currentGatewayId,
   onUpdate
 }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { isSubOrganization, currentOrg } = useOrganization();
   const initialMethod: NetworkingAuthMethod = currentMethod.method;
   const initialAws = currentMethod.method === "aws" ? currentMethod.config : undefined;
@@ -355,22 +356,21 @@ export const NetworkingAuthMethodForm = ({
             methodOptions.find((option) => option.value === field.value) ?? methodOptions[0];
 
           return (
-            <FilterableSelect
+            <Combobox
+              aria-label="Authentication method"
               value={selected}
-              onChange={(option) => {
-                const next = option as { value: NetworkingAuthMethod } | null;
-                if (next) field.onChange(next.value);
-              }}
+              onValueChange={(option) => field.onChange(option.value)}
               options={methodOptions}
-              isSearchable={false}
               isClearable={false}
               isDisabled={isDisabled || isSaving}
               getOptionLabel={(option) => option.label}
               getOptionValue={(option) => option.value}
-              components={{
-                Option: NetworkingAuthMethodOption,
-                SingleValue: NetworkingAuthMethodSingleValue
-              }}
+              renderOption={(option) => (
+                <NetworkingAuthMethodLabel method={option.value} label={option.label} />
+              )}
+              renderValue={(option) => (
+                <NetworkingAuthMethodLabel method={option.value} label={option.label} />
+              )}
             />
           );
         }}
@@ -424,7 +424,10 @@ export const NetworkingAuthMethodForm = ({
             name="gcpAuthType"
             render={({ field }) => (
               <Field>
-                <FieldLabel className="inline-flex items-center gap-1.5">
+                <FieldLabel
+                  htmlFor="networking-gcp-auth-type"
+                  className="inline-flex items-center gap-1.5"
+                >
                   Type
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -438,15 +441,14 @@ export const NetworkingAuthMethodForm = ({
                   </Tooltip>
                 </FieldLabel>
                 <FieldContent>
-                  <FilterableSelect
-                    value={GCP_AUTH_TYPE_OPTIONS.find((option) => option.value === field.value)}
-                    onChange={(option) => {
-                      const next = option as { value: "gce" | "iam" } | null;
-                      if (next) field.onChange(next.value);
-                    }}
+                  <Combobox
+                    id="networking-gcp-auth-type"
+                    value={
+                      GCP_AUTH_TYPE_OPTIONS.find((option) => option.value === field.value) ?? null
+                    }
+                    onValueChange={(option) => field.onChange(option.value)}
                     options={GCP_AUTH_TYPE_OPTIONS}
                     isDisabled={isDisabled || isSaving}
-                    isSearchable={false}
                     isClearable={false}
                     getOptionLabel={(option) => option.label}
                     getOptionValue={(option) => option.value}
@@ -622,7 +624,10 @@ export const NetworkingAuthMethodForm = ({
               name="tokenReviewMode"
               render={({ field, fieldState: { error } }) => (
                 <Field>
-                  <FieldLabel className="inline-flex items-center gap-1.5">
+                  <FieldLabel
+                    htmlFor="networking-token-review-mode"
+                    className="inline-flex items-center gap-1.5"
+                  >
                     Review Mode
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -637,15 +642,15 @@ export const NetworkingAuthMethodForm = ({
                     </Tooltip>
                   </FieldLabel>
                   <FieldContent>
-                    <FilterableSelect
-                      value={reviewModeOptions.find((option) => option.value === field.value)}
-                      onChange={(option) => {
-                        const next = option as { value: "api" | "gateway" } | null;
-                        if (next) field.onChange(next.value);
-                      }}
+                    <Combobox
+                      id="networking-token-review-mode"
+                      value={
+                        reviewModeOptions.find((option) => option.value === field.value) ?? null
+                      }
+                      onValueChange={(option) => field.onChange(option.value)}
                       options={reviewModeOptions}
+                      isOptionDisabled={(option) => option.isDisabled}
                       isDisabled={isDisabled || isSaving}
-                      isSearchable={false}
                       isClearable={false}
                       getOptionLabel={(option) => option.label}
                       getOptionValue={(option) => option.value}
@@ -838,7 +843,7 @@ export const NetworkingAuthMethodForm = ({
                     <div className="flex items-center gap-2">
                       <Toggle
                         id="gateway-k8s-verify-tls"
-                        variant="org"
+                        variant={scopeVariant}
                         checked={field.value}
                         onCheckedChange={field.onChange}
                         disabled={isDisabled || isSaving}

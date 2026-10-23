@@ -5,6 +5,18 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import type { THsmConnectorServiceFactoryDep } from "./hsm-connector-service";
 import type { THsmConnectorCredentials } from "./hsm-connector-types";
 
+const HSM_KEY_LABEL_MAX_BYTES = 256;
+
+export const HsmKeyLabelSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .refine(
+    (v) => Buffer.byteLength(v, "utf8") <= HSM_KEY_LABEL_MAX_BYTES,
+    `Key label must be at most ${HSM_KEY_LABEL_MAX_BYTES} bytes`
+  );
+
 export const HSM_CREDENTIALS_LIMITS = {
   slotLabelMax: 128,
   pinMax: 512,

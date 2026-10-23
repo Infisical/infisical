@@ -8,7 +8,6 @@ import { AccessScope, ActionProjectType, OrgMembershipRole, ProjectMembershipRol
 import { seedData1 } from "@app/db/seed-data";
 import { agentVaultServiceCustomHeaderDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-substitution-dal";
-import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-variable-dal";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
 import {
   AGENT_VAULT_MAX_PROXIES_PER_ORG,
@@ -17,11 +16,11 @@ import {
 import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
+import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
-import { ResourceAuthMethodType } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
@@ -780,8 +779,20 @@ describe("Agent Vault V1 Router", async () => {
   });
 
   describe("variables", async () => {
-    const variablesUrl = (accessBundleId: string) => `/api/v1/agent-vault/access-bundles/${accessBundleId}/variables`;
+    const variablesUrl = "/api/v1/agent-vault/variables";
     const servicesUrl = (accessBundleId: string) => `/api/v1/agent-vault/access-bundles/${accessBundleId}/services`;
+
+    // Keys are unique across the org's Agent Vault, and every test here shares it. A variable still referenced can't
+    // be deleted through the API, so the rows go straight from the database.
+    beforeEach(async () => {
+      const project = await testDb("projects")
+        .where({ orgId: seedData1.organization.id, type: ProjectType.AgentVault })
+        .first();
+      if (!project) return;
+      const variableIds = testDb("agent_vault_variables").where({ projectId: project.id }).select("id");
+      await testDb("agent_vault_service_variable_references").whereIn("variableId", variableIds).del();
+      await testDb("agent_vault_variables").where({ projectId: project.id }).del();
+    });
 
     type TReference = {
       variableId: string;
@@ -791,34 +802,14 @@ describe("Agent Vault V1 Router", async () => {
       substitutionId?: string;
     };
 
-    const createVariable = async (accessBundleId: string, body: { key: string; value: string }) => {
-      const res = await inject("POST", variablesUrl(accessBundleId), body);
+    const createVariable = async (body: { key: string; value: string }) => {
+      const res = await inject("POST", variablesUrl, body);
       expect(res.statusCode).toBe(200);
       return (JSON.parse(res.payload) as { variable: { id: string; key: string } }).variable;
     };
 
     const referencesByField = (references: TReference[]) =>
       references.map((reference) => `${reference.field}:${reference.key}`).sort();
-
-    // Enrollment only checks that it is a live CA. ECDSA P-256, because the FIPS image refuses Ed25519.
-    const createProxyCaPem = async () => {
-      const algorithm = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
-      const keys = await globalThis.crypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
-      const certificate = await x509.X509CertificateGenerator.createSelfSigned({
-        name: "CN=Agent Vault Variables Test CA",
-        serialNumber: "01",
-        notBefore: new Date(Date.now() - 60_000),
-        notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        signingAlgorithm: algorithm,
-        keys,
-        extensions: [
-          new x509.BasicConstraintsExtension(true, undefined, true),
-          // eslint-disable-next-line no-bitwise
-          new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true)
-        ]
-      });
-      return certificate.toString("pem");
-    };
 
     type TResolved = {
       services: {
@@ -840,14 +831,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: proxyName });
       expect(created.statusCode).toBe(200);
-      const { token } = JSON.parse(created.payload) as { token: string };
-      const login = await testServer.inject({
-        method: "POST",
-        url: "/api/v1/agent-vault/proxy/login",
-        body: { method: ResourceAuthMethodType.Token, token, rootCaCertificate: await createProxyCaPem() }
-      });
-      expect(login.statusCode).toBe(200);
-      const { accessToken } = JSON.parse(login.payload) as { accessToken: string };
+      const { proxyToken: accessToken } = JSON.parse(created.payload) as { proxyToken: string };
 
       return async () => {
         const resolved = await testServer.inject({
@@ -898,13 +882,16 @@ describe("Agent Vault V1 Router", async () => {
     const STORED_REFERENCE = /\{\{([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\}\}/g;
 
     // What the delete refusal rests on: every field's rows name exactly the ids in its sealed text that resolve
-    // expands, which are those of the bundle's own variables. Read off the sealed text, not through the service.
+    // expands, which are those of the project's variables. Read off the sealed text, not through the service.
     const expectReferencesMatchSealedText = async (accessBundleId: string) => {
       const { decryptor } = await cipherFor(accessBundleId);
       const open = (sealed: Buffer) =>
         JSON.parse(decryptor({ cipherTextBlob: sealed }).toString("utf-8")) as Record<string, string>;
+      const { projectId } = (await testDb("agent_vault_access_bundles").where({ id: accessBundleId }).first()) as {
+        projectId: string;
+      };
       const variableIds = new Set(
-        ((await testDb("agent_vault_variables").where({ accessBundleId }).select("id")) as { id: string }[]).map(
+        ((await testDb("agent_vault_variables").where({ projectId }).select("id")) as { id: string }[]).map(
           (row) => row.id
         )
       );
@@ -974,8 +961,8 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a service uses a variable by key, and resolve puts the value in its place", async () => {
       const bundle = await createAccessBundle("variables-resolve");
-      const token = await createVariable(bundle.id, { key: "GITHUB_TOKEN", value: "ghp_from_variable" });
-      const org = await createVariable(bundle.id, { key: "ORG_ID", value: "org-42" });
+      const token = await createVariable({ key: "GITHUB_TOKEN", value: "ghp_from_variable" });
+      const org = await createVariable({ key: "ORG_ID", value: "org-42" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "github",
@@ -1029,7 +1016,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a field at the reference limit reaches the host whole with its variables at their longest, from either save", async () => {
       const bundle = await createAccessBundle("variables-longest");
-      const long = await createVariable(bundle.id, { key: "LONG", value: "x" });
+      const long = await createVariable({ key: "LONG", value: "x" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "longest",
@@ -1039,7 +1026,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(created.statusCode).toBe(200);
 
       // Nothing measures a field filled in, so a value change can't be refused on a service's behalf.
-      const grown = await inject("PATCH", `${variablesUrl(bundle.id)}/${long.id}`, { value: "y".repeat(8192) });
+      const grown = await inject("PATCH", `${variablesUrl}/${long.id}`, { value: "y".repeat(8192) });
       expect(grown.statusCode).toBe(200);
 
       const resolve = await resolverFor(bundle, "variables-longest");
@@ -1048,7 +1035,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a username a variable fills in is trimmed like a typed one, and the password keeps its spaces", async () => {
       const bundle = await createAccessBundle("variables-username-trim");
-      await createVariable(bundle.id, { key: "PADDED", value: " padded " });
+      await createVariable({ key: "PADDED", value: " padded " });
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "padded",
         hostPattern: "padded.example.com",
@@ -1066,7 +1053,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a stored id with no variable behind it is sent as stored, and its service keeps its restrictions", async () => {
       const bundle = await createAccessBundle("variables-missing");
-      const gone = await createVariable(bundle.id, { key: "GONE", value: "x" });
+      const gone = await createVariable({ key: "GONE", value: "x" });
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "missing",
         hostPattern: "api.example.com",
@@ -1089,7 +1076,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("renaming a variable keeps its services working, and a new value reaches the next resolve", async () => {
       const bundle = await createAccessBundle("variables-rename");
-      const variable = await createVariable(bundle.id, { key: "OLD_NAME", value: "first" });
+      const variable = await createVariable({ key: "OLD_NAME", value: "first" });
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "echo",
         hostPattern: "echo.example.com",
@@ -1099,9 +1086,12 @@ describe("Agent Vault V1 Router", async () => {
       const serviceId = (JSON.parse(created.payload) as { service: { id: string } }).service.id;
       const resolve = await resolverFor(bundle, "variables-rename");
 
-      const renamed = await inject("PATCH", `${variablesUrl(bundle.id)}/${variable.id}`, { key: "NEW_NAME" });
+      const renamed = await inject("PATCH", `${variablesUrl}/${variable.id}`, { key: "NEW_NAME" });
       expect(renamed.statusCode).toBe(200);
-      expect(JSON.parse(renamed.payload).variable).toMatchObject({ key: "NEW_NAME", serviceIds: [serviceId] });
+      expect(JSON.parse(renamed.payload).variable).toMatchObject({
+        key: "NEW_NAME",
+        usedByServices: [{ id: serviceId, name: "echo", accessBundleId: bundle.id, accessBundleName: bundle.name }]
+      });
 
       const detail = JSON.parse((await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`)).payload) as {
         accessBundle: { services: { variableReferences: TReference[] }[] };
@@ -1112,9 +1102,7 @@ describe("Agent Vault V1 Router", async () => {
       await expectReferencesMatchSealedText(bundle.id);
       expect((await resolve()).services[0].credential).toMatchObject({ value: "first" });
 
-      expect((await inject("PATCH", `${variablesUrl(bundle.id)}/${variable.id}`, { value: "second" })).statusCode).toBe(
-        200
-      );
+      expect((await inject("PATCH", `${variablesUrl}/${variable.id}`, { value: "second" })).statusCode).toBe(200);
       expect((await resolve()).services[0].credential).toMatchObject({ value: "second" });
 
       const stale = await inject("POST", servicesUrl(bundle.id), {
@@ -1128,7 +1116,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a variable a service uses can't be deleted, and the refusal names the service", async () => {
       const bundle = await createAccessBundle("variables-in-use");
-      const variable = await createVariable(bundle.id, { key: "API_KEY", value: "key_value" });
+      const variable = await createVariable({ key: "API_KEY", value: "key_value" });
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "datadog",
         hostPattern: "api.datadoghq.com",
@@ -1137,9 +1125,9 @@ describe("Agent Vault V1 Router", async () => {
       expect(created.statusCode).toBe(200);
       const { service } = JSON.parse(created.payload) as { service: { id: string } };
 
-      const refused = await inject("DELETE", `${variablesUrl(bundle.id)}/${variable.id}`);
+      const refused = await inject("DELETE", `${variablesUrl}/${variable.id}`);
       expect(refused.statusCode).toBe(409);
-      expect(JSON.parse(refused.payload).message).toContain("'datadog'");
+      expect(JSON.parse(refused.payload).message).toContain(`'datadog' (access bundle '${bundle.name}')`);
 
       const detached = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
         credential: { type: "bearer", value: "literal_value" }
@@ -1148,7 +1136,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(detached.payload).service.variableReferences).toEqual([]);
       await expectReferencesMatchSealedText(bundle.id);
 
-      const removed = await inject("DELETE", `${variablesUrl(bundle.id)}/${variable.id}`);
+      const removed = await inject("DELETE", `${variablesUrl}/${variable.id}`);
       expect(removed.statusCode).toBe(200);
       expect(JSON.parse(removed.payload).variable).toMatchObject({ id: variable.id, key: "API_KEY" });
     });
@@ -1201,7 +1189,7 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a value takes three variable references, a repeat counted each time, and a fourth fails validation", async () => {
       const bundle = await createAccessBundle("variables-reference-limit");
-      await createVariable(bundle.id, { key: "TOKEN", value: "t" });
+      await createVariable({ key: "TOKEN", value: "t" });
 
       const atLimit = await inject("POST", servicesUrl(bundle.id), {
         name: "at-limit",
@@ -1225,9 +1213,8 @@ describe("Agent Vault V1 Router", async () => {
     });
 
     test("no response but the value route carries a value, and that route returns it uncached", async () => {
-      const bundle = await createAccessBundle("variables-visibility");
       // A client from before every value was secret may still send isSecret: false. It is stripped, not honoured.
-      const createdRes = await inject("POST", variablesUrl(bundle.id), {
+      const createdRes = await inject("POST", variablesUrl, {
         key: "HIDDEN",
         value: "hidden_value",
         isSecret: false
@@ -1236,19 +1223,20 @@ describe("Agent Vault V1 Router", async () => {
       expect(createdRes.payload).not.toContain("hidden_value");
       const hidden = (JSON.parse(createdRes.payload) as { variable: { id: string } }).variable;
 
-      const listed = await inject("GET", variablesUrl(bundle.id));
+      const listed = await inject("GET", variablesUrl);
       expect(listed.statusCode).toBe(200);
       expect(listed.payload).not.toContain("hidden_value");
       const [listedVariable] = JSON.parse(listed.payload).variables;
-      expect(listedVariable).toMatchObject({ key: "HIDDEN", serviceIds: [] });
+      expect(listedVariable).toMatchObject({ key: "HIDDEN", usedByServices: [] });
+      expect(listedVariable).not.toHaveProperty("accessBundleId");
       expect(listedVariable).not.toHaveProperty("value");
       expect(listedVariable).not.toHaveProperty("isSecret");
 
-      const updated = await inject("PATCH", `${variablesUrl(bundle.id)}/${hidden.id}`, { value: "new_hidden_value" });
+      const updated = await inject("PATCH", `${variablesUrl}/${hidden.id}`, { value: "new_hidden_value" });
       expect(updated.statusCode).toBe(200);
       expect(updated.payload).not.toContain("new_hidden_value");
 
-      const revealed = await inject("GET", `${variablesUrl(bundle.id)}/${hidden.id}/value`);
+      const revealed = await inject("GET", `${variablesUrl}/${hidden.id}/value`);
       expect(revealed.statusCode).toBe(200);
       expect(JSON.parse(revealed.payload)).toEqual({ value: "new_hidden_value" });
       expect(revealed.headers["cache-control"]).toContain("no-store");
@@ -1256,41 +1244,232 @@ describe("Agent Vault V1 Router", async () => {
       const row = await testDb("agent_vault_variables").where({ id: hidden.id }).first();
       expect(row.encryptedValue.toString("utf-8")).not.toContain("new_hidden_value");
 
-      const removed = await inject("DELETE", `${variablesUrl(bundle.id)}/${hidden.id}`);
+      const removed = await inject("DELETE", `${variablesUrl}/${hidden.id}`);
       expect(removed.statusCode).toBe(200);
       expect(removed.payload).not.toContain("new_hidden_value");
     });
 
     test("a value can't be only spaces, and one with spaces around it is kept as typed", async () => {
-      const bundle = await createAccessBundle("variables-blank-value");
-      const blank = await inject("POST", variablesUrl(bundle.id), { key: "BLANK", value: "   " });
+      const blank = await inject("POST", variablesUrl, { key: "BLANK", value: "   " });
       expect(blank.statusCode).toBe(422);
       expect(blank.payload).toContain("A value can't be only spaces.");
 
-      const padded = await createVariable(bundle.id, { key: "PADDED", value: " kept " });
-      const revealed = await inject("GET", `${variablesUrl(bundle.id)}/${padded.id}/value`);
+      const padded = await createVariable({ key: "PADDED", value: " kept " });
+      const revealed = await inject("GET", `${variablesUrl}/${padded.id}/value`);
       expect(JSON.parse(revealed.payload)).toEqual({ value: " kept " });
-      expect((await inject("PATCH", `${variablesUrl(bundle.id)}/${padded.id}`, { value: " " })).statusCode).toBe(422);
+      expect((await inject("PATCH", `${variablesUrl}/${padded.id}`, { value: " " })).statusCode).toBe(422);
     });
 
-    test("a key is unique in its bundle and has to be upper snake case", async () => {
-      const bundle = await createAccessBundle("variables-keys");
-      await createVariable(bundle.id, { key: "TOKEN", value: "one" });
+    test("a key is unique across Agent Vault and has to be upper snake case", async () => {
+      const first = await createVariable({ key: "TOKEN", value: "one" });
 
-      const duplicate = await inject("POST", variablesUrl(bundle.id), { key: "TOKEN", value: "two" });
+      const duplicate = await inject("POST", variablesUrl, { key: "TOKEN", value: "two" });
       expect(duplicate.statusCode).toBe(400);
-      expect(JSON.parse(duplicate.payload).message).toContain("'TOKEN'");
-      expect((await inject("POST", variablesUrl(bundle.id), { key: "lower_case", value: "x" })).statusCode).toBe(422);
+      expect(JSON.parse(duplicate.payload).message).toBe("A variable named 'TOKEN' already exists.");
+      expect((await inject("POST", variablesUrl, { key: "lower_case", value: "x" })).statusCode).toBe(422);
 
-      const other = await createAccessBundle("variables-keys-other");
-      expect((await inject("POST", variablesUrl(other.id), { key: "TOKEN", value: "three" })).statusCode).toBe(200);
+      const second = await createVariable({ key: "OTHER", value: "three" });
+      const renamedOnto = await inject("PATCH", `${variablesUrl}/${second.id}`, { key: "TOKEN" });
+      expect(renamedOnto.statusCode).toBe(400);
+      expect(JSON.parse(renamedOnto.payload).message).toBe("A variable named 'TOKEN' already exists.");
+
+      // Renaming a variable to its own key is no clash.
+      expect((await inject("PATCH", `${variablesUrl}/${first.id}`, { key: "TOKEN" })).statusCode).toBe(200);
+    });
+
+    test("the list pages, searches, and sorts by how many services use each variable", async () => {
+      const bundle = await createAccessBundle("variables-list");
+      await createVariable({ key: "ALPHA_TOKEN", value: "a" });
+      await createVariable({ key: "BETA_TOKEN", value: "b" });
+      await createVariable({ key: "GAMMA_KEY", value: "g" });
+      const createService = async (body: Record<string, unknown>) =>
+        expect((await inject("POST", servicesUrl(bundle.id), body)).statusCode).toBe(200);
+      // Two fields of one service count as one service.
+      await createService({
+        name: "both-fields",
+        hostPattern: "both-fields.example.com",
+        credential: { type: "bearer", value: "{{GAMMA_KEY}}" },
+        customHeaders: [{ name: "X-Gamma", value: "{{GAMMA_KEY}}" }]
+      });
+      await createService({
+        name: "gamma-and-beta",
+        hostPattern: "gamma-and-beta.example.com",
+        credential: { type: "basic", username: "{{BETA_TOKEN}}", password: "{{GAMMA_KEY}}" }
+      });
+
+      const list = async (query: string) => {
+        const res = await inject("GET", `${variablesUrl}?${query}`);
+        expect(res.statusCode).toBe(200);
+        const body = JSON.parse(res.payload) as { variables: { key: string }[]; totalCount: number };
+        return { keys: body.variables.map((variable) => variable.key), totalCount: body.totalCount };
+      };
+
+      expect(await list("limit=2")).toEqual({ keys: ["ALPHA_TOKEN", "BETA_TOKEN"], totalCount: 3 });
+      expect(await list("limit=2&offset=2")).toEqual({ keys: ["GAMMA_KEY"], totalCount: 3 });
+      expect(await list("search=token")).toEqual({ keys: ["ALPHA_TOKEN", "BETA_TOKEN"], totalCount: 2 });
+      expect(await list("search=%25")).toEqual({ keys: [], totalCount: 0 });
+      expect(await list("orderBy=serviceCount&orderDirection=desc")).toEqual({
+        keys: ["GAMMA_KEY", "BETA_TOKEN", "ALPHA_TOKEN"],
+        totalCount: 3
+      });
+      expect((await inject("GET", `${variablesUrl}?limit=101`)).statusCode).toBe(422);
+
+      // Exact keys, so a lookup can tell a key that exists from one that only contains the text.
+      expect(await list("keys=GAMMA_KEY,MISSING_KEY,ALPHA_TOKEN")).toEqual({
+        keys: ["ALPHA_TOKEN", "GAMMA_KEY"],
+        totalCount: 2
+      });
+      expect(await list("keys=TOKEN")).toEqual({ keys: [], totalCount: 0 });
+      expect((await inject("GET", `${variablesUrl}?keys=lower_case`)).statusCode).toBe(422);
+      // A trailing comma's empty entry is dropped rather than refused.
+      expect(await list("keys=GAMMA_KEY,")).toEqual({ keys: ["GAMMA_KEY"], totalCount: 1 });
+    });
+
+    test("a lookup by keys returns every key that exists, past the default page size", async () => {
+      const keys = Array.from({ length: 25 }, (_, index) => `LOOKUP_KEY_${String(index).padStart(2, "0")}`);
+      await Promise.all(keys.map((key) => createVariable({ key, value: "v" })));
+
+      const res = await inject("GET", `${variablesUrl}?keys=${keys.join(",")}`);
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.payload) as { variables: { key: string }[]; totalCount: number };
+      expect(body.totalCount).toBe(25);
+      expect(body.variables.map((variable) => variable.key)).toEqual(keys);
+
+      // An explicit limit still caps it.
+      const capped = JSON.parse((await inject("GET", `${variablesUrl}?keys=${keys.join(",")}&limit=5`)).payload) as {
+        variables: unknown[];
+        totalCount: number;
+      };
+      expect(capped).toMatchObject({ totalCount: 25 });
+      expect(capped.variables).toHaveLength(5);
+    });
+
+    test("services in different bundles share a variable, and each resolves it", async () => {
+      const first = await createAccessBundle("variables-shared-first");
+      const second = await createAccessBundle("variables-shared-second");
+      const variable = await createVariable({ key: "SHARED_TOKEN", value: "shared_value" });
+
+      const createdIn = async (bundle: { id: string }, name: string) => {
+        const res = await inject("POST", servicesUrl(bundle.id), {
+          name,
+          hostPattern: `${name}.example.com`,
+          credential: { type: "bearer", value: "{{SHARED_TOKEN}}" }
+        });
+        expect(res.statusCode).toBe(200);
+        return (JSON.parse(res.payload) as { service: { id: string } }).service;
+      };
+      const firstService = await createdIn(first, "shared-one");
+      const secondService = await createdIn(second, "shared-two");
+      await expectReferencesMatchSealedText(first.id);
+      await expectReferencesMatchSealedText(second.id);
+
+      const listed = JSON.parse((await inject("GET", variablesUrl)).payload) as {
+        variables: { id: string; usedByServices: Record<string, string>[] }[];
+      };
+      expect(listed.variables.find((entry) => entry.id === variable.id)?.usedByServices).toEqual([
+        {
+          id: firstService.id,
+          name: "shared-one",
+          hostPattern: "shared-one.example.com",
+          accessBundleId: first.id,
+          accessBundleName: first.name
+        },
+        {
+          id: secondService.id,
+          name: "shared-two",
+          hostPattern: "shared-two.example.com",
+          accessBundleId: second.id,
+          accessBundleName: second.name
+        }
+      ]);
+
+      const refused = await inject("DELETE", `${variablesUrl}/${variable.id}`);
+      expect(refused.statusCode).toBe(409);
+      expect(JSON.parse(refused.payload).message).toBe(
+        `The variable 'SHARED_TOKEN' is used by the services 'shared-one' (access bundle '${first.name}'), 'shared-two' (access bundle '${second.name}'). Remove it from those services before deleting it.`
+      );
+
+      const resolveFirst = await resolverFor(first, "variables-shared-first");
+      expect((await resolveFirst()).services[0].credential).toMatchObject({ value: "shared_value" });
+      const resolveSecond = await resolverFor(second, "variables-shared-second");
+      expect((await resolveSecond()).services[0].credential).toMatchObject({ value: "shared_value" });
+    });
+
+    test("a delete waits for a service save that is adding a reference, and then refuses", async () => {
+      const bundle = await createAccessBundle("variables-delete-race");
+      const variable = await createVariable({ key: "RACED", value: "raced_value" });
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        name: "raced",
+        hostPattern: "raced.example.com",
+        credential: { type: "passthrough" }
+      });
+      expect(created.statusCode).toBe(200);
+      const { service } = JSON.parse(created.payload) as { service: { id: string } };
+
+      // What a save does once it holds the bundle: take the variable FOR SHARE, then add its reference row.
+      const trx = await testDb.transaction();
+      try {
+        const { rows } = await trx.raw("select pg_backend_pid() as pid");
+        await trx("agent_vault_variables").where({ id: variable.id }).forShare().first();
+
+        const pending = inject("DELETE", `${variablesUrl}/${variable.id}`);
+        await waitUntilBlockedBy(rows[0].pid);
+
+        await trx("agent_vault_service_variable_references").insert({
+          serviceId: service.id,
+          variableId: variable.id,
+          field: "credential-value"
+        });
+        await trx.commit();
+
+        const refused = await pending;
+        expect(refused.statusCode).toBe(409);
+        expect(JSON.parse(refused.payload).message).toContain("'raced'");
+      } catch (err) {
+        if (!trx.isCompleted()) await trx.rollback();
+        throw err;
+      }
+      expect(await testDb("agent_vault_variables").where({ id: variable.id })).toHaveLength(1);
+    });
+
+    test("a service save waiting on a variable that is then deleted fails without leaving a reference", async () => {
+      const bundle = await createAccessBundle("variables-save-race");
+      const variable = await createVariable({ key: "DOOMED", value: "doomed_value" });
+
+      // What a delete does: lock the variable, find no references, delete it. The save looks the key up first and
+      // then queues behind the lock. Its share lock and the deferred foreign key each give this answer on their own.
+      const trx = await testDb.transaction();
+      try {
+        const { rows } = await trx.raw("select pg_backend_pid() as pid");
+        await trx("agent_vault_variables").where({ id: variable.id }).forUpdate().first();
+
+        const pending = inject("POST", servicesUrl(bundle.id), {
+          name: "doomed",
+          hostPattern: "doomed.example.com",
+          credential: { type: "bearer", value: "{{DOOMED}}" }
+        });
+        await waitUntilBlockedBy(rows[0].pid);
+
+        await trx("agent_vault_variables").where({ id: variable.id }).del();
+        await trx.commit();
+
+        const refused = await pending;
+        expect(refused.statusCode).toBe(400);
+        expect(JSON.parse(refused.payload).message).toBe(
+          "A variable this service uses was deleted while it was being saved. Check its variable references and save again."
+        );
+      } catch (err) {
+        if (!trx.isCompleted()) await trx.rollback();
+        throw err;
+      }
+      expect(await testDb("agent_vault_services").where({ accessBundleId: bundle.id })).toHaveLength(0);
     });
 
     test("an update rebuilds the references of only the values it wrote", async () => {
       const bundle = await createAccessBundle("variables-partial");
-      await createVariable(bundle.id, { key: "USER", value: "the-user" });
-      await createVariable(bundle.id, { key: "PASS", value: "the-pass" });
-      await createVariable(bundle.id, { key: "HEADER", value: "the-header" });
+      await createVariable({ key: "USER", value: "the-user" });
+      await createVariable({ key: "PASS", value: "the-pass" });
+      await createVariable({ key: "HEADER", value: "the-header" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "basic",
@@ -1334,8 +1513,8 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a basic credential's kept half is stored text, so one saved before variables existed stays as it was", async () => {
       const bundle = await createAccessBundle("variables-legacy-half");
-      await createVariable(bundle.id, { key: "FOO", value: "foo-value" });
-      await createVariable(bundle.id, { key: "USER", value: "the-user" });
+      await createVariable({ key: "FOO", value: "foo-value" });
+      await createVariable({ key: "USER", value: "the-user" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "legacy",
@@ -1376,9 +1555,9 @@ describe("Agent Vault V1 Router", async () => {
 
     test("a partial basic update refuses to write over a credential another save changed while it waited", async () => {
       const bundle = await createAccessBundle("variables-stale-half");
-      await createVariable(bundle.id, { key: "FIRST_USER", value: "first-user" });
-      await createVariable(bundle.id, { key: "SECOND_USER", value: "second-user" });
-      await createVariable(bundle.id, { key: "PASS", value: "the-pass" });
+      await createVariable({ key: "FIRST_USER", value: "first-user" });
+      await createVariable({ key: "SECOND_USER", value: "second-user" });
+      await createVariable({ key: "PASS", value: "the-pass" });
 
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "stale",
@@ -1478,9 +1657,9 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("deleting a bundle takes its variables and every reference to them", async () => {
+    test("deleting a bundle keeps the variables its services used, and drops their references", async () => {
       const bundle = await createAccessBundle("variables-bundle-delete");
-      const variable = await createVariable(bundle.id, { key: "TOKEN", value: "t" });
+      const variable = await createVariable({ key: "TOKEN", value: "t" });
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "one",
         hostPattern: "one.example.com",
@@ -1491,15 +1670,22 @@ describe("Agent Vault V1 Router", async () => {
 
       const removed = await inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
       expect(removed.statusCode).toBe(200);
-      expect(await testDb("agent_vault_variables").where({ id: variable.id })).toHaveLength(0);
       expect(await testDb("agent_vault_service_variable_references").where({ variableId: variable.id })).toHaveLength(
         0
       );
+
+      const listed = JSON.parse((await inject("GET", variablesUrl)).payload) as {
+        variables: { id: string; usedByServices: unknown[] }[];
+      };
+      expect(listed.variables).toEqual([
+        expect.objectContaining({ id: variable.id, key: "TOKEN", usedByServices: [] })
+      ]);
+      expect((await inject("DELETE", `${variablesUrl}/${variable.id}`)).statusCode).toBe(200);
     });
 
     test("variables are admin only, reads included", async () => {
       const bundle = await createAccessBundle("variables-admin-only");
-      const variable = await createVariable(bundle.id, { key: "TOKEN", value: "admin_only_value" });
+      const variable = await createVariable({ key: "TOKEN", value: "admin_only_value" });
       const created = await inject("POST", servicesUrl(bundle.id), {
         name: "uses-token",
         hostPattern: "api.example.com",
@@ -1541,16 +1727,12 @@ describe("Agent Vault V1 Router", async () => {
           { variableId: variable.id, key: "TOKEN", field: "credential-value" }
         ]);
 
-        const listed = await member.asIdentity("GET", variablesUrl(bundle.id));
+        const listed = await member.asIdentity("GET", variablesUrl);
         expect(listed.statusCode).toBe(403);
-        expect(JSON.parse(listed.payload).message).toBe("Only Agent Vault admins can view or change variables");
         expect(listed.payload).not.toContain("admin_only_value");
-        expect((await member.asIdentity("GET", `${variablesUrl(bundle.id)}/${variable.id}/value`)).statusCode).toBe(
-          403
-        );
-        expect((await member.asIdentity("POST", variablesUrl(bundle.id), { key: "MINE", value: "x" })).statusCode).toBe(
-          403
-        );
+        expect(listed.payload).not.toContain("TOKEN");
+        expect((await member.asIdentity("GET", `${variablesUrl}/${variable.id}/value`)).statusCode).toBe(403);
+        expect((await member.asIdentity("POST", variablesUrl, { key: "MINE", value: "x" })).statusCode).toBe(403);
       } finally {
         await deleteUaIdentity(member.id);
       }
@@ -2725,6 +2907,7 @@ describe("Agent Vault V1 Router", async () => {
       findOne: () =>
         Promise.resolve({
           enabled,
+          storageType: "external",
           appConnectionId: crypto.randomUUID(),
           bucket: "session-logs",
           region: "us-east-1",
@@ -3065,42 +3248,30 @@ describe("Agent Vault V1 Router", async () => {
       expect(proxy.pollInterval).toBe(60);
     });
 
-    test("create and reissue both hand back the enrollment token at the top level", async () => {
+    test("create and rotate both hand back the proxy token at the top level", async () => {
       const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "flat-token-shape" });
       expect(created.statusCode).toBe(200);
-      const body = JSON.parse(created.payload) as { proxy: { id: string }; token: string; expiresAt: string };
-      expect(body.token).toBeTruthy();
-      expect(body.expiresAt).toBeTruthy();
+      const body = JSON.parse(created.payload) as { proxy: { id: string }; proxyToken: string };
+      expect(body.proxyToken).toBeTruthy();
 
-      const reissued = await inject("POST", `/api/v1/agent-vault/proxies/${body.proxy.id}/token-auth/enrollment-token`);
-      expect(reissued.statusCode).toBe(200);
-      const again = JSON.parse(reissued.payload) as { token: string; expiresAt: string };
-      expect(again.token).toBeTruthy();
-      expect(again.token).not.toBe(body.token);
-      expect(again.expiresAt).toBeTruthy();
+      const rotated = await inject("POST", `/api/v1/agent-vault/proxies/${body.proxy.id}/token-auth/proxy-token`);
+      expect(rotated.statusCode).toBe(200);
+      const again = JSON.parse(rotated.payload) as { proxyToken: string };
+      expect(again.proxyToken).toBeTruthy();
+      expect(again.proxyToken).not.toBe(body.proxyToken);
     });
 
-    test("revoking access also burns an enrollment token minted before the revoke", async () => {
-      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "revoke-burns-token" });
+    test("revoking access bumps the token version and clears the heartbeat", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "revoke-bumps-version" });
       expect(created.statusCode).toBe(200);
       const { proxy } = JSON.parse(created.payload) as { proxy: { id: string } };
-
-      const pendingTokens = async () => {
-        const row = (await testDb("resource_token_auths")
-          .join("resource_auth_methods", "resource_auth_methods.id", "resource_token_auths.authMethodId")
-          .where("resource_auth_methods.agentVaultProxyId", proxy.id)
-          .count("resource_token_auths.id as count")
-          .first()) as { count: string };
-        return Number(row.count);
-      };
-      expect(await pendingTokens()).toBe(1);
+      expect((await testDb("agent_vault_proxies").where({ id: proxy.id }).first()).tokenVersion).toBe(1);
 
       const revoked = await inject("POST", `/api/v1/agent-vault/proxies/${proxy.id}/revoke`);
       expect(revoked.statusCode).toBe(200);
-      expect(await pendingTokens()).toBe(0);
 
       const row = await testDb("agent_vault_proxies").where({ id: proxy.id }).first();
-      expect(row.tokenVersion).toBe(1);
+      expect(row.tokenVersion).toBe(2);
       expect(row.heartbeat).toBeNull();
       expect(row.heartbeatTTL).toBeNull();
     });
@@ -3138,6 +3309,236 @@ describe("Agent Vault V1 Router", async () => {
         .where({ id: proxy.id })
         .update({ heartbeat: new Date(Date.now() - 40_000), heartbeatTTL: 10 });
       expect(await isHealthy()).toBe(false);
+    });
+  });
+
+  describe("proxy tokens and Infisical-held CAs", async () => {
+    type TRootCa = { certificate: string; privateKey: string };
+
+    const fingerprintOf = (pem: string) => {
+      const digest = crypto
+        .createHash("sha256")
+        .update(Buffer.from(new x509.X509Certificate(pem).rawData))
+        .digest("hex")
+        .toUpperCase();
+      return `SHA256:${digest.match(/.{2}/g)!.join(":")}`;
+    };
+
+    const caPem = async ({
+      isCa = true,
+      rsa = false,
+      notBefore = new Date(Date.now() - 60_000)
+    }: { isCa?: boolean; rsa?: boolean; notBefore?: Date } = {}) => {
+      const algorithm = rsa
+        ? { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }
+        : { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" };
+      const keys = await globalThis.crypto.subtle.generateKey(algorithm, true, ["sign", "verify"]);
+      const certificate = await x509.X509CertificateGenerator.createSelfSigned({
+        name: "CN=Agent Vault Test CA",
+        serialNumber: "01",
+        notBefore,
+        notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        signingAlgorithm: algorithm,
+        keys,
+        extensions: [
+          new x509.BasicConstraintsExtension(isCa, undefined, true),
+          // eslint-disable-next-line no-bitwise
+          new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true)
+        ]
+      });
+      return certificate.toString("pem");
+    };
+
+    const asProxy = (accessToken: string, url: string, body?: Record<string, unknown>) =>
+      testServer.inject({
+        method: "POST",
+        url: `/api/v1/agent-vault/proxy/${url}`,
+        headers: { authorization: `Bearer ${accessToken}` },
+        body
+      });
+
+    const createProxy = async (name: string) => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name });
+      expect(created.statusCode).toBe(200);
+      return JSON.parse(created.payload) as {
+        proxy: { id: string; rootCaFingerprint: string | null };
+        proxyToken: string;
+      };
+    };
+
+    const rotate = async (proxyId: string) => {
+      const rotated = await inject("POST", `/api/v1/agent-vault/proxies/${proxyId}/token-auth/proxy-token`);
+      expect(rotated.statusCode).toBe(200);
+      return JSON.parse(rotated.payload) as { proxy: { rootCaFingerprint: string | null }; proxyToken: string };
+    };
+
+    test("create returns a proxy token and the fingerprint of the CA bootstrap returns", async () => {
+      const created = await createProxy("token-create");
+      expect(created.proxyToken).toBeTruthy();
+      // Shown before anything starts, so it can be pinned without running a proxy first.
+      expect(created.proxy.rootCaFingerprint).toMatch(/^SHA256:/);
+
+      const boot = await asProxy(created.proxyToken, "bootstrap", {});
+      expect(boot.statusCode).toBe(200);
+      const body = JSON.parse(boot.payload) as { proxyId: string; rootCa: TRootCa; config: { pollInterval: number } };
+      expect(body.proxyId).toBe(created.proxy.id);
+      expect(body.config.pollInterval).toBe(60);
+      expect(body.rootCa.privateKey).toContain("BEGIN PRIVATE KEY");
+      expect(fingerprintOf(body.rootCa.certificate)).toBe(created.proxy.rootCaFingerprint);
+
+      const again = JSON.parse((await asProxy(created.proxyToken, "bootstrap", {})).payload) as { rootCa: TRootCa };
+      expect(again.rootCa.certificate).toBe(body.rootCa.certificate);
+
+      expect((await asProxy(created.proxyToken, "heartbeat")).statusCode).toBe(200);
+    });
+
+    test("the generated CA is a P-256 CA valid for about ten years", async () => {
+      const created = await createProxy("token-ca-shape");
+      const { rootCa } = JSON.parse((await asProxy(created.proxyToken, "bootstrap", {})).payload) as {
+        rootCa: TRootCa;
+      };
+      const cert = new x509.X509Certificate(rootCa.certificate);
+      expect(cert.getExtension(x509.BasicConstraintsExtension)?.ca).toBe(true);
+      expect((cert.publicKey.algorithm as { namedCurve?: string }).namedCurve).toBe("P-256");
+      const years = (cert.notAfter.getTime() - Date.now()) / (365 * 24 * 60 * 60 * 1000);
+      expect(years).toBeGreaterThan(9.9);
+      expect(years).toBeLessThan(10.1);
+
+      // The CLI sends a CA it serves itself through the same parser, so Infisical's own CA must pass it too.
+      expect(
+        (await asProxy(created.proxyToken, "bootstrap", { servedCaCertificate: rootCa.certificate })).statusCode
+      ).toBe(200);
+    });
+
+    test("rotating stops the old token, replaces the CA, and shows the new CA's fingerprint", async () => {
+      const created = await createProxy("token-rotate");
+      const first = JSON.parse((await asProxy(created.proxyToken, "bootstrap", {})).payload) as { rootCa: TRootCa };
+      const next = await rotate(created.proxy.id);
+      expect(next.proxy.rootCaFingerprint).toMatch(/^SHA256:/);
+      expect(next.proxy.rootCaFingerprint).not.toBe(created.proxy.rootCaFingerprint);
+
+      expect((await asProxy(created.proxyToken, "heartbeat")).statusCode).toBe(401);
+      const boot = JSON.parse((await asProxy(next.proxyToken, "bootstrap", {})).payload) as { rootCa: TRootCa };
+      expect(boot.rootCa.certificate).not.toBe(first.rootCa.certificate);
+      expect(fingerprintOf(boot.rootCa.certificate)).toBe(next.proxy.rootCaFingerprint);
+    });
+
+    test("two rotations at once each return a token and CA that belong together, and the last one wins", async () => {
+      const created = await createProxy("token-rotate-race");
+      const [first, second] = await Promise.all([rotate(created.proxy.id), rotate(created.proxy.id)]);
+
+      const results = await Promise.all(
+        [first, second].map(async (r) => ({
+          r,
+          boot: await asProxy(r.proxyToken, "bootstrap", {})
+        }))
+      );
+      const live = results.filter(({ boot }) => boot.statusCode === 200);
+      expect(live).toHaveLength(1);
+      const { rootCa } = JSON.parse(live[0].boot.payload) as { rootCa: TRootCa };
+
+      const row = await testDb("agent_vault_proxies").where({ id: created.proxy.id }).first();
+      expect(row.tokenVersion).toBe(3);
+      expect(row.rootCaCertificate).toBe(rootCa.certificate);
+      expect(row.rootCaFingerprint).toBe(fingerprintOf(rootCa.certificate));
+    });
+
+    test("revoking access stops the token, and rotating brings the proxy back", async () => {
+      const created = await createProxy("token-revoke");
+      expect((await inject("POST", `/api/v1/agent-vault/proxies/${created.proxy.id}/revoke`)).statusCode).toBe(200);
+      expect((await asProxy(created.proxyToken, "bootstrap", {})).statusCode).toBe(401);
+
+      const next = await rotate(created.proxy.id);
+      expect((await asProxy(next.proxyToken, "bootstrap", {})).statusCode).toBe(200);
+    });
+
+    test("a member can't rotate a proxy's token", async () => {
+      const created = await createProxy("token-member-rotate");
+      const member = await createUaIdentity(`av-proxy-member-${Date.now()}`);
+      try {
+        expect(
+          (await inject("POST", "/api/v1/agent-vault/members", { machineIdentityIds: [member.id], role: "member" }))
+            .statusCode
+        ).toBe(200);
+        const rotated = await member.asIdentity(
+          "POST",
+          `/api/v1/agent-vault/proxies/${created.proxy.id}/token-auth/proxy-token`
+        );
+        expect(rotated.statusCode).toBe(403);
+      } finally {
+        await deleteUaIdentity(member.id);
+      }
+    });
+
+    test("a proxy serving its own CA reports it and gets no CA back", async () => {
+      const created = await createProxy("token-own-ca");
+      const own = await caPem();
+      const boot = await asProxy(created.proxyToken, "bootstrap", { servedCaCertificate: own });
+      expect(boot.statusCode).toBe(200);
+      expect((JSON.parse(boot.payload) as { rootCa?: TRootCa }).rootCa).toBeUndefined();
+
+      const row = await testDb("agent_vault_proxies").where({ id: created.proxy.id }).first();
+      expect(row.rootCaFingerprint).toBe(fingerprintOf(own));
+      expect(row.encryptedRootCaPrivateKey).not.toBeNull();
+    });
+
+    test("a served CA that isn't a CA, or isn't a certificate, is refused and changes nothing", async () => {
+      const created = await createProxy("token-bad-served-ca");
+      const before = await testDb("agent_vault_proxies").where({ id: created.proxy.id }).first();
+
+      const leaf = await asProxy(created.proxyToken, "bootstrap", {
+        servedCaCertificate: await caPem({ isCa: false })
+      });
+      expect(leaf.statusCode).toBe(400);
+      const garbage = await asProxy(created.proxyToken, "bootstrap", { servedCaCertificate: "not a certificate" });
+      expect(garbage.statusCode).toBe(400);
+      const rsa = await asProxy(created.proxyToken, "bootstrap", { servedCaCertificate: await caPem({ rsa: true }) });
+      expect(rsa.statusCode).toBe(400);
+      expect((JSON.parse(rsa.payload) as { message: string }).message).toContain("P-256");
+      const future = await asProxy(created.proxyToken, "bootstrap", {
+        servedCaCertificate: await caPem({ notBefore: new Date(Date.now() + 60 * 60 * 1000) })
+      });
+      expect(future.statusCode).toBe(400);
+      expect((JSON.parse(future.payload) as { message: string }).message).toContain("valid from");
+
+      const after = await testDb("agent_vault_proxies").where({ id: created.proxy.id }).first();
+      expect(after.rootCaFingerprint).toBe(before.rootCaFingerprint);
+    });
+
+    test("a CA that starts a little in the future is accepted, for a CLI whose clock is ahead", async () => {
+      const created = await createProxy("token-clock-ahead");
+      const own = await caPem({ notBefore: new Date(Date.now() + 2 * 60 * 1000) });
+      expect((await asProxy(created.proxyToken, "bootstrap", { servedCaCertificate: own })).statusCode).toBe(200);
+    });
+
+    test("a proxy enrolled before tokens had no stored CA gets one at bootstrap, the same for every start", async () => {
+      const created = await createProxy("token-legacy-ca");
+      await testDb("agent_vault_proxies")
+        .where({ id: created.proxy.id })
+        .update({ rootCaCertificate: null, encryptedRootCaPrivateKey: null });
+
+      const boots = await Promise.all([1, 2, 3].map(() => asProxy(created.proxyToken, "bootstrap", {})));
+      boots.forEach((boot) => expect(boot.statusCode).toBe(200));
+      const certificates = new Set(
+        boots.map((boot) => (JSON.parse(boot.payload) as { rootCa: TRootCa }).rootCa.certificate)
+      );
+      expect(certificates.size).toBe(1);
+
+      const row = await testDb("agent_vault_proxies").where({ id: created.proxy.id }).first();
+      expect(row.rootCaFingerprint).toBe(fingerprintOf([...certificates][0]));
+    });
+
+    test("the enrollment routes are gone", async () => {
+      const created = await createProxy("token-no-enrollment");
+      expect(
+        (await inject("POST", `/api/v1/agent-vault/proxies/${created.proxy.id}/token-auth/enrollment-token`)).statusCode
+      ).toBe(404);
+      const login = await testServer.inject({
+        method: "POST",
+        url: "/api/v1/agent-vault/proxy/login",
+        body: { method: "token", token: "avp_x" }
+      });
+      expect(login.statusCode).toBe(404);
     });
   });
 

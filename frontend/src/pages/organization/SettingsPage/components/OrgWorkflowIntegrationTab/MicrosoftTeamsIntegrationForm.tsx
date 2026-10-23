@@ -18,6 +18,7 @@ import {
   Input
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 import {
   useGetMicrosoftTeamsClientId,
   useGetMicrosoftTeamsIntegrationById,
@@ -44,6 +45,7 @@ const microsoftTeamsFormSchema = z.object({
 type TMicrosoftTeamsFormData = z.infer<typeof microsoftTeamsFormSchema>;
 
 export const MicrosoftTeamsIntegrationForm = ({ id, onClose, onBack }: Props) => {
+  const scopeVariant = useScopeVariant();
   const {
     control,
     handleSubmit,
@@ -225,7 +227,7 @@ export const MicrosoftTeamsIntegrationForm = ({ id, onClose, onBack }: Props) =>
         </DialogClose>
         <Button
           type="submit"
-          variant="org"
+          variant={scopeVariant}
           isPending={isSubmitting}
           isDisabled={!isDirty || isSubmitting}
         >

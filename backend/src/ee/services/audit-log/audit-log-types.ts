@@ -1,7 +1,7 @@
 import { ProjectType } from "@app/db/schemas";
 import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
-import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
+import { CertificateSource, PkiKeystorePasswordChange } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
 import {
@@ -59,6 +59,7 @@ import {
   TOidcAuthDetails
 } from "@app/services/identity-access-token/identity-access-token-types";
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
+import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 import { THealthCheckCommandResult } from "@app/services/pki-sync/pki-sync-health-check-command-fns";
@@ -709,6 +710,8 @@ export enum EventType {
   SECRET_SCANNING_DATA_SOURCE_TRIGGER_SCAN = "secret-scanning-data-source-trigger-scan",
   SECRET_SCANNING_DATA_SOURCE_SCAN = "secret-scanning-data-source-scan",
   SECRET_SCANNING_RESOURCE_LIST = "secret-scanning-resource-list",
+  SECRET_SCANNING_RESOURCE_ADD = "secret-scanning-resource-add",
+  SECRET_SCANNING_RESOURCE_REMOVE = "secret-scanning-resource-remove",
   SECRET_SCANNING_SCAN_LIST = "secret-scanning-scan-list",
   SECRET_SCANNING_FINDING_LIST = "secret-scanning-finding-list",
   SECRET_SCANNING_FINDING_UPDATE = "secret-scanning-finding-update",
@@ -828,6 +831,7 @@ export enum EventType {
   AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
   AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
   AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
+  AGENT_VAULT_PROXY_TOKEN_ROTATE = "agent-vault-proxy-token-rotate",
   AGENT_VAULT_PROXY_ENROLL = "agent-vault-proxy-enroll",
   AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
   AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
@@ -910,6 +914,7 @@ export enum EventType {
   ENABLE_PKI_SIGNER = "enable-pki-signer",
   DISABLE_PKI_SIGNER = "disable-pki-signer",
   REISSUE_PKI_SIGNER_CERTIFICATE = "reissue-pki-signer-certificate",
+  IMPORT_PKI_SIGNER_CERTIFICATE = "import-pki-signer-certificate",
   EXPORT_PKI_SIGNER_CERTIFICATE = "export-pki-signer-certificate",
   UPDATE_PKI_SIGNER_APPROVAL_POLICY = "update-pki-signer-approval-policy",
   PKI_SIGNER_REQUEST_TO_SIGN = "pki-signer-request-to-sign",
@@ -3013,14 +3018,22 @@ interface RemoveGroupFromProjectEvent {
   };
 }
 
+type TCaKeySourceAuditMetadata = {
+  keySource?: string;
+  hsmConnectorId?: string;
+  hsmConnectorName?: string;
+  appConnectionId?: string;
+  appConnectionName?: string;
+  externalKeyId?: string;
+  region?: string;
+};
+
 interface CreateCa {
   type: EventType.CREATE_CA;
-  metadata: {
+  metadata: TCaKeySourceAuditMetadata & {
     caId: string;
     name: string;
     dn?: string;
-    keySource?: string;
-    hsmConnectorId?: string;
     isOcspEnabled?: boolean;
   };
 }
@@ -3054,7 +3067,7 @@ interface UpdateCa {
 
 interface DeleteCa {
   type: EventType.DELETE_CA;
-  metadata: {
+  metadata: TCaKeySourceAuditMetadata & {
     caId: string;
     name: string;
     dn?: string;
@@ -5004,6 +5017,7 @@ interface UpdatePkiInstallationEvent {
     installationId: string;
     name?: string;
     type?: string;
+    keystorePasswordChange?: PkiKeystorePasswordChange;
   };
 }
 
@@ -5026,6 +5040,8 @@ interface CreatePkiSignerEvent {
     approvalPolicyId?: string | null;
     keySource?: CertKeySource;
     hsmConnectorId?: string | null;
+    hsmKeyLabel?: string;
+    hsmKeyId?: string;
     externalConfiguration?: TSignerExternalConfigurationInput;
   };
 }
@@ -5126,6 +5142,25 @@ interface ReissuePkiSignerCertificateEvent {
     hsmConnectorId?: string;
     hsmKeyAlgorithm?: string;
     externalConfiguration?: TSignerExternalConfigurationInput;
+  };
+}
+
+interface ImportPkiSignerCertificateEvent {
+  type: EventType.IMPORT_PKI_SIGNER_CERTIFICATE;
+  metadata: {
+    signerId: string;
+    name: string;
+    caId: string;
+    caName: string;
+    externalOrderId: string;
+    certificateId?: string | null;
+    commonName?: string;
+    keyAlgorithm?: string;
+    hsmConnectorId: string;
+    hsmConnectorName: string;
+    hsmKeyLabel: string;
+    hsmKeyId?: string;
+    certificateRenewBeforeDays?: number | null;
   };
 }
 
@@ -5750,6 +5785,27 @@ interface SecretScanningResourceListEvent {
     dataSourceId: string;
     resourceIds: string[];
     count: number;
+  };
+}
+
+interface SecretScanningResourceAddEvent {
+  type: EventType.SECRET_SCANNING_RESOURCE_ADD;
+  metadata: {
+    type: SecretScanningDataSource;
+    dataSourceId: string;
+    dataSourceName: string;
+    resources: { resourceId: string; resourceName: string }[];
+  };
+}
+
+interface SecretScanningResourceRemoveEvent {
+  type: EventType.SECRET_SCANNING_RESOURCE_REMOVE;
+  metadata: {
+    type: SecretScanningDataSource;
+    dataSourceId: string;
+    dataSourceName: string;
+    resourceId: string;
+    resourceName: string;
   };
 }
 
@@ -6390,6 +6446,14 @@ interface AgentVaultProxyTokenReissueEvent {
   };
 }
 
+interface AgentVaultProxyTokenRotateEvent {
+  type: EventType.AGENT_VAULT_PROXY_TOKEN_ROTATE;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
 interface AgentVaultProxyEnrollEvent {
   type: EventType.AGENT_VAULT_PROXY_ENROLL;
   metadata: {
@@ -6431,11 +6495,20 @@ interface AgentVaultSessionLogSettingsUpdateEvent {
   type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE;
   metadata: {
     enabled: boolean;
+    // Null when session logs are off.
+    storageType: ObjectStorageType | null;
     appConnectionId: string | null;
     appConnectionName: string | null;
     bucket: string | null;
     region: string | null;
     keyPrefix: string | null;
+    // The storage that was recording before this change, when it changed the storage or turned session logs off.
+    previousStorageType?: ObjectStorageType | null;
+    previousAppConnectionId?: string | null;
+    previousAppConnectionName?: string | null;
+    previousBucket?: string | null;
+    previousRegion?: string | null;
+    previousKeyPrefix?: string | null;
   };
 }
 
@@ -6518,12 +6591,13 @@ interface AgentVaultServiceDeleteEvent {
   };
 }
 
-// Keys only. A variable's value never reaches an audit row.
+// Keys only. A variable's value never reaches an audit row. Variables belonged to an access bundle until they moved to
+// Agent Vault as a whole, so accessBundleId and accessBundleName are present only on events recorded before that.
 interface AgentVaultVariableCreateEvent {
   type: EventType.AGENT_VAULT_VARIABLE_CREATE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    accessBundleId?: string;
+    accessBundleName?: string;
     variableId: string;
     key: string;
   };
@@ -6532,8 +6606,8 @@ interface AgentVaultVariableCreateEvent {
 interface AgentVaultVariableUpdateEvent {
   type: EventType.AGENT_VAULT_VARIABLE_UPDATE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    accessBundleId?: string;
+    accessBundleName?: string;
     variableId: string;
     key: string;
     // Present only when the update changed the key.
@@ -6545,8 +6619,8 @@ interface AgentVaultVariableUpdateEvent {
 interface AgentVaultVariableDeleteEvent {
   type: EventType.AGENT_VAULT_VARIABLE_DELETE;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    accessBundleId?: string;
+    accessBundleName?: string;
     variableId: string;
     key: string;
   };
@@ -6555,8 +6629,8 @@ interface AgentVaultVariableDeleteEvent {
 interface AgentVaultVariableValueViewEvent {
   type: EventType.AGENT_VAULT_VARIABLE_VALUE_VIEW;
   metadata: {
-    accessBundleId: string;
-    accessBundleName: string;
+    accessBundleId?: string;
+    accessBundleName?: string;
     variableId: string;
     key: string;
   };
@@ -8405,6 +8479,7 @@ export type Event =
   | EnablePkiSignerEvent
   | DisablePkiSignerEvent
   | ReissuePkiSignerCertificateEvent
+  | ImportPkiSignerCertificateEvent
   | ExportPkiSignerCertificateEvent
   | UpdatePkiSignerApprovalPolicyEvent
   | PkiSignerRequestToSignEvent
@@ -8475,6 +8550,8 @@ export type Event =
   | SecretScanningDataSourceTriggerScanEvent
   | SecretScanningDataSourceScanEvent
   | SecretScanningResourceListEvent
+  | SecretScanningResourceAddEvent
+  | SecretScanningResourceRemoveEvent
   | SecretScanningScanListEvent
   | SecretScanningFindingListEvent
   | SecretScanningFindingUpdateEvent
@@ -8562,6 +8639,7 @@ export type Event =
   | AgentVaultSessionRevokeEvent
   | AgentVaultProxyRegisterEvent
   | AgentVaultProxyTokenReissueEvent
+  | AgentVaultProxyTokenRotateEvent
   | AgentVaultProxyEnrollEvent
   | AgentVaultProxyUpdateEvent
   | AgentVaultProxyRevokeEvent

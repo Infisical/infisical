@@ -14,6 +14,7 @@ const colorStyles = {
   warning: "text-warning",
   pam: "text-product-pam",
   av: "text-product-av",
+  ss: "text-product-ss",
   product: "product-color text-(--product-color-resolved)"
 };
 

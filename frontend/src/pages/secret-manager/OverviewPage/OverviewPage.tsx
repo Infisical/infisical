@@ -36,7 +36,8 @@ import {
   InfoIcon,
   LayersIcon,
   LockIcon,
-  TrashIcon
+  TrashIcon,
+  UsersIcon
 } from "lucide-react";
 import picomatch from "picomatch";
 import { twMerge } from "tailwind-merge";
@@ -96,7 +97,7 @@ import {
   CardContent,
   CardHeader,
   Checkbox,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   Dialog,
   DialogBody,
   DialogContent,
@@ -336,6 +337,14 @@ const DEFAULT_FILTER_STATE = {
 
 const OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
 
+// Every overview row type is rendered into the same TableBody, so their React keys share one
+// namespace. Resource names are arbitrary user input, so a string prefix cannot separate them: a
+// proxied service named "foo" and a secret named "ps-foo" both produce "overview-ps-foo". Encoding
+// the row type and the name as a JSON array instead is injective, because JSON.stringify escapes
+// the separators and quotes it emits, so two rows collide only when their type and name are equal.
+const overviewRowKey = (rowType: string, ...parts: (string | number)[]) =>
+  JSON.stringify([rowType, ...parts]);
+
 const getSecretSortValue = (orderBy: DashboardSecretsOrderBy, orderDirection: OrderByDirection) =>
   `${orderBy}:${orderDirection}`;
 
@@ -394,6 +403,7 @@ const OverviewPageContent = () => {
     select: (el) => ({
       secretPath: el.secretPath,
       search: el.search,
+      clearSearch: el.clearSearch,
       environments: el.environments,
       dynamicSecretId: el.dynamicSecretId,
       honeyTokenId: el.honeyTokenId,
@@ -500,6 +510,28 @@ const OverviewPageContent = () => {
     });
   }, []);
 
+  // These are keyed by secret key, which is arbitrary user input, so they must not be plain
+  // objects: a secret named "toString"/"constructor"/"__proto__" would otherwise read back a
+  // truthy value inherited from Object.prototype and render a row as expanded/revealed before
+  // the user asked for it. Set/Map have no such inherited entries.
+  const [expandedSecretRows, setExpandedSecretRows] = useState<Set<string>>(() => new Set());
+  // Maps a revealed secret key to the identity of the secrets that were revealed, so the reveal
+  // is dropped when the underlying secrets are swapped out. See secretRowIdentities below.
+  const [visibleSecretRows, setVisibleSecretRows] = useState<Map<string, string>>(() => new Map());
+
+  const toggleSecretRowExpand = useCallback((key: string) => {
+    setExpandedSecretRows((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+  }, []);
+
+  const resetSecretRowStates = useCallback(() => {
+    setExpandedSecretRows(new Set());
+    setVisibleSecretRows(new Map());
+  }, []);
+
   const handleOpenCopySecrets = useCallback((invocation: CopySecretsInvocation) => {
     setCopySecretsInvocation(invocation);
   }, []);
@@ -534,6 +566,7 @@ const OverviewPageContent = () => {
   useEffect(() => {
     const onRouteChangeStart = () => {
       resetSelectedEntries();
+      resetSecretRowStates();
     };
 
     const unsubscribeRouterEvent = router.subscribe("onLoad", onRouteChangeStart);
@@ -562,10 +595,10 @@ const OverviewPageContent = () => {
   // (not mount-only) because the tree is rendered inside this page, so navigating from a node
   // updates the params without remounting.
   useEffect(() => {
-    const { search, tags, filterBy, environments: envSlugs, ...query } = routerSearch;
+    const { search, clearSearch, tags, filterBy, environments: envSlugs, ...query } = routerSearch;
     const hasEnvLink = Boolean(envSlugs?.length);
 
-    if (!search && !tags && !filterBy && !hasEnvLink) return;
+    if (!search && !clearSearch && !tags && !filterBy && !hasEnvLink) return;
     // Env link present but envs not loaded yet → wait so we don't strip it before applying.
     if (hasEnvLink && userAvailableEnvs.length === 0) return;
 
@@ -609,9 +642,12 @@ const OverviewPageContent = () => {
       }
     }
 
+    if (clearSearch) setSearchFilter("");
+
     navigate({ search: query, replace: true });
   }, [
     routerSearch.search,
+    routerSearch.clearSearch,
     routerSearch.tags,
     routerSearch.filterBy,
     routerSearch.environments?.join(","),
@@ -1130,6 +1166,53 @@ const OverviewPageContent = () => {
     [secrets]
   );
 
+  // A row aggregates one secret per environment, so there is no single secret id to key reveal
+  // state by. Fingerprint the ids behind a row instead, and honour a reveal only while that
+  // fingerprint still matches the one captured when the user clicked reveal, so deleting and
+  // recreating a secret under the same name falls back to hidden rather than silently showing a
+  // different secret's value. Comparing rather than pruning means a fingerprint that is only
+  // transiently absent re-matches once the data returns. Changing the visible environments also
+  // changes the fingerprint and re-hides the row, which is the cheap direction to fail in.
+  const secretRowIdentities = useMemo(() => {
+    const idsByKey = new Map<string, string[]>();
+    secrets?.forEach((secret) => {
+      const ids = idsByKey.get(secret.key);
+      const secretIds = secret.idOverride ? [secret.id, secret.idOverride] : [secret.id];
+      if (ids) ids.push(...secretIds);
+      else idsByKey.set(secret.key, secretIds);
+    });
+
+    const identities = new Map<string, string>();
+    idsByKey.forEach((ids, key) => identities.set(key, ids.sort().join(",")));
+    return identities;
+  }, [secrets]);
+
+  // Never returns undefined, so a key with no entry cannot compare equal to a missing reveal.
+  const getSecretRowIdentity = useCallback(
+    (key: string) => secretRowIdentities.get(key) ?? "",
+    [secretRowIdentities]
+  );
+
+  const isSecretRowVisible = useCallback(
+    (key: string) => visibleSecretRows.get(key) === getSecretRowIdentity(key),
+    [visibleSecretRows, getSecretRowIdentity]
+  );
+
+  const toggleSecretRowVisible = useCallback(
+    (key: string) => {
+      const identity = getSecretRowIdentity(key);
+      setVisibleSecretRows((prev) => {
+        const next = new Map(prev);
+        // Compare against the current identity rather than mere presence, so revealing a row whose
+        // stale entry is being ignored re-reveals it instead of clearing the stale entry.
+        if (next.get(key) === identity) next.delete(key);
+        else next.set(key, identity);
+        return next;
+      });
+    },
+    [getSecretRowIdentity]
+  );
+
   const { data: tags } = useGetWsTags(
     permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? projectId : ""
   );
@@ -1186,14 +1269,14 @@ const OverviewPageContent = () => {
   const previousTelemetry = useRef<{
     telemetry: typeof overviewTelemetry;
     flows: typeof telemetryFlows;
-  }>();
+  }>(undefined);
   useEffect(() => {
     if (previousTelemetry.current && previousTelemetry.current.flows !== telemetryFlows)
       previousTelemetry.current.telemetry.cancelOpenFlows();
     previousTelemetry.current = { telemetry: overviewTelemetry, flows: telemetryFlows };
   }, [overviewTelemetry, telemetryFlows]);
-  const viewedProjectRef = useRef<string>();
-  const loadedProjectRef = useRef<string>();
+  const viewedProjectRef = useRef<string>(undefined);
+  const loadedProjectRef = useRef<string>(undefined);
   useEffect(() => {
     if (!isProjectV3 || viewedProjectRef.current === projectId) return;
     viewedProjectRef.current = projectId;
@@ -3529,6 +3612,7 @@ const OverviewPageContent = () => {
                 className="mr-1.5 shrink-0"
                 onClick={handleCurrentFolderAccessOpen}
               >
+                <UsersIcon />
                 Manage Access
               </Button>
             )}
@@ -3909,6 +3993,13 @@ const OverviewPageContent = () => {
                         }
                         hasSearch={Boolean(searchFilter.trim())}
                         onSearchAllFolders={() => setIsSearchAllFoldersOpen(true)}
+                        onClearSearch={() => {
+                          overviewTelemetry.interaction({
+                            action: "search-cleared",
+                            source: "empty-state"
+                          });
+                          setSearchFilter("");
+                        }}
                       />
                     )}
                     {showOverviewSkeleton ? (
@@ -3947,7 +4038,7 @@ const OverviewPageContent = () => {
                         {isSingleEnvView &&
                           sortableImportItems.map((imp, idx) => (
                             <SecretImportTableRow
-                              key={`overview-import-${imp.id}`}
+                              key={overviewRowKey("import", imp.id)}
                               index={idx}
                               secretImport={imp}
                               importEnvSlug={imp.importEnv.slug}
@@ -3971,7 +4062,7 @@ const OverviewPageContent = () => {
                           secretImportNames.map(
                             ({ importEnvSlug, importEnvName, importPath }, index) => (
                               <SecretImportTableRow
-                                key={`overview-import-${importEnvSlug}-${importPath}-${index + 1}`}
+                                key={overviewRowKey("import", importEnvSlug, importPath)}
                                 index={index}
                                 importEnvSlug={importEnvSlug}
                                 importEnvName={importEnvName}
@@ -4013,7 +4104,7 @@ const OverviewPageContent = () => {
                                   toggleSelectedEntry(EntryType.FOLDER, folderName, isShiftKey);
                               }}
                               environments={visibleEnvs}
-                              key={`overview-${folderName}-${index + 1}`}
+                              key={overviewRowKey("folder", folderName, index)}
                               onClick={handleFolderClick}
                               onToggleFolderEdit={(name: string) =>
                                 handlePopUpOpen("updateFolder", { name, description })
@@ -4032,7 +4123,7 @@ const OverviewPageContent = () => {
                             />
                           )
                         )}
-                        {dynamicSecretNames.map((dynamicSecretName, index) => (
+                        {dynamicSecretNames.map((dynamicSecretName) => (
                           <DynamicSecretTableRow
                             dynamicSecretName={dynamicSecretName}
                             isDynamicSecretInEnv={isDynamicSecretPresentInEnv}
@@ -4040,7 +4131,7 @@ const OverviewPageContent = () => {
                             getDynamicSecretStatusesByName={getDynamicSecretStatusesByName}
                             environments={visibleEnvs}
                             secretPath={secretPath}
-                            key={`overview-${dynamicSecretName}-${index + 1}`}
+                            key={overviewRowKey("dynamic-secret", dynamicSecretName)}
                             onEdit={(dynamicSecret) =>
                               handlePopUpOpen("editDynamicSecret", dynamicSecret)
                             }
@@ -4061,14 +4152,14 @@ const OverviewPageContent = () => {
                             }
                           />
                         ))}
-                        {secretRotationNames.map((secretRotationName, index) => (
+                        {secretRotationNames.map((secretRotationName) => (
                           <SecretRotationTableRow
                             secretRotationName={secretRotationName}
                             isSecretRotationInEnv={isSecretRotationPresentInEnv}
                             environments={visibleEnvs}
                             getSecretRotationByName={getSecretRotationByName}
                             getSecretRotationStatusesByName={getSecretRotationStatusesByName}
-                            key={`overview-${secretRotationName}-${index + 1}`}
+                            key={overviewRowKey("secret-rotation", secretRotationName)}
                             isSelected={Boolean(selectedEntries.secretRotation[secretRotationName])}
                             onToggleRotationSelect={(_, isShiftKey) =>
                               toggleSelectedEntry(
@@ -4113,13 +4204,13 @@ const OverviewPageContent = () => {
                             onActivityChange={handleTableRowActivityChange}
                           />
                         ))}
-                        {honeyTokenNames.map((honeyTokenName, index) => (
+                        {honeyTokenNames.map((honeyTokenName) => (
                           <HoneyTokenTableRow
                             honeyTokenName={honeyTokenName}
                             isHoneyTokenInEnv={isHoneyTokenPresentInEnv}
                             environments={visibleEnvs}
                             getHoneyTokenByName={getHoneyTokenByName}
-                            key={`overview-ht-${honeyTokenName}-${index + 1}`}
+                            key={overviewRowKey("honey-token", honeyTokenName)}
                             onEdit={(honeyToken) => handlePopUpOpen("editHoneyToken", honeyToken)}
                             onRevoke={(honeyToken) =>
                               handlePopUpOpen("revokeHoneyToken", honeyToken)
@@ -4129,9 +4220,9 @@ const OverviewPageContent = () => {
                             }
                           />
                         ))}
-                        {proxiedServiceNames.map((proxiedServiceName, index) => (
+                        {proxiedServiceNames.map((proxiedServiceName) => (
                           <ProxiedServiceTableRow
-                            key={`overview-ps-${proxiedServiceName}-${index + 1}`}
+                            key={overviewRowKey("proxied-service", proxiedServiceName)}
                             proxiedServiceName={proxiedServiceName}
                             environments={visibleEnvs}
                             isProxiedServiceInEnv={isProxiedServicePresentInEnv}
@@ -4144,7 +4235,7 @@ const OverviewPageContent = () => {
                             }
                           />
                         ))}
-                        {mergedSecKeys.map((key, index) => (
+                        {mergedSecKeys.map((key) => (
                           <SecretTableRow
                             isSelected={
                               !hasPendingBatchChanges && Boolean(selectedEntries.secret[key])
@@ -4153,13 +4244,17 @@ const OverviewPageContent = () => {
                               if (!hasPendingBatchChanges)
                                 toggleSelectedEntry(EntryType.SECRET, key, isShiftKey);
                             }}
+                            isExpanded={expandedSecretRows.has(key)}
+                            onToggleExpand={toggleSecretRowExpand}
+                            isSecretVisible={isSecretRowVisible(key)}
+                            onToggleSecretVisible={toggleSecretRowVisible}
                             secretPath={secretPath}
                             getImportedSecretByKey={getImportedSecretByKey}
                             isImportedSecretPresentInEnv={handleIsImportedSecretPresentInEnv}
                             onSecretCreate={handleSecretCreate}
                             onSecretDelete={handleSecretDelete}
                             onSecretUpdate={handleSecretUpdate}
-                            key={`overview-${key}-${index + 1}`}
+                            key={overviewRowKey("secret", key)}
                             environments={visibleEnvs}
                             secretKey={key}
                             getSecretByKey={getSecretByKeyWithPending}
@@ -4176,6 +4271,7 @@ const OverviewPageContent = () => {
                             }
                             activityId={getTableRowActivityId("secret", key)}
                             onActivityChange={handleTableRowActivityChange}
+                            timestampSortField={isTimestampSort ? orderBy : undefined}
                           />
                         ))}
                         {tableView === "table" && (
@@ -4818,7 +4914,7 @@ const OverviewPageContent = () => {
           environmentName={singleEnvName}
         />
       )}
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteEnv.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteEnv", isOpen)}
         title="Delete Environment"

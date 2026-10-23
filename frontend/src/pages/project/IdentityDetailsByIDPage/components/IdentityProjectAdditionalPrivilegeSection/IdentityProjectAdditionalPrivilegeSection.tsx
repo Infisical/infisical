@@ -49,7 +49,7 @@ import {
   useProjectPermission
 } from "@app/context";
 import { getProjectLabel } from "@app/helpers/project";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useDeleteIdentityProjectAdditionalPrivilege } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { useListIdentityProjectPrivileges } from "@app/hooks/api/identityProjectAdditionalPrivilege/queries";
@@ -66,6 +66,7 @@ type Props = {
 };
 
 export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDetails }: Props) => {
+  const scopeVariant = useScopeVariant();
   const sheetContainerRef = useRef<HTMLDivElement>(null);
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deletePrivilege",
@@ -306,7 +307,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                     const isEditDisabled = !isAllowed || !canModifyIdentityPrivileges;
                     const button = (
                       <Button
-                        variant="project"
+                        variant={scopeVariant}
                         size="xs"
                         onClick={() => {
                           handlePopUpOpen("modifyPrivilege");

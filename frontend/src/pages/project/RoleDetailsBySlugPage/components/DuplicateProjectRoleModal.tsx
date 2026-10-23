@@ -24,6 +24,7 @@ import {
 } from "@app/components/v3";
 import { useOrganization, useProject, useSubscription } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
+import { useScopeVariant } from "@app/hooks";
 import { useCreateProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -53,10 +54,12 @@ type ContentProps = {
 };
 
 const Content = ({ role, onClose }: ContentProps) => {
+  const scopeVariant = useScopeVariant();
   const {
     control,
     handleSubmit,
     setValue,
+    getFieldState,
     formState: { isSubmitting }
   } = useForm<FormData>({
     defaultValues: {
@@ -140,6 +143,7 @@ const Content = ({ role, onClose }: ContentProps) => {
                     isError={Boolean(error)}
                     onChange={(e) => {
                       onChange(e);
+                      if (getFieldState("slug").isDirty) return;
                       setValue("slug", slugify(e.target.value, { lowercase: true }), {
                         shouldValidate: true
                       });
@@ -194,7 +198,7 @@ const Content = ({ role, onClose }: ContentProps) => {
               Cancel
             </Button>
           </SheetClose>
-          <Button type="submit" variant="project" isPending={isSubmitting}>
+          <Button type="submit" variant={scopeVariant} isPending={isSubmitting}>
             Duplicate Role
           </Button>
         </SheetFooter>

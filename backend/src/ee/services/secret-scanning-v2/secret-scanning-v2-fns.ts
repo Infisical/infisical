@@ -28,6 +28,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { titleCaseToCamelCase } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 
+import { GitLabDataSourceScope } from "./gitlab/gitlab-secret-scanning-enums";
 import { SecretScanningDataSource, SecretScanningFindingSeverity } from "./secret-scanning-v2-enums";
 import { TCloneRepository, TGetFindingsPayload, TSecretScanningDataSourceListItem } from "./secret-scanning-v2-types";
 
@@ -40,6 +41,20 @@ const SECRET_SCANNING_SOURCE_LIST_OPTIONS: Record<SecretScanningDataSource, TSec
 export const listSecretScanningDataSourceOptions = () => {
   return Object.values(SECRET_SCANNING_SOURCE_LIST_OPTIONS).sort((a, b) => a.name.localeCompare(b.name));
 };
+
+// GitLab only reports new projects through group webhooks, so discovery needs a group. Self-hosted system
+// hooks would also work, but are not supported.
+export const doesDataSourceSupportDiscovery = ({ type, config }: { type: string; config?: unknown }) =>
+  type !== SecretScanningDataSource.GitLab || (config as { scope?: string })?.scope === GitLabDataSourceScope.Group;
+
+// Push events drive both discovery and new commit scans, so with both off there is nothing to listen for.
+export const isDataSourceWebhookRequired = ({
+  isDiscoveryEnabled,
+  isScanNewCommitsEnabled
+}: {
+  isDiscoveryEnabled?: boolean | null;
+  isScanNewCommitsEnabled?: boolean | null;
+}) => Boolean(isDiscoveryEnabled || isScanNewCommitsEnabled);
 
 // The scanner exits 77 when it wrote findings; that is a successful scan, not a failure.
 const SCAN_FINDINGS_EXIT_CODE = 77;

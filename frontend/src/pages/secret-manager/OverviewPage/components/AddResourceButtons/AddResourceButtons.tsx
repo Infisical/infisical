@@ -163,10 +163,19 @@ export function AddResourceButtons({
               isDisabled={!canCreateSecrets}
             >
               <KeyIcon className="text-secret" />
-              Add Secret
+              New Secret
             </DropdownMenuItem>
           </MenuItemTooltip>
         )}
+        <MenuItemTooltip isDisabled={!canCreateFolders} content="Access Restricted">
+          <DropdownMenuItem
+            onClick={selectAction("folder", onAddFolder)}
+            isDisabled={!canCreateFolders}
+          >
+            <FolderIcon className="text-folder" />
+            New Folder
+          </DropdownMenuItem>
+        </MenuItemTooltip>
         <MenuItemTooltip isDisabled={!canCreateSecrets} content="Access Restricted">
           <DropdownMenuItem
             onClick={selectAction("upload-secrets", onImportSecrets)}
@@ -176,17 +185,24 @@ export function AddResourceButtons({
             Upload Secrets
           </DropdownMenuItem>
         </MenuItemTooltip>
-        <MenuItemTooltip isDisabled={!canCreateFolders} content="Access Restricted">
-          <DropdownMenuItem
-            onClick={selectAction("folder", onAddFolder)}
-            isDisabled={!canCreateFolders}
-          >
-            <FolderIcon className="text-folder" />
-            Add Folder
-          </DropdownMenuItem>
-        </MenuItemTooltip>
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Advanced</DropdownMenuLabel>
+        <MenuItemTooltip
+          isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
+          content={
+            !isSecretImportAvailable
+              ? "Access Restricted"
+              : "Select a single environment to import secrets"
+          }
+        >
+          <DropdownMenuItem
+            onClick={selectAction("secret-import", onAddSecretImport)}
+            isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
+          >
+            <ImportIcon className="text-import" />
+            Import Secrets
+          </DropdownMenuItem>
+        </MenuItemTooltip>
         <MenuItemTooltip isDisabled={!isDyanmicSecretAvailable} content="Access Restricted">
           <DropdownMenuItem
             onClick={selectAction("dynamic-secret", onAddDyanamicSecret)}
@@ -203,18 +219,6 @@ export function AddResourceButtons({
           >
             <RefreshCwIcon className="text-secret-rotation" />
             Add Secret Rotation
-          </DropdownMenuItem>
-        </MenuItemTooltip>
-        <MenuItemTooltip
-          isDisabled={!isHoneyTokenAvailable || !canCreateHoneyTokens}
-          content="Access Restricted"
-        >
-          <DropdownMenuItem
-            onClick={selectAction("honey-token", onAddHoneyToken)}
-            isDisabled={!isHoneyTokenAvailable || !canCreateHoneyTokens}
-          >
-            <HexagonIcon className="text-warning" />
-            Add Honey Token
           </DropdownMenuItem>
         </MenuItemTooltip>
         <ProjectPermissionCan
@@ -240,28 +244,24 @@ export function AddResourceButtons({
             </MenuItemTooltip>
           )}
         </ProjectPermissionCan>
+        <MenuItemTooltip
+          isDisabled={!isHoneyTokenAvailable || !canCreateHoneyTokens}
+          content="Access Restricted"
+        >
+          <DropdownMenuItem
+            onClick={selectAction("honey-token", onAddHoneyToken)}
+            isDisabled={!isHoneyTokenAvailable || !canCreateHoneyTokens}
+          >
+            <HexagonIcon className="text-warning" />
+            Add Honey Token
+          </DropdownMenuItem>
+        </MenuItemTooltip>
         <DropdownMenuSub onOpenChange={(isOpen) => isOpen && onMenuOpen(variant, "more")}>
           <DropdownMenuSubTrigger>
             <ListPlusIcon />
-            Add More
+            More
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
-            <MenuItemTooltip
-              isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
-              content={
-                !isSecretImportAvailable
-                  ? "Access Restricted"
-                  : "Select a single environment to add a secret import"
-              }
-            >
-              <DropdownMenuItem
-                onSelect={selectAction("secret-import", onAddSecretImport)}
-                isDisabled={!isSecretImportAvailable || !isSingleEnvSelected}
-              >
-                <ImportIcon className="text-import" />
-                Add Secret Import
-              </DropdownMenuItem>
-            </MenuItemTooltip>
             <MenuItemTooltip
               isDisabled={isCopySecretsDisabled || !canCopySecrets}
               content={
@@ -291,7 +291,7 @@ export function AddResourceButtons({
                 isDisabled={!canCreateSecretSyncs || !isSingleEnvSelected}
               >
                 <RefreshCwIcon className="text-accent" />
-                Add Secret Sync
+                New Secret Sync
               </DropdownMenuItem>
             </MenuItemTooltip>
             {(hasVaultConnection || hasDopplerConnection) && <DropdownMenuSeparator />}

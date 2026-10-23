@@ -253,6 +253,10 @@ const certManagerMappings: TFeatureMapping[] = [
     v1Field: "pkiOcsp"
   },
   {
+    v2Key: "pki_aws_kms_signing",
+    v1Field: "pkiAwsKmsSigning"
+  },
+  {
     v2Key: "pki_est",
     v1Field: "pkiEst"
   },
@@ -362,11 +366,20 @@ const pamMappings: TFeatureMapping[] = [
   }
 ];
 
-// Agent Vault: session logs written to the customer's own bucket.
+// Agent Vault session logs: external storage (the customer's own bucket), default storage (the instance's bucket),
+// and how many days default storage keeps them. The last two keys are placeholders until the License Server has them.
 const agentVaultMappings: TFeatureMapping[] = [
   {
     v2Key: "agent_vault_byo_s3",
     v1Field: "agentVaultByoS3"
+  },
+  {
+    v2Key: "agent_vault_managed_storage",
+    v1Field: "agentVaultManagedStorage"
+  },
+  {
+    v2Key: "agent_vault_session_log_retention_days",
+    v1Field: "agentVaultSessionLogRetentionDays"
   }
 ];
 

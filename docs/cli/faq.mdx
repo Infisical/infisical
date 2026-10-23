@@ -1,5 +1,6 @@
 ---
-title: "FAQ"
+title: "Infisical CLI FAQ"
+sidebarTitle: "FAQ"
 description: "Frequently Asked Questions about the Infisical CLI."
 ---
 
@@ -62,6 +63,8 @@ Your shell saves the commands you run to a history file, so a secret value you p
 <Accordion title="Can I fetch secrets with Infisical while I'm offline?">
 Yes. If you have previously retrieved secrets for a specific project and environment (such as dev, staging, or prod), the  `run`/`secret` command will utilize the saved secrets, even when offline, on subsequent fetch attempts.
 
+Running `infisical login` or `infisical logout` deletes the saved secrets, so they're only available offline again after your next fetch.
+
 </Accordion>
 
 <Accordion title="Can I upload the `.infisical.yaml` file that was generated?">
@@ -69,6 +72,10 @@ Yes. This is simply a configuration file and contains no sensitive data.
 </Accordion>
 
 <Accordion title="Where can I find my Project ID?">
+
+  Run [infisical sm projects list](/cli/reference#sm-projects-list) to print the name, slug, and ID of each of your projects.
+
+  You can also find the ID in Infisical.
 
   Visit the Infisical website and navigate to a project of your choice. Once on the project page, access the **Project Settings** from the sidebar. Within the Project name section, select the "Copy Project ID" button for copying the current Project ID to clipboard, or simply obtain it from the URL of the current page.
   

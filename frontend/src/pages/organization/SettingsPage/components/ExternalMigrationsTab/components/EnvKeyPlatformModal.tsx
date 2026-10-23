@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Field, FieldContent, FieldError, FieldLabel, Input } from "@app/components/v3";
+import { useScopeVariant } from "@app/hooks";
 import { useImportEnvKey } from "@app/hooks/api/migration/mutations";
 
 import { GenericDropzone } from "./GenericDropzone";
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export const EnvKeyPlatformModal = ({ onClose }: Props) => {
+  const scopeVariant = useScopeVariant();
   const formSchema = z.object({
     encryptionKey: z.string().min(1),
     file: z.instanceof(File)
@@ -99,7 +101,7 @@ export const EnvKeyPlatformModal = ({ onClose }: Props) => {
       <div className="flex items-center gap-2 pt-2">
         <Button
           type="submit"
-          variant="org"
+          variant={scopeVariant}
           isPending={isLoading || isSubmitting}
           isDisabled={!isDirty || isSubmitting || isLoading || !isValid}
         >

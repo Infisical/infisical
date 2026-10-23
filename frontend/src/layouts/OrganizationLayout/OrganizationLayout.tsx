@@ -1,18 +1,23 @@
+import { useEffect } from "react";
 import { Outlet, useParams, useRouterState } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
+import {
+  clearSignupTrialIntent,
+  getSignupTrialBillingSearch,
+  getSignupTrialIntent
+} from "@app/components/auth/signupTrialIntent";
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { Banner } from "@app/components/page-frames/Banner";
 import { PageBannerStack } from "@app/components/page-frames/PageBannerStack";
 import { SidebarInset, SidebarProvider } from "@app/components/v3";
-import { useServerConfig, useSubscription } from "@app/context";
+import { useOrganization, useServerConfig, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useFetchServerStatus } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { useImplicitProduct } from "@app/hooks/useImplicitProduct";
 import { CertManagerInstanceBanner } from "@app/layouts/PkiManagerLayout/components/CertManagerInstanceBanner";
 import { AssumePrivilegeModeBanner } from "@app/layouts/ProjectLayout/components/AssumePrivilegeModeBanner";
-import { SecretScanningInstanceBanner } from "@app/layouts/SecretScanningLayout/components/SecretScanningInstanceBanner";
 
 import { AuditLogBanner } from "./components/AuditLogBanner";
 import { InsecureConnectionBanner } from "./components/InsecureConnectionBanner";
@@ -45,21 +50,28 @@ export const OrganizationLayout = () => {
       )
   });
 
-  const isSecretScanningProject = useRouterState({
-    select: (state) =>
-      state.matches.some(
-        (match) =>
-          match.routeId ===
-          "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout"
-      )
-  });
-
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
 
   const containerHeight = config.pageFrameContent ? "h-[94vh]" : "h-screen";
 
   const { data: serverDetails, isLoading } = useFetchServerStatus();
   const { subscription } = useSubscription();
+  const { currentOrg } = useOrganization();
+  const billingOrgId = currentOrg.rootOrgId ?? currentOrg.id;
+
+  useEffect(() => {
+    const trialIntent = getSignupTrialIntent();
+    if (!trialIntent?.orgId) return;
+    clearSignupTrialIntent();
+    if (trialIntent.orgId !== billingOrgId) return;
+    const search = new URLSearchParams(
+      getSignupTrialBillingSearch(
+        trialIntent,
+        `${window.location.pathname}${window.location.search}${window.location.hash}`
+      )
+    );
+    window.location.assign(`/organizations/${billingOrgId}/billing?${search.toString()}`);
+  }, [billingOrgId]);
 
   return (
     <>
@@ -71,7 +83,6 @@ export const OrganizationLayout = () => {
           <TrialPaymentFailedBanner />
           {(isInsideProject || implicitProduct) && <AssumePrivilegeModeBanner />}
           {isCertManagerOverview && <CertManagerInstanceBanner />}
-          {isSecretScanningProject && <SecretScanningInstanceBanner />}
           {!isLoading && !isInsideProject && !serverDetails?.redisConfigured && <RedisBanner />}
           {!isLoading && !isInsideProject && !serverDetails?.emailConfigured && <SmtpBanner />}
           {!isLoading && !isInsideProject && subscription.auditLogs && <AuditLogBanner />}

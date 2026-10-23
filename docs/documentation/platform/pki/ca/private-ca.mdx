@@ -46,8 +46,10 @@ Create a simple Private CA hierarchy with a root CA and intermediate CA.
         - Valid Until: The date until which the CA is valid in the date time string format specified [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format). For example, the following formats would be valid: `YYYY`, `YYYY-MM`, `YYYY-MM-DD`, `YYYY-MM-DDTHH:mm:ss.sssZ`.
         - Path Length: The maximum number of intermediate CAs that can be chained to this CA. A path of `-1` implies no limit; a path of `0` implies no intermediate CAs can be chained.
         - Key Algorithm: The type of public key algorithm and size, in bits, of the key pair that the CA creates when it issues a certificate. Supported key algorithms are `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384` with the default being `RSA 2048`.
-        - Key Source: Where the CA's signing key is generated and stored. **Infisical** (the default) generates and manages the key for you. **HSM** generates the key inside your own Hardware Security Module through an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors), and every signing operation the CA performs runs on the HSM. See [HSM-backed Internal CAs](#hsm-backed-internal-cas) below.
+        - Key Source: Where the CA's signing key is generated and stored. **Infisical** (the default) generates and manages the key for you. **HSM** generates the key inside your own Hardware Security Module through an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors), and every signing operation the CA performs runs on the HSM. See [HSM-backed Internal CAs](#hsm-backed-internal-cas) below. **AWS KMS** creates the key in your AWS account, and every signing operation runs in [AWS KMS](#aws-kms-backed-internal-cas).
         - HSM Connector: The [HSM Connector](/documentation/platform/pki/settings/hsm-connectors) Infisical uses to reach your HSM. Shown only when **Key Source** is **HSM**. With an HSM key source the algorithm choices stay limited to `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384`.
+        - AWS Connection: The [AWS connection](/integrations/app-connections/aws) used to create the key and sign with it. Shown only when **Key Source** is **AWS KMS**.
+        - Region: The AWS region to create the key in. Shown only when **Key Source** is **AWS KMS**.
         - Name: A slug-friendly name for the CA.
         - Organization (O): The organization name.
         - Country (C): The country code.
@@ -279,6 +281,71 @@ curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca
   }'
 ```
 
+## AWS KMS-backed internal CAs
+
+If your CA's private key must stay in AWS and you don't run your own HSM, set **Key Source** to **AWS KMS**. The CA's signing key is then created in AWS KMS through an [AWS connection](/integrations/app-connections/aws), and the private key never leaves AWS KMS. AWS KMS signs everything the CA produces: the self-signed root certificate, intermediate CSRs, the certificates the CA issues, its CRLs, and its OCSP responses.
+
+Both root and intermediate CAs can be AWS KMS-backed. They support the `RSA 2048`, `RSA 3072`, `RSA 4096`, `ECDSA P-256`, `ECDSA P-384`, `ECDSA P-521`, `ML-DSA-44`, `ML-DSA-65`, and `ML-DSA-87` key algorithms.
+
+### Prerequisites
+
+- An [AWS connection](/integrations/app-connections/aws) available to Infisical Certificate Management
+- An IAM policy on the connection's IAM role or user that lets the connection create KMS keys and sign with them:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["kms:CreateKey", "kms:TagResource", "kms:CreateAlias"],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["kms:GetPublicKey", "kms:Sign", "kms:ScheduleKeyDeletion"],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": { "aws:ResourceTag/purpose": "certificate-authority" }
+      }
+    }
+  ]
+}
+```
+
+Each CA signing key is created with the `author=infisical` and `purpose=certificate-authority` tags, so the second statement only allows signing with and deleting keys created for CAs. Each key also gets an alias named after the CA, such as `alias/infisical-ca-kms-root-ca-x7k2p`, so you can find it in the AWS KMS console.
+
+### Create the CA
+
+In the **Create Internal CA** wizard, set **Key Source** to **AWS KMS**, then choose the **AWS Connection**, the **Region**, and the **Key Algorithm**. The CA's details page shows the key's ARN once the CA is created.
+
+To create the CA over the API instead, call [the endpoint to create an internal CA](/api-reference/endpoints/certificate-authorities/internal/create) with `keySource` set to `aws-kms`, and include the `appConnectionId` and `region`:
+
+```bash Request
+curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca/internal' \
+  --header 'Authorization: Bearer <access-token>' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+      "name": "kms-root-ca",
+      "status": "active",
+      "configuration": {
+        "type": "root",
+        "commonName": "My AWS KMS Root CA",
+        "keyAlgorithm": "EC_secp384r1",
+        "keySource": "aws-kms",
+        "appConnectionId": "<aws-connection-id>",
+        "region": "us-east-1",
+        "notAfter": "2036-01-01"
+      }
+  }'
+```
+
+The response returns the key's ARN in `configuration.externalKeyId`.
+
+### Deleting an AWS KMS-backed CA
+
+Deleting the CA schedules its key for deletion in AWS KMS with a 30-day waiting period. If you still need the key, [cancel the deletion](https://docs.aws.amazon.com/kms/latest/developerguide/deleting-keys.html) in AWS KMS within those 30 days, then enable the key again, because AWS KMS leaves a key disabled when you cancel its deletion.
+
 ## FAQ
 
 <AccordionGroup>
@@ -290,6 +357,9 @@ curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/ca
   </Accordion>
   <Accordion title="Can the CA signing key be kept in my own HSM?">
     Yes. Set **Key Source** to **HSM** when creating the CA and pick an [HSM Connector](/documentation/platform/pki/settings/hsm-connectors). The keypair is generated on your HSM and every signing operation the CA performs runs there. Both root and intermediate CAs support this. Supported algorithms are `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384`. See [HSM-backed Internal CAs](#hsm-backed-internal-cas).
+  </Accordion>
+  <Accordion title="Can the CA signing key be kept in AWS KMS?">
+    Yes, including post-quantum ML-DSA keys. Set **Key Source** to **AWS KMS** and [create the CA through an AWS connection](#aws-kms-backed-internal-cas).
   </Accordion>
 </AccordionGroup>
 
