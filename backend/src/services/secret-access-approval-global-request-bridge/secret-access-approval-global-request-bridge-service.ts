@@ -938,17 +938,16 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     }
 
     const auditDetails = await $describeRequestForAudit(request);
-    const policyId = await approvalRequestDAL.transaction(async (tx) => {
+    const cancelled = await approvalRequestDAL.transaction(async (tx) => {
       const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
       if (!locked || locked.status !== ApprovalRequestStatus.Pending || !locked.policyId) {
         throw new BadRequestError({ message: "Only pending requests can be cancelled" });
       }
-      await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Cancelled }, tx);
-      return locked.policyId;
+      return approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Cancelled }, tx);
     });
 
     return {
-      request: { ...toLegacyAccessApprovalRequest(request), policyId },
+      request: toLegacyAccessApprovalRequest({ ...request, ...cancelled }),
       projectId: request.projectId,
       ...auditDetails
     };
