@@ -235,6 +235,7 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
                     </FieldLabel>
                     <Combobox
                       id={`${formId}-pkiCollectionId`}
+                      ref={field.ref}
                       name={field.name}
                       onBlur={field.onBlur}
                       isError={Boolean(error)}
