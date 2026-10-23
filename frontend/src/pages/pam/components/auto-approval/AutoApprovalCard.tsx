@@ -267,36 +267,42 @@ export const AutoApprovalCard = ({
                 </div>
               )}
 
-              <div className="flex flex-col">
-                {draft.rules.map((rule, index) => (
-                  <Fragment key={rule.key}>
-                    {index > 0 && <LogicConnector label="or" />}
-                    <AutoApprovalRuleCard
-                      rule={rule}
-                      inputs={draft.inputs}
-                      catalog={catalog}
-                      policyType={policyType}
-                      scope={scope}
-                      scopeId={scopeId}
-                      showErrors={showErrors}
-                      onChange={(next) =>
-                        onChange({
-                          ...draft,
-                          rules: draft.rules.map((candidate) =>
-                            candidate.key === next.key ? next : candidate
-                          )
-                        })
-                      }
-                      onRemove={() =>
-                        onChange({
-                          ...draft,
-                          rules: draft.rules.filter((candidate) => candidate.key !== rule.key)
-                        })
-                      }
-                    />
-                  </Fragment>
-                ))}
-              </div>
+              {draft.rules.length === 0 ? (
+                <div className="rounded-md border border-border p-8 text-center text-sm text-muted">
+                  No rules added. Every request waits for the approvers below.
+                </div>
+              ) : (
+                <div className="flex flex-col">
+                  {draft.rules.map((rule, index) => (
+                    <Fragment key={rule.key}>
+                      {index > 0 && <LogicConnector label="or" />}
+                      <AutoApprovalRuleCard
+                        rule={rule}
+                        inputs={draft.inputs}
+                        catalog={catalog}
+                        policyType={policyType}
+                        scope={scope}
+                        scopeId={scopeId}
+                        showErrors={showErrors}
+                        onChange={(next) =>
+                          onChange({
+                            ...draft,
+                            rules: draft.rules.map((candidate) =>
+                              candidate.key === next.key ? next : candidate
+                            )
+                          })
+                        }
+                        onRemove={() =>
+                          onChange({
+                            ...draft,
+                            rules: draft.rules.filter((candidate) => candidate.key !== rule.key)
+                          })
+                        }
+                      />
+                    </Fragment>
+                  ))}
+                </div>
+              )}
             </section>
           </>
         )}
