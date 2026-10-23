@@ -3686,7 +3686,7 @@ const OverviewPageContent = () => {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      variant={isRevealAll ? "project" : "ghost"}
+                      variant="ghost"
                       size="xs"
                       className="mr-1.5 shrink-0"
                       aria-pressed={isRevealAll}
