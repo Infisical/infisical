@@ -1934,6 +1934,30 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       });
 
+      // Reveal All and copying selected secrets read values here instead of /secret-value, so each
+      // returned value is logged the same way to keep "who read this secret" queryable
+      if (viewSecretValue) {
+        await Promise.all(
+          secrets
+            .filter((secret) => !secret.secretValueHidden)
+            .map((secret) =>
+              server.services.auditLog.createAuditLog({
+                projectId,
+                ...req.auditLogInfo,
+                event: {
+                  type: EventType.DASHBOARD_GET_SECRET_VALUE,
+                  metadata: {
+                    environment,
+                    secretPath,
+                    secretKey: secret.secretKey,
+                    secretId: secret.id
+                  }
+                }
+              })
+            )
+        );
+      }
+
       if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
         await server.services.telemetry.sendPostHogEvents({
           event: PostHogEventTypes.SecretPulled,
