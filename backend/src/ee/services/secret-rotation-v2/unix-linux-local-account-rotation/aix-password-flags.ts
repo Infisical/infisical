@@ -44,8 +44,9 @@ export const isAixHost = async (client: Client): Promise<boolean> => {
     }
     return stdout.trim() === "AIX";
   } catch (error) {
-    logger.warn(error, "Unix/Linux Local Account Rotation: `uname -s` failed, assuming a non-AIX host");
-    return false;
+    throw new Error(
+      `Could not detect the host's operating system, so the password was not changed: ${(error as Error).message}`
+    );
   }
 };
 
