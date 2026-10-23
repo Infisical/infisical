@@ -90,6 +90,7 @@ export const AutoApprovalValuePicker = ({
     return (
       <Combobox
         multiple
+        isClearable={false}
         aria-label={constraint.label}
         options={options}
         value={selected}
