@@ -10,9 +10,7 @@ export const CloudflarePagesSyncDestinationSchema = BaseSecretSyncSchema().merge
     destinationConfig: z.object({
       projectName: z.string().trim().min(1, "Project name is required"),
       environment: z.string().trim().min(1, "Environment is required"),
-      variableType: z
-        .nativeEnum(CloudflarePagesVariableType)
-        .default(CloudflarePagesVariableType.Secret)
+      variableType: z.nativeEnum(CloudflarePagesVariableType).optional()
     })
   })
 );

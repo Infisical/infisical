@@ -290,15 +290,19 @@ export const CloudflareWorkersSyncFns = {
       return;
     }
 
+    const shouldSyncNonSecretBindings = Boolean(secretSync.syncOptions.syncNonSecretBindings);
     const cloudflareBindings = await getCloudflareBindings(secretSync);
 
     const existingSecrets = $getManagedBindings(secretSync, cloudflareBindings);
 
+    const nonSecretBindingKeys = new Set(cloudflareBindings.nonSecretBindings.map((b) => b.key));
     const existingSecretsMap = Object.fromEntries(existingSecrets.map(({ key, type }) => [key, type]));
     const secretMapKeys = new Set(Object.keys(secretMap));
 
     // With shouldSyncNonSecretBindings on, same-name plaintext and JSON variables are updated as they are.
-    if (!secretSync.syncOptions.syncNonSecretBindings) {
+    // Otherwise the sync fails rather than change their type, except a sync created before the type could be
+    // chosen (no variableType), which keeps skipping them as it always has.
+    if (!shouldSyncNonSecretBindings && variableType) {
       $throwOnTypeConflicts(
         cloudflareBindings.nonSecretBindings
           .filter((binding) => secretMapKeys.has(binding.key))
@@ -307,10 +311,14 @@ export const CloudflareWorkersSyncFns = {
       );
     }
 
+    const syncableEntries = Object.entries(secretMap).filter(
+      ([key]) => shouldSyncNonSecretBindings || !nonSecretBindingKeys.has(key)
+    );
+
     const bindingEntries: Array<[string, { value: string }]> = [];
     const secretEntries: Array<[string, { value: string }]> = [];
 
-    for (const [key, val] of Object.entries(secretMap)) {
+    for (const [key, val] of syncableEntries) {
       const existingType = existingSecretsMap[key];
       if (existingType && existingType !== CLOUDFLARE_SECRET_TYPE) {
         bindingEntries.push([key, val]);

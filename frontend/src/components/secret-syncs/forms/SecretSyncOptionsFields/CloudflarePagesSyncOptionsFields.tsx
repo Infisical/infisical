@@ -27,12 +27,13 @@ export const CloudflarePagesSyncOptionsFields = () => {
     <Controller
       name="destinationConfig.variableType"
       control={control}
-      defaultValue={CloudflarePagesVariableType.Secret}
       render={({ field: { value, onChange }, fieldState: { error } }) => (
         <Field className="mb-4">
           <FieldLabel htmlFor="cloudflare-pages-variable-type">Variable type</FieldLabel>
           <FieldContent>
-            <Select value={value} onValueChange={onChange}>
+            {/* A sync without a type predates the option and skips same-name text variables, so a type is
+                only saved once someone picks one. The backend gives new syncs Secret. */}
+            <Select value={value ?? CloudflarePagesVariableType.Secret} onValueChange={onChange}>
               <SelectTrigger
                 id="cloudflare-pages-variable-type"
                 className="w-full"

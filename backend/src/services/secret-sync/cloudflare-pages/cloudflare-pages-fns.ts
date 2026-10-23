@@ -55,15 +55,16 @@ export const CloudflarePagesSyncFns = {
         credentials: { apiToken, accountId }
       }
     } = secretSync;
-    const { variableType = CloudflarePagesVariableType.Secret } = destinationConfig;
+    const variableType = destinationConfig.variableType ?? CloudflarePagesVariableType.Secret;
 
     const existingSecrets = await getProjectEnvironmentSecrets(secretSync);
 
     // Changing a variable's type would expose a secret's value or hide a readable one, so a sync never changes
-    // one; it fails before writing anything.
+    // one; it fails before writing anything. A sync created before the type could be chosen (no variableType)
+    // skips those keys instead, so it keeps running as it did.
     const secretMapKeys = new Set(Object.keys(secretMap));
     const conflicts = existingSecrets.filter((secret) => secretMapKeys.has(secret.key) && secret.type !== variableType);
-    if (conflicts.length > 0) {
+    if (conflicts.length > 0 && destinationConfig.variableType) {
       throw new SecretSyncError({
         message: `The following secrets already exist in the Cloudflare Pages environment as a different type: ${conflicts
           .map(({ key, type }) => `${key} (${VARIABLE_TYPE_LABELS[type]})`)
@@ -74,11 +75,12 @@ export const CloudflarePagesSyncFns = {
       });
     }
 
+    const skippedKeys = new Set(conflicts.map((secret) => secret.key));
+
     // Create/update secret entries
-    let secretEntries: [string, object | null][] = Object.entries(secretMap).map(([key, val]) => [
-      key,
-      { type: variableType, value: val.value }
-    ]);
+    let secretEntries: [string, object | null][] = Object.entries(secretMap)
+      .filter(([key]) => !skippedKeys.has(key))
+      .map(([key, val]) => [key, { type: variableType, value: val.value }]);
 
     // Handle deletions if not disabled. A sync only owns variables of its type, so syncs of different types can
     // share an environment.

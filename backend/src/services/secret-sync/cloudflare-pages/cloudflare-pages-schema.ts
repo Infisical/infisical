@@ -44,7 +44,14 @@ export const CreateCloudflarePagesSyncSchema = GenericCreateSecretSyncFieldsSche
   SecretSync.CloudflarePages,
   CloudflarePagesSyncOptionsConfig
 ).extend({
-  destinationConfig: CloudflarePagesSyncDestinationConfigSchema
+  // New syncs always get a type. It stays optional elsewhere because syncs created before it existed have
+  // none, and those skip same-name text variables.
+  destinationConfig: CloudflarePagesSyncDestinationConfigSchema.extend({
+    variableType: z
+      .nativeEnum(CloudflarePagesVariableType)
+      .default(CloudflarePagesVariableType.Secret)
+      .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_PAGES.variableType)
+  })
 });
 
 export const UpdateCloudflarePagesSyncSchema = GenericUpdateSecretSyncFieldsSchema(

@@ -85,4 +85,39 @@ describe("CloudflarePagesSyncFns", () => {
 
     expect(patch).not.toHaveBeenCalled();
   });
+
+  it("skips keys of the other type on a sync with no saved type", async () => {
+    get.mockResolvedValue({
+      data: {
+        result: {
+          deployment_configs: {
+            production: {
+              env_vars: {
+                API_URL: { type: "plain_text", value: "old" },
+                OTHER_TEXT: { type: "plain_text", value: "old" },
+                STALE_SECRET: { type: "secret_text", value: "" }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    await CloudflarePagesSyncFns.syncSecrets(syncWith(), payloadOf({ API_URL: "new", API_KEY: "key" }));
+
+    expect(patch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/pages\/projects\/my-site$/),
+      {
+        deployment_configs: {
+          production: {
+            env_vars: {
+              API_KEY: { type: "secret_text", value: "key" },
+              STALE_SECRET: null
+            }
+          }
+        }
+      },
+      expect.anything()
+    );
+  });
 });

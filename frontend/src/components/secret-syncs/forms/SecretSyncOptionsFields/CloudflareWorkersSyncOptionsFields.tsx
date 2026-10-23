@@ -45,8 +45,9 @@ export const CloudflareWorkersSyncOptionsFields = () => {
           <Field className="mb-4">
             <FieldLabel htmlFor="cloudflare-workers-variable-type">Variable type</FieldLabel>
             <FieldContent>
-              {/* Unset means Secret. It isn't filled in, so editing an older sync doesn't look like a
-                  destination change. */}
+              {/* A sync without a type predates the option and skips same-name plaintext and JSON
+                  variables, so a type is only saved once someone picks one. The backend gives new syncs
+                  Secret. */}
               <Select
                 value={value ?? CloudflareWorkersVariableType.Secret}
                 onValueChange={onChange}
