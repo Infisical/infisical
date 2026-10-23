@@ -206,7 +206,9 @@ export const HoneyTokenForm = ({
       hostingOptions?.customerAccount.configStatus !== HoneyTokenConfigStatus.Complete
     ) {
       formMethods.setError("hosting", {
-        message: "Finish connecting your AWS account, or choose Infisical-managed."
+        message: hostingOptions?.infisicalManaged.isAvailable
+          ? "Finish connecting your AWS account, or choose Infisical-managed."
+          : "Finish connecting your AWS account to create a honey token."
       });
       return false;
     }
