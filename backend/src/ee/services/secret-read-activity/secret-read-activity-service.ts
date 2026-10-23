@@ -468,7 +468,7 @@ export const secretReadActivityServiceFactory = ({
   const $computeUnusedAccess = async (projectId: string, orgId: string): Promise<TUnusedAccessSummary> => {
     const { tallies, lastReadAtByKey, access } = await $tallyUnusedAccess(projectId, orgId);
     const ranked = [...tallies.values()]
-      .filter((tally) => tally.unreadCount >= 0)
+      .filter((tally) => tally.unreadCount > 0)
       .sort((a, b) => b.unreadCount - a.unreadCount || a.entitledCount - b.entitledCount);
     const names = await $findActorNames(ranked, access.directMembers);
 
