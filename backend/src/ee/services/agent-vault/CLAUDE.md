@@ -13,7 +13,7 @@ never in anything the agent holds.
 | **Access bundle** | A named set of services. The unit you grant |
 | **Service** | One host pattern set plus its credential |
 | **Session** | A minted token naming one actor, one of their bundles, and an expiry. The token *is* the session |
-| **Proxy** | One deployed egress node with its own CA. One row per box |
+| **Proxy** | One egress identity and its CA. Any number of processes can run it from its proxy token |
 
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
@@ -22,7 +22,7 @@ agent-vault-variable/        product-wide variables and the reads behind Used By
 agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-session/         mint, revoke, list, get
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
-agent-vault-proxy/           login (enrollment), heartbeat, resolve
+agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve
 agent-vault-session-log/     storage settings, chunk ingest, playback
 ```
 
@@ -110,18 +110,27 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 
 ## Proxies
 
-- Infisical stores no copy of a proxy's CA, only the fingerprint and expiry. Agents fetch the CA from the
-  proxy's own unauthenticated `/_agent-vault/ca`, so the trust path has no dependency on Infisical and there
-  is deliberately no download endpoint.
-- The login route is unauthenticated (the enrollment token is the credential), so its audit event names the
-  proxy as actor explicitly, as gateway, relay and KMIP enrollment do. Otherwise it logs as `unknownUser`.
+- There is no enrollment. Create and rotate return a proxy token (the non-expiring access JWT) and every proxy
+  process starts from it, loading its settings and CA from `POST /proxy/bootstrap`. Create and rotate each write
+  `tokenVersion` and the new CA in one statement, so no response ever pairs a token with the wrong CA. Proxies
+  enrolled before enrollment was removed keep running from their saved state on disk; the CLI's read-only
+  support for that is due to be removed after 2026-12-21.
+- Infisical generates and keeps each proxy's CA (cert in plain text, key sealed with the project data key) at
+  create and on every rotation, and fills one in at bootstrap for a proxy enrolled before that, with
+  `storeRootCaIfMissing` deciding races. A proxy serving its own CA (`--ca-cert`) reports it at bootstrap and is
+  sent none; the stored CA is kept for processes that don't bring one, and the row shows whichever CA the latest
+  start reported. Create and rotate record the new CA's fingerprint so it can be pinned before
+  anything starts, and bootstrap's fingerprint write is tied to the token version it checked, so a start on a
+  rotated token can't overwrite it.
+- Agents still fetch the CA from the proxy's own unauthenticated `/_agent-vault/ca`, so the agent's trust path
+  has no dependency on Infisical. There is deliberately no admin download endpoint for the CA.
 - Health is judged against `heartbeatTTL`, the interval the proxy was running when it last checked in, not
   the row's current `pollInterval`. A proxy learns a new interval on its next poll, so comparing against the
   saved one would report a live proxy as unreachable until then. Gateway v2 does the same.
-- The proxy's access token is non-expiring and revoked by bumping `tokenVersion`, which the auth plugin checks
-  on every proxy request. Revoke Access goes through the shared resource-auth revoke so a pending enrollment
-  token is burned too.
-- Resolve is not audited: once per poll per session would swamp the audit table.
+- The proxy token is non-expiring and revoked by bumping `tokenVersion`, which the auth plugin checks on every
+  proxy request. Revoke Access goes through the shared resource-auth revoke; rotating brings a revoked proxy back.
+- Resolve is not audited: once per poll per session would swamp the audit table. Bootstrap is not audited
+  either, since a proxy run as a sidecar starts once per agent run.
 
 ## Host and path grammar
 
@@ -251,15 +260,22 @@ path decides what a service can reach, so it stays literal.
 Metadata only (method, host, path, status, decision), never bodies, headers or the query string. The agent is
 hostile input: nothing it sends may erase or hide its own records, so the proxy logs every request it drops.
 
-- **Bytes go proxy to the customer's bucket to the browser, and S3 is the index.** Infisical stores nothing per
-  chunk and never seals or opens one. A chunk is `{prefix}/{projectId}/{sessionId}/{rev}_{chunkId}.{proxyId}.json.enc`
-  holding `IV ‖ ciphertext ‖ tag`; `rev` counts the chunk id's time down, because S3 lists names ascending only.
+- **Bytes go proxy to the bucket to the browser, and S3 is the index.** Infisical stores nothing per chunk and never
+  seals or opens one. The bucket is default storage (the instance's, `OBJECT_STORAGE_S3_*`) or external storage (the
+  customer's, through an AWS connection); both go through the shared layer in `services/object-storage/`, which builds
+  `{prefix}/orgs/{orgId}/agent-vault/sessions/{sessionId}/logs/{rev}_{chunkId}.{proxyId}.json.enc` holding
+  `IV ‖ ciphertext ‖ tag`. `rev` counts the chunk id's time down, because S3 lists names ascending only.
+- **Effective settings come from `toEffectiveSessionLogConfig`**, reached through `getEffectiveSessionLogConfig`
+  unless the caller already holds the row. No row plus an instance bucket means on in default storage; no instance
+  bucket means a saved `default` row reads as nothing (the row is kept). Writes upsert on `projectId`, because a row
+  can exist while the effective settings are null.
 - **PAM session recording is a separate product.** The overlap with `pam-session-recording` is deliberate; don't
   share code with it.
-- **Keys.** Mint wraps a per-session log key with the project data key, even while session logs are off, and
-  puts `sha256(sessionId|v1)` in front because the KMS wrap takes no context. Unwrap only through
-  `openSessionLogKey`, so a key copied onto another row is refused. A key that won't open turns logs off for
-  that session on resolve: session logs must never break brokering.
+- **Keys.** Mint wraps a per-session log key with `kmsService.wrapKey` (label `{sessionId}|v1`), even while session
+  logs are off. The layout, `sha256(label) || key` under the project data key, must not change: a session can have
+  no expiry, so a key wrapped by older code may still need to open. Unwrap only through `openSessionLogKey` or
+  `unwrapSessionLogKey` (`agent-vault-session-log-secrets.ts`), so a key copied onto another row is refused. A key
+  that won't open turns logs off for that session on resolve: session logs must never break brokering.
 - **The AAD is `sha256("{sessionId}|{chunkId}|v1")`**, pinned by one vector in the CLI's
   `session_log_crypto_test.go` and `sessionLogDecrypt.test.ts`. Chunk ids are lowercase UUIDv7s because the
   browser rebuilds the AAD from the id in the object name. A change here is a change in all three places.
@@ -270,8 +286,10 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   minutes apart in one chunk, so a date range lists from 11 minutes past its end and stops at the first chunk whose
   last request is before its start. The upload link is refused when the id's time is more than a second off
   `endedAt`, and when the body still carries `iv` (CLIs from before the IV moved into the object).
-- **Reads list only the current bucket and prefix**, so changing either hides older logs until it is switched
-  back. One LIST per request, never a loop, so a folder full of other files can't make a request walk the bucket.
+- **Reads list only the current storage, bucket and prefix**, so changing any of them hides older logs until it is
+  switched back. Off hides logs too, so Infisical doesn't read the bucket while logs are off (every read is a billed
+  S3 request): reads return `disabledReason` and no chunks. One LIST per request, never a loop, so a folder full of
+  other files can't make a request walk the bucket.
 - **A read that can't reach the bucket fails with `AgentVaultSessionLogStorageUnavailable`**: 400 when the
   settings or AWS side need fixing, 500 when S3 isn't responding. Never a 200 with no chunks, which callers read
   as "no logs". Only admins see the cause.
@@ -284,12 +302,29 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
   while they may still be uploading. When a poll comes late or returns a full feed, the panel also merges in the
   newest history page, at most once a minute, since the feed may have dropped names it never saw. If that
   page doesn't reach the rows already shown, the panel says some requests may be missing and offers Reload.
-- **There's no per-org chunk limit.** Infisical stores nothing per chunk, and the customer's bucket is theirs; the
-  upload-link rate limit and the proxy cap per org bound the work a proxy can cause.
-- **Nothing deletes from the bucket**, so the IAM policy asks for no `s3:DeleteObject`.
-- **Session logs are a paid feature (`agentVaultByoS3`).** Without it, nothing new is recorded, but saved logs
-  stay readable. That breaks the License Checks rule in `CODE_QUALITY.md` on purpose. Turning session logs off
-  and removing their connection stay allowed, or the connection could never be deleted.
+- **The shared layer caps default storage on Infisical Cloud at 1 GiB per org per UTC day** (each upload counts as at
+  least 16 KiB, 429 over it, allowed if Redis doesn't answer in 250 ms). External buckets and self-hosted instances
+  aren't capped, since the bucket is the customer's. It's internal: no UI and no docs.
+- **Default storage deletes by tag**: each upload is signed with `retention={n}d` from the plan
+  (`agentVaultSessionLogRetentionDays`, 30 by default) and the operator's lifecycle rules delete. Unlike other plan
+  limits, `null` here still means 30, so a plan never keeps logs forever by accident. Nothing ever deletes from
+  external storage.
+- **Default storage problems go to the server logs, never to an org.** The operator, not an org admin, owns that
+  bucket: at boot, API pods list it, write a tagged test file, read it back and send a CORS preflight for `SITE_URL`,
+  and log what failed; health skips default storage, and failed reads tell everyone, admins too, to contact support.
+- **Each storage type has its own plan flag**: `agentVaultManagedStorage` (default on) and `agentVaultByoS3`. The flag
+  for the storage in use gates uploads and reads, so an org without it can't record or view session logs: unlike
+  most paid features, which read from Infisical's database, each read is a billed S3 request. Keep the read check.
+  Turning off is never gated, and turning off clears the saved storage, so it always frees the connection. The row
+  stays, saying off: with no row, session logs are on in default storage. It's written even when nothing reads as
+  saved, so a bucket the operator adds later doesn't turn logs back on. Health and the CORS probe only run while
+  external storage is on and on the plan, since nothing else is recorded or shown.
+- **Usage is counted on the way out, not from the cap counter.** Each upload link sends the aggregated PostHog event
+  `Agent Vault Session Log Chunk Accepted` (`bytes`, `storageType`, and `records`, the proxy's own unchecked count), and
+  the layer counts links on `infisical.object_storage.upload.*` for operators. The cap counter floors at 16 KiB, mixes
+  storage types and stops at the cap, so it isn't a usage number.
+- **The settings body is `{ enabled: false }` or `{ enabled: true, storage }`.** Turning on always names the
+  storage, so nothing guesses which one an `enabled: true` meant after an off cleared it.
 - **`/agent-vault/app-connections/aws/*` are the shared builders in `app-connection-endpoints.ts` called with
   a `resolveScope`.** The project comes from the server, a connection outside Agent Vault is a 404 before any
   permission check, and responses leave out `projectId`. `createAppConnection` refuses any app but AWS in this
