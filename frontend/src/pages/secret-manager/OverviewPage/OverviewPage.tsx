@@ -2220,6 +2220,10 @@ const OverviewPageContent = () => {
           },
           { projectId, environment: env, secretPath }
         );
+        if (newSecretName && newSecretName !== key)
+          setRecentQuickAddKeys((prev) =>
+            prev.map((recentKey) => (recentKey === key ? newSecretName : recentKey))
+          );
         overviewTelemetry.flow({
           action: "update",
           resourceType: "secret",
@@ -2867,9 +2871,19 @@ const OverviewPageContent = () => {
         key: m.key,
         value: m.value
       }));
+      const serializeMetadata = (
+        metadata?: { key: string; value: string; isEncrypted?: boolean }[]
+      ) =>
+        JSON.stringify(
+          metadata?.map((m) => ({
+            key: m.key,
+            value: m.value,
+            isEncrypted: m.isEncrypted ?? false
+          })) ?? []
+        );
       const isMetadataUnchanged =
-        JSON.stringify(draft.secretMetadata?.map((m) => ({ key: m.key, value: m.value })) ?? []) ===
-        JSON.stringify(originalSecretMetadata ?? []);
+        serializeMetadata(draft.secretMetadata) ===
+        serializeMetadata(existingSecret.secretMetadata);
       removePendingChange(draft.id, "secret", context);
       addPendingChange(
         {
