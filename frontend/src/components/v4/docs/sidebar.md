@@ -92,7 +92,7 @@ Exports: Sidebar. Source TypeScript defines the API.
 - A row with children opens one level of 32px pages, without icons, on a guide line under its icon. It opens by itself when it holds the current page, and while closed it shows the sum of its pages' counts.
 - The nav scrolls when it runs out of room and fades the edge where more rows are cut off.
 - Collapsing narrows the sidebar to a rail of icons over the slide timing. Labels move into tooltips, counts become dots, the space switch stacks its icons vertically, section labels become rules and a group opens its pages in a menu to the right.
-- The account button opens one Switcher: organizations with their plan, organization actions, the person's items, a theme row, any preference rows and the person's own row for their settings. A preference row (preferences) uses the theme row's recipe: a label and a small ToggleGroup of icons or color swatches. The button shows the person's name over the organization, or meta, as text with no avatar; a host may pass media such as a product mark. Without user there is no account button, for hosts such as the design system workbench.
+- The account button opens one Switcher: organizations with their plan, organization actions, the person's items, a theme row, any preference rows and the person's own row for their settings. A preference row (preferences) uses the theme row's recipe: a label and a small ToggleGroup of icons or color swatches. The button shows the person's name over the organization, or meta, as text with no avatar; a host may pass media such as a product mark. The account row is size-row-stacked (48px) so the name and subtitle fit, any media is a size-row-stacked-media (34px) tile as tall as the two text lines, and the rail keeps both heights. The account footer has no rule above it, and inside an AppShell its bottom inset mirrors the tool row's top inset. Without user there is no account button, for hosts such as the design system workbench.
 - Pass scope to show a product, project or settings level instead of the top level: a back row (chevron-left and the parent's name, named Back to the parent) above that scope's sections. The back row calls onNavigate with scope.back, so the host moves up one level and passes the parent scope, or none for the top level. Spaces show only at the top level.
 - A scope change slides the rows in over duration-moderate on ease-standard, from the right going deeper and from the left going back; with reduced motion it only fades. In the rail the back row is the first icon, with a Back to tooltip.
 - A section with an icon and a label collapses in the rail to one row with that icon, which opens the section's items in a flyout, so long navigations stay short in the rail.
@@ -137,7 +137,7 @@ Source declarations and review criteria only. Generation checks references and c
 ### size support
 
 
-- no authored named size: omitted. The sidebar has one width and a rail. Row heights follow the 36px control recipe.
+- no authored named size: omitted. The sidebar has one width and a rail. Nav rows follow the 36px control recipe; the account row is size-row-stacked.
 
 ## Executable examples
 

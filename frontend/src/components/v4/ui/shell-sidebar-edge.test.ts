@@ -14,7 +14,7 @@ describe("shell-hosted Sidebar edge", () => {
   const shellRule = rules(css("top-bar.module.css")).find(
     ({ selector, body }) =>
       selector.startsWith('.shell > [data-slot="sidebar"]') &&
-      /border-inline-end-color:\s*transparent/.test(body)
+      /border-inline-end-width:\s*0/.test(body)
   );
 
   it("hides the Sidebar's own edge inside AppShell", () => {

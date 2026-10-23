@@ -403,8 +403,7 @@
 .accountShelf {
   flex: none;
   margin-inline: var(--v4-space-8);
-  padding-block: var(--v4-space-8);
-  border-top: var(--v4-size-control-border) solid var(--v4-sidebar-line);
+  padding-block: var(--v4-space-8) var(--v4-sidebar-tools-top, var(--v4-space-8));
 }
 .account {
   display: flex;
@@ -412,7 +411,7 @@
   gap: 9px;
   width: 100%;
   min-width: 0;
-  height: var(--v4-size-control-md);
+  height: var(--v4-size-row-stacked);
   padding: 0 9px 0 var(--v4-space-8);
   border: 0;
   border-radius: 0;
@@ -430,7 +429,9 @@
   outline-offset: calc(-1 * var(--v4-size-focus-ring));
 }
 .sidebar[data-collapsed] .account {
+  justify-content: center;
   width: var(--v4-size-control-md);
+  padding: 0;
 }
 .accountText {
   display: flex;
@@ -538,15 +539,15 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  width: var(--v4-size-badge);
-  height: var(--v4-size-badge);
+  width: var(--v4-size-row-stacked-media);
+  height: var(--v4-size-row-stacked-media);
   border-radius: 0;
   background: var(--v4-ink);
   color: var(--v4-on-ink);
 }
 .accountMedia > svg {
-  width: var(--v4-size-icon-xs);
-  height: var(--v4-size-icon-xs);
+  width: var(--v4-size-icon-lg);
+  height: var(--v4-size-icon-lg);
 }
 .sheet.sheet[data-side] {
   gap: 0;
