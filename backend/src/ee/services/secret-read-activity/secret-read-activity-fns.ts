@@ -123,12 +123,15 @@ const subjectOf = ({ secret, environment, secretPath }: TSecretActivity) => ({
 
 // Dates an actor's access to each secret from the oldest of their sources that still grants it on its own, so a
 // change only restarts the window for the secrets it opened. With no single source granting it (rules that only
-// add up together), the newest source date is used. An expired restrictive folder grant can have given back access
-// in its folder, so access there dates no earlier than that. Each source is checked once per secret, and sources
-// shared by many actors (a role, a group) are checked once for all of them.
+// add up together), the newest source date is used. Restrictions that ended can have given access back, so access
+// dates no earlier than an expired folder grant in its folder (folderReopenedAt, by "<actorId>:<folderId>"), an
+// edited folder grant in its folder, or an expired temporary role or privilege anywhere (accessReopenedAt, by actor,
+// since what it held back is not worked out). Sources are checked once per secret, shared ones (a role, a group)
+// once for every actor holding them, and only the current secret's checks are kept.
 export const createAccessDating = (
   sourcesByActorId: Map<string, TAccessSource[]>,
-  folderReopenedAt: Map<string, Date>
+  folderReopenedAt: Map<string, Date>,
+  accessReopenedAt = new Map<string, Date>()
 ): Pick<TProjectAccess, "accessSinceOf" | "latestAccessChangeOf"> => {
   const latestByActorId = new Map<string, Date>();
   const raise = (actorId: string, date?: Date) => {
@@ -137,36 +140,42 @@ export const createAccessDating = (
   };
   sourcesByActorId.forEach((sources, actorId) => sources.forEach((source) => raise(actorId, source.date)));
   folderReopenedAt.forEach((date, key) => raise(key.slice(0, key.indexOf(":")), date));
+  accessReopenedAt.forEach((date, actorId) => raise(actorId, date));
 
   const latestAccessChangeOf = ({ actorId }: { actorId: string }) => latestByActorId.get(actorId);
-  const checksBySecret = new WeakMap<TSecretActivity, Map<unknown, boolean>>();
+  let checkedSecret: TSecretActivity | undefined;
+  let checks = new Map<unknown, boolean>();
 
   const accessSinceOf = ({ actorId }: { actorId: string }, activity: TSecretActivity) => {
-    let checks = checksBySecret.get(activity);
-    if (!checks) {
+    if (activity !== checkedSecret) {
+      checkedSecret = activity;
       checks = new Map();
-      checksBySecret.set(activity, checks);
     }
-    const knownChecks = checks;
     const subject = subjectOf(activity);
+    const inFolder = (source: TAccessSource) => source.folderId === activity.secret.folderId;
     const grants = (source: TAccessSource) => {
-      if (source.folderId && source.folderId !== activity.secret.folderId) return false;
+      if (source.folderId && !inFolder(source)) return false;
       const permission = source.permission();
-      let granted = knownChecks.get(permission);
+      let granted = checks.get(permission);
       if (granted === undefined) {
         granted = hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, subject);
-        knownChecks.set(permission, granted);
+        checks.set(permission, granted);
       }
       return granted;
     };
-    const grantingDates = (sourcesByActorId.get(actorId) ?? []).flatMap((source) =>
-      source.date && grants(source) ? [source.date] : []
-    );
+    const sources = sourcesByActorId.get(actorId) ?? [];
+    const grantingDates = sources.flatMap((source) => (source.date && grants(source) ? [source.date] : []));
+    const floors = [
+      folderReopenedAt.get(`${actorId}:${activity.secret.folderId}`),
+      accessReopenedAt.get(actorId),
+      ...sources.map((source) => (source.restartsFolder && inFolder(source) ? source.date : undefined))
+    ];
     let since = grantingDates.length
       ? new Date(Math.min(...grantingDates.map((date) => date.getTime())))
       : latestByActorId.get(actorId);
-    const reopenedAt = folderReopenedAt.get(`${actorId}:${activity.secret.folderId}`);
-    if (reopenedAt && (!since || reopenedAt > since)) since = reopenedAt;
+    floors.forEach((floor) => {
+      if (floor && (!since || floor > since)) since = floor;
+    });
     return since;
   };
 

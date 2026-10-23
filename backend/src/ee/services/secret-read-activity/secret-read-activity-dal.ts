@@ -137,6 +137,8 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
 
   type TRoleSourceRow = {
     membershipRoleId: string;
+    actorUserId: string | null;
+    actorIdentityId: string | null;
     actorGroupId: string | null;
     membershipCreatedAt: Date;
     createdAt: Date;
@@ -160,8 +162,9 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
   // When each source of project access last changed, so a secret's access can be dated from the oldest source that
   // grants it: every role assignment (of users, identities and groups, with the last edit to a custom role's rules,
   // since which secrets an edit opened is not recorded), and every privilege and folder grant. Membership updatedAt
-  // is left out because logins bump it. Expired access only takes access away, so it is not a source, except an
-  // expired folder grant: a restrictive one can give back the access it held back in its folder.
+  // is left out because logins bump it. Expired access is not a source, but a restriction ending can give access
+  // back, so its end is kept as the earliest that access can date from: an expired folder grant's in its folder, and
+  // an expired temporary role's or privilege's for the whole of its holder's access.
   const findAccessSourceDates = async (projectId: string, tx?: Knex) => {
     try {
       const [roleRows, privilegeRows] = (await Promise.all([
@@ -172,6 +175,8 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
           .where(`${TableName.Membership}.scopeProjectId`, projectId)
           .select(
             db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
+            db.ref("actorUserId").withSchema(TableName.Membership),
+            db.ref("actorIdentityId").withSchema(TableName.Membership),
             db.ref("actorGroupId").withSchema(TableName.Membership),
             db.ref("createdAt").withSchema(TableName.Membership).as("membershipCreatedAt"),
             db.ref("createdAt").withSchema(TableName.MembershipRole),
@@ -200,34 +205,46 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
       const latestOf = (dates: (Date | null)[]) =>
         new Date(Math.max(...dates.flatMap((date) => (date ? [new Date(date).getTime()] : []))));
 
+      // Keyed by the user, identity or group that held it: when its latest temporary role or privilege expired.
+      const accessReopenedAt = new Map<string, Date>();
+      const raise = (dates: Map<string, Date>, key: string, date: Date) => {
+        const current = dates.get(key);
+        if (!current || date > current) dates.set(key, date);
+      };
+      const recordExpiry = (holderId: string | null, endedAt: Date | null) => {
+        if (holderId && endedAt) raise(accessReopenedAt, holderId, new Date(endedAt));
+      };
+
       const roleDates = new Map<string, Date>();
       const groupDates = new Map<string, Date>();
       roleRows.forEach((row) => {
-        if (isExpired(row)) return;
+        if (isExpired(row)) {
+          recordExpiry(row.actorUserId ?? row.actorIdentityId ?? row.actorGroupId, row.temporaryAccessEndTime);
+          return;
+        }
         const date = latestOf([row.membershipCreatedAt, row.createdAt, row.updatedAt, row.customRoleUpdatedAt]);
         roleDates.set(row.membershipRoleId, date);
-        if (!row.actorGroupId) return;
-        const groupDate = groupDates.get(row.actorGroupId);
-        if (!groupDate || date > groupDate) groupDates.set(row.actorGroupId, date);
+        if (row.actorGroupId) raise(groupDates, row.actorGroupId, date);
       });
 
       const privilegeDates = new Map<string, Date>();
+      const editedPrivilegeIds = new Set<string>();
       // Keyed "<actorId>:<folderId>": when an expired folder grant last gave access back in that folder.
       const folderReopenedAt = new Map<string, Date>();
       privilegeRows.forEach((row) => {
+        const actorId = row.actorUserId ?? row.actorIdentityId;
         if (!isExpired(row)) {
           privilegeDates.set(row.id, latestOf([row.createdAt, row.updatedAt]));
+          if (new Date(row.updatedAt) > new Date(row.createdAt)) editedPrivilegeIds.add(row.id);
           return;
         }
-        const actorId = row.actorUserId ?? row.actorIdentityId;
-        if (!row.folderId || !actorId || !row.temporaryAccessEndTime) return;
-        const key = `${actorId}:${row.folderId}`;
-        const endedAt = new Date(row.temporaryAccessEndTime);
-        const current = folderReopenedAt.get(key);
-        if (!current || endedAt > current) folderReopenedAt.set(key, endedAt);
+        if (!row.folderId) recordExpiry(actorId, row.temporaryAccessEndTime);
+        else if (actorId && row.temporaryAccessEndTime) {
+          raise(folderReopenedAt, `${actorId}:${row.folderId}`, new Date(row.temporaryAccessEndTime));
+        }
       });
 
-      return { roleDates, groupDates, privilegeDates, folderReopenedAt };
+      return { roleDates, groupDates, privilegeDates, editedPrivilegeIds, folderReopenedAt, accessReopenedAt };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find project access source dates" });
     }

@@ -421,6 +421,7 @@ export const secretReadActivityServiceFactory = ({
           return {
             date: sourceDates.privilegeDates.get(grant.id),
             folderId: grant.folderId,
+            restartsFolder: sourceDates.editedPrivilegeIds.has(grant.id),
             permission: () => {
               permission ??= createMongoAbility<ProjectPermissionSet>(buildFolderScopedPrivilegeRules([grant]), {
                 conditionsMatcher
@@ -432,10 +433,20 @@ export const secretReadActivityServiceFactory = ({
       );
     });
 
+    // A group's expired temporary role reached each of its members.
+    const accessReopenedAt = new Map<string, Date>();
+    const membersByGroupId = groupBy(groupMembers, (member) => member.group.id);
+    sourceDates.accessReopenedAt.forEach((date, holderId) => {
+      (membersByGroupId[holderId]?.map((member) => member.actorId) ?? [holderId]).forEach((actorId) => {
+        const current = accessReopenedAt.get(actorId);
+        if (!current || date > current) accessReopenedAt.set(actorId, date);
+      });
+    });
+
     return {
       readersByRules: Object.values(groupBy(readers, (reader) => JSON.stringify(reader.permission.rules))),
       adminActorIds,
-      ...createAccessDating(sourcesByActorId, sourceDates.folderReopenedAt),
+      ...createAccessDating(sourcesByActorId, sourceDates.folderReopenedAt, accessReopenedAt),
       judgedFrom: trackingStartedAt > windowStart ? trackingStartedAt : windowStart,
       directMembers: new Map([
         ...userPermissions.map((member) => [toActorKey(ActorType.USER, member.id), member] as const),

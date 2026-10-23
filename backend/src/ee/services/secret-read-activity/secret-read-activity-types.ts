@@ -131,6 +131,9 @@ export type TProjectReader = {
 export type TAccessSource = {
   date?: Date;
   folderId?: string;
+  // A folder grant edited since it was created may have held access back before, so access in its folder dates from
+  // the edit.
+  restartsFolder?: boolean;
   permission: () => MongoAbility<ProjectPermissionSet, MongoQuery>;
 };
 

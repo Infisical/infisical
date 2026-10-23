@@ -378,6 +378,25 @@ describe("createAccessDating", () => {
     expect(latestAccessChangeOf(actor)).toEqual(oct);
   });
 
+  test("dates access in an edited folder grant's folder from the edit, since it may have held access back", () => {
+    const { accessSinceOf } = dating([
+      { date: sept, permission: () => readsAll },
+      { date: oct, folderId: "granted", restartsFolder: true, permission: () => readsAll }
+    ]);
+    expect(accessSinceOf(actor, secretIn("prod", "granted"))).toEqual(oct);
+    expect(accessSinceOf(actor, secretIn("prod", "f1"))).toEqual(sept);
+  });
+
+  test("dates all access no earlier than an expired temporary role or privilege", () => {
+    const { accessSinceOf, latestAccessChangeOf } = createAccessDating(
+      new Map([["actor", [{ date: sept, permission: () => readsAll }]]]),
+      new Map(),
+      new Map([["actor", oct]])
+    );
+    expect(accessSinceOf(actor, secretIn("prod", "f1"))).toEqual(oct);
+    expect(latestAccessChangeOf(actor)).toEqual(oct);
+  });
+
   test("checks a source shared by many actors once per secret", () => {
     let builds = 0;
     const shared = () => {

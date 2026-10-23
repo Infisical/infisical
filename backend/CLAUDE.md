@@ -1161,8 +1161,11 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   `groupsOnly` so placeholders hold the member's details; each folder grant) carry the date
   `findAccessSourceDates` gives them, and a secret's access dates from the oldest source that grants it on its own,
   so a change only restarts the window for the secrets it opened. An edit to a custom role's rules dates that role
-  for every secret it gives, since which secrets an edit opened is not recorded. Expired access is not a source,
-  except an expired folder grant, which can give back access it held back in its folder. Only an actor with a
+  for every secret it gives, since which secrets an edit opened is not recorded. Expired access is not a source, but
+  an ended restriction may have given access back, so access dates no earlier than an expired folder grant in its
+  folder, a folder grant edited since its creation in its folder, or an expired temporary role or privilege across
+  all of its holder's access (what it held back is not worked out). Only the current secret's source checks are
+  kept, so the scan's memory does not grow with the project. Only an actor with a
   source newer than `judgedFrom` is checked per secret, and each source once per secret across actors. A read from
   before the reader had access to a secret is dropped for that secret (`readsByActorKey`): reads are credited by
   folder, and a folder read then could not have returned it. A read recorded against the secret itself
