@@ -10,6 +10,7 @@ The [gateway](/documentation/platform/gateways/overview) in your network runs ev
 
 ## Prerequisites
 
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
 - A Snowflake user for Infisical to sign in as, with a role that can use a warehouse
 - A key pair or a programmatic access token for that user (Snowflake blocks password sign-in for human users, so a password only works for a service user whose policy allows it)
 - A gateway on version 0.43.133 or later that can reach your Snowflake account, including over AWS PrivateLink if you use it

@@ -8,6 +8,7 @@ A MongoDB [account](/documentation/platform/pam/accounts/overview) stores the cr
 
 ## Prerequisites
 
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
 - A [gateway](/documentation/platform/gateways/overview) that can reach the database
 - A MongoDB [account template](/documentation/platform/pam/templates/overview)
 
@@ -40,10 +41,15 @@ A MongoDB [account](/documentation/platform/pam/accounts/overview) stores the cr
 
 To open a session, follow [Connect to an account](/documentation/platform/pam/accounts/connect). MongoDB accounts don't support the browser, so use the CLI.
 
-Start the local proxy, then connect your MongoDB client, such as `mongosh`, to the port that the CLI prints:
+Start the local proxy:
 
 ```bash
 infisical pam access backend-team/users-db
+```
+
+The proxy keeps running in that terminal and prints its port. In a second terminal, connect your MongoDB client, such as `mongosh`, to that port:
+
+```bash
 mongosh "mongodb://localhost:<port>/users"
 ```
 

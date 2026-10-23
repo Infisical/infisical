@@ -8,6 +8,7 @@ An Oracle [account](/documentation/platform/pam/accounts/overview) stores the cr
 
 ## Prerequisites
 
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
 - A [gateway](/documentation/platform/gateways/overview) that can reach the database
 - An Oracle [account template](/documentation/platform/pam/templates/overview)
 - An Oracle password of 30 characters or fewer, because the gateway can't sign in with a longer one
@@ -58,7 +59,7 @@ Start the local proxy. The CLI prints the port, the username, and the service na
 infisical pam access finance/billing-db
 ```
 
-Then connect your Oracle client, such as `sqlplus` or SQL Developer, to the port:
+The proxy keeps running in that terminal. In a second terminal, connect your Oracle client, such as `sqlplus` or SQL Developer, to the port:
 
 ```bash
 sqlplus <username>/password@127.0.0.1:<port>/<service-name>

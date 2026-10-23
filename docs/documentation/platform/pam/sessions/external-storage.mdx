@@ -28,10 +28,18 @@ If you self-host Infisical, you can also store recordings on your own S3-compati
 
 ### Connection
 
-Infisical writes to the bucket with the credentials of an app connection in your organization:
+Infisical writes to the bucket with the credentials of an app connection in your organization. For AWS S3, you can use an [AWS connection](/integrations/app-connections/aws) whose credentials have the [permissions on the bucket](#bucket-permissions).
 
-- **AWS S3:** Use an [AWS connection](/integrations/app-connections/aws) whose credentials have the [permissions on the bucket](#bucket-permissions)
-- **Any supported provider, including AWS S3:** Go to **Integrations** > **App Connections**, select **Add Connection**, and select **S3-Compatible Storage**. Enter the endpoint and access key for your provider from [Supported providers](#supported-providers).
+For any supported provider, including AWS S3, you can create an S3-Compatible Storage connection instead:
+
+<Steps>
+  <Step>
+    Go to **Integrations** > **App Connections**, select **Add Connection**, and select **S3-Compatible Storage**.
+  </Step>
+  <Step>
+    Enter the endpoint and access key for your provider from [Supported providers](#supported-providers).
+  </Step>
+</Steps>
 
 ### Bucket permissions
 

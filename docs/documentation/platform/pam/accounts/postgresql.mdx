@@ -10,6 +10,7 @@ The account can sign in with a password, or with [AWS IAM authentication](#aws-i
 
 ## Prerequisites
 
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
 - A [gateway](/documentation/platform/gateways/overview) that can reach the database
 - A PostgreSQL [account template](/documentation/platform/pam/templates/overview)
 
@@ -141,10 +142,15 @@ To open a session, follow [Connect to an account](/documentation/platform/pam/ac
     The browser session has a table browser, where you can view, filter, edit, and export rows, and a SQL editor for running queries.
   </Tab>
   <Tab title="CLI">
-    Start the local proxy, then connect your PostgreSQL client to the port that the CLI prints:
+    Start the local proxy:
 
     ```bash
     infisical pam access backend-team/orders-db
+    ```
+
+    The proxy keeps running in that terminal and prints its port. In a second terminal, connect your PostgreSQL client to that port:
+
+    ```bash
     psql "postgresql://localhost:<port>/orders"
     ```
 

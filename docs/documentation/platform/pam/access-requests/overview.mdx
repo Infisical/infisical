@@ -139,7 +139,9 @@ The first time an agent connects to an account that requires approval, the CLI f
 
 <AccordionGroup>
   <Accordion title="What happens if the account moves while a request is pending?">
-    If the account moves to another folder or is deleted, Infisical won't approve the request. The member files a new request, which goes to the approvers of the account's current folder.
+    If the account is deleted, Infisical cancels the request.
+
+    If the account moves to another folder, Infisical won't approve the request, and the member can't file a new one while it's pending. An approver of the old folder must deny the old request first. The member can then file a new request, which goes to the approvers of the account's current folder.
   </Accordion>
   <Accordion title="Do changes to a folder's approvers apply to pending requests?">
     If you remove an approver, they can't act on pending requests from that point on. If you add an approver, they can only act on requests filed after you added them. An approved request keeps its access until it expires or an Admin of the folder revokes it.

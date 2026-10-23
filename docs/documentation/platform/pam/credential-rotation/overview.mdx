@@ -24,7 +24,7 @@ When an account rotates, Infisical:
 3. Signs in with the new password to check that it works
 4. Saves the new password as the account's credential
 
-If a step fails, the account keeps its current password, and its **Rotation** tab shows the error.
+If a step fails, the account's **Rotation** tab shows the error, and Infisical doesn't change the credential stored on the account. If the step failed after the password change, the target may already use the new password. Infisical keeps the new password and tries it first on the next rotation attempt.
 
 ## Rotation accounts
 
