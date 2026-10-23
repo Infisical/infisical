@@ -78,6 +78,9 @@ export type TRecordBulkSecretReadDTO = TSecretReader & {
   notModified?: boolean;
   secrets: TReturnedSecret[];
   imports?: { secrets: TReturnedSecret[] }[];
+  // Set when references were expanded with the reader's personal overrides: the secrets they resolved to, credited
+  // in place of matching references by key, which would credit a shared secret an override replaced.
+  referencedSecretIds?: string[];
 };
 
 // What the request path appends to the stream; the consumer resolves it to folders and secrets.

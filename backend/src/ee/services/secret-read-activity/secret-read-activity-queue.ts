@@ -148,7 +148,8 @@ export const secretReadActivityQueueServiceFactory = ({
     includesPersonalOverrides,
     notModified,
     secrets,
-    imports = []
+    imports = [],
+    referencedSecretIds
   }: TRecordBulkSecretReadDTO) => {
     if (!$isTrackedReader(actor)) return;
 
@@ -172,10 +173,13 @@ export const secretReadActivityQueueServiceFactory = ({
         actor,
         actorId,
         projectId,
-        secretIds: [...secrets, ...imports.flatMap((secretImport) => secretImport.secrets)]
-          .filter((secret) => !secret.secretValueHidden)
-          .map((secret) => secret.id),
-        referencesExpanded: expandSecretReferences
+        secretIds: [
+          ...[...secrets, ...imports.flatMap((secretImport) => secretImport.secrets)]
+            .filter((secret) => !secret.secretValueHidden)
+            .map((secret) => secret.id),
+          ...(referencedSecretIds ?? [])
+        ],
+        referencesExpanded: referencedSecretIds ? false : expandSecretReferences
       });
     } catch (error) {
       logger.warn(error, `Failed to record secret read [projectId=${projectId}] [actorId=${actorId}]`);

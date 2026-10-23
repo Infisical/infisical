@@ -1120,7 +1120,12 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   A narrow 304 carries no secrets and records nothing, which is safe only because ETags are stored per UTC day,
   so each client's first read of the day is a full response. Single reads record the secret. A read with
   references unexpanded is stored as `secret-unexpanded` and credits only that secret, not the values it
-  references, which is why `objectType` is part of the primary key. A Redis `SET NX` gate (25h TTL) keyed on
+  references, which is why `objectType` is part of the primary key. A read that expands references with the reader's
+  personal overrides (v4 bulk with `includePersonalOverrides`, v4 single read of a personal secret) records the
+  returned secrets plus the ones its references resolved to, all as `secret-unexpanded`: matching references by key
+  would credit a shared secret an override replaced. The expander reports those through `onSecretReferenced`, and
+  the bulk read caches them with its result (only for these reads, so every other cached payload and ETag is
+  unchanged) so a cache hit replays them. A Redis `SET NX` gate (25h TTL) keyed on
   the reader, the day and the request (or the hash of the returned ids) lets only the first identical read
   per day through. It is keyed on the request, not the ETag, since older clients never send one. Gated reads go to a
   Redis stream drained the way the audit log ingest stream is (collect, write, then trim, under a

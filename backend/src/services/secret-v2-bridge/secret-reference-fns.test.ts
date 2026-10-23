@@ -217,3 +217,50 @@ describe("getAllSecretReferences", () => {
     expect(getAllSecretReferences(value)).toEqual({ localReferences: [], nestedReferences: [] });
   });
 });
+
+describe("expandSecretReferencesFactory onSecretReferenced", () => {
+  const row = (id: string, value: string, userId: string | null) => ({
+    id,
+    _id: id,
+    key: "DB_PASSWORD",
+    version: 1,
+    type: userId ? "personal" : "shared",
+    folderId: "folder",
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+    encryptedValue: Buffer.from(value),
+    tags: [],
+    secretMetadata: [],
+    userId
+  });
+  const expand = async (rows: ReturnType<typeof row>[], userId?: string) => {
+    const referenced: string[] = [];
+    const { findBySecretPath } = makeDALs();
+    const { expandSecretReferences } = expandSecretReferencesFactory({
+      projectId: "project",
+      folderDAL: { findBySecretPath },
+      secretDAL: { findByFolderId: vi.fn<Args["secretDAL"]["findByFolderId"]>().mockResolvedValue(rows) },
+      decryptSecretValue: (value) => value?.toString(),
+      canExpandValue: vi.fn(() => true),
+      userId,
+      onSecretReferenced: (secretId) => referenced.push(secretId)
+    });
+    const value = await expandSecretReferences({
+      secretKey: "URL",
+      value: `postgres://\${DB_PASSWORD}@db`,
+      environment: "prod",
+      secretPath: "/"
+    });
+    return { value, referenced };
+  };
+
+  it("reports the reader's own override, not the shared secret it replaced", async () => {
+    const result = await expand([row("shared-db", "shared", null), row("alice-db", "mine", "alice")], "alice");
+    expect(result).toEqual({ value: "postgres://mine@db", referenced: ["alice-db"] });
+  });
+
+  it("reports the shared secret when no override is used", async () => {
+    const result = await expand([row("shared-db", "shared", null)]);
+    expect(result).toEqual({ value: "postgres://shared@db", referenced: ["shared-db"] });
+  });
+});

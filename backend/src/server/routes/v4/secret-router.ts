@@ -201,7 +201,10 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
 
       if (!projectId || !environment) throw new BadRequestError({ message: "Missing project id or environment" });
 
+      // References expanded with the reader's own overrides are credited to the secrets they resolved to.
+      const referencedSecretIds: string[] = [];
       const result = await server.services.secret.getSecretsRaw({
+        onSecretReferenced: (secretId) => referencedSecretIds.push(secretId),
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -241,7 +244,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
           includesPersonalOverrides: req.query.includePersonalOverrides,
           notModified,
           secrets,
-          imports
+          imports,
+          referencedSecretIds:
+            req.query.includePersonalOverrides && req.query.expandSecretReferences ? referencedSecretIds : undefined
         });
       }
 
@@ -392,7 +397,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         throw new BadRequestError({ message: "You must provide  workspaceId" });
       }
 
+      const referencedSecretIds: string[] = [];
       const secret = await server.services.secret.getSecretByNameRaw({
+        onSecretReferenced: (secretId) => referencedSecretIds.push(secretId),
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod,
@@ -410,12 +417,15 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
       });
 
       if (req.query.viewSecretValue) {
+        // A personal secret expands through the reader's own overrides, so the secrets its references resolved to are
+        // credited in place of matching references by key.
+        const usesOverrides = req.query.type === SecretType.Personal && req.query.expandSecretReferences;
         void server.services.secretReadActivity.recordRead({
           actor: req.permission.type,
           actorId: req.permission.id,
           projectId,
-          secretIds: [secret.id],
-          referencesExpanded: req.query.expandSecretReferences
+          secretIds: usesOverrides ? [secret.id, ...referencedSecretIds] : [secret.id],
+          referencesExpanded: usesOverrides ? false : req.query.expandSecretReferences
         });
       }
 

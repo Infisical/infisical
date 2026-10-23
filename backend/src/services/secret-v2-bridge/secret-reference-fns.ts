@@ -112,9 +112,15 @@ type TInterpolateSecretArg = {
   // same-project relative references; cross-project reads must stay raw so source
   // project imports are not resolved through the target project context.
   crossProjectSecretDAL?: Pick<TSecretV2BridgeDALFactory, "findByFolderId">;
+  // Called with the id of each secret in this project whose value a reference resolved to, a personal override
+  // included, so a caller can tell which secrets a read actually delivered.
+  onSecretReferenced?: (secretId: string) => void;
   abortSignal?: AbortSignal;
   tx?: Knex;
 };
+
+// A cross-project secret carries no id: only this project's secrets are reported to onSecretReferenced.
+type TCachedReferencedSecret = { id?: string; value: string; tags: string[]; exists: boolean };
 
 const MAX_SECRET_REFERENCE_DEPTH = 10;
 export const expandSecretReferencesFactory = ({
@@ -130,10 +136,11 @@ export const expandSecretReferencesFactory = ({
   projectDAL,
   kmsService,
   crossProjectSecretDAL,
+  onSecretReferenced,
   abortSignal,
   tx
 }: TInterpolateSecretArg) => {
-  const secretCache: Record<string, Record<string, { value: string; tags: string[]; exists: boolean }>> = {};
+  const secretCache: Record<string, Record<string, TCachedReferencedSecret>> = {};
   let crossProjectAllowedCache: boolean | undefined;
   const hasCrossProjectConfig = Boolean(actorOrgId && orgDAL && projectFolderGrantDAL && projectDAL && kmsService);
   const checkCrossProjectAllowed = async () => {
@@ -179,25 +186,23 @@ export const expandSecretReferencesFactory = ({
       const secrets = await secretDAL.findByFolderId({ folderId: folder.id, userId, tx });
       throwIfClientDisconnected(abortSignal);
 
-      const decryptedSecret = secrets.reduce<Record<string, { value: string; tags: string[]; exists: boolean }>>(
-        (prev, secret) => {
-          // When userId is set, personal overrides (userId !== null) should take precedence
-          // over shared secrets for the same key. We skip overwriting if a personal override
-          // is already stored and the current secret is a shared one.
-          if (userId && prev[secret.key] && !secret.userId) {
-            return prev;
-          }
-
-          // eslint-disable-next-line no-param-reassign
-          prev[secret.key] = {
-            value: decryptSecret(secret.encryptedValue) || "",
-            tags: secret.tags?.map((el) => el.slug),
-            exists: true
-          };
+      const decryptedSecret = secrets.reduce<Record<string, TCachedReferencedSecret>>((prev, secret) => {
+        // When userId is set, personal overrides (userId !== null) should take precedence
+        // over shared secrets for the same key. We skip overwriting if a personal override
+        // is already stored and the current secret is a shared one.
+        if (userId && prev[secret.key] && !secret.userId) {
           return prev;
-        },
-        {}
-      );
+        }
+
+        // eslint-disable-next-line no-param-reassign
+        prev[secret.key] = {
+          id: secret.id,
+          value: decryptSecret(secret.encryptedValue) || "",
+          tags: secret.tags?.map((el) => el.slug),
+          exists: true
+        };
+        return prev;
+      }, {});
 
       secretCache[cacheKey] = decryptedSecret;
     } catch (error) {
@@ -211,7 +216,7 @@ export const expandSecretReferencesFactory = ({
     environment: string,
     secretPath: string,
     secretKey: string
-  ): Promise<{ value: string; tags: string[]; exists: boolean }> => {
+  ): Promise<TCachedReferencedSecret> => {
     const cacheKey = getCacheUniqueKey(environment, secretPath);
 
     if (!secretCache[cacheKey]) {
@@ -320,6 +325,7 @@ export const expandSecretReferencesFactory = ({
             const cacheKey = getCacheUniqueKey(environment, secretPath);
             if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
             secretCache[cacheKey][secretKey] = referredValue;
+            if (referredValue.id) onSecretReferenced?.(referredValue.id);
 
             referencedSecretValue = referredValue.value;
             referencedSecretExists = referredValue.exists;
@@ -444,6 +450,7 @@ export const expandSecretReferencesFactory = ({
             const cacheKey = getCacheUniqueKey(secretReferenceEnvironment, secretReferencePath);
             if (!secretCache[cacheKey]) secretCache[cacheKey] = {};
             secretCache[cacheKey][secretReferenceKey] = referedValue;
+            if (referedValue.id) onSecretReferenced?.(referedValue.id);
 
             referencedSecretValue = referedValue.value;
             referencedSecretExists = referedValue.exists;
