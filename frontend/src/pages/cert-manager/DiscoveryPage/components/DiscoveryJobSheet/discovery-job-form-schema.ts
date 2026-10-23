@@ -191,7 +191,7 @@ export const DiscoveryJobFormSchema = z
         code: z.ZodIssueCode.custom,
         path: ["certificateStores"],
         message:
-          "These stores only hold CA certificates. Turn on Include CA certificates or select another store."
+          "These stores only hold CA certificates. Turn on Include CA Certificates or select another store."
       });
     }
   });

@@ -7,9 +7,9 @@ import {
   FieldDescription,
   FieldError,
   FieldGroup,
-  FieldLabel,
   FieldLegend,
   FieldSet,
+  FieldTitle,
   Toggle
 } from "@app/components/v3";
 import {
@@ -54,6 +54,7 @@ const StoreOptions = ({ stores, value, onChange }: StoreOptionsProps) => (
         <Field key={store} orientation="horizontal">
           <Checkbox
             id={id}
+            aria-labelledby={`${id}-title`}
             variant="project"
             isChecked={value.includes(store)}
             onCheckedChange={(checked) =>
@@ -65,9 +66,7 @@ const StoreOptions = ({ stores, value, onChange }: StoreOptionsProps) => (
             }
           />
           <FieldContent>
-            <FieldLabel htmlFor={id} className="cursor-pointer text-sm font-medium text-foreground">
-              {WindowsCertificateStoreLabels[store]}
-            </FieldLabel>
+            <FieldTitle id={`${id}-title`}>{WindowsCertificateStoreLabels[store]}</FieldTitle>
             <FieldDescription>{STORE_DESCRIPTIONS[store]}</FieldDescription>
           </FieldContent>
         </Field>
@@ -98,12 +97,7 @@ export const WindowsServerStoresFields = () => {
               render={({ field: { value: includeCa, onChange: setIncludeCa } }) => (
                 <Field orientation="horizontal" className="mt-2">
                   <FieldContent>
-                    <FieldLabel
-                      htmlFor="import-standalone-ca"
-                      className="cursor-pointer text-sm font-medium text-foreground"
-                    >
-                      Include CA certificates
-                    </FieldLabel>
+                    <FieldTitle id="import-standalone-ca-title">Include CA Certificates</FieldTitle>
                     <FieldDescription>
                       Import the CA certificates in the selected stores. A leaf certificate always
                       comes in with its chain.
@@ -111,6 +105,7 @@ export const WindowsServerStoresFields = () => {
                   </FieldContent>
                   <Toggle
                     id="import-standalone-ca"
+                    aria-labelledby="import-standalone-ca-title"
                     variant="project"
                     checked={includeCa}
                     onCheckedChange={(checked) => {

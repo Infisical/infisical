@@ -77,6 +77,7 @@ export const WindowsCertificateScanResponseSchema = z.object({
   certificates: z.array(WindowsStoreCertificateSchema).nullish(),
   deniedStores: z.array(z.string()).nullish(),
   unreadableIssuerStores: z.array(z.string()).nullish(),
+  truncatedIssuerStores: z.array(z.string()).nullish(),
   truncatedReason: z.string().max(64).optional()
 });
 
@@ -348,6 +349,16 @@ export const summarizeWindowsScanIssues = (
       `${hostIdentifier}: The connection's user can't open ${unreadableIssuers
         .map((store) => STORE_NAMES[store] ?? store)
         .join(", ")}, so some certificate chains may be incomplete`
+    );
+  }
+  const truncatedIssuers = response.truncatedIssuerStores ?? [];
+  if (truncatedIssuers.length > 0) {
+    issues.push(
+      `${hostIdentifier}: ${truncatedIssuers
+        .map((store) => STORE_NAMES[store] ?? store)
+        .join(
+          ", "
+        )} holds more certificates than the scan reads for chains, so some certificate chains may be incomplete`
     );
   }
   if (response.truncatedReason === HostScanTruncationReason.MaxFiles) {

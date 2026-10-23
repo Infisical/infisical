@@ -190,6 +190,18 @@ describe("summarizeWindowsScanIssues", () => {
     ]);
   });
 
+  test("warns when an issuer store has more certificates than the scan reads", () => {
+    expect(
+      summarizeWindowsScanIssues("web-01", {
+        host: { hostname: "web-01" },
+        certificates: [],
+        truncatedIssuerStores: [WindowsCertificateStore.IntermediateCertificationAuthorities]
+      })
+    ).toEqual([
+      "web-01: Intermediate Certification Authorities holds more certificates than the scan reads for chains, so some certificate chains may be incomplete"
+    ]);
+  });
+
   test("reports nothing for a clean scan", () => {
     expect(summarizeWindowsScanIssues("web-01", { host: { hostname: "web-01" }, certificates: [] })).toEqual([]);
   });

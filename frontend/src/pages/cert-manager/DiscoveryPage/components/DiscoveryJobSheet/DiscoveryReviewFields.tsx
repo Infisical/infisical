@@ -124,7 +124,7 @@ export const DiscoveryReviewFields = () => {
               label="Certificate Stores"
               items={values.certificateStores.map((store) => WindowsCertificateStoreLabels[store])}
             />
-            <ReviewDetail label="Include CA certificates">
+            <ReviewDetail label="Include CA Certificates">
               <Badge variant={values.importStandaloneCaCertificates ? "success" : "neutral"}>
                 {values.importStandaloneCaCertificates ? "Enabled" : "Disabled"}
               </Badge>

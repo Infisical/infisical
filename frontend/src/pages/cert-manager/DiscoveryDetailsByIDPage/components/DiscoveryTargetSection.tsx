@@ -117,7 +117,7 @@ const WindowsServerTargetSection = ({ discovery }: Props) => {
             </DetailValue>
           </Detail>
           <Detail>
-            <DetailLabel>Include CA certificates</DetailLabel>
+            <DetailLabel>Include CA Certificates</DetailLabel>
             <DetailValue>
               <Badge variant={targetConfig.importStandaloneCaCertificates ? "success" : "neutral"}>
                 {targetConfig.importStandaloneCaCertificates ? "Enabled" : "Disabled"}
