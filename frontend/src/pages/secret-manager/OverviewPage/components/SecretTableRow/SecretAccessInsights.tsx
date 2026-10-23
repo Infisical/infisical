@@ -572,6 +572,9 @@ export function SecretAccessInsights({
         .filter((group) => group[memberField].includes(entry.id))
         .map((group) => group.id);
       if (!isDirect && !groupIds.length) return [];
+      // The access list judges a group on its roles alone, but a member's own folder grant also limits what the group
+      // gives them. The read activity applies those grants, so once it has loaded it decides who is drawn.
+      if (readActivity && !readActors.has(`${type}:${entry.id}`)) return [];
       const status = readStatusOf(type, entry.id);
       return [
         {
