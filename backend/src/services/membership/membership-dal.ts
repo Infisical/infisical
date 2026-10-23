@@ -13,6 +13,24 @@ export type TResourceMembershipForActor = TMemberships & {
   forActorId: string;
 };
 
+// Id order matches lockUserProjectMemberships, so a grant and a removal cannot deadlock on two
+// membership rows. Returns only the rows still present: a missing row was already removed, or the
+// member was added back under a new one, and deleting privileges for it would wipe that new grant.
+export const lockMembershipsById = async (ids: string[], tx: Knex) => {
+  if (!ids.length) return [];
+
+  try {
+    const memberships = await tx(TableName.Membership)
+      .whereIn("id", ids)
+      .orderBy("id")
+      .select(selectAllTableCols(TableName.Membership))
+      .forUpdate();
+    return memberships as TMemberships[];
+  } catch (error) {
+    throw new DatabaseError({ error, name: "Lock memberships by id" });
+  }
+};
+
 export const membershipDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.Membership);
 
@@ -181,8 +199,10 @@ export const membershipDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Locks every matching project membership in id order, direct or through a group, until the
-  // caller's transaction commits. The group-membership subquery is not locked.
+  // Same rows removal locks, held across the privilege insert. A privilege written after that
+  // delete survives and takes effect if the user is added back. Locks every matching membership
+  // in id order, direct or through a group. The group subquery is not locked; removal locks the
+  // group's project membership instead.
   const lockUserProjectMemberships = async ({ projectId, userId }: { projectId: string; userId: string }, tx: Knex) => {
     try {
       const userGroupSubquery = tx(TableName.UserGroupMembership).where("userId", userId).select("groupId");

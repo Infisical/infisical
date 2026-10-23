@@ -72,8 +72,8 @@ export const secretAccessApprovalGlobalResourceFactory = ({
         throw new NotFoundError({ message: "The user who created this access request no longer exists" });
       }
 
-      // Held until this transaction commits, across the privilege insert below. A privilege written
-      // after removal has deleted the previous ones takes effect again if the user is added back.
+      // Same membership rows removal locks, held across the privilege insert below. A privilege written
+      // after that delete survives and takes effect if the user is added back.
       if (
         !(await membershipDAL.lockUserProjectMemberships({ projectId: request.projectId, userId: requesterId }, tx))
       ) {
