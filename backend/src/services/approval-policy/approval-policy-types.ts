@@ -219,6 +219,7 @@ export type TApprovalResource<
   allowsAutoApproval?: (args: {
     projectId: string;
     requestData: TApprovalRequestData | TApprovalPolicyInputs;
+    tx?: Knex;
   }) => Promise<boolean>;
   postRejectionRoutine?: (request: TApprovalRequest) => Promise<void>;
 

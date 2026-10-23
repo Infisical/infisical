@@ -200,7 +200,16 @@ export const RequestAccessSheet = ({
     : account?.pendingRequestId;
   const canBreakGlass = Boolean(account?.canBreakGlass && pendingRequestId);
   const requireReason = Boolean(account?.requireReason);
-  const [breakGlassOnSubmit, setBreakGlassOnSubmit] = useState(false);
+  const { data: approverData } = useGetPamAccountApprovers(account?.id, accessType);
+  // With no approvers and no auto-approval rules that apply, break glass is the only way in
+  const isBreakGlassOnly = Boolean(
+    account?.canBreakGlass &&
+      approverData &&
+      !approverData.autoApprovalOnly &&
+      !approverData.steps.some((step) => step.approvers.length > 0)
+  );
+  const [breakGlassChosen, setBreakGlassChosen] = useState(false);
+  const breakGlassOnSubmit = breakGlassChosen || isBreakGlassOnly;
   const requestLabel = isCredentialRequest ? "Request credentials" : "Request session access";
   const submitLabel = breakGlassOnSubmit ? "Break glass" : requestLabel;
   const schema = useMemo(
@@ -218,7 +227,6 @@ export const RequestAccessSheet = ({
     defaultValues: { duration: "1h", reason: "" }
   });
 
-  const { data: approverData } = useGetPamAccountApprovers(account?.id, accessType);
   const autoApprovalInputDetails = approverData?.autoApprovalInputs ?? [];
   const hasAutoApprovalValues = Object.values(autoApprovalValues).some((value) => value.trim());
 
@@ -226,7 +234,7 @@ export const RequestAccessSheet = ({
     if (!open) {
       reset();
       setBypassReason("");
-      setBreakGlassOnSubmit(false);
+      setBreakGlassChosen(false);
       setAutoApprovalValues({});
     }
     onOpenChange(open);
@@ -531,13 +539,16 @@ export const RequestAccessSheet = ({
                         Break glass
                       </FieldTitle>
                       <FieldDescription>
-                        Grant now, skipping the approvers. Every use is audited.
+                        {isBreakGlassOnly
+                          ? "Required here. The folder has no approvers. Auto-approval is off for this account. Every use is audited."
+                          : "Grant now, skipping the approvers. Every use is audited."}
                       </FieldDescription>
                     </FieldContent>
                     <Toggle
                       checked={breakGlassOnSubmit}
                       variant="danger"
-                      onCheckedChange={setBreakGlassOnSubmit}
+                      disabled={isBreakGlassOnly}
+                      onCheckedChange={setBreakGlassChosen}
                     />
                   </Field>
                 </Card>

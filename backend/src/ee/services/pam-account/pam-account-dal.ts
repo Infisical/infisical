@@ -252,6 +252,16 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     return rows[0] || null;
   };
 
+  // Locks the account and its template, so neither changes before the caller's transaction commits
+  const findTemplatePoliciesForShare = async (accountId: string, tx: Knex) =>
+    (await tx(TableName.PamAccount)
+      .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
+      .where(`${TableName.PamAccount}.id`, accountId)
+      .forShare(TableName.PamAccount, TableName.PamAccountTemplate)
+      .first(`${TableName.PamAccount}.projectId`, `${TableName.PamAccountTemplate}.policies as templatePolicies`)) as
+      | { projectId: string; templatePolicies: unknown }
+      | undefined;
+
   const findByIdsWithDetails = async (
     accountIds: string[],
     accountType: string,
@@ -534,6 +544,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     countByGatewayIds,
     findAccessible,
     findByIdWithDetails,
+    findTemplatePoliciesForShare,
     findByIdsWithDetails,
     findAccountsToRotate,
     countAccountsToRotate,

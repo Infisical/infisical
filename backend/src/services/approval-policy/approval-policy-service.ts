@@ -1191,6 +1191,14 @@ export const approvalPolicyServiceFactory = ({
           message: "The auto-approval rules changed while this request was being checked. Submit it again."
         });
       }
+      const stillAllowed =
+        (await resource.allowsAutoApproval?.({ projectId, requestData: requestData as TApprovalRequestData, tx })) ??
+        true;
+      if (!stillAllowed) {
+        throw new BadRequestError({
+          message: "Auto-approval was turned off for this request while it was being checked. Submit it again."
+        });
+      }
       await $claimUnusedRecords(policy.id, evidence, tx);
 
       const created = await createApprovalRequestWithSteps(

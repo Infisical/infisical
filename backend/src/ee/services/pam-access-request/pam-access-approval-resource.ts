@@ -88,7 +88,7 @@ type TPamAccessApprovalResourceDep = {
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "findGroupMembershipsByUserIdInOrg">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "find">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "find" | "create" | "updateById">;
-  pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "find">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "findTemplatePoliciesForShare" | "find">;
   pamAccountTemplateDAL: Pick<TPamAccountTemplateDALFactory, "find">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findById" | "find">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
@@ -461,7 +461,7 @@ export const pamAccessApprovalResourceFactory = ({
 
     const policySteps = await approvalPolicyDAL.findStepsByPolicyId(policy.id);
     // A folder with rules and no approvers grants access only through its rules
-    const isRulesOnly = policySteps.length === 0 && hasAutoApprovalRules;
+    const isRulesOnly = !policySteps.some((step) => step.approvers.length > 0) && hasAutoApprovalRules;
     if (!isRulesOnly && (policySteps.length === 0 || policySteps.some((step) => step.approvers.length === 0))) {
       throw new BadRequestError({
         message:
@@ -503,12 +503,15 @@ export const pamAccessApprovalResourceFactory = ({
   // The account's template opts it in with Allow Auto-Approval
   const allowsAutoApproval: NonNullable<TPamAccessApprovalResource["allowsAutoApproval"]> = async ({
     projectId,
-    requestData
+    requestData,
+    tx
   }) => {
     const { accountId } = requestData as { accountId?: string };
     if (!accountId) return false;
 
-    const account = await pamAccountDAL.findByIdWithDetails(accountId);
+    const account = tx
+      ? await pamAccountDAL.findTemplatePoliciesForShare(accountId, tx)
+      : await pamAccountDAL.findByIdWithDetails(accountId);
     if (!account || account.projectId !== projectId) return false;
 
     return resolveAccessControls(account.templatePolicies).allowAutoApproval;
