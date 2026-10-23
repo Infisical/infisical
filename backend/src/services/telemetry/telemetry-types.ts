@@ -337,8 +337,7 @@ export enum PostHogEventTypes {
   AgentVaultProxyUpdated = "Agent Vault Proxy Updated",
   AgentVaultProxyDeleted = "Agent Vault Proxy Deleted",
   AgentVaultProxyAccessRevoked = "Agent Vault Proxy Access Revoked",
-  AgentVaultProxyEnrollmentTokenReissued = "Agent Vault Proxy Enrollment Token Reissued",
-  AgentVaultProxyEnrolled = "Agent Vault Proxy Enrolled",
+  AgentVaultProxyTokenRotated = "Agent Vault Proxy Token Rotated",
   AgentVaultSessionLogChunkAccepted = "Agent Vault Session Log Chunk Accepted",
   AgentVaultProductMemberAdded = "Agent Vault Product Member Added",
   AgentVaultProductMemberUpdated = "Agent Vault Product Member Updated",
@@ -2577,19 +2576,9 @@ export type TAgentVaultProxyAccessRevokedEvent = {
   properties: TAgentVaultEventBase & { proxyId: string };
 };
 
-export type TAgentVaultProxyEnrollmentTokenReissuedEvent = {
-  event: PostHogEventTypes.AgentVaultProxyEnrollmentTokenReissued;
+export type TAgentVaultProxyTokenRotatedEvent = {
+  event: PostHogEventTypes.AgentVaultProxyTokenRotated;
   properties: TAgentVaultEventBase & { proxyId: string };
-};
-
-export type TAgentVaultProxyEnrolledEvent = {
-  event: PostHogEventTypes.AgentVaultProxyEnrolled;
-  properties: {
-    orgId: string;
-    channel: string;
-    proxyId: string;
-    replacedExistingCa: boolean;
-  };
 };
 
 // Sent per upload link a proxy is given, and aggregated (POSTHOG_AGGREGATED_EVENTS), so bytes and records sum per org.
@@ -2638,17 +2627,13 @@ export type TAgentVaultPostHogEvent =
   | TAgentVaultProxyUpdatedEvent
   | TAgentVaultProxyDeletedEvent
   | TAgentVaultProxyAccessRevokedEvent
-  | TAgentVaultProxyEnrollmentTokenReissuedEvent
-  | TAgentVaultProxyEnrolledEvent
+  | TAgentVaultProxyTokenRotatedEvent
   | TAgentVaultSessionLogChunkAcceptedEvent
   | TAgentVaultProductMemberAddedEvent
   | TAgentVaultProductMemberUpdatedEvent
   | TAgentVaultProductMemberRemovedEvent;
 
-export type TAgentVaultActorPostHogEvent = Exclude<
-  TAgentVaultPostHogEvent,
-  TAgentVaultProxyEnrolledEvent | TAgentVaultSessionLogChunkAcceptedEvent
->;
+export type TAgentVaultActorPostHogEvent = Exclude<TAgentVaultPostHogEvent, TAgentVaultSessionLogChunkAcceptedEvent>;
 
 // A trial is burned per PRODUCT, not per (product, plan): the trial-history gate discards plan_key
 // (see licenseV2Service.getOverview), and the license server 409s a repeat. So TrialStarted fires at
