@@ -260,9 +260,12 @@ export type TAgentVaultProxy = {
   createdAt?: string;
 };
 
-export type TAgentVaultEnrollment = {
-  token: string;
-  expiresAt: string;
+export type TAgentVaultProxyToken = {
+  proxyToken: string;
+};
+
+export type TAgentVaultProxyWithToken = TAgentVaultProxyToken & {
+  proxy: TAgentVaultProxy;
 };
 
 export type TListAgentVaultSessionsDTO = {

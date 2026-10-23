@@ -13,7 +13,7 @@ never in anything the agent holds.
 | **Access bundle** | A named set of services. The unit you grant |
 | **Service** | One host pattern set plus its credential |
 | **Session** | A minted token naming one actor, one of their bundles, and an expiry. The token *is* the session |
-| **Proxy** | One deployed egress node with its own CA. One row per box |
+| **Proxy** | One egress identity and its CA. Any number of processes can run it from its proxy token |
 
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
@@ -23,7 +23,7 @@ agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-personal-value/  each actor's own values for the fields a service leaves to members
 agent-vault-session/         mint, revoke, list, get
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
-agent-vault-proxy/           login (enrollment), heartbeat, resolve
+agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve
 agent-vault-session-log/     storage settings, chunk ingest, playback
 ```
 
@@ -111,18 +111,27 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 
 ## Proxies
 
-- Infisical stores no copy of a proxy's CA, only the fingerprint and expiry. Agents fetch the CA from the
-  proxy's own unauthenticated `/_agent-vault/ca`, so the trust path has no dependency on Infisical and there
-  is deliberately no download endpoint.
-- The login route is unauthenticated (the enrollment token is the credential), so its audit event names the
-  proxy as actor explicitly, as gateway, relay and KMIP enrollment do. Otherwise it logs as `unknownUser`.
+- There is no enrollment. Create and rotate return a proxy token (the non-expiring access JWT) and every proxy
+  process starts from it, loading its settings and CA from `POST /proxy/bootstrap`. Create and rotate each write
+  `tokenVersion` and the new CA in one statement, so no response ever pairs a token with the wrong CA. Proxies
+  enrolled before enrollment was removed keep running from their saved state on disk; the CLI's read-only
+  support for that is due to be removed after 2026-12-21.
+- Infisical generates and keeps each proxy's CA (cert in plain text, key sealed with the project data key) at
+  create and on every rotation, and fills one in at bootstrap for a proxy enrolled before that, with
+  `storeRootCaIfMissing` deciding races. A proxy serving its own CA (`--ca-cert`) reports it at bootstrap and is
+  sent none; the stored CA is kept for processes that don't bring one, and the row shows whichever CA the latest
+  start reported. Create and rotate record the new CA's fingerprint so it can be pinned before
+  anything starts, and bootstrap's fingerprint write is tied to the token version it checked, so a start on a
+  rotated token can't overwrite it.
+- Agents still fetch the CA from the proxy's own unauthenticated `/_agent-vault/ca`, so the agent's trust path
+  has no dependency on Infisical. There is deliberately no admin download endpoint for the CA.
 - Health is judged against `heartbeatTTL`, the interval the proxy was running when it last checked in, not
   the row's current `pollInterval`. A proxy learns a new interval on its next poll, so comparing against the
   saved one would report a live proxy as unreachable until then. Gateway v2 does the same.
-- The proxy's access token is non-expiring and revoked by bumping `tokenVersion`, which the auth plugin checks
-  on every proxy request. Revoke Access goes through the shared resource-auth revoke so a pending enrollment
-  token is burned too.
-- Resolve is not audited: once per poll per session would swamp the audit table.
+- The proxy token is non-expiring and revoked by bumping `tokenVersion`, which the auth plugin checks on every
+  proxy request. Revoke Access goes through the shared resource-auth revoke; rotating brings a revoked proxy back.
+- Resolve is not audited: once per poll per session would swamp the audit table. Bootstrap is not audited
+  either, since a proxy run as a sidecar starts once per agent run.
 
 ## Host and path grammar
 

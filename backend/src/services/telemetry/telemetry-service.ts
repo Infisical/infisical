@@ -37,7 +37,8 @@ export const POSTHOG_AGGREGATED_EVENTS = [
   PostHogEventTypes.PkiSyncExecuted,
   PostHogEventTypes.CertificateRequestCreated,
   PostHogEventTypes.CmekEncrypt,
-  PostHogEventTypes.CmekDecrypt
+  PostHogEventTypes.CmekDecrypt,
+  PostHogEventTypes.SecretScanningScanCompleted
 ];
 
 // Properties that should be used as additional grouping dimensions during aggregation.
@@ -47,7 +48,8 @@ export const POSTHOG_AGGREGATED_EVENTS = [
 const AGGREGATION_BREAKDOWN_DIMENSIONS: Partial<Record<PostHogEventTypes, string[]>> = {
   [PostHogEventTypes.PkiSyncExecuted]: ["projectId", "destination"],
   [PostHogEventTypes.CertificateRequestCreated]: ["projectId"],
-  [PostHogEventTypes.IssueCert]: ["projectId", "enrollmentType", "operation"]
+  [PostHogEventTypes.IssueCert]: ["projectId", "enrollmentType", "operation"],
+  [PostHogEventTypes.SecretScanningScanCompleted]: ["type", "scanType"]
 };
 
 // Bucket configuration
@@ -287,6 +289,7 @@ To opt into telemetry, you can set "TELEMETRY_ENABLED=true" within the environme
       ]);
       properties.plan = plan.slug ?? "free";
       properties.seat_count = seatUsage.membersUsed;
+      properties.has_secret_scanning = Boolean(plan.secretScanning);
     } catch (error) {
       logger.error(error, "Failed to fetch org plan for PostHog group properties");
     }
