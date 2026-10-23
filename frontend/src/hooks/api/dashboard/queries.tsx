@@ -31,7 +31,7 @@ import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import { groupBy, unique } from "@app/lib/fn/array";
 
-import { SecretV3Raw } from "../types";
+import { SecretType, SecretV3Raw } from "../types";
 
 export const dashboardKeys = {
   all: () => ["dashboard"] as const,
@@ -686,6 +686,94 @@ export const fetchSecretValue = async (params: TGetSecretValueDTO) => {
   return data;
 };
 
+type TPendingSecretValue = {
+  params: TGetSecretValueDTO;
+  resolve: (value: DashboardSecretValue) => void;
+  reject: (reason: unknown) => void;
+};
+
+// Every visible overview row asks for its own value, so revealing a page, searching or expanding an
+// import would send one request per row. Requests made in the same tick are grouped by folder and
+// sent as one secrets-by-keys call instead.
+const pendingSecretValues = new Map<string, TPendingSecretValue[]>();
+
+const fetchSecretValuesIndividually = (requests: TPendingSecretValue[]) => {
+  requests.forEach(({ params, resolve, reject }) => {
+    fetchSecretValue(params).then(resolve, reject);
+  });
+};
+
+const fetchSecretValueGroup = async (requests: TPendingSecretValue[]) => {
+  if (requests.length === 1) {
+    fetchSecretValuesIndividually(requests);
+    return;
+  }
+
+  const { projectId, environment, secretPath } = requests[0].params;
+  let secrets: SecretV3Raw[];
+  try {
+    ({ secrets } = await fetchDashboardProjectSecretsByKeys({
+      projectId,
+      environment,
+      secretPath,
+      keys: [...new Set(requests.map(({ params }) => params.secretKey))],
+      viewSecretValue: true
+    }));
+  } catch (error) {
+    // one value the user cannot read fails the whole request, so each value is fetched on its own
+    if (error instanceof AxiosError && error.status === 403) {
+      fetchSecretValuesIndividually(requests);
+    } else {
+      requests.forEach(({ reject }) => reject(error));
+    }
+    return;
+  }
+
+  const secretsByTypeAndKey = new Map(
+    secrets.map((secret) => [`${secret.type}:${secret.secretKey}`, secret])
+  );
+  const unresolved: TPendingSecretValue[] = [];
+  requests.forEach((request) => {
+    const { secretKey, isOverride } = request.params;
+    const type = isOverride ? SecretType.Personal : SecretType.Shared;
+    const secret = secretsByTypeAndKey.get(`${type}:${secretKey}`);
+    const value = secret?.secretValue;
+    if (!secret || secret.secretValueHidden || value === undefined) {
+      unresolved.push(request);
+      return;
+    }
+
+    request.resolve(
+      isOverride ? { value: undefined, valueOverride: value } : { value, valueOverride: undefined }
+    );
+  });
+
+  // a value reached through an import of this folder (cross-project imports) only resolves
+  // through /secret-value
+  fetchSecretValuesIndividually(unresolved);
+};
+
+const fetchSecretValueBatched = (params: TGetSecretValueDTO) =>
+  new Promise<DashboardSecretValue>((resolve, reject) => {
+    if (!pendingSecretValues.size) {
+      setTimeout(() => {
+        const groups = [...pendingSecretValues.values()];
+        pendingSecretValues.clear();
+        groups.forEach((requests) => {
+          // anything unexpected must still settle every row, or it would stay loading forever
+          fetchSecretValueGroup(requests).catch((error) =>
+            requests.forEach((request) => request.reject(error))
+          );
+        });
+      });
+    }
+
+    const groupKey = JSON.stringify([params.projectId, params.environment, params.secretPath]);
+    const requests = pendingSecretValues.get(groupKey) ?? [];
+    requests.push({ params, resolve, reject });
+    pendingSecretValues.set(groupKey, requests);
+  });
+
 export const useGetSecretValue = (
   params: TGetSecretValueDTO,
   options?: Omit<
@@ -700,7 +788,7 @@ export const useGetSecretValue = (
 ) => {
   return useQuery({
     queryKey: dashboardKeys.getSecretValue(params),
-    queryFn: async () => fetchSecretValue(params),
+    queryFn: async () => fetchSecretValueBatched(params),
     staleTime: 1000 * 60,
     retry: (count, error) => {
       // retrying a throttled request only extends the throttle
