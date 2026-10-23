@@ -149,10 +149,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  certificateDAL: Pick<
-    TCertificateDALFactory,
-    "create" | "findById" | "findByIdForUpdate" | "findOne" | "transaction" | "updateById"
-  >;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "findById" | "findOne" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -1510,7 +1507,6 @@ export const certificateAuthorityServiceFactory = ({
       ca.externalCa.type === CaType.GODADDY
         ? await processGoDaddyPendingValidationRequest(
             {
-              certificateDAL,
               certificateAuthorityDAL,
               appConnectionDAL,
               kmsService,
@@ -1527,7 +1523,6 @@ export const certificateAuthorityServiceFactory = ({
           )
         : await processDigiCertPendingValidationRequest(
             {
-              certificateDAL,
               certificateAuthorityDAL,
               appConnectionDAL,
               kmsService,

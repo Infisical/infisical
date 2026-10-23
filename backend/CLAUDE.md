@@ -953,18 +953,11 @@ pointing at something. Things that rely on that:
 - **Every background or enumeration query filters `whereNull("deletedAt")`**: expiry alerts, auto-renewal,
   syncs, discovery, HSM connector usage and stats. A new query over `certificates` needs the same filter unless
   it is deliberately showing deleted rows. Reads the API serves skip deleted certificates by default too:
-  `GET /certificates/:id` returns 404 and list or search returns none unless the caller passes
-  `includeDeleted` (or a `deleted` status filter), so clients written before soft delete keep seeing what they
-  saw when the row was hard deleted. The one background job that still reads deleted rows is the DigiCert
+  `GET /certificates/:id` returns 404 unless the caller passes `includeDeleted`, and list or search returns
+  them only for a `deleted` status filter, so clients written before soft delete keep seeing what they saw
+  when the row was hard deleted. The one background job that still reads deleted rows is the DigiCert
   revocation sync: it records an upstream revocation on a deleted certificate (without alerts) so the quota
   stops counting it.
-- **The foreign key no longer stops a write that references a deleted certificate.** A hard delete made any
-  later insert pointing at the row fail; the kept row accepts it. So every write that attaches something to a
-  certificate (sync link, collection item, signer, metadata, Application) locks the row `FOR SHARE` or
-  `FOR UPDATE` inside its own transaction and rechecks `deletedAt` on the locked copy; a check before the
-  transaction races the delete. `certificateSyncDAL.addCertificates` and `claimExternalIdentifier` do this
-  themselves and skip deleted ids, so every sync provider is covered. A new writer belongs in that DAL or
-  follows the same pattern.
 - **The licence quota still counts a deleted certificate Infisical issued until it expires or is revoked**,
   because deleting neither revokes it nor requires it to be expired, so excluding it would let an org free
   its cap while the certificate stays trusted. Deleted imported and discovered certificates stop counting, as
@@ -972,14 +965,9 @@ pointing at something. Things that rely on that:
 - **CRL and OCSP keep deleted certificates.** Deletion is not revocation, so a revoked certificate stays on
   the CRL after it is deleted, and revoking a deleted certificate is still allowed.
 - **A deleted certificate is never renewed or changed.** `assertCertificateNotDeleted` guards the renewal
-  entry points, EST re-enroll and SCEP renewal refuse a deleted client certificate, and
-  external-CA renewals lock the original with `lockRenewalOriginalCertificate` as the first statement of
-  the transaction that stores the successor (before the insert, whose foreign key would otherwise take a
-  weaker lock first and deadlock two concurrent renewals), so a delete that commits while a CA is still
-  issuing aborts the link, and the error names the serial the CA issued so it can be revoked upstream.
-  Internal-CA and self-signed renewals run in one transaction that checks the original first, so they take no
-  extra lock. The issuance queue and the DigiCert and GoDaddy pollers also check the original before calling
-  the CA.
+  entry points and the issuance queue, and EST re-enroll and SCEP renewal refuse a deleted client
+  certificate. A renewal the CA already accepted before the delete still completes and links to the deleted
+  original, because the CA has issued that certificate and discarding it would lose it.
 - **Re-import restores the row** (`restoreDeleted`) when the deleted row has the same fingerprint, Application,
   project, profile and CA (`canRestoreDeletedCertificate`). The import has to name the deleted row's profile, so the
   profile's `IssueCert` check always runs before a profile-managed certificate comes back. Both restore paths

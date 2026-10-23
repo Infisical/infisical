@@ -20,7 +20,7 @@ import {
 } from "@app/services/certificate/certificate-alert-events";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory, TOriginatingCertificateRequest } from "@app/services/certificate/certificate-dal";
-import { assertCertificateNotDeleted, lockRenewalOriginalCertificate } from "@app/services/certificate/certificate-fns";
+import { assertCertificateNotDeleted } from "@app/services/certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { CertKeyAlgorithm, CertSignatureAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import {
@@ -267,8 +267,6 @@ export const certificateRenewalServiceFactory = ({
     },
     tx: Knex
   ) => {
-    await lockRenewalOriginalCertificate(certificateDAL, originalCert.id, tx);
-
     const renewalUpdate: {
       profileId?: string | null;
       renewedFromCertificateId?: string;

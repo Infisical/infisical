@@ -1121,7 +1121,6 @@ export const PROJECTS = {
     offset: "The offset to start from. If you enter 10, it will start from the 10th certificate.",
     limit: "The number of certificates to return.",
     forPkiSync: "Retrieve only certificates available for PKI sync.",
-    includeDeleted: "Also return deleted certificates when no status filter is set.",
     search: "Search by SAN, CN, certificate ID, or serial number.",
     status:
       "Comma-separated list of certificate statuses to filter by. Supported values are active, renewed, expired, revoked and deleted. A certificate superseded by a renewal matches renewed rather than active until it expires or is revoked. Deleted certificates match only deleted.",

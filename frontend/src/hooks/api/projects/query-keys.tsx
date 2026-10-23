@@ -92,7 +92,6 @@ export const projectKeys = {
     notBeforeTo,
     applicationId,
     applicationIds,
-    includeDeleted,
     sortBy,
     sortOrder
   }: {
@@ -121,7 +120,6 @@ export const projectKeys = {
     notBeforeTo?: Date;
     applicationId?: string;
     applicationIds?: string[];
-    includeDeleted?: boolean;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
   }) =>
@@ -152,7 +150,6 @@ export const projectKeys = {
         notBeforeTo,
         applicationId,
         applicationIds,
-        includeDeleted,
         sortBy,
         sortOrder
       }

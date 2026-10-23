@@ -4169,7 +4169,6 @@ export const registerRoutes = async (
   });
 
   const digicertCaQueue = digicertCertificateAuthorityQueueServiceFactory({
-    certificateDAL,
     cronJob,
     certificateRequestDAL,
     certificateRequestService,
@@ -4196,7 +4195,6 @@ export const registerRoutes = async (
   });
 
   const godaddyCaQueue = godaddyCertificateAuthorityQueueServiceFactory({
-    certificateDAL,
     cronJob,
     certificateRequestDAL,
     certificateRequestService,

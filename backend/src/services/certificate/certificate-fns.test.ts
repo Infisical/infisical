@@ -16,8 +16,6 @@ import {
   extractCertificateFields,
   extractExternallyIssuedCertificateFields,
   getCertificateDisplayName,
-  linkRenewedCertificate,
-  lockRenewalOriginalCertificate,
   normalizePemText,
   normalizeThumbprint,
   parseCertificateBody,
@@ -370,38 +368,6 @@ describe("deleted certificate guards", () => {
   it("falls back to the common name and then the serial number when the name is empty", () => {
     expect(getCertificateDisplayName({ ...certificate, friendlyName: "" })).toBe("web.example.com");
     expect(getCertificateDisplayName({ ...certificate, friendlyName: "", commonName: "" })).toBe("0a1b2c");
-  });
-});
-
-describe("renewal link", () => {
-  const tx = {} as Parameters<typeof linkRenewedCertificate>[3];
-
-  it("points the locked original at its successor and carries the order over", async () => {
-    const dal = { updateById: vi.fn().mockResolvedValue({}) };
-
-    await linkRenewedCertificate(dal, { id: "cert-old", orderId: "order-1" }, "cert-new", tx);
-
-    expect(dal.updateById).toHaveBeenCalledWith("cert-new", { orderId: "order-1" }, tx);
-    expect(dal.updateById).toHaveBeenCalledWith("cert-old", { renewedByCertificateId: "cert-new" }, tx);
-  });
-
-  it("refuses to lock a certificate deleted while the renewal was in flight", async () => {
-    const dal = {
-      findByIdForUpdate: vi.fn().mockResolvedValue({
-        id: "cert-old",
-        commonName: "web.example.com",
-        serialNumber: "01",
-        deletedAt: new Date("2026-10-20T14:38:27.000Z")
-      })
-    };
-
-    await expect(lockRenewalOriginalCertificate(dal, "cert-old", tx)).rejects.toThrow(
-      "Certificate 'web.example.com' was deleted on 2026-10-20T14:38:27.000Z and can no longer be renewed or changed."
-    );
-    expect(dal.findByIdForUpdate).toHaveBeenCalledWith("cert-old", tx);
-    await expect(lockRenewalOriginalCertificate(dal, "cert-old", tx, "7f02")).rejects.toThrow(
-      "The certificate authority already issued the renewed certificate with serial number '7f02'."
-    );
   });
 });
 

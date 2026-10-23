@@ -1406,7 +1406,6 @@ export const projectServiceFactory = ({
     notBeforeTo,
     applicationId,
     applicationIds,
-    includeDeleted,
     sortBy,
     sortOrder,
     actorId,
@@ -1478,8 +1477,7 @@ export const projectServiceFactory = ({
       ...(notBeforeFrom && { notBeforeFrom }),
       ...(notBeforeTo && { notBeforeTo }),
       ...(applicationId && { applicationId }),
-      ...(applicationIds && applicationIds.length > 0 && { applicationIds }),
-      ...(includeDeleted && { includeDeleted })
+      ...(applicationIds && applicationIds.length > 0 && { applicationIds })
     };
     const permissionFilters =
       allowedByResource || !projectPermission

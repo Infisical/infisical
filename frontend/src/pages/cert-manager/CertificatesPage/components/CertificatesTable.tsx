@@ -96,12 +96,12 @@ import { ActiveFilterChips } from "./ActiveFilterChips";
 import { AssignCertificateToApplicationModal } from "./AssignCertificateToApplicationModal";
 import {
   canRevokeAfterDeletion,
+  DELETED_CERTIFICATE_NO_ACTIONS,
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
   isExpiringWithinOneDay,
   isManagedCertificate,
-  liveCertificateStatusFilter,
   RENEWAL_UNAVAILABLE_NO_PROFILE
 } from "./CertificatesTable.utils";
 import { ColumnVisibilityToggle, getDefaultVisibleColumns } from "./ColumnVisibilityToggle";
@@ -181,27 +181,6 @@ const SortIcon = ({
   return <Icon className="ml-1 inline-block size-3" />;
 };
 
-const getFiltersForSystemViewId = (viewId: string | undefined): FilterRule[] => {
-  if (viewId === "system-pqc") {
-    return [
-      { id: "sv-pqc", field: "keyAlgorithm", operator: "in", value: [...PQC_KEY_ALGORITHMS] },
-      liveCertificateStatusFilter("sv-pqc-status")
-    ];
-  }
-  if (viewId === "system-non-pqc") {
-    return [
-      {
-        id: "sv-non-pqc",
-        field: "keyAlgorithm",
-        operator: "in",
-        value: [...NON_PQC_KEY_ALGORITHMS]
-      },
-      liveCertificateStatusFilter("sv-non-pqc-status")
-    ];
-  }
-  return [];
-};
-
 export const CertificatesTable = ({
   handlePopUpOpen,
   externalFilter,
@@ -243,6 +222,25 @@ export const CertificatesTable = ({
       PkiApplicationResourceSub.PkiSyncs
     )
   );
+
+  const getFiltersForSystemViewId = (viewId: string | undefined): FilterRule[] => {
+    if (viewId === "system-pqc") {
+      return [
+        { id: "sv-pqc", field: "keyAlgorithm", operator: "in", value: [...PQC_KEY_ALGORITHMS] }
+      ];
+    }
+    if (viewId === "system-non-pqc") {
+      return [
+        {
+          id: "sv-non-pqc",
+          field: "keyAlgorithm",
+          operator: "in",
+          value: [...NON_PQC_KEY_ALGORITHMS]
+        }
+      ];
+    }
+    return [];
+  };
 
   const [appliedFilters, setAppliedFilters] = useState<FilterRule[]>(() => {
     if (dashboardFilters?.length) return dashboardFilters;
@@ -410,7 +408,6 @@ export const CertificatesTable = ({
     metadataFilter: filterSearchParams.metadata,
     applicationId,
     applicationIds: filterSearchParams.applicationIds,
-    includeDeleted: true,
     sortBy,
     sortOrder
   });
@@ -543,8 +540,24 @@ export const CertificatesTable = ({
         setAppliedFilters([
           { id: "sv-status", field: "status", operator: "in", value: [CertStatus.DELETED] }
         ]);
-      } else if (viewId === "system-pqc" || viewId === "system-non-pqc") {
-        setAppliedFilters(getFiltersForSystemViewId(viewId));
+      } else if (viewId === "system-pqc") {
+        setAppliedFilters([
+          {
+            id: "sv-pqc",
+            field: "keyAlgorithm",
+            operator: "in",
+            value: [...PQC_KEY_ALGORITHMS]
+          }
+        ]);
+      } else if (viewId === "system-non-pqc") {
+        setAppliedFilters([
+          {
+            id: "sv-non-pqc",
+            field: "keyAlgorithm",
+            operator: "in",
+            value: [...NON_PQC_KEY_ALGORITHMS]
+          }
+        ]);
       } else {
         const customFilters = filters as TInventoryViewFilters;
         const rules: FilterRule[] = [];
@@ -988,15 +1001,13 @@ export const CertificatesTable = ({
                       )}
                       {visibleColumns.has("status") && (
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
-                            {isDeleted && isRevoked && <Badge variant="danger">Revoked</Badge>}
-                          </div>
+                          <Badge variant={displayStatus.variant}>{displayStatus.label}</Badge>
                         </TableCell>
                       )}
                       {visibleColumns.has("health") && (
                         <TableCell>
-                          {isDeleted && <EmptyCell />}
+                          {isDeleted && isRevoked && <Badge variant="danger">Revoked</Badge>}
+                          {isDeleted && !isRevoked && <EmptyCell />}
                           {!isDeleted && isRevoked && <Badge variant="danger">Critical</Badge>}
                           {!isDeleted && !isRevoked && <Badge variant={variant}>{label}</Badge>}
                         </TableCell>
@@ -1118,16 +1129,23 @@ export const CertificatesTable = ({
                               })()}
                           </div>
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <IconButton
-                                variant="ghost"
-                                size="xs"
-                                isDisabled={isDeleted && !canOfferRevoke}
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <MoreHorizontalIcon />
-                              </IconButton>
-                            </DropdownMenuTrigger>
+                            <Tooltip open={isDeleted && !canOfferRevoke ? undefined : false}>
+                              <TooltipTrigger asChild>
+                                <span>
+                                  <DropdownMenuTrigger asChild>
+                                    <IconButton
+                                      variant="ghost"
+                                      size="xs"
+                                      isDisabled={isDeleted && !canOfferRevoke}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <MoreHorizontalIcon />
+                                    </IconButton>
+                                  </DropdownMenuTrigger>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>{DELETED_CERTIFICATE_NO_ACTIONS}</TooltipContent>
+                            </Tooltip>
                             <DropdownMenuContent align="end" sideOffset={2}>
                               {!isDeleted && (
                                 <DropdownMenuItem

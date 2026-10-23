@@ -1494,7 +1494,6 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           .array(z.string().uuid())
           .optional()
           .describe("Filter to certificates issued through any of the supplied Applications."),
-        includeDeleted: z.boolean().optional().describe(PROJECTS.SEARCH_CERTIFICATES.includeDeleted),
         sortBy: z
           .enum(["notAfter", "notBefore", "createdAt", "commonName", "keyAlgorithm", "status"])
           .optional()

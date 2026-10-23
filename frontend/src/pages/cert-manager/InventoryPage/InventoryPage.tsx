@@ -12,7 +12,6 @@ import {
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { CertManagerAdminOnly } from "@app/pages/cert-manager/components/CertManagerAdminOnly";
 
-import { liveCertificateStatusFilter } from "../CertificatesPage/components/CertificatesTable.utils";
 import type { FilterRule } from "../CertificatesPage/components/inventory-types";
 import { CertificatesTab } from "../PoliciesPage/components/CertificatesTab";
 
@@ -31,7 +30,7 @@ export const InventoryPage = () => {
         id: "dash-status",
         field: "status",
         operator: "in",
-        value: searchParams.filterStatus.split(",")
+        value: [searchParams.filterStatus]
       });
     }
     if (searchParams.filterEnrollmentType) {
@@ -79,9 +78,6 @@ export const InventoryPage = () => {
         operator: "after",
         value: afterDate.toISOString().split("T")[0]
       });
-    }
-    if (filters.length > 0 && !filters.some((filter) => filter.field === "status")) {
-      filters.push(liveCertificateStatusFilter("dash-status"));
     }
     return filters;
   }, [searchParams]);

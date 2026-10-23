@@ -634,7 +634,6 @@ export const useListWorkspaceCertificates = ({
   notBeforeTo,
   applicationId,
   applicationIds,
-  includeDeleted,
   sortBy,
   sortOrder
 }: {
@@ -663,7 +662,6 @@ export const useListWorkspaceCertificates = ({
   notBeforeTo?: Date;
   applicationId?: string;
   applicationIds?: string[];
-  includeDeleted?: boolean;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }) => {
@@ -694,7 +692,6 @@ export const useListWorkspaceCertificates = ({
       notBeforeTo,
       applicationId,
       applicationIds,
-      includeDeleted,
       sortBy,
       sortOrder
     }),
@@ -728,7 +725,6 @@ export const useListWorkspaceCertificates = ({
           ...(notBeforeTo && { notBeforeTo: notBeforeTo.toISOString() }),
           ...(applicationId && { applicationId }),
           ...(applicationIds && applicationIds.length > 0 && { applicationIds }),
-          ...(includeDeleted && { includeDeleted }),
           ...(sortBy && { sortBy }),
           ...(sortOrder && { sortOrder })
         }

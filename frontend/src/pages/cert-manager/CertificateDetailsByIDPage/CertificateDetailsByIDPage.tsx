@@ -61,6 +61,7 @@ import { CertificateRenewalModal } from "../CertificatesPage/components/Certific
 import { CertificateRevocationModal } from "../CertificatesPage/components/CertificateRevocationModal";
 import {
   canRevokeAfterDeletion,
+  DELETED_CERTIFICATE_NO_ACTIONS,
   getCertificateDeletionWarning,
   isExpiringWithinOneDay,
   isManagedCertificate,
@@ -341,7 +342,7 @@ const Page = () => {
                   </Button>
                 </span>
               </TooltipTrigger>
-              <TooltipContent>No actions are available for a deleted certificate.</TooltipContent>
+              <TooltipContent>{DELETED_CERTIFICATE_NO_ACTIONS}</TooltipContent>
             </Tooltip>
           ) : (
             <DropdownMenu>

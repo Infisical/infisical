@@ -163,7 +163,6 @@ export type TListProjectCertsDTO = {
   notBeforeTo?: Date;
   applicationId?: string;
   applicationIds?: string[];
-  includeDeleted?: boolean;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 } & Omit<TProjectPermission, "projectId">;

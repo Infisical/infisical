@@ -586,38 +586,19 @@ export const assertCertificateNotDeleted = (certificate: TDeletableCertificate, 
   });
 };
 
-export const lockRenewalOriginalCertificate = async (
-  certificateDAL: Pick<TCertificateDALFactory, "findByIdForUpdate">,
-  originalCertificateId: string,
-  tx: Knex,
-  issuedSerialNumber?: string
-) => {
-  const originalCertificate = await certificateDAL.findByIdForUpdate(originalCertificateId, tx);
-  if (originalCertificate?.deletedAt) {
-    const deletedMessage = getCertificateDeletedMessage({
-      ...originalCertificate,
-      deletedAt: originalCertificate.deletedAt
-    });
-    throw new BadRequestError({
-      message: issuedSerialNumber
-        ? `${deletedMessage} The certificate authority already issued the renewed certificate with serial number '${issuedSerialNumber}'. Revoke it at the certificate authority if you don't need it.`
-        : deletedMessage
-    });
-  }
-  return originalCertificate;
-};
-
 export const linkRenewedCertificate = async (
-  certificateDAL: Pick<TCertificateDALFactory, "updateById">,
-  lockedOriginalCertificate: Pick<TCertificates, "id" | "orderId">,
+  certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById">,
+  originalCertificateId: string,
   renewedCertificateId: string,
-  tx: Knex
+  tx?: Knex
 ) => {
-  if (lockedOriginalCertificate.orderId) {
-    await certificateDAL.updateById(renewedCertificateId, { orderId: lockedOriginalCertificate.orderId }, tx);
+  const originalCertificate = await certificateDAL.findById(originalCertificateId, tx);
+
+  if (originalCertificate?.orderId) {
+    await certificateDAL.updateById(renewedCertificateId, { orderId: originalCertificate.orderId }, tx);
   }
 
-  await certificateDAL.updateById(lockedOriginalCertificate.id, { renewedByCertificateId: renewedCertificateId }, tx);
+  await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: renewedCertificateId }, tx);
 };
 
 type TRestorableImportData = {

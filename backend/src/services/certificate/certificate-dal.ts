@@ -187,7 +187,6 @@ export const certificateDALFactory = (db: TDbClient) => {
     notBeforeTo?: Date;
     applicationId?: string;
     applicationIds?: string[];
-    includeDeleted?: boolean;
   };
 
   type TSyncEligibilityFilterParams = Omit<TInventoryFilterParams, "status">;
@@ -240,7 +239,7 @@ export const certificateDALFactory = (db: TDbClient) => {
       });
     }
 
-    if (!filters.status && !filters.includeDeleted) {
+    if (!filters.status) {
       q = q.whereNull(`${TableName.Certificate}.deletedAt`);
     }
 
@@ -933,7 +932,6 @@ export const certificateDALFactory = (db: TDbClient) => {
         notBeforeFrom,
         notBeforeTo,
         applicationIds,
-        includeDeleted,
         ...regularFilters
       } = filter;
 
@@ -965,8 +963,7 @@ export const certificateDALFactory = (db: TDbClient) => {
           notAfterTo,
           notBeforeFrom,
           notBeforeTo,
-          applicationIds,
-          includeDeleted
+          applicationIds
         },
         true
       ) as typeof query;

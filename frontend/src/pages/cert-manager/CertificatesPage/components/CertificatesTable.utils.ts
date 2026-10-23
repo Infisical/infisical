@@ -19,6 +19,8 @@ export const getCertSourceLabel = (source: TCertificateSource): string => {
   }
 };
 
+export const DELETED_CERTIFICATE_NO_ACTIONS = "No actions are available for a deleted certificate.";
+
 export const RENEWAL_UNAVAILABLE_NO_PROFILE =
   "Renewal is unavailable because the certificate profile this certificate was issued from no longer exists.";
 
@@ -36,20 +38,6 @@ type TCertificateStatusSource = {
   renewedByCertificateId?: string | null;
   deletedAt?: string | null;
 };
-
-export const LIVE_CERTIFICATE_STATUSES = [
-  CertStatus.ACTIVE,
-  CertStatus.RENEWED,
-  CertStatus.EXPIRED,
-  CertStatus.REVOKED
-];
-
-export const liveCertificateStatusFilter = (id: string) => ({
-  id,
-  field: "status" as const,
-  operator: "in" as const,
-  value: [...LIVE_CERTIFICATE_STATUSES]
-});
 
 export const getCertificateDisplayStatus = (certificate: TCertificateStatusSource) => {
   if (certificate.deletedAt) {
