@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 
 import { Combobox, Input } from "@app/components/v3";
 import { useDigiCertConnectionListOrders } from "@app/hooks/api/appConnections/digicert";
@@ -99,10 +100,21 @@ export const CertificateProfileSelect = ({
     if (attachedProfileId !== profile.id) {
       try {
         await attach.mutateAsync({ applicationId, profileIds: [profile.id] });
-      } catch {
-        throw new Error(
-          "The profile was created, but attachment failed. Retry to attach it to this application."
-        );
+      } catch (error) {
+        let message =
+          "The profile was created, but attachment failed. Retry to attach it to this application.";
+        if (axios.isAxiosError<{ message?: unknown }>(error)) {
+          if (!error.response) {
+            message =
+              "The profile was created, but no response was received for the attachment request. Check your connection to Infisical, then retry.";
+          } else if (typeof error.response.data?.message === "string") {
+            const apiMessage = error.response.data.message.trim();
+            if (apiMessage) {
+              message = `The profile was created, but attachment failed: ${apiMessage}`;
+            }
+          }
+        }
+        throw new Error(message);
       }
       setAttachedProfileId(profile.id);
     }
