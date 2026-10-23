@@ -591,8 +591,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   };
 
   // Setup is counted over every bundle the caller reaches, since an admin can start a session on one they were never
-  // granted. isGranted lets the sidebar nag only about the bundles they take on.
-  const listAccessBundles = async ({ projectId, ctx, requiresSetup, ...page }: TListAccessBundlesDTO) => {
+  // granted.
+  const listAccessBundles = async ({ projectId, ctx, requiresSetup, granted, ...page }: TListAccessBundlesDTO) => {
     const { permission, accessBundleIds, grantedAccessBundleIds } = await getAgentVaultGrantedReachability(
       { permissionService, membershipDAL },
       { projectId, ctx }
@@ -602,8 +602,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
+    // null is every bundle in the project, which only an admin reaches.
+    const scopeIds = granted ? grantedAccessBundleIds : accessBundleIds;
+    const excludeIds = granted === false ? grantedAccessBundleIds : [];
+    const excluded = new Set(excludeIds);
+
     const owner = ownerOrNullOf(ctx);
-    const granted = new Set(grantedAccessBundleIds);
     const pendingByBundleOf = async (bundleIds: string[] | null) => {
       const byBundle = new Map<string, { id: string; name: string }[]>();
       if (!owner || bundleIds?.length === 0) return byBundle;
@@ -614,7 +618,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         withVariableReferences: false
       });
       statuses
-        .filter((status) => !status.isConfigured)
+        .filter((status) => !status.isConfigured && !excluded.has(status.accessBundleId))
         .forEach((status) =>
           byBundle.set(status.accessBundleId, [
             ...(byBundle.get(status.accessBundleId) ?? []),
@@ -629,17 +633,18 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     ) =>
       accessBundles.map((bundle) => ({
         ...bundle,
-        isGranted: granted.has(bundle.id),
         servicesRequiringSetup: pendingByBundle.get(bundle.id) ?? []
       }));
 
-    // Either filter needs every reachable bundle's status before it can page; the plain list only needs the page's.
+    // Either setup filter needs every bundle's status before it can page; the plain list only needs the page's.
     if (requiresSetup !== undefined) {
-      const pendingByBundle = await pendingByBundleOf(accessBundleIds);
+      const pendingByBundle = await pendingByBundleOf(scopeIds);
       const pendingIds = [...pendingByBundle.keys()];
       const { accessBundles, totalCount } = await agentVaultAccessBundleDAL.findForList({
         projectId,
-        ...(requiresSetup ? { accessBundleIds: pendingIds } : { accessBundleIds, excludeAccessBundleIds: pendingIds }),
+        ...(requiresSetup
+          ? { accessBundleIds: pendingIds }
+          : { accessBundleIds: scopeIds, excludeAccessBundleIds: [...excludeIds, ...pendingIds] }),
         ...page
       });
       return { accessBundles: withSetup(accessBundles, pendingByBundle), totalCount };
@@ -647,7 +652,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     const { accessBundles, totalCount } = await agentVaultAccessBundleDAL.findForList({
       projectId,
-      accessBundleIds,
+      accessBundleIds: scopeIds,
+      excludeAccessBundleIds: excludeIds,
       ...page
     });
     const pendingByBundle = await pendingByBundleOf(accessBundles.map((bundle) => bundle.id));
@@ -786,11 +792,12 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionSub.AgentVaultAccessBundles
     );
 
-    // Bundle row first, for the row lock addMember takes. Then the grants before the bundle's own delete, which
-    // cascades to its services' personal values: a removal from Agent Vault deletes grants and then those values,
-    // and taking them in the same order is what keeps the two from deadlocking. Roles cascade with the grants.
+    // Locks in the order every path takes them, bundle row, services, grants, values, so this can't deadlock with
+    // a grant, a personal values save or a removal. The bundle's delete cascades to its services and their values,
+    // and roles go with the grants.
     return agentVaultAccessBundleDAL.transaction(async (tx) => {
       await agentVaultAccessBundleDAL.lockByIdInProject({ id: bundle.id, projectId: rest.projectId }, tx);
+      await agentVaultServiceDAL.lockByAccessBundleId(bundle.id, tx);
       await membershipDAL.delete(bundleScope(rest.projectId, bundle.id), tx);
       return agentVaultAccessBundleDAL.deleteById(bundle.id, tx);
     });

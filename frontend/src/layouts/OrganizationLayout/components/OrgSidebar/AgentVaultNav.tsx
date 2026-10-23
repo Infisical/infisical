@@ -15,7 +15,7 @@ import {
 import {
   useGetAgentVaultSessionLogHealth,
   useGetAgentVaultSessionLogSettings,
-  useListAgentVaultAccessBundlesRequiringSetup
+  useListGrantedAgentVaultAccessBundlesRequiringSetup
 } from "@app/hooks/api/agentVault";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
@@ -29,9 +29,9 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   const { data: sessionLogSettings } = useGetAgentVaultSessionLogSettings(isAdmin);
   const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(isAdmin);
   const { subscription } = useSubscription();
-  const { data: requiringSetup } = useListAgentVaultAccessBundlesRequiringSetup();
   // An admin can use any bundle, but the nav only nags about the ones granted to them.
-  const needsSetup = Boolean(requiringSetup?.accessBundles.some((bundle) => bundle.isGranted));
+  const { data: grantedRequiringSetup } = useListGrantedAgentVaultAccessBundlesRequiringSetup();
+  const needsSetup = Boolean(grantedRequiringSetup?.totalCount);
 
   const accessItems: NavItem[] = [
     { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },

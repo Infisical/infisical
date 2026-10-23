@@ -52,6 +52,7 @@ export type TAgentVaultProjectScoped = { projectId: string; ctx: TGenericPermiss
 
 export type TListAccessBundlesDTO = TAgentVaultProjectScoped & {
   requiresSetup?: boolean;
+  granted?: boolean;
   search?: string;
   orderBy: TAgentVaultAccessBundleOrderBy;
   orderDirection: "asc" | "desc";

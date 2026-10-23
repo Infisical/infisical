@@ -55,10 +55,14 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   `scopeResourceId = <bundle id>`) with one `membership_roles` row, slug `consumer`. The slug is a label;
   bundle access is decided in SQL, not CASL. Because it is the platform's table, the platform reaps grants
   on project removal, org removal, SCIM and every FK cascade. Do not add an Agent Vault reaper.
-- `scopeResourceId` has no FK, so `deleteAccessBundle` deletes the bundle row first and then the grants in one
-  transaction, and `addMembers` locks the bundle row (`lockByIdInProject`) before inserting. Keep that order.
-- Granting is batch: one POST carries `{ userIds, machineIdentityIds, groupIds }`. That lock is what makes
-  the dedupe read inside it authoritative, so an actor who already holds the bundle is returned in
+- `scopeResourceId` has no FK, so `deleteAccessBundle` deletes the grants itself, in the bundle delete's transaction,
+  and `addMembers` locks the bundle row (`lockByIdInProject`) before inserting. Every path takes these rows in one
+  order, bundle, services, grants, values, and a new one must too: the delete locks the bundle row and then its
+  services before deleting the grants and then the bundle, whose cascade takes the services and their values. A
+  personal values save takes its service and then the caller's grant, and a removal deletes grants before values,
+  so a delete that reached the grants before the services would deadlock with a save.
+- Granting is batch: one POST carries `{ userIds, machineIdentityIds, groupIds }`. The bundle row lock is what
+  makes the dedupe read inside it authoritative, so an actor who already holds the bundle is returned in
   `skipped` rather than erroring; the unique index is only the backstop.
 - Member responses, for bundles and for the product, are the actor itself, flat (`type`, the actor's `id`,
   its profile) plus what the membership adds (`role`, `addedAt`, `grantedAt`). There is no membership id:
@@ -308,9 +312,10 @@ reference.
   Reads ride along: the bundle read puts the caller's status on each service (`personalValues`, null when nothing
   is member-provided), and the bundle list gives `servicesRequiringSetup` (`{ id, name }`) per bundle plus a
   `requiresSetup` filter for the sidebar and banners (`false` is the rest of what the caller reaches). Both count
-  every bundle the caller reaches, because an admin can start a session on one they were never granted. Each
-  list item also carries `isGranted`, and the sidebar warns only about granted bundles, so an admin isn't nagged
-  in the nav about bundles they reach only by role.
+  every bundle the caller reaches, because an admin can start a session on one they were never granted. A
+  `granted` filter keeps only the bundles granted to the caller (`false`, only the ones an admin reaches by role).
+  The sidebar asks for `requiresSetup=true&granted=true` and reads the count, so an admin isn't nagged in the nav
+  about bundles they reach only by role, while the page's banner and badges still show them.
 
 ## Credentials at rest
 

@@ -219,10 +219,13 @@ export const useListAgentVaultAccessBundles = (params: TListAgentVaultAccessBund
   });
 };
 
-// The sidebar and the access bundle list ask the same question, so they share one cached answer. One page holds them
-// all in practice: it is only the bundles the caller reaches that still require their values.
+// One page holds them all in practice: it is only the bundles the caller reaches that still require their values.
 export const useListAgentVaultAccessBundlesRequiringSetup = () =>
   useListAgentVaultAccessBundles({ requiresSetup: true, limit: 100 });
+
+// Only the count is read, so one row is enough.
+export const useListGrantedAgentVaultAccessBundlesRequiringSetup = () =>
+  useListAgentVaultAccessBundles({ requiresSetup: true, granted: true, limit: 1 });
 
 export const useGetAgentVaultAccessBundle = (accessBundleId: string) => {
   const { currentOrg } = useOrganization();

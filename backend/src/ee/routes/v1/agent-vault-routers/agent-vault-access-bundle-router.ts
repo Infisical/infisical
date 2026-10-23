@@ -76,6 +76,11 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           .transform((value) => value === "true")
           .optional()
           .describe(AGENT_VAULT.ACCESS_BUNDLE.requiresSetup),
+        granted: z
+          .enum(["true", "false"])
+          .transform((value) => value === "true")
+          .optional()
+          .describe(AGENT_VAULT.ACCESS_BUNDLE.granted),
         orderBy: z
           .enum(["name", "serviceCount", "createdAt"])
           .default("createdAt")
@@ -89,7 +94,6 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             serviceCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.serviceCount),
             memberCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.memberCount),
             hostPatterns: z.string().array().describe(AGENT_VAULT.ACCESS_BUNDLE.hostPatterns),
-            isGranted: z.boolean().describe(AGENT_VAULT.ACCESS_BUNDLE.isGranted),
             servicesRequiringSetup: z
               .object({
                 id: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.servicesRequiringSetupId),

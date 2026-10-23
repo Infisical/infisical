@@ -20,6 +20,19 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
     }
   };
 
+  // In id order, so two transactions locking the same services queue for them the same way.
+  const lockByAccessBundleId = async (accessBundleId: string, tx: Knex): Promise<{ id: string }[]> => {
+    try {
+      return (await tx(TableName.AgentVaultService)
+        .where({ accessBundleId })
+        .orderBy("id", "asc")
+        .forUpdate()
+        .select("id")) as { id: string }[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock agent vault services" });
+    }
+  };
+
   // Reads the primary even without a tx, so the row is never older than the last committed save.
   const findByIdInAccessBundle = async (
     { id, accessBundleId }: { id: string; accessBundleId: string },
@@ -73,5 +86,12 @@ export const agentVaultServiceDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByAccessBundleId, findByIdInAccessBundle, findByIdInProject, lockForPersonalValues };
+  return {
+    ...orm,
+    findByAccessBundleId,
+    lockByAccessBundleId,
+    findByIdInAccessBundle,
+    findByIdInProject,
+    lockForPersonalValues
+  };
 };

@@ -2497,6 +2497,52 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("deleting a bundle while a member saves their personal values doesn't deadlock", async () => {
+      const bundle = await createAccessBundle("mp-delete-vs-save");
+      const service = await createService(bundle.id, {
+        name: "notion",
+        hostPattern: "notion-deadlock.example.com",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+
+      const member = await createMemberIdentity(`mp-delete-vs-save-${Date.now()}`);
+      try {
+        expect((await inject("POST", membersUrl(bundle.id), { machineIdentityIds: [member.id] })).statusCode).toBe(200);
+
+        // Holding the service row queues the save on it and the delete behind the save, so once this lets go the
+        // save holds the service while the delete waits for it.
+        const trx = await testDb.transaction();
+        let save: ReturnType<typeof inject> | undefined;
+        let remove: ReturnType<typeof inject> | undefined;
+        try {
+          const { rows } = await trx.raw("select pg_backend_pid() as pid");
+          await trx("agent_vault_services").where({ id: service.id }).forUpdate().first();
+
+          save = setValues(member.as, bundle.id, service.id, { "credential-value": "mine" });
+          await waitUntilBlockedBy(rows[0].pid);
+          const { rows: queued } = await testDb.raw(
+            "select pid from pg_stat_activity where ? = any(pg_blocking_pids(pid))",
+            [rows[0].pid]
+          );
+          expect(queued).toHaveLength(1);
+          remove = inject("DELETE", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
+          await waitUntilBlockedBy(queued[0].pid);
+          await trx.rollback();
+
+          expect((await save).statusCode).toBe(200);
+          expect((await remove).statusCode).toBe(200);
+        } catch (err) {
+          if (!trx.isCompleted()) await trx.rollback();
+          await Promise.all([save?.catch(() => undefined), remove?.catch(() => undefined)]);
+          throw err;
+        }
+        // The values went with the service, which the API can no longer name.
+        expect(await testDb("agent_vault_personal_values").where({ identityId: member.id })).toHaveLength(0);
+      } finally {
+        await member.cleanup();
+      }
+    });
+
     test("until a member sets up their half, resolve sends no credential, not the admin's half", async () => {
       const bundle = await createAccessBundle("mp-half");
       await createService(bundle.id, {
@@ -2627,7 +2673,7 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("an admin is asked for values on a bundle they reach only by role, flagged as not granted", async () => {
+    test("an admin is asked for values on a bundle they reach only by role, and granted narrows the list", async () => {
       const ungranted = await createAccessBundle("mp-mine-ungranted");
       const service = await createService(ungranted.id, {
         name: "openai",
@@ -2637,23 +2683,32 @@ describe("Agent Vault V1 Router", async () => {
       const granted = await createAccessBundle("mp-mine-granted");
       expect((await inject("DELETE", membersUrl(ungranted.id), { userIds: [seedData1.id] })).statusCode).toBe(200);
 
+      const listOf = async (query: string) => {
+        const res = await inject("GET", `/api/v1/agent-vault/access-bundles?search=mp-mine&${query}`);
+        expect(res.statusCode).toBe(200);
+        const { accessBundles, totalCount } = JSON.parse(res.payload) as {
+          accessBundles: { id: string }[];
+          totalCount: number;
+        };
+        return { ids: accessBundles.map((bundle) => bundle.id), totalCount };
+      };
+
       const listed = await inject("GET", "/api/v1/agent-vault/access-bundles?search=mp-mine&limit=100");
       expect(JSON.parse(listed.payload).accessBundles).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({
-            id: ungranted.id,
-            isGranted: false,
-            servicesRequiringSetup: [{ id: service.id, name: "openai" }]
-          }),
-          expect.objectContaining({ id: granted.id, isGranted: true, servicesRequiringSetup: [] })
+          expect.objectContaining({ id: ungranted.id, servicesRequiringSetup: [{ id: service.id, name: "openai" }] }),
+          expect.objectContaining({ id: granted.id, servicesRequiringSetup: [] })
         ])
       );
       expect((await pendingOf(inject)).get(ungranted.id)).toEqual(["openai"]);
-      const setUp = await inject("GET", "/api/v1/agent-vault/access-bundles?requiresSetup=false&search=mp-mine");
-      expect(
-        (JSON.parse(setUp.payload) as { accessBundles: { id: string }[] }).accessBundles.map((bundle) => bundle.id)
-      ).toEqual([granted.id]);
+      expect(await listOf("requiresSetup=false")).toEqual({ ids: [granted.id], totalCount: 1 });
+      expect(await listOf("granted=true")).toEqual({ ids: [granted.id], totalCount: 1 });
+      expect(await listOf("granted=false")).toEqual({ ids: [ungranted.id], totalCount: 1 });
+      expect(await listOf("requiresSetup=true&granted=true")).toEqual({ ids: [], totalCount: 0 });
+      expect(await listOf("requiresSetup=true&granted=false")).toEqual({ ids: [ungranted.id], totalCount: 1 });
+      expect(await listOf("requiresSetup=false&granted=false")).toEqual({ ids: [], totalCount: 0 });
       expect((await inject("GET", "/api/v1/agent-vault/access-bundles?requiresSetup=maybe")).statusCode).toBe(422);
+      expect((await inject("GET", "/api/v1/agent-vault/access-bundles?granted=maybe")).statusCode).toBe(422);
       expect((await statusesOf(inject, ungranted.id)).get(service.id)?.isConfigured).toBe(false);
     });
 

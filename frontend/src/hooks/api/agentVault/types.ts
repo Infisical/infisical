@@ -151,8 +151,10 @@ export type TListAgentVaultProxiesDTO = {
 
 export type TListAgentVaultAccessBundlesDTO = Omit<TListAgentVaultProxiesDTO, "orderBy"> & {
   orderBy?: "name" | "serviceCount" | "createdAt";
-  /** Only the bundles granted to the caller that still require their personal values. */
+  /** Only the bundles the caller reaches that still require their personal values. */
   requiresSetup?: boolean;
+  /** Only the bundles granted to the caller, or with false, only those an admin reaches by role. */
+  granted?: boolean;
 };
 
 export type TListAgentVaultVariablesDTO = {
@@ -207,8 +209,6 @@ export type TAgentVaultAccessBundleListItem = TAgentVaultAccessBundle & {
   serviceCount: number;
   memberCount: number;
   hostPatterns: string[];
-  // False on a bundle an admin reaches only by role.
-  isGranted: boolean;
   servicesRequiringSetup: { id: string; name: string }[];
 };
 
