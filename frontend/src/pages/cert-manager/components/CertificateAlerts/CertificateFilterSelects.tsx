@@ -28,7 +28,7 @@ const FilterCombobox = ({
   isLoading,
   onSearchChange,
   placeholder
-}: Props & {
+}: Omit<Props, "projectId"> & {
   kind: CertificateFilterKind;
   options: TFilterOption[];
   isLoading: boolean;
@@ -107,11 +107,11 @@ export const ProfileFilterSelect = (props: Props) => {
   );
 };
 
-export const SignerFilterSelect = (props: Props) => {
+export const SignerFilterSelect = ({ projectId, ...props }: Props) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
   const { data, isPending } = useListSigners({
-    projectId: props.projectId,
+    projectId,
     limit: MAX_CERTIFICATE_ALERT_FILTER_IDS,
     ...(debouncedSearch ? { search: debouncedSearch } : {})
   });
