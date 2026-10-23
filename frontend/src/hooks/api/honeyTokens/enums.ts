@@ -7,3 +7,19 @@ export enum HoneyTokenStatus {
   Triggered = "triggered",
   Revoked = "revoked"
 }
+
+export enum HoneyTokenHosting {
+  InfisicalManaged = "infisical-managed",
+  CustomerAccount = "customer-account"
+}
+
+export enum HoneyTokenManagedUnavailableReason {
+  NotConfigured = "not-configured",
+  IncompleteAwsCredentials = "incomplete-aws-credentials",
+  InvalidRoleArn = "invalid-role-arn"
+}
+
+export enum HoneyTokenConfigStatus {
+  VerificationPending = "VERIFICATION_PENDING",
+  Complete = "COMPLETE"
+}
