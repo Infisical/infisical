@@ -121,7 +121,7 @@ export const commitCounts: Record<string, number> = {
   "payments-api:dev:/": 12,
   "payments-api:staging:/": 9,
   "payments-api:prod:/": 11,
-  "payments-api:dev:/api": 7
+  "payments-api:dev:/api": 12
 };
 
 type SecretSeed = {
@@ -256,21 +256,26 @@ export function createResources(scenario: Scenario): Resource[] {
 
   imports("/api", at("dev", "/workers"), ["dev"]);
   imports("/api", at("staging", "/api/v1"), ["prod"]);
-  ["v1", "webhooks"].forEach((name) =>
-    all.forEach((environment) =>
-      add(at(environment, "/api"), name, { kind: "folder", description: "" })
-    )
+  all.forEach((environment) =>
+    add(at(environment, "/api"), "v1", { kind: "folder", description: "" })
   );
-  ["ledger-db-readonly", "refunds-db-writer"].forEach((name) =>
-    ["dev", "staging"].forEach((environment) =>
-      add(at(environment, "/api"), name, {
-        kind: "dynamic",
-        provider: "SQL Database",
-        defaultTTL: "1h",
-        maxTTL: "24h"
-      })
-    )
+  ["dev", "prod"].forEach((environment) =>
+    add(at(environment, "/api"), "webhooks", { kind: "folder", description: "" })
   );
+  ["dev", "prod"].forEach((environment) =>
+    add(at(environment, "/api"), "ledger-db-readonly", {
+      kind: "dynamic",
+      provider: "SQL Database",
+      defaultTTL: "1h",
+      maxTTL: "24h"
+    })
+  );
+  add(at("dev", "/api"), "refunds-db-writer", {
+    kind: "dynamic",
+    provider: "SQL Database",
+    defaultTTL: "1h",
+    maxTTL: "24h"
+  });
   add(at("prod", "/api"), "ledger-app-db-creds", {
     kind: "rotation",
     provider: "PostgreSQL credentials",
@@ -286,9 +291,9 @@ export function createResources(scenario: Scenario): Resource[] {
     provider: "AWS",
     status: "active",
     description: "",
-    mappedKeys: ["BILLING_ACCESS_KEY_ID"]
+    mappedKeys: ["BILLING_AWS_ACCESS_KEY_ID", "BILLING_AWS_SECRET_ACCESS_KEY"]
   });
-  all.forEach((environment) =>
+  ["dev", "staging"].forEach((environment) =>
     add(at(environment, "/api"), "ledger-api", {
       kind: "proxy",
       host: "ledger.internal.example.test",
@@ -296,17 +301,20 @@ export function createResources(scenario: Scenario): Resource[] {
     })
   );
   secrets("/api", [
-    { name: "BILLING_ACCESS_KEY_ID", envs: ["dev"], honeyToken: true },
+    { name: "BILLING_AWS_ACCESS_KEY_ID", envs: ["dev"], honeyToken: true },
+    { name: "BILLING_AWS_SECRET_ACCESS_KEY", envs: ["dev"], honeyToken: true },
     { name: "CORS_ORIGINS", envs: all },
+    { name: "FRAUD_SCORE_THRESHOLD", envs: ["prod"] },
     { name: "IDEMPOTENCY_TTL_SECONDS", envs: all, empty: ["dev"] },
-    { name: "LEDGER_API_KEY", envs: all, override: "fake-personal-ledger-key" },
+    { name: "LEDGER_API_KEY", envs: ["dev", "staging"], override: "fake-personal-ledger-key" },
     { name: "LEDGER_DB_PASSWORD", envs: ["prod"], managedBy: "ledger-app-db-creds" },
     { name: "LEDGER_DB_USERNAME", envs: ["prod"], managedBy: "ledger-app-db-creds" },
-    { name: "PAYPAL_CLIENT_ID", envs: all },
+    { name: "PAYMENT_PROVIDER", envs: all },
+    { name: "PAYPAL_CLIENT_ID", envs: ["dev", "prod"] },
     { name: "PAYPAL_CLIENT_SECRET", envs: all, empty: ["staging"] },
-    { name: "RATE_LIMIT_PER_MINUTE", envs: all },
-    { name: "REFUNDS_QUEUE_URL", envs: ["dev", "staging"] },
-    { name: "WEBHOOK_SIGNING_SECRET", envs: all, tags: ["webhooks"] }
+    { name: "RATE_LIMIT_PER_MIN", envs: all, comment: "Applies per API key." },
+    { name: "SIGNING_SECRET", envs: all },
+    { name: "WEBHOOK_RETRY_LIMIT", envs: all, tags: ["webhooks"] }
   ]);
   secrets("/workers", [{ name: "QUEUE_CONCURRENCY", envs: ["dev", "staging"] }]);
   secrets("/api/v1", [{ name: "V1_SUNSET_DATE", envs: ["staging"] }]);

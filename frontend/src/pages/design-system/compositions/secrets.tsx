@@ -31,6 +31,7 @@ import { Field } from "@app/components/v4/ui/field";
 import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
+import { Inline } from "@app/components/v4/ui/layout";
 import { MultiSelect } from "@app/components/v4/ui/multi-select";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Pagination } from "@app/components/v4/ui/pagination";
@@ -154,8 +155,6 @@ function Overview({ scenario }: { scenario: Scenario }) {
     (scenario === "error" && !recovered);
   const readOnly = scenario === "permissions";
   let writeBlock: string | undefined;
-  if (visibleEnvironments.some((environment) => environment.value === "prod"))
-    writeBlock = `${NEXT_PHASE}: Production changes go through approval requests`;
   if (readOnly) writeBlock = "Access restricted";
   if (unavailable) writeBlock = "Resources are not available in this scenario";
   useEffect(() => {
@@ -743,6 +742,12 @@ function Overview({ scenario }: { scenario: Scenario }) {
       )}
     </form>
   );
+  const draftScope = `Local demo data in ${
+    environments
+      .filter((environment) => draft?.environments.includes(environment.value))
+      .map((environment) => environment.label)
+      .join(", ") || "no environment"
+  } ${path === "/" ? "at the root folder" : `in the ${path} folder`}.`;
   const draftTitle = `${draft?.resource ? "Edit" : "Create"} ${draft?.kind === "folder" ? "folder" : "secret"}`;
 
   return (
@@ -816,7 +821,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
                     ) : (
                       <ResourceCount counts={totals} />
                     )}
-                    {!unavailableState && (
+                    {!unavailableState && totalCount > 0 && (
                       <div className={styles.pagination}>
                         <Pagination
                           page={currentPage}
@@ -1097,44 +1102,51 @@ function Overview({ scenario }: { scenario: Scenario }) {
               </Card>
             </div>
           </PageGutter>
-        </AppInset>
-        <FloatingActionBar
-          placement="fixed"
-          count={selected.length}
-          total={selectableOnPage.length}
-          onSelectAll={() => setSelected(selectableOnPage)}
-          onClear={() => setSelected([])}
-          noun="resources"
-          actions={[
-            { label: "Add tags", icon: "plus", disabled: true, onClick: () => undefined },
-            { label: "Move", icon: "folder", disabled: true, onClick: () => undefined },
-            {
-              label: "Copy to clipboard",
-              icon: "copy",
-              disabled: !single || !selectedSecretNames.length,
-              onClick: async () => {
-                try {
-                  await navigator.clipboard.writeText(
-                    `${envFile(activeEnvironment, selectedSecretNames).join("\n")}\n`
-                  );
-                  setNotice("Secrets copied to clipboard. They are ready to paste.");
-                } catch {
-                  setNotice("Failed to copy secrets. Please try again later.");
+          <div className={styles.fabDock} data-active={selected.length > 0 || undefined}>
+            <FloatingActionBar
+              placement="contained"
+              count={selected.length}
+              total={selectableOnPage.length}
+              onSelectAll={() => setSelected(selectableOnPage)}
+              onClear={() => setSelected([])}
+              noun="resources"
+              actions={[
+                { label: "Add tags", icon: "plus", disabled: true, onClick: () => undefined },
+                { label: "Move", icon: "folder", disabled: true, onClick: () => undefined },
+                {
+                  label: "Copy to clipboard",
+                  icon: "copy",
+                  disabled: !single || !selectedSecretNames.length,
+                  onClick: async () => {
+                    try {
+                      await navigator.clipboard.writeText(
+                        `${envFile(activeEnvironment, selectedSecretNames).join("\n")}\n`
+                      );
+                      setNotice("Secrets copied to clipboard. They are ready to paste.");
+                    } catch {
+                      setNotice("Failed to copy secrets. Please try again later.");
+                    }
+                  }
+                },
+                {
+                  label: "Delete",
+                  icon: "trash",
+                  danger: true,
+                  disabled: Boolean(writeBlock) || !deletable.length,
+                  onClick: () => setDeleting(deletable)
                 }
-              }
-            },
-            {
-              label: "Delete",
-              icon: "trash",
-              danger: true,
-              disabled: Boolean(writeBlock) || !deletable.length,
-              onClick: () => setDeleting(deletable)
-            }
-          ]}
-          moreActions={[
-            { label: "Copy to new source", icon: "copy", disabled: true, onClick: () => undefined }
-          ]}
-        />
+              ]}
+              moreActions={[
+                {
+                  label: "Copy to new source",
+                  icon: "copy",
+                  disabled: true,
+                  onClick: () => undefined
+                }
+              ]}
+            />
+          </div>
+        </AppInset>
         <Sheet
           open={draft?.kind === "secret"}
           onOpenChange={(open) => {
@@ -1144,18 +1156,18 @@ function Overview({ scenario }: { scenario: Scenario }) {
           <SheetContent>
             <SheetHeader>
               <SheetTitle>{draftTitle}</SheetTitle>
-              <SheetDescription>
-                {`${currentProject.label}, ${path}. Changes affect local demo data only.`}
-              </SheetDescription>
+              <SheetDescription>{draftScope}</SheetDescription>
             </SheetHeader>
             <SheetBody>{draft?.kind === "secret" && draftForm}</SheetBody>
             <SheetFooter>
-              <Button variant="ghost" onClick={closeDraft}>
-                Cancel
-              </Button>
-              <Button form="secret-draft" type="submit">
-                Save
-              </Button>
+              <Inline gap={8} justify="end">
+                <Button variant="outline" onClick={closeDraft}>
+                  Cancel
+                </Button>
+                <Button form="secret-draft" type="submit">
+                  Save
+                </Button>
+              </Inline>
             </SheetFooter>
           </SheetContent>
         </Sheet>
@@ -1168,13 +1180,11 @@ function Overview({ scenario }: { scenario: Scenario }) {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{draftTitle}</DialogTitle>
-              <DialogDescription>
-                {`${currentProject.label}, ${path}. Changes affect local demo data only.`}
-              </DialogDescription>
+              <DialogDescription>{draftScope}</DialogDescription>
             </DialogHeader>
             {draft?.kind === "folder" && draftForm}
             <DialogFooter>
-              <Button variant="ghost" onClick={closeDraft}>
+              <Button variant="outline" onClick={closeDraft}>
                 Cancel
               </Button>
               <Button form="secret-draft" type="submit">
