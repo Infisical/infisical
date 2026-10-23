@@ -90,7 +90,6 @@ export const AutoApprovalValuePicker = ({
     return (
       <Combobox
         multiple
-        singleLine
         aria-label={constraint.label}
         options={options}
         value={selected}
