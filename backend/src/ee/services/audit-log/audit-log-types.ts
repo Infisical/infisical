@@ -1,7 +1,7 @@
 import { ProjectType } from "@app/db/schemas";
 import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
-import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
+import { CertificateSource, PkiKeystorePasswordChange } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
 import {
@@ -830,6 +830,7 @@ export enum EventType {
   AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
   AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
   AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
+  AGENT_VAULT_PROXY_TOKEN_ROTATE = "agent-vault-proxy-token-rotate",
   AGENT_VAULT_PROXY_ENROLL = "agent-vault-proxy-enroll",
   AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
   AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
@@ -5015,6 +5016,7 @@ interface UpdatePkiInstallationEvent {
     installationId: string;
     name?: string;
     type?: string;
+    keystorePasswordChange?: PkiKeystorePasswordChange;
   };
 }
 
@@ -6437,6 +6439,14 @@ interface AgentVaultProxyRegisterEvent {
 
 interface AgentVaultProxyTokenReissueEvent {
   type: EventType.AGENT_VAULT_PROXY_TOKEN_REISSUE;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
+interface AgentVaultProxyTokenRotateEvent {
+  type: EventType.AGENT_VAULT_PROXY_TOKEN_ROTATE;
   metadata: {
     proxyId: string;
     name: string;
@@ -8619,6 +8629,7 @@ export type Event =
   | AgentVaultSessionRevokeEvent
   | AgentVaultProxyRegisterEvent
   | AgentVaultProxyTokenReissueEvent
+  | AgentVaultProxyTokenRotateEvent
   | AgentVaultProxyEnrollEvent
   | AgentVaultProxyUpdateEvent
   | AgentVaultProxyRevokeEvent

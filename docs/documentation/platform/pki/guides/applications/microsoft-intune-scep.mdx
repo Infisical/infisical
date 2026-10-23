@@ -9,7 +9,7 @@ This guide shows you how to issue certificates to devices managed by [Microsoft 
 By the end, your Intune-managed devices will hold certificates from a CA you own, ready to point at Wi-Fi, VPN, or RADIUS authentication.
 
 <Info>
-  This guide is for administrators who manage both Microsoft Intune and Infisical Certificate Manager. If your devices are managed by a different MDM tool, see the [Jamf Pro guide](/documentation/platform/pki/guides/applications/jamf-pro-scep), or use a static or dynamic challenge as described in [SCEP enrollment](/documentation/platform/pki/applications/enrollment-methods/scep).
+  This guide is for administrators who manage both Microsoft Intune and Infisical Certificate Management. If your devices are managed by a different MDM tool, see the [Jamf Pro guide](/documentation/platform/pki/guides/applications/jamf-pro-scep), or use a static or dynamic challenge as described in [SCEP enrollment](/documentation/platform/pki/applications/enrollment-methods/scep).
 </Info>
 
 <Accordion title="How it works">
@@ -264,9 +264,13 @@ This profile gives each device the address of your endpoint and a single-use cha
     | **Root Certificate** | The trusted certificate profile you just created |
     | **Extended key usage** | **Client Authentication**, matching the certificate profile |
     | **Renewal threshold (%)** | 20 |
-    | **SCEP Server URLs** | The **SCEP endpoint URL** you copied from Infisical |
+    | **SCEP Server URLs** | The **SCEP endpoint URL** you copied from Infisical (remove `/pkiclient.exe` on Windows) |
 
     ![Intune SCEP certificate profile settings including the Infisical SCEP Server URL](/images/platform/pki/integrations/microsoft-intune/intune-scep-profile-settings.png)
+
+    <Note>
+      On Windows, remove `/pkiclient.exe` from the end of the URL. Windows adds `/pkiclient.exe` to the URL itself, so if you leave it in, the device requests `.../pkiclient.exe/pkiclient.exe` and never enrolls. On Apple platforms, keep the full URL.
+    </Note>
 
     **Certificate validity period** and **Extended key usage** are the two you're mirroring from [Step 1](#step-1-prepare-the-certificate-profile-in-infisical). Intune reports the enrollment as successful without comparing either one against the certificate it receives, so a mismatch here is never flagged.
 
@@ -290,7 +294,7 @@ This profile gives each device the address of your endpoint and a single-use cha
 </Steps>
 
 <Note>
-  Intune configuration profiles are platform-specific, so each platform you support needs its own trusted certificate profile and SCEP certificate profile. Supporting Macs and Windows machines means four profiles. The Infisical side is shared, and all of them point at the same SCEP endpoint URL.
+  Intune configuration profiles are platform-specific, so each platform you support needs its own trusted certificate profile and SCEP certificate profile. Supporting Macs and Windows machines means four profiles. The Infisical side is shared, so every profile uses the same SCEP endpoint URL, with `/pkiclient.exe` removed on Windows.
 </Note>
 
 ## Step 5: Verify enrollment
@@ -322,6 +326,11 @@ Infisical's **Allow cert-based renewal** option stays off for Intune validation,
 ## Troubleshooting
 
 <AccordionGroup>
+  <Accordion title="A Windows device never enrolls and the audit log shows no SCEP enrollment event">
+    The **SCEP Server URLs** value in the Windows profile most likely still ends in `/pkiclient.exe`. Windows adds `/pkiclient.exe` to the URL itself, so the device requests a URL that doesn't exist and stops before it sends a certificate request.
+
+    Remove `/pkiclient.exe` from the end of the URL in the Windows SCEP profile, then sync the device. To confirm which URL the device used, open Event Viewer on the device and go to **Applications and Services Logs** > **Microsoft** > **Windows** > **DeviceManagement-Enterprise-Diagnostics-Provider** > **Admin**. Event 307 shows the SCEP server URL the device tried.
+  </Accordion>
   <Accordion title="Enrollment fails immediately with a validation error">
     Infisical asked Intune to validate the challenge and Intune declined. Work through these in order:
 
@@ -353,7 +362,7 @@ Infisical's **Allow cert-based renewal** option stays off for Intune validation,
     Intune validation requires a profile backed by an internal CA. External CAs issue asynchronously, and Intune has no pending state to wait in, so Infisical rejects the combination when you configure the enrollment.
   </Accordion>
   <Accordion title="Do I need separate profiles for each device platform?">
-    Yes. Intune configuration profiles are platform-specific, so each platform needs its own trusted certificate profile and SCEP certificate profile. The Infisical side is shared, and every platform can point at the same SCEP endpoint URL.
+    Yes. Intune configuration profiles are platform-specific, so each platform needs its own trusted certificate profile and SCEP certificate profile. The Infisical side is shared, so every platform uses the same SCEP endpoint URL, with `/pkiclient.exe` removed on Windows.
 
     Which SCEP profile fields Intune offers also depends on the platform. **Key storage provider** appears on Windows, **Hash algorithm** on Windows and Android, and **Deployment Channel** on Apple platforms. See [Use SCEP certificate profiles with Microsoft Intune](https://learn.microsoft.com/en-us/mem/intune/protect/certificates-profile-scep) for the full field list.
   </Accordion>

@@ -168,7 +168,7 @@ const createSelectedSecretStore: StateCreator<CombinedState, [], [], SelectedSec
   }
 });
 
-type BatchModeState = {
+export type BatchModeState = {
   isBatchMode: boolean;
   pendingChanges: PendingChanges;
   pendingChangesByContext: Map<string, PendingChanges>;
@@ -194,7 +194,10 @@ const generateContextKey = (projectId: string, environment: string, secretPath: 
   return `${projectId}_${environment}_${secretPath}`;
 };
 
-const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> = (set, get) => ({
+export const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> = (
+  set,
+  get
+) => ({
   isBatchMode: true, // Always enabled by default
   pendingChanges: { secrets: [], folders: [] },
   pendingChangesByContext: new Map<string, PendingChanges>(),
@@ -227,7 +230,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
               text: "A folder with this name already exists",
               type: "error"
             });
-            return { pendingChanges: newChanges };
+            return state;
           }
           if (
             change.type === PendingAction.Update &&
@@ -238,7 +241,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
               text: "A folder with this name already exists",
               type: "error"
             });
-            return { pendingChanges: newChanges };
+            return state;
           }
         }
 
@@ -269,7 +272,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
               text: "A secret with this name already exists",
               type: "error"
             });
-            return { pendingChanges: newChanges };
+            return state;
           }
 
           const existingNewSecretName =
@@ -287,7 +290,7 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
               text: "A secret with this name already exists",
               type: "error"
             });
-            return { pendingChanges: newChanges };
+            return state;
           }
         }
 
@@ -378,20 +381,21 @@ const createBatchModeStore: StateCreator<CombinedState, [], [], BatchModeState> 
         const updatedContextMap = new Map(state.pendingChangesByContext);
         updatedContextMap.set(contextKey, newChanges);
 
-        const currentChanges =
+        // A change can target another environment (e.g. creating a secret in several
+        // environments at once), so it must not move the viewed context away from the page.
+        const currentContext = state.currentContext ?? context;
+        const isCurrentContext =
           contextKey ===
           generateContextKey(
-            state.currentContext?.projectId || context.projectId,
-            state.currentContext?.environment || context.environment,
-            state.currentContext?.secretPath || context.secretPath
-          )
-            ? newChanges
-            : state.pendingChanges;
+            currentContext.projectId,
+            currentContext.environment,
+            currentContext.secretPath
+          );
 
         return {
           pendingChangesByContext: updatedContextMap,
-          pendingChanges: currentChanges,
-          currentContext: context
+          pendingChanges: isCurrentContext ? newChanges : state.pendingChanges,
+          currentContext
         };
       }),
 

@@ -4,12 +4,12 @@ import { AxiosError } from "axios";
 import { Info } from "lucide-react";
 
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Label,
   Spinner,
   Toggle,
@@ -139,7 +139,7 @@ export const PaloAltoNetworksPkiSyncFields = ({
           control={control}
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field className="mb-4">
-              <FieldLabel>
+              <FieldLabel htmlFor="palo-alto-networks-template">
                 Template
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -151,16 +151,18 @@ export const PaloAltoNetworksPkiSyncFields = ({
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
-              <FilterableSelect
+              <Combobox
+                id="palo-alto-networks-template"
                 options={templates.map((name) => ({ name }))}
                 value={value ? { name: value } : null}
-                onChange={(option) => {
-                  onChange((option as { name: string } | null)?.name ?? "");
+                isClearable={false}
+                onValueChange={(option) => {
+                  onChange(option.name);
                   clearErrors("destinationConfig.template");
                   clearProfile();
                 }}
-                getOptionLabel={(option) => (option as { name: string }).name}
-                getOptionValue={(option) => (option as { name: string }).name}
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.name}
                 placeholder="Select a template"
                 isError={Boolean(error)}
               />
@@ -171,7 +173,7 @@ export const PaloAltoNetworksPkiSyncFields = ({
       )}
       {withSslTlsServiceProfile && (
         <Field className="mb-4">
-          <FieldLabel>
+          <FieldLabel htmlFor="palo-alto-networks-ssl-tls-service-profile">
             SSL/TLS Service Profile
             <Tooltip>
               <TooltipTrigger asChild>
@@ -183,27 +185,25 @@ export const PaloAltoNetworksPkiSyncFields = ({
               </TooltipContent>
             </Tooltip>
           </FieldLabel>
-          <FilterableSelect
+          <Combobox
+            id="palo-alto-networks-ssl-tls-service-profile"
             isDisabled={!isProfileSelectReady}
             isLoading={isLoadingProfiles}
             options={profiles}
             value={profileName ? { name: profileName, vsys: profileVsys ?? null } : null}
-            onChange={(option) => {
-              const profile = option as TPaloAltoNetworksSslTlsServiceProfile | null;
-              setValue("destinationConfig.sslTlsServiceProfileVsys", profile?.vsys ?? "", {
+            isClearable={false}
+            onValueChange={(profile) => {
+              setValue("destinationConfig.sslTlsServiceProfileVsys", profile.vsys ?? "", {
                 shouldDirty: true
               });
-              setValue("destinationConfig.sslTlsServiceProfileName", profile?.name ?? "", {
+              setValue("destinationConfig.sslTlsServiceProfileName", profile.name, {
                 shouldDirty: true,
                 shouldValidate: true
               });
             }}
-            getOptionLabel={(option) =>
-              getPaloAltoNetworksProfileLabel(option as TPaloAltoNetworksSslTlsServiceProfile)
-            }
-            getOptionValue={(option) =>
-              getProfileValue(option as TPaloAltoNetworksSslTlsServiceProfile)
-            }
+            getOptionLabel={(option) => getPaloAltoNetworksProfileLabel(option)}
+            getOptionValue={(option) => getProfileValue(option)}
+            getOptionKeywords={(option) => [getProfileValue(option)]}
             placeholder={profilePlaceholder}
             isError={Boolean(profileError)}
           />
