@@ -1,4 +1,4 @@
-import { PkiDiscoveryType } from "@app/hooks/api/pkiDiscovery/types";
+import { PkiDiscoveryType, WindowsCertificateStore } from "@app/hooks/api/pkiDiscovery/types";
 
 export const PKI_DISCOVERY_TYPE_MAP: Record<
   PkiDiscoveryType,
@@ -14,8 +14,19 @@ export const PKI_DISCOVERY_TYPE_MAP: Record<
     category: "Infrastructure",
     description: "Log in over SSH and read the certificate files on a Linux server.",
     image: "SSH.png"
+  },
+  [PkiDiscoveryType.WindowsServer]: {
+    name: "Windows Server",
+    category: "Infrastructure",
+    description: "Connect over WinRM and read the certificates in the Windows certificate store.",
+    image: "Windows.png"
   }
 };
+
+export const DEFAULT_WINDOWS_CERTIFICATE_STORES = [
+  WindowsCertificateStore.Personal,
+  WindowsCertificateStore.WebHosting
+];
 
 export const DEFAULT_LINUX_SEARCH_FOLDERS = [
   "/etc/ssl",

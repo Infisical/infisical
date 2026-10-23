@@ -21,6 +21,7 @@ import { rescanInstallation } from "./pki-discovery-rescan-fns";
 import { executeScan } from "./pki-discovery-scan-fns";
 import { TPkiDiscoveryScanHistoryDALFactory } from "./pki-discovery-scan-history-dal";
 import { PkiDiscoveryType } from "./pki-discovery-types";
+import { executeWindowsServerScan } from "./pki-discovery-windows-scan-fns";
 
 type TPkiDiscoveryQueueFactoryDep = {
   pkiDiscoveryConfigDAL: TPkiDiscoveryConfigDALFactory;
@@ -106,6 +107,9 @@ export const pkiDiscoveryQueueFactory = ({
                 break;
               case PkiDiscoveryType.LinuxServer:
                 await executeLinuxServerScan(discoveryId, scanDeps);
+                break;
+              case PkiDiscoveryType.WindowsServer:
+                await executeWindowsServerScan(discoveryId, scanDeps);
                 break;
               default:
                 throw new Error(`Unsupported discovery type: ${discoveryType as string}`);
