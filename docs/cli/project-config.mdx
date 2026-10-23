@@ -49,6 +49,10 @@ If the directory already has `.infisical.yaml` or `.infisical.json`, `infisical 
 
 ## Set the environment
 
+<Note>
+  The `environment`, `secret-path`, and `overrides.git-branch` keys in `.infisical.yaml` require CLI version 0.44.8 or later. Earlier versions read only the older `default-environment`, `default-secret-path`, and `mappings.git-branch-to-environment` keys. If a developer machine, CI pipeline, or container image runs an older version, [upgrade the CLI](/cli/upgrade) there before you commit the newer keys.
+</Note>
+
 Without an environment setting, commands read secrets from your project's [`dev` environment](/documentation/platform/secrets-mgmt/project#project-environments) unless you pass [`--env`](/cli/reference#sm-run--flag-env). To use a different environment by default, set `environment` under `secrets-management` to the environment's slug (`defaultEnvironment` in `.infisical.json`):
 
 <CodeGroup>
