@@ -111,14 +111,17 @@ export const planHostFileImport = (
 export const sshConnectionWithoutGatewayMessage = (connectionName: string) =>
   `SSH connection '${connectionName}' does not use a gateway. Linux Server discovery runs on the gateway, so assign one to the connection.`;
 
+export const windowsConnectionWithoutGatewayMessage = (connectionName: string) =>
+  `Windows (WinRM) connection '${connectionName}' does not use a gateway. Windows Server discovery runs on the gateway, so assign one to the connection.`;
+
 export const buildHostInstallationName = (hostIdentifier: string, hostname: string | undefined, filePath: string) =>
   truncateString(`${hostname?.trim() || hostIdentifier}:${filePath}`, DB_SHORT_VARCHAR_LIMIT);
 
 const DEFAULT_SSH_PORT = 22;
 
-export const normalizeHostIdentifier = (host: string, port?: number) => {
+export const normalizeHostIdentifier = (host: string, port?: number, defaultPort = DEFAULT_SSH_PORT) => {
   const normalized = host.trim().toLowerCase();
-  if (!port || port === DEFAULT_SSH_PORT) return normalized;
+  if (!port || port === defaultPort) return normalized;
   return net.isIPv6(normalized) ? `[${normalized}]:${port}` : `${normalized}:${port}`;
 };
 

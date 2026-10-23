@@ -1058,6 +1058,7 @@ export const gatewayV2ServiceFactory = ({
       sessionLogMaskingBuiltInDetection?: boolean;
       clickhouseNativeProtocol?: boolean;
       certificateScan?: boolean;
+      windowsCertificateScan?: boolean;
       supported_account_types?: string[];
     };
   }) => {

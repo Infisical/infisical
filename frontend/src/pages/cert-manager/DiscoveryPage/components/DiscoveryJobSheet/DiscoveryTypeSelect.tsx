@@ -8,7 +8,7 @@ type Props = {
 };
 
 export const DiscoveryTypeSelect = ({ onSelect }: Props) => (
-  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
     {Object.values(PkiDiscoveryType).map((type) => {
       const { name, category, description } = PKI_DISCOVERY_TYPE_MAP[type];
       return (

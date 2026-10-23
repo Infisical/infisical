@@ -1,4 +1,4 @@
-import { postGatewayRpc } from "./gateway-rpc";
+import { GatewayRpcResponseTooLargeError, postGatewayRpc } from "./gateway-rpc";
 import { GatewayFailureKind } from "./test-connection-rpc";
 
 export enum WinRmRpcEndpoint {
@@ -10,7 +10,8 @@ export enum WinRmRpcEndpoint {
   EnumerateDependencies = "/v1/enumerate-dependencies",
   RotateCredential = "/v1/rotate-credential",
   SyncDependency = "/v1/sync-dependency",
-  ValidateCredential = "/v1/validate-credential"
+  ValidateCredential = "/v1/validate-credential",
+  ScanCertificates = "/v1/scan-certificates"
 }
 
 export type WinRmTransportParams = {
@@ -51,20 +52,32 @@ export const WINRM_RPC_TIMEOUT_MS = 150_000;
 
 const MAX_WINRM_RPC_RESPONSE_BYTES = 1024 * 1024;
 
+export const WINRM_RPC_RESPONSE_TOO_LARGE_STATUS = 413;
+
 export const callWinRmEndpoint = async <T>(args: {
   port: number;
   endpoint: WinRmRpcEndpoint;
   body: WinRmRpcRequestBody;
+  maxResponseBytes?: number;
 }): Promise<WinRmRpcResponse<T>> => {
-  const { status, text } = await postGatewayRpc({
-    port: args.port,
-    path: args.endpoint,
-    payload: JSON.stringify(args.body),
-    timeoutMs: WINRM_RPC_TIMEOUT_MS,
-    deadlineMs: WINRM_RPC_TIMEOUT_MS,
-    maxResponseBytes: MAX_WINRM_RPC_RESPONSE_BYTES,
-    label: "WinRM"
-  });
+  let raw: Awaited<ReturnType<typeof postGatewayRpc>>;
+  try {
+    raw = await postGatewayRpc({
+      port: args.port,
+      path: args.endpoint,
+      payload: JSON.stringify(args.body),
+      timeoutMs: WINRM_RPC_TIMEOUT_MS,
+      deadlineMs: WINRM_RPC_TIMEOUT_MS,
+      maxResponseBytes: args.maxResponseBytes ?? MAX_WINRM_RPC_RESPONSE_BYTES,
+      label: "WinRM"
+    });
+  } catch (error) {
+    if (error instanceof GatewayRpcResponseTooLargeError) {
+      return { ok: false, status: WINRM_RPC_RESPONSE_TOO_LARGE_STATUS, errorMessage: error.message, kind: null };
+    }
+    throw error;
+  }
+  const { status, text } = raw;
 
   if (!text) {
     return { ok: false, status, errorMessage: `Empty response body from Gateway (status ${status})` };

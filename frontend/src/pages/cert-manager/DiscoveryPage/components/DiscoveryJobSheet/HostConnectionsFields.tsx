@@ -25,21 +25,27 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
-import { TLinuxServerDiscoveryJobForm } from "./discovery-job-form-schema";
+import { THostDiscoveryJobForm } from "./discovery-job-form-schema";
 
 type TConnectionOption = Pick<TAvailableAppConnection, "id" | "name"> &
   Partial<TAvailableAppConnection>;
 
 const CREATE_OPTION_ID = "_create";
 
-export const LinuxServerHostsFields = () => {
+type Props = {
+  app: AppConnection.SSH | AppConnection.WinRM;
+  connectionLabel: string;
+  capability: "certificateScan" | "windowsCertificateScan";
+};
+
+export const HostConnectionsFields = ({ app, connectionLabel, capability }: Props) => {
   const { permission } = useProjectPermission();
   const { currentProject } = useProject();
-  const { control, getValues, setValue, setError } = useFormContext<TLinuxServerDiscoveryJobForm>();
+  const { control, getValues, setValue, setError } = useFormContext<THostDiscoveryJobForm>();
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
 
   const { connections, isPending } = useListAvailableAppConnectionsForApps(
-    [AppConnection.SSH],
+    [app],
     currentProject.id
   );
   const { data: gateways } = useQuery(gatewaysQueryKeys.list());
@@ -51,7 +57,7 @@ export const LinuxServerHostsFields = () => {
 
   const incapableGatewayIds = new Set(
     (gateways ?? [])
-      .filter((gateway) => gateway.capabilities?.certificateScan !== true)
+      .filter((gateway) => gateway.capabilities?.[capability] !== true)
       .map((gateway) => gateway.id)
   );
 
@@ -70,7 +76,9 @@ export const LinuxServerHostsFields = () => {
   const isUnusable = (option: TConnectionOption) =>
     isMissingGateway(option) || isGatewayOutdated(option);
   const connectionOptions: TConnectionOption[] = [
-    ...(canCreateConnection ? [{ id: CREATE_OPTION_ID, name: "Create SSH Connection" }] : []),
+    ...(canCreateConnection
+      ? [{ id: CREATE_OPTION_ID, name: `Create ${connectionLabel} Connection` }]
+      : []),
     ...connections.filter((connection) => !isUnusable(connection)),
     ...connections.filter(isUnusable)
   ];
@@ -82,7 +90,7 @@ export const LinuxServerHostsFields = () => {
         name="connections"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field className="mb-4">
-            <FieldLabel>SSH Connections</FieldLabel>
+            <FieldLabel>{connectionLabel} Connections</FieldLabel>
             <FieldContent>
               <Combobox
                 multiple
@@ -106,8 +114,7 @@ export const LinuxServerHostsFields = () => {
                   let unusableHint: string | null = null;
                   if (isMissingGateway(option)) {
                     unusableLabel = "No gateway";
-                    unusableHint =
-                      "This SSH connection has no gateway. Add one to the connection to scan this server.";
+                    unusableHint = `This ${connectionLabel} connection has no gateway. Add one to the connection to scan this server.`;
                   } else if (isGatewayOutdated(option)) {
                     unusableLabel = "Update gateway";
                     unusableHint =
@@ -116,7 +123,7 @@ export const LinuxServerHostsFields = () => {
                   return (
                     <AppConnectionOptionContent
                       data={resolveOption(option)}
-                      createLabel="Create SSH Connection"
+                      createLabel={`Create ${connectionLabel} Connection`}
                       isOnlyOption={
                         option.id === CREATE_OPTION_ID && connectionOptions.length === 1
                       }
@@ -151,7 +158,8 @@ export const LinuxServerHostsFields = () => {
       {!isPending && !connections.length && !canCreateConnection && (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-warning">
           <Info className="size-3.5" />
-          You do not have access to any SSH Connections. Contact an admin to create one.
+          You do not have access to any {connectionLabel} Connections. Contact an admin to create
+          one.
         </p>
       )}
       <AddAppConnectionModal
@@ -159,13 +167,13 @@ export const LinuxServerHostsFields = () => {
         onOpenChange={(isOpen) => handlePopUpToggle("addConnection", isOpen)}
         projectType={currentProject.type}
         projectId={currentProject.id}
-        app={AppConnection.SSH}
+        app={app}
         onComplete={(connection) => {
           const existing = getValues("connections") ?? [];
           if (existing.some((c) => c.id === connection.id)) return;
           if (!connection.gatewayId && !connection.gatewayPoolId) {
             setError("connections", {
-              message: `SSH connection '${connection.name}' has no gateway. Add one to the connection to scan this server.`
+              message: `${connectionLabel} connection '${connection.name}' has no gateway. Add one to the connection to scan this server.`
             });
             return;
           }

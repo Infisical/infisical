@@ -41,15 +41,14 @@ import {
   useDeletePkiInstallation,
   useListPkiInstallations
 } from "@app/hooks/api";
-import { PkiDiscoveryType } from "@app/hooks/api/pkiDiscovery/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { usePopUp } from "@app/hooks/usePopUp";
 import {
   canSetKeystorePassword,
   getEndpoint,
   getGatewayLabel,
+  getInstallationDiscoveryType,
   getKeystoreStatusBadge,
-  isHostFileInstallation,
   useCanRescanPkiInstallations
 } from "@app/pages/cert-manager/pki-discovery-utils";
 
@@ -132,8 +131,8 @@ export const InstallationsTab = ({ projectId }: Props) => {
       <CardHeader>
         <CardTitle>Installations</CardTitle>
         <CardDescription>
-          Every place a certificate was found during a scan, identified by its host and port or its
-          host and file path.
+          Every place a certificate was found during a scan, identified by its host and its port,
+          file path or certificate store.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -198,11 +197,7 @@ export const InstallationsTab = ({ projectId }: Props) => {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <DiscoveryTypeIcon
-                          type={
-                            isHostFileInstallation(installation)
-                              ? PkiDiscoveryType.LinuxServer
-                              : PkiDiscoveryType.Network
-                          }
+                          type={getInstallationDiscoveryType(installation)}
                           className="size-4 shrink-0"
                         />
                         <span className="truncate">
