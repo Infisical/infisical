@@ -1,4 +1,6 @@
 import {
+  TCancelAccessRequestDTO,
+  TRetryDelegatedApprovalDispatchDTO,
   TReviewAccessRequestDTO,
   TRevokeAccessRequestDTO
 } from "@app/ee/services/access-approval-request/access-approval-request-types";
@@ -6,6 +8,7 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TQueueServiceFactory } from "@app/queue";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import {
   TApprovalRequestApprovalsDALFactory,
   TApprovalRequestDALFactory,
@@ -15,6 +18,7 @@ import {
 } from "@app/services/approval-policy/approval-request-dal";
 import { TSecretAccessApprovalGlobalResource } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
 import { TSecretAccessPolicy } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
+import { TDelegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
@@ -47,6 +51,7 @@ export type TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep = {
     TSecretAccessApprovalGlobalPolicyBridgeDALFactory,
     "findSecretAccessPolicies"
   >;
+  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByIdForShare" | "findStepsByPolicyId">;
   secretAccessApprovalGlobalRequestBridgeDAL: Pick<
     TSecretAccessApprovalGlobalRequestBridgeDALFactory,
     | "findSecretAccessRequestById"
@@ -58,6 +63,10 @@ export type TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep = {
     | "findGroupMembers"
     | "findUsersByIds"
     | "findOrgMembershipActivity"
+  >;
+  delegatedApprovalService: Pick<
+    TDelegatedApprovalServiceFactory,
+    "getPolicyByPolicyId" | "createRequest" | "getRequestByRequestId" | "getRequestsByRequestIds" | "retryDispatch"
   >;
   smtpService: Pick<TSmtpService, "sendMail">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
@@ -95,3 +104,6 @@ export type TCountSecretAccessApprovalGlobalRequestsDTO = {
 };
 export type TReviewSecretAccessApprovalGlobalRequestDTO = TReviewAccessRequestDTO;
 export type TRevokeSecretAccessApprovalGlobalRequestDTO = TRevokeAccessRequestDTO;
+
+export type TRetrySecretAccessApprovalGlobalRequestDispatchDTO = TRetryDelegatedApprovalDispatchDTO;
+export type TCancelSecretAccessApprovalGlobalRequestDTO = TCancelAccessRequestDTO;

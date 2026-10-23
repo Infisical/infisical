@@ -1,6 +1,6 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable react/jsx-no-useless-fragment */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import {
@@ -14,9 +14,11 @@ import {
   HourglassIcon,
   LucideIcon,
   PlusIcon,
+  RefreshCwIcon,
   SearchIcon,
   ShieldBanIcon,
-  TimerIcon
+  TimerIcon,
+  TriangleAlertIcon
 } from "lucide-react";
 
 import {
@@ -89,7 +91,16 @@ import {
   useGetAccessApprovalRequests,
   useGetAccessRequestsCount
 } from "@app/hooks/api/accessApproval/queries";
+import {
+  isDelegatedDispatchRetrying,
+  noteDelegatedDispatchRetryStatuses,
+  useDelegatedDispatchRetryVersion
+} from "@app/hooks/api/accessApproval/retrying-delegated-dispatch";
 import { TAccessApprovalRequest } from "@app/hooks/api/accessApproval/types";
+import {
+  DelegatedApprovalRequestStatus,
+  useDelegatedApprovalOptions
+} from "@app/hooks/api/delegatedApprovals";
 import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import { queryClient } from "@app/hooks/api/reactQuery";
 import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
@@ -129,16 +140,7 @@ export const AccessApprovalRequest = ({
   projectId: string;
   onConfigurePolicies: () => void;
 }) => {
-  const [selectedRequest, setSelectedRequest] = useState<
-    | (TAccessApprovalRequest & {
-        user: { firstName?: string | null; lastName?: string | null; email?: string | null } | null;
-        isRequestedByCurrentUser: boolean;
-        isSelfApproveAllowed: boolean;
-        isApprover: boolean;
-        isDisabled?: boolean;
-      })
-    | null
-  >(null);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
 
   const { handlePopUpOpen, popUp, handlePopUpClose } = usePopUp([
     "requestAccess",
@@ -230,11 +232,34 @@ export const AccessApprovalRequest = ({
   const {
     data: requests,
     refetch: refetchRequests,
-    isPending: areRequestsPending
+    isPending: areRequestsPending,
+    isFetching: areRequestsFetching
   } = useGetAccessApprovalRequests({
     projectSlug,
     authorUserId: validRequestedByFilter,
     envSlug: validEnvFilter
+  });
+  useDelegatedDispatchRetryVersion();
+  const requestsCameFromFetch = useRef(false);
+
+  useEffect(() => {
+    if (areRequestsFetching) {
+      requestsCameFromFetch.current = true;
+      return;
+    }
+    if (!requestsCameFromFetch.current || !requests) return;
+
+    requestsCameFromFetch.current = false;
+    noteDelegatedDispatchRetryStatuses(
+      requests.map((request) => ({
+        id: request.id,
+        status: request.delegatedApproval?.status
+      }))
+    );
+  }, [areRequestsFetching, requests]);
+
+  const { data: delegatedApprovalOptions } = useDelegatedApprovalOptions({
+    enabled: Boolean(requests?.some((request) => request.delegatedApproval))
   });
 
   const { search, setSearch, setPage, page, perPage, setPerPage, offset } = usePagination("", {
@@ -402,9 +427,10 @@ export const AccessApprovalRequest = ({
 
       let displayData: {
         label: string;
-        type: "warning" | "danger" | "success";
+        type: "warning" | "danger" | "success" | "info";
         tooltipContent?: string;
         icon: LucideIcon | null;
+        isIconSpinning?: boolean;
       } = {
         label: "",
         type: "warning",
@@ -466,7 +492,40 @@ export const AccessApprovalRequest = ({
           type: "danger",
           icon: ShieldBanIcon
         };
-      else if (userReviewStatus === ApprovalStatus.APPROVED) {
+      else if (isDelegatedDispatchRetrying(request.id))
+        displayData = {
+          label: "Retrying",
+          type: "info",
+          icon: RefreshCwIcon,
+          isIconSpinning: true
+        };
+      else if (request.delegatedApproval?.status === DelegatedApprovalRequestStatus.FailedDispatch)
+        displayData = {
+          label: "Not Submitted",
+          type: "danger",
+          icon: TriangleAlertIcon,
+          tooltipContent: request.delegatedApproval.statusReason ?? undefined
+        };
+      else if (request.delegatedApproval) {
+        const delegatedApprovalName = delegatedApprovalOptions?.find(
+          (option) => option.type === request.policy.delegatedApproval?.type
+        )?.name;
+        displayData =
+          request.delegatedApproval.status === DelegatedApprovalRequestStatus.PendingDispatch
+            ? {
+                label: "Submitting",
+                type: "info",
+                icon: RefreshCwIcon,
+                isIconSpinning: true
+              }
+            : {
+                label: delegatedApprovalName
+                  ? `Pending in ${delegatedApprovalName}`
+                  : "Pending External Review",
+                type: "warning",
+                icon: HourglassIcon
+              };
+      } else if (userReviewStatus === ApprovalStatus.APPROVED) {
         displayData = {
           label: "Pending Additional Reviews",
           type: "warning",
@@ -492,34 +551,42 @@ export const AccessApprovalRequest = ({
         isSelfApproveAllowed
       };
     },
-    [user]
+    [user, delegatedApprovalOptions]
   );
 
   const handleSelectRequest = useCallback(
     (request: TAccessApprovalRequest) => {
-      const details = generateRequestDetails(request);
-      const memberUser = membersGroupById?.[request.requestedByUserId]?.user;
-
       navigate({ search: (prev) => ({ ...prev, requestId: request.id }) });
-
-      setSelectedRequest({
-        ...request,
-        user: details.isRequestedByCurrentUser
-          ? user
-          : memberUser || {
-              firstName: request.requestedByUser?.firstName,
-              lastName: request.requestedByUser?.lastName,
-              email: request.requestedByUser?.email
-            },
-        isRequestedByCurrentUser: details.isRequestedByCurrentUser,
-        isSelfApproveAllowed: details.isSelfApproveAllowed,
-        isApprover: details.isApprover
-      });
-
+      setSelectedRequestId(request.id);
       handlePopUpOpen("reviewRequest");
     },
-    [generateRequestDetails, membersGroupById, user, setSelectedRequest, handlePopUpOpen]
+    [navigate, handlePopUpOpen]
   );
+
+  // The polled list is the source of truth, so the open sheet follows a dispatch that fails or
+  // completes instead of showing the snapshot it was opened with.
+  const selectedRequest = useMemo(() => {
+    if (!selectedRequestId) return null;
+    const request = requests?.find((r) => r.id === selectedRequestId);
+    if (!request) return null;
+
+    const details = generateRequestDetails(request);
+    const memberUser = membersGroupById?.[request.requestedByUserId]?.user;
+
+    return {
+      ...request,
+      user: details.isRequestedByCurrentUser
+        ? user
+        : memberUser || {
+            firstName: request.requestedByUser?.firstName,
+            lastName: request.requestedByUser?.lastName,
+            email: request.requestedByUser?.email
+          },
+      isRequestedByCurrentUser: details.isRequestedByCurrentUser,
+      isSelfApproveAllowed: details.isSelfApproveAllowed,
+      isApprover: details.isApprover
+    };
+  }, [selectedRequestId, requests, generateRequestDetails, membersGroupById, user]);
 
   const isFiltered = Boolean(
     search ||
@@ -529,7 +596,7 @@ export const AccessApprovalRequest = ({
   );
 
   useEffect(() => {
-    if (requestId && !selectedRequest && requests?.length) {
+    if (requestId && !selectedRequestId && requests?.length) {
       const foundRequest = requests.find((r) => r.id === requestId);
       if (foundRequest) {
         handleSelectRequest(foundRequest);
@@ -889,7 +956,15 @@ export const AccessApprovalRequest = ({
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Badge variant={details.displayData.type}>
-                                  {StatusIcon && <StatusIcon />}
+                                  {StatusIcon && (
+                                    <StatusIcon
+                                      className={
+                                        details.displayData.isIconSpinning
+                                          ? "animate-spin"
+                                          : undefined
+                                      }
+                                    />
+                                  )}
                                   <span className="whitespace-nowrap">
                                     {details.displayData.label}
                                   </span>
@@ -899,7 +974,13 @@ export const AccessApprovalRequest = ({
                             </Tooltip>
                           ) : (
                             <Badge variant={details.displayData.type}>
-                              {StatusIcon && <StatusIcon />}
+                              {StatusIcon && (
+                                <StatusIcon
+                                  className={
+                                    details.displayData.isIconSpinning ? "animate-spin" : undefined
+                                  }
+                                />
+                              )}
                               <span className="whitespace-nowrap">{details.displayData.label}</span>
                             </Badge>
                           )}
@@ -991,7 +1072,7 @@ export const AccessApprovalRequest = ({
             }
 
             handlePopUpClose("reviewRequest");
-            setSelectedRequest(null);
+            setSelectedRequestId(null);
             refetchRequests();
           }}
           canBypass={generateRequestDetails(selectedRequest).canBypass}

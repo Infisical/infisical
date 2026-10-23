@@ -9,6 +9,10 @@ import {
   ApprovalRequestStatus,
   ApproverType
 } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  DelegatedApprovalPolicyType,
+  DelegatedApprovalRequestStatus
+} from "@app/services/delegated-approval/delegated-approval-enums";
 
 import {
   collectSecretAccessRequestUserIds,
@@ -133,6 +137,7 @@ const listInput = (overrides: Partial<TSecretAccessRequestListInput> = {}): TSec
     { actorUserId: "requester", isActive: true },
     { actorUserId: "approver-a", isActive: true }
   ],
+  delegatedRequests: [],
   ...overrides
 });
 
@@ -412,6 +417,41 @@ describe("composeSecretAccessRequestRows", () => {
 
     expect(row.requestedByUser).toBeNull();
   });
+
+  test("attaches the delegated approval status to its own request only", () => {
+    const rows = composeSecretAccessRequestRows(
+      listInput({
+        requests: [request(), request({ id: "req-2" })],
+        policies: [
+          policy({
+            approvers: [],
+            delegatedApproval: { type: DelegatedApprovalPolicyType.ServiceNow, connectionId: "connection-1" }
+          })
+        ],
+        delegatedRequests: [
+          {
+            requestId: "req-1",
+            status: DelegatedApprovalRequestStatus.FailedDispatch,
+            statusReason: "ServiceNow could not be reached."
+          }
+        ]
+      })
+    );
+
+    expect(rows[0].delegatedApproval).toEqual({
+      status: DelegatedApprovalRequestStatus.FailedDispatch,
+      statusReason: "ServiceNow could not be reached."
+    });
+    expect(rows[1].delegatedApproval).toBeNull();
+    expect(rows[0].policy?.delegatedApproval).toEqual({ type: DelegatedApprovalPolicyType.ServiceNow });
+  });
+
+  test("a policy reviewed in Infisical reports no delegated approval", () => {
+    const [row] = composeSecretAccessRequestRows(listInput({ policies: [policy({ delegatedApproval: null })] }));
+
+    expect(row.delegatedApproval).toBeNull();
+    expect(row.policy?.delegatedApproval).toBeNull();
+  });
 });
 
 describe("toSecretAccessRequestListItem", () => {
@@ -449,11 +489,27 @@ describe("toSecretAccessRequestListItem", () => {
       maxTimePeriod: null,
       requestExpirationTime: null,
       approvers: [],
-      bypassers: []
+      bypassers: [],
+      delegatedApproval: null
     });
     expect(item?.environment).toBe("dev");
     expect(item?.status).toBe(ApprovalStatus.PENDING);
     expect(item?.isApproved).toBe(false);
+  });
+
+  test("a delegated request keeps its status after its policy is deleted", () => {
+    const item = toItem({
+      requests: [request({ policyId: null, status: ApprovalRequestStatus.Cancelled })],
+      delegatedRequests: [
+        { requestId: "req-1", status: DelegatedApprovalRequestStatus.WaitingApproval, statusReason: null }
+      ]
+    });
+
+    expect(item?.policy.delegatedApproval).toBeNull();
+    expect(item?.delegatedApproval).toEqual({
+      status: DelegatedApprovalRequestStatus.WaitingApproval,
+      statusReason: null
+    });
   });
 
   test("a grant revoked by the policy's deletion reads as revoked", () => {

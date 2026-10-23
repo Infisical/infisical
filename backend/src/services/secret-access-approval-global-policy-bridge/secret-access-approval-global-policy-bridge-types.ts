@@ -21,6 +21,7 @@ import {
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
+import { TDelegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -34,7 +35,10 @@ export type TSecretAccessApprovalGlobalPolicyBridgeServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find">;
   groupDAL: Pick<TGroupDALFactory, "find">;
   accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "findPolicyByEnvIdAndSecretPath" | "update">;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "create" | "transaction" | "updateById" | "deleteById">;
+  approvalPolicyDAL: Pick<
+    TApprovalPolicyDALFactory,
+    "create" | "transaction" | "updateById" | "deleteById" | "findByIdForUpdate"
+  >;
   approvalPolicyStepsDAL: Pick<TApprovalPolicyStepsDALFactory, "insertMany" | "delete">;
   approvalPolicyStepApproversDAL: Pick<TApprovalPolicyStepApproversDALFactory, "insertMany">;
   approvalPolicyBypassersDAL: Pick<TApprovalPolicyBypassersDALFactory, "insertMany" | "delete">;
@@ -50,6 +54,10 @@ export type TSecretAccessApprovalGlobalPolicyBridgeServiceFactoryDep = {
   secretAccessApprovalGlobalPolicyBridgeDAL: Pick<
     TSecretAccessApprovalGlobalPolicyBridgeDALFactory,
     "findSecretAccessPolicies"
+  >;
+  delegatedApprovalService: Pick<
+    TDelegatedApprovalServiceFactory,
+    "validateConnection" | "createPolicy" | "updatePolicy" | "deletePolicyByPolicyId"
   >;
 };
 

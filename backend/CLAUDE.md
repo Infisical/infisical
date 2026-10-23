@@ -774,7 +774,9 @@ Invariants worth knowing before extending it:
 an event is exactly as durable as the business write. Enqueueing to Redis after commit loses the event
 whenever the pod dies or Redis is down in that window. It's not alert-specific:
 `alert-event-consumer.ts` is one consumer on the shared registry, and anything else that needs
-at-least-once delivery of a domain event registers next to it.
+at-least-once delivery of a domain event registers next to it. The delegated approval dispatch consumer
+(`delegated-approval/dispatch/delegated-approval-dispatch-consumer.ts`) is the second: it calls the external
+approval system inline from `handle()` and maps the outcome to `Delivered` / `Retry` / `Failed`, with no queue hop.
 
 **Naming:** the outbox is an implementation detail to both sides of it. Emitters depend on
 `TEventEmitter` and pass a `TEventInput`; consumers implement `IEventConsumer`, receive `TEvent[]`
@@ -813,6 +815,10 @@ await someDAL.transaction(async (tx) => {
   no per-event state for a consumer: what a retry should skip is recorded wherever the consumer already
   keeps delivery records, keyed by `TEvent.id` (stable across attempts). The alert consumer files each
   run under that id in `alert_history.eventId` and the engine skips channels already recorded there.
+  The one piece of retry state a consumer sees is `TEvent.isFinalAttempt`: the row is `failed` after that
+  attempt whatever the consumer returns, so a consumer with state of its own records the terminal outcome
+  then (the delegated approval dispatch closes its request). A give-up from the stale-claim sweep never
+  reaches a consumer.
   Backoff is exponential with jitter from 30s, and `MAX_OUTBOX_ATTEMPTS` puts the last attempt about an
   hour after the first, because a `failed` row is a notification nobody will receive. To replay failed
   rows by hand: `status = 'retry', attempts = 0, nextRetryAt = now()`.

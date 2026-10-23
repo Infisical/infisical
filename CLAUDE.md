@@ -148,6 +148,53 @@ for product vocabulary only: resolving the resource a request names, notificatio
 Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
 stop agreeing.
 
+A policy on the global approval system can hand its requests to a delegated approval system (ServiceNow)
+through `backend/src/services/delegated-approval/`, which owns the `delegated_approval_policies` and
+`delegated_approval_requests` rows. Secret access policies opt in with `delegatedApproval: { type, connectionId }`
+on create and update (`secret-access-approval-global-policy-bridge-service.ts`). A delegated policy has no
+Infisical approvers, cannot use break glass (soft enforcement or bypassers) or self approval, cannot be updated
+while it has pending requests, and a policy on the legacy approval system can never be delegated. Keep those
+rules in `assertDelegatedApprovalPolicyConstraints` when another policy type opts in. Only secret access
+policies may opt in today: `assertPolicyTypeSupportsDelegatedApproval` refuses the rest, and secret change
+policies return it as a 400 rather than dropping the field.
+
+Delivery to the delegated system is asynchronous and goes through the event outbox (see `backend/CLAUDE.md`).
+`delegatedApprovalService.createRequest` writes the `delegated_approval_requests` row and emits
+`delegated-approval.request.dispatch-requested` (`delegated-approval-events.ts`) in the caller's transaction, so
+the dispatch is exactly as durable as the request; never enqueue it after commit. The
+`delegated-approval-dispatch` consumer (`delegated-approval/dispatch/delegated-approval-dispatch-consumer.ts`)
+calls the provider inline and moves the row `pending_dispatch` → `waiting_approval` (storing the provider's
+record id in `providerRequestId`) or `failed_dispatch` with a `statusReason` a user can read. A transient
+failure returns `Retry`, so the outbox backs off and tries again (up to `MAX_OUTBOX_ATTEMPTS`), and the reason
+text promises that retry. The outbox flags the last attempt (`TEvent.isFinalAttempt`), and a transient failure
+on it closes the request instead: the delegated row goes `failed` with a reason that says so, the approval
+request goes `cancelled`, and the consumer returns `Failed`. A terminal failure the consumer raises itself (an
+`UnrecoverableError`: SITE_URL unset, the app connection gone, the policy no longer delegated) stays
+`failed_dispatch` on every attempt, because an admin can fix the cause and resend. A user resends a
+`failed_dispatch` request with `POST /api/v1/access-approvals/requests/:requestId/retry-delegated-dispatch`. The
+product's bridge checks who may retry, and `delegatedApprovalService.retryDispatch` checks the request can be
+retried and emits the same event with no transaction. The emit's idempotency key is the event, the delegated
+request id, and that row's `updatedAt`, so repeated emits of one attempt collapse, and a later resend still
+inserts after the status write bumps `updatedAt`. A batch dispatches up to 10 different requests at once;
+events for one request stay serial. A second event for a request that was already delivered is marked delivered
+without calling the provider. A delegated request has
+no Infisical approvers, so `POST /api/v1/access-approvals/requests/:requestId/cancel-delegated-dispatch` is the only way to close
+one from Infisical: the requester, or anyone who can edit the policy, sets it `cancelled`, which is also how a
+policy blocked by pending requests is freed for editing. Every provider implements `TDelegatedApprovalProvider` against the same
+`TDelegatedApprovalDispatchInput` and registers in `DELEGATED_APPROVAL_PROVIDER_MAP`
+(`dispatch/providers/<name>/`); a new policy type adds an arm to `TDelegatedApprovalDispatchDetails` and a
+builder in `DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP` rather than branching in a provider. The consumer
+reads from the primary, never checks the license, and treats bullmq's `UnrecoverableError` as the terminal failure
+signal, returning `Failed` for it and `Retry` for anything else until the last attempt. The callback contract (token issuance now, the inbound route and approve / reject later) is its own
+module, `backend/src/services/delegated-approval-callback/`, so the delegated approval module never grows a
+callback branch. A request gets exactly one callback token for its whole life: it is random, issued on the first
+dispatch attempt, and stored in `encryptedCallbackToken` under the SecretManager KMS key of the request's project
+(`getOrIssueCallbackToken` resolves the project from the delegated request itself, since the inbound route knows
+only that row) so every retry resends the same value; the inbound side finds the row by the provider's record id
+and compares the decrypted token with the presented one. Never send a provider a token that differs from the one
+stored for the request; the provider keeps the first token it was given and cannot be told another, so a mismatch
+is unrecoverable.
+
 ### Object Storage
 
 New product files go to S3 through `backend/src/services/object-storage/`, not a product's own S3 client (PAM
