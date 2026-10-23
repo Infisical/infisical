@@ -134,7 +134,7 @@ export const useAppConnectionCreation = <TOption,>({
           />
         ) : (
           <>
-            <ItemGroup className="gap-2">
+            <ItemGroup>
               {apps.map((option) => {
                 const { name, image, description } = APP_CONNECTION_MAP[option];
                 return (
@@ -145,7 +145,7 @@ export const useAppConnectionCreation = <TOption,>({
                     className="cursor-pointer text-left hover:bg-foreground/5"
                   >
                     <button type="button" onClick={() => setSelectedApp(option)}>
-                      <ItemMedia className="size-9 rounded-md bg-surface-hover">
+                      <ItemMedia>
                         <ProviderIcon
                           icon={image}
                           alt={`${name} logo`}

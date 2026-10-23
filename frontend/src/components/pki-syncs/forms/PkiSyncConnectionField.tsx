@@ -93,7 +93,7 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
   const creation = useAppConnectionCreation<TConnectionOption>({
     apps,
     onCreated: (connection) => {
-      setValue("connection", connection);
+      setValue("connection", connection, { shouldDirty: true });
       clearLdapTargetFields(connection.app);
       if (callback) callback();
     },
@@ -125,7 +125,7 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
           <Combobox<TConnectionOption>
             id="pki-sync-connection"
             ref={ref}
-            value={value ?? null}
+            value={availableConnections.find((option) => option.id === value?.id) ?? value ?? null}
             onValueChange={(newValue) => {
               onChange(newValue);
               clearLdapTargetFields(newValue.app);

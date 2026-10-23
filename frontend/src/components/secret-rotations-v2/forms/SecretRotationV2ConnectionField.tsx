@@ -107,7 +107,7 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
             <Combobox<TConnectionOption>
               id="secret-rotation-connection"
               ref={ref}
-              value={value ?? null}
+              value={allowedConnections.find((option) => option.id === value?.id) ?? value ?? null}
               onBlur={onBlur}
               onValueChange={(newValue) => {
                 onChange(newValue);
