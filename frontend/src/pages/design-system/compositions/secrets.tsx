@@ -1,7 +1,10 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { GitCommitIcon, GroupIcon } from "lucide-react";
 
-import { Breadcrumb } from "@app/components/v4/ui/breadcrumb";
+import { Banner } from "@app/components/v4/ui/alert";
+import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
+import { Card } from "@app/components/v4/ui/card";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
 import {
   Dialog,
@@ -11,13 +14,36 @@ import {
   DialogHeader,
   DialogTitle
 } from "@app/components/v4/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger
+} from "@app/components/v4/ui/dropdown-menu";
+import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
-import { Icon, type IconName } from "@app/components/v4/ui/icon";
+import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
+import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
 import { MultiSelect } from "@app/components/v4/ui/multi-select";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Pagination } from "@app/components/v4/ui/pagination";
-import { Select } from "@app/components/v4/ui/select";
+import {
+  Sheet,
+  SheetBody,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle
+} from "@app/components/v4/ui/sheet";
 import { Sidebar } from "@app/components/v4/ui/sidebar";
 import { Skeleton } from "@app/components/v4/ui/skeleton";
 import {
@@ -29,8 +55,20 @@ import {
   TableRow
 } from "@app/components/v4/ui/table";
 import { Textarea } from "@app/components/v4/ui/textarea";
+import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
 import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/top-bar";
 
+import { NEXT_PHASE, type RowContext } from "./secrets/overview-cells";
+import { FolderRow, ImportRow, KindRow } from "./secrets/resource-rows";
+import { SecretRow, type SecretRowHandlers } from "./secrets/secret-row";
+import {
+  AddNewMenu,
+  ExportMenu,
+  FolderBreadcrumbBar,
+  QuickAddRow,
+  ResourceCount,
+  ResourceFilterMenu
+} from "./secrets/toolbar";
 import {
   createResources,
   environments,
@@ -39,133 +77,45 @@ import {
   type Resource,
   resourceKey,
   type ResourceKind,
-  resourceKinds,
   type Scenario,
+  scopeMatches,
   type Secret
 } from "./secrets-model";
 import { useSecretsScenario } from "./secrets-scenarios";
 import { projectSections, user } from "./shared";
 
-import styles from "./secrets.module.css";
+import styles from "./secrets/overview.module.css";
 
-const icons: Record<ResourceKind, IconName> = {
-  folder: "folder",
-  secret: "key",
-  import: "download",
-  dynamic: "terminal",
-  rotation: "sync",
-  honey: "alert-c",
-  proxy: "globe"
-};
-const deferred = "This nested flow is not available in the base overview demo.";
-function resourceStatus(resource?: Resource): { label: string; icon: IconName } {
-  if (!resource) return { label: "Missing", icon: "minus" };
-  if (resource.kind === "import")
-    return resource.revoked
-      ? { label: "Revoked", icon: "alert" }
-      : { label: "Imported", icon: "download" };
-  if (resource.kind === "secret") {
-    if (resource.value.status === "unreadable") return { label: "No access", icon: "lock" };
-    if (resource.value.status === "failed") return { label: "Load failed", icon: "alert" };
-    if (resource.value.status === "loading") return { label: "Loading", icon: "clock" };
-    if (readableValue(resource) === "") return { label: "Empty", icon: "minus" };
-  }
-  return { label: "Present", icon: "check-c" };
-}
-type Editable = Extract<Resource, { kind: "secret" | "folder" }>;
+type Of<K extends ResourceKind> = Extract<Resource, { kind: K }>;
+type Editable = Of<"secret" | "folder">;
 type Draft = {
   kind: "secret" | "folder";
   resource?: Editable;
-  environment: string;
+  environments: string[];
   name: string;
   value: string;
 };
-
-function Value({ secret, report }: { secret: Secret; report: (message: string) => void }) {
-  const [revealed, setRevealed] = useState(false);
-  const value = readableValue(secret);
-  let display = revealed ? value : "••••••••••••";
-  if (value === undefined) display = "No access";
-  if (value === "") display = "Empty value";
-  if (secret.value.status === "loading")
-    return <Skeleton width="var(--v4-size-text-min)" height="var(--v4-size-icon)" />;
-  if (secret.value.status === "failed") return <span role="alert">{secret.value.message}</span>;
-  return (
-    <div
-      className={styles.value}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setRevealed(false);
-      }}
-    >
-      <code className={styles.payload}>{display}</code>
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        icon="eye"
-        iconOnly
-        disabled={value === undefined}
-        title={value === undefined ? "You cannot read this value." : undefined}
-        aria-pressed={revealed}
-        onClick={() => setRevealed(!revealed)}
-      >{`${revealed ? "Mask" : "Reveal"} ${secret.name}`}</Button>
-      <Button
-        variant="ghost"
-        size="icon-xs"
-        icon="copy"
-        iconOnly
-        disabled={value === undefined}
-        title={value === undefined ? "You cannot copy an unreadable value." : undefined}
-        onClick={async () => {
-          if (value === undefined) return;
-          try {
-            await navigator.clipboard.writeText(value);
-            report(`Copied ${secret.name}.`);
-          } catch {
-            report(`Could not copy ${secret.name}. Check clipboard permissions.`);
-          }
-        }}
-      >{`Copy ${secret.name}`}</Button>
-    </div>
-  );
-}
-
-function ResourceSummary({ resource }: { resource: Resource }) {
-  switch (resource.kind) {
-    case "folder":
-      return <span className={styles.muted}>{resource.description || "Folder"}</span>;
-    case "import":
-      return (
-        <span className={styles.muted}>
-          {resource.revoked
-            ? "Source access revoked"
-            : `${resource.source.project} / ${resource.source.environment}${resource.source.path} (${Object.keys(resource.keys).length} keys)`}
-        </span>
-      );
-    case "dynamic":
-      return (
-        <span className={styles.muted}>
-          {resource.provider}, {resource.leases.filter((lease) => !lease.revoked).length} active
-          leases
-        </span>
-      );
-    case "rotation":
-      return (
-        <span className={styles.muted}>
-          {resource.provider}, {resource.status}
-        </span>
-      );
-    case "honey":
-      return (
-        <span className={styles.muted}>
-          {resource.status}, {resource.events.length} detections
-        </span>
-      );
-    case "proxy":
-      return <code>{resource.host}</code>;
-    default:
-      return null;
-  }
-}
+type SortField = "name" | "updatedAt" | "createdAt";
+type Sort = { field: SortField; direction: "asc" | "desc"; environment?: string };
+const overviewOrder: ResourceKind[] = [
+  "import",
+  "folder",
+  "dynamic",
+  "rotation",
+  "honey",
+  "proxy",
+  "secret"
+];
+const sortOptions: { value: string; label: string; field: SortField; direction: "asc" | "desc" }[] =
+  [
+    { value: "name-asc", label: "Name (A to Z)", field: "name", direction: "asc" },
+    { value: "name-desc", label: "Name (Z to A)", field: "name", direction: "desc" },
+    { value: "updatedAt-desc", label: "Last edited (new)", field: "updatedAt", direction: "desc" },
+    { value: "updatedAt-asc", label: "Last edited (old)", field: "updatedAt", direction: "asc" },
+    { value: "createdAt-desc", label: "Created (new)", field: "createdAt", direction: "desc" },
+    { value: "createdAt-asc", label: "Created (old)", field: "createdAt", direction: "asc" }
+  ];
+const selectableKinds: ResourceKind[] = ["secret", "folder", "rotation"];
 
 function Overview({ scenario }: { scenario: Scenario }) {
   const [resources, setResources] = useState(() => createResources(scenario));
@@ -175,18 +125,17 @@ function Overview({ scenario }: { scenario: Scenario }) {
   );
   const [path, setPath] = useState("/");
   const [query, setQuery] = useState("");
-  const [types, setTypes] = useState<string[]>([]);
+  const [types, setTypes] = useState<ResourceKind[]>([]);
   const [tags, setTags] = useState<string[]>([]);
-  const [sort, setSort] = useState("name-asc");
-  const [sortEnvironment, setSortEnvironment] = useState("dev");
+  const [sort, setSort] = useState<Sort>({ field: "name", direction: "asc" });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [expanded, setExpanded] = useState<string[]>([]);
+  const [perPage, setPerPage] = useState(100);
+  const [revealAll, setRevealAll] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [draft, setDraft] = useState<Draft>();
   const [initialDraft, setInitialDraft] = useState("");
   const [discard, setDiscard] = useState(false);
-  const [deleting, setDeleting] = useState<Editable>();
+  const [deleting, setDeleting] = useState<Editable[]>();
   const [validation, setValidation] = useState("");
   const [notice, setNotice] = useState("");
   const [recovered, setRecovered] = useState(false);
@@ -195,7 +144,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
   const visibleEnvironments = environments.filter(
     (environment) => !environmentIds.length || environmentIds.includes(environment.value)
   );
-  const multiple = visibleEnvironments.length > 1;
+  const single = visibleEnvironments.length === 1;
   const activeEnvironment = visibleEnvironments[0].value;
   const currentProject = projects.find((entry) => entry.value === project)!;
   const unavailable =
@@ -204,13 +153,11 @@ function Overview({ scenario }: { scenario: Scenario }) {
     scenario === "legacy" ||
     (scenario === "error" && !recovered);
   const readOnly = scenario === "permissions";
-  const protectedScope = visibleEnvironments.some((environment) => environment.value === "prod");
-  const protectedReason =
-    "Production changes require the approval flow, which is not available in this phase.";
-  let writeReason: string | undefined;
-  if (unavailable) writeReason = "Resources are not available in this scenario.";
-  if (protectedScope) writeReason = protectedReason;
-  if (readOnly) writeReason = "This permission scenario is read-only.";
+  let writeBlock: string | undefined;
+  if (visibleEnvironments.some((environment) => environment.value === "prod"))
+    writeBlock = `${NEXT_PHASE}: Production changes go through approval requests`;
+  if (readOnly) writeBlock = "Access restricted";
+  if (unavailable) writeBlock = "Resources are not available in this scenario";
   useEffect(() => {
     const focus = (event: KeyboardEvent) => {
       if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey || draft || deleting)
@@ -227,7 +174,6 @@ function Overview({ scenario }: { scenario: Scenario }) {
   const resetView = () => {
     setPage(1);
     setSelected([]);
-    setExpanded([]);
     setNotice("");
   };
   const navigate = (nextPath: string) => {
@@ -246,42 +192,103 @@ function Overview({ scenario }: { scenario: Scenario }) {
     const key = resourceKey(resource);
     groups.set(key, [...(groups.get(key) ?? []), resource]);
   });
-  const filtered = [...groups.entries()].filter(([, entries]) =>
-    entries.some(
-      (resource) =>
-        resource.name.toLowerCase().includes(query.toLowerCase()) &&
-        (!types.length || types.includes(resource.kind)) &&
-        (!tags.length ||
-          (resource.kind === "secret" && tags.some((tag) => resource.tags.includes(tag))))
-    )
+  const matches = [...groups.entries()].filter(
+    ([, entries]) =>
+      entries[0].name.toLowerCase().includes(query.trim().toLowerCase()) &&
+      (!types.length || types.includes(entries[0].kind)) &&
+      (!tags.length ||
+        (entries[0].kind === "secret" &&
+          entries.some(
+            (entry) => entry.kind === "secret" && tags.some((tag) => entry.tags.includes(tag))
+          )))
   );
-  filtered.sort(([, a], [, b]) => {
-    const direction = sort.endsWith("desc") ? -1 : 1;
-    if (sort.startsWith("name")) return a[0].name.localeCompare(b[0].name) * direction;
-    const field = sort.startsWith("created") ? "createdAt" : "updatedAt";
-    const first = a.find((entry) => entry.environment === sortEnvironment)?.[field] ?? "";
-    const second = b.find((entry) => entry.environment === sortEnvironment)?.[field] ?? "";
-    return first.localeCompare(second) * direction;
-  });
-  const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / pageSize)));
-  const rows = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  const eligible = rows
-    .filter(([, entries]) => ["secret", "folder", "rotation"].includes(entries[0].kind))
-    .map(([key]) => key);
-  const allSelected = eligible.length > 0 && eligible.every((key) => selected.includes(key));
-  const partiallySelected = eligible.some((key) => selected.includes(key));
-  const selectionState = allSelected || (partiallySelected ? "indeterminate" : false);
-  const showEmpty = !unavailable && !rows.length;
-  const showTable = scenario === "loading" || (!unavailable && rows.length > 0);
+  const sortValue = (entries: Resource[]) => {
+    if (sort.field === "name") return entries[0].name;
+    const environment = sort.environment ?? activeEnvironment;
+    return entries.find((entry) => entry.environment === environment)?.[sort.field] ?? "";
+  };
+  const ordered = overviewOrder.flatMap((kind) =>
+    matches
+      .filter(([, entries]) => entries[0].kind === kind)
+      .sort(
+        ([, a], [, b]) =>
+          sortValue(a).localeCompare(sortValue(b)) * (sort.direction === "desc" ? -1 : 1)
+      )
+  );
+  const totals = Object.fromEntries(
+    overviewOrder.map((kind) => [
+      kind,
+      ordered.filter(([, entries]) => entries[0].kind === kind).length
+    ])
+  ) as Record<ResourceKind, number>;
+  const totalCount = ordered.length;
+  const pageCount = Math.max(1, Math.ceil(totalCount / perPage));
+  const currentPage = Math.min(page, pageCount);
+  const windowRows = ordered.slice((currentPage - 1) * perPage, currentPage * perPage);
+  const isLastPage = currentPage === pageCount;
+  const isFiltered = Boolean(query.trim() || types.length || tags.length);
   const tagOptions = [
-    ...new Set(scoped.flatMap((resource) => (resource.kind === "secret" ? resource.tags : [])))
-  ].map((tag) => ({ value: tag, label: tag }));
-  const openDraft = (kind: Draft["kind"], resource?: Editable, environment = activeEnvironment) => {
+    ...new Set(
+      resources.flatMap((resource) =>
+        resource.kind === "secret" && resource.project === project ? resource.tags : []
+      )
+    )
+  ].sort();
+  const selectableOnPage = windowRows
+    .filter(
+      ([, entries]) =>
+        selectableKinds.includes(entries[0].kind) && (single || entries[0].kind !== "rotation")
+    )
+    .map(([key]) => key);
+  const selectedEntries = scoped.filter((resource) => selected.includes(resourceKey(resource)));
+  const report = (message: string) => setNotice(message);
+  const ctx: RowContext = {
+    environments: visibleEnvironments,
+    single,
+    path,
+    writeBlock,
+    selected,
+    onToggleSelect: (key) =>
+      setSelected(
+        selected.includes(key) ? selected.filter((entry) => entry !== key) : [...selected, key]
+      ),
+    report
+  };
+  const importedFrom = (environment: string, key: string) =>
+    resources
+      .filter(
+        (resource): resource is Of<"import"> =>
+          resource.kind === "import" &&
+          !resource.revoked &&
+          resource.project === project &&
+          resource.path === path &&
+          resource.environment === environment
+      )
+      .find((entry) =>
+        resources.some(
+          (resource) =>
+            resource.kind === "secret" &&
+            resource.name === key &&
+            scopeMatches(resource, entry.source)
+        )
+      )?.source.environment;
+  const sourceSecrets = (entry: Of<"import">) =>
+    resources.filter(
+      (resource): resource is Secret =>
+        resource.kind === "secret" && scopeMatches(resource, entry.source)
+    );
+
+  const openDraft = (
+    kind: Draft["kind"],
+    resource?: Editable,
+    targets = visibleEnvironments.map((environment) => environment.value),
+    name = resource?.name ?? ""
+  ) => {
     const next = {
       kind,
       resource,
-      environment,
-      name: resource?.name ?? "",
+      environments: targets,
+      name,
       value:
         resource?.kind === "secret"
           ? (readableValue(resource) ?? "")
@@ -295,14 +302,37 @@ function Overview({ scenario }: { scenario: Scenario }) {
     if (draft && JSON.stringify(draft) !== initialDraft) setDiscard(true);
     else setDraft(undefined);
   };
+  const create = (kind: Draft["kind"], name: string, value: string, targets: string[]) => {
+    const timestamp = new Date().toISOString();
+    setResources((current) => [
+      ...current,
+      ...targets.map((environment): Resource => {
+        const base = {
+          id: crypto.randomUUID(),
+          project,
+          environment,
+          path,
+          name,
+          createdAt: timestamp,
+          updatedAt: timestamp
+        };
+        return kind === "folder"
+          ? { ...base, kind: "folder", description: value }
+          : {
+              ...base,
+              kind: "secret",
+              value: { status: "present", value },
+              version: 1,
+              comment: "",
+              tags: [],
+              metadata: []
+            };
+      })
+    ]);
+    setNotice(`Created ${name} in local demo data.`);
+  };
   const save = () => {
-    if (
-      !draft ||
-      readOnly ||
-      unavailable ||
-      (draft.resource ? draft.environment === "prod" : protectedScope)
-    )
-      return;
+    if (!draft || writeBlock) return;
     const name = draft.name.trim();
     if (
       !name ||
@@ -312,19 +342,16 @@ function Overview({ scenario }: { scenario: Scenario }) {
       setValidation(
         draft.kind === "secret"
           ? "Use a key that starts with a letter or underscore and contains only letters, numbers, or underscores."
-          : "Enter a folder name without slashes, . or ..."
+          : "Enter a folder name without slashes, . or .."
       );
       return;
     }
-    const destinations = draft.resource
-      ? [draft.environment]
-      : visibleEnvironments.map((environment) => environment.value);
     if (
       resources.some(
         (resource) =>
           resource.project === project &&
           resource.path === path &&
-          destinations.includes(resource.environment) &&
+          draft.environments.includes(resource.environment) &&
           resource.kind === draft.kind &&
           resource.name === name &&
           resource.id !== draft.resource?.id
@@ -333,801 +360,868 @@ function Overview({ scenario }: { scenario: Scenario }) {
       setValidation(`A ${draft.kind} with this name already exists in a selected environment.`);
       return;
     }
+    const original = draft.resource;
+    if (!original) {
+      create(draft.kind, name, draft.value, draft.environments);
+      setDraft(undefined);
+      return;
+    }
     const timestamp = new Date().toISOString();
-    setResources((current) => {
-      if (draft.resource) {
-        const original = draft.resource;
-        const oldPath = `${path === "/" ? "" : path}/${original.name}`;
-        const newPath = `${path === "/" ? "" : path}/${name}`;
-        return current.map((resource): Resource => {
-          if (resource.id === original.id)
-            return resource.kind === "secret"
-              ? {
-                  ...resource,
-                  name,
-                  value: { status: "present", value: draft.value },
-                  version: resource.version + 1,
-                  updatedAt: timestamp
-                }
-              : ({ ...original, name, description: draft.value, updatedAt: timestamp } as Resource);
-          if (
-            original.kind === "folder" &&
-            resource.project === project &&
-            resource.environment === original.environment &&
-            (resource.path === oldPath || resource.path.startsWith(`${oldPath}/`))
-          )
-            return { ...resource, path: newPath + resource.path.slice(oldPath.length) };
-          return resource;
-        });
-      }
-      return [
-        ...current,
-        ...destinations.map((environment): Resource => {
-          const base = {
-            id: crypto.randomUUID(),
-            project,
-            environment,
-            path,
-            name,
-            createdAt: timestamp,
-            updatedAt: timestamp
-          };
-          return draft.kind === "folder"
-            ? { ...base, kind: "folder", description: draft.value }
-            : {
-                ...base,
-                kind: "secret",
+    const prefix = path === "/" ? "" : path;
+    setResources((current) =>
+      current.map((resource): Resource => {
+        if (resource.id === original.id)
+          return resource.kind === "secret"
+            ? {
+                ...resource,
+                name,
                 value: { status: "present", value: draft.value },
-                version: 1,
-                comment: "",
-                tags: [],
-                metadata: []
-              };
-        })
-      ];
-    });
-    setNotice(`${draft.resource ? "Updated" : "Created"} ${name} in local demo data.`);
+                version: resource.version + 1,
+                updatedAt: timestamp
+              }
+            : ({ ...original, name, description: draft.value, updatedAt: timestamp } as Resource);
+        const oldPath = `${prefix}/${original.name}`;
+        if (
+          original.kind === "folder" &&
+          resource.project === project &&
+          resource.environment === original.environment &&
+          (resource.path === oldPath || resource.path.startsWith(`${oldPath}/`))
+        )
+          return { ...resource, path: `${prefix}/${name}${resource.path.slice(oldPath.length)}` };
+        return resource;
+      })
+    );
+    setNotice(`Updated ${name} in local demo data.`);
     setDraft(undefined);
+  };
+  const remove = (targets: Editable[]) => {
+    setResources((current) =>
+      current.filter(
+        (resource) =>
+          !targets.some((target) => {
+            const folderPath = `${target.path === "/" ? "" : target.path}/${target.name}`;
+            return (
+              resource.id === target.id ||
+              (target.kind === "folder" &&
+                resource.project === target.project &&
+                resource.environment === target.environment &&
+                (resource.path === folderPath || resource.path.startsWith(`${folderPath}/`)))
+            );
+          })
+      )
+    );
+    setNotice(
+      `Deleted ${[...new Set(targets.map((target) => target.name))].join(", ")} from local demo data.`
+    );
+    setDeleting(undefined);
     setSelected([]);
   };
-  const editBlocked = (resource: Resource) =>
-    (readOnly || unavailable ? writeReason : undefined) ??
-    (resource.environment === "prod" ? protectedReason : undefined) ??
-    (resource.kind === "secret" && (resource.managedBy || resource.value.status !== "present")
-      ? "Managed or unreadable values cannot be edited in this phase."
-      : undefined);
-  const valueCell = (resource: Resource) =>
-    resource.kind === "secret" ? (
-      <Value key={`${resource.id}:${resource.version}`} secret={resource} report={setNotice} />
-    ) : (
-      <ResourceSummary resource={resource} />
+  const envFile = (environment: string, keys?: string[]) => {
+    const scope = { project, environment, path };
+    const local = resources.filter(
+      (resource): resource is Secret => resource.kind === "secret" && scopeMatches(resource, scope)
     );
-  const rowActions = (resource: Resource) => (
-    <div className={styles.actions}>
-      {resource.kind === "secret" || resource.kind === "folder" ? (
-        <>
-          <Button
-            variant="ghost"
-            size="xs"
-            disabled={Boolean(editBlocked(resource))}
-            title={editBlocked(resource)}
-            onClick={() => openDraft(resource.kind, resource, resource.environment)}
-          >
-            Edit
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            icon="trash"
-            iconOnly
-            disabled={Boolean(editBlocked(resource))}
-            title={editBlocked(resource)}
-            onClick={() => setDeleting(resource)}
-          >{`Delete ${resource.name}`}</Button>
-        </>
-      ) : (
-        <Button variant="ghost" size="xs" disabled title={deferred}>
-          Manage
-        </Button>
-      )}
-    </div>
+    const inherited = resources
+      .filter(
+        (resource): resource is Of<"import"> =>
+          resource.kind === "import" && !resource.revoked && scopeMatches(resource, scope)
+      )
+      .flatMap(sourceSecrets);
+    const seen = new Set<string>();
+    return [...local, ...inherited]
+      .filter((secret) => {
+        if (seen.has(secret.name) || (keys && !keys.includes(secret.name))) return false;
+        seen.add(secret.name);
+        return readableValue(secret) !== undefined;
+      })
+      .map((secret) => `${secret.name}=${JSON.stringify(readableValue(secret))}`);
+  };
+  const exportEnv = async (environment: string, action: "clipboard" | "download") => {
+    const text = `${envFile(environment).join("\n")}\n`;
+    try {
+      if (action === "clipboard") {
+        await navigator.clipboard.writeText(text);
+        setNotice("Secrets copied to clipboard. They are ready to paste.");
+        return;
+      }
+      const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${environment}.env`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setNotice(`Downloaded ${environment}.env with fake values from this preview.`);
+    } catch {
+      setNotice("Failed to export secrets. Please try again later.");
+    }
+  };
+  const exportBlock = (() => {
+    if (!single) return "Select a single environment to export secrets";
+    if (!envFile(activeEnvironment).length) return "No secrets in this folder";
+    return undefined;
+  })();
+  const sortLabel = sortOptions.find(
+    (option) => option.field === sort.field && option.direction === sort.direction
+  )?.label;
+  const colSpan = visibleEnvironments.length + 2;
+  const canQuickAdd = !writeBlock && isLastPage && totalCount > 0;
+  const gate = (reason: string | undefined, node: ReactNode) =>
+    reason ? (
+      <Tooltip content={reason}>
+        <span className={styles.actionSlot}>{node}</span>
+      </Tooltip>
+    ) : (
+      node
+    );
+  const handlers: SecretRowHandlers = {
+    onEdit: (secret) => openDraft("secret", secret, [secret.environment]),
+    onCreateIn: (environment, key) => openDraft("secret", undefined, [environment], key),
+    onDelete: (secret) => setDeleting([secret]),
+    importedFrom
+  };
+  const allOnPage =
+    selectableOnPage.length > 0 && selectableOnPage.every((key) => selected.includes(key));
+  const someOnPage = selectableOnPage.some((key) => selected.includes(key));
+  const selectedSecretNames = [
+    ...new Set(
+      selectedEntries.filter((entry) => entry.kind === "secret").map((entry) => entry.name)
+    )
+  ];
+  const deletable = selectedEntries.filter(
+    (entry): entry is Editable => entry.kind === "secret" || entry.kind === "folder"
   );
+  const clearFilters = () => {
+    setQuery("");
+    setTypes([]);
+    setTags([]);
+    resetView();
+  };
+  const emptyState = (() => {
+    if (query.trim())
+      return (
+        <EmptyState
+          icon="search"
+          title="No matches in this folder"
+          description="Try a different search, or search every folder in this environment."
+          actions={
+            <>
+              <Button variant="outline" onClick={clearFilters}>
+                Clear search
+              </Button>
+              {gate(
+                NEXT_PHASE,
+                <Button variant="outline" disabled>
+                  Search all folders
+                </Button>
+              )}
+            </>
+          }
+        />
+      );
+    if (isFiltered)
+      return (
+        <EmptyState
+          icon="search"
+          title="No resources match these filters"
+          actions={
+            <Button variant="outline" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          }
+        />
+      );
+    return (
+      <EmptyState
+        icon="upload"
+        title="This table is empty"
+        description="Drag and drop a secrets file here"
+        actions={
+          <>
+            {gate(
+              NEXT_PHASE,
+              <Button variant="outline" icon="upload" disabled>
+                Upload secrets
+              </Button>
+            )}
+            {gate(
+              NEXT_PHASE,
+              <Button variant="outline" icon="copy" disabled>
+                Paste secrets
+              </Button>
+            )}
+            {gate(
+              writeBlock,
+              <Button
+                icon="plus"
+                disabled={Boolean(writeBlock)}
+                onClick={() => openDraft("secret")}
+              >
+                Add a new secret
+              </Button>
+            )}
+          </>
+        }
+      />
+    );
+  })();
+  const unavailableState = (() => {
+    if (scenario === "no-environments")
+      return (
+        <EmptyState
+          icon="folder"
+          title="No environments yet"
+          description="Create an environment before adding secrets."
+          actions={gate(
+            NEXT_PHASE,
+            <Button icon="plus" disabled>
+              Add environment
+            </Button>
+          )}
+        />
+      );
+    if (scenario === "legacy")
+      return (
+        <EmptyState
+          icon="lock"
+          title="Secrets engine upgrade required"
+          description="This project uses the legacy engine. Upgrade the project to manage secrets here."
+          actions={gate(NEXT_PHASE, <Button disabled>Upgrade project</Button>)}
+        />
+      );
+    if (scenario === "error" && !recovered)
+      return (
+        <EmptyState
+          icon="alert"
+          title="Could not load resources"
+          description="The overview request failed. Retry to load this folder."
+          actions={
+            <Button
+              onClick={() => {
+                setRecovered(true);
+                setNotice("Loaded local demo resources after retry.");
+              }}
+            >
+              Retry
+            </Button>
+          }
+        />
+      );
+    return undefined;
+  })();
+  const sortMenu = (
+    <DropdownMenu>
+      <Tooltip content={`Sort: ${sortLabel ?? "Name (A to Z)"}`}>
+        <span className={styles.actionSlot}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon-xs" icon="chev-ud" iconOnly>
+              Sort resources
+            </Button>
+          </DropdownMenuTrigger>
+        </span>
+      </Tooltip>
+      <DropdownMenuContent align="start">
+        <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={sort.environment ? "" : `${sort.field}-${sort.direction}`}
+          onValueChange={(value) => {
+            const option = sortOptions.find((entry) => entry.value === value);
+            if (!option) return;
+            setSort({ field: option.field, direction: option.direction });
+            setPage(1);
+          }}
+        >
+          {sortOptions
+            .filter((option) => single || option.field === "name")
+            .map((option) => (
+              <DropdownMenuRadioItem key={option.value} value={option.value}>
+                {option.label}
+              </DropdownMenuRadioItem>
+            ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+  const environmentMenu = (environment: { value: string; label: string }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="xs" iconRight="chev-down">
+          {environment.label}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="center">
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>Sort secrets by recency</DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuLabel>{`Use ${environment.label} timestamps`}</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={
+                sort.environment === environment.value ? `${sort.field}-${sort.direction}` : ""
+              }
+              onValueChange={(value) => {
+                const option = sortOptions.find((entry) => entry.value === value);
+                if (!option) return;
+                setSort({
+                  field: option.field,
+                  direction: option.direction,
+                  environment: environment.value
+                });
+                setPage(1);
+              }}
+            >
+              {sortOptions
+                .filter((option) => option.field !== "name")
+                .map((option) => (
+                  <DropdownMenuRadioItem key={option.value} value={option.value}>
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={async () => {
+            try {
+              await navigator.clipboard.writeText(environment.value);
+              setNotice("Environment slug copied to clipboard.");
+            } catch {
+              setNotice("Failed to copy the environment slug.");
+            }
+          }}
+        >
+          <Icon name="copy" />
+          Copy environment slug
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => exportEnv(environment.value, "download")}>
+          <Icon name="download" />
+          Download as .env
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled description={NEXT_PHASE}>
+          <Icon icon={GitCommitIcon} />
+          View commit history
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" disabled description={NEXT_PHASE}>
+          <Icon name="trash" />
+          Delete environment
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+  const draftForm = draft && (
+    <form
+      id="secret-draft"
+      className={styles.form}
+      onSubmit={(event) => {
+        event.preventDefault();
+        save();
+      }}
+    >
+      <Field label={draft.kind === "secret" ? "Key" : "Name"} error={validation || undefined}>
+        <Input
+          autoFocus
+          value={draft.name}
+          onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+        />
+      </Field>
+      <Field label={draft.kind === "secret" ? "Value" : "Description"}>
+        <Textarea
+          value={draft.value}
+          onChange={(event) => setDraft({ ...draft, value: event.target.value })}
+        />
+      </Field>
+      {!draft.resource && draft.environments.length > 0 && (
+        <Field label="Environments">
+          <MultiSelect
+            label="Environments"
+            options={environments}
+            value={draft.environments}
+            onChange={(value) => setDraft({ ...draft, environments: value })}
+          />
+        </Field>
+      )}
+    </form>
+  );
+  const draftTitle = `${draft?.resource ? "Edit" : "Create"} ${draft?.kind === "folder" ? "folder" : "secret"}`;
 
   return (
-    <AppShell ref={root} className={styles.shell}>
-      <Sidebar
-        label="Secrets navigation"
-        current="secrets"
-        onNavigate={() => navigate("/")}
-        sections={(projectSections ?? []).map((section) => ({
-          ...section,
-          items: section.items.map((item) => ({
-            ...item,
-            count: undefined,
-            disabled: item.id !== "secrets",
-            label: item.id === "secrets" ? item.label : `${item.label} (unavailable)`
-          }))
-        }))}
-        user={user}
-      />
-      <AppInset>
-        <TopBar
-          breadcrumb={[
-            { label: "Acme Corp" },
-            { label: "Secrets Management" },
-            {
-              label: project,
-              mono: true,
-              menu: {
-                label: "Switch project",
-                options: projects,
-                value: project,
-                onChange: (value) => {
-                  setProject(value);
-                  setPath("/");
-                  setQuery("");
-                  setTags([]);
-                  resetView();
+    <TooltipProvider>
+      <AppShell ref={root} className={styles.shell}>
+        <Sidebar
+          label="Secrets navigation"
+          current="secrets"
+          onNavigate={() => navigate("/")}
+          sections={(projectSections ?? []).map((section) => ({
+            ...section,
+            items: section.items.map((item) => ({
+              ...item,
+              count: undefined,
+              disabled: item.id !== "secrets"
+            }))
+          }))}
+          user={user}
+        />
+        <AppInset>
+          <TopBar
+            breadcrumb={[
+              { label: "Acme Corp" },
+              { label: "Secrets Management" },
+              {
+                label: project,
+                mono: true,
+                menu: {
+                  label: "Switch project",
+                  options: projects,
+                  value: project,
+                  onChange: (value) => {
+                    setProject(value);
+                    setPath("/");
+                    setQuery("");
+                    setTags([]);
+                    resetView();
+                  }
                 }
               }
-            }
-          ]}
-        />
-        <PageGutter>
-          <div className={styles.page}>
-            <PageHeader
-              size="md"
-              title={currentProject.label}
-              mono
-              description={currentProject.description}
-              actions={
-                <>
-                  <Button variant="outline" icon="download" disabled title={deferred}>
-                    Download
-                  </Button>
-                  <Button
-                    variant="outline"
-                    icon="folder"
-                    disabled={Boolean(writeReason)}
-                    title={writeReason}
-                    onClick={() => openDraft("folder")}
-                  >
-                    Add Folder
-                  </Button>
-                  <Button
-                    icon="plus"
-                    disabled={Boolean(writeReason)}
-                    title={writeReason}
-                    onClick={() => openDraft("secret")}
-                  >
-                    Add Secret
-                  </Button>
-                </>
-              }
-            />
-            <div className={styles.toolbar}>
-              <div className={styles.picker}>
-                <MultiSelect
-                  label="Environments"
-                  options={scenario === "no-environments" ? [] : environments}
-                  value={scenario === "no-environments" ? [] : environmentIds}
-                  onChange={(value) => {
-                    setEnvironmentIds(value);
-                    setSortEnvironment(value[0] ?? environments[0].value);
-                    resetView();
-                  }}
-                  placeholder={
-                    scenario === "no-environments" ? "No Environments" : "All Environments"
-                  }
-                  allLabel="All Environments"
-                  searchable
-                  disabled={unavailable}
-                />
-              </div>
-              <div className={styles.search}>
-                <Input
-                  ref={search}
-                  aria-label="Search resources in this folder"
-                  icon="search"
-                  placeholder="Search by secret or folder name"
-                  kbd="/"
-                  value={query}
-                  disabled={unavailable}
-                  onChange={(event) => {
-                    setQuery(event.target.value);
-                    setPage(1);
-                    setSelected([]);
-                  }}
-                />
-              </div>
-              <div className={styles.picker}>
-                <MultiSelect
-                  label="Resource types"
-                  options={resourceKinds}
-                  value={types}
-                  onChange={(value) => {
-                    setTypes(value);
-                    setPage(1);
-                    setSelected([]);
-                  }}
-                  placeholder="All Types"
-                  disabled={unavailable}
-                />
-              </div>
-              <div className={styles.picker}>
-                <MultiSelect
-                  label="Tags"
-                  options={tagOptions}
-                  value={tags}
-                  onChange={(value) => {
-                    setTags(value);
-                    setPage(1);
-                    setSelected([]);
-                  }}
-                  placeholder="All Tags"
-                  searchable
-                  disabled={unavailable}
-                />
-              </div>
-              <div className={styles.picker}>
-                <Select
-                  aria-label="Sort resources"
-                  value={sort}
-                  onChange={(value) => {
-                    setSort(value);
-                    setPage(1);
-                  }}
-                  options={[
-                    { value: "name-asc", label: "Name A–Z" },
-                    { value: "name-desc", label: "Name Z–A" },
-                    { value: "created-desc", label: "Created: Newest" },
-                    { value: "created-asc", label: "Created: Oldest" },
-                    { value: "updated-desc", label: "Edited: Newest" },
-                    { value: "updated-asc", label: "Edited: Oldest" }
-                  ]}
-                />
-              </div>
-              {multiple && !sort.startsWith("name") && (
-                <div className={styles.picker}>
-                  <Select
-                    aria-label="Timestamp sort environment"
-                    value={sortEnvironment}
-                    options={visibleEnvironments}
-                    onChange={setSortEnvironment}
-                  />
-                </div>
-              )}
-            </div>
-            <div className={styles.context}>
-              <div className={styles.breadcrumb}>
-                <Breadcrumb
-                  items={[
-                    { label: "Secrets", onClick: () => navigate("/") },
-                    ...path
-                      .split("/")
-                      .filter(Boolean)
-                      .map((segment, index, segments) => ({
-                        label: segment,
-                        onClick: () => navigate(`/${segments.slice(0, index + 1).join("/")}`)
-                      }))
-                  ]}
-                />
-              </div>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                icon="copy"
-                iconOnly
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(path);
-                    setNotice("Copied folder path.");
-                  } catch {
-                    setNotice("Could not copy the path. Check clipboard permissions.");
-                  }
-                }}
-              >
-                Copy Folder Path
-              </Button>
-              <span className={styles.muted}>
-                {scenario === "no-environments"
-                  ? "No environments"
-                  : visibleEnvironments.map((environment) => environment.label).join(", ")}
-              </span>
-            </div>
-            {writeReason && !unavailable && <p className={styles.notice}>{writeReason}</p>}
-            {notice && (
-              <p role="status" className={styles.notice}>
-                {notice}
-              </p>
-            )}
-            {selected.length > 0 && (
-              <div className={styles.selection}>
-                <span>{selected.length} selected</span>
-                <Button variant="ghost" onClick={() => setSelected([])}>
-                  Clear Selection
-                </Button>
-                <Button variant="outline" disabled title={deferred}>
-                  Bulk Actions
-                </Button>
-              </div>
-            )}
-            {scenario === "legacy" && (
-              <div className={styles.empty}>
-                <Icon name="lock" />
-                <h2>Secrets engine upgrade required</h2>
-                <p>
-                  This project uses the legacy engine. A real migration is not available in this
-                  local demo.
-                </p>
-                <Button disabled title="Migration is outside this preview.">
-                  Upgrade Project
-                </Button>
-              </div>
-            )}
-            {scenario === "no-environments" && (
-              <div className={styles.empty}>
-                <Icon name="folder" />
-                <h2>No environments</h2>
-                <p>Create an environment before adding secrets.</p>
-                <Button disabled title={deferred}>
-                  Add Environment
-                </Button>
-              </div>
-            )}
-            {scenario === "error" && !recovered && (
-              <div className={styles.empty} role="alert">
-                <Icon name="alert" />
-                <h2>Could not load resources</h2>
-                <p>This is a simulated overview failure, not an empty project.</p>
-                <Button
-                  onClick={() => {
-                    setRecovered(true);
-                    setNotice("Loaded local demo resources after retry.");
-                  }}
+            ]}
+          />
+          <PageGutter>
+            <div className={styles.page}>
+              <PageHeader
+                size="md"
+                title={currentProject.label}
+                mono
+                description={currentProject.description}
+              />
+              {readOnly && (
+                <Banner
+                  action={gate(
+                    NEXT_PHASE,
+                    <Button variant="outline" size="xs" disabled>
+                      Request access
+                    </Button>
+                  )}
                 >
-                  Retry
-                </Button>
-              </div>
-            )}
-            {showEmpty && (
-              <div className={styles.empty}>
-                <Icon name="key" />
-                <h2>
-                  {query || types.length || tags.length
-                    ? "No matching resources"
-                    : "No resources in this folder"}
-                </h2>
-                <p>
-                  {query || types.length || tags.length
-                    ? "Change the search or filters to see resources in this folder."
-                    : "Add a secret or folder to this local project."}
-                </p>
-                {query || types.length || tags.length ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setQuery("");
-                      setTypes([]);
-                      setTags([]);
+                  You do not have permission to create, edit, or delete secrets in this folder
+                </Banner>
+              )}
+              <div className={styles.toolbar}>
+                <div className={styles.envPicker}>
+                  <MultiSelect
+                    label="Environments"
+                    options={scenario === "no-environments" ? [] : environments}
+                    value={scenario === "no-environments" ? [] : environmentIds}
+                    onChange={(value) => {
+                      setEnvironmentIds(value);
+                      setSort({ field: "name", direction: "asc" });
                       resetView();
                     }}
-                  >
-                    Clear Search and Filters
-                  </Button>
-                ) : (
-                  <Button
-                    disabled={Boolean(writeReason)}
-                    title={writeReason}
-                    onClick={() => openDraft("secret")}
-                  >
-                    Add Secret
-                  </Button>
-                )}
+                    placeholder="All environments"
+                    allLabel="All environments"
+                    searchable
+                    disabled={unavailable}
+                  />
+                </div>
+                <div className={styles.search}>
+                  <Input
+                    ref={search}
+                    aria-label="Search resources"
+                    icon="search"
+                    placeholder={
+                      single
+                        ? "Search by secret, folder, tag or metadata..."
+                        : "Search by secret or folder name..."
+                    }
+                    kbd="/"
+                    value={query}
+                    disabled={unavailable}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      setPage(1);
+                      setSelected([]);
+                    }}
+                  />
+                </div>
+                <ResourceFilterMenu
+                  types={types}
+                  onToggleType={(kind) => {
+                    setTypes(
+                      types.includes(kind)
+                        ? types.filter((entry) => entry !== kind)
+                        : [...types, kind]
+                    );
+                    resetView();
+                  }}
+                  tags={tagOptions}
+                  selectedTags={tags}
+                  onToggleTag={(tag) => {
+                    setTags(
+                      tags.includes(tag) ? tags.filter((entry) => entry !== tag) : [...tags, tag]
+                    );
+                    resetView();
+                  }}
+                  onClearTags={() => {
+                    setTags([]);
+                    resetView();
+                  }}
+                />
+                <ExportMenu
+                  disabledReason={unavailable ? writeBlock : exportBlock}
+                  secretCount={single ? envFile(activeEnvironment).length : 0}
+                  onExport={(action) => exportEnv(activeEnvironment, action)}
+                />
+                <AddNewMenu
+                  writeBlock={writeBlock}
+                  single={single}
+                  onNewSecret={() => openDraft("secret")}
+                  onNewFolder={() => openDraft("folder")}
+                />
               </div>
-            )}
-            {showTable && (
-              <Table
-                aria-label={`Resources in ${project}, ${visibleEnvironments.map((environment) => environment.label).join(", ")}, ${path}`}
-              >
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>
-                      <Checkbox
-                        aria-label="Select eligible resources on this page"
-                        checked={selectionState}
-                        disabled={!eligible.length || scenario === "loading"}
-                        onCheckedChange={() =>
-                          setSelected(
-                            allSelected
-                              ? selected.filter((key) => !eligible.includes(key))
-                              : [...new Set([...selected, ...eligible])]
-                          )
-                        }
-                      />
-                    </TableHead>
-                    <TableHead>Name</TableHead>
-                    {multiple ? (
-                      visibleEnvironments.map((environment) => (
-                        <TableHead key={environment.value}>{environment.label}</TableHead>
-                      ))
+              <Card
+                variant="framed"
+                flush
+                footer={
+                  <div className={styles.footer}>
+                    {notice ? (
+                      <p role="status" className={styles.notice}>
+                        {notice}
+                      </p>
                     ) : (
-                      <TableHead>Value</TableHead>
+                      <ResourceCount counts={totals} />
                     )}
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {scenario === "loading"
-                    ? Array.from({ length: pageSize }, (_, index) => (
-                        <TableRow key={index}>
-                          <TableCell>
-                            <Skeleton width="var(--v4-size-icon)" height="var(--v4-size-icon)" />
-                          </TableCell>
-                          <TableCell>
-                            <Skeleton
-                              width="var(--v4-size-text-min)"
-                              height="var(--v4-size-icon)"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Skeleton
-                              width="var(--v4-size-text-min)"
-                              height="var(--v4-size-icon)"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Skeleton
-                              width="var(--v4-size-control-sm)"
-                              height="var(--v4-size-icon)"
-                            />
+                    {!unavailableState && (
+                      <div className={styles.pagination}>
+                        <Pagination
+                          page={currentPage}
+                          total={totalCount}
+                          pageSize={perPage}
+                          pageSizeOptions={[10, 20, 50, 100]}
+                          onPageChange={(value) => {
+                            setPage(value);
+                            setSelected([]);
+                          }}
+                          onPageSizeChange={(value) => {
+                            setPerPage(value);
+                            setPage(1);
+                            setSelected([]);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                }
+              >
+                <FolderBreadcrumbBar path={path} onNavigate={navigate} report={report} />
+                {unavailableState ?? (
+                  <Table className={styles.table} aria-label={`Resources in ${project} at ${path}`}>
+                    <colgroup>
+                      <col className={styles.colIcon} />
+                      <col className={single ? styles.colName : undefined} />
+                      {single ? (
+                        <col />
+                      ) : (
+                        visibleEnvironments.map((environment) => (
+                          <col key={environment.value} className={styles.colEnv} />
+                        ))
+                      )}
+                    </colgroup>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className={styles.iconCell}>
+                          <Checkbox
+                            aria-label="Select all resources on this page"
+                            checked={allOnPage}
+                            indeterminate={someOnPage && !allOnPage}
+                            disabled={!selectableOnPage.length}
+                            onCheckedChange={() =>
+                              setSelected(
+                                allOnPage
+                                  ? selected.filter((key) => !selectableOnPage.includes(key))
+                                  : [...new Set([...selected, ...selectableOnPage])]
+                              )
+                            }
+                          />
+                        </TableHead>
+                        <TableHead>
+                          <div className={styles.headLine}>
+                            Name
+                            {sortMenu}
+                          </div>
+                        </TableHead>
+                        {single ? (
+                          <TableHead>
+                            <div className={styles.headLine}>
+                              Value
+                              <Button
+                                variant="ghost"
+                                size="xs"
+                                icon="eye"
+                                onClick={() => setRevealAll(!revealAll)}
+                              >
+                                {revealAll ? "Hide values" : "Reveal all"}
+                              </Button>
+                              {activeEnvironment === "prod" && (
+                                <Badge tone="soft">
+                                  <Icon name="lock" />
+                                  Protected
+                                </Badge>
+                              )}
+                              <span className={styles.push}>
+                                {gate(
+                                  NEXT_PHASE,
+                                  <Button variant="ghost" size="xs" icon="history" disabled>
+                                    Commit history
+                                  </Button>
+                                )}
+                                {gate(
+                                  NEXT_PHASE,
+                                  <Button variant="ghost" size="xs" disabled>
+                                    <Icon icon={GroupIcon} />
+                                    Batch edit
+                                  </Button>
+                                )}
+                              </span>
+                            </div>
+                          </TableHead>
+                        ) : (
+                          visibleEnvironments.map((environment) => (
+                            <TableHead key={environment.value} className={styles.envHead}>
+                              <div className={styles.headLine}>{environmentMenu(environment)}</div>
+                            </TableHead>
+                          ))
+                        )}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {scenario === "loading" &&
+                        Array.from({ length: 8 }, (_, index) => (
+                          <TableRow key={`skeleton-${index + 1}`}>
+                            <TableCell className={styles.iconCell}>
+                              <Skeleton width="var(--v4-size-icon)" height="var(--v4-size-icon)" />
+                            </TableCell>
+                            <TableCell colSpan={colSpan - 1}>
+                              <Skeleton
+                                width="var(--v4-size-text-min)"
+                                height="var(--v4-size-icon)"
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      {scenario !== "loading" && totalCount === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={colSpan} className={styles.emptyCell}>
+                            {emptyState}
                           </TableCell>
                         </TableRow>
-                      ))
-                    : rows.map(([key, entries]) => {
-                        const resource = entries[0];
-                        const isExpanded = expanded.includes(key);
-                        return (
-                          <Fragment key={key}>
-                            <TableRow data-state={selected.includes(key) ? "selected" : undefined}>
-                              <TableCell>
-                                {eligible.includes(key) && (
-                                  <Checkbox
-                                    aria-label={`Select ${resource.name}`}
-                                    checked={selected.includes(key)}
-                                    onCheckedChange={(checked) =>
-                                      setSelected(
-                                        checked
-                                          ? [...selected, key]
-                                          : selected.filter((id) => id !== key)
-                                      )
-                                    }
-                                  />
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <div className={styles.name}>
-                                  <span className={styles.glyph}>
-                                    <Icon
-                                      name={icons[resource.kind]}
-                                      label={
-                                        resourceKinds.find((kind) => kind.value === resource.kind)
-                                          ?.label
-                                      }
-                                    />
-                                  </span>
-                                  {resource.kind === "folder" ? (
-                                    <Button
-                                      variant="link"
-                                      onClick={() =>
-                                        navigate(`${path === "/" ? "" : path}/${resource.name}`)
-                                      }
-                                    >
-                                      {resource.name}
-                                    </Button>
-                                  ) : (
-                                    <code>{resource.name}</code>
-                                  )}
-                                  {resource.kind !== "folder" && (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon-xs"
-                                      icon={isExpanded ? "chev-down" : "chev-right"}
-                                      iconOnly
-                                      aria-expanded={isExpanded}
-                                      onClick={() =>
-                                        setExpanded(
-                                          isExpanded
-                                            ? expanded.filter((id) => id !== key)
-                                            : [...expanded, key]
-                                        )
-                                      }
-                                    >{`${isExpanded ? "Collapse" : "Expand"} ${resource.name}`}</Button>
-                                  )}
-                                </div>
-                                {resource.kind === "secret" &&
-                                  (resource.tags.length > 0 ||
-                                    resource.override !== undefined ||
-                                    resource.managedBy) && (
-                                    <div className={styles.annotations}>
-                                      {[
-                                        ...resource.tags,
-                                        ...(resource.override !== undefined
-                                          ? ["Personal override"]
-                                          : []),
-                                        ...(resource.managedBy ? ["Managed"] : [])
-                                      ].join(", ")}
-                                    </div>
-                                  )}
-                              </TableCell>
-                              {multiple ? (
-                                visibleEnvironments.map((environment) => {
-                                  const entry = entries.find(
-                                    (item) => item.environment === environment.value
-                                  );
-                                  const status = resourceStatus(entry);
-                                  return (
-                                    <TableCell key={environment.value}>
-                                      <span
-                                        title={`${environment.label}: ${status.label}`}
-                                        className={styles.status}
-                                      >
-                                        <Icon name={status.icon} />
-                                        {status.label}
-                                      </span>
-                                    </TableCell>
-                                  );
-                                })
-                              ) : (
-                                <TableCell>{valueCell(resource)}</TableCell>
-                              )}
-                              <TableCell>
-                                {multiple ? (
-                                  <Button
-                                    variant="ghost"
-                                    size="xs"
-                                    disabled
-                                    title="Expand the resource to edit a specific environment."
-                                  >
-                                    Edit
-                                  </Button>
-                                ) : (
-                                  rowActions(resource)
-                                )}
-                              </TableCell>
-                            </TableRow>
-                            {isExpanded && (
-                              <TableRow>
-                                <TableCell />
-                                <TableCell colSpan={visibleEnvironments.length + 2}>
-                                  <div className={styles.details}>
-                                    {entries.map((entry) => (
-                                      <div key={entry.id} className={styles.detail}>
-                                        <strong>
-                                          {
-                                            environments.find(
-                                              (environment) =>
-                                                environment.value === entry.environment
-                                            )?.label
-                                          }
-                                        </strong>
-                                        {valueCell(entry)}
-                                        {rowActions(entry)}
-                                        <span className={styles.muted}>
-                                          Created {new Date(entry.createdAt).toLocaleDateString()},
-                                          Edited {new Date(entry.updatedAt).toLocaleDateString()}
-                                        </span>
-                                        {entry.kind === "secret" && (
-                                          <>
-                                            <span>{entry.comment || "No comment"}</span>
-                                            {entry.override !== undefined && (
-                                              <span className={styles.muted}>
-                                                Personal override exists. Its editor is unavailable
-                                                in this phase.
-                                              </span>
-                                            )}
-                                          </>
-                                        )}
-                                        {entry.kind === "import" && !entry.revoked && (
-                                          <span className={styles.muted}>
-                                            Imported keys: {Object.keys(entry.keys).join(", ")}.
-                                            Import resolution and precedence are unavailable in this
-                                            phase.
-                                          </span>
-                                        )}
-                                        {entry.kind === "rotation" && (
-                                          <span className={styles.muted}>
-                                            Managed keys: {entry.managedKeys.join(", ")}
-                                          </span>
-                                        )}
-                                        {entry.kind === "honey" && (
-                                          <span className={styles.muted}>
-                                            {entry.events.join(", ") || "No detection events"}
-                                          </span>
-                                        )}
-                                        {entry.kind === "proxy" && (
-                                          <span className={styles.muted}>
-                                            Template: {entry.template}
-                                          </span>
-                                        )}
-                                        <Button variant="ghost" disabled title={deferred}>
-                                          {entry.kind === "secret"
-                                            ? "History and Annotations"
-                                            : "Resource Operations"}
-                                        </Button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            )}
-                          </Fragment>
-                        );
-                      })}
-                </TableBody>
-              </Table>
-            )}
-            {!unavailable && (
-              <div className={styles.footer}>
-                <span className={styles.muted}>
-                  {resourceKinds
-                    .map((kind) => {
-                      const count = filtered.filter(
-                        ([, entries]) => entries[0].kind === kind.value
-                      ).length;
-                      return count ? `${count} ${kind.label.toLowerCase()}` : "";
-                    })
-                    .filter(Boolean)
-                    .join(", ") || "0 resources"}
-                </span>
-                <Pagination
-                  page={currentPage}
-                  total={filtered.length}
-                  pageSize={pageSize}
-                  pageSizeOptions={[10, 20, 50]}
-                  onPageChange={(value) => {
-                    setPage(value);
-                    setSelected([]);
-                  }}
-                  onPageSizeChange={(value) => {
-                    setPageSize(value);
-                    setPage(1);
-                    setSelected([]);
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        </PageGutter>
-      </AppInset>
-      <Dialog
-        open={Boolean(draft)}
-        onOpenChange={(open) => {
-          if (!open) closeDraft();
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {draft?.resource ? "Edit" : "Add"} {draft?.kind === "folder" ? "Folder" : "Secret"}
-            </DialogTitle>
-            <DialogDescription>
-              {project} /{" "}
-              {draft?.resource
-                ? draft.environment
-                : visibleEnvironments.map((environment) => environment.label).join(", ")}{" "}
-              / {path}. Changes affect local demo data only.
-            </DialogDescription>
-          </DialogHeader>
-          {draft && (
-            <form
-              id="secret-demo-editor"
-              className={styles.form}
-              onSubmit={(event) => {
-                event.preventDefault();
-                save();
-              }}
-            >
-              <Field
-                label={draft.kind === "secret" ? "Key" : "Folder Name"}
-                error={validation || undefined}
+                      )}
+                      {scenario !== "loading" &&
+                        windowRows.map(([key, entries]) => {
+                          const first = entries[0];
+                          if (first.kind === "import")
+                            return (
+                              <ImportRow
+                                key={key}
+                                rowKey={key}
+                                entries={entries as Of<"import">[]}
+                                ctx={ctx}
+                                sourceSecrets={sourceSecrets}
+                                projectName={project}
+                              />
+                            );
+                          if (first.kind === "folder")
+                            return (
+                              <FolderRow
+                                key={key}
+                                rowKey={key}
+                                entries={entries as Of<"folder">[]}
+                                ctx={ctx}
+                                onOpen={() => navigate(`${path === "/" ? "" : path}/${first.name}`)}
+                                onEdit={(folder) =>
+                                  openDraft("folder", folder, [folder.environment])
+                                }
+                                onDelete={(folder) => setDeleting([folder])}
+                              />
+                            );
+                          if (first.kind === "secret")
+                            return (
+                              <SecretRow
+                                key={key}
+                                rowKey={key}
+                                entries={entries as Secret[]}
+                                ctx={ctx}
+                                revealAll={revealAll}
+                                handlers={handlers}
+                              />
+                            );
+                          return (
+                            <KindRow
+                              key={key}
+                              rowKey={key}
+                              kind={first.kind}
+                              entries={entries}
+                              ctx={ctx}
+                            />
+                          );
+                        })}
+                      {canQuickAdd && (
+                        <QuickAddRow
+                          multiple={!single}
+                          colSpan={single ? 1 : visibleEnvironments.length}
+                          existing={ordered
+                            .filter(([, entries]) => entries[0].kind === "secret")
+                            .map(([, entries]) => entries[0].name)}
+                          onCreate={(key, value) =>
+                            create(
+                              "secret",
+                              key,
+                              value,
+                              visibleEnvironments.map((environment) => environment.value)
+                            )
+                          }
+                        />
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+              </Card>
+            </div>
+          </PageGutter>
+        </AppInset>
+        <FloatingActionBar
+          placement="fixed"
+          count={selected.length}
+          total={selectableOnPage.length}
+          onSelectAll={() => setSelected(selectableOnPage)}
+          onClear={() => setSelected([])}
+          noun="resources"
+          actions={[
+            { label: "Add tags", icon: "plus", disabled: true, onClick: () => undefined },
+            { label: "Move", icon: "folder", disabled: true, onClick: () => undefined },
+            {
+              label: "Copy to clipboard",
+              icon: "copy",
+              disabled: !single || !selectedSecretNames.length,
+              onClick: async () => {
+                try {
+                  await navigator.clipboard.writeText(
+                    `${envFile(activeEnvironment, selectedSecretNames).join("\n")}\n`
+                  );
+                  setNotice("Secrets copied to clipboard. They are ready to paste.");
+                } catch {
+                  setNotice("Failed to copy secrets. Please try again later.");
+                }
+              }
+            },
+            {
+              label: "Delete",
+              icon: "trash",
+              danger: true,
+              disabled: Boolean(writeBlock) || !deletable.length,
+              onClick: () => setDeleting(deletable)
+            }
+          ]}
+          moreActions={[
+            { label: "Copy to new source", icon: "copy", disabled: true, onClick: () => undefined }
+          ]}
+        />
+        <Sheet
+          open={draft?.kind === "secret"}
+          onOpenChange={(open) => {
+            if (!open) closeDraft();
+          }}
+        >
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>{draftTitle}</SheetTitle>
+              <SheetDescription>
+                {`${currentProject.label}, ${path}. Changes affect local demo data only.`}
+              </SheetDescription>
+            </SheetHeader>
+            <SheetBody>{draft?.kind === "secret" && draftForm}</SheetBody>
+            <SheetFooter>
+              <Button variant="ghost" onClick={closeDraft}>
+                Cancel
+              </Button>
+              <Button form="secret-draft" type="submit">
+                Save
+              </Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+        <Dialog
+          open={draft?.kind === "folder"}
+          onOpenChange={(open) => {
+            if (!open) closeDraft();
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{draftTitle}</DialogTitle>
+              <DialogDescription>
+                {`${currentProject.label}, ${path}. Changes affect local demo data only.`}
+              </DialogDescription>
+            </DialogHeader>
+            {draft?.kind === "folder" && draftForm}
+            <DialogFooter>
+              <Button variant="ghost" onClick={closeDraft}>
+                Cancel
+              </Button>
+              <Button form="secret-draft" type="submit">
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={discard} onOpenChange={setDiscard}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Discard changes?</DialogTitle>
+              <DialogDescription>Your unsaved changes will be lost.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDiscard(false)}>
+                Keep editing
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  setDiscard(false);
+                  setDraft(undefined);
+                }}
               >
-                <Input
-                  autoFocus
-                  value={draft.name}
-                  onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-                />
-              </Field>
-              <Field label={draft.kind === "secret" ? "Value" : "Description"}>
-                <Textarea
-                  value={draft.value}
-                  onChange={(event) => setDraft({ ...draft, value: event.target.value })}
-                />
-              </Field>
-            </form>
-          )}
-          <DialogFooter>
-            <Button variant="ghost" onClick={closeDraft}>
-              Cancel
-            </Button>
-            <Button form="secret-demo-editor" type="submit">
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={discard} onOpenChange={setDiscard}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Discard Changes?</DialogTitle>
-            <DialogDescription>
-              Your unsaved secret or folder changes will be lost.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDiscard(false)}>
-              Keep Editing
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                setDiscard(false);
-                setDraft(undefined);
-              }}
-            >
-              Discard
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={Boolean(deleting)}
-        onOpenChange={(open) => {
-          if (!open) setDeleting(undefined);
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete {deleting?.name}?</DialogTitle>
-            <DialogDescription>
-              This removes the local {deleting?.kind}
-              {deleting?.kind === "folder" ? " and all resources inside it" : ""} from{" "}
-              {deleting?.environment} at {path}. This cannot be undone. Dependency previews are not
-              available in this phase.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleting(undefined)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (!deleting) return;
-                const folderPath = `${path === "/" ? "" : path}/${deleting.name}`;
-                setResources((current) =>
-                  current.filter(
-                    (resource) =>
-                      resource.id !== deleting.id &&
-                      !(
-                        deleting.kind === "folder" &&
-                        resource.project === project &&
-                        resource.environment === deleting.environment &&
-                        (resource.path === folderPath || resource.path.startsWith(`${folderPath}/`))
-                      )
-                  )
-                );
-                setNotice(`Deleted ${deleting.name} from local demo data.`);
-                setDeleting(undefined);
-                setSelected([]);
-              }}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </AppShell>
+                Discard
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <Dialog
+          open={Boolean(deleting)}
+          onOpenChange={(open) => {
+            if (!open) setDeleting(undefined);
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {deleting?.length === 1
+                  ? `Delete ${deleting[0].name}?`
+                  : `Delete ${deleting?.length} resources?`}
+              </DialogTitle>
+              <DialogDescription>
+                {`This removes the selected resources from ${path}. Folders are removed with everything inside them. This cannot be undone.`}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleting(undefined)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={() => deleting && remove(deleting)}>
+                Delete
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </AppShell>
+    </TooltipProvider>
   );
 }
 

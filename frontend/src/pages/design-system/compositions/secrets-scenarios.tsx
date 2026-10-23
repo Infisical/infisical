@@ -14,7 +14,7 @@ export function SecretsScenarios({ children }: { children: ReactNode }) {
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <span className="text-muted-foreground text-sm">Local demo data</span>
         <Select
-          aria-label="Secrets scenario"
+          label="Secrets scenario"
           value={scenario}
           options={scenarios}
           onChange={(value) => setScenario(value as Scenario)}

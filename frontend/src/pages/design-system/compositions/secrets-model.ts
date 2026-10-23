@@ -21,6 +21,9 @@ export type Secret = ResourceBase & {
   version: number;
   override?: string;
   managedBy?: string;
+  honeyToken?: boolean;
+  reminder?: boolean;
+  skipMultilineEncoding?: boolean;
 };
 export type Resource =
   | Secret
@@ -30,21 +33,40 @@ export type Resource =
       source: Scope;
       revoked: boolean;
       replicated: boolean;
-      keys: Record<string, string>;
+      replicationStatus?: "succeeded" | "failed";
+      lastReplicated?: string;
     })
   | (ResourceBase & {
       kind: "dynamic";
       provider: string;
-      leases: { id: string; expiresAt: string; revoked: boolean }[];
+      defaultTTL: string;
+      maxTTL?: string;
+      status?: "failed-deletion" | "deleting";
     })
   | (ResourceBase & {
       kind: "rotation";
       provider: string;
-      status: "succeeded" | "failed";
+      connection: string;
+      status: "success" | "failed";
+      autoRotation: boolean;
+      description?: string;
+      lastRotatedAt: string;
+      nextRotationAt?: string;
       managedKeys: string[];
     })
-  | (ResourceBase & { kind: "honey"; status: "active" | "detected" | "revoked"; events: string[] })
-  | (ResourceBase & { kind: "proxy"; host: string; template: string });
+  | (ResourceBase & {
+      kind: "honey";
+      provider: string;
+      status: "active" | "triggered" | "revoked";
+      description: string;
+      mappedKeys: string[];
+    })
+  | (ResourceBase & {
+      kind: "proxy";
+      host: string;
+      enabled: boolean;
+      lastUsedAt?: string;
+    });
 type ResourceDetails = {
   [K in ResourceKind]: Omit<Extract<Resource, { kind: K }>, keyof ResourceBase>;
 }[ResourceKind];
@@ -158,6 +180,8 @@ export function createResources(scenario: Scenario): Resource[] {
                 ]
               : [],
           version: 1,
+          ...(name === "PAYMENT_PROVIDER_KEY" ? { reminder: true } : {}),
+          ...(name === "TLS_CERTIFICATE" ? { skipMultilineEncoding: true } : {}),
           ...(name === "LOG_LEVEL" && environment.value === "dev" ? { override: "debug" } : {})
         });
       });
@@ -180,8 +204,16 @@ export function createResources(scenario: Scenario): Resource[] {
         kind: "import",
         source: { ...scope, path: "/shared" },
         revoked: false,
-        replicated: false,
-        keys: { REGION: "demo-west", LOG_LEVEL: "warn" }
+        replicated: environment.value === "staging",
+        ...(environment.value === "staging"
+          ? { replicationStatus: "failed", lastReplicated: "2026-10-21T08:30:00Z" }
+          : {})
+      });
+      add(scope, "web-dashboard-root", {
+        kind: "import",
+        source: { ...scope, project: "web-dashboard" },
+        revoked: true,
+        replicated: false
       });
       Object.entries({ REGION: "demo-west", LOG_LEVEL: "warn" }).forEach(([name, value]) => {
         add({ ...scope, path: "/shared" }, name, {
@@ -204,19 +236,61 @@ export function createResources(scenario: Scenario): Resource[] {
           managedBy: "billing-db-rotation"
         });
       });
-      add(scope, "orders-readonly", { kind: "dynamic", provider: "SQL Database", leases: [] });
+      ["CANARY_ACCESS_KEY_ID", "CANARY_SECRET_ACCESS_KEY"].forEach((name) => {
+        add(scope, name, {
+          kind: "secret",
+          value: { status: "present", value: `fake-${name.toLowerCase()}` },
+          comment: "",
+          tags: [],
+          metadata: [],
+          version: 1,
+          honeyToken: true
+        });
+      });
+      add(scope, "orders-readonly", {
+        kind: "dynamic",
+        provider: "SQL Database",
+        defaultTTL: "1h",
+        maxTTL: "24h"
+      });
+      if (environment.value !== "prod")
+        add(scope, "deploy-bastion", {
+          kind: "dynamic",
+          provider: "SSH",
+          defaultTTL: "30m",
+          maxTTL: "8h",
+          ...(environment.value === "staging" ? { status: "failed-deletion" } : {})
+        });
       add(scope, "billing-db-rotation", {
         kind: "rotation",
-        provider: "PostgreSQL",
-        status: "succeeded",
+        provider: "PostgreSQL credentials",
+        connection: "payments-postgres",
+        status: environment.value === "staging" ? "failed" : "success",
+        autoRotation: environment.value !== "dev",
+        description: "Rotates the billing database user pair",
+        lastRotatedAt: "2026-10-01T00:00:00Z",
+        nextRotationAt: "2026-10-31T00:00:00Z",
         managedKeys: ["DB_USERNAME", "DB_PASSWORD"]
       });
-      add(scope, "audit-canary", { kind: "honey", status: "active", events: [] });
+      add(scope, "audit-canary", {
+        kind: "honey",
+        provider: "AWS",
+        status: environment.value === "dev" ? "triggered" : "active",
+        description: "Decoy AWS keys for audit detection",
+        mappedKeys: ["CANARY_ACCESS_KEY_ID", "CANARY_SECRET_ACCESS_KEY"]
+      });
       add(scope, "billing-api-proxy", {
         kind: "proxy",
         host: "*.billing.demo.invalid",
-        template: "Custom HTTP"
+        enabled: true,
+        lastUsedAt: "2026-10-22T16:40:00Z"
       });
+      if (environment.value !== "prod")
+        add(scope, "stripe-api", {
+          kind: "proxy",
+          host: "api.stripe.com",
+          enabled: environment.value === "dev"
+        });
     });
   });
   return resources;

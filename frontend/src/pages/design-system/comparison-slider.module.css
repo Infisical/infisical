@@ -103,6 +103,7 @@
   box-shadow: 0 0 0 var(--v4-size-focus-glow) var(--v4-focus-ring);
 }
 .full {
+  margin-inline: calc(50% - 50cqi + var(--v4-space-16));
   overflow: auto;
   border: var(--v4-size-control-border) solid var(--v4-line);
   border-radius: calc(var(--v4-radius-panel) * var(--corners));
