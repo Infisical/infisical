@@ -170,25 +170,29 @@ export const secretReadActivityServiceFactory = ({
 
     // Every loaded secret is decrypted once to find the keys it references in its own folder. The edges are indexed
     // by "<referenced folder>:<referenced key>", since scanning a folder for every secret in it would be quadratic.
+    // Decrypting is synchronous work, so the loop yields to the event loop between batches, like the reach loop below.
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
     const loadedSecrets = [...secretsByFolder.values()].flat();
     const secretById = new Map(loadedSecrets.map((secret) => [secret.id, secret]));
-    const referenceEdges: { target: string; referencer: TReachSecret }[] = [
-      ...loadedSecrets.flatMap((secret) => {
-        if (!secret.encryptedValue) return [];
+    const referenceEdges: { target: string; referencer: TReachSecret }[] = references.map((reference) => ({
+      target: `${reference.targetFolderId}:${reference.secretKey}`,
+      referencer: secretById.get(reference.secretId) ?? { id: reference.secretId, folderId: reference.folderId }
+    }));
+    for (let index = 0; index < loadedSecrets.length; index += 1) {
+      if (index > 0 && index % REACH_YIELD_INTERVAL === 0) {
+        // eslint-disable-next-line no-await-in-loop
+        await setImmediate();
+      }
+      const secret = loadedSecrets[index];
+      if (secret.encryptedValue) {
         const { localReferences } = getAllSecretReferences(
           decryptor({ cipherTextBlob: secret.encryptedValue }).toString()
         );
-        return [...new Set(localReferences)].map((key) => ({
-          target: `${secret.folderId}:${key}`,
-          referencer: secret
-        }));
-      }),
-      ...references.map((reference) => ({
-        target: `${reference.targetFolderId}:${reference.secretKey}`,
-        referencer: secretById.get(reference.secretId) ?? { id: reference.secretId, folderId: reference.folderId }
-      }))
-    ];
+        new Set(localReferences).forEach((key) => {
+          referenceEdges.push({ target: `${secret.folderId}:${key}`, referencer: secret });
+        });
+      }
+    }
     const referenceEdgesByTarget = groupBy(referenceEdges, (edge) => edge.target);
 
     // Replication imports are included: a replicated copy is checked against the reader's access to its source.
