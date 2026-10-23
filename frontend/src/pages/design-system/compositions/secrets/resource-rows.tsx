@@ -114,7 +114,7 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const item = entry as Of<"dynamic">;
       return (
         <>
-          <Badge tone="soft">{item.provider}</Badge>
+          <Badge tone="outline">{item.provider}</Badge>
           {item.status && (
             <Tooltip content="Simulated provider error while deleting leases.">
               <Badge tone={item.status === "deleting" ? "warn" : "bad"}>
@@ -153,7 +153,7 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const item = entry as Of<"rotation">;
       return (
         <>
-          <Badge tone="soft">{item.provider}</Badge>
+          <Badge tone="outline">{item.provider}</Badge>
           {item.description && <InfoHint text={item.description} />}
           <span className={styles.push}>
             <RotationStatus rotation={item} />
@@ -191,7 +191,7 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
       const item = entry as Of<"honey">;
       return (
         <>
-          <Badge tone="soft">{item.provider} honey token</Badge>
+          <Badge tone="outline">{item.provider} honey token</Badge>
           {item.mappedKeys.length > 0 && (
             <InfoHint text={`Mapped secrets: ${item.mappedKeys.join(", ")}`} />
           )}
@@ -245,7 +245,7 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
           </span>
           <span className={styles.push}>
             {!item.enabled && (
-              <Badge tone="soft">
+              <Badge tone="outline">
                 <Icon icon={BanIcon} />
                 Disabled
               </Badge>
@@ -466,7 +466,7 @@ export function ImportRow({
   const label = (
     <span className={styles.importLabel}>
       {first.source.project !== projectName && <Badge tone="warn">{first.source.project}</Badge>}
-      <Badge tone="soft">
+      <Badge tone="outline">
         <Icon icon={LayersIcon} />
         {environments.find((environment) => environment.value === first.source.environment)
           ?.label ?? first.source.environment}
@@ -582,7 +582,7 @@ export function ImportRow({
             <div className={styles.importedIn}>
               <span className={styles.subtle}>Imported in:</span>
               {entries.map((entry) => (
-                <Badge key={entry.id} tone="soft">
+                <Badge key={entry.id} tone="outline">
                   <Icon icon={LayersIcon} />
                   {environments.find((environment) => environment.value === entry.environment)
                     ?.label ?? entry.environment}

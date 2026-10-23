@@ -931,19 +931,21 @@ function Overview({ scenario }: { scenario: Scenario }) {
                       <TableHeader>
                         <TableRow>
                           <TableHead className={styles.iconCell}>
-                            <Checkbox
-                              aria-label="Select all resources on this page"
-                              checked={allOnPage}
-                              indeterminate={someOnPage && !allOnPage}
-                              disabled={!selectableOnPage.length}
-                              onCheckedChange={() =>
-                                setSelected(
-                                  allOnPage
-                                    ? selected.filter((key) => !selectableOnPage.includes(key))
-                                    : [...new Set([...selected, ...selectableOnPage])]
-                                )
-                              }
-                            />
+                            <span className={styles.iconSlot}>
+                              <Checkbox
+                                aria-label="Select all resources on this page"
+                                checked={allOnPage}
+                                indeterminate={someOnPage && !allOnPage}
+                                disabled={!selectableOnPage.length}
+                                onCheckedChange={() =>
+                                  setSelected(
+                                    allOnPage
+                                      ? selected.filter((key) => !selectableOnPage.includes(key))
+                                      : [...new Set([...selected, ...selectableOnPage])]
+                                  )
+                                }
+                              />
+                            </span>
                           </TableHead>
                           <TableHead>
                             <div className={styles.headLine}>

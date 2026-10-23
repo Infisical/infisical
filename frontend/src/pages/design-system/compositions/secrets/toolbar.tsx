@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { Count } from "@app/components/v4/ui/badge";
+import { Breadcrumb } from "@app/components/v4/ui/breadcrumb";
 import { Button } from "@app/components/v4/ui/button";
 import {
   DropdownMenu,
@@ -29,7 +30,7 @@ import { TableCell, TableRow } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import type { ResourceKind } from "../secrets-model";
-import { KindIcon, NEXT_PHASE } from "./overview-cells";
+import { ActionButton, KindIcon, NEXT_PHASE } from "./overview-cells";
 
 import styles from "./overview.module.css";
 
@@ -251,65 +252,47 @@ export function FolderBreadcrumbBar({
   const segments = path.split("/").filter(Boolean);
   return (
     <div className={styles.pathBar}>
-      <nav aria-label="Folder path" className={styles.crumbs}>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          iconOnly
-          icon="home"
-          aria-current={segments.length ? undefined : "page"}
-          onClick={() => onNavigate("/")}
-        >
-          Root folder
-        </Button>
-        {!segments.length && <span className={styles.crumbSlash}>/</span>}
-        {segments.map((segment, index) => (
-          <span key={`${segment}-${index + 1}`} className={styles.crumb}>
-            <span className={styles.crumbSlash}>/</span>
-            {index < segments.length - 1 ? (
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={() => onNavigate(`/${segments.slice(0, index + 1).join("/")}`)}
-              >
-                {segment}
+      <span className={styles.crumbs}>
+        <Breadcrumb
+          aria-label="Folder path"
+          items={[
+            {
+              label: <Icon name="home" label="Root folder" />,
+              onClick: segments.length ? () => onNavigate("/") : undefined
+            },
+            ...segments.map((segment, index) => ({
+              label: segment,
+              onClick:
+                index < segments.length - 1
+                  ? () => onNavigate(`/${segments.slice(0, index + 1).join("/")}`)
+                  : undefined
+            }))
+          ]}
+        />
+      </span>
+      <span className={styles.pathActions}>
+        <ActionButton
+          label="Copy path"
+          name="copy"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(path);
+              report("Folder path copied to clipboard.");
+            } catch {
+              report("Failed to copy folder path to clipboard.");
+            }
+          }}
+        />
+        {single && (
+          <Tooltip content={NEXT_PHASE}>
+            <span className={styles.actionSlot}>
+              <Button variant="ghost" size="xs" icon="user" disabled>
+                Manage access
               </Button>
-            ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="xs" aria-current="page" iconRight="chev-down">
-                    {segment}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem
-                    onSelect={async () => {
-                      try {
-                        await navigator.clipboard.writeText(path);
-                        report("Folder path copied to clipboard.");
-                      } catch {
-                        report("Failed to copy folder path to clipboard.");
-                      }
-                    }}
-                  >
-                    <Icon name="copy" />
-                    Copy path
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </span>
-        ))}
-      </nav>
-      {single && (
-        <Tooltip content={NEXT_PHASE}>
-          <span className={styles.actionSlot}>
-            <Button variant="ghost" size="xs" icon="user" disabled>
-              Manage access
-            </Button>
-          </span>
-        </Tooltip>
-      )}
+            </span>
+          </Tooltip>
+        )}
+      </span>
     </div>
   );
 }
