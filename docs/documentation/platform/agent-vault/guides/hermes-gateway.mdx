@@ -126,9 +126,9 @@ First, create an [access bundle](/documentation/platform/agent-vault/access-bund
   </Step>
 </Steps>
 
-### Enroll a proxy
+### Create a proxy
 
-Next, enroll a [proxy](/documentation/platform/agent-vault/proxies) on the Agent Vault machine. Every request Hermes makes will go through this proxy first. The proxy gets the real credential from the access bundle you just created. It attaches the credential to the request, then forwards the request to the API.
+Next, create a [proxy](/documentation/platform/agent-vault/proxies) on the Agent Vault machine. Every request Hermes makes will go through this proxy first. The proxy gets the real credential from the access bundle you just created. It attaches the credential to the request, then forwards the request to the API.
 
 <Steps>
   <Step>
@@ -145,7 +145,7 @@ Next, enroll a [proxy](/documentation/platform/agent-vault/proxies) on the Agent
     Select **Create**.
   </Step>
   <Step>
-    In the **Enrollment Token** dialog, open the **systemd** or **Docker** tab and copy what it shows. The enrollment token expires in an hour.
+    Store the proxy token from the **Proxy Token** dialog somewhere safe. The dialog shows the token only once.
   </Step>
 </Steps>
 
@@ -153,7 +153,30 @@ The gateway runs all the time, so run the proxy as a service that starts again w
 
 <Tabs>
   <Tab title="systemd">
-    Save the unit from the dialog as `/etc/systemd/system/agent-vault-proxy.service`, then enable and start the proxy:
+    Save the proxy token in `/etc/infisical/agent-vault-proxy.env`:
+
+    ```bash
+    INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token>
+    ```
+
+    Run `sudo chmod 600 /etc/infisical/agent-vault-proxy.env` so that only root can read the file. Then save this unit as `/etc/systemd/system/agent-vault-proxy.service`, replacing `<your-instance-url>` with your Infisical instance URL:
+
+    ```ini
+    [Unit]
+    Description=Infisical Agent Vault proxy
+    After=network-online.target
+    Wants=network-online.target
+
+    [Service]
+    EnvironmentFile=/etc/infisical/agent-vault-proxy.env
+    ExecStart=/usr/local/bin/infisical agent-vault proxy --domain <your-instance-url>
+    Restart=always
+
+    [Install]
+    WantedBy=multi-user.target
+    ```
+
+    Enable and start the proxy:
 
     ```bash
     sudo systemctl daemon-reload
@@ -163,18 +186,18 @@ The gateway runs all the time, so run the proxy as a service that starts again w
     `enable` starts the proxy every time the machine boots, and `--now` also starts it right away.
   </Tab>
   <Tab title="Docker">
-    Add `--restart unless-stopped` after `docker run -d` in the command from the dialog, then run the command. For example:
+    Run the following command, replacing `<proxy-token>` with the proxy token and `<your-instance-url>` with your Infisical instance URL:
 
     ```bash
     docker run -d --restart unless-stopped --name agent-vault-proxy \
       -p 17323:17323 \
       -v agent-vault-proxy:/etc/infisical/agent-vault \
+      -e INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> \
       infisical/cli agent-vault proxy \
-      --enrollment-token <enrollment-token> \
       --domain <your-instance-url>
     ```
 
-    With `--restart unless-stopped`, Docker starts the proxy again whenever Docker itself starts, unless you stopped the container yourself. Docker must also start at boot, which you can turn on with `sudo systemctl enable docker` on most Linux machines.
+    With `--restart unless-stopped`, Docker starts the proxy again whenever Docker itself starts, unless you stopped the container yourself. Docker must also start at boot, which you can turn on with `sudo systemctl enable docker` on most Linux machines. The volume keeps the proxy's [cache](/documentation/platform/agent-vault/proxies#command-flags), so the proxy can start after a reboot even if Infisical is unreachable.
   </Tab>
 </Tabs>
 
@@ -186,7 +209,7 @@ The proxy listens on port `17323`. Make sure the Hermes machine can reach that p
 
 ### Create a session
 
-Finally, create a [session](/documentation/platform/agent-vault/sessions) for the gateway. This will generate a token that Hermes can use to make authenticated requests via the proxy you enrolled.
+Finally, create a [session](/documentation/platform/agent-vault/sessions) for the gateway. This will generate a token that Hermes can use to make authenticated requests through the proxy you created.
 
 <Steps>
   <Step>
@@ -329,7 +352,7 @@ Hermes writes the gateway's logs to `~/.hermes/logs/gateway.log`. On Linux, you 
 
 <AccordionGroup>
   <Accordion title="The proxy's systemd service fails to start">
-    If `sudo systemctl status agent-vault-proxy` shows `status=203/EXEC`, systemd couldn't find the Infisical CLI. The unit from the enrollment dialog starts the proxy with `/usr/local/bin/infisical`, but your CLI may be installed somewhere else.
+    If `sudo systemctl status agent-vault-proxy` shows `status=203/EXEC`, systemd couldn't find the Infisical CLI. The [unit](#create-a-proxy) starts the proxy with `/usr/local/bin/infisical`, but your CLI may be installed somewhere else.
 
     Run `which infisical` to find your CLI's path. In `/etc/systemd/system/agent-vault-proxy.service`, replace `/usr/local/bin/infisical` at the start of the `ExecStart=` line with that path, then reload and restart the proxy:
 

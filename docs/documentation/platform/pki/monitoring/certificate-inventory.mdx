@@ -1,13 +1,13 @@
 ---
 title: "Certificate inventory"
-description: "Search, filter, and save views of every certificate in Certificate Manager."
+description: "Search, filter, and save views of every certificate in Infisical Certificate Management."
 ---
 
-The certificate inventory lists every certificate in Certificate Manager in one table: certificates issued through [Applications](/documentation/platform/pki/applications/overview), certificates you [import](/documentation/platform/pki/applications/certificates#importing-certificates), and certificates that [discovery](/documentation/platform/pki/discovery/overview) finds on your network. Use the inventory to find certificates that are about to expire, that have a key you want to retire, or that don't belong to an application yet.
+The certificate inventory lists every certificate in Infisical Certificate Management in one table: certificates issued through [Applications](/documentation/platform/pki/applications/overview), certificates you [import](/documentation/platform/pki/applications/certificates#importing-certificates), and certificates that [discovery](/documentation/platform/pki/discovery/overview) finds on your network. Use the inventory to find certificates that are about to expire, that have a key you want to retire, or that don't belong to an application yet.
 
 ## Prerequisites
 
-- The Certificate Manager **Admin** role (see [access control](/documentation/platform/pki/concepts/access-control#product-level))
+- The Certificate Management **Admin** role (see [access control](/documentation/platform/pki/concepts/access-control#product-level))
 
 If you don't have the **Admin** role, you can see the certificates in your applications on each application's [**Certificates** tab](/documentation/platform/pki/applications/certificates).
 
@@ -45,7 +45,7 @@ To filter the inventory:
 | **Enrollment Method** | The [enrollment method](/documentation/platform/pki/applications/enrollment-methods/overview) used to request the certificate: ACME, API, EST, or SCEP |
 | **Algorithm** | RSA-2048, RSA-3072, RSA-4096, ECDSA-P256, ECDSA-P384, ECDSA-P521, or one of the [post-quantum](/documentation/platform/pki/reference/pqc-algorithms) algorithms ML-DSA-44, ML-DSA-65, and ML-DSA-87 |
 | **Key Size** | 256, 384, or 521 bits for ECDSA keys, and 2048, 3072, or 4096 bits for RSA keys |
-| **Source** | Managed (issued through Certificate Manager), Discovered (found by a discovery scan), or Imported |
+| **Source** | Managed (issued through Infisical Certificate Management), Discovered (found by a discovery scan), or Imported |
 | **Certificate Authority** | The [CA](/documentation/platform/pki/ca/overview) that issued the certificate |
 | **Profile** | The [certificate profile](/documentation/platform/pki/settings/profiles) used to issue the certificate |
 | **Application** | The application the certificate belongs to |
@@ -59,7 +59,7 @@ The filters you apply appear as labels above the table. To remove one filter, se
 
 A view is a saved set of filters. The views menu next to the filter button shows the view you're using, which is **All Certificates** by default. The menu groups views into:
 
-- **System Views**: views that come with Certificate Manager
+- **System Views**: views that come with Infisical Certificate Management
 - **Shared Views**: views that an admin saved and shared with other admins
 - **My Views**: views you saved for yourself
 
