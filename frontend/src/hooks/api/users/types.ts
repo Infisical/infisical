@@ -102,8 +102,16 @@ export type TOrgUserAccessMembership = Pick<
   "id" | "role" | "roleId" | "status" | "isActive" | "lastLoginAuthMethod" | "lastLoginTime"
 > & { inviteEmail?: string | null };
 
+export type TOrgUserAccessUser = Pick<
+  OrgUser["user"],
+  "id" | "username" | "email" | "firstName" | "lastName"
+> & {
+  publicKey?: string | null;
+  superAdmin?: boolean | null;
+};
+
 export type TOrgUserAccess = {
-  user: OrgUser["user"];
+  user: TOrgUserAccessUser;
   membership: TOrgUserAccessMembership | null;
   groups: TOrgUserAccessGroup[];
 };
