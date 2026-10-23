@@ -1,6 +1,5 @@
 import crypto from "node:crypto";
 
-import * as x509 from "@peculiar/x509";
 import { fakeAwsConnection } from "e2e-test/fakes/aws-connection-fns";
 import { fakeS3Bucket } from "e2e-test/fakes/s3";
 import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
@@ -89,33 +88,13 @@ const createMemberIdentity = async (name: string) => {
   };
 };
 
-const generateRootCaPem = async () => {
-  const alg = { name: "ECDSA", namedCurve: "P-256", hash: "SHA-256" } as const;
-  const keys = await x509.cryptoProvider.get().subtle.generateKey(alg, false, ["sign", "verify"]);
-  const cert = await x509.X509CertificateGenerator.createSelfSigned({
-    serialNumber: "01",
-    name: "CN=agent-vault-test-ca",
-    notBefore: new Date(Date.now() - 60_000),
-    notAfter: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    signingAlgorithm: alg,
-    keys,
-    extensions: [new x509.BasicConstraintsExtension(true, 1, true)]
-  });
-  return cert.toString("pem");
-};
-
 const createProxy = async (name: string) => {
   const res = await inject("POST", "/api/v1/agent-vault/proxies", { name });
   expect(res.statusCode).toBe(200);
-  const { proxy, token } = JSON.parse(res.payload) as { proxy: { id: string; name: string }; token: string };
-
-  const enrolled = await testServer.inject({
-    method: "POST",
-    url: "/api/v1/agent-vault/proxy/login",
-    body: { method: "token", token, rootCaCertificate: await generateRootCaPem() }
-  });
-  expect(enrolled.statusCode, enrolled.payload).toBe(200);
-  const { accessToken } = JSON.parse(enrolled.payload) as { accessToken: string };
+  const { proxy, proxyToken: accessToken } = JSON.parse(res.payload) as {
+    proxy: { id: string; name: string };
+    proxyToken: string;
+  };
 
   return {
     ...proxy,

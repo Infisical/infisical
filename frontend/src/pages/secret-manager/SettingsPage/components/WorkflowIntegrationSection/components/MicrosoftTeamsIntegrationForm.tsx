@@ -1,4 +1,4 @@
-import { RefObject, useEffect } from "react";
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -11,13 +11,13 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
   FieldTitle,
-  FilterableSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -34,10 +34,7 @@ import {
   useGetWorkspaceWorkflowIntegrationConfig,
   useUpdateProjectWorkflowIntegrationConfig
 } from "@app/hooks/api";
-import {
-  MicrosoftTeamsIntegrationTeam,
-  WorkflowIntegrationPlatform
-} from "@app/hooks/api/workflowIntegrations/types";
+import { WorkflowIntegrationPlatform } from "@app/hooks/api/workflowIntegrations/types";
 
 const channelsSchema = z.object({
   teamId: z.string(),
@@ -100,10 +97,9 @@ type TChannelOption = {
 type Props = {
   onClose: () => void;
   onBack?: () => void;
-  menuContainer: RefObject<HTMLDivElement | null>;
 };
 
-export const MicrosoftTeamsIntegrationForm = ({ onClose, onBack, menuContainer }: Props) => {
+export const MicrosoftTeamsIntegrationForm = ({ onClose, onBack }: Props) => {
   const { currentProject } = useProject();
   const { data: microsoftTeamsConfig } = useGetWorkspaceWorkflowIntegrationConfig({
     projectId: currentProject?.id ?? "",
@@ -234,12 +230,13 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose, onBack, menuContainer }
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
               <FieldLabel htmlFor={`${fieldPrefix}-team`}>Microsoft Teams team</FieldLabel>
-              <FilterableSelect<MicrosoftTeamsIntegrationTeam>
-                inputId={`${fieldPrefix}-team`}
+              <Combobox
+                id={`${fieldPrefix}-team`}
+                isClearable={false}
                 options={sortedTeams}
                 value={sortedTeams?.find((team) => team.teamId === value) ?? null}
-                onChange={(selected) => {
-                  onChange((selected as MicrosoftTeamsIntegrationTeam | null)?.teamId ?? "");
+                onValueChange={(selected) => {
+                  onChange(selected.teamId);
                   // Channels belong to a team; clear stale selections when the team changes.
                   setValue(`${fieldPrefix}.channelIds`, [], { shouldDirty: true });
                 }}
@@ -250,9 +247,6 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose, onBack, menuContainer }
                 }
                 isLoading={isLoadingMicrosoftTeamsIntegrationTeams}
                 isError={Boolean(error)}
-                menuPortalTarget={menuContainer.current}
-                menuPosition="fixed"
-                menuPlacement="bottom"
               />
               <FieldError>{error?.message}</FieldError>
             </Field>
@@ -264,27 +258,18 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose, onBack, menuContainer }
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <Field>
               <FieldLabel htmlFor={`${fieldPrefix}-channels`}>Microsoft Teams channels</FieldLabel>
-              <FilterableSelect
-                isMulti
-                inputId={`${fieldPrefix}-channels`}
+              <Combobox
+                multiple
+                id={`${fieldPrefix}-channels`}
                 options={teamChannels}
                 value={teamChannels.filter((channel) => value?.includes(channel.channelId))}
-                onChange={(selected) =>
-                  onChange(
-                    (selected as readonly TChannelOption[]).map((channel) => channel.channelId)
-                  )
-                }
+                onValueChange={(selected) => onChange(selected.map((channel) => channel.channelId))}
                 getOptionValue={(option) => option.channelId}
                 getOptionLabel={(option) => option.channelName}
                 placeholder={selectedTeamId ? "Select channels..." : "Select a team first"}
                 isDisabled={!selectedTeamId}
                 isLoading={isLoadingMicrosoftTeamsIntegrationTeams}
                 isError={Boolean(error)}
-                menuPortalTarget={menuContainer.current}
-                menuPosition="fixed"
-                menuPlacement="bottom"
-                closeMenuOnSelect={false}
-                hideSelectedOptions={false}
               />
               <FieldError>{error?.message}</FieldError>
             </Field>

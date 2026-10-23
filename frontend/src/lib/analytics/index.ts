@@ -17,6 +17,10 @@ export const analytics = {
     const telemetry = new Telemetry().getInstance();
     telemetry.capture(AnalyticsEvent.SignupFlowCompleted, properties);
   },
+  captureOnboardingDocumentationClicked() {
+    const telemetry = new Telemetry().getInstance();
+    telemetry.capture(AnalyticsEvent.OnboardingDocumentationClicked);
+  },
   captureForOrganization<Event extends OrganizationAnalyticsEvent>(
     event: Event,
     orgId: string,
@@ -35,6 +39,7 @@ export { AnalyticsEvent };
 export type {
   BillingCancellationAction,
   FolderAccessGrantSheetSource,
+  OnboardingResource,
   SecretsAddResourceAction,
   SecretsAddResourceMenuLevel,
   SecretsAddResourceMenuSource

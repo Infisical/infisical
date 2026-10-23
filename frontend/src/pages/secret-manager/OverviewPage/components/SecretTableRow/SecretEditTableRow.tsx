@@ -110,6 +110,7 @@ import {
 } from "../tableRowActionStyles";
 import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
+import { SecretLastEditedTime } from "./SecretLastEditedTime";
 import { SecretMetadataForm } from "./SecretMetadataForm";
 import { SecretReminderForm } from "./SecretReminderForm";
 import { SecretTagForm } from "./SecretTagForm";
@@ -183,6 +184,8 @@ type Props = {
   onCopySecret?: () => void;
   onAccessInsightsUpgrade: (onGranted: () => void) => void;
   onExpandedChange?: (isExpanded: boolean) => void;
+  lastEdited?: Pick<SecretV3RawSanitized, "createdAt" | "updatedAt" | "version">;
+  timestampField?: "createdAt" | "updatedAt";
 };
 
 export const SecretEditTableRow = ({
@@ -216,6 +219,8 @@ export const SecretEditTableRow = ({
   isBatchMode,
   isPendingCreate,
   isPendingDelete,
+  lastEdited,
+  timestampField,
   onBatchRevert,
   hasPendingChange,
   hasPendingValueChange,
@@ -226,7 +231,7 @@ export const SecretEditTableRow = ({
   onExpandedChange
 }: Props) => {
   const telemetry = useOverviewTelemetry();
-  const valueSheetFlow = useRef<OverviewFlowHandle>();
+  const valueSheetFlow = useRef<OverviewFlowHandle>(undefined);
   const valueSheetOwner = useRef({});
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret",
@@ -477,7 +482,7 @@ export const SecretEditTableRow = ({
     | undefined;
   // Serialize metadata for effect dependency since watch() returns same array ref for nested changes
   const serializedMetadata = JSON.stringify(watchedMetadata);
-  const batchAutoApplyTimer = useRef<ReturnType<typeof setTimeout>>();
+  const batchAutoApplyTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastAppliedRef = useRef<{
     value: unknown;
     key: unknown;
@@ -1119,6 +1124,14 @@ export const SecretEditTableRow = ({
     actionBarResizeObserverRef.current = observer;
   }, []);
 
+  const isEditValueDisabled =
+    isPendingDelete ||
+    isImportedSecret ||
+    isManagedSecret ||
+    isLoadingEditValue ||
+    Boolean(revokedProjectFolderGrant) ||
+    (isCreatable ? !canCreate : !canEditSecretValue);
+
   const getTooltipContentForSecretSharing = () => {
     if (!currentProject.secretSharing) {
       return "Secret Sharing Disabled";
@@ -1584,42 +1597,49 @@ export const SecretEditTableRow = ({
             )}
           <Tooltip>
             <TooltipTrigger asChild>
-              <IconButton
-                aria-label="Edit secret value"
-                variant="ghost"
-                size="xs"
-                className="size-7 border-0"
-                isDisabled={
-                  isPendingDelete ||
-                  isImportedSecret ||
-                  isManagedSecret ||
-                  isLoadingEditValue ||
-                  Boolean(revokedProjectFolderGrant) ||
-                  (isCreatable ? !canCreate : !canEditSecretValue)
-                }
-                onClick={() => {
-                  if (isSingleEnvView && !isCreatable && !isOverride) {
-                    handleOpenValueSheet();
-                    return;
-                  }
-                  setFocus("value", { shouldSelect: true });
-                }}
+              <span
+                className="inline-flex"
+                {...(isEditValueDisabled && {
+                  role: "button",
+                  tabIndex: 0,
+                  "aria-disabled": true,
+                  "aria-label": "Edit secret value"
+                })}
               >
-                <EditIcon className="size-3.5" />
-              </IconButton>
+                <IconButton
+                  aria-label="Edit secret value"
+                  variant="ghost"
+                  size="xs"
+                  className="size-7 border-0"
+                  isDisabled={isEditValueDisabled}
+                  onClick={() => {
+                    if (isSingleEnvView && !isCreatable && !isOverride) {
+                      handleOpenValueSheet();
+                      return;
+                    }
+                    setFocus("value", { shouldSelect: true });
+                  }}
+                >
+                  <EditIcon className="size-3.5" />
+                </IconButton>
+              </span>
             </TooltipTrigger>
             <TooltipContent>
-              {isImportedSecret
-                ? "Cannot Edit Imported Secret"
-                : isHoneyTokenSecret
-                  ? "Cannot Edit Honey Token Secret"
-                  : isRotatedSecret
-                    ? "Cannot Edit Rotated Secret"
-                    : (isCreatable ? !canCreate : !canEditSecretValue)
-                      ? "Access Denied"
-                      : isCreatable
-                        ? "Add Value"
-                        : "Edit Value"}
+              {isPendingDelete
+                ? "Discard Pending Changes First"
+                : isImportedSecret
+                  ? "Cannot Edit Imported Secret"
+                  : isHoneyTokenSecret
+                    ? "Honey token secrets are managed by Infisical and can't be edited"
+                    : isRotatedSecret
+                      ? "Rotated secrets are managed by their secret rotation and can't be edited"
+                      : revokedProjectFolderGrant
+                        ? "This secret share was revoked, so it can't be edited"
+                        : (isCreatable ? !canCreate : !canEditSecretValue)
+                          ? "Access Denied"
+                          : isCreatable
+                            ? "Add Value"
+                            : "Edit Value"}
             </TooltipContent>
           </Tooltip>
           <Tooltip>
@@ -2224,43 +2244,46 @@ export const SecretEditTableRow = ({
             event.currentTarget.querySelector("input")?.focus();
           }}
         >
-          <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
-            <div className="flex items-center gap-1.5">
-              {showCommentPreview ? (
-                nameInput
-              ) : (
-                <PopoverAnchor asChild>
-                  <span className="inline-flex min-w-0">{nameInput}</span>
-                </PopoverAnchor>
-              )}
-              {showCommentPreview && (
-                <PopoverAnchor asChild>
-                  <span className="inline-flex shrink-0">
-                    <Tooltip open={isCommentOpen ? false : undefined}>
-                      <TooltipTrigger asChild>
-                        <IconButton
-                          aria-label="View secret comment"
-                          variant="ghost-muted"
-                          size="2xs"
-                          onClick={() => {
-                            if (!isPendingDelete) setIsCommentOpen(true);
-                          }}
-                        >
-                          <MessageSquareIcon />
-                        </IconButton>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-72">
-                        <p className="line-clamp-2 break-words whitespace-pre-wrap">
-                          {commentPreview}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </span>
-                </PopoverAnchor>
-              )}
-            </div>
-            {commentPopoverContent}
-          </Popover>
+          <div className="flex min-w-0 items-center gap-2">
+            <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
+              <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                {showCommentPreview ? (
+                  nameInput
+                ) : (
+                  <PopoverAnchor asChild>
+                    <span className="inline-flex min-w-0">{nameInput}</span>
+                  </PopoverAnchor>
+                )}
+                {showCommentPreview && (
+                  <PopoverAnchor asChild>
+                    <span className="inline-flex shrink-0">
+                      <Tooltip open={isCommentOpen ? false : undefined}>
+                        <TooltipTrigger asChild>
+                          <IconButton
+                            aria-label="View secret comment"
+                            variant="ghost-muted"
+                            size="2xs"
+                            onClick={() => {
+                              if (!isPendingDelete) setIsCommentOpen(true);
+                            }}
+                          >
+                            <MessageSquareIcon />
+                          </IconButton>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-72">
+                          <p className="line-clamp-2 break-words whitespace-pre-wrap">
+                            {commentPreview}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </span>
+                  </PopoverAnchor>
+                )}
+              </div>
+              {commentPopoverContent}
+            </Popover>
+            <SecretLastEditedTime secret={lastEdited} field={timestampField} />
+          </div>
         </TableCell>
         <TableCell
           className={twMerge("relative w-full max-w-0", isOverride && "border-b-border/50")}

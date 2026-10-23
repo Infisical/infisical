@@ -22,6 +22,7 @@ import { useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
+import { analytics } from "@app/lib/analytics";
 
 enum OnboardingSection {
   Loading = "loading",
@@ -194,6 +195,7 @@ export const SignupOnboardingPage = () => {
       variant={isWorkspaceSetup ? "focused" : "split"}
       contentClassName={isWorkspaceSetup ? "max-w-3xl" : undefined}
       bottomContent={section === OnboardingSection.OrgName ? <AuthTermsNotice /> : undefined}
+      onDocumentationClick={analytics.captureOnboardingDocumentationClicked}
     >
       <Helmet>
         <title>{t("common.head-title", { title: t("signup.title") })}</title>

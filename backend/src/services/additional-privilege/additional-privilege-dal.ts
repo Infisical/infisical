@@ -10,6 +10,19 @@ import { ActorType } from "@app/services/auth/auth-type";
 
 export type TAdditionalPrivilegeDALFactory = ReturnType<typeof additionalPrivilegeDALFactory>;
 
+const groupApproverUserIdsByPolicyId = (
+  rows: { policyId: string; approverUserId?: string | null; groupMemberUserId?: string | null }[]
+) =>
+  rows.reduce<Record<string, string[]>>((acc, row) => {
+    const uid = String(row.approverUserId || row.groupMemberUserId || "");
+    if (uid) {
+      const pid = String(row.policyId);
+      if (!acc[pid]) acc[pid] = [];
+      if (!acc[pid].includes(uid)) acc[pid].push(uid);
+    }
+    return acc;
+  }, {});
+
 export const additionalPrivilegeDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AdditionalPrivilege);
 
@@ -23,21 +36,40 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
         `${TableName.AdditionalPrivilege}.id`,
         `${TableName.AccessApprovalRequest}.privilegeId`
       )
+      .leftJoin(
+        TableName.ApprovalRequestGrants,
+        `${TableName.AdditionalPrivilege}.grantId`,
+        `${TableName.ApprovalRequestGrants}.id`
+      )
+      .leftJoin(
+        TableName.ApprovalRequests,
+        `${TableName.ApprovalRequestGrants}.requestId`,
+        `${TableName.ApprovalRequests}.id`
+      )
       .select(selectAllTableCols(TableName.AdditionalPrivilege))
       .select(
         db.ref("id").withSchema(TableName.AccessApprovalRequest).as("accessApprovalRequestId"),
-        db.ref("policyId").withSchema(TableName.AccessApprovalRequest).as("accessApprovalPolicyId")
+        db.ref("policyId").withSchema(TableName.AccessApprovalRequest).as("accessApprovalPolicyId"),
+        db.ref("id").withSchema(TableName.ApprovalRequests).as("approvalRequestId"),
+        db.ref("policyId").withSchema(TableName.ApprovalRequests).as("approvalPolicyId")
       );
 
-    const policyIds = [
-      ...new Set(docs.map((d) => String(d.accessApprovalPolicyId)).filter((id) => id !== "null" && id !== "undefined"))
+    const legacyPolicyIds = [
+      ...new Set(
+        docs
+          .filter((doc) => !doc.grantId && doc.accessApprovalPolicyId)
+          .map((doc) => String(doc.accessApprovalPolicyId))
+      )
+    ];
+    const globalPolicyIds = [
+      ...new Set(docs.filter((doc) => doc.grantId && doc.approvalPolicyId).map((doc) => String(doc.approvalPolicyId)))
     ];
 
-    let approversByPolicyId: Record<string, string[]> = {};
-    if (policyIds.length > 0) {
+    let legacyApproversByPolicyId: Record<string, string[]> = {};
+    if (legacyPolicyIds.length > 0) {
       const approverRows = await db
         .replicaNode()(TableName.AccessApprovalPolicyApprover)
-        .whereIn(`${TableName.AccessApprovalPolicyApprover}.policyId`, policyIds)
+        .whereIn(`${TableName.AccessApprovalPolicyApprover}.policyId`, legacyPolicyIds)
         .leftJoin(
           TableName.UserGroupMembership,
           `${TableName.AccessApprovalPolicyApprover}.approverGroupId`,
@@ -49,24 +81,49 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
           db.ref("userId").withSchema(TableName.UserGroupMembership).as("groupMemberUserId")
         );
 
-      approversByPolicyId = approverRows.reduce<Record<string, string[]>>((acc, row) => {
-        const uid = String(row.approverUserId || row.groupMemberUserId || "");
-        if (uid) {
-          const pid = String(row.policyId);
-          if (!acc[pid]) acc[pid] = [];
-          if (!acc[pid].includes(uid)) acc[pid].push(uid);
-        }
-        return acc;
-      }, {});
+      legacyApproversByPolicyId = groupApproverUserIdsByPolicyId(approverRows);
     }
 
-    return docs.map((doc) => {
+    let globalApproversByPolicyId: Record<string, string[]> = {};
+    if (globalPolicyIds.length > 0) {
+      const approverRows = await db
+        .replicaNode()(TableName.ApprovalPolicySteps)
+        .whereIn(`${TableName.ApprovalPolicySteps}.policyId`, globalPolicyIds)
+        .join(
+          TableName.ApprovalPolicyStepApprovers,
+          `${TableName.ApprovalPolicySteps}.id`,
+          `${TableName.ApprovalPolicyStepApprovers}.policyStepId`
+        )
+        .leftJoin(
+          TableName.UserGroupMembership,
+          `${TableName.ApprovalPolicyStepApprovers}.groupId`,
+          `${TableName.UserGroupMembership}.groupId`
+        )
+        .select(
+          db.ref("policyId").withSchema(TableName.ApprovalPolicySteps),
+          db.ref("userId").withSchema(TableName.ApprovalPolicyStepApprovers).as("approverUserId"),
+          db.ref("userId").withSchema(TableName.UserGroupMembership).as("groupMemberUserId")
+        );
+
+      globalApproversByPolicyId = groupApproverUserIdsByPolicyId(approverRows);
+    }
+
+    return docs.map(({ approvalRequestId, approvalPolicyId, ...doc }) => {
+      if (doc.grantId) {
+        return {
+          ...doc,
+          isLinkedToAccessApproval: Boolean(approvalRequestId),
+          accessApprovalRequestId: (approvalRequestId ?? null) as string | null,
+          policyApproverUserIds: approvalPolicyId ? (globalApproversByPolicyId[String(approvalPolicyId)] ?? []) : []
+        };
+      }
+
       const pid = doc.accessApprovalPolicyId ? String(doc.accessApprovalPolicyId) : null;
       return {
         ...doc,
         isLinkedToAccessApproval: Boolean(doc.accessApprovalRequestId),
         accessApprovalRequestId: (doc.accessApprovalRequestId ?? null) as string | null,
-        policyApproverUserIds: pid ? (approversByPolicyId[pid] ?? []) : []
+        policyApproverUserIds: pid ? (legacyApproversByPolicyId[pid] ?? []) : []
       };
     });
   };

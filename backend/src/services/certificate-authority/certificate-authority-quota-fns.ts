@@ -1,13 +1,14 @@
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TFeatureSet } from "@app/ee/services/license/license-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { isInstanceWidePkiQuota } from "@app/services/certificate-common/certificate-quota-scope";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
 import { TCertificateAuthorityDALFactory } from "./certificate-authority-dal";
 
 export type TCertificateAuthorityQuotaDeps = {
   projectDAL: Pick<TProjectDALFactory, "findById">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getInstanceType">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "countCasByOrgId" | "countInternalCasByOrgId">;
 };
 
@@ -26,7 +27,8 @@ export const resolveEffectiveMaxCas = (plan: Pick<TFeatureSet, "maxCas" | "maxIn
 // that only sat in the former was bypassable.
 //
 // Two independent caps, whichever binds first: maxCas covers every type, maxInternalCas covers
-// INTERNAL only. A tier sets one and leaves the other null.
+// INTERNAL only. A tier sets one and leaves the other null. Both count the root org's tree, or the
+// whole instance under a self-hosted license (isInstanceWidePkiQuota).
 export const assertCertificateAuthorityQuota = async ({
   projectId,
   isInternal,
@@ -41,21 +43,24 @@ export const assertCertificateAuthorityQuota = async ({
 
   const plan = await deps.licenseService.getPlan(project.orgId);
   const maxCas = resolveEffectiveMaxCas(plan);
+  const isInstanceWide = isInstanceWidePkiQuota(deps.licenseService);
+  const countOrgId = isInstanceWide ? null : project.orgId;
+  const scopeNote = isInstanceWide ? " across this instance" : "";
 
   if (typeof maxCas === "number") {
-    const used = await deps.certificateAuthorityDAL.countCasByOrgId(project.orgId);
+    const used = await deps.certificateAuthorityDAL.countCasByOrgId(countOrgId);
     if (used >= maxCas) {
       throw new BadRequestError({
-        message: `Failed to create certificate authority due to plan limit reached (${used} of ${maxCas} certificate authorities). Upgrade plan to add more certificate authorities.`
+        message: `Failed to create certificate authority due to plan limit reached (${used} of ${maxCas} certificate authorities${scopeNote}). Upgrade plan to add more certificate authorities.`
       });
     }
   }
 
   if (isInternal && typeof plan.maxInternalCas === "number") {
-    const used = await deps.certificateAuthorityDAL.countInternalCasByOrgId(project.orgId);
+    const used = await deps.certificateAuthorityDAL.countInternalCasByOrgId(countOrgId);
     if (used >= plan.maxInternalCas) {
       throw new BadRequestError({
-        message: `Failed to create internal certificate authority due to plan limit reached (${used} of ${plan.maxInternalCas} internal certificate authorities). Upgrade plan to add more internal certificate authorities.`
+        message: `Failed to create internal certificate authority due to plan limit reached (${used} of ${plan.maxInternalCas} internal certificate authorities${scopeNote}). Upgrade plan to add more internal certificate authorities.`
       });
     }
   }
