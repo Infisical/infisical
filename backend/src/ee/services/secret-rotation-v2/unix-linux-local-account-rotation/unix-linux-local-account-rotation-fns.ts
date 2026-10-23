@@ -193,7 +193,7 @@ const changeManagedPassword = async (
 
 export type TAdminCommandResult = { output: string; exitCode: number | null };
 
-export const runAdminCommand = (
+export const runAdminCommand = async (
   stream: TInteractiveShellStream,
   appConnectionPassword?: string
 ): Promise<TAdminCommandResult> => {
@@ -205,7 +205,7 @@ export const runAdminCommand = (
     exitCode = code;
   });
 
-  return runExpectSession({
+  await runExpectSession({
     stream,
     secrets: [appConnectionPassword],
 
@@ -236,7 +236,9 @@ export const runAdminCommand = (
     overflowMessage: (t) =>
       `Command failed: the host sent more than ${MAX_BUFFER_SIZE / 1024} KB of output without finishing. Output: ${t}`,
     timeoutMessage: (t) => `Command timed out. Output: ${t}`
-  }).then(() => ({ output, exitCode }));
+  });
+
+  return { output, exitCode };
 };
 
 const createAdminCommandRunner =
