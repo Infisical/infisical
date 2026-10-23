@@ -108,6 +108,6 @@
   border-radius: calc(var(--v4-radius-panel) * var(--corners));
 }
 .full > div {
-  width: 1706px;
-  height: 971px;
+  width: 100%;
+  height: min(100dvh, 971px);
 }

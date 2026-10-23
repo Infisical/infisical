@@ -33,7 +33,7 @@ export const comparisonPages = [
     id: "compare-secrets",
     screen: "secrets",
     title: "Secrets",
-    description: "payments-api in Development: 2 folders and 11 secrets in a DataTable."
+    description: "A local Secrets Overview with scoped resources and interactive fixture scenarios."
   },
   {
     id: "compare-access",

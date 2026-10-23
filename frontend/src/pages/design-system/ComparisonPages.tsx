@@ -1,5 +1,6 @@
 import { type ComponentType, lazy, Suspense } from "react";
 
+import { SecretsScenarios } from "./compositions/secrets-scenarios";
 import { ComparisonSlider } from "./comparison-slider";
 import { PageHeading } from "./doc-parts";
 import { type ComparisonPage, comparisonPages } from "./navigation";
@@ -31,6 +32,13 @@ export const ComparisonPageView = ({ page }: { page: ComparisonPage }) => {
   const entry = comparisonPages.find((item) => item.id === page);
   if (!entry) return null;
   const Screen = screens[entry.screen];
+  const comparison = (
+    <ComparisonSlider
+      title={entry.title}
+      before={{ light: shot(entry.screen, "light"), dark: shot(entry.screen, "dark") }}
+      After={Screen}
+    />
+  );
   return (
     <div>
       <PageHeading title={entry.title} />
@@ -44,11 +52,11 @@ export const ComparisonPageView = ({ page }: { page: ComparisonPage }) => {
         click through it.
       </p>
       <Suspense fallback={<p role="status">Loading the v4 page</p>}>
-        <ComparisonSlider
-          title={entry.title}
-          before={{ light: shot(entry.screen, "light"), dark: shot(entry.screen, "dark") }}
-          After={Screen}
-        />
+        {entry.screen === "secrets" ? (
+          <SecretsScenarios>{comparison}</SecretsScenarios>
+        ) : (
+          comparison
+        )}
       </Suspense>
     </div>
   );
