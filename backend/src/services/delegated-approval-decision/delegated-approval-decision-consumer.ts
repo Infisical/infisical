@@ -3,10 +3,13 @@ import {
   isDelegatedApprovalCallbackEvent,
   TDelegatedApprovalCallbackEventPayload
 } from "@app/services/delegated-approval-callback/delegated-approval-callback-events";
-import { parseEventPayload, runEventsSerially } from "@app/services/event-outbox/event-outbox-fns";
+import { parseEventPayload, runEventsConcurrentlyByKey } from "@app/services/event-outbox/event-outbox-fns";
 import { IEventConsumer, TEvent, TEventConsumerResult } from "@app/services/event-outbox/event-outbox-types";
 
-import { DELEGATED_APPROVAL_DECISION_CONSUMER } from "./delegated-approval-decision-constants";
+import {
+  DELEGATED_APPROVAL_DECISION_CONCURRENCY,
+  DELEGATED_APPROVAL_DECISION_CONSUMER
+} from "./delegated-approval-decision-constants";
 import { TDelegatedApprovalDecisionServiceFactory } from "./delegated-approval-decision-service";
 
 type TDelegatedApprovalDecisionConsumerDep = {
@@ -27,7 +30,11 @@ export const delegatedApprovalDecisionConsumerFactory = ({
     if (failure) return failure;
 
     const { delegatedRequestId, externalId } = data;
-    const outcome = await delegatedApprovalDecisionService.applyDecision({ delegatedRequestId, externalId });
+    const outcome = await delegatedApprovalDecisionService.applyDecision({
+      delegatedRequestId,
+      externalId,
+      isFinalAttempt: event.isFinalAttempt
+    });
     return { id, ...outcome };
   };
 
@@ -35,6 +42,11 @@ export const delegatedApprovalDecisionConsumerFactory = ({
     name: DELEGATED_APPROVAL_DECISION_CONSUMER,
     payloadSchema: DelegatedApprovalCallbackEventPayloadSchema,
     subscribesTo: isDelegatedApprovalCallbackEvent,
-    handle: (events) => runEventsSerially(events, $handleEvent)
+    handle: (events) =>
+      runEventsConcurrentlyByKey(events, {
+        keyOf: (event) => DelegatedApprovalCallbackEventPayloadSchema.safeParse(event.payload).data?.delegatedRequestId,
+        concurrency: DELEGATED_APPROVAL_DECISION_CONCURRENCY,
+        handleEvent: $handleEvent
+      })
   };
 };

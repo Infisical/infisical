@@ -197,12 +197,12 @@ differs from the one stored for the request; the provider keeps the first token 
 another, so a mismatch is unrecoverable. The provider calls `POST /api/v1/delegated-approvals/callback` (unauthenticated, IP rate limited)
 with the token in the `Infisical-Approval-Token` header and a body naming the event and the provider's record id;
 the body carries no decision, which a later worker reads back from the provider. The route finds the row by
-`providerRequestId` (404 when none), checks the token, and only then counts the callback in `callbackAttempts`; on
+`providerRequestId`, checks the token, and only then counts the callback in `callbackAttempts`; on
 the sixth callback with a valid token it sets the row `failed` with a readable `statusReason` and cancels the
 attached approval request in the same transaction, so the policy is freed and the UI stops offering Cancel. A
 refused callback is never counted: the limit closes the request, so counting it would let anyone who knows the
 record id cancel the request, and the token is 256 random bits, so there is nothing to brute force. Every other
-refusal (bad or missing token, request not `waiting_approval`)
+refusal (no row for the record id, bad or missing token, request not `waiting_approval`)
 gets one neutral 403 while the reason goes to the log. An accepted callback only emits an outbox event, and
 only when it wins `claimDecisionRead`: a conditional update of `decisionReadRequestedAt`, in the emit's
 transaction, that one of any number of concurrent callbacks wins. A repeat while a read-back is still in
@@ -211,9 +211,12 @@ flight gets the same 200 and emits nothing; a claim older than `DELEGATED_APPROV
 ran out of retries still starts one. `eventType` is the
 body's event and `idempotencyKey` is the delegated request id plus the attempt count. The
 `delegated-approval-decision` consumer (`backend/src/services/delegated-approval-decision/`, a thin outbox
-adapter over `delegatedApprovalDecisionService.applyDecision`) then reads the decision back through the
+adapter over `delegatedApprovalDecisionService.applyDecision` that, like dispatch, reads up to 10 different
+requests at once and one request's events serially) then reads the decision back through the
 policy's app connection: `TDelegatedApprovalProvider.fetchDecision` returns `pending` or a decision with
-the permissions the provider holds, and the consumer answers `Retry` for `pending`, compares the approved
+the permissions the provider holds, and the consumer answers `Retry` for `pending` (on the last attempt, `Failed`
+with the request left open and a `statusReason` saying Infisical stopped checking and the callback has to be
+sent again, which the claim TTL lets start a new read-back), compares the approved
 permissions with the ones it dispatched after both go through `normalizeDelegatedApprovalPermissions` (set
 comparison: padding, order, duplicates and case never count as a change), and finalizes in one transaction
 that locks the approval request, moves the delegated row `waiting_approval` → `approved` / `rejected`, and

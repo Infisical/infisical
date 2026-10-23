@@ -1,3 +1,4 @@
+import pLimit from "p-limit";
 import { z } from "zod";
 
 import { EventResultStatus, TEvent, TEventConsumerResult } from "./event-outbox-types";
@@ -43,4 +44,35 @@ export const runEventsSerially = async (
   }
 
   return results;
+};
+
+export const runEventsConcurrentlyByKey = async (
+  events: TEvent[],
+  {
+    keyOf,
+    concurrency,
+    handleEvent
+  }: {
+    keyOf: (event: TEvent) => string | undefined;
+    concurrency: number;
+    handleEvent: (event: TEvent) => Promise<TEventConsumerResult>;
+  }
+): Promise<TEventConsumerResult[]> => {
+  const groups: TEvent[][] = [];
+  const indexByKey = new Map<string, number>();
+
+  events.forEach((event) => {
+    const key = keyOf(event) ?? `event:${String(event.id)}`;
+    const existing = indexByKey.get(key);
+    if (existing === undefined) {
+      indexByKey.set(key, groups.length);
+      groups.push([event]);
+    } else {
+      groups[existing].push(event);
+    }
+  });
+
+  const limit = pLimit(concurrency);
+  const groupResults = await Promise.all(groups.map((group) => limit(() => runEventsSerially(group, handleEvent))));
+  return groupResults.flat();
 };

@@ -1,5 +1,4 @@
 import { UnrecoverableError } from "bullmq";
-import pLimit from "p-limit";
 
 import { ProjectType } from "@app/db/schemas";
 import { logger } from "@app/lib/logger";
@@ -8,7 +7,7 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { TDelegatedApprovalCallbackServiceFactory } from "@app/services/delegated-approval-callback/delegated-approval-callback-service";
-import { parseEventPayload, runEventsSerially } from "@app/services/event-outbox/event-outbox-fns";
+import { parseEventPayload, runEventsConcurrentlyByKey } from "@app/services/event-outbox/event-outbox-fns";
 import {
   EventResultStatus,
   IEventConsumer,
@@ -301,36 +300,13 @@ export const delegatedApprovalDispatchConsumerFactory = ({
     return { id: String(event.id), ...(await $dispatch(data.delegatedRequestId, event.isFinalAttempt)) };
   };
 
-  // Unreadable payloads have no request id, so each one is its own group and cannot block another request.
-  const $groupByRequest = (events: TEvent[]): TEvent[][] => {
-    const groups: TEvent[][] = [];
-    const indexByRequest = new Map<string, number>();
-
-    events.forEach((event) => {
-      const payload = DelegatedApprovalDispatchRequestedPayloadSchema.safeParse(event.payload);
-      const key = payload.success ? payload.data.delegatedRequestId : `event:${String(event.id)}`;
-      const existing = indexByRequest.get(key);
-      if (existing === undefined) {
-        indexByRequest.set(key, groups.length);
-        groups.push([event]);
-      } else {
-        groups[existing].push(event);
-      }
-    });
-
-    return groups;
-  };
-
   // Events for one request run serially, so two of them cannot both pass the providerRequestId check.
-  const handle = async (events: TEvent[]): Promise<TEventConsumerResult[]> => {
-    const limit = pLimit(DELEGATED_APPROVAL_DISPATCH_CONCURRENCY);
-
-    const groupResults = await Promise.all(
-      $groupByRequest(events).map((group) => limit(() => runEventsSerially(group, $handleEvent)))
-    );
-
-    return groupResults.flat();
-  };
+  const handle = (events: TEvent[]): Promise<TEventConsumerResult[]> =>
+    runEventsConcurrentlyByKey(events, {
+      keyOf: (event) => DelegatedApprovalDispatchRequestedPayloadSchema.safeParse(event.payload).data?.delegatedRequestId,
+      concurrency: DELEGATED_APPROVAL_DISPATCH_CONCURRENCY,
+      handleEvent: $handleEvent
+    });
 
   return {
     name: DELEGATED_APPROVAL_DISPATCH_CONSUMER,

@@ -1,5 +1,4 @@
 import { getConfig } from "@app/lib/config/env";
-import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { DelegatedApprovalRequestStatus } from "@app/services/delegated-approval/delegated-approval-enums";
 import { failDelegatedApprovalRequest } from "@app/services/delegated-approval/delegated-approval-request-fns";
@@ -64,9 +63,7 @@ export const delegatedApprovalCallbackServiceFactory = ({
   const handleCallback = async ({ token, event, externalId }: THandleDelegatedApprovalCallbackDTO) => {
     const delegatedRequest = await delegatedApprovalRequestDAL.findByProviderRequestId(externalId);
     if (!delegatedRequest) {
-      throw new NotFoundError({
-        message: `No delegated approval request matches external ID '${externalId}'`
-      });
+      throw rejectApprovalCallback("no request matches the external ID", { externalId });
     }
 
     const logContext = { delegatedRequestId: delegatedRequest.id, externalId };

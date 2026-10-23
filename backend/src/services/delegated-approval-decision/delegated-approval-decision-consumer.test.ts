@@ -11,9 +11,17 @@ import { TDelegatedApprovalRequestDetails } from "@app/services/delegated-approv
 import { DelegatedApprovalCallbackEvent } from "@app/services/delegated-approval-callback/delegated-approval-callback-enums";
 import { eventOutboxRegistryFactory } from "@app/services/event-outbox/event-outbox-registry";
 import { eventOutboxServiceFactory } from "@app/services/event-outbox/event-outbox-service";
-import { EventOutboxStatus, EventResultStatus, TEvent } from "@app/services/event-outbox/event-outbox-types";
+import {
+  EventOutboxStatus,
+  EventResultStatus,
+  MAX_OUTBOX_ATTEMPTS,
+  TEvent
+} from "@app/services/event-outbox/event-outbox-types";
 
-import { DELEGATED_APPROVAL_DECISION_RETRY_HINT } from "./delegated-approval-decision-constants";
+import {
+  DELEGATED_APPROVAL_DECISION_RETRY_HINT,
+  DELEGATED_APPROVAL_DECISION_STOPPED_HINT
+} from "./delegated-approval-decision-constants";
 import { delegatedApprovalDecisionConsumerFactory } from "./delegated-approval-decision-consumer";
 import { DelegatedApprovalDecision, DelegatedApprovalDecisionOutcome } from "./delegated-approval-decision-enums";
 import { delegatedApprovalDecisionServiceFactory } from "./delegated-approval-decision-service";
@@ -146,7 +154,16 @@ const buildConsumer = ({
       findById: vi.fn(async () => approval),
       findByIdForUpdate: vi.fn(async () => approval),
       updateById,
-      transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(TX))
+      // Rolls back on a throw, as Postgres would, so a failed finalize leaves both rows as they were.
+      transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
+        const snapshot = { row, approval };
+        try {
+          return await fn(TX);
+        } catch (error) {
+          ({ row, approval } = snapshot);
+          throw error;
+        }
+      })
     },
     appConnectionDAL: { findById: vi.fn().mockResolvedValue(connection) },
     membershipDAL: { isUserProjectMember: vi.fn().mockResolvedValue(isRequesterProjectMember) },
@@ -485,6 +502,133 @@ describe("delegatedApprovalDecisionConsumer", () => {
     expect(row()?.status).toBe(DelegatedApprovalRequestStatus.WaitingApproval);
   });
 
+  test("stops checking on the last attempt without closing a request that has no decision yet", async () => {
+    fetchDecision.mockResolvedValueOnce({ status: "pending", reason: "ServiceNow has not recorded a decision yet." });
+    const { consumer, row, approval, createAuditLog } = buildConsumer();
+
+    const results = await consumer.handle([makeEvent({ isFinalAttempt: true })]);
+
+    expect(results).toEqual([
+      { id: "1", status: EventResultStatus.Failed, error: "ServiceNow has not recorded a decision yet." }
+    ]);
+    expect(row()).toMatchObject({
+      status: DelegatedApprovalRequestStatus.WaitingApproval,
+      details: {
+        statusReason: `ServiceNow has not recorded a decision yet. ${DELEGATED_APPROVAL_DECISION_STOPPED_HINT}`
+      }
+    });
+    expect(approval()?.status).toBe(ApprovalRequestStatus.Pending);
+    expect(createAuditLog).not.toHaveBeenCalled();
+  });
+
+  test("stops checking on the last attempt after a transient read failure, keeping the request open", async () => {
+    fetchDecision.mockRejectedValueOnce(new Error("ServiceNow could not be reached."));
+    const { consumer, row, approval } = buildConsumer();
+
+    const [result] = await consumer.handle([makeEvent({ isFinalAttempt: true })]);
+
+    expect(result).toEqual({ id: "1", status: EventResultStatus.Failed, error: "ServiceNow could not be reached." });
+    expect(row()?.status).toBe(DelegatedApprovalRequestStatus.WaitingApproval);
+    expect(row()?.details.statusReason).toBe(
+      `ServiceNow could not be reached. ${DELEGATED_APPROVAL_DECISION_STOPPED_HINT}`
+    );
+    expect(approval()?.status).toBe(ApprovalRequestStatus.Pending);
+  });
+
+  test.each([
+    { isFinalAttempt: false, status: EventResultStatus.Retry, statusReason: null },
+    {
+      isFinalAttempt: true,
+      status: EventResultStatus.Failed,
+      statusReason: `The grant could not be written. ${DELEGATED_APPROVAL_DECISION_STOPPED_HINT}`
+    }
+  ])(
+    "rolls back a decision that could not be applied, and explains it once attempts run out (final=$isFinalAttempt)",
+    async ({ isFinalAttempt, status, statusReason }) => {
+      fetchDecision.mockResolvedValueOnce(decided(DelegatedApprovalDecision.Approved));
+      const { consumer, row, approval, postApprovalTxRoutine, createAuditLog } = buildConsumer();
+      postApprovalTxRoutine.mockRejectedValueOnce(new Error("The grant could not be written."));
+
+      const [result] = await consumer.handle([makeEvent({ isFinalAttempt })]);
+
+      expect(result).toEqual({ id: "1", status, error: "The grant could not be written." });
+      expect(row()?.status).toBe(DelegatedApprovalRequestStatus.WaitingApproval);
+      expect(row()?.details.statusReason).toBe(statusReason);
+      expect(approval()?.status).toBe(ApprovalRequestStatus.Pending);
+      expect(createAuditLog).not.toHaveBeenCalled();
+    }
+  );
+
+  test("reads different requests together", async () => {
+    const otherRequestId = "44444444-4444-4444-4444-444444444444";
+    let releaseFirst: () => void = () => {};
+    const firstHeld = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+
+    fetchDecision.mockImplementation(async (input: { delegatedRequestId: string }) => {
+      if (input.delegatedRequestId === DELEGATED_REQUEST_ID) await firstHeld;
+      return { status: "pending", reason: "Not yet." };
+    });
+
+    const { consumer } = buildConsumer();
+    const { payload } = makeEvent();
+    const pending = consumer.handle([
+      makeEvent({ id: 1 }),
+      makeEvent({ id: 2, payload: { ...(payload as Record<string, unknown>), delegatedRequestId: otherRequestId } })
+    ]);
+
+    try {
+      await vi.waitFor(() => expect(fetchDecision).toHaveBeenCalledTimes(2));
+    } finally {
+      releaseFirst();
+    }
+
+    await expect(pending).resolves.toEqual([
+      { id: "1", status: EventResultStatus.Retry, error: "Not yet." },
+      { id: "2", status: EventResultStatus.Retry, error: "Not yet." }
+    ]);
+  });
+
+  test("reads a second event for the same request only after the first settles", async () => {
+    let releaseFirst: () => void = () => {};
+    const firstHeld = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let firstSettledAt = 0;
+    let secondStartedAt = 0;
+
+    fetchDecision.mockImplementation(async () => {
+      if (fetchDecision.mock.calls.length === 1) {
+        await firstHeld;
+        firstSettledAt = Date.now();
+        throw new Error("ServiceNow did not respond.");
+      }
+      secondStartedAt = Date.now();
+      return decided(DelegatedApprovalDecision.Approved);
+    });
+
+    const { consumer } = buildConsumer();
+    const pending = consumer.handle([makeEvent({ id: 1 }), makeEvent({ id: 2 })]);
+
+    try {
+      await vi.waitFor(() => expect(fetchDecision).toHaveBeenCalledTimes(1));
+      await new Promise((resolve) => {
+        setTimeout(resolve, 30);
+      });
+      expect(fetchDecision).toHaveBeenCalledTimes(1);
+    } finally {
+      releaseFirst();
+    }
+
+    const results = await pending;
+
+    expect(fetchDecision).toHaveBeenCalledTimes(2);
+    expect(firstSettledAt).toBeGreaterThan(0);
+    expect(secondStartedAt).toBeGreaterThanOrEqual(firstSettledAt);
+    expect(results.map((result) => result.status)).toEqual([EventResultStatus.Retry, EventResultStatus.Delivered]);
+  });
+
   test("fails an unreadable payload terminally", async () => {
     const { consumer } = buildConsumer();
 
@@ -589,5 +733,35 @@ describe("delegatedApprovalDecisionConsumer through the outbox", () => {
     expect(rows[0]).toMatchObject({ status: EventOutboxStatus.Delivered, attempts: 2 });
     expect(built.row()?.status).toBe(DelegatedApprovalRequestStatus.Approved);
     expect(fetchDecision).toHaveBeenCalledTimes(2);
+  });
+
+  test("leaves the request open and asks for the callback again once the outbox has used up its attempts", async () => {
+    fetchDecision.mockResolvedValue({ status: "pending", reason: "Not yet." });
+    const built = buildConsumer();
+    const { service, rows, elapseBackoff } = buildOutbox(built.consumer);
+    const { payload } = makeEvent();
+
+    await service.emit({
+      eventType: DelegatedApprovalCallbackEvent.SecretsManagementAccessRequest,
+      payload: payload as Record<string, unknown>
+    });
+
+    for (let attempt = 1; attempt < MAX_OUTBOX_ATTEMPTS; attempt += 1) {
+      // eslint-disable-next-line no-await-in-loop -- one drain per attempt
+      await service.drain({ consumer: built.consumer.name });
+      expect(rows[0].status).toBe(EventOutboxStatus.Retry);
+      expect(built.row()?.details.statusReason).toBe(`Not yet. ${DELEGATED_APPROVAL_DECISION_RETRY_HINT}`);
+      elapseBackoff();
+    }
+
+    await service.drain({ consumer: built.consumer.name });
+
+    expect(fetchDecision).toHaveBeenCalledTimes(MAX_OUTBOX_ATTEMPTS);
+    expect(rows[0]).toMatchObject({ status: EventOutboxStatus.Failed, attempts: MAX_OUTBOX_ATTEMPTS });
+    expect(built.row()).toMatchObject({
+      status: DelegatedApprovalRequestStatus.WaitingApproval,
+      details: { statusReason: `Not yet. ${DELEGATED_APPROVAL_DECISION_STOPPED_HINT}` }
+    });
+    expect(built.approval()?.status).toBe(ApprovalRequestStatus.Pending);
   });
 });

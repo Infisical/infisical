@@ -31,7 +31,10 @@ import {
 } from "@app/services/delegated-approval/dispatch/delegated-approval-dispatch-fns";
 import { EventResultStatus } from "@app/services/event-outbox/event-outbox-types";
 
-import { DELEGATED_APPROVAL_DECISION_RETRY_HINT } from "./delegated-approval-decision-constants";
+import {
+  DELEGATED_APPROVAL_DECISION_RETRY_HINT,
+  DELEGATED_APPROVAL_DECISION_STOPPED_HINT
+} from "./delegated-approval-decision-constants";
 import { DelegatedApprovalDecision, DelegatedApprovalDecisionOutcome } from "./delegated-approval-decision-enums";
 import {
   describeDelegatedApprovalPermissions,
@@ -102,15 +105,16 @@ export const delegatedApprovalDecisionServiceFactory = ({
     }
   };
 
-  const $keepWaiting = async (delegatedRequestId: string, reason: string) => {
+  const $retryLater = async (
+    delegatedRequestId: string,
+    reason: string,
+    isFinalAttempt: boolean
+  ): Promise<TApplyDelegatedApprovalDecisionResult> => {
+    const hint = isFinalAttempt ? DELEGATED_APPROVAL_DECISION_STOPPED_HINT : DELEGATED_APPROVAL_DECISION_RETRY_HINT;
     try {
       await delegatedApprovalRequestDAL.updateWithDetails(
         { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.WaitingApproval },
-        {
-          details: {
-            statusReason: toDelegatedApprovalStatusReason(`${reason} ${DELEGATED_APPROVAL_DECISION_RETRY_HINT}`)
-          }
-        }
+        { details: { statusReason: toDelegatedApprovalStatusReason(`${reason} ${hint}`) } }
       );
     } catch (error) {
       logger.error(
@@ -118,6 +122,14 @@ export const delegatedApprovalDecisionServiceFactory = ({
         `Failed to record why the delegated approval decision is still pending [delegatedRequestId=${delegatedRequestId}]`
       );
     }
+
+    if (isFinalAttempt) {
+      logger.error(
+        `Delegated approval decision attempts ran out, request left waiting for a new callback [delegatedRequestId=${delegatedRequestId}] [reason=${reason}]`
+      );
+      return { status: EventResultStatus.Failed, error: reason };
+    }
+    return { status: EventResultStatus.Retry, error: reason };
   };
 
   const $terminal = async (
@@ -213,10 +225,11 @@ export const delegatedApprovalDecisionServiceFactory = ({
 
   // Reads the decision back from the delegated approval system and finalizes the request. Retry
   // means the system has not recorded a decision yet and the caller should try again later; Failed
-  // means the request was closed and nothing can retry it.
+  // means the request was closed, or the last attempt ran out and only a new callback can read it again.
   const applyDecision = async ({
     delegatedRequestId,
-    externalId
+    externalId,
+    isFinalAttempt
   }: TApplyDelegatedApprovalDecisionDTO): Promise<TApplyDelegatedApprovalDecisionResult> => {
     const delegatedApprovalContext = await loadDelegatedApprovalContext(delegatedRequestId, {
       delegatedApprovalRequestDAL,
@@ -337,11 +350,12 @@ export const delegatedApprovalDecisionServiceFactory = ({
       );
 
       if (result.status === "pending") {
-        await $keepWaiting(delegatedRequestId, result.reason);
-        logger.info(
-          `Delegated approval decision not recorded yet, will check again [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequest.id}]`
-        );
-        return { status: EventResultStatus.Retry, error: result.reason };
+        if (!isFinalAttempt) {
+          logger.info(
+            `Delegated approval decision not recorded yet, will check again [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequest.id}]`
+          );
+        }
+        return await $retryLater(delegatedRequestId, result.reason, isFinalAttempt);
       }
 
       if (result.approvalRequestId && result.approvalRequestId !== approvalRequest.id) {
@@ -372,15 +386,26 @@ export const delegatedApprovalDecisionServiceFactory = ({
       const { terminal: isTerminal, message, logContext } = toDelegatedApprovalFailure(error);
       if (isTerminal) return $terminal(context, message);
 
-      await $keepWaiting(delegatedRequestId, message);
       logger.warn(
         logContext,
-        `Failed to read the delegated approval decision, will retry [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequest.id}]`
+        `Failed to read the delegated approval decision [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequest.id}] [isFinalAttempt=${isFinalAttempt}]`
       );
-      return { status: EventResultStatus.Retry, error: message };
+      return $retryLater(delegatedRequestId, message, isFinalAttempt);
     }
 
-    const finalized = await $finalize(context, decided, postApprovalTxRoutine);
+    let finalized: TDelegatedApprovalFinalizeOutcome;
+    try {
+      finalized = await $finalize(context, decided, postApprovalTxRoutine);
+    } catch (error) {
+      if (!isFinalAttempt) throw error;
+
+      const { message, logContext } = toDelegatedApprovalFailure(error);
+      logger.error(
+        logContext,
+        `Failed to apply the delegated approval decision [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequest.id}]`
+      );
+      return $retryLater(delegatedRequestId, message, isFinalAttempt);
+    }
     if (finalized.kind === "applied") {
       const notify = isDelegatedApprovalSupportedPolicyType(approvalRequest.type)
         ? decisionNotifiers[approvalRequest.type]

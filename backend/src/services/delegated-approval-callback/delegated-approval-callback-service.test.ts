@@ -10,7 +10,7 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 // eslint-disable-next-line import/first
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { ForbiddenRequestError } from "@app/lib/errors";
 // eslint-disable-next-line import/first
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 // eslint-disable-next-line import/first
@@ -193,10 +193,10 @@ describe("handleCallback", () => {
     ...overrides
   });
 
-  test("returns 404 when no request has the external ID", async () => {
+  test("refuses an external ID no request has with the same 403 as any other refusal", async () => {
     const { service, delegatedApprovalRequestDAL, eventEmitter } = makeCallbackService({ delegatedRequest: null });
 
-    await expect(service.handleCallback(callback())).rejects.toBeInstanceOf(NotFoundError);
+    await expect(service.handleCallback(callback())).rejects.toBeInstanceOf(ForbiddenRequestError);
     expect(delegatedApprovalRequestDAL.findByProviderRequestId).toHaveBeenCalledWith(EXTERNAL_ID);
     expect(delegatedApprovalRequestDAL.update).not.toHaveBeenCalled();
     expect(eventEmitter.emit).not.toHaveBeenCalled();

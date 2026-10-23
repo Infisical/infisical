@@ -76,6 +76,7 @@ export type TDelegatedApprovalDecisionContext = {
 export type TApplyDelegatedApprovalDecisionDTO = {
   delegatedRequestId: string;
   externalId: string;
+  isFinalAttempt: boolean;
 };
 
 export type TApplyDelegatedApprovalDecisionResult = {
@@ -83,5 +84,8 @@ export type TApplyDelegatedApprovalDecisionResult = {
   error?: string;
 };
 
-export type TDelegatedApprovalFinalizeOutcome = // this feels weird to me honestly
-  { kind: "applied" } | { kind: "late"; reason: string } | { kind: "gone" } | { kind: "raced" };
+export type TDelegatedApprovalFinalizeOutcome =
+  | { kind: "applied" }
+  | { kind: "late"; reason: string }
+  | { kind: "gone" }
+  | { kind: "raced" };
