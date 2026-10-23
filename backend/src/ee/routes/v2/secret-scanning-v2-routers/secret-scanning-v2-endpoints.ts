@@ -24,7 +24,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
+import { PostHogEventTypes, TSecretScanningResourcesAddedEvent } from "@app/services/telemetry/telemetry-types";
 
 export const registerSecretScanningEndpoints = <
   T extends TSecretScanningDataSource,
@@ -63,10 +63,27 @@ export const registerSecretScanningEndpoints = <
   const sourceType = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
   const sourceTypeId = sourceType.replace(/\s+/g, "");
 
+  const sendResourcesAddedTelemetry = (
+    req: FastifyRequest,
+    resourceCount: number,
+    source: TSecretScanningResourcesAddedEvent["properties"]["source"]
+  ) => {
+    if (!resourceCount) return;
+
+    void server.services.telemetry
+      .sendPostHogEvents({
+        event: PostHogEventTypes.SecretScanningResourcesAdded,
+        distinctId: getTelemetryDistinctId(req),
+        organizationId: req.permission.orgId,
+        properties: { type, resourceCount, source }
+      })
+      .catch(() => {});
+  };
+
   // Discovery only picks up resources that push after it is turned on, so it starts from everything already
   // accessible. Best effort: the data source is saved either way, and the rest can be added from its resources tab.
   const addAllAccessibleResources = async (
-    req: Pick<FastifyRequest, "auditLogInfo" | "permission">,
+    req: FastifyRequest,
     dataSource: Pick<TSecretScanningDataSource, "id" | "projectId">
   ) => {
     try {
@@ -76,6 +93,8 @@ export const registerSecretScanningEndpoints = <
       );
 
       if (!resources.length) return;
+
+      sendResourcesAddedTelemetry(req, resources.length, "discovery");
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -564,6 +583,8 @@ export const registerSecretScanningEndpoints = <
         req.permission
       );
 
+      sendResourcesAddedTelemetry(req, resources.length, "manual");
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId,
@@ -607,6 +628,8 @@ export const registerSecretScanningEndpoints = <
 
       const { resources, projectId, dataSourceName } =
         await server.services.secretScanningV2.addAllSecretScanningResources({ type, dataSourceId }, req.permission);
+
+      sendResourcesAddedTelemetry(req, resources.length, "all");
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

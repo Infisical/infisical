@@ -6,6 +6,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
+  Combobox,
   DialogFooter,
   Field,
   FieldDescription,
@@ -13,7 +14,6 @@ import {
   FieldGroup,
   FieldLabel,
   FileDropzone,
-  FilterableSelect,
   Input,
   SheetFooter
 } from "@app/components/v3";
@@ -542,22 +542,26 @@ export const GcpKmsForm = ({
               render={({ field, fieldState: { error } }) => (
                 <Field data-invalid={Boolean(error)}>
                   <FieldLabel htmlFor="gcp-kms-region">GCP Region</FieldLabel>
-                  <FilterableSelect<SelectOption>
-                    inputId="gcp-kms-region"
+                  <Combobox
+                    id="gcp-kms-region"
                     placeholder="Select a GCP region"
                     options={GCP_REGIONS}
                     value={field.value}
                     isError={Boolean(error)}
-                    onChange={(option) => {
-                      const region = option as SelectOption | null;
+                    isClearable={false}
+                    onValueChange={(region) => {
                       resetField("keyObject");
                       field.onChange(region);
                       fetchGCPKeys({
-                        gcpRegion: region?.value,
+                        gcpRegion: region.value,
                         shouldValidateMissingCredential: false
                       });
                     }}
-                    formatOptionLabel={formatOptionLabel}
+                    getOptionLabel={(option) => option.label}
+                    getOptionValue={(option) => option.value}
+                    getOptionKeywords={(option) => [option.value]}
+                    renderOption={formatOptionLabel}
+                    renderValue={formatOptionLabel}
                   />
                   <FieldError>{error?.message}</FieldError>
                 </Field>
@@ -570,15 +574,19 @@ export const GcpKmsForm = ({
               render={({ field, fieldState: { error } }) => (
                 <Field data-invalid={Boolean(error)}>
                   <FieldLabel htmlFor="gcp-kms-key">GCP Key</FieldLabel>
-                  <FilterableSelect<SelectOption>
-                    inputId="gcp-kms-key"
+                  <Combobox
+                    id="gcp-kms-key"
                     placeholder={getPlaceholderText()}
                     isDisabled={!isCredentialValid || !keys.length}
                     isLoading={isFetchGcpKeysLoading}
                     options={keys}
                     value={field.value ?? null}
                     isError={Boolean(error)}
-                    onChange={field.onChange}
+                    isClearable={false}
+                    onValueChange={field.onChange}
+                    getOptionLabel={(option) => option.label}
+                    getOptionValue={(option) => option.value}
+                    getOptionKeywords={(option) => [option.value]}
                   />
                   <FieldError>{error?.message}</FieldError>
                 </Field>

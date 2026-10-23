@@ -277,7 +277,10 @@ export type TAppConnection =
   | THpeIloConnection
   | TS3CompatibleConnection;
 
-export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
+export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId"> & {
+  gatewayId?: string | null;
+  gatewayPoolId?: string | null;
+};
 
 export type TListAppConnections<T extends TAppConnection> = { appConnections: T[] };
 // scott: we will need this once we have individual app connection page

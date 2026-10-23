@@ -4621,9 +4621,14 @@ export const AGENT_VAULT = {
     offset: "How many proxies to skip.",
     heartbeat: "When the proxy last checked in, or `null` if it never has.",
     isHealthy: "Whether the proxy has checked in recently enough to be considered up.",
-    enrollmentToken: "A one-time token the proxy enrolls with. Shown once, and valid for one hour.",
-    rootCaCertificate:
-      "The proxy's own certificate authority, in PEM form. Sent once at enrollment so Infisical can check it is a real certificate authority and record its fingerprint; the certificate itself is not stored.",
+    proxyToken:
+      "The token the proxy starts with, on as many machines as you need. Shown once, and works until it is rotated or the proxy's access is revoked.",
+    rootCa:
+      "The certificate authority Infisical keeps for this proxy: a PEM certificate and its PKCS#8 PEM private key.",
+    rootCaCertificatePem: "The certificate authority's certificate, in PEM form.",
+    rootCaPrivateKey: "The certificate authority's private key, in PKCS#8 PEM form.",
+    servedCaCertificate:
+      "The certificate authority the proxy serves, in PEM form, when it uses its own instead of Infisical's. Infisical records its fingerprint and returns no `rootCa`.",
     rootCaFingerprint:
       "The SHA-256 fingerprint of the proxy's certificate authority. Pin this if you want to verify the proxy an agent connects to.",
     rootCaExpiresAt: "When the proxy's certificate authority expires.",
@@ -4642,6 +4647,7 @@ export const AGENT_VAULT = {
     ciphertextBytes: "The size of the encrypted chunk in bytes.",
     ciphertextSha256:
       "The SHA-256 digest of the encrypted chunk, including its IV, as base64 without padding. The bucket refuses an upload with a different digest.",
+    recordCount: "The number of requests recorded in the chunk.",
     legacyIv:
       "Sent only by Infisical CLI versions that can't record session logs. A request that includes it is refused.",
     uploadUrl:
@@ -4661,13 +4667,19 @@ export const AGENT_VAULT = {
     from: "Return only chunks with records at or after this time. A chunk can also hold earlier records, so filter records by `ts`.",
     to: "Return only chunks with records at or before this time. A chunk can also hold later records, so filter records by `ts`.",
     enabled: "Whether session logs are on.",
-    configEnabled: "Whether session logs are on. Turning them off stops recording but keeps what's already recorded.",
+    configEnabled: "Whether session logs are on. Turning them off hides recorded logs.",
+    disabledReason:
+      "Why no logs are returned: `off` when session logs are off, `not-on-plan` when the plan doesn't include the storage they use. Null when logs are returned.",
+    storageType: "Where this session's logs are read from: `default` or `external`. Null when session logs are off.",
+    storage:
+      "Where session logs are stored: `default`, stored by Infisical, or `external`, an S3 bucket you own. Required when turning session logs on.",
+    defaultStorageConfigured: "Whether default storage is available. Using it also needs a plan that includes it.",
     appConnectionId: "The ID of the AWS connection Infisical uses to write to and read from the bucket.",
     bucket:
       "The name of the S3 bucket. 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number.",
     region: "The AWS region of the bucket.",
     keyPrefix:
-      "The folder in the bucket to store session logs in, such as `logs/agent-vault`. Up to 512 characters: letters, numbers and `! - _ . ' ( ) /`, with no slash at the start or end, no empty folder name, and no folder named `.` or `..`.",
+      "The folder in the bucket to store session logs in, such as `logs/agent-vault`. Up to 256 characters: letters, numbers and `! - _ . ' ( ) /`, with no slash at the start or end, no empty folder name, and no folder named `.` or `..`.",
     corsProbeUrl: "A URL that fails to load in a browser if the bucket's CORS rule doesn't allow Infisical.",
     connectionError:
       "The error Infisical got when it tried to use the AWS connection, for example because AWS refused to let it assume the role. Null if there's no error or no connection.",
