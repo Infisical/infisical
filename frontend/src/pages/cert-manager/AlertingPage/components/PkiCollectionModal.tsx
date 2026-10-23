@@ -75,6 +75,7 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
     } else {
       // create
       const { id: collectionId } = await createPkiCollection({
+        projectId,
         name,
         description
       });
