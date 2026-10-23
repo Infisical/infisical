@@ -3364,10 +3364,20 @@ export const secretV2BridgeServiceFactory = ({
       ? secretManagerDecryptor({ cipherTextBlob: secret.encryptedValue }).toString()
       : "";
 
+    const mainExpanderSecretDAL = {
+      findByFolderId: createFetchFolderSecretsWithImports({
+        projectId,
+        secretDAL,
+        secretImportDAL,
+        folderDAL
+      })
+    };
+
     const { getExpandedSecretStackTrace } = expandSecretReferencesFactory({
       projectId,
       folderDAL,
-      secretDAL,
+      secretDAL: mainExpanderSecretDAL,
+      crossProjectSecretDAL: secretDAL,
       decryptSecretValue: (value) => (value ? secretManagerDecryptor({ cipherTextBlob: value }).toString() : undefined),
       canExpandValue: (expandEnvironment, expandSecretPath, expandSecretName, expandSecretTags) =>
         hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, {
