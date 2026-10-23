@@ -218,11 +218,11 @@ describe("getAllSecretReferences", () => {
   });
 });
 
-describe("expandSecretReferencesFactory onSecretReferenced", () => {
-  const row = (id: string, value: string, userId: string | null) => ({
+describe("expandSecretReferencesFactory onSecretExpanded", () => {
+  const row = (id: string, key: string, value: string, userId: string | null = null) => ({
     id,
     _id: id,
-    key: "DB_PASSWORD",
+    key,
     version: 1,
     type: userId ? "personal" : "shared",
     folderId: "folder",
@@ -233,34 +233,47 @@ describe("expandSecretReferencesFactory onSecretReferenced", () => {
     secretMetadata: [],
     userId
   });
-  const expand = async (rows: ReturnType<typeof row>[], userId?: string) => {
-    const referenced: string[] = [];
+  const expand = async (
+    rows: ReturnType<typeof row>[],
+    value: string,
+    {
+      userId,
+      forbidden,
+      reported = []
+    }: { userId?: string; forbidden?: string; reported?: { secretKey: string; referencedSecretIds: string[] }[] } = {}
+  ) => {
     const { findBySecretPath } = makeDALs();
     const { expandSecretReferences } = expandSecretReferencesFactory({
       projectId: "project",
       folderDAL: { findBySecretPath },
       secretDAL: { findByFolderId: vi.fn<Args["secretDAL"]["findByFolderId"]>().mockResolvedValue(rows) },
-      decryptSecretValue: (value) => value?.toString(),
-      canExpandValue: vi.fn(() => true),
+      decryptSecretValue: (encrypted) => encrypted?.toString(),
+      canExpandValue: vi.fn((_environment: string, _secretPath: string, secretKey: string) => secretKey !== forbidden),
       userId,
-      onSecretReferenced: (secretId) => referenced.push(secretId)
+      onSecretExpanded: ({ secretKey }, referencedSecretIds) => reported.push({ secretKey, referencedSecretIds })
     });
-    const value = await expandSecretReferences({
-      secretKey: "URL",
-      value: `postgres://\${DB_PASSWORD}@db`,
-      environment: "prod",
-      secretPath: "/"
-    });
-    return { value, referenced };
+    const expanded = await expandSecretReferences({ secretKey: "URL", value, environment: "prod", secretPath: "/" });
+    return { expanded, reported };
   };
 
   it("reports the reader's own override, not the shared secret it replaced", async () => {
-    const result = await expand([row("shared-db", "shared", null), row("alice-db", "mine", "alice")], "alice");
-    expect(result).toEqual({ value: "postgres://mine@db", referenced: ["alice-db"] });
+    const rows = [row("shared-db", "DB_PASSWORD", "shared"), row("alice-db", "DB_PASSWORD", "mine", "alice")];
+    const result = await expand(rows, `postgres://\${DB_PASSWORD}@db`, { userId: "alice" });
+    expect(result).toEqual({
+      expanded: "postgres://mine@db",
+      reported: [{ secretKey: "URL", referencedSecretIds: ["alice-db"] }]
+    });
   });
 
   it("reports the shared secret when no override is used", async () => {
-    const result = await expand([row("shared-db", "shared", null)]);
-    expect(result).toEqual({ value: "postgres://shared@db", referenced: ["shared-db"] });
+    const result = await expand([row("shared-db", "DB_PASSWORD", "shared")], `postgres://\${DB_PASSWORD}@db`);
+    expect(result.reported).toEqual([{ secretKey: "URL", referencedSecretIds: ["shared-db"] }]);
+  });
+
+  it("reports nothing for an expansion that fails part way", async () => {
+    const rows = [row("readable", "READABLE", "ok"), row("forbidden", "FORBIDDEN", "no")];
+    const reported: { secretKey: string; referencedSecretIds: string[] }[] = [];
+    await expect(expand(rows, `\${READABLE}\${FORBIDDEN}`, { forbidden: "FORBIDDEN", reported })).rejects.toThrow();
+    expect(reported).toEqual([]);
   });
 });
