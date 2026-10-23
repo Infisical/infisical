@@ -12,6 +12,7 @@ export type TDelegatedApprovalRequestDALFactory = ReturnType<typeof delegatedApp
 
 export type TDelegatedApprovalRequestWithApprovalRequest = TDelegatedApprovalRequests & {
   approvalRequestOrganizationId: string;
+  approvalRequestProjectId: string;
 };
 
 export const delegatedApprovalRequestDALFactory = (db: TDbClient) => {
@@ -31,6 +32,7 @@ export const delegatedApprovalRequestDALFactory = (db: TDbClient) => {
         .where(`${TableName.DelegatedApprovalRequests}.providerRequestId`, providerRequestId)
         .select(selectAllTableCols(TableName.DelegatedApprovalRequests))
         .select(db.ref("organizationId").withSchema(TableName.ApprovalRequests).as("approvalRequestOrganizationId"))
+        .select(db.ref("projectId").withSchema(TableName.ApprovalRequests).as("approvalRequestProjectId"))
         .first();
       return (row as TDelegatedApprovalRequestWithApprovalRequest | undefined) ?? null;
     } catch (error) {

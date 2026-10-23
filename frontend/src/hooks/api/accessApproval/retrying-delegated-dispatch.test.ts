@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, it, vi } from "vitest";
 
 import { DelegatedApprovalRequestStatus } from "../delegatedApprovals/enums";
 import {
-  hasDelegatedDispatchRetries,
   isDelegatedDispatchRetrying,
   markDelegatedDispatchRetry,
   noteDelegatedDispatchRetryStatuses
@@ -45,7 +44,6 @@ describe("delegated dispatch retry store", () => {
     note("missed-pending", DelegatedApprovalRequestStatus.FailedDispatch);
 
     assert.equal(isDelegatedDispatchRetrying("missed-pending"), false);
-    assert.equal(hasDelegatedDispatchRetries(), false);
   });
 
   it("clears the retry once a dispatch it saw start has failed", () => {
@@ -70,5 +68,21 @@ describe("delegated dispatch retry store", () => {
     note("delivered", DelegatedApprovalRequestStatus.WaitingApproval);
 
     assert.equal(isDelegatedDispatchRetrying("delivered"), false);
+  });
+
+  it("keeps a retry another list does not include until it expires", () => {
+    mark("other-env");
+    vi.advanceTimersByTime(10_000);
+    note("unrelated", DelegatedApprovalRequestStatus.WaitingApproval);
+
+    assert.equal(isDelegatedDispatchRetrying("other-env"), true);
+  });
+
+  it("drops a retry whose request never shows up again", () => {
+    mark("left-the-list");
+    vi.advanceTimersByTime(120_000);
+    note("unrelated", DelegatedApprovalRequestStatus.WaitingApproval);
+
+    assert.equal(isDelegatedDispatchRetrying("left-the-list"), false);
   });
 });

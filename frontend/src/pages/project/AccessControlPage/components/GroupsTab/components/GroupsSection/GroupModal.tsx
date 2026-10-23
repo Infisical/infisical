@@ -6,12 +6,13 @@ import { ArrowRightIcon, CircleAlertIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
+import { RoleOptionContent } from "@app/components/roles";
 import {
   Alert,
   AlertDescription,
   AlertTitle,
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -22,7 +23,6 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Skeleton
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
@@ -206,24 +206,21 @@ const Content = ({ onClose }: { onClose: () => void }) => {
         render={({ field: { onChange, value }, fieldState: { error } }) => (
           <Field>
             <FieldLabel htmlFor="group">Group</FieldLabel>
-            <FilterableSelect
-              inputId="group"
+            <Combobox
+              id="group"
               value={value}
-              onChange={onChange}
+              isClearable={false}
+              onValueChange={onChange}
               placeholder="Select group..."
+              searchAriaLabel="Search groups"
               autoFocus
               isError={Boolean(error)}
               isLoading={isGroupsFetching || searchInput !== debouncedSearch}
               options={isGroupsFetching ? [] : filteredGroupMembershipOrgs}
-              onInputChange={(newValue, actionMeta) => {
-                if (actionMeta.action === "input-change") {
-                  setSearchInput(newValue);
-                }
-              }}
-              filterOption={() => true}
+              onSearchChange={setSearchInput}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
-              noOptionsMessage={noOptionsMessage}
+              emptyMessage={noOptionsMessage}
             />
             <FieldDescription>
               {isGroupListTruncated ? "Search by name to find groups that are not listed." : null}
@@ -238,16 +235,19 @@ const Content = ({ onClose }: { onClose: () => void }) => {
         render={({ field: { onChange, value }, fieldState: { error } }) => (
           <Field>
             <FieldLabel htmlFor="role">Role</FieldLabel>
-            <FilterableSelect
-              inputId="role"
+            <Combobox
+              id="role"
               value={value}
-              onChange={onChange}
+              isClearable={false}
+              onValueChange={onChange}
               options={roles ?? []}
               placeholder="Select role..."
+              searchAriaLabel="Search roles"
               isError={Boolean(error)}
               getOptionValue={(option) => option.slug}
+              getOptionKeywords={(option) => [option.slug]}
               getOptionLabel={(option) => option.name}
-              components={{ Option: RoleOption }}
+              renderOption={(option) => <RoleOptionContent role={option} />}
             />
             <FieldError>{error?.message}</FieldError>
           </Field>

@@ -1,18 +1,22 @@
 ---
-title: "Project configuration"
+title: "CLI project configuration"
+sidebarTitle: "Project configuration"
 description: "Configure how the Infisical CLI interacts with your directory."
 ---
 
-<Warning>
-  `.infisical.yaml` replaces `.infisical.json`, which is deprecated. The CLI still reads `.infisical.json`. Starting with version 0.44.3, the CLI also creates `.infisical.yaml` with the same settings the first time a command reads `.infisical.json`. To finish moving to the new format, see [Migrate to .infisical.yaml](/cli/project-config-migration).
-</Warning>
-
-`.infisical.yaml` links a directory to an [Infisical project](/documentation/platform/project). When you run a command such as [`infisical sm run`](/cli/reference#sm-run) or [`infisical sm secrets`](/cli/reference#sm-secrets) in that directory, the CLI reads the project from the file, so you don't have to pass [`--projectId`](/cli/reference#sm-run--flag-projectid).
+A project config file links a directory to an [Infisical project](/documentation/platform/project). When you run a command such as [`infisical sm run`](/cli/reference#sm-run) or [`infisical sm secrets`](/cli/reference#sm-secrets) in that directory, the CLI reads the project from the file, so you don't have to pass [`--projectId`](/cli/reference#sm-run--flag-projectid).
 
 The file can also [choose an environment](#set-the-environment) and [a folder](#set-the-folder) for you, and [pin the Infisical instance](#set-the-infisical-instance) the project lives on.
 
+The CLI reads the settings from either of two files:
+
+- `.infisical.yaml`, which [`infisical init`](/cli/reference#init) creates
+- `.infisical.json`, which older versions of `infisical init` created
+
+Both files hold the same settings, so you don't need to convert an existing `.infisical.json`. Each example on this page shows both formats.
+
 <Info>
-The `.infisical.yaml` file doesn't include any sensitive values and is safe to commit to version control.
+Neither file includes any sensitive values, so both are safe to commit to version control.
 </Info>
 
 ## Create the file
@@ -26,81 +30,149 @@ infisical init
 Select the project when prompted. The CLI writes `.infisical.yaml` to the current directory:
 
 ```yaml .infisical.yaml
+version: 1
 general: {}
 secrets-management:
-  project-id: <project-id>
-  default-environment: ""
-  mappings:
-    git-branch-to-environment: {}
+    project-id: <project-id>
 ```
 
-`project-id` is the project's ID. The other settings are empty until you set them, as described in the sections that follow. If you run [`infisical init`](/cli/reference#init) again, the CLI replaces the file with a new one that holds only the project ID, so you lose any settings you added.
+`project-id` is the project's ID, and `version` is the version of the file format. To add more settings, edit the file as described in the sections that follow.
 
 <Note>
-  If you authenticate as a [machine identity](/documentation/platform/identities/machine-identities), `infisical sm run`, [`infisical sm export`](/cli/reference#sm-export), and `infisical sm secrets` don't read `project-id`. Pass the project with `--projectId` or the `INFISICAL_PROJECT_ID` environment variable instead.
+  If you authenticate as a [machine identity](/documentation/platform/identities/machine-identities), `infisical sm run`, [`infisical sm export`](/cli/reference#sm-export), and `infisical sm secrets` don't read the project from the file. Pass the project with `--projectId` or the `INFISICAL_PROJECT_ID` environment variable instead.
+</Note>
+
+If the directory already has `.infisical.yaml` or `.infisical.json`, `infisical init` asks before it writes a new `.infisical.yaml`. The new file holds only the project ID, and the CLI reads it instead of the old file, so you lose the settings in the old file. To keep those settings, edit the old file instead of running `infisical init`.
+
+<Note>
+  CLI versions earlier than 0.43.145 read only `.infisical.json`. If a developer machine, CI pipeline, or container image runs an older version, [upgrade the CLI](/cli/upgrade) there before you commit `.infisical.yaml`.
 </Note>
 
 ## Set the environment
 
-Without an environment setting, commands read secrets from your project's [`dev` environment](/documentation/platform/secrets-mgmt/project#project-environments) unless you pass [`--env`](/cli/reference#sm-run--flag-env). To use a different environment by default, set `default-environment` to the environment's slug:
+<Note>
+  The `environment`, `secret-path`, and `overrides.git-branch` keys in `.infisical.yaml` require CLI version 0.44.8 or later. Earlier versions read only the older `default-environment`, `default-secret-path`, and `mappings.git-branch-to-environment` keys. If a developer machine, CI pipeline, or container image runs an older version, [upgrade the CLI](/cli/upgrade) there before you commit the newer keys.
+</Note>
+
+Without an environment setting, commands read secrets from your project's [`dev` environment](/documentation/platform/secrets-mgmt/project#project-environments) unless you pass [`--env`](/cli/reference#sm-run--flag-env). To use a different environment by default, set `environment` under `secrets-management` to the environment's slug (`defaultEnvironment` in `.infisical.json`):
+
+<CodeGroup>
 
 ```yaml .infisical.yaml
+version: 1
 secrets-management:
   project-id: <project-id>
-  default-environment: staging
+  environment: staging
 ```
 
-To pick the environment from the Git branch you're on, map branch names to environment slugs under `mappings.git-branch-to-environment`:
+```json .infisical.json
+{
+  "workspaceId": "<project-id>",
+  "defaultEnvironment": "staging"
+}
+```
+
+</CodeGroup>
+
+To pick the environment from the Git branch you're on, list each branch and its environment slug under `overrides.git-branch` (`gitBranchToEnvironmentMapping` in `.infisical.json`):
+
+<CodeGroup>
 
 ```yaml .infisical.yaml
+version: 1
 secrets-management:
   project-id: <project-id>
-  default-environment: dev
-  mappings:
-    git-branch-to-environment:
-      main: prod
-      staging: staging
+  environment: dev
+  overrides:
+    git-branch:
+      - branch: main
+        environment: prod
+      - branch: staging
+        environment: staging
 ```
 
-The CLI matches only the last part of a branch name, after the final `/`. For example, the branch `release/staging` matches the key `staging`. If your current branch has no mapping, or you aren't on a branch (such as when you check out a specific commit), the CLI falls back to `default-environment`.
+```json .infisical.json
+{
+  "workspaceId": "<project-id>",
+  "defaultEnvironment": "dev",
+  "gitBranchToEnvironmentMapping": {
+    "main": "prod",
+    "staging": "staging"
+  }
+}
+```
+
+</CodeGroup>
+
+The CLI matches only the last part of a branch name, after the final `/`. For example, the branch `release/staging` matches `staging`. If your current branch has no match, or you aren't on a branch (such as when you check out a specific commit), the CLI falls back to the default environment.
+
+<Note>
+  If an older version of `infisical init` wrote your `.infisical.yaml`, the file may set `default-environment` and `mappings.git-branch-to-environment` instead. The CLI still reads both keys. If `environment` is set, the CLI ignores `default-environment`. If `overrides.git-branch` has any entries, the CLI ignores `mappings.git-branch-to-environment`.
+</Note>
 
 The CLI picks the environment in this order:
 
 1. The `--env` flag
 2. The `INFISICAL_ENVIRONMENT` environment variable
-3. The environment mapped to your current Git branch
-4. `default-environment`
+3. The environment that matches your current Git branch
+4. The default environment (`environment` or `defaultEnvironment`)
 5. `dev`
 
 ## Set the folder
 
-Without a folder setting, commands read secrets from the root of the environment (`/`) unless you pass [`--path`](/cli/reference#sm-run--flag-path). To read from a different [folder](/documentation/platform/folder) by default, set `default-secret-path` under `secrets-management`:
+Without a folder setting, commands read secrets from the root of the environment (`/`) unless you pass [`--path`](/cli/reference#sm-run--flag-path). To read from a different [folder](/documentation/platform/folder) by default, set `secret-path` under `secrets-management` (`defaultSecretPath` in `.infisical.json`):
+
+<CodeGroup>
 
 ```yaml .infisical.yaml
+version: 1
 secrets-management:
   project-id: <project-id>
-  default-secret-path: /backend
+  secret-path: /backend
 ```
+
+```json .infisical.json
+{
+  "workspaceId": "<project-id>",
+  "defaultSecretPath": "/backend"
+}
+```
+
+</CodeGroup>
 
 The CLI picks the folder in this order:
 
 1. The `--path` flag
 2. The `INFISICAL_SECRET_PATH` environment variable
-3. `default-secret-path`
+3. `secret-path` or `defaultSecretPath`
 4. `/`
+
+The CLI still reads the older `default-secret-path` key in `.infisical.yaml`, but ignores it if `secret-path` is set.
 
 The [`infisical sm secrets folders`](/cli/reference#sm-secrets-folders) commands don't read either setting, so pass `--path` to work in a folder other than `/`.
 
 ## Set the Infisical instance
 
-If your project is on EU Cloud, a dedicated instance, or a self-hosted instance, set `domain` under `general` to the instance's address:
+If your project is on EU Cloud, a dedicated instance, or a self-hosted instance, set `domain` under `general` to the instance's address (`domain` in `.infisical.json`):
+
+<CodeGroup>
 
 ```yaml .infisical.yaml
+version: 1
 general:
   domain: https://eu.infisical.com
 secrets-management:
   project-id: <project-id>
 ```
+
+```json .infisical.json
+{
+  "workspaceId": "<project-id>",
+  "domain": "https://eu.infisical.com"
+}
+```
+
+</CodeGroup>
 
 `domain` must be a URL that starts with `https://` or `http://`, or the CLI ignores it and prints a warning.
 
@@ -112,7 +184,7 @@ The CLI picks the instance in this order:
 
 1. The [`--domain`](/cli/reference#global-flags--flag-domain) flag
 2. The `INFISICAL_DOMAIN` environment variable, or the older `INFISICAL_API_URL` if `INFISICAL_DOMAIN` isn't set
-3. `domain` in `.infisical.yaml`
+3. `general.domain` in `.infisical.yaml`, or `domain` in `.infisical.json`
 4. US Cloud (`https://app.infisical.com`)
 
 If you log in with your own account, [`infisical login`](/cli/reference#login) uses `domain` to choose the instance to log in to. After that:
@@ -121,12 +193,20 @@ If you log in with your own account, [`infisical login`](/cli/reference#login) u
 - If you pass `--domain` or set `INFISICAL_DOMAIN` to a different instance than the one you logged in to, the command fails
 
 <Warning>
-  The CLI sends every request and credential to the instance in `domain`. Because `.infisical.yaml` is usually committed, anyone who can change the file in your repository can change where the CLI sends them. Each time the CLI uses `domain` from the file, it prints a warning that names the host. Only set `domain` to an instance you trust, and check it when you clone a repository you don't control.
+  The CLI sends every request and credential to the instance in `domain`. Because the project config file is usually committed, anyone who can change the file in your repository can change where the CLI sends them. Each time the CLI uses `domain` from the file, it prints a warning that names the host. Only set `domain` to an instance you trust, and check it when you clone a repository you don't control.
 </Warning>
 
-## Use the file from another directory
+## Where the CLI looks for the file
 
-The CLI looks for `.infisical.yaml` in the current directory, then in each parent directory up to the root of the file system. This means that if you have an `.infisical.yaml` file in the root of your codebase, that configuration applies to every directory under it.
+The CLI looks for a project config file in the current directory, then in each parent directory up to the root of the file system. If you have a project config file in the root of your codebase, that file applies to every directory under it.
+
+In each directory, the CLI checks for `.infisical.yaml` first, then `.infisical.json`, and uses the first file it finds:
+
+- If a directory has both files, the CLI reads `.infisical.yaml` and ignores `.infisical.json`
+- If the current directory has `.infisical.json` and a parent directory has `.infisical.yaml`, the CLI reads `.infisical.json`
+- The CLI doesn't read a file named `.infisical.yml`
+
+## Use the file from another directory
 
 To read the project from a file somewhere else, such as one package's directory in a monorepo, pass the directory to `infisical sm run` with [`--project-config-dir`](/cli/reference#sm-run--flag-project-config-dir):
 
@@ -134,28 +214,36 @@ To read the project from a file somewhere else, such as one package's directory 
 infisical sm run --project-config-dir ./services/api -- npm run dev
 ```
 
+The CLI checks only that directory, not its parent directories.
+
 <Note>
-`--project-config-dir` sets the project, environment, and folder. The instance setting still comes from the `.infisical.yaml` the CLI finds from your current directory.
+`--project-config-dir` sets the project, environment, and folder. The instance setting still comes from the project config file the CLI finds from your current directory.
 </Note>
 
 ## Field reference
 
+The CLI ignores keys it doesn't recognize, so if you misspell a key, the CLI drops that setting without reporting an error.
+
+<ResponseField name="version" type="number">
+The version of the `.infisical.yaml` format. `infisical init` sets it to `1`. `.infisical.json` has no version field.
+</ResponseField>
+
 <ResponseField name="secrets-management.project-id" type="string">
-The ID of the project to read secrets from. Not used when you authenticate as a machine identity.
+The ID of the project to read secrets from. Not used when you authenticate as a machine identity. In `.infisical.json`, the field is `workspaceId`.
 </ResponseField>
 
-<ResponseField name="secrets-management.default-environment" type="string">
-The environment slug to use when `--env` and `INFISICAL_ENVIRONMENT` aren't set and no branch mapping matches.
+<ResponseField name="secrets-management.environment" type="string">
+The environment slug to use when `--env` and `INFISICAL_ENVIRONMENT` aren't set and no branch override matches. In `.infisical.json`, the field is `defaultEnvironment`.
 </ResponseField>
 
-<ResponseField name="secrets-management.mappings.git-branch-to-environment" type="object">
-Maps branch names to environment slugs, such as `main: prod`. Keys match only the last part of a branch name, after the final `/`.
+<ResponseField name="secrets-management.overrides.git-branch" type="object[]">
+A list of branches, each with the environment slug to use on that branch, such as `branch: main` and `environment: prod`. The CLI compares each `branch` with only the last part of the current branch name, after the final `/`. In `.infisical.json`, the field is `gitBranchToEnvironmentMapping`, an object that maps branch names to environment slugs, such as `"main": "prod"`.
 </ResponseField>
 
-<ResponseField name="secrets-management.default-secret-path" type="string">
-The folder to read secrets from when [`--path`](/cli/reference#sm-run--flag-path) and `INFISICAL_SECRET_PATH` aren't set. The `infisical sm` commands read it, except `infisical sm secrets folders`.
+<ResponseField name="secrets-management.secret-path" type="string">
+The folder to read secrets from when [`--path`](/cli/reference#sm-run--flag-path) and `INFISICAL_SECRET_PATH` aren't set. The `infisical sm` commands read it, except `infisical sm secrets folders`. In `.infisical.json`, the field is `defaultSecretPath`.
 </ResponseField>
 
 <ResponseField name="general.domain" type="string">
-The Infisical instance to connect to, such as `https://eu.infisical.com`. Must start with `https://` or `http://`.
+The Infisical instance to connect to, such as `https://eu.infisical.com`. Must start with `https://` or `http://`. In `.infisical.json`, the field is `domain`.
 </ResponseField>

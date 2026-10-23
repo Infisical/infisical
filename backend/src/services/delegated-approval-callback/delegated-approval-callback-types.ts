@@ -17,14 +17,13 @@ export type TDelegatedApprovalCallbackServiceFactoryDep = {
     | "update"
     | "updateWithDetails"
   >;
-  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "transaction" | "findByIdForUpdate" | "updateById">;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById" | "transaction" | "findByIdForUpdate" | "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   eventEmitter: Pick<TEventEmitter, "emit">;
 };
 
 export type TGetOrIssueCallbackTokenDTO = {
-  delegatedRequest: Pick<TDelegatedApprovalRequests, "id" | "encryptedCallbackToken">;
-  orgId: string;
+  delegatedRequest: Pick<TDelegatedApprovalRequests, "id" | "requestId" | "encryptedCallbackToken">;
 };
 
 export type THandleDelegatedApprovalCallbackDTO = {

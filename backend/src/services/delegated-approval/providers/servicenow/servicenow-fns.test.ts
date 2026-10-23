@@ -4,6 +4,7 @@ import { describe, expect, test, vi } from "vitest";
 
 import { ProjectType } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { DelegatedApprovalDecision } from "@app/services/delegated-approval-decision/delegated-approval-decision-enums";
 
@@ -16,9 +17,9 @@ import {
   toServiceNowRequestError
 } from "./servicenow-fns";
 
-vi.mock("@app/lib/logger", () => ({
-  logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
-  initLogger: () => {}
+vi.mock("@app/lib/logger", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/logger")>()),
+  logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }
 }));
 
 const INSTANCE_URL = "https://acme.service-now.com";
@@ -230,7 +231,7 @@ describe("toServiceNowRequestError", () => {
     [404, UnrecoverableError, /Infisical Approvals application/],
     [400, UnrecoverableError, /rejected the request \(HTTP 400\)/],
     [422, UnrecoverableError, /rejected the request \(HTTP 422\)/],
-    [429, BadRequestError, /rate limiting/],
+    [429, BadRequestError, /could not accept the request/],
     [500, BadRequestError, /server error \(HTTP 500\)/],
     [503, BadRequestError, /server error \(HTTP 503\)/]
   ])("maps HTTP %s", (status, errorClass, message) => {
@@ -255,6 +256,16 @@ describe("toServiceNowRequestError", () => {
     );
 
     expect(error.message).toContain("Missing required field: environment");
+  });
+
+  test("logs the rate limit instead of returning it to the user", () => {
+    const error = toServiceNowRequestError(makeAxiosError(429), INSTANCE_URL);
+
+    expect(error.message).not.toMatch(/rate limit/);
+    expect(logger.warn).toHaveBeenCalledWith(
+      { status: 429, instance: "acme.service-now.com" },
+      expect.stringMatching(/rate limiting requests from Infisical \(HTTP 429\)/)
+    );
   });
 
   test("retries when there was no response at all", () => {

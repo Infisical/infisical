@@ -33,23 +33,27 @@ import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns
 import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
 import {
   getSessionLogEntitlement,
-  isSessionLogIngestEnabled,
   TSessionLogLicenseService
-} from "../agent-vault-session-log/agent-vault-session-log-fns";
+} from "../agent-vault-session-log/agent-vault-session-log-license-fns";
 import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
+import { getEffectiveSessionLogConfig } from "../agent-vault-session-log/agent-vault-session-log-storage-fns";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
-import { RESOURCE_TYPE_AGENT_VAULT_PROXY } from "../resource-auth-method/resource-auth-method-fns";
+import {
+  mintAgentVaultProxyJwt,
+  RESOURCE_TYPE_AGENT_VAULT_PROXY
+} from "../resource-auth-method/resource-auth-method-fns";
 import { TResourceAuthMethodServiceFactory } from "../resource-auth-method/resource-auth-method-service";
-import { parseRootCaCertificate } from "./agent-vault-ca-fns";
+import { generateProxyRootCa, parseRootCaCertificate } from "./agent-vault-ca-fns";
 import { TAgentVaultProxyDALFactory } from "./agent-vault-proxy-dal";
 import {
   TAgentVaultProxyConfig,
   TAgentVaultProxyScoped,
+  TBootstrapProxyDTO,
   TCreateProxyDTO,
-  TEnrollProxyDTO,
   THeartbeatDTO,
   TListProxiesDTO,
   TProxyByIdDTO,
+  TProxyRootCa,
   TResolvedService,
   TResolveSessionDTO,
   TUpdateProxyDTO
@@ -68,16 +72,13 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
   agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve">;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash">;
-  agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne">;
+  agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne" | "findByProjectIdFromPrimary">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: TSessionLogLicenseService;
-  resourceAuthMethodService: Pick<
-    TResourceAuthMethodServiceFactory,
-    "initAtCreate" | "mintToken" | "loginWithToken" | "revokeAccess"
-  >;
+  resourceAuthMethodService: Pick<TResourceAuthMethodServiceFactory, "initAtCreate" | "revokeAccess">;
 };
 
 export type TAgentVaultProxyServiceFactory = ReturnType<typeof agentVaultProxyServiceFactory>;
@@ -151,6 +152,71 @@ export const agentVaultProxyServiceFactory = ({
 
   const getProxyForAuth = (proxyId: string) => agentVaultProxyDAL.findByIdWithOrg(proxyId);
 
+  const $sealRootCaKey = async (projectId: string, privateKey: string) => {
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+    return encryptor({ plainText: Buffer.from(privateKey) }).cipherTextBlob;
+  };
+
+  const $openRootCa = async (proxy: TAgentVaultProxies): Promise<TProxyRootCa | null> => {
+    if (!proxy.rootCaCertificate || !proxy.encryptedRootCaPrivateKey) return null;
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: proxy.projectId
+    });
+    return {
+      certificate: proxy.rootCaCertificate,
+      privateKey: decryptor({ cipherTextBlob: proxy.encryptedRootCaPrivateKey }).toString()
+    };
+  };
+
+  // Key generation is CPU-bound and the KMS may be remote, so a CA is always made before any write. Create and
+  // rotate record its fingerprint too, so it can be pinned before any start; a start serving another CA replaces it.
+  const $newRootCa = async (projectId: string) => {
+    const generated = await generateProxyRootCa();
+    return {
+      privateKey: generated.privateKey,
+      stored: {
+        rootCaCertificate: generated.certificate,
+        encryptedRootCaPrivateKey: await $sealRootCaKey(projectId, generated.privateKey)
+      },
+      reported: {
+        rootCaFingerprint: generated.fingerprint,
+        rootCaExpiresAt: generated.expiresAt
+      }
+    };
+  };
+
+  // Every proxy created or rotated gets a CA. Only proxies enrolled before that reach the fill-in path, and
+  // several of their starts can race: storeRootCaIfMissing lets one win and the rest read its CA back. A
+  // rotation can also land while the CA is being made, and its CA must never reach the old token.
+  // recorded: this call already wrote the fingerprint, so the caller has nothing left to record.
+  const $getOrCreateRootCa = async (
+    proxy: TAgentVaultProxies
+  ): Promise<{ rootCa: TProxyRootCa; recorded: boolean }> => {
+    const existing = await $openRootCa(proxy);
+    if (existing) return { rootCa: existing, recorded: false };
+
+    const { stored, reported, privateKey } = await $newRootCa(proxy.projectId);
+    const filled = await agentVaultProxyDAL.storeRootCaIfMissing(proxy.id, proxy.tokenVersion, {
+      ...stored,
+      ...reported
+    });
+    if (filled) return { rootCa: { certificate: stored.rootCaCertificate, privateKey }, recorded: true };
+
+    // Read on the primary, inside a transaction: the replica may not have the winner's CA yet.
+    const winner = await agentVaultProxyDAL.transaction((tx) => agentVaultProxyDAL.findById(proxy.id, tx));
+    if (!winner) throw new UnauthorizedError({ message: "This proxy no longer exists" });
+    if (winner.tokenVersion !== proxy.tokenVersion) {
+      throw new UnauthorizedError({ name: "ProxyTokenRejected", message: "Agent Vault proxy token has been revoked" });
+    }
+    const opened = await $openRootCa(winner);
+    if (!opened) throw new InternalServerError({ message: "Failed to load this proxy's certificate authority" });
+    return { rootCa: opened, recorded: false };
+  };
+
   const listProxies = async ({ search, orderBy, orderDirection, limit, offset, ...dto }: TListProxiesDTO) => {
     const { isAdmin } = await $authorize(dto, ProjectPermissionAgentVaultProxyActions.Read);
     const { proxies, totalCount } = await agentVaultProxyDAL.findForList({
@@ -173,22 +239,17 @@ export const agentVaultProxyServiceFactory = ({
     authMethod: ctx.actorAuthMethod
   });
 
-  // The first token belongs to creating the proxy; a replacement is its own permission, since enrolling
-  // again rotates the CA and breaks every agent that trusted the old one.
-  const $issueEnrollmentToken = async (proxyId: string, ctx: TCreateProxyDTO["ctx"], intent: "create" | "issue") => {
-    const enrollment = await resourceAuthMethodService.mintToken({
-      resource: { type: RESOURCE_TYPE_AGENT_VAULT_PROXY, id: proxyId },
-      actor: $resourceActor(ctx),
-      intent
-    });
-    return { token: enrollment.token, expiresAt: enrollment.expiresAt };
-  };
+  const $signProxyToken = (proxyId: string, orgId: string, tokenVersion: number) =>
+    mintAgentVaultProxyJwt({ agentVaultProxyId: proxyId, orgId, tokenVersion, accessTokenTTL: 0 });
 
   const createProxy = async ({ projectId, ctx, name, ...settings }: TCreateProxyDTO) => {
     await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Create);
 
     const existing = await agentVaultProxyDAL.findOne({ projectId, name });
     if (existing) throw new BadRequestError({ message: `A proxy named '${name}' already exists` });
+
+    const { stored, reported } = await $newRootCa(projectId);
+    const rootCa = { ...stored, ...reported };
 
     const create = () =>
       agentVaultProxyDAL.transaction(async (tx) => {
@@ -201,13 +262,16 @@ export const agentVaultProxyServiceFactory = ({
           });
         }
 
+        // tokenVersion starts at 1: Revoke Access only counts a resource as revocable once it is above 0.
         const created = await agentVaultProxyDAL.create(
           {
             projectId,
             name,
             trafficPolicy: settings.trafficPolicy ?? AgentVaultTrafficPolicy.AnyHost,
             allowedHosts: settings.allowedHosts ?? null,
-            pollInterval: settings.pollInterval ?? 60
+            pollInterval: settings.pollInterval ?? 60,
+            tokenVersion: 1,
+            ...rootCa
           },
           tx
         );
@@ -217,7 +281,9 @@ export const agentVaultProxyServiceFactory = ({
           tx
         );
 
-        return created;
+        const withOrg = await agentVaultProxyDAL.findByIdWithOrg(created.id, tx);
+        if (!withOrg) throw new InternalServerError({ message: "Failed to create the proxy" });
+        return withOrg;
       });
 
     let proxy;
@@ -228,17 +294,39 @@ export const agentVaultProxyServiceFactory = ({
       throw err;
     }
 
-    // Outside the transaction: minting hits KMS.
-    const enrollment = await $issueEnrollmentToken(proxy.id, ctx, "create");
-    return { proxy: toAdminView(proxy), enrollment };
+    return { proxy: toAdminView(proxy), proxyToken: $signProxyToken(proxy.id, proxy.orgId, proxy.tokenVersion) };
   };
 
-  // Does NOT bump tokenVersion, so a running proxy keeps serving until the replacement enrolls.
-  const reissueEnrollmentToken = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
+  // One UPDATE bumps tokenVersion and swaps the CA, so no token ever pairs with the wrong CA. Two rotations at
+  // once queue on the row lock, and each response carries the version and CA its own UPDATE returned.
+  const rotateProxyToken = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
     await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.IssueToken);
     const proxy = await $findProxyOr404({ projectId, proxyId });
-    const enrollment = await $issueEnrollmentToken(proxy.id, ctx, "issue");
-    return { proxy: toAdminView(proxy), enrollment };
+
+    const { stored, reported } = await $newRootCa(proxy.projectId);
+
+    const rotated = await agentVaultProxyDAL.transaction(async (tx) => {
+      const updated = await agentVaultProxyDAL.updateById(
+        proxy.id,
+        {
+          $incr: { tokenVersion: 1 },
+          heartbeat: null,
+          heartbeatTTL: null,
+          ...stored,
+          ...reported
+        },
+        tx
+      );
+      if (!updated) throw new NotFoundError({ message: `Proxy with ID '${proxyId}' not found` });
+      const withOrg = await agentVaultProxyDAL.findByIdWithOrg(proxy.id, tx);
+      if (!withOrg) throw new NotFoundError({ message: `Proxy with ID '${proxyId}' not found` });
+      return withOrg;
+    });
+
+    return {
+      proxy: toAdminView(rotated),
+      proxyToken: $signProxyToken(rotated.id, rotated.orgId, rotated.tokenVersion)
+    };
   };
 
   const updateProxy = async ({ projectId, ctx, proxyId, name, ...settings }: TUpdateProxyDTO) => {
@@ -266,8 +354,6 @@ export const agentVaultProxyServiceFactory = ({
     return { id: proxy.id, name: proxy.name };
   };
 
-  // Through the shared revoke, which also deletes an enrollment token still waiting to be used; bumping
-  // tokenVersion alone left it able to enroll.
   const revokeProxyAccess = async ({ projectId, ctx, proxyId }: TProxyByIdDTO) => {
     await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Revoke);
     const proxy = await $findProxyOr404({ projectId, proxyId });
@@ -278,34 +364,35 @@ export const agentVaultProxyServiceFactory = ({
     return toAdminView({ ...proxy, heartbeat: null });
   };
 
-  const enroll = async ({ enrollmentToken, rootCaCertificate }: TEnrollProxyDTO) => {
-    // Validate the PEM before the login: loginWithToken consumes the enrollment token in-transaction.
-    const parsed = parseRootCaCertificate(rootCaCertificate);
-
-    const login = await resourceAuthMethodService.loginWithToken({
-      token: enrollmentToken,
-      expectedResourceType: RESOURCE_TYPE_AGENT_VAULT_PROXY
-    });
-
-    const before = await agentVaultProxyDAL.findByIdWithOrg(login.resourceId);
-    const proxy = await agentVaultProxyDAL.updateById(login.resourceId, {
-      rootCaFingerprint: parsed.fingerprint,
-      rootCaExpiresAt: parsed.expiresAt
-    });
-    // updateById is typed non-nullable but returns nothing when the row is gone, which a delete during
-    // the replica-lag window can produce. The CLI treats 401 as terminal and rides out a 5xx.
+  // Every proxy calls this on start. One serving its own CA reports it and gets none back; either way the row
+  // ends up showing the CA the most recent start serves.
+  const bootstrap = async ({ proxyId, tokenVersion, servedCaCertificate }: TBootstrapProxyDTO) => {
+    const proxy = await agentVaultProxyDAL.findByIdWithOrg(proxyId);
     if (!proxy) throw new UnauthorizedError({ message: "This proxy no longer exists" });
+    // The auth check ran on an earlier read; a rotation landing in between must not hand the old token the new CA.
+    if (proxy.tokenVersion !== tokenVersion) {
+      throw new UnauthorizedError({ name: "ProxyTokenRejected", message: "Agent Vault proxy token has been revoked" });
+    }
 
-    return {
-      proxyId: proxy.id,
-      name: proxy.name,
-      orgId: login.orgId,
-      projectId: proxy.projectId,
-      accessToken: login.accessToken,
-      config: toConfig(proxy),
-      rootCaFingerprint: parsed.fingerprint,
-      replacedExistingCa: Boolean(before?.rootCaFingerprint)
-    };
+    const servedCa = servedCaCertificate ? parseRootCaCertificate(servedCaCertificate) : null;
+    const infisicalCa = servedCa ? null : await $getOrCreateRootCa(proxy);
+    const reported = servedCa ?? parseRootCaCertificate((infisicalCa as { rootCa: TProxyRootCa }).rootCa.certificate);
+
+    // Tied to the checked version, so a start whose token was rotated in between can't overwrite the rotation.
+    if (!infisicalCa?.recorded && proxy.rootCaFingerprint !== reported.fingerprint) {
+      const [recorded] = await agentVaultProxyDAL.update(
+        { id: proxy.id, tokenVersion },
+        { rootCaFingerprint: reported.fingerprint, rootCaExpiresAt: reported.expiresAt }
+      );
+      if (!recorded) {
+        throw new UnauthorizedError({
+          name: "ProxyTokenRejected",
+          message: "Agent Vault proxy token has been revoked"
+        });
+      }
+    }
+
+    return { proxyId: proxy.id, name: proxy.name, config: toConfig(proxy), rootCa: infisicalCa?.rootCa };
   };
 
   const heartbeat = async ({ proxyId }: THeartbeatDTO) => {
@@ -513,10 +600,12 @@ export const agentVaultProxyServiceFactory = ({
       agentVaultServiceSubstitutionDAL.findByServiceIds(serviceIds)
     ]);
 
-    const sessionLogConfig = await agentVaultSessionLogConfigDAL.findOne({ projectId: session.projectId });
+    const sessionLogConfig = await getEffectiveSessionLogConfig({ agentVaultSessionLogConfigDAL }, session.projectId, {
+      fromPrimary: false
+    });
     const entitlement =
-      isSessionLogIngestEnabled(sessionLogConfig) && Boolean(session.encryptedSessionLogKey)
-        ? await getSessionLogEntitlement(licenseService, proxy.orgId)
+      sessionLogConfig?.enabled && Boolean(session.encryptedSessionLogKey)
+        ? (await getSessionLogEntitlement(licenseService, proxy.orgId, sessionLogConfig.storage.type)).entitlement
         : "unlicensed";
     // While the plan can't be confirmed, a proxy that already holds the key keeps recording, and no key goes out.
     const sessionLogsEnabled = entitlement === "licensed" || (entitlement === "unknown" && hasSessionLogKey);
@@ -607,11 +696,11 @@ export const agentVaultProxyServiceFactory = ({
     getProxyForAuth,
     listProxies,
     createProxy,
-    reissueEnrollmentToken,
+    rotateProxyToken,
     updateProxy,
     deleteProxy,
     revokeProxyAccess,
-    enroll,
+    bootstrap,
     heartbeat,
     resolveSession
   };

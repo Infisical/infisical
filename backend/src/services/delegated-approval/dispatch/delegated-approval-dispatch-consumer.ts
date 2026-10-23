@@ -1,15 +1,18 @@
 import { UnrecoverableError } from "bullmq";
+import pLimit from "p-limit";
 
 import { ProjectType } from "@app/db/schemas";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
+import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { TDelegatedApprovalCallbackServiceFactory } from "@app/services/delegated-approval-callback/delegated-approval-callback-service";
 import { parseEventPayload, runEventsSerially } from "@app/services/event-outbox/event-outbox-fns";
 import {
   EventResultStatus,
   IEventConsumer,
+  MAX_OUTBOX_ATTEMPTS,
   TEvent,
   TEventConsumerResult
 } from "@app/services/event-outbox/event-outbox-types";
@@ -43,6 +46,8 @@ import { TDelegatedApprovalDispatchInput } from "./delegated-approval-dispatch-t
 
 export const DELEGATED_APPROVAL_DISPATCH_CONSUMER = "delegated-approval-dispatch";
 
+const DELEGATED_APPROVAL_DISPATCH_CONCURRENCY = 10;
+
 const BLOCKER_MESSAGES: Record<DelegatedApprovalRequestBlocker, string> = {
   [DelegatedApprovalRequestBlocker.Missing]: "The approval request no longer exists.",
   [DelegatedApprovalRequestBlocker.NotPending]:
@@ -56,14 +61,14 @@ const BLOCKER_MESSAGES: Record<DelegatedApprovalRequestBlocker, string> = {
 type TDelegatedApprovalDispatchConsumerDep = {
   delegatedApprovalRequestDAL: Pick<
     TDelegatedApprovalRequestDALFactory,
-    "findById" | "primaryNode" | "updateWithDetails"
+    "findById" | "primaryNode" | "transaction" | "updateWithDetails"
   >;
   delegatedApprovalPolicyDAL: Pick<TDelegatedApprovalPolicyDALFactory, "findOne">;
   delegatedApprovalCallbackService: Pick<
     TDelegatedApprovalCallbackServiceFactory,
     "getCallbackUrl" | "getOrIssueCallbackToken"
   >;
-  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById">;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById" | "update">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -97,7 +102,43 @@ export const delegatedApprovalDispatchConsumerFactory = ({
     }
   };
 
-  const $dispatch = async (delegatedRequestId: string): Promise<Omit<TEventConsumerResult, "id">> => {
+  const $closeAfterExhaustedAttempts = async ({
+    delegatedRequestId,
+    approvalRequestId,
+    statusReason
+  }: {
+    delegatedRequestId: string;
+    approvalRequestId: string;
+    statusReason: string;
+  }) => {
+    try {
+      await delegatedApprovalRequestDAL.transaction(async (tx) => {
+        await delegatedApprovalRequestDAL.updateWithDetails(
+          { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.PendingDispatch },
+          {
+            status: DelegatedApprovalRequestStatus.Failed,
+            details: { statusReason: toDelegatedApprovalStatusReason(statusReason) }
+          },
+          tx
+        );
+        await approvalRequestDAL.update(
+          { id: approvalRequestId, status: ApprovalRequestStatus.Pending },
+          { status: ApprovalRequestStatus.Cancelled },
+          tx
+        );
+      });
+    } catch (error) {
+      logger.error(
+        error,
+        `Failed to close a delegated approval request whose dispatch attempts ran out [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequestId}]`
+      );
+    }
+  };
+
+  const $dispatch = async (
+    delegatedRequestId: string,
+    isFinalAttempt: boolean
+  ): Promise<Omit<TEventConsumerResult, "id">> => {
     const context = await loadDelegatedApprovalContext(delegatedRequestId, {
       delegatedApprovalRequestDAL,
       approvalRequestDAL,
@@ -172,10 +213,7 @@ export const delegatedApprovalDispatchConsumerFactory = ({
         kmsService
       );
 
-      const callbackToken = await delegatedApprovalCallbackService.getOrIssueCallbackToken({
-        delegatedRequest,
-        orgId: approvalRequest.organizationId
-      });
+      const callbackToken = await delegatedApprovalCallbackService.getOrIssueCallbackToken({ delegatedRequest });
       if (!callbackToken) {
         throw new UnrecoverableError(
           "A callback token could not be issued for this request. Create the request again."
@@ -222,9 +260,21 @@ export const delegatedApprovalDispatchConsumerFactory = ({
     } catch (error) {
       const { terminal, message, logContext } = toDelegatedApprovalFailure(error);
 
-      // The outbox decides when retries run out and the consumer never sees the attempt count, so the
-      // reason has to read true on every attempt. The row is failed_dispatch throughout, which is what
-      // makes the manual resend available while the outbox is still retrying.
+      if (!terminal && isFinalAttempt && approvalRequest) {
+        await $closeAfterExhaustedAttempts({
+          delegatedRequestId,
+          approvalRequestId: approvalRequest.id,
+          statusReason: `${message} Infisical could not send this request after ${MAX_OUTBOX_ATTEMPTS} attempts and closed it. Create a new request.`
+        });
+        logger.error(
+          logContext,
+          `Delegated approval dispatch attempts ran out, request closed [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequest.id}]`
+        );
+        return { status: EventResultStatus.Failed, error: message };
+      }
+
+      // The row is failed_dispatch throughout, which is what makes the manual resend available while the
+      // outbox is still retrying.
       await $markDispatchFailed(
         delegatedRequestId,
         terminal ? message : `${message} ${DELEGATED_APPROVAL_DISPATCH_RETRY_HINT}`
@@ -248,13 +298,44 @@ export const delegatedApprovalDispatchConsumerFactory = ({
     );
     if (failure) return failure;
 
-    return { id: String(event.id), ...(await $dispatch(data.delegatedRequestId)) };
+    return { id: String(event.id), ...(await $dispatch(data.delegatedRequestId, event.isFinalAttempt)) };
+  };
+
+  // Unreadable payloads have no request id, so each one is its own group and cannot block another request.
+  const $groupByRequest = (events: TEvent[]): TEvent[][] => {
+    const groups: TEvent[][] = [];
+    const indexByRequest = new Map<string, number>();
+
+    events.forEach((event) => {
+      const payload = DelegatedApprovalDispatchRequestedPayloadSchema.safeParse(event.payload);
+      const key = payload.success ? payload.data.delegatedRequestId : `event:${String(event.id)}`;
+      const existing = indexByRequest.get(key);
+      if (existing === undefined) {
+        indexByRequest.set(key, groups.length);
+        groups.push([event]);
+      } else {
+        groups[existing].push(event);
+      }
+    });
+
+    return groups;
+  };
+
+  // Events for one request run serially, so two of them cannot both pass the providerRequestId check.
+  const handle = async (events: TEvent[]): Promise<TEventConsumerResult[]> => {
+    const limit = pLimit(DELEGATED_APPROVAL_DISPATCH_CONCURRENCY);
+
+    const groupResults = await Promise.all(
+      $groupByRequest(events).map((group) => limit(() => runEventsSerially(group, $handleEvent)))
+    );
+
+    return groupResults.flat();
   };
 
   return {
     name: DELEGATED_APPROVAL_DISPATCH_CONSUMER,
     payloadSchema: DelegatedApprovalDispatchRequestedPayloadSchema,
     subscribesTo: (eventType: string) => eventType === DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
-    handle: (events) => runEventsSerially(events, $handleEvent)
+    handle
   };
 };

@@ -179,6 +179,7 @@ const makeEvent = (overrides?: Partial<TEvent>): TEvent => ({
     externalId: EXTERNAL_ID
   },
   occurredAt: new Date(),
+  isFinalAttempt: false,
   ...overrides
 });
 

@@ -15,11 +15,13 @@ import {
   EventResultStatus,
   FAILED_RETENTION_MS,
   IEventConsumer,
+  isFinalOutboxAttempt,
   MAX_BATCHES_PER_FLUSH,
   MAX_OUTBOX_ATTEMPTS,
   MAX_OUTBOX_PAYLOAD_BYTES,
   OUTBOX_CLAIM_BATCH_SIZE,
   STALE_CLAIM_THRESHOLD_MS,
+  TEvent,
   TEventConsumerResult,
   TEventInput,
   TOutboxFlushKey
@@ -192,7 +194,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
       if (result.status === EventResultStatus.Delivered) {
         finalStatus = EventOutboxStatus.Delivered;
         delivered.push({ id });
-      } else if (result.status === EventResultStatus.Failed || attempts >= MAX_OUTBOX_ATTEMPTS) {
+      } else if (result.status === EventResultStatus.Failed || isFinalOutboxAttempt(row.attempts)) {
         finalStatus = EventOutboxStatus.Failed;
         failed.push({ id, error: result.error });
       } else {
@@ -241,6 +243,13 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     lockToken: string
   ): Promise<TEventConsumerResult[]> => {
     const ids = claimed.map((row) => String(row.id));
+    const events: TEvent[] = claimed.map((row) => ({
+      id: row.id,
+      eventType: row.eventType,
+      payload: row.payload,
+      occurredAt: row.occurredAt,
+      isFinalAttempt: isFinalOutboxAttempt(row.attempts)
+    }));
     const heartbeat = setInterval(() => {
       eventOutboxDAL.extendClaims(ids, lockToken).catch((error) => {
         logger.warn(error, `event-outbox: failed to extend a claim [consumer=${key.consumer}]`);
@@ -249,7 +258,7 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
 
     try {
       return await withTimeout(
-        consumer.handle(claimed),
+        consumer.handle(events),
         CONSUMER_HANDLE_TIMEOUT_MS,
         () => new ConsumerHandleTimeoutError(key.consumer, CONSUMER_HANDLE_TIMEOUT_MS)
       );

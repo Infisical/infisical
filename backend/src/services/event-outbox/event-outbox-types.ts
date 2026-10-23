@@ -24,6 +24,8 @@ export const OUTBOX_CLAIM_BATCH_SIZE = 100;
 
 export const MAX_OUTBOX_ATTEMPTS = 8;
 
+export const isFinalOutboxAttempt = (attemptsMade: number): boolean => attemptsMade + 1 >= MAX_OUTBOX_ATTEMPTS;
+
 export const OUTBOX_BACKOFF_BASE_MS = 30_000;
 
 export const computeBackoffMs = (attemptsAfterIncrement: number): number => {
@@ -61,8 +63,10 @@ export type TEventEmitter = {
   emit: (event: TEventInput, tx?: Knex) => Promise<void>;
 };
 
-// What a consumer sees. Lock, attempt and status columns are the outbox's business.
-export type TEvent = Pick<TEventOutbox, "id" | "eventType" | "payload" | "occurredAt">;
+// What a consumer sees. Lock and status columns are the outbox's business.
+export type TEvent = Pick<TEventOutbox, "id" | "eventType" | "payload" | "occurredAt"> & {
+  isFinalAttempt: boolean;
+};
 
 export enum EventResultStatus {
   Delivered = "delivered",

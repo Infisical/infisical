@@ -195,8 +195,12 @@ export const toServiceNowRequestError = (
   }
 
   if (status === 429) {
+    logger.warn(
+      { status, instance },
+      `ServiceNow instance ${instance} is rate limiting requests from Infisical (HTTP 429).`
+    );
     return new BadRequestError({
-      message: `ServiceNow instance ${instance} is rate limiting requests from Infisical (HTTP 429).`
+      message: `ServiceNow instance ${instance} could not accept the request.`
     });
   }
 

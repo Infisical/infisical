@@ -66,34 +66,32 @@ First, create an [access bundle](/documentation/platform/agent-vault/access-bund
   You can repeat these steps to add as many more services as you like to the access bundle.
 </Tip>
 
-### Enroll a proxy
+### Create a proxy
 
-Next, enroll a [proxy](/documentation/platform/agent-vault/proxies) to intercept API calls from your agent.
+Next, create a [proxy](/documentation/platform/agent-vault/proxies) to intercept API calls from your agent.
 
 <Steps>
   <Step>
     Go to **Proxies** and select **Create Proxy**.
   </Step>
   <Step>
-    Give the proxy a **Name**, then select **Create**. This creates a one-time enrollment token. Copy the command shown—you'll need it in the next step.
-
-    <Frame>
-      <img src="/images/platform/agent-vault/proxy-enrollment-token.png" alt="The Enrollment Token dialog with the CLI command, and Docker and systemd tabs alongside it" />
-    </Frame>
+    Give the proxy a **Name**, then select **Create**. The **Proxy Token** dialog shows the proxy token once, with a command to start the proxy. Copy the command from the **CLI** tab for the next step.
   </Step>
   <Step>
     On the host that will act as the proxy, run the command from the previous step.
 
     ```bash
-    infisical agent-vault proxy --enrollment-token <enrollment-token>
+    INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> \
+    infisical agent-vault proxy \
+      --domain <your-instance-url>
     ```
 
-    This enrolls the proxy, which starts listening on port `17323`. Leave it running and note this host's address—you'll need it when launching your agent.
+    The proxy starts listening on port `17323`. Leave it running and note this host's address. You'll need the address when you launch your agent.
   </Step>
 </Steps>
 
 <Note>
-  This runs the proxy in your current terminal, so the proxy stops when the terminal closes. For a persistent setup, use the **Docker** or **systemd** snippet from the enrollment dialog.
+  This runs the proxy in your current terminal, so the proxy stops when the terminal closes. For a persistent setup, use the **Docker** command or the **Kubernetes** manifest from the **Proxy Token** dialog, or [run the proxy with systemd](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it).
 
   Check out the [proxies documentation](/documentation/platform/agent-vault/proxies) for more information.
 </Note>
@@ -114,7 +112,7 @@ Next, create a [session](/documentation/platform/agent-vault/sessions) with your
     </Frame>
   </Step>
   <Step>
-    This creates the session and gives you a command to run your agent with it. Copy the command—you'll need it in the next step.
+    This creates the session and gives you a command to run your agent with it. Copy the command for the next step.
 
     <Frame>
       <img src="/images/platform/agent-vault/session-created.png" alt="The Session Created dialog showing the infisical agent-vault run command with the session token" />

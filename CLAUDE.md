@@ -167,12 +167,18 @@ the dispatch is exactly as durable as the request; never enqueue it after commit
 `delegated-approval-dispatch` consumer (`delegated-approval/dispatch/delegated-approval-dispatch-consumer.ts`)
 calls the provider inline and moves the row `pending_dispatch` → `waiting_approval` (storing the provider's
 record id in `providerRequestId`) or `failed_dispatch` with a `statusReason` a user can read. A transient
-failure returns `Retry`, so the outbox backs off and tries again (up to `MAX_OUTBOX_ATTEMPTS`); the reason text
-promises that retry on every attempt because the consumer cannot see the attempt count. A user resends a
+failure returns `Retry`, so the outbox backs off and tries again (up to `MAX_OUTBOX_ATTEMPTS`), and the reason
+text promises that retry. The outbox flags the last attempt (`TEvent.isFinalAttempt`), and a transient failure
+on it closes the request instead: the delegated row goes `failed` with a reason that says so, the approval
+request goes `cancelled`, and the consumer returns `Failed`. A terminal failure the consumer raises itself (an
+`UnrecoverableError`: SITE_URL unset, the app connection gone, the policy no longer delegated) stays
+`failed_dispatch` on every attempt, because an admin can fix the cause and resend. A user resends a
 `failed_dispatch` request with `POST /api/v1/access-approvals/requests/:requestId/retry-delegated-dispatch`. The
 product's bridge checks who may retry, and `delegatedApprovalService.retryDispatch` checks the request can be
-retried and emits the same event with no transaction. One flush runs per consumer at a time, so two dispatches
-of one request never run together; a second event for a request that was already delivered is marked delivered
+retried and emits the same event with no transaction. The emit's idempotency key is the event, the delegated
+request id, and that row's `updatedAt`, so repeated emits of one attempt collapse, and a later resend still
+inserts after the status write bumps `updatedAt`. A batch dispatches up to 10 different requests at once;
+events for one request stay serial. A second event for a request that was already delivered is marked delivered
 without calling the provider. A delegated request has
 no Infisical approvers, so `POST /api/v1/access-approvals/requests/:requestId/cancel-delegated-dispatch` is the only way to close
 one from Infisical: the requester, or anyone who can edit the policy, sets it `cancelled`, which is also how a
@@ -181,13 +187,14 @@ policy blocked by pending requests is freed for editing. Every provider implemen
 (`delegated-approval/providers/<name>/`); a new policy type adds an arm to `TDelegatedApprovalDispatchDetails` and a
 builder in `DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP` rather than branching in a provider. The consumer
 reads from the primary, never checks the license, and treats bullmq's `UnrecoverableError` as the terminal failure
-signal, returning `Failed` for it and `Retry` for anything else. The callback contract (token issuance now, the inbound route and approve / reject later) is its own
+signal, returning `Failed` for it and `Retry` for anything else until the last attempt. The callback contract (token issuance now, the inbound route and approve / reject later) is its own
 module, `backend/src/services/delegated-approval-callback/`, so the delegated approval module never grows a
 callback branch. A request gets exactly one callback token for its whole life: it is random, prefixed `inf_ext_`,
-issued on the first dispatch attempt, and stored encrypted under the org KMS key in `encryptedCallbackToken` so
-every retry resends the same value. Never send a provider a token that differs from the one stored for the
-request; the provider keeps the first token it was given and cannot be told another, so a mismatch is
-unrecoverable. The provider calls `POST /api/v1/delegated-approvals/callback` (unauthenticated, IP rate limited)
+issued on the first dispatch attempt, and stored in `encryptedCallbackToken` under the SecretManager KMS key of
+the request's project (`getOrIssueCallbackToken` resolves the project from the delegated request itself, since
+the inbound route knows only that row) so every retry resends the same value. Never send a provider a token that
+differs from the one stored for the request; the provider keeps the first token it was given and cannot be told
+another, so a mismatch is unrecoverable. The provider calls `POST /api/v1/delegated-approvals/callback` (unauthenticated, IP rate limited)
 with the token in the `Infisical-Approval-Token` header and a body naming the event and the provider's record id;
 the body carries no decision, which a later worker reads back from the provider. The route finds the row by
 `providerRequestId` (404 when none), checks the token, and only then counts the callback in `callbackAttempts`; on
@@ -222,6 +229,15 @@ effect if the user were ever added back. Every outcome is audited as
 product notifications (the access request webhook) go through `decisionNotifiers`, never through the
 consumer itself. ServiceNow stamps an immutable `decision` on its record before it posts the callback, so
 the provider reads that field alone and ignores `state`.
+
+### Object Storage
+
+New product files go to S3 through `backend/src/services/object-storage/`, not a product's own S3 client (PAM
+recordings predate it and haven't moved). A product
+registers a namespace (record-first path like `sessions/{sessionId}/logs/{file}`, checked for naming collisions at
+boot) and the layer builds org-first keys, signs links, and applies the retention tag and, for default storage on Infisical Cloud, a daily upload cap. Storage is
+`default` (the instance's bucket, `OBJECT_STORAGE_S3_*`) or `external` (the customer's, through an AWS connection);
+use those two words everywhere.
 
 ### API Layer (Frontend)
 

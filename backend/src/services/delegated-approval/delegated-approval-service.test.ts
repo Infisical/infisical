@@ -7,11 +7,13 @@ import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "./d
 import { DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT } from "./delegated-approval-events";
 import { delegatedApprovalServiceFactory } from "./delegated-approval-service";
 
+const UPDATED_AT = new Date("2026-10-23T13:00:00.000Z");
 const failedRequest = {
   id: "delegated-1",
   requestId: "req-1",
   status: DelegatedApprovalRequestStatus.FailedDispatch,
-  details: { statusReason: "ServiceNow could not be reached." }
+  details: { statusReason: "ServiceNow could not be reached." },
+  updatedAt: UPDATED_AT
 };
 const serviceNowPolicy = {
   id: "delegated-policy-1",
@@ -36,6 +38,7 @@ const createService = ({
   const emit = vi.fn().mockResolvedValue(undefined);
   const create = vi.fn().mockImplementation(async (row: { requestId: string; status: string; details: object }) => ({
     id: "delegated-1",
+    updatedAt: UPDATED_AT,
     ...row
   }));
   const service = delegatedApprovalServiceFactory({
@@ -48,6 +51,7 @@ const createService = ({
 
 const dispatchRequestedEvent = {
   eventType: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
+  idempotencyKey: `${DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT}:delegated-1:${UPDATED_AT.toISOString()}`,
   payload: { delegatedRequestId: "delegated-1" }
 };
 
@@ -76,6 +80,17 @@ describe("delegatedApprovalService.retryDispatch", () => {
       delegatedPolicy: serviceNowPolicy
     });
     expect(emit).toHaveBeenCalledWith(dispatchRequestedEvent, undefined);
+  });
+
+  test("emits the same idempotency key when the same failed attempt is sent again", async () => {
+    const { service, emit } = createService();
+
+    await service.retryDispatch({ approvalRequest: pendingApprovalRequest });
+    await service.retryDispatch({ approvalRequest: pendingApprovalRequest });
+
+    expect(emit).toHaveBeenCalledTimes(2);
+    expect(emit).toHaveBeenNthCalledWith(1, dispatchRequestedEvent, undefined);
+    expect(emit).toHaveBeenNthCalledWith(2, dispatchRequestedEvent, undefined);
   });
 
   test("refuses a request without a delegated approval", async () => {

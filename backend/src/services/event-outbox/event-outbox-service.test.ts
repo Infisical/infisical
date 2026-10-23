@@ -270,6 +270,24 @@ describe("event outbox drain", () => {
     expect(commits[0].retriable).toEqual([]);
   });
 
+  test("hands the consumer isFinalAttempt only on its last attempt", async () => {
+    const received: { id: string; isFinalAttempt: boolean }[] = [];
+    const { service } = buildDrain({
+      batches: [[makeRow({ id: 1, attempts: 0 }), makeRow({ id: 2, attempts: MAX_OUTBOX_ATTEMPTS - 1 })]],
+      handle: async (events) => {
+        events.forEach((event) => received.push({ id: String(event.id), isFinalAttempt: event.isFinalAttempt }));
+        return events.map((event) => ({ id: String(event.id), status: EventResultStatus.Retry }));
+      }
+    });
+
+    await service.drain(KEY);
+
+    expect(received).toEqual([
+      { id: "1", isFinalAttempt: false },
+      { id: "2", isFinalAttempt: true }
+    ]);
+  });
+
   // One UPDATE per distinct outcome, so a hundred deliveries is one statement. Rows on the same attempt
   // share a retry delay, so they group too.
   test("groups rows that share an outcome into one commit entry", async () => {

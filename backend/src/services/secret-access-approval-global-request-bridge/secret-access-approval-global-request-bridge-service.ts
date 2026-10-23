@@ -442,23 +442,6 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     actorAuthMethod
   }: TReviewSecretAccessApprovalGlobalRequestDTO) => {
     const request = await $findRequestById(requestId);
-    const delegatedRequest = await delegatedApprovalService.getRequestByRequestId(request.id);
-    if (delegatedRequest) {
-      throw new BadRequestError({ message: externallyReviewedAccessRequestMessage(requestId) });
-    }
-    if (!request.policyId) {
-      throw new BadRequestError({ message: "The policy associated with this access request has been deleted." });
-    }
-    const policy = await $findPolicyById(
-      request.policyId,
-      "The policy associated with this access request has been deleted."
-    );
-    if (policy.delegatedApproval) {
-      throw new BadRequestError({ message: externallyReviewedAccessRequestMessage(requestId) });
-    }
-    if (!request.requesterId) {
-      throw new NotFoundError({ message: "The user who created this access request no longer exists" });
-    }
 
     const { memberships } = await permissionService.getProjectPermission({
       actor,
@@ -477,6 +460,20 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       activeRoles.length > 0 && activeRoles.every((r) => r.role === ProjectMembershipRole.NoAccess);
     if (hasOnlyNoAccessRole) {
       throw new ForbiddenRequestError({ message: "You are not authorized to review this request" });
+    }
+
+    if (!request.policyId) {
+      throw new BadRequestError({ message: "The policy associated with this access request has been deleted." });
+    }
+    const policy = await $findPolicyById(
+      request.policyId,
+      "The policy associated with this access request has been deleted."
+    );
+    if (policy.delegatedApproval) {
+      throw new BadRequestError({ message: externallyReviewedAccessRequestMessage(requestId) });
+    }
+    if (!request.requesterId) {
+      throw new NotFoundError({ message: "The user who created this access request no longer exists" });
     }
 
     if (request.status !== ApprovalRequestStatus.Pending) {
@@ -899,8 +896,8 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       );
     }
 
-    const { delegatedPolicy } = await delegatedApprovalService.retryDispatch({ approvalRequest: request });
     const auditDetails = await $describeRequestForAudit(request);
+    const { delegatedPolicy } = await delegatedApprovalService.retryDispatch({ approvalRequest: request });
 
     return {
       request: { ...toLegacyAccessApprovalRequest(request), policyId: delegatedPolicy.policyId },
@@ -976,20 +973,17 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       });
     }
 
-    const policyId = await approvalRequestDAL.transaction(async (tx) => {
+    const auditDetails = await $describeRequestForAudit(request);
+    const cancelled = await approvalRequestDAL.transaction(async (tx) => {
       const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
       if (!locked || locked.status !== ApprovalRequestStatus.Pending || !locked.policyId) {
         throw new BadRequestError({ message: "Only pending requests can be cancelled" });
       }
-      await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Cancelled }, tx);
-      return locked.policyId;
+      return approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Cancelled }, tx);
     });
 
-    const cancelled = await $findRequestByIdFromPrimary(requestId);
-    const auditDetails = await $describeRequestForAudit(cancelled);
-
     return {
-      request: { ...toLegacyAccessApprovalRequest(cancelled), policyId },
+      request: toLegacyAccessApprovalRequest({ ...request, ...cancelled }),
       projectId: request.projectId,
       ...auditDetails
     };
