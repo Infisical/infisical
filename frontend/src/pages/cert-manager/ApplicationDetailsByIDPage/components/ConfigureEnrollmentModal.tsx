@@ -1615,7 +1615,7 @@ export const ConfigureEnrollmentModal = ({
             onValueChange={(v) => {
               if (!isPending) setActiveTab(v as EnrollmentMethod);
             }}
-            className="min-h-0 flex-1 gap-0"
+            className="min-h-0 flex-1"
           >
             <div className="flex items-center justify-between gap-2 border-b border-border px-4 pt-4">
               <div className="min-w-0 flex-1">
@@ -1690,7 +1690,7 @@ export const ConfigureEnrollmentModal = ({
                 {visibleMethods.includes("api") ? (
                   <TabsContent
                     value="api"
-                    className="mt-0 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
+                    className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
                     forceMount
                   >
                     <ApiPanel
@@ -1707,7 +1707,7 @@ export const ConfigureEnrollmentModal = ({
                 {visibleMethods.includes("est") ? (
                   <TabsContent
                     value="est"
-                    className="mt-0 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
+                    className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
                     forceMount
                   >
                     <EstPanel
@@ -1726,7 +1726,7 @@ export const ConfigureEnrollmentModal = ({
                 {visibleMethods.includes("acme") ? (
                   <TabsContent
                     value="acme"
-                    className="mt-0 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
+                    className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
                     forceMount
                   >
                     <AcmePanel
@@ -1745,7 +1745,7 @@ export const ConfigureEnrollmentModal = ({
                 {visibleMethods.includes("scep") ? (
                   <TabsContent
                     value="scep"
-                    className="mt-0 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
+                    className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
                     forceMount
                   >
                     <ScepPanel
