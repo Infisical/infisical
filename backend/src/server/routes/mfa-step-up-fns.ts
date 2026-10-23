@@ -116,9 +116,9 @@ export const ensureStepUpMfa = async (
 // retried request through, so callers never pass the session id back.
 export const ensureFactorEnrollmentStepUpMfa = async (
   server: FastifyZodProvider,
-  { userId, tokenVersionId }: { userId: string; tokenVersionId: string }
+  { userId, tokenVersionId, enrollingMethod }: { userId: string; tokenVersionId: string; enrollingMethod: MfaMethod }
 ) => {
-  const mfaMethods = await server.services.user.getFactorEnrollmentStepUpMfaMethods(userId);
+  const mfaMethods = await server.services.user.getFactorEnrollmentStepUpMfaMethods(userId, enrollingMethod);
   if (!mfaMethods) return;
 
   await ensureStepUpMfa(server, {

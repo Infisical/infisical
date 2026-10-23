@@ -693,11 +693,14 @@ export const userServiceFactory = ({
   };
 
   // Adding a factor must be proven with one the account already has, or a password-only
-  // session could plant its own. Any of the user's factors will do: org enforcement governs
-  // how a user logs in, not which factor proves it is them. Returns null for an account
-  // with none, so enforced-MFA onboarding at login can still enroll the first one.
+  // session could plant its own. A new factor of a kind the user already has passes every
+  // login that asks for that kind, so only that kind can prove it; otherwise a weaker factor
+  // could open an org that enforces the stronger one. Mirrors removal (getStepUpMfaMethod).
+  // The first factor of a kind takes any of the user's factors, and an account with none
+  // gets null so enforced-MFA onboarding at login still works.
   const getFactorEnrollmentStepUpMfaMethods = async (
-    userId: string
+    userId: string,
+    enrollingMethod: MfaMethod
   ): Promise<{ challenge: MfaMethod; accepted: MfaMethod[] } | null> => {
     const user = await userDAL.findById(userId);
     if (!user) throw new NotFoundError({ message: "User not found" });
@@ -712,15 +715,16 @@ export const userServiceFactory = ({
       enforcingOrgs.some((org) => (org.selectedMfaMethod ?? MfaMethod.EMAIL) === MfaMethod.EMAIL);
     const hasEmail = isEmailRequiredAtLogin && (await isMfaMethodConfigured(user, MfaMethod.EMAIL));
 
-    const accepted = [
+    const userFactors = [
       ...(hasPasskey ? [MfaMethod.WEBAUTHN] : []),
       ...(hasTotp ? [MfaMethod.TOTP] : []),
       ...(hasEmail ? [MfaMethod.EMAIL] : [])
     ];
-    if (!accepted.length) return null;
+    if (!userFactors.length) return null;
+    if (userFactors.includes(enrollingMethod)) return { challenge: enrollingMethod, accepted: [enrollingMethod] };
 
-    const preferred = accepted.find((method) => method === user.selectedMfaMethod);
-    return { challenge: preferred ?? accepted[0], accepted };
+    const preferred = userFactors.find((method) => method === user.selectedMfaMethod);
+    return { challenge: preferred ?? userFactors[0], accepted: userFactors };
   };
 
   const deleteUser = async (userId: string) => {

@@ -42,7 +42,10 @@ const MAX_MFA_ATTEMPTS = 5;
 const CLIENT_RESEND_DELAY_SECONDS = 20;
 
 type Props = {
-  successCallback: () => void | Promise<void>;
+  // needsFactorSetup: the user got in with a recovery code instead of setting up the
+  // method their org requires. The caller picks where they go, e.g. a CLI login must
+  // still finish its token handoff first.
+  successCallback: (options?: { needsFactorSetup?: boolean }) => void | Promise<void>;
   closeMfa?: () => void;
   email: string;
   method: MfaMethod;
@@ -132,17 +135,15 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
   };
 
   const completeLogin = async () => {
-    await successCallback();
+    await successCallback({ needsFactorSetup: isRecoveringFromSetup });
     if (closeMfa) {
       closeMfa();
     }
-    // The recovery code got the user in, but the method the org requires is still not set up.
     if (isRecoveringFromSetup) {
       createNotification({
-        text: `Set up your ${MFA_METHOD_LABELS[method].toLowerCase()} now. Your organization requires it to sign in.`,
+        text: `Set up your ${MFA_METHOD_LABELS[method].toLowerCase()} in Personal Settings. Your organization requires it to sign in.`,
         type: "info"
       });
-      navigate({ to: "/personal-settings", search: { selectedTab: "authentication" } });
     }
   };
 

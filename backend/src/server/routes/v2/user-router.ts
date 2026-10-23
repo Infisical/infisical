@@ -130,7 +130,8 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       await ensureFactorEnrollmentStepUpMfa(server, {
         userId: req.permission.id,
-        tokenVersionId: getStepUpSessionId(req)
+        tokenVersionId: getStepUpSessionId(req),
+        enrollingMethod: req.body.method
       });
 
       if (req.body.method === MfaMethod.TOTP) {

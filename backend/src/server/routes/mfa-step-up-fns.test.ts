@@ -140,14 +140,13 @@ describe("ensureStepUpMfa binds prior proof to the factors the action would chal
 });
 
 describe("ensureFactorEnrollmentStepUpMfa", () => {
-  const enrollmentArgs = { userId: USER_ID, tokenVersionId: TOKEN_VERSION };
+  const enrollmentArgs = { userId: USER_ID, tokenVersionId: TOKEN_VERSION, enrollingMethod: MfaMethod.WEBAUTHN };
 
   const withEnrollmentMethods = (enrollmentMethods: TResolved | null, patch: ServerPatch = {}) => {
     const built = makeServer(patch);
-    Object.assign(built.user, {
-      getFactorEnrollmentStepUpMfaMethods: vi.fn().mockResolvedValue(enrollmentMethods)
-    });
-    return built;
+    const getFactorEnrollmentStepUpMfaMethods = vi.fn().mockResolvedValue(enrollmentMethods);
+    Object.assign(built.user, { getFactorEnrollmentStepUpMfaMethods });
+    return { ...built, getFactorEnrollmentStepUpMfaMethods };
   };
 
   test("lets the first factor through without a challenge", async () => {
@@ -158,7 +157,7 @@ describe("ensureFactorEnrollmentStepUpMfa", () => {
   });
 
   test("challenges an existing factor without needing an org", async () => {
-    const { server, mfaSession, user } = withEnrollmentMethods({
+    const { server, mfaSession, user, getFactorEnrollmentStepUpMfaMethods } = withEnrollmentMethods({
       challenge: MfaMethod.WEBAUTHN,
       accepted: [MfaMethod.WEBAUTHN, MfaMethod.TOTP]
     });
@@ -167,6 +166,7 @@ describe("ensureFactorEnrollmentStepUpMfa", () => {
       name: "SESSION_MFA_REQUIRED",
       details: { mfaMethod: MfaMethod.WEBAUTHN }
     });
+    expect(getFactorEnrollmentStepUpMfaMethods).toHaveBeenCalledWith(USER_ID, MfaMethod.WEBAUTHN);
     expect(user.getStepUpMfaMethod).not.toHaveBeenCalled();
     expect(mfaSession.hasRecentMfaAuth).toHaveBeenCalledWith(USER_ID, TOKEN_VERSION, [
       MfaMethod.WEBAUTHN,
