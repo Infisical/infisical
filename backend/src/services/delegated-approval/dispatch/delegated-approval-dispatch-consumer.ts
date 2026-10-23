@@ -1,4 +1,5 @@
 import { UnrecoverableError } from "bullmq";
+import pLimit from "p-limit";
 
 import { ProjectType } from "@app/db/schemas";
 import { logger } from "@app/lib/logger";
@@ -34,6 +35,8 @@ import {
 import { TDelegatedApprovalDispatchInput } from "./delegated-approval-dispatch-types";
 
 export const DELEGATED_APPROVAL_DISPATCH_CONSUMER = "delegated-approval-dispatch";
+
+const DELEGATED_APPROVAL_DISPATCH_CONCURRENCY = 10;
 
 type TDelegatedApprovalDispatchConsumerDep = {
   delegatedApprovalRequestDAL: Pick<
@@ -256,23 +259,55 @@ export const delegatedApprovalDispatchConsumerFactory = ({
     return { id, ...(await $dispatch(payload.data.delegatedRequestId)) };
   };
 
-  const handle = async (events: TEvent[]): Promise<TEventConsumerResult[]> => {
-    const results: TEventConsumerResult[] = [];
-
-    for (const event of events) {
-      try {
-        // eslint-disable-next-line no-await-in-loop -- one dispatch at a time, so two events for the same request never race
-        results.push(await $handleEvent(event));
-      } catch (error) {
-        results.push({
-          id: String(event.id),
-          status: EventResultStatus.Retry,
-          error: error instanceof Error ? error.message : "Unknown error"
-        });
-      }
+  const $runEvent = async (event: TEvent): Promise<TEventConsumerResult> => {
+    try {
+      return await $handleEvent(event);
+    } catch (error) {
+      return {
+        id: String(event.id),
+        status: EventResultStatus.Retry,
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
     }
+  };
 
-    return results;
+  // Unreadable payloads have no request id, so each one is its own group and cannot block another request.
+  const $groupByRequest = (events: TEvent[]): TEvent[][] => {
+    const groups: TEvent[][] = [];
+    const indexByRequest = new Map<string, number>();
+
+    events.forEach((event) => {
+      const payload = DelegatedApprovalDispatchRequestedPayloadSchema.safeParse(event.payload);
+      const key = payload.success ? payload.data.delegatedRequestId : `event:${String(event.id)}`;
+      const existing = indexByRequest.get(key);
+      if (existing === undefined) {
+        indexByRequest.set(key, groups.length);
+        groups.push([event]);
+      } else {
+        groups[existing].push(event);
+      }
+    });
+
+    return groups;
+  };
+
+  const handle = async (events: TEvent[]): Promise<TEventConsumerResult[]> => {
+    const limit = pLimit(DELEGATED_APPROVAL_DISPATCH_CONCURRENCY);
+
+    const groupResults = await Promise.all(
+      $groupByRequest(events).map((group) =>
+        limit(async () => {
+          const results: TEventConsumerResult[] = [];
+          for (const event of group) {
+            // eslint-disable-next-line no-await-in-loop -- two events for one request must not both pass the providerRequestId check
+            results.push(await $runEvent(event));
+          }
+          return results;
+        })
+      )
+    );
+
+    return groupResults.flat();
   };
 
   return {

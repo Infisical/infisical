@@ -215,6 +215,82 @@ describe("delegatedApprovalDispatchConsumer", () => {
     expect(dispatch).not.toHaveBeenCalled();
   });
 
+  test("dispatches different requests together", async () => {
+    const otherRequestId = "33333333-3333-3333-3333-333333333333";
+    let releaseFirst: () => void = () => {};
+    const firstHeld = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+
+    dispatch.mockImplementation(async (input: { delegatedRequestId: string }) => {
+      if (input.delegatedRequestId === DELEGATED_REQUEST_ID) await firstHeld;
+      return { providerRequestId: `snow-${input.delegatedRequestId}` };
+    });
+
+    const { consumer } = buildConsumer({
+      findById: async (id: string) => ({
+        ...pendingDelegatedRequest,
+        id,
+        requestId: id === DELEGATED_REQUEST_ID ? "req-1" : "req-2"
+      })
+    });
+
+    const pending = consumer.handle([
+      makeEvent({ id: 1 }),
+      makeEvent({ id: 2, payload: { delegatedRequestId: otherRequestId } })
+    ]);
+
+    try {
+      await vi.waitFor(() => expect(dispatch).toHaveBeenCalledTimes(2));
+    } finally {
+      releaseFirst();
+    }
+
+    await expect(pending).resolves.toEqual([
+      { id: "1", status: EventResultStatus.Delivered },
+      { id: "2", status: EventResultStatus.Delivered }
+    ]);
+  });
+
+  test("dispatches a second event for the same request only after the first settles", async () => {
+    let releaseFirst: () => void = () => {};
+    const firstHeld = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let firstSettledAt = 0;
+    let secondStartedAt = 0;
+
+    dispatch.mockImplementation(async () => {
+      if (dispatch.mock.calls.length === 1) {
+        await firstHeld;
+        firstSettledAt = Date.now();
+        throw new Error("ServiceNow did not respond.");
+      }
+      secondStartedAt = Date.now();
+      return { providerRequestId: "snow-2" };
+    });
+
+    const { consumer } = buildConsumer();
+    const pending = consumer.handle([makeEvent({ id: 1 }), makeEvent({ id: 2 })]);
+
+    try {
+      await vi.waitFor(() => expect(dispatch).toHaveBeenCalledTimes(1));
+      await new Promise((resolve) => {
+        setTimeout(resolve, 30);
+      });
+      expect(dispatch).toHaveBeenCalledTimes(1);
+    } finally {
+      releaseFirst();
+    }
+
+    const results = await pending;
+
+    expect(dispatch).toHaveBeenCalledTimes(2);
+    expect(firstSettledAt).toBeGreaterThan(0);
+    expect(secondStartedAt).toBeGreaterThanOrEqual(firstSettledAt);
+    expect(results.map((result) => result.status)).toEqual([EventResultStatus.Retry, EventResultStatus.Delivered]);
+  });
+
   test("fails an unreadable payload terminally", async () => {
     const { consumer } = buildConsumer();
 

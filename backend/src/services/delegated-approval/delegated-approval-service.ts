@@ -157,7 +157,11 @@ export const delegatedApprovalServiceFactory = ({
         { requestId: approvalRequest.id, status: DelegatedApprovalRequestStatus.PendingDispatch },
         tx
       )) as TDelegatedApprovalRequest;
-      await emitDelegatedApprovalDispatchRequested(eventEmitter, { delegatedRequestId: request.id }, tx);
+      await emitDelegatedApprovalDispatchRequested(
+        eventEmitter,
+        { delegatedRequestId: request.id, updatedAt: request.updatedAt },
+        tx
+      );
       return request;
     } catch (err) {
       if (hasPostgresErrorCode(err, DatabaseErrorCode.UniqueViolation)) {
@@ -212,7 +216,10 @@ export const delegatedApprovalServiceFactory = ({
       });
     }
 
-    await emitDelegatedApprovalDispatchRequested(eventEmitter, { delegatedRequestId: delegatedRequest.id });
+    await emitDelegatedApprovalDispatchRequested(eventEmitter, {
+      delegatedRequestId: delegatedRequest.id,
+      updatedAt: delegatedRequest.updatedAt
+    });
 
     return { delegatedRequest, delegatedPolicy };
   };

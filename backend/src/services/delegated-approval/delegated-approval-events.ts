@@ -13,16 +13,19 @@ export type TDelegatedApprovalDispatchRequestedPayload = z.infer<
   typeof DelegatedApprovalDispatchRequestedPayloadSchema
 >;
 
-// No idempotency key on purpose: a user retry has to insert a fresh row while the delivered one from the
-// first attempt is still retained, and the consumer already skips a request that was delivered.
+// updatedAt is the attempt. Repeated retries of one failure share it and collapse on the outbox unique
+// key. A request id alone would not: the previous row is still retained (delivered for a day, failed for
+// 30 days), so a later resend has to insert beside it. The consumer's status write bumps updatedAt,
+// which is what gives that resend a new key.
 export const emitDelegatedApprovalDispatchRequested = (
   eventEmitter: TEventEmitter,
-  { delegatedRequestId }: TDelegatedApprovalDispatchRequestedPayload,
+  { delegatedRequestId, updatedAt }: TDelegatedApprovalDispatchRequestedPayload & { updatedAt: Date },
   tx?: Knex
 ): Promise<void> =>
   eventEmitter.emit(
     {
       eventType: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
+      idempotencyKey: `${DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT}:${delegatedRequestId}:${updatedAt.toISOString()}`,
       payload: { delegatedRequestId }
     },
     tx

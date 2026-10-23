@@ -169,8 +169,10 @@ failure returns `Retry`, so the outbox backs off and tries again (up to `MAX_OUT
 promises that retry on every attempt because the consumer cannot see the attempt count. A user resends a
 `failed_dispatch` request with `POST /api/v1/access-approvals/requests/:requestId/retry-delegated-dispatch`. The
 product's bridge checks who may retry, and `delegatedApprovalService.retryDispatch` checks the request can be
-retried and emits the same event with no transaction. One flush runs per consumer at a time, so two dispatches
-of one request never run together; a second event for a request that was already delivered is marked delivered
+retried and emits the same event with no transaction. The emit's idempotency key is the event, the delegated
+request id, and that row's `updatedAt`, so repeated emits of one attempt collapse, and a later resend still
+inserts after the status write bumps `updatedAt`. A batch dispatches up to 10 different requests at once;
+events for one request stay serial. A second event for a request that was already delivered is marked delivered
 without calling the provider. A delegated request has
 no Infisical approvers, so `POST /api/v1/access-approvals/requests/:requestId/cancel-delegated-dispatch` is the only way to close
 one from Infisical: the requester, or anyone who can edit the policy, sets it `cancelled`, which is also how a
