@@ -1,30 +1,34 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useId } from "react";
 import { Control, FieldPath, useController } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { Info } from "lucide-react";
 
-import { AppConnectionOption } from "@app/components/app-connections";
+import { AppConnectionOptionContent } from "@app/components/app-connections";
 import {
+  Combobox,
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
-import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
-import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
+import { useConnectionCreation } from "../CaInstallCertModal/useConnectionCreation";
 import { FormData } from "./schema";
 
 type AppConnectionValue = { id: string; name: string };
 
-const CREATE_CONNECTION_OPTION_PREFIX = "_create:";
+const CONNECTION_APPS: Partial<Record<FieldPath<FormData>, AppConnection>> = {
+  "configuration.adcsConnection": AppConnection.ADCS,
+  "configuration.azureAdcsConnection": AppConnection.AzureADCS,
+  "configuration.awsConnection": AppConnection.AWS,
+  "configuration.dnsConnection": AppConnection.AWS,
+  "configuration.digicertConnection": AppConnection.DigiCert,
+  "configuration.godaddyConnection": AppConnection.GoDaddy,
+  "configuration.venafiTppConnection": AppConnection.VenafiTpp
+};
 
 type Props = {
   control: Control<FormData>;
@@ -34,7 +38,6 @@ type Props = {
   options: TAvailableAppConnection[];
   isLoading: boolean;
   required?: boolean;
-  menuPlacement?: "top" | "bottom" | "auto";
   onAfterChange?: () => void;
   createApp?: AppConnection;
 };
@@ -47,92 +50,59 @@ export const AppConnectionSelectField = ({
   options,
   isLoading,
   required,
-  menuPlacement,
   onAfterChange,
   createApp
 }: Props) => {
-  const { currentProject } = useProject();
-  const { permission } = useProjectPermission();
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
+  const inputId = useId();
   const {
-    field: { value, onChange },
+    field: { value, onChange, onBlur, ref },
     fieldState: { error }
   } = useController({ control, name });
 
-  const canCreateConnection =
-    Boolean(createApp) &&
-    permission.can(
-      ProjectPermissionAppConnectionActions.Create,
-      ProjectPermissionSub.AppConnections
-    );
-
-  const selectOptions: AppConnectionValue[] = [
-    ...(canCreateConnection && createApp
-      ? [
-          {
-            id: `${CREATE_CONNECTION_OPTION_PREFIX}${createApp}`,
-            name: `Create ${APP_CONNECTION_MAP[createApp].name} Connection`
-          }
-        ]
-      : []),
-    ...options
-  ];
+  const connectionCreation = useConnectionCreation(
+    createApp ?? CONNECTION_APPS[name],
+    (connection) => {
+      onChange({ id: connection.id, name: connection.name });
+      onAfterChange?.();
+    }
+  );
 
   return (
-    <>
-      <Field className="mb-4">
-        <FieldLabel>
-          {label} {required && <span className="text-danger">*</span>}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info />
-            </TooltipTrigger>
-            <TooltipContent className="max-w-sm">{tooltip}</TooltipContent>
-          </Tooltip>
-        </FieldLabel>
-        <FilterableSelect
-          {...(menuPlacement ? { menuPlacement } : {})}
-          value={(value as AppConnectionValue)?.id ? (value as AppConnectionValue) : null}
-          onChange={(newValue) => {
-            if (
-              (newValue as SingleValue<AppConnectionValue>)?.id?.startsWith(
-                CREATE_CONNECTION_OPTION_PREFIX
-              )
-            ) {
-              setIsCreateModalOpen(true);
-              return;
-            }
-            onChange(newValue);
-            onAfterChange?.();
-          }}
-          isLoading={isLoading}
-          options={selectOptions}
-          placeholder="Select connection..."
-          getOptionLabel={(option) => option.name}
-          getOptionValue={(option) => option.id}
-          components={{ Option: AppConnectionOption }}
-          isError={Boolean(error)}
-        />
-        <FieldError errors={[error]} />
-      </Field>
-      {createApp && (
-        // the modal portals out of the DOM but React still bubbles its submit to the CA form
-        <div className="contents" onSubmit={(e) => e.stopPropagation()}>
-          <AddAppConnectionModal
-            isOpen={isCreateModalOpen}
-            onOpenChange={setIsCreateModalOpen}
-            projectType={currentProject.type}
-            projectId={currentProject.id}
-            app={createApp}
-            onComplete={(connection) => {
-              if (!connection) return;
-              onChange({ id: connection.id, name: connection.name });
-              onAfterChange?.();
-            }}
-          />
-        </div>
-      )}
-    </>
+    <Field className="mb-4">
+      <FieldLabel htmlFor={inputId}>
+        {label} {required && <span className="text-danger">*</span>}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Info />
+          </TooltipTrigger>
+          <TooltipContent className="max-w-sm">{tooltip}</TooltipContent>
+        </Tooltip>
+      </FieldLabel>
+      <Combobox<AppConnectionValue & { projectId?: string | null }>
+        id={inputId}
+        isClearable={false}
+        includeMissingSelectedOptions={false}
+        name={name}
+        onBlur={onBlur}
+        ref={ref}
+        value={
+          options.find((option) => option.id === (value as AppConnectionValue)?.id) ??
+          ((value as AppConnectionValue)?.id ? (value as AppConnectionValue) : null)
+        }
+        onValueChange={(newValue) => {
+          onChange(newValue);
+          onAfterChange?.();
+        }}
+        isLoading={isLoading}
+        options={options}
+        placeholder="Select connection..."
+        getOptionLabel={(option) => option.name}
+        getOptionValue={(option) => option.id}
+        renderOption={(option) => <AppConnectionOptionContent data={option} />}
+        creation={connectionCreation}
+        isError={Boolean(error)}
+      />
+      <FieldError errors={[error]} />
+    </Field>
   );
 };
