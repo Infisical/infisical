@@ -22,6 +22,7 @@ import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -90,6 +91,7 @@ type TSecretReadActivityServiceFactoryDep = {
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findSecretReferencesByProjectId">;
   userDAL: Pick<TUserDALFactory, "find">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
+  identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -109,6 +111,7 @@ export const secretReadActivityServiceFactory = ({
   secretV2BridgeDAL,
   userDAL,
   identityDAL,
+  identityMetadataDAL,
   userGroupMembershipDAL,
   identityGroupMembershipDAL,
   kmsService,
@@ -279,13 +282,48 @@ export const secretReadActivityServiceFactory = ({
     };
   };
 
-  // Everyone who can hold secrets in the project, and what each secret's readers are judged against. The user and
-  // identity lists carry only direct members, so every group member is also listed with what the group gives them,
-  // their own folder grants included. Until a project has a full window of reads, it is judged on the reads since
-  // tracking began.
+  // The username and metadata of people the project permissions did not load, to fill placeholders in group roles.
+  const $findActorDetails = async (
+    orgId: string,
+    actors: { actorType: TSecretReaderType; actorId: string }[]
+  ): Promise<Map<string, { username: string; metadata: { key: string; value: string }[] }>> => {
+    const idsOf = (actorType: TSecretReaderType) =>
+      actors.filter((actor) => actor.actorType === actorType).map((actor) => actor.actorId);
+    const [userIds, identityIds] = [idsOf(ActorType.USER), idsOf(ActorType.IDENTITY)];
+    const [users, identities, userMetadata, identityMetadata] = await Promise.all([
+      userIds.length ? userDAL.find({ $in: { id: userIds } }) : [],
+      identityIds.length ? identityDAL.find({ $in: { id: identityIds } }) : [],
+      userIds.length ? identityMetadataDAL.find({ orgId, $in: { userId: userIds } }) : [],
+      identityIds.length ? identityMetadataDAL.find({ orgId, $in: { identityId: identityIds } }) : []
+    ]);
+    const metadataByUserId = groupBy(userMetadata, (row) => row.userId ?? "");
+    const metadataByIdentityId = groupBy(identityMetadata, (row) => row.identityId ?? "");
+    const toPairs = (rows: { key: string; value: string }[] = []) => rows.map(({ key, value }) => ({ key, value }));
+    return new Map([
+      ...users.map(
+        (user) => [user.id, { username: user.username, metadata: toPairs(metadataByUserId[user.id]) }] as const
+      ),
+      ...identities.map(
+        (identity) =>
+          [identity.id, { username: identity.name, metadata: toPairs(metadataByIdentityId[identity.id]) }] as const
+      )
+    ]);
+  };
+
+  // Everyone who can hold secrets in the project, and what each secret's readers are judged against. Each person is
+  // checked with one permission merged across their direct membership and every group they are in, the way
+  // getProjectPermission builds it, so a deny in one role holds against an allow in another. Until a project has a
+  // full window of reads, it is judged on the reads since tracking began.
   const $loadProjectAccess = async (projectId: string, orgId: string, windowStart: Date) => {
     const [
-      { userPermissions, identityPermissions, groupPermissions, folderAccessByActorId },
+      {
+        userPermissions,
+        identityPermissions,
+        groupPermissions,
+        folderAccessByActorId,
+        permissionForActor,
+        groupRulesHavePlaceholders
+      },
       sourceDates,
       adminActorIds,
       { trackingStartedAt }
@@ -319,19 +357,30 @@ export const secretReadActivityServiceFactory = ({
       const group = groupById.get(groupId);
       return group ? [{ group, actorType: actorType as TSecretReaderType, actorId, joinedAt }] : [];
     });
-    const readers: TProjectReader[] = [
-      ...userPermissions.map(({ id, permission }) => ({ actorType: ActorType.USER as const, actorId: id, permission })),
-      ...identityPermissions.map(({ id, permission }) => ({
-        actorType: ActorType.IDENTITY as const,
-        actorId: id,
-        permission
-      })),
-      ...groupMembers.map(({ group, actorType, actorId }) => ({
-        actorType,
-        actorId,
-        permission: group.permissionForMember(actorId)
-      }))
-    ];
+    const people = new Map<string, { actorType: TSecretReaderType; actorId: string; groupIds: string[] }>();
+    const personOf = (actorType: TSecretReaderType, actorId: string) => {
+      const key = toActorKey(actorType, actorId);
+      const person = people.get(key) ?? { actorType, actorId, groupIds: [] };
+      people.set(key, person);
+      return person;
+    };
+    userPermissions.forEach(({ id }) => personOf(ActorType.USER, id));
+    identityPermissions.forEach(({ id }) => personOf(ActorType.IDENTITY, id));
+    groupMembers.forEach(({ group, actorType, actorId }) => personOf(actorType, actorId).groupIds.push(group.id));
+
+    // A placeholder such as {{identity.username}} is filled from the person's own details. Direct members' details
+    // come with the permissions; those of people only in through a group are looked up, and only when a group role
+    // holds a placeholder.
+    const directMemberIds = new Set([...userPermissions, ...identityPermissions].map(({ id }) => id));
+    const groupOnly = [...people.values()].filter((person) => !directMemberIds.has(person.actorId));
+    const detailsByActorId = groupRulesHavePlaceholders
+      ? await $findActorDetails(orgId, groupOnly)
+      : new Map<string, { username: string; metadata: { key: string; value: string }[] }>();
+    const readers: TProjectReader[] = [...people.values()].map(({ actorType, actorId, groupIds: memberOf }) => ({
+      actorType,
+      actorId,
+      permission: permissionForActor({ actorId, groupIds: memberOf, ...detailsByActorId.get(actorId) })
+    }));
 
     // Every source of each actor's access with its date: their own roles and project-wide privileges, each group
     // they are in (dated from joining it or from the group's own role change, whichever is later), and their folder
@@ -353,12 +402,14 @@ export const secretReadActivityServiceFactory = ({
         }))
       ]);
     });
+    // A group on its own, with the member's details filled into its placeholders.
     groupMembers.forEach(({ group, actorId, joinedAt }) => {
       const groupChangedAt = sourceDates.groupDates.get(group.id);
       addSources(actorId, [
         {
           date: groupChangedAt && groupChangedAt > joinedAt ? groupChangedAt : joinedAt,
-          permission: () => group.permission
+          permission: () =>
+            permissionForActor({ actorId, groupIds: [group.id], groupsOnly: true, ...detailsByActorId.get(actorId) })
         }
       ]);
     });

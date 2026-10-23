@@ -195,8 +195,6 @@ export type TPermissionServiceFactory = {
     }[];
     groupPermissions: {
       permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
-      // The group's roles with the given member's own folder grants applied on top.
-      permissionForMember: (actorId: string) => MongoAbility<ProjectPermissionSet, MongoQuery>;
       id: string;
       name: string;
       membershipId: string;
@@ -210,6 +208,21 @@ export type TPermissionServiceFactory = {
     // Each user's and identity's active folder grants, keyed by actor id, whether they are a direct member or
     // reach the project through a group. Admins are listed too, though their grants are never applied.
     folderAccessByActorId: Map<string, TProjectFolderScopedPrivilege[]>;
+    // One person's permission merged across their direct membership and the given groups, the way
+    // getProjectPermission builds it. Pass the username and metadata of someone who is only in the project through a
+    // group, since only direct members' details are loaded here.
+    permissionForActor: (actor: {
+      actorId: string;
+      groupIds: string[];
+      username?: string;
+      metadata?: { key: string; value: string }[];
+      // Only what the given groups give the person, without their direct membership or folder grants, still with
+      // the person's own details filled in.
+      groupsOnly?: boolean;
+    }) => MongoAbility<ProjectPermissionSet, MongoQuery>;
+    // Whether any group role holds a placeholder such as {{identity.username}}, so that a caller only looks up group
+    // members' details when they change the result.
+    groupRulesHavePlaceholders: boolean;
   }>;
   getOrgPermissionByRoles: (
     roles: string[],

@@ -321,6 +321,44 @@ const hasActiveProjectAdminRole = (
   memberships: Array<{ roles: Array<{ role: string; isTemporary?: boolean; temporaryAccessEndTime?: Date | null }> }>
 ): boolean => memberships.some((m) => m.roles.some((r) => r.role === ProjectMembershipRole.Admin && isActiveRole(r)));
 
+type TGetProjectPermissionsResult = Awaited<ReturnType<TPermissionServiceFactory["getProjectPermissions"]>>;
+
+// One person's project permission from all of their memberships, built with the steps getProjectPermission takes:
+// the active roles and privileges of every membership, their folder grants unless one of those roles is Admin, and
+// placeholders filled from their own details. For a caller that holds the project's memberships in bulk.
+export const buildMergedProjectPermissionRules = ({
+  memberships,
+  folderGrants,
+  projectType,
+  identity
+}: {
+  memberships: MembershipWithRoles[];
+  folderGrants?: TProjectFolderScopedPrivilege[];
+  projectType?: string;
+  identity: { id: string; username: string; metadata: { key: string; value: string }[] };
+}) =>
+  interpolatePermissionRules(
+    buildProjectPermissionRules(
+      flattenActiveRolesFromMemberships(memberships, ProjectMembershipRole.Custom),
+      projectType,
+      hasActiveProjectAdminRole(memberships.map(({ roles }) => ({ roles: roles ?? [] }))) ? undefined : folderGrants
+    ),
+    {
+      identity: {
+        id: identity.id,
+        username: identity.username,
+        metadata: escapeHandlebarsMissingDict(
+          objectify(
+            identity.metadata,
+            (item) => item.key,
+            (item) => item.value
+          ),
+          "identity.metadata"
+        )
+      }
+    }
+  );
+
 type TPermissionServiceFactoryDep = {
   serviceTokenDAL: Pick<TServiceTokenDALFactory, "findById">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -1121,26 +1159,8 @@ export const permissionServiceFactory = ({
         conditionsMatcher
       });
 
-      // What a member gets through the group: the group's roles with that member's own folder grants on top, the
-      // same way their own permission is built, so a grant that narrows a folder narrows the group access too.
-      const memberPermissions = new Map<string, MongoAbility<ProjectPermissionSet>>();
-      const permissionForMember = (actorId: string) => {
-        const folderPrivileges = folderScopedPrivilegesOf(actorId, groupProjectPermission.roles);
-        if (!folderPrivileges?.length) return permission;
-        let memberPermission = memberPermissions.get(actorId);
-        if (!memberPermission) {
-          memberPermission = createMongoAbility<ProjectPermissionSet>(
-            buildProjectPermissionRules(rolePermissions, undefined, folderPrivileges),
-            { conditionsMatcher }
-          );
-          memberPermissions.set(actorId, memberPermission);
-        }
-        return memberPermission;
-      };
-
       return {
         permission,
-        permissionForMember,
         id: groupProjectPermission.groupId,
         membershipId: groupProjectPermission.id,
         name: groupProjectPermission.username,
@@ -1166,11 +1186,56 @@ export const permissionServiceFactory = ({
       ])
     );
 
+    const directMembershipByActorId = new Map<
+      string,
+      (typeof rawUserProjectPermissions)[number] | (typeof rawIdentityProjectPermissions)[number]
+    >([
+      ...rawUserProjectPermissions.map((membership) => [membership.userId, membership] as const),
+      ...rawIdentityProjectPermissions.map((membership) => [membership.identityId, membership] as const)
+    ]);
+    const groupMembershipById = new Map(
+      rawGroupProjectPermissions.map((membership) => [membership.groupId, membership])
+    );
+    const mergedAbilities = new Map<string, MongoAbility<ProjectPermissionSet>>();
+    const permissionForActor: TGetProjectPermissionsResult["permissionForActor"] = ({
+      actorId,
+      groupIds,
+      username,
+      metadata,
+      groupsOnly = false
+    }) => {
+      const direct = directMembershipByActorId.get(actorId);
+      const rules = buildMergedProjectPermissionRules({
+        memberships: [
+          ...(direct && !groupsOnly ? [direct] : []),
+          ...groupIds.flatMap((groupId) => groupMembershipById.get(groupId) ?? [])
+        ],
+        folderGrants: groupsOnly ? undefined : folderScopedPrivilegesByActorId.get(actorId)?.filter(isActiveRole),
+        projectType: project?.type,
+        identity: {
+          id: actorId,
+          username: direct?.username ?? username ?? "",
+          metadata: direct?.metadata ?? metadata ?? []
+        }
+      });
+      const rulesKey = JSON.stringify(rules);
+      let permission = mergedAbilities.get(rulesKey);
+      if (!permission) {
+        permission = createMongoAbility<ProjectPermissionSet>(rules, { conditionsMatcher });
+        mergedAbilities.set(rulesKey, permission);
+      }
+      return permission;
+    };
+
     return {
       userPermissions,
       identityPermissions,
       groupPermissions,
-      folderAccessByActorId
+      folderAccessByActorId,
+      permissionForActor,
+      groupRulesHavePlaceholders: rawGroupProjectPermissions.some((membership) =>
+        JSON.stringify(membership.roles ?? []).includes("{{")
+      )
     };
   };
 

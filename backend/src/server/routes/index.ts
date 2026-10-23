@@ -3536,6 +3536,7 @@ export const registerRoutes = async (
     secretV2BridgeDAL,
     userDAL,
     identityDAL,
+    identityMetadataDAL,
     userGroupMembershipDAL,
     identityGroupMembershipDAL,
     kmsService,

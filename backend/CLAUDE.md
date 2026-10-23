@@ -1153,7 +1153,8 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   everything by design. Their reads are still recorded, so the access sheet's Last Read stays true for them. A
   pair is listed once the secret (`trackedSince`) and the actor's access to that secret both predate `judgedFrom`.
   Access is dated per secret (`createAccessDating`): each actor's sources (every role assignment and project-wide
-  privilege, from `getProjectPermissions`' `accessSources`; each group they are in; each folder grant) carry the date
+  privilege, from `getProjectPermissions`' `accessSources`; each group they are in, from `permissionForActor` with
+  `groupsOnly` so placeholders hold the member's details; each folder grant) carry the date
   `findAccessSourceDates` gives them, and a secret's access dates from the oldest source that grants it on its own,
   so a change only restarts the window for the secrets it opened. An edit to a custom role's rules dates that role
   for every secret it gives, since which secrets an edit opened is not recorded. Expired access is not a source,
@@ -1180,8 +1181,11 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   (`id`/`folderId`/`environment`/`secretPath`/`role`). A folder grant is stored as an additional privilege with a
   `folderId`, which the member listings filter out, so `getProjectPermissions` returns them as
   `folderAccessByActorId` from the grants it already loads. The UI decides how to label all of them. Custom role ids and names come from
-  `getProjectPermissions`, so the scan makes no role lookup of its own. Group members are checked with the group's
-  permission (`getProjectPermissions` lists only direct members) and count once however many ways they qualify. It
+  `getProjectPermissions`, so the scan makes no role lookup of its own. Each person is checked with one permission merged across their direct membership and every group
+  they are in (`getProjectPermissions().permissionForActor`, built from getProjectPermission's own steps by
+  `buildMergedProjectPermissionRules`), so a deny in one role holds against an allow in another, and placeholders
+  such as `{{identity.username}}` are filled from that person's details (looked up for group-only members only
+  when a group role holds one). It
   is cached per project for a day (`insights-cache:<projectId>:unused-access`, under a per-project lock on a cold
   cache): every actor's row, plus the unread secret ids for the 200 actors with the most, capped at 200 each; an
   actor past that is scanned for alone when opened and cached per actor. Served by
