@@ -252,15 +252,22 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     return rows[0] || null;
   };
 
-  // Locks the account and its template, so neither changes before the caller's transaction commits
-  const findTemplatePoliciesForShare = async (accountId: string, tx: Knex) =>
-    (await tx(TableName.PamAccount)
-      .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
-      .where(`${TableName.PamAccount}.id`, accountId)
-      .forShare(TableName.PamAccount, TableName.PamAccountTemplate)
-      .first(`${TableName.PamAccount}.projectId`, `${TableName.PamAccountTemplate}.policies as templatePolicies`)) as
-      | { projectId: string; templatePolicies: unknown }
-      | undefined;
+  // Locks the account's template and then the account, the order a template save takes them, so neither
+  // changes before the caller's transaction commits and the two can't deadlock
+  const findTemplatePoliciesForShare = async (accountId: string, tx: Knex) => {
+    const account = await tx(TableName.PamAccount).where({ id: accountId }).first("templateId");
+    if (!account) return undefined;
+
+    const template = await tx(TableName.PamAccountTemplate)
+      .where({ id: account.templateId })
+      .forShare()
+      .first("policies");
+    const locked = await tx(TableName.PamAccount).where({ id: accountId }).forShare().first("projectId", "templateId");
+    // The account moved to another template before it was locked, so these policies may not be its own
+    if (!template || !locked || locked.templateId !== account.templateId) return undefined;
+
+    return { projectId: locked.projectId, templatePolicies: template.policies as unknown };
+  };
 
   const findByIdsWithDetails = async (
     accountIds: string[],
