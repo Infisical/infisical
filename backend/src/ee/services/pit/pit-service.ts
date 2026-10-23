@@ -1111,18 +1111,20 @@ export const pitServiceFactory = ({
       }
     }
 
-    await scanSecretPolicyViolations(
-      projectId,
-      secretPath,
-      [...(changes.secrets?.create ?? []), ...(changes.secrets?.update ?? [])]
-        .filter((secret) => secret.secretValue !== undefined)
-        .map((secret) => ({
-          secretKey: "newSecretName" in secret && secret.newSecretName ? secret.newSecretName : secret.secretKey,
-          secretValue: secret.secretValue as string
-        })),
-      project.secretDetectionIgnoreValues || []
-    );
+    const secretsToScan = [
+      ...(changes.secrets?.create ?? []),
+      ...(shouldApplyPolicy(policy, actor) ? (changes.secrets?.update ?? []).filter((el) => el.secretValue) : [])
+    ];
+    if (secretsToScan.length) {
+      await scanSecretPolicyViolations(
+        projectId,
+        secretPath,
+        secretsToScan.map((el) => ({ secretKey: el.secretKey, secretValue: el.secretValue as string })),
+        project.secretDetectionIgnoreValues || []
+      );
+    }
 
+    let approvalSideEffects: TCreateSecretApprovalSideEffectsDTO | undefined;
     let environmentName = environment;
     const deferredReferenceSyncs: Parameters<TSecretQueueFactory["syncSecrets"]>[0][] = [];
     const response = await folderCommitDAL.transaction(async (trx) => {
@@ -1309,6 +1311,24 @@ export const pitServiceFactory = ({
                 })) ?? []
             }
           });
+          approvalSideEffects = {
+            secretApprovalRequest: { id: approval.id, policyId: approval.policyId, commits: approval.commits },
+            projectId,
+            environment,
+            secretPath,
+            secretKeys: [
+              ...new Set(
+                [
+                  ...(changes.secrets?.create ?? []),
+                  ...(changes.secrets?.update ?? []),
+                  ...(changes.secrets?.delete ?? [])
+                ].map((el) => el.secretKey)
+              )
+            ],
+            actor,
+            actorId,
+            actorOrgId
+          };
           return {
             approval,
             commitId,
@@ -1502,26 +1522,13 @@ export const pitServiceFactory = ({
       })
     );
 
-    if ("approval" in response && response.approval) {
+    if (approvalSideEffects) {
       try {
-        await secretApprovalRequestService.createSecretApprovalSideEffects({
-          secretApprovalRequest: response.approval,
-          projectId,
-          environment,
-          secretPath,
-          secretKeys: [
-            ...(changes.secrets?.create ?? []),
-            ...(changes.secrets?.update ?? []),
-            ...(changes.secrets?.delete ?? [])
-          ].map((secret) => secret.secretKey),
-          actor,
-          actorId,
-          actorOrgId
-        });
+        await secretApprovalRequestService.createSecretApprovalSideEffects(approvalSideEffects);
       } catch (error) {
         logger.error(
           error,
-          `Failed to notify approvers of commit change request [requestId=${response.approval.id}] [projectId=${projectId}]`
+          `Failed to notify approvers of secret change request [requestId=${approvalSideEffects.secretApprovalRequest.id}] [projectId=${projectId}]`
         );
       }
     }
