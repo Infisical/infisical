@@ -162,16 +162,26 @@ export type TPermissionServiceFactory = {
       id: string;
       name: string;
       membershipId: string;
-      roles: { role: string; customRoleSlug?: string | null }[];
-      hasAdditionalPrivileges: boolean;
+      roles: {
+        role: string;
+        customRoleSlug?: string | null;
+        customRoleId?: string | null;
+        customRoleName?: string | null;
+      }[];
+      additionalPrivileges: { id: string; name: string }[];
     }[];
     identityPermissions: {
       permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
       id: string;
       name: string;
       membershipId: string;
-      roles: { role: string; customRoleSlug?: string | null }[];
-      hasAdditionalPrivileges: boolean;
+      roles: {
+        role: string;
+        customRoleSlug?: string | null;
+        customRoleId?: string | null;
+        customRoleName?: string | null;
+      }[];
+      additionalPrivileges: { id: string; name: string }[];
     }[];
     groupPermissions: {
       permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
@@ -180,7 +190,12 @@ export type TPermissionServiceFactory = {
       id: string;
       name: string;
       membershipId: string;
-      roles: { role: string; customRoleSlug?: string | null }[];
+      roles: {
+        role: string;
+        customRoleSlug?: string | null;
+        customRoleId?: string | null;
+        customRoleName?: string | null;
+      }[];
     }[];
   }>;
   getOrgPermissionByRoles: (

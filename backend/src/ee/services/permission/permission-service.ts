@@ -997,8 +997,13 @@ export const permissionServiceFactory = ({
         id: userProjectPermission.userId,
         membershipId: userProjectPermission.id,
         name: userProjectPermission.username,
-        roles: (userProjectPermission.roles ?? []).map(({ role, customRoleSlug }) => ({ role, customRoleSlug })),
-        hasAdditionalPrivileges: Boolean(userProjectPermission.additionalPrivileges?.length)
+        roles: (userProjectPermission.roles ?? []).map(({ role, customRoleSlug, customRoleId, customRoleName }) => ({
+          role,
+          customRoleSlug,
+          customRoleId,
+          customRoleName
+        })),
+        additionalPrivileges: (userProjectPermission.additionalPrivileges ?? []).map(({ id, name }) => ({ id, name }))
       };
     });
 
@@ -1042,8 +1047,18 @@ export const permissionServiceFactory = ({
         id: identityProjectPermission.identityId,
         membershipId: identityProjectPermission.id,
         name: identityProjectPermission.username,
-        roles: (identityProjectPermission.roles ?? []).map(({ role, customRoleSlug }) => ({ role, customRoleSlug })),
-        hasAdditionalPrivileges: Boolean(identityProjectPermission.additionalPrivileges?.length)
+        roles: (identityProjectPermission.roles ?? []).map(
+          ({ role, customRoleSlug, customRoleId, customRoleName }) => ({
+            role,
+            customRoleSlug,
+            customRoleId,
+            customRoleName
+          })
+        ),
+        additionalPrivileges: (identityProjectPermission.additionalPrivileges ?? []).map(({ id, name }) => ({
+          id,
+          name
+        }))
       };
     });
 
@@ -1080,7 +1095,12 @@ export const permissionServiceFactory = ({
         id: groupProjectPermission.groupId,
         membershipId: groupProjectPermission.id,
         name: groupProjectPermission.username,
-        roles: (groupProjectPermission.roles ?? []).map(({ role, customRoleSlug }) => ({ role, customRoleSlug }))
+        roles: (groupProjectPermission.roles ?? []).map(({ role, customRoleSlug, customRoleId, customRoleName }) => ({
+          role,
+          customRoleSlug,
+          customRoleId,
+          customRoleName
+        }))
       };
     });
 

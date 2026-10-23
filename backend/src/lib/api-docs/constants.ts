@@ -949,39 +949,49 @@ export const INSIGHTS = {
   },
   GET_UNUSED_ACCESS: {
     projectId: "The ID of the project to list unused access for.",
-    offset: "The number of principals to skip before returning results.",
-    limit: "The maximum number of principals to return per page.",
-    search: "Only principals whose name contains this text, ignoring case.",
-    principals:
-      "The users, groups and machine identities that can read secrets they have not read in the last 30 days (since tracking began, in a project tracked for less), those with the most such secrets first. Project admins and admin groups are left out: they can read everything by design.",
-    principalType: "Whether the principal is a user, a group or a machine identity.",
-    principalId: "The ID of the user, group or machine identity.",
-    name: "The username of the user, or the name of the group or machine identity.",
-    memberCount: "How many users and machine identities the group has. Null for a user or machine identity.",
-    entitledCount: "How many secrets the principal can read the value of today.",
+    offset: "The number of actors to skip before returning results.",
+    limit: "The maximum number of actors to return per page.",
+    search: "Only actors whose name contains this text, ignoring case.",
+    actors:
+      "The users and machine identities that can read secrets they have not read in the last 30 days (since tracking began, in a project tracked for less), those with the most such secrets first. Project admins are left out: they can read everything by design.",
+    actorType: "Whether the actor is a user or a machine identity.",
+    actorId: "The ID of the user or machine identity.",
+    name: "The username of the user, or the name of the machine identity.",
+    entitledCount: "How many secrets the actor can read the value of today.",
     unreadCount:
-      "How many of those it has not read, or an import or reference of, in the last 30 days. A group has not read a secret when none of its members have. Secrets and access newer than 30 days are not counted.",
+      "How many of those it has not read, or an import or reference of, in the last 30 days. Secrets and access newer than 30 days are not counted.",
     environments: "The slugs of the environments holding the unread secrets.",
     lastReadAt:
-      "When the principal last read any secret in the project in the last 30 days, as the first read of that day; a group's is its members' latest. Null when it read nothing.",
-    accessVia: "How the principal has the access: its roles, additional privileges, and the groups it belongs to.",
-    totalCount: "The number of principals the caller can page through.",
+      "When the actor last read any secret in the project in the last 30 days, as the first read of that day. Null when it read nothing.",
+    accessPaths: "How the actor has its access to the project's secrets.",
+    roles: "The project roles the actor holds directly, not through a group.",
+    roleId: "The ID of the custom role. Null for a built-in role.",
+    roleSlug: "The slug of the built-in role, or 'custom' for a custom role.",
+    roleName: "The name of the role.",
+    groups: "The groups the actor belongs to that are members of the project.",
+    groupId: "The ID of the group.",
+    groupName: "The name of the group.",
+    groupRoles: "The project roles the group gives its members.",
+    additionalPrivileges: "The project-wide additional privileges the actor holds.",
+    additionalPrivilegeId: "The ID of the additional privilege.",
+    additionalPrivilegeName: "The name of the additional privilege.",
+    totalCount: "The number of actors the caller can page through.",
     trackingStartedAt:
       "When reads started being tracked for this project: the later of when read tracking was enabled on the instance and when the project was created.",
     fullWindowFrom:
       "When the results first cover a full 30 days of reads: 30 days after reads started being tracked for the project. Before then they cover the reads since tracking began, and the access that existed then."
   },
-  GET_UNUSED_ACCESS_PRINCIPAL: {
+  GET_UNUSED_ACCESS_ACTOR: {
     projectId: "The ID of the project.",
-    principalType: "Whether the principal is a user, a group or a machine identity.",
-    principalId: "The ID of the user, group or machine identity.",
+    actorType: "Whether the actor is a user or a machine identity.",
+    actorId: "The ID of the user or machine identity.",
     secrets:
-      "The secrets the principal can read but has not read in the last 30 days, among those the caller can see, ordered by environment and path.",
+      "The secrets the actor can read but has not read in the last 30 days, among those the caller can see, ordered by environment and path.",
     secretKey: "The key of the secret.",
     environment: "The slug of the environment the secret is in.",
     secretPath: "The path of the folder the secret is in.",
     unlistedCount:
-      "How many of the principal's unread secrets are not listed: past the first 200, in places the caller cannot see, or deleted since the results were computed."
+      "How many of the actor's unread secrets are not listed: past the first 200, in places the caller cannot see, or deleted since the results were computed."
   },
   GET_SECRETS_ACCESS_VOLUME: {
     days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",

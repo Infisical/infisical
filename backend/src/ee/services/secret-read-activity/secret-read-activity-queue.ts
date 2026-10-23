@@ -18,11 +18,11 @@ import {
   getUtcMonthStart,
   loadProjectFolderTree,
   normalizeSecretPath,
-  toLocationKey,
-  TProjectFolderTree
+  toLocationKey
 } from "./secret-read-activity-fns";
 import {
   SecretReadObjectType,
+  TProjectFolderTree,
   TRecordBulkSecretReadDTO,
   TRecordSecretReadDTO,
   TSecretLastRead,

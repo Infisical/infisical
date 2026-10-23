@@ -22,9 +22,9 @@ import {
   TGetSecretBlindIndexStatusResponse,
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse,
+  TGetUnusedAccessActorDTO,
+  TGetUnusedAccessActorResponse,
   TGetUnusedAccessDTO,
-  TGetUnusedAccessPrincipalDTO,
-  TGetUnusedAccessPrincipalResponse,
   TGetUnusedAccessResponse,
   TOrgAuthMethodUsage,
   TOrgProjectsInsights,
@@ -41,8 +41,8 @@ export const secretInsightsKeys = {
     [...secretInsightsKeys.all(), "access-volume", params] as const,
   unusedAccess: (params: TGetUnusedAccessDTO) =>
     [...secretInsightsKeys.all(), "unused-access", params] as const,
-  unusedAccessPrincipal: (params: TGetUnusedAccessPrincipalDTO) =>
-    [...secretInsightsKeys.all(), "unused-access-principal", params] as const,
+  unusedAccessActor: (params: TGetUnusedAccessActorDTO) =>
+    [...secretInsightsKeys.all(), "unused-access-actor", params] as const,
   // accessLocations: (params: TGetSecretAccessLocationsDTO) =>
   //   [...secretInsightsKeys.all(), "access-locations", params] as const,
   authMethodDistribution: (params: TGetAuthMethodDistributionDTO) =>
@@ -161,23 +161,23 @@ export const useGetUnusedAccess = (
   });
 };
 
-export const useGetUnusedAccessPrincipal = (
-  params: TGetUnusedAccessPrincipalDTO,
+export const useGetUnusedAccessActor = (
+  params: TGetUnusedAccessActorDTO,
   options?: Omit<
     UseQueryOptions<
-      TGetUnusedAccessPrincipalResponse,
+      TGetUnusedAccessActorResponse,
       unknown,
-      TGetUnusedAccessPrincipalResponse,
-      ReturnType<typeof secretInsightsKeys.unusedAccessPrincipal>
+      TGetUnusedAccessActorResponse,
+      ReturnType<typeof secretInsightsKeys.unusedAccessActor>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
-    queryKey: secretInsightsKeys.unusedAccessPrincipal(params),
+    queryKey: secretInsightsKeys.unusedAccessActor(params),
     queryFn: async () => {
-      const res = await apiRequest.get<Omit<TGetUnusedAccessPrincipalResponse, "remainingTtl">>(
-        `/api/v1/insights/${params.projectId}/secrets/unused-access/${params.principalType}/${params.principalId}`
+      const res = await apiRequest.get<Omit<TGetUnusedAccessActorResponse, "remainingTtl">>(
+        `/api/v1/insights/${params.projectId}/secrets/unused-access/${params.actorType}/${params.actorId}`
       );
       const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
       return { ...res.data, remainingTtl };

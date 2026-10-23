@@ -51,24 +51,34 @@ export type TGetSecretAccessVolumeDTO = {
   projectId: string;
 };
 
-export enum UnusedAccessPrincipalType {
+export enum UnusedAccessActorType {
   User = "user",
-  Identity = "identity",
-  Group = "group"
+  Identity = "identity"
 }
 
-// A user, group or machine identity that can read secrets it has not read in the tracked period.
-export type TUnusedAccessPrincipal = {
-  principalType: UnusedAccessPrincipalType;
-  principalId: string;
+// A built-in role has no id; a custom role has the slug "custom" and its own id.
+export type TUnusedAccessRole = {
+  id: string | null;
+  slug: string;
   name: string;
-  // Groups only.
-  memberCount: number | null;
+};
+
+export type TUnusedAccessPaths = {
+  roles: TUnusedAccessRole[];
+  groups: { id: string; name: string; roles: TUnusedAccessRole[] }[];
+  additionalPrivileges: { id: string; name: string }[];
+};
+
+// A user or machine identity that can read secrets it has not read in the tracked period.
+export type TUnusedAccessActor = {
+  actorType: UnusedAccessActorType;
+  actorId: string;
+  name: string;
   entitledCount: number;
   unreadCount: number;
   environments: string[];
   lastReadAt: string | null;
-  accessVia: string[];
+  accessPaths: TUnusedAccessPaths;
 };
 
 export type TGetUnusedAccessDTO = {
@@ -79,17 +89,17 @@ export type TGetUnusedAccessDTO = {
 };
 
 export type TGetUnusedAccessResponse = {
-  principals: TUnusedAccessPrincipal[];
+  actors: TUnusedAccessActor[];
   totalCount: number;
   trackingStartedAt: string;
   fullWindowFrom: string;
   remainingTtl: number;
 };
 
-export type TGetUnusedAccessPrincipalDTO = {
+export type TGetUnusedAccessActorDTO = {
   projectId: string;
-  principalType: UnusedAccessPrincipalType;
-  principalId: string;
+  actorType: UnusedAccessActorType;
+  actorId: string;
 };
 
 export type TUnusedSecret = {
@@ -98,8 +108,8 @@ export type TUnusedSecret = {
   secretPath: string;
 };
 
-export type TGetUnusedAccessPrincipalResponse = {
-  principal: TUnusedAccessPrincipal;
+export type TGetUnusedAccessActorResponse = {
+  actor: TUnusedAccessActor;
   secrets: TUnusedSecret[];
   unlistedCount: number;
   trackingStartedAt: string;

@@ -1,5 +1,10 @@
-import { TSecretReadActivity } from "@app/db/schemas";
+import { MongoAbility, MongoQuery } from "@casl/ability";
+
+import { TProjectEnvironments, TSecretFolders, TSecretReadActivity } from "@app/db/schemas";
+import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 
 // A reader's last read of an object. The table also keys it by month (its partition key), which the DAL adds
 // on write and folds away on read.
@@ -33,6 +38,16 @@ export type TSecretReach = {
 export type TReachSecret = { id: string; folderId: string; key?: string };
 
 export type TSecretLocation = { environment: string; secretPath: string };
+
+// A project's folders, loaded once, with each folder's path and location worked out on demand.
+export type TProjectFolderTree = {
+  folders: TSecretFolders[];
+  folderById: Record<string, TSecretFolders>;
+  envById: Map<string, TProjectEnvironments>;
+  pathOf: (folderId: string) => string;
+  locationOf: (folderId: string) => TSecretLocation | undefined;
+  folderIdByLocation: Map<string, string>;
+};
 
 export type TSecretReachGraph = {
   getReferencers: (secret: TReachSecret) => TReachSecret[];
@@ -85,11 +100,39 @@ export type TGetSecretReadActivityDTO = {
   secretName: string;
 };
 
-// Without a secret, the whole project is in scope.
+// Without a secret, the whole project is in scope. A caller that already loaded the folder tree passes it in.
 export type TReadActivityScope = {
   projectId: string;
   windowStart: Date;
   secret?: Omit<TGetSecretReadActivityDTO, "projectId">;
+  tree?: TProjectFolderTree;
+};
+
+export type TSecretActivity = TSecretLocation & {
+  secret: Awaited<ReturnType<TSecretV2BridgeDALFactory["find"]>>[number];
+  trackedSince: Date;
+  reads: Map<string, TSecretReadResult>;
+};
+
+export type TProjectReader = {
+  actorType: TSecretReaderType;
+  actorId: string;
+  permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
+};
+
+export type TProjectAccess = {
+  readersByRules: TProjectReader[][];
+  adminActorIds: Set<string>;
+  accessChangedAtByActorId: Map<string, Date>;
+  judgedFrom: Date;
+};
+
+export type TSecretAccessSummary = {
+  // Everyone who can read the value today, each once.
+  entitled: TProjectReader[];
+  nonAdmins: TProjectReader[];
+  unread: TProjectReader[];
+  ghostReaders: TSecretReadResult[];
 };
 
 // A reader who can read the value today, and whether they count as unused access: no read, with the secret and
@@ -103,28 +146,42 @@ export type TEntitledReader = {
   accessChangedAt: Date | null;
 };
 
-export enum UnusedAccessPrincipalType {
-  User = "user",
-  Identity = "identity",
-  Group = "group"
-}
+export type TMemberRole = Awaited<
+  ReturnType<TPermissionServiceFactory["getProjectPermissions"]>
+>["userPermissions"][number]["roles"][number];
 
-// A user, group or machine identity that can read secrets it has not read in the window.
-export type TUnusedAccessPrincipal = {
-  principalType: UnusedAccessPrincipalType;
-  principalId: string;
+export type TUnusedAccessRole = { id: string | null; slug: string; name: string };
+
+export type TUnusedAccessPaths = {
+  roles: TUnusedAccessRole[];
+  groups: { id: string; name: string; roles: TUnusedAccessRole[] }[];
+  additionalPrivileges: { id: string; name: string }[];
+};
+
+export type TUnusedAccessActor = {
+  actorType: TSecretReaderType;
+  actorId: string;
   name: string;
-  // Groups only.
-  memberCount: number | null;
-  // The secrets it can read, and how many of those it has not read.
   entitledCount: number;
   unreadCount: number;
-  // The environments holding its unread secrets.
   environments: string[];
-  // Its latest read of any secret in the project within the window; a group's is its members' latest.
   lastReadAt: Date | null;
-  // How it has the access: roles, additional privileges and groups.
-  accessVia: string[];
+  accessPaths: TUnusedAccessPaths;
+};
+
+export type TUnusedAccessTally = {
+  actorType: TSecretReaderType;
+  actorId: string;
+  entitledCount: number;
+  unreadCount: number;
+  // Capped at UNUSED_ACCESS_MAX_SECRETS_PER_ACTOR
+  unreadSecretIds: string[];
+  environments: Set<string>;
+};
+
+export type TUnusedAccessSummary = {
+  rows: TUnusedAccessActor[];
+  details: Record<string, string[]>;
 };
 
 export type TUnusedSecret = TSecretLocation & { secretKey: string };
@@ -136,8 +193,8 @@ export type TListUnusedAccessDTO = {
   search?: string;
 };
 
-export type TGetUnusedAccessPrincipalDTO = {
+export type TGetUnusedAccessActorDTO = {
   projectId: string;
-  principalType: UnusedAccessPrincipalType;
-  principalId: string;
+  actorType: TSecretReaderType;
+  actorId: string;
 };

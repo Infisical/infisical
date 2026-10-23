@@ -20,14 +20,13 @@ import {
   SecretsProjectsSchema,
   SecretsSummarySchema,
   StaticSecretsUsageSchema,
-  UnusedAccessPrincipalSchema,
+  UnusedAccessActorSchema,
   UnusedAccessSchema
 } from "@app/ee/services/insights/insights-schemas";
-import { UnusedAccessPrincipalType } from "@app/ee/services/secret-read-activity/secret-read-activity-types";
 import { INSIGHTS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 // Each report type declares exactly which inputs it accepts. The `inputs` schemas are the same consts
 // the generators use, so request validation and generation never drift.
@@ -476,7 +475,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     schema: {
       operationId: "getInsightsUnusedAccess",
       description:
-        "List the users, groups and machine identities that can read secrets they have not read in the last 30 days, those with the most such secrets first",
+        "List the users and machine identities that can read secrets they have not read in the last 30 days, those with the most such secrets first",
       security: [{ bearerAuth: [] }],
       params: z.object({
         projectId: z.string().trim().max(36).describe(INSIGHTS.GET_UNUSED_ACCESS.projectId)
@@ -493,7 +492,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { projectId } = req.params;
-      const { principals, totalCount, trackingStartedAt, fullWindowFrom, remainingTTL, projectName } =
+      const { actors, totalCount, trackingStartedAt, fullWindowFrom, remainingTTL, projectName } =
         await server.services.secretReadActivity.listUnusedAccess({ projectId, ...req.query }, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -507,42 +506,46 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       if (remainingTTL && remainingTTL >= 0) {
         void reply.header("X-Cache-TTL", remainingTTL);
       }
-      return { principals, totalCount, trackingStartedAt, fullWindowFrom };
+      return { actors, totalCount, trackingStartedAt, fullWindowFrom };
     }
   });
 
   server.route({
     method: "GET",
-    url: "/:projectId/secrets/unused-access/:principalType/:principalId",
+    url: "/:projectId/secrets/unused-access/:actorType/:actorId",
     config: { rateLimit: readLimit },
     schema: {
-      operationId: "getInsightsUnusedAccessPrincipal",
-      description: "List the secrets one user, group or machine identity can read but has not read in the last 30 days",
+      operationId: "getInsightsUnusedAccessActor",
+      description: "List the secrets one user or machine identity can read but has not read in the last 30 days",
       security: [{ bearerAuth: [] }],
       params: z.object({
-        projectId: z.string().trim().max(36).describe(INSIGHTS.GET_UNUSED_ACCESS_PRINCIPAL.projectId),
-        principalType: z
-          .nativeEnum(UnusedAccessPrincipalType)
-          .describe(INSIGHTS.GET_UNUSED_ACCESS_PRINCIPAL.principalType),
-        principalId: z.string().uuid().describe(INSIGHTS.GET_UNUSED_ACCESS_PRINCIPAL.principalId)
+        projectId: z.string().trim().max(36).describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.projectId),
+        actorType: z.enum([ActorType.USER, ActorType.IDENTITY]).describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.actorType),
+        actorId: z.string().uuid().describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.actorId)
       }),
       response: {
-        200: UnusedAccessPrincipalSchema
+        200: UnusedAccessActorSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
-      const { projectId, principalType, principalId } = req.params;
-      const { principal, secrets, unlistedCount, trackingStartedAt, fullWindowFrom, remainingTTL, projectName } =
-        await server.services.secretReadActivity.getUnusedAccessPrincipal(
-          { projectId, principalType, principalId },
+      const { projectId, actorType, actorId } = req.params;
+      const { actor, secrets, unlistedCount, trackingStartedAt, fullWindowFrom, remainingTTL, projectName } =
+        await server.services.secretReadActivity.getUnusedAccessActor(
+          { projectId, actorType, actorId },
           req.permission
         );
       await server.services.auditLog.createAuditLog({
         projectId,
         event: {
           type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS,
-          metadata: { projectId, projectName, principalType, principalId, principalName: principal.name }
+          metadata: {
+            projectId,
+            projectName,
+            principalType: actorType,
+            principalId: actorId,
+            principalName: actor.name
+          }
         },
         ...req.auditLogInfo
       });
@@ -550,7 +553,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       if (remainingTTL && remainingTTL >= 0) {
         void reply.header("X-Cache-TTL", remainingTTL);
       }
-      return { principal, secrets, unlistedCount, trackingStartedAt, fullWindowFrom };
+      return { actor, secrets, unlistedCount, trackingStartedAt, fullWindowFrom };
     }
   });
 

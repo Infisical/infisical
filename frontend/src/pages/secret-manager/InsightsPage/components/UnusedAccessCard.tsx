@@ -32,23 +32,24 @@ import {
 import { cn } from "@app/components/v3/utils";
 import { useProject, useSubscription } from "@app/context";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { TUnusedAccessPrincipal, useGetUnusedAccess } from "@app/hooks/api/secretInsights";
+import { TUnusedAccessActor, useGetUnusedAccess } from "@app/hooks/api/secretInsights";
 
+import { UnusedAccessActorSheet } from "./UnusedAccessActorSheet";
 import {
+  accessPathBadges,
+  ACTOR_TYPE_CONFIG,
   describeReadPeriod,
   formatRemainingTtl,
-  PRINCIPAL_TYPE_CONFIG,
   unusedSharePercent,
   unusedShareTone
 } from "./unusedAccessHelpers";
-import { UnusedAccessPrincipalSheet } from "./UnusedAccessPrincipalSheet";
 
 export const UnusedAccessCard = () => {
   const { currentProject, projectId } = useProject();
   const { subscription } = useSubscription();
   const { page, setPage, perPage, setPerPage, offset, limit, search, setSearch, debouncedSearch } =
     usePagination("", { initPerPage: 10 });
-  const [selected, setSelected] = useState<TUnusedAccessPrincipal | null>(null);
+  const [selected, setSelected] = useState<TUnusedAccessActor | null>(null);
 
   const { data, isPending, error } = useGetUnusedAccess(
     { projectId, offset, limit, search: debouncedSearch || undefined },
@@ -87,7 +88,7 @@ export const UnusedAccessCard = () => {
     if (totalCount === 0) {
       // Recent access and new secrets are not judged yet, so this cannot claim everything was read.
       const description = debouncedSearch
-        ? "No overprivileged user, group or machine identity matches your search."
+        ? "No overprivileged user or machine identity matches your search."
         : `No identity has left a secret it can access unread ${readPeriod}.`;
       return (
         <Empty className="border">
@@ -122,18 +123,18 @@ export const UnusedAccessCard = () => {
                 </span>
               </TableHead>
               <TableHead>Environments</TableHead>
-              <TableHead className="whitespace-nowrap">Access Via</TableHead>
+              <TableHead className="whitespace-nowrap">Access Paths</TableHead>
               <TableHead variant="action" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.principals.map((row) => {
-              const { icon: TypeIcon, label } = PRINCIPAL_TYPE_CONFIG[row.principalType];
+            {data.actors.map((row) => {
+              const { icon: TypeIcon, label } = ACTOR_TYPE_CONFIG[row.actorType];
               const percent = unusedSharePercent(row.unreadCount, row.entitledCount);
               const tone = unusedShareTone(percent);
               return (
                 <TableRow
-                  key={`${row.principalType}-${row.principalId}`}
+                  key={`${row.actorType}-${row.actorId}`}
                   className="group/row cursor-pointer"
                   onClick={() => setSelected(row)}
                 >
@@ -144,11 +145,6 @@ export const UnusedAccessCard = () => {
                     <span className="flex items-center gap-2">
                       <TypeIcon className="size-4 shrink-0 text-accent" />
                       {label}
-                      {row.memberCount != null && (
-                        <span className="text-muted">
-                          · {row.memberCount} {row.memberCount === 1 ? "member" : "members"}
-                        </span>
-                      )}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -157,7 +153,8 @@ export const UnusedAccessCard = () => {
                         <span>
                           {row.unreadCount}{" "}
                           <span className="text-muted">
-                            of {row.entitledCount} {row.entitledCount === 1 ? "secret" : "secrets"}
+                            of {row.entitledCount}{" "}
+                            {row.entitledCount === 1 ? "secret unread" : "secrets unread"}
                           </span>
                         </span>
                         <span className={cn("tabular-nums", tone.text)}>{percent}%</span>
@@ -181,9 +178,9 @@ export const UnusedAccessCard = () => {
                   </TableCell>
                   <TableCell className="max-w-64">
                     <OverflowBadgeList
-                      items={row.accessVia}
-                      getKey={(item) => item}
-                      getLabel={(item) => item}
+                      items={accessPathBadges(row.accessPaths)}
+                      getKey={(item) => item.key}
+                      getLabel={(item) => item.label}
                       getVariant={() => "neutral"}
                     />
                   </TableCell>
@@ -219,8 +216,8 @@ export const UnusedAccessCard = () => {
             )}
           </CardTitle>
           <CardDescription>
-            Users, groups, and machine identities with access to secrets they have not read{" "}
-            {readPeriod}. Select one to see those secrets.
+            Users and machine identities with access to secrets they have not read {readPeriod}.
+            Select one to see those secrets.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -241,7 +238,7 @@ export const UnusedAccessCard = () => {
           {renderBody()}
         </CardContent>
       </Card>
-      <UnusedAccessPrincipalSheet principal={selected} onClose={() => setSelected(null)} />
+      <UnusedAccessActorSheet actor={selected} onClose={() => setSelected(null)} />
     </>
   );
 };

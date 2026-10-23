@@ -23,22 +23,22 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
-  TGetUnusedAccessPrincipalResponse,
-  TUnusedAccessPrincipal,
-  UnusedAccessPrincipalType,
-  useGetUnusedAccessPrincipal
+  TGetUnusedAccessActorResponse,
+  TUnusedAccessActor,
+  UnusedAccessActorType,
+  useGetUnusedAccessActor
 } from "@app/hooks/api/secretInsights";
 
-import { describeReadPeriod, PRINCIPAL_TYPE_CONFIG } from "./unusedAccessHelpers";
+import { ACTOR_TYPE_CONFIG, describeReadPeriod } from "./unusedAccessHelpers";
 
 // Rows shown per environment before "N more" opens the rest.
 const PREVIEW_ROWS = 5;
 
 type SecretsProps = {
-  data: TGetUnusedAccessPrincipalResponse;
+  data: TGetUnusedAccessActorResponse;
 };
 
-const PrincipalSecrets = ({ data }: SecretsProps) => {
+const ActorSecrets = ({ data }: SecretsProps) => {
   const { currentProject, projectId } = useProject();
   const { orgId } = useParams({ strict: false });
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
@@ -60,7 +60,7 @@ const PrincipalSecrets = ({ data }: SecretsProps) => {
           <EmptyDescription>
             {data.unlistedCount > 0
               ? "Its unread secrets are in places you cannot see, or were deleted since the last update."
-              : "This principal has no unread secrets anymore."}
+              : "It has no unread secrets anymore."}
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -130,23 +130,23 @@ const PrincipalSecrets = ({ data }: SecretsProps) => {
 };
 
 type Props = {
-  principal: TUnusedAccessPrincipal | null;
+  actor: TUnusedAccessActor | null;
   onClose: () => void;
 };
 
-export const UnusedAccessPrincipalSheet = ({ principal, onClose }: Props) => {
+export const UnusedAccessActorSheet = ({ actor, onClose }: Props) => {
   const { projectId } = useProject();
-  const { data, isPending, error } = useGetUnusedAccessPrincipal(
+  const { data, isPending, error } = useGetUnusedAccessActor(
     {
       projectId,
-      principalType: principal?.principalType ?? UnusedAccessPrincipalType.User,
-      principalId: principal?.principalId ?? ""
+      actorType: actor?.actorType ?? UnusedAccessActorType.User,
+      actorId: actor?.actorId ?? ""
     },
-    { enabled: Boolean(principal) }
+    { enabled: Boolean(actor) }
   );
 
   const renderBody = () => {
-    if (!principal) return null;
+    if (!actor) return null;
     if (isPending) return <Skeleton className="h-48 w-full" />;
     if (!data) {
       return (
@@ -162,30 +162,26 @@ export const UnusedAccessPrincipalSheet = ({ principal, onClose }: Props) => {
         </Empty>
       );
     }
-    return (
-      <PrincipalSecrets key={`${principal.principalType}-${principal.principalId}`} data={data} />
-    );
+    return <ActorSecrets key={`${actor.actorType}-${actor.actorId}`} data={data} />;
   };
 
   return (
     <Sheet
-      open={principal !== null}
+      open={actor !== null}
       onOpenChange={(isOpen) => {
         if (!isOpen) onClose();
       }}
     >
       <SheetContent size="form" side="right" onOpenAutoFocus={(event) => event.preventDefault()}>
-        {principal && (
+        {actor && (
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
-              <span className="truncate">{principal.name}</span>
-              <Badge variant="neutral">
-                {PRINCIPAL_TYPE_CONFIG[principal.principalType].label}
-              </Badge>
+              <span className="truncate">{actor.name}</span>
+              <Badge variant="neutral">{ACTOR_TYPE_CONFIG[actor.actorType].label}</Badge>
             </SheetTitle>
             <SheetDescription>
-              Has not read {principal.unreadCount} of the {principal.entitledCount}{" "}
-              {principal.entitledCount === 1 ? "secret" : "secrets"} it can access{" "}
+              Has not read {actor.unreadCount} of the {actor.entitledCount}{" "}
+              {actor.entitledCount === 1 ? "secret" : "secrets"} it can access{" "}
               {data
                 ? describeReadPeriod(data.trackingStartedAt, data.fullWindowFrom)
                 : "in the last 30 days"}
