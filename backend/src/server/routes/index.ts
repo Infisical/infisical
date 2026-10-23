@@ -2053,7 +2053,9 @@ export const registerRoutes = async (
     identityGroupMembershipDAL,
     userDAL,
     groupDAL,
-    identityDAL
+    identityDAL,
+    agentVaultDelegationDAL,
+    orgDAL
   });
 
   const agentVaultSessionService = agentVaultSessionServiceFactory({

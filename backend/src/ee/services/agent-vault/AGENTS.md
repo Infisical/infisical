@@ -136,6 +136,9 @@ is one
 - **Reach is the intersection of the user's and the identity's** (`intersectAccessBundleIds`): a bundle needs both,
   through the admin role or a grant, at mint and on every resolve. Settled with the product owner. The identity losing
   a grant drops the bundle's services like a user's lost grant, with no 401.
+- **Listing access bundles with `onBehalfOfUserId` or `onBehalfOfUserEmail` runs mint's delegation and user checks**
+  (`agent-vault-on-behalf-of-fns.ts`, shared by both), then returns the bundles the user and the identity both reach,
+  with setup state from the user's personal values, so an orchestrator can choose a bundle before it mints.
 - **Mint checks the delegation, then the identity's own bundles, then the user**, so an identity learns nothing about
   who is in the org until an admin has delegated it and granted it the bundle, and an unknown user gets the same message
   as an uncovered one. Only a machine identity may send `onBehalfOf`. The user must be an active, accepted org member,
@@ -325,10 +328,10 @@ reference.
   unique index plus an advisory lock per project or per owner.
 - **Everything personal is scoped to the caller, never to an id the caller sends.** No route that reads or writes
   personal values or variables names another actor, so an admin can't list, read or set anyone else's variables or
-  values. An on-behalf-of mint names a user, but only to own the session (see
-  [Sessions on behalf of users](#sessions-on-behalf-of-users)). The owner is a user or a machine identity
-  (`ownerOf`); the UI only covers users for now, but resolve and the API already work for an identity's own
-  sessions.
+  values. Two on-behalf-of routes name a user: minting, to own the session, and the access bundle list, to report
+  which of the user's services still need setup (see [Sessions on behalf of users](#sessions-on-behalf-of-users)). The
+  owner is a user or a machine identity (`ownerOf`); the UI only covers users for now, but resolve and the API already
+  work for an identity's own sessions.
 - **Resolve fills member fields last**: the admin's fields are expanded against global variables first, then each
   personal value against the session actor's personal variables only, so neither is ever expanded twice and a
   personal `{{KEY}}` can't reach a global variable. A service whose actor hasn't set every member-provided field goes

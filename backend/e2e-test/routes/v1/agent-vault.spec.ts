@@ -4102,6 +4102,100 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("an identity lists the bundles a session on a user's behalf could use", async () => {
+      const projectId = await getProjectId();
+      const stamp = String(Date.now());
+      const shared = await createAccessBundle(`obo-list-shared-${stamp}`);
+      const usersOnly = await createAccessBundle(`obo-list-users-${stamp}`);
+      const botsOnly = await createAccessBundle(`obo-list-bots-${stamp}`);
+      const needsSetup = await createAccessBundle(`obo-list-setup-${stamp}`);
+      const service = await inject("POST", `/api/v1/agent-vault/access-bundles/${needsSetup.id}/services`, {
+        name: "github",
+        hostPattern: "api.github.com",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+      expect(service.statusCode).toBe(200);
+      const bot = await createMemberIdentity(`obo-list-bot-${stamp}`);
+      const alice = await createAgentVaultUser("obo-list-alice", projectId);
+      const outsider = await createAgentVaultUser("obo-list-outsider", projectId);
+      const bundlesUrl = (query: string) => `/api/v1/agent-vault/access-bundles?limit=100&${query}`;
+      type TListed = { name: string; servicesRequiringSetup: { name: string }[] }[];
+      const listed = (res: { json: () => { accessBundles: TListed } }) =>
+        res
+          .json()
+          .accessBundles.filter((bundle) => bundle.name.endsWith(stamp))
+          .map((bundle) => ({
+            name: bundle.name,
+            setup: bundle.servicesRequiringSetup.map((pending) => pending.name)
+          }));
+      try {
+        await grantBundle(shared.id, { userIds: [alice.userId], machineIdentityIds: [bot.id] });
+        await grantBundle(usersOnly.id, { userIds: [alice.userId] });
+        await grantBundle(botsOnly.id, { machineIdentityIds: [bot.id] });
+        await grantBundle(needsSetup.id, { machineIdentityIds: [bot.id] });
+        await delegate(bot, { scope: "selected", userIds: [alice.userId, seedData1.id] });
+
+        const byId = await bot.as("GET", bundlesUrl(`onBehalfOfUserId=${alice.userId}`));
+        expect(byId.statusCode).toBe(200);
+        expect(listed(byId)).toEqual([{ name: shared.name, setup: [] }]);
+        const byEmail = await bot.as("GET", bundlesUrl(`onBehalfOfUserEmail=${encodeURIComponent(alice.username)}`));
+        expect(listed(byEmail)).toEqual(listed(byId));
+
+        // Without onBehalfOf the identity still lists its own bundles.
+        const own = await bot.as("GET", bundlesUrl("orderBy=name&orderDirection=asc"));
+        expect(listed(own).map((bundle) => bundle.name)).toEqual([botsOnly.name, needsSetup.name, shared.name]);
+
+        // A user the delegation doesn't cover reads exactly like one who doesn't exist.
+        const missingId = crypto.randomUUID();
+        const uncovered = await bot.as("GET", bundlesUrl(`onBehalfOfUserId=${outsider.userId}`));
+        const unknown = await bot.as("GET", bundlesUrl(`onBehalfOfUserId=${missingId}`));
+        expect([uncovered.statusCode, unknown.statusCode]).toEqual([403, 403]);
+        expect(uncovered.json().message.replace(outsider.userId, "<user>")).toBe(
+          unknown.json().message.replace(missingId, "<user>")
+        );
+
+        const asUser = await inject("GET", bundlesUrl(`onBehalfOfUserId=${alice.userId}`));
+        expect(asUser.statusCode).toBe(400);
+        expect(asUser.json().message).toBe("Only a machine identity can start a session on behalf of a user");
+        expect(
+          (
+            await bot.as(
+              "GET",
+              bundlesUrl(`onBehalfOfUserId=${alice.userId}&onBehalfOfUserEmail=${encodeURIComponent(alice.username)}`)
+            )
+          ).statusCode
+        ).toBe(422);
+        const withGranted = await bot.as("GET", bundlesUrl(`onBehalfOfUserId=${alice.userId}&granted=true`));
+        expect(withGranted.statusCode).toBe(422);
+
+        // The setup state is the user's: the seeded admin reaches every bundle, so the identity's grants decide the
+        // list, and the service asks for a value the admin hasn't saved yet.
+        const forAdmin = (requiresSetup: string) =>
+          bot.as(
+            "GET",
+            bundlesUrl(
+              `onBehalfOfUserId=${seedData1.id}&requiresSetup=${requiresSetup}&orderBy=name&orderDirection=asc`
+            )
+          );
+        expect(listed(await forAdmin("true"))).toEqual([{ name: needsSetup.name, setup: ["github"] }]);
+        const saved = await inject(
+          "PATCH",
+          `/api/v1/agent-vault/access-bundles/${needsSetup.id}/services/${service.json().service.id as string}/personal-values`,
+          { values: [{ field: "credential-value", value: "admin_personal_token" }] }
+        );
+        expect(saved.statusCode).toBe(200);
+        expect(listed(await forAdmin("true"))).toEqual([]);
+        expect(listed(await forAdmin("false"))).toEqual([
+          { name: botsOnly.name, setup: [] },
+          { name: needsSetup.name, setup: [] },
+          { name: shared.name, setup: [] }
+        ]);
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId, outsider.userId]);
+      }
+    });
+
     test("all-members covers every Agent Vault member and no one outside Agent Vault", async () => {
       const projectId = await getProjectId();
       const bundle = await createAccessBundle(`obo-all-${Date.now()}`);

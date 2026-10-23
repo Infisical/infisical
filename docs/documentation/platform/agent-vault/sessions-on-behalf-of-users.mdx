@@ -91,6 +91,17 @@ curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
 
 Start the agent with the session token from the response, and revoke the session when the agent finishes, as [Step 4 of Create sessions with the API](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) describes.
 
+### Find the access bundles a session can use
+
+To choose an access bundle for the user, call [the endpoint that lists access bundles](/api-reference/endpoints/agent-vault-access-bundles/list) as the machine identity, and name the user in `onBehalfOfUserEmail` or `onBehalfOfUserId`:
+
+```bash
+curl "https://app.infisical.com/api/v1/agent-vault/access-bundles?onBehalfOfUserEmail=<user-email>" \
+  -H "Authorization: Bearer <access-token>"
+```
+
+The response lists only the access bundles that both the user and the machine identity can use. For each bundle, `servicesRequiringSetup` lists the services the user hasn't set up their personal values for yet. The proxy refuses the session's requests to those services, so add `requiresSetup=false` to list only the bundles the user has set up.
+
 ## What the session can reach
 
 A session created on behalf of a user can use an access bundle only if both the user and the machine identity can use the bundle, and the session uses the user's personal values:
