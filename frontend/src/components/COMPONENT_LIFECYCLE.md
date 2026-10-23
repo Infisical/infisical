@@ -26,8 +26,7 @@ The 2026-10-04 source audit found no external consumers of `Blur`, `CreatableSel
 | Components                     | Status     | Direction                                                             |
 | ------------------------------ | ---------- | --------------------------------------------------------------------- |
 | `PageHeader` | Supported | Owns the normal 40px bottom boundary (`mb-10`). Remove header-boundary parent gaps and redundant caller margins when adopting it; preserve independent body/card spacing in body containers. `className` supports intentional compact/responsive boundaries. See its spacing stories. |
-| `ReactSelect/FilterableSelect` | Deprecated | Use `Combobox`; keep compatibility available while consumers migrate. |
-| `ReactSelect/CreatableSelect`  | Deprecated | Use `Combobox` with inline `creation` for values needing no metadata, or dialog `creation` for caller-owned forms and persistence. Keep compatibility for react-select-specific component overrides; migrate consumers separately. |
+| `ReactSelect/FilterableSelect`, `ReactSelect/CreatableSelect` | Removed | Deleted the compatibility directory and its `generic/index.ts` export. No consumers remained at `e434f2fdfdd608f97cd4041af84062991d2645cf`. Use `Combobox`, with inline `creation` for values needing no metadata or dialog `creation` for caller-owned forms and persistence. |
 
 ## Updating the ledger
 
