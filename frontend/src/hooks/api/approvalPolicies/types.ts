@@ -1,3 +1,5 @@
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+
 export enum ApprovalPolicyType {
   PamAccess = "pam-access",
   CertRequest = "cert-request",
@@ -132,6 +134,12 @@ export type TAutoApprovalOutcome = {
     passed: boolean;
     conditions: { id: string; description: string; passed: boolean; reason: string | null }[];
   }[];
+};
+
+export type TAutoApprovalCatalog = {
+  // Apps a connection can be created for to use in rules
+  apps: AppConnection[];
+  connections: TAutoApprovalCatalogConnection[];
 };
 
 export type TGetAutoApprovalCatalogDTO = {

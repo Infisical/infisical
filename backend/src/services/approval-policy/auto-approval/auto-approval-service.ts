@@ -506,6 +506,7 @@ export const autoApprovalServiceFactory = ({
     const connectionsByApp = await Promise.all(AUTO_APPROVAL_APPS.map(listConnections));
 
     return {
+      apps: AUTO_APPROVAL_APPS,
       connections: connectionsByApp.flat().flatMap((connection) => {
         const provider = getAutoApprovalProvider(connection.app);
         if (!provider) return [];

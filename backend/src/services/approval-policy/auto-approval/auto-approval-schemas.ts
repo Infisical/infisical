@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { APPROVAL_POLICY_AUTO_APPROVAL as DOCS } from "@app/lib/api-docs";
 import { slugSchema } from "@app/server/lib/schemas";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { AutoApprovalConstraintValue } from "./auto-approval-types";
 
@@ -108,6 +109,7 @@ export const AutoApprovalInputDetailsSchema = z.object({
 });
 
 export const AutoApprovalCatalogSchema = z.object({
+  apps: z.nativeEnum(AppConnection).array(),
   connections: z
     .object({
       id: z.string().uuid(),

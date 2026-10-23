@@ -172,9 +172,10 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     scope: ApprovalPolicyScope.PamFolder,
     scopeId: folderId
   };
-  const { data: autoApprovalCatalog } = useQuery(
+  const { data: autoApprovalCatalogData } = useQuery(
     approvalPolicyQuery.autoApprovalCatalog(autoApprovalScope)
   );
+  const autoApprovalCatalog = autoApprovalCatalogData?.connections;
 
   const savedApprovers = useMemo(() => {
     if (!config?.steps?.[0]) return [];

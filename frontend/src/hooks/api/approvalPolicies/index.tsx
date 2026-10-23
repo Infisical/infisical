@@ -19,6 +19,7 @@ export {
   type PamAccessPolicyConstraints,
   type PolicyBypasser,
   type TApprovalPolicy,
+  type TAutoApprovalCatalog,
   type TAutoApprovalCatalogConnection,
   type TAutoApprovalCatalogConstraint,
   type TAutoApprovalCatalogSubject,

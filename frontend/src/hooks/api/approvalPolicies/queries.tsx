@@ -4,7 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import {
   TApprovalPolicy,
-  TAutoApprovalCatalogConnection,
+  TAutoApprovalCatalog,
   TAutoApprovalOption,
   TGetApprovalPolicyByIdDTO,
   TGetAutoApprovalCatalogDTO,
@@ -26,11 +26,11 @@ export const approvalPolicyQuery = {
     queryOptions({
       queryKey: approvalPolicyQuery.autoApprovalCatalogKey(params),
       queryFn: async () => {
-        const { data } = await apiRequest.get<{ connections: TAutoApprovalCatalogConnection[] }>(
+        const { data } = await apiRequest.get<TAutoApprovalCatalog>(
           `/api/v1/approval-policies/${params.policyType}/auto-approval/catalog`,
           { params: { scope: params.scope, id: params.scopeId } }
         );
-        return data.connections;
+        return data;
       }
     }),
   autoApprovalOptions: (params: TListAutoApprovalOptionsDTO) =>

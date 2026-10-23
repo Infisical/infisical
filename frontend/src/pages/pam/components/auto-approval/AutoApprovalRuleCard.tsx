@@ -148,22 +148,6 @@ const ConditionRow = ({
         {constraint?.value === AutoApprovalConstraintValue.Many && (
           <span className="text-xs text-muted">one of</span>
         )}
-        {constraint && constraint.value !== AutoApprovalConstraintValue.None && (
-          <div className="max-w-72 min-w-40 flex-1">
-            <AutoApprovalValuePicker
-              policyType={policyType}
-              scope={scope}
-              scopeId={scopeId}
-              connectionId={condition.connectionId}
-              subject={condition.subject}
-              constraint={constraint}
-              values={condition.values}
-              siblings={siblings}
-              onChange={(values) => onChange({ ...condition, values })}
-              isError={Boolean(error)}
-            />
-          </div>
-        )}
         <IconButton
           variant="ghost"
           size="xs"
@@ -174,6 +158,22 @@ const ConditionRow = ({
           <X className="size-4" />
         </IconButton>
       </div>
+      {constraint && constraint.value !== AutoApprovalConstraintValue.None && (
+        <div className="pb-1">
+          <AutoApprovalValuePicker
+            policyType={policyType}
+            scope={scope}
+            scopeId={scopeId}
+            connectionId={condition.connectionId}
+            subject={condition.subject}
+            constraint={constraint}
+            values={condition.values}
+            siblings={siblings}
+            onChange={(values) => onChange({ ...condition, values })}
+            isError={Boolean(error)}
+          />
+        </div>
+      )}
       {error && <p className="px-1.5 text-xs text-danger">{error}</p>}
     </div>
   );
