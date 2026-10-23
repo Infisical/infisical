@@ -9,13 +9,13 @@ import {
   PopoverTrigger,
   Separator
 } from "@app/components/v3";
-import { TOrgUserAccessGroup } from "@app/hooks/api/users/types";
+import { TOrgUserAccessGroup, TOrgUserAccessGroupRole } from "@app/hooks/api/users/types";
 
 type Props = {
   orgId: string;
   groups: TOrgUserAccessGroup[];
   hasDirectAccess: boolean;
-  getRoleName: (group: TOrgUserAccessGroup) => string;
+  getRoleName: (role: TOrgUserAccessGroupRole) => string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   keepFocusOnClose: boolean;
@@ -76,9 +76,18 @@ export const GroupAccessPopover = ({
                   {group.name}
                 </span>
               </Link>
-              <Badge variant="neutral" isTruncatable className="max-w-[8rem] shrink-0">
-                {getRoleName(group)}
-              </Badge>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {group.roles.map((role) => (
+                  <Badge
+                    key={`${group.id}-${role.roleId ?? role.role}`}
+                    variant="neutral"
+                    isTruncatable
+                    className="max-w-[8rem]"
+                  >
+                    {getRoleName(role)}
+                  </Badge>
+                ))}
+              </div>
             </li>
           ))}
         </ul>

@@ -267,8 +267,8 @@ export const OrgMembersTable = ({
       members
         ?.filter(({ user: u, membership, groups }) => {
           if (filter.roles.length) {
-            const roleSlugs = [membership, ...groups].flatMap((roleRef) =>
-              roleRef ? [getRoleSlug(roleRef)] : []
+            const roleSlugs = [membership, ...groups.flatMap((group) => group.roles)].flatMap(
+              (roleRef) => (roleRef ? [getRoleSlug(roleRef)] : [])
             );
             if (!roleSlugs.some((slug) => slug && filter.roles.includes(slug))) {
               return false;

@@ -558,8 +558,9 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Every user that reaches the org through a group holding an org row, one row per (user, group). Covers
-  // users with no direct org row at all, which findAllOrgMembers never sees.
+  // Every user that reaches the org through a group holding an org row, one row per (user, group, role).
+  // Covers users with no direct org row at all, which findAllOrgMembers never sees. Expired temporary
+  // roles are left out, matching isActiveRole, and a group always keeps at least one permanent role.
   const findAllOrgGroupUserAccess = async (orgId: string) => {
     try {
       const rows = await db
@@ -572,6 +573,11 @@ export const orgDALFactory = (db: TDbClient) => {
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.UserGroupMembership}.userId`)
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .where(`${TableName.Users}.isGhost`, false)
+        .where((qb) => {
+          void qb
+            .where(`${TableName.MembershipRole}.isTemporary`, false)
+            .orWhere(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", new Date());
+        })
         .select(
           db.ref("id").withSchema(TableName.Users).as("userId"),
           db.ref("email").withSchema(TableName.Users),

@@ -313,12 +313,18 @@ export const orgServiceFactory = ({
       orgDAL.findAllOrgGroupUserAccess(orgId)
     ]);
 
-    const groupsByUserId = new Map<string, (typeof groupAccess)[number]["group"][]>();
+    type TGroupAccess = { id: string; name: string; slug: string; roles: { role: string; roleId: string | null }[] };
+    const groupsByUserId = new Map<string, TGroupAccess[]>();
     const groupOnlyUsers = new Map<string, (typeof groupAccess)[number]["user"]>();
     const directUserIds = new Set(members.map((member) => member.user.id));
     groupAccess.forEach(({ user, group }) => {
       const groups = groupsByUserId.get(user.id) ?? [];
-      if (!groups.some((el) => el.id === group.id)) groups.push(group);
+      let entry = groups.find((el) => el.id === group.id);
+      if (!entry) {
+        entry = { id: group.id, name: group.name, slug: group.slug, roles: [] };
+        groups.push(entry);
+      }
+      entry.roles.push({ role: group.role, roleId: group.roleId ?? null });
       groupsByUserId.set(user.id, groups);
       if (!directUserIds.has(user.id)) groupOnlyUsers.set(user.id, user);
     });

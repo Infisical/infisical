@@ -85,12 +85,16 @@ export type OrgUser = {
   lastLoginTime?: string;
 };
 
+export type TOrgUserAccessGroupRole = {
+  role: string;
+  roleId: string | null;
+};
+
 export type TOrgUserAccessGroup = {
   id: string;
   name: string;
   slug: string;
-  role: string;
-  roleId?: string | null;
+  roles: TOrgUserAccessGroupRole[];
 };
 
 export type TOrgUserAccessMembership = Pick<

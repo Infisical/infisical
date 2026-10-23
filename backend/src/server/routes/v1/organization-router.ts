@@ -491,8 +491,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
                   id: z.string().uuid(),
                   name: z.string(),
                   slug: z.string(),
-                  role: z.string(),
-                  roleId: z.string().uuid().nullable().optional()
+                  roles: z.object({ role: z.string(), roleId: z.string().uuid().nullable() }).array()
                 })
                 .array()
             })

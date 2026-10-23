@@ -7,8 +7,10 @@ import { addUserMembership, createUser, deleteUsers } from "../../testUtils/user
 type TUserAccessRow = {
   user: { id: string; username: string };
   membership: { id: string; role: string; status: string; isActive: boolean } | null;
-  groups: { id: string; name: string; slug: string; role: string }[];
+  groups: { id: string; name: string; slug: string; roles: { role: string }[] }[];
 };
+
+const HOUR_MS = 60 * 60 * 1000;
 
 describe("Organization user access listing", () => {
   let orgId: string;
@@ -22,12 +24,27 @@ describe("Organization user access listing", () => {
 
   // Group rows go straight into the database: the API only adds a user to a group once they are an org
   // member, and the case under test is a user whose only way into the org is the group.
-  const createOrgGroup = async (name: string, role: OrgMembershipRole) => {
+  const createOrgGroup = async (
+    name: string,
+    role: OrgMembershipRole,
+    temporaryRole?: { role: OrgMembershipRole; endsAt: Date }
+  ) => {
     const [group] = await testDb(TableName.Groups).insert({ orgId, name, slug: name }).returning("*");
     const [membership] = await testDb(TableName.Membership)
       .insert({ scope: AccessScope.Organization, scopeOrgId: orgId, actorGroupId: group.id, isActive: true })
       .returning("*");
     await testDb(TableName.MembershipRole).insert({ membershipId: membership.id, role });
+    if (temporaryRole) {
+      await testDb(TableName.MembershipRole).insert({
+        membershipId: membership.id,
+        role: temporaryRole.role,
+        isTemporary: true,
+        temporaryMode: "relative",
+        temporaryRange: "1h",
+        temporaryAccessStartTime: new Date(temporaryRole.endsAt.getTime() - HOUR_MS),
+        temporaryAccessEndTime: temporaryRole.endsAt
+      });
+    }
     return group.id as string;
   };
 
@@ -52,8 +69,14 @@ describe("Organization user access listing", () => {
     await addUserMembership({ userId: directUser.userId, orgId, role: OrgMembershipRole.Member });
     await addUserMembership({ userId: directAndGroupUser.userId, orgId, role: OrgMembershipRole.Member });
 
-    adminGroupId = await createOrgGroup(`engineering-${suffix}`, OrgMembershipRole.Admin);
-    memberGroupId = await createOrgGroup(`qa-team-${suffix}`, OrgMembershipRole.Member);
+    adminGroupId = await createOrgGroup(`engineering-${suffix}`, OrgMembershipRole.Admin, {
+      role: OrgMembershipRole.Member,
+      endsAt: new Date(Date.now() - HOUR_MS)
+    });
+    memberGroupId = await createOrgGroup(`qa-team-${suffix}`, OrgMembershipRole.Member, {
+      role: OrgMembershipRole.Admin,
+      endsAt: new Date(Date.now() + HOUR_MS)
+    });
 
     await testDb(TableName.UserGroupMembership).insert([
       { userId: directAndGroupUser.userId, groupId: adminGroupId },
@@ -81,14 +104,26 @@ describe("Organization user access listing", () => {
     const directAndGroup = byUserId.get(directAndGroupUser.userId);
     expect(directAndGroup?.membership).toEqual(expect.objectContaining({ role: OrgMembershipRole.Member }));
     expect(directAndGroup?.groups).toEqual([
-      expect.objectContaining({ id: adminGroupId, role: OrgMembershipRole.Admin })
+      expect.objectContaining({ id: adminGroupId, roles: [{ role: OrgMembershipRole.Admin, roleId: null }] })
     ]);
 
     const groupOnly = byUserId.get(groupOnlyUser.userId);
     expect(groupOnly?.user.username).toBe(groupOnlyUser.username);
     expect(groupOnly?.membership).toBeNull();
     expect(groupOnly?.groups.map((group) => group.id).sort()).toEqual([adminGroupId, memberGroupId].sort());
-    expect(groupOnly?.groups.find((group) => group.id === memberGroupId)?.role).toBe(OrgMembershipRole.Member);
+  });
+
+  test("lists every active role of a group and leaves expired temporary roles out", async () => {
+    const users = await listUserAccess();
+    const groupOnly = users.find((row) => row.user.id === groupOnlyUser.userId);
+    const roleSlugs = (groupId: string) =>
+      groupOnly?.groups
+        .find((group) => group.id === groupId)
+        ?.roles.map((role) => role.role)
+        .sort();
+
+    expect(roleSlugs(adminGroupId)).toEqual([OrgMembershipRole.Admin]);
+    expect(roleSlugs(memberGroupId)).toEqual([OrgMembershipRole.Admin, OrgMembershipRole.Member]);
   });
 
   test("leaves the direct membership list unchanged", async () => {
