@@ -14,7 +14,7 @@
   transition-timing-function: var(--v4-ease-standard);
 }
 .sidebar[data-edge] {
-  border-right: 1px solid var(--v4-sidebar-line);
+  border-right: 1px solid var(--v4-line);
 }
 .sidebar[data-collapsed] {
   width: 52px;
@@ -228,13 +228,13 @@
   flex: 1 1 auto;
   min-width: var(--v4-space-12);
   height: 1px;
-  background: var(--v4-sidebar-line);
+  background: var(--v4-line);
 }
 .sidebar[data-collapsed] .sectionLabel {
   height: 1px;
   margin: 0 calc(-1 * var(--v4-space-8)) var(--v4-space-8);
   padding: 0;
-  background: var(--v4-sidebar-line);
+  background: var(--v4-line);
 }
 .sidebar[data-collapsed] .sectionLabel::after {
   display: none;
@@ -362,7 +362,7 @@
   bottom: 3px;
   left: 18px;
   width: 1px;
-  background: var(--v4-sidebar-line);
+  background: var(--v4-line);
   pointer-events: none;
 }
 .children[hidden] {

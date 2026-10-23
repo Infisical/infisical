@@ -30,7 +30,7 @@
 }
 .shell > .inset {
   margin: var(--v4-space-shell-gap) var(--v4-space-shell-gap) var(--v4-space-shell-gap) 0;
-  border: var(--v4-size-control-border) solid var(--v4-sidebar-line);
+  border: var(--v4-size-control-border) solid var(--v4-line);
   border-radius: 0;
 }
 .shell > [data-slot="sidebar"][data-edge]:not([data-sheet]) {
@@ -68,7 +68,7 @@
   min-width: 0;
   height: var(--v4-size-shell-bar);
   padding-inline: var(--v4-page-gutter, var(--v4-space-40));
-  border-bottom: 1px solid var(--v4-sidebar-line);
+  border-bottom: 1px solid var(--v4-line);
   background: var(--v4-inset);
 }
 .topBar[data-narrow] {
