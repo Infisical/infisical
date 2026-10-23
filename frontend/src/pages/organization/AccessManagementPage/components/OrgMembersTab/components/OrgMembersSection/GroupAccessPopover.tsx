@@ -48,7 +48,7 @@ const GroupRoleBadges = ({
       {overflow.length > 0 && (
         <Popover>
           <Tooltip>
-            <TooltipTrigger className="flex h-4 items-center">
+            <TooltipTrigger asChild>
               <PopoverTrigger asChild>
                 <Badge variant="neutral" asChild>
                   <button type="button" onClick={(e) => e.stopPropagation()}>
@@ -61,7 +61,7 @@ const GroupRoleBadges = ({
           </Tooltip>
           <PopoverContent
             side="right"
-            className="flex w-auto max-w-sm flex-wrap gap-1.5"
+            className="flex max-h-(--radix-popover-content-available-height) w-auto max-w-sm flex-wrap gap-1.5 overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {overflow.map((role) => (
