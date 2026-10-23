@@ -978,9 +978,10 @@ pointing at something. Things that rely on that:
 - **Discovery matches deleted rows by fingerprint, and certificates issued before 2026-01-27 have none.** The
   delete computes and stores a missing fingerprint before it removes the body, so discovery can still find the
   deleted row. If the body can't be read, the delete fails and nothing is removed.
-- **A deleted certificate can keep `keySource = hsm` after its HSM connector is deleted.** The key source CHECK
-  allows a null `hsmConnectorId` on deleted rows, so deleting a connector only detaches them and the record
-  still says the key lived in an HSM.
+- **A deleted certificate keeps its HSM key reference** (`keySource`, connector, key label and id), so the
+  record stays true for audits. Deleting the connector detaches deleted rows (`hsmConnectorId` set to null),
+  which is why the key source CHECK requires only a key label for `hsm`, not a connector. The rollback leaves
+  that CHECK in place.
 - **Serial numbers stay globally unique, deleted rows included** (`certificates_serialnumber_unique`), so a
   deleted certificate still holds its serial: re-importing it restores the row, and a re-import that cannot be
   restored (another Application, profile or CA) is refused with a message naming where to import it instead.

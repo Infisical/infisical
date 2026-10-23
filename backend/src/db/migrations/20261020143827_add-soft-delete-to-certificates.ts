@@ -6,8 +6,7 @@ const DELETED_INDEX_NAME = "certificates_projectid_deleted_index";
 const DELETION_AWARE_QUOTA_KEY_INDEX = "certificates_projectid_quotakey_deletion_index";
 const LEGACY_QUOTA_KEY_INDEX = "certificates_projectid_quotakey_index";
 const KEY_SOURCE_CHECK_NAME = "certificates_key_source_chk";
-const LIVE_HSM_KEY_SOURCE_CHECK = `("keySource" = 'infisical') OR ("keySource" = 'hsm' AND "hsmConnectorId" IS NOT NULL AND "hsmKeyLabel" IS NOT NULL)`;
-const SOFT_DELETE_HSM_KEY_SOURCE_CHECK = `("keySource" = 'infisical') OR ("keySource" = 'hsm' AND "hsmKeyLabel" IS NOT NULL AND ("hsmConnectorId" IS NOT NULL OR "deletedAt" IS NOT NULL))`;
+const KEY_SOURCE_CHECK = `("keySource" = 'infisical') OR ("keySource" = 'hsm' AND "hsmKeyLabel" IS NOT NULL)`;
 
 const ALTER_LOCK_TIMEOUT = 10 * 1000;
 const MIGRATION_TIMEOUT = 60 * 60 * 1000;
@@ -46,11 +45,11 @@ const createIndexConcurrently = async (raw: (sql: string) => Knex.Raw, name: str
   await raw(`CREATE INDEX CONCURRENTLY IF NOT EXISTS "${name}" ${definition}`);
 };
 
-const replaceKeySourceCheck = async (knex: Knex, checkExpression: string) => {
+const replaceKeySourceCheck = async (knex: Knex) => {
   await knex.transaction(async (tx) => {
     await tx.raw(`SET LOCAL lock_timeout = ${ALTER_LOCK_TIMEOUT}`);
     await tx.raw(`ALTER TABLE ?? DROP CONSTRAINT IF EXISTS ??`, [TableName.Certificate, KEY_SOURCE_CHECK_NAME]);
-    await tx.raw(`ALTER TABLE ?? ADD CONSTRAINT ?? CHECK (${checkExpression}) NOT VALID`, [
+    await tx.raw(`ALTER TABLE ?? ADD CONSTRAINT ?? CHECK (${KEY_SOURCE_CHECK}) NOT VALID`, [
       TableName.Certificate,
       KEY_SOURCE_CHECK_NAME
     ]);
@@ -74,7 +73,7 @@ export async function up(knex: Knex): Promise<void> {
     );
   });
 
-  await replaceKeySourceCheck(knex, SOFT_DELETE_HSM_KEY_SOURCE_CHECK);
+  await replaceKeySourceCheck(knex);
 
   const hasQuotaKey = await knex.schema.hasColumn(TableName.Certificate, "quotaKey");
   await withMigrationConnection(knex, async (raw) => {
@@ -110,11 +109,6 @@ export async function down(knex: Knex): Promise<void> {
     }
     await raw(`DROP INDEX CONCURRENTLY IF EXISTS "${DELETED_INDEX_NAME}"`);
   });
-
-  if (await knex.schema.hasColumn(TableName.Certificate, "deletedAt")) {
-    await knex(TableName.Certificate).whereNotNull("deletedAt").delete();
-    await replaceKeySourceCheck(knex, LIVE_HSM_KEY_SOURCE_CHECK);
-  }
 
   await knex.transaction(async (tx) => {
     await tx.raw(`SET LOCAL lock_timeout = ${ALTER_LOCK_TIMEOUT}`);
