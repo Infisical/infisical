@@ -3,7 +3,10 @@ import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { CheckIcon, ChevronDownIcon, Loader2Icon, PlusIcon, XIcon } from "lucide-react";
 
 import { cn } from "../../utils";
-import { useIsInsideOverlayLayer, useOverlayPopupRegistration } from "../../utils/overlay-layer";
+import {
+  useIsInsideModalOverlayLayer,
+  useOverlayPopupRegistration
+} from "../../utils/overlay-layer";
 import { useScrollEdges } from "../../utils/useScrollEdges";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../Dialog";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../Sheet";
@@ -926,13 +929,13 @@ const SingleCombobox = <TOption,>(props: ComboboxSingleProps<TOption>) => {
     ref,
     ...inputProps
   } = props;
-  const isInsideOverlayLayer = useIsInsideOverlayLayer();
+  const isInsideModalOverlayLayer = useIsInsideModalOverlayLayer();
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   React.useImperativeHandle(ref, () => inputRef.current as HTMLInputElement, []);
   const listScrollRef = React.useRef<HTMLDivElement>(null);
   const highlightedOptionValueRef = React.useRef<string | null>(null);
   const [open, setOpen, markPopupDismissEvent] = useComboboxOpen(onPopupOpenChange);
-  const modal = modalProp ?? isInsideOverlayLayer;
+  const modal = modalProp ?? isInsideModalOverlayLayer;
   const selectedLabel = value == null ? "" : getOptionLabel(value);
   const [search, setSearch] = React.useState("");
   const searchRef = React.useRef(search);
@@ -1328,7 +1331,7 @@ const MultipleCombobox = <TOption,>({
   ref,
   ...inputProps
 }: ComboboxMultipleProps<TOption>) => {
-  const isInsideOverlayLayer = useIsInsideOverlayLayer();
+  const isInsideModalOverlayLayer = useIsInsideModalOverlayLayer();
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   React.useImperativeHandle(ref, () => inputRef.current as HTMLInputElement, []);
   const listScrollRef = React.useRef<HTMLDivElement>(null);
@@ -1337,7 +1340,7 @@ const MultipleCombobox = <TOption,>({
     singleLine ? "horizontal" : "vertical"
   );
   const [open, setOpen, markPopupDismissEvent] = useComboboxOpen(onPopupOpenChange);
-  const modal = modalProp ?? isInsideOverlayLayer;
+  const modal = modalProp ?? isInsideModalOverlayLayer;
   const openRef = React.useRef(open);
   openRef.current = open;
   const [search, setSearch] = React.useState("");
@@ -1499,6 +1502,10 @@ const MultipleCombobox = <TOption,>({
           items={primitiveItems}
           value={selectedItems}
           onValueChange={(nextValue, eventDetails) => {
+            if (eventDetails.reason === "escape-key") {
+              eventDetails.cancel();
+              return;
+            }
             const createItem = nextValue.find((item) => item.type === "create");
             if (createItem) {
               eventDetails.cancel();

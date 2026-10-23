@@ -389,11 +389,14 @@ export const secretFolderServiceFactory = ({
               name: "UpdateManyFolders"
             });
           }
-          const folder = await folderDAL
-            .findOne({ envId: env.id, id, parentId: parentFolder.id })
-            // now folder api accepts id based change
-            // this is for cli backward compatiability and when cli removes this, we will remove this logic
-            .catch(() => folderDAL.findOne({ envId: env.id, name: id, parentId: parentFolder.id }));
+          // now folder api accepts id based change
+          // this is for cli backward compatiability and when cli removes this, we will remove this logic
+          const folder = await folderDAL.findOne(
+            uuidValidate(id)
+              ? { envId: env.id, id, parentId: parentFolder.id }
+              : { envId: env.id, name: id, parentId: parentFolder.id },
+            tx
+          );
 
           if (!folder) {
             throw new NotFoundError({
@@ -403,11 +406,14 @@ export const secretFolderServiceFactory = ({
           }
           if (name !== folder.name) {
             // ensure that new folder name is unique
-            const folderToCheck = await folderDAL.findOne({
-              name,
-              envId: env.id,
-              parentId: parentFolder.id
-            });
+            const folderToCheck = await folderDAL.findOne(
+              {
+                name,
+                envId: env.id,
+                parentId: parentFolder.id
+              },
+              tx
+            );
 
             if (folderToCheck) {
               throw new BadRequestError({
@@ -475,7 +481,7 @@ export const secretFolderServiceFactory = ({
     // Execute with provided transaction or create new one
     const result = providedTx ? await executeBulkUpdate(providedTx) : await folderDAL.transaction(executeBulkUpdate);
 
-    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId);
+    await secretV2BridgeDAL.invalidateSecretCacheByProjectId(projectId, providedTx);
     await permissionService.invalidateProjectFolderPermissionCache(projectId, providedTx);
     return {
       projectId,

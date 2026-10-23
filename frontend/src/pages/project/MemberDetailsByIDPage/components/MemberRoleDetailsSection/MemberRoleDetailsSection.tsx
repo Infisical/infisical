@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PencilIcon } from "lucide-react";
@@ -6,17 +6,10 @@ import picomatch from "picomatch";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageLoader } from "@app/components/v3";
+import { ConfirmationAlertDialog, PageLoader } from "@app/components/v3";
 import {
   Alert,
   AlertDescription,
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   Badge,
   Button,
   Card,
@@ -39,10 +32,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  Field,
-  FieldLabel,
   IconButton,
-  Input,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -94,7 +84,6 @@ export const MemberRoleDetailsSection = ({
   const { projectId, currentProject } = useProject();
   const { permission } = useProjectPermission();
   const navigate = useNavigate();
-  const [deleteRoleConfirmation, setDeleteRoleConfirmation] = useState("");
 
   const assignRoleConditions = useMemo(
     () => getMemberAssignRoleConditions(permission),
@@ -156,7 +145,6 @@ export const MemberRoleDetailsSection = ({
       membershipId: isCertManager ? membershipDetails.user.id : membershipDetails.id
     });
     createNotification({ type: "success", text: "Successfully removed role" });
-    setDeleteRoleConfirmation("");
     handlePopUpClose("deleteRole");
   };
 
@@ -401,55 +389,20 @@ export const MemberRoleDetailsSection = ({
         </CardContent>
       </Card>
 
-      <AlertDialog
-        open={popUp.deleteRole.isOpen}
-        onOpenChange={(isOpen) => {
-          if (updateUserWorkspaceRole.isPending) return;
-          if (!isOpen) setDeleteRoleConfirmation("");
-          handlePopUpToggle("deleteRole", isOpen);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Remove role &quot;{(popUp?.deleteRole?.data as TProjectRole)?.slug}&quot;?
-            </AlertDialogTitle>
-            <Alert variant="danger" appearance="borderless">
-              <AlertDescription>
-                This role will no longer grant access to this user.
-              </AlertDescription>
-            </Alert>
-          </AlertDialogHeader>
-          <Field>
-            <FieldLabel htmlFor="remove-member-role-confirmation">
-              Type &quot;remove&quot; to confirm
-            </FieldLabel>
-            <Input
-              id="remove-member-role-confirmation"
-              value={deleteRoleConfirmation}
-              onChange={(event) => setDeleteRoleConfirmation(event.target.value)}
-              autoComplete="off"
-              disabled={updateUserWorkspaceRole.isPending}
-            />
-          </Field>
-          <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={updateUserWorkspaceRole.isPending}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="danger"
-              isPending={updateUserWorkspaceRole.isPending}
-              isDisabled={deleteRoleConfirmation !== "remove"}
-              onClick={(event) => {
-                event.preventDefault();
-                handleRoleDelete().catch(() => undefined);
-              }}
-            >
-              Remove Role
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmationAlertDialog
+        isOpen={popUp.deleteRole.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
+        title={`Remove role "${(popUp?.deleteRole?.data as TProjectRole)?.slug}"?`}
+        description={
+          <Alert variant="danger" appearance="borderless">
+            <AlertDescription>This role will no longer grant access to this user.</AlertDescription>
+          </Alert>
+        }
+        confirmKey="remove"
+        confirmLabel="Remove Role"
+        isPending={updateUserWorkspaceRole.isPending}
+        onConfirm={handleRoleDelete}
+      />
       <Sheet
         open={popUp.modifyManyRoles.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("modifyManyRoles", isOpen)}

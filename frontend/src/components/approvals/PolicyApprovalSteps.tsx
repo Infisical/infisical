@@ -1,11 +1,10 @@
 import { useId, useMemo } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
-import { MultiValue } from "react-select";
 import { PlusIcon, TrashIcon } from "lucide-react";
 
-import { FilterableSelect } from "@app/components/v2";
 import {
   Button,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
@@ -189,7 +188,7 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
                 <Controller
                   control={control}
                   name={`steps.${index}.approvers`}
-                  render={({ field: { value, onChange }, fieldState: { error } }) => {
+                  render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => {
                     const userApprovers = value.filter((a) => a.type === ApproverType.User);
                     const groupApprovers = value.filter((a) => a.type === ApproverType.Group);
                     const approversError =
@@ -204,22 +203,19 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
                             User Approvers
                           </FieldLabel>
                           <FieldContent>
-                            <FilterableSelect
-                              inputId={`${fieldIdPrefix}-${index}-user-approvers`}
-                              isMulti
+                            <Combobox
+                              id={`${fieldIdPrefix}-${index}-user-approvers`}
+                              ref={ref}
+                              onBlur={onBlur}
+                              multiple
+                              isError={Boolean(approversError)}
                               placeholder="Select users..."
                               options={memberOptions}
                               getOptionValue={(option) => option.id}
                               getOptionLabel={(option) => userLabel(option.id)}
                               value={userApprovers}
-                              onChange={(selected) => {
-                                const newApprovers = [
-                                  ...((selected as MultiValue<{
-                                    type: ApproverType;
-                                    id: string;
-                                  }>) || []),
-                                  ...groupApprovers
-                                ];
+                              onValueChange={(selected) => {
+                                const newApprovers = [...selected, ...groupApprovers];
                                 onChange(newApprovers);
                               }}
                             />
@@ -232,22 +228,18 @@ export const PolicyApprovalSteps = ({ applicationId }: Props = {}) => {
                             Group Approvers
                           </FieldLabel>
                           <FieldContent>
-                            <FilterableSelect
-                              inputId={`${fieldIdPrefix}-${index}-group-approvers`}
-                              isMulti
+                            <Combobox
+                              id={`${fieldIdPrefix}-${index}-group-approvers`}
+                              onBlur={onBlur}
+                              multiple
+                              isError={Boolean(approversError)}
                               placeholder="Select groups..."
                               options={groupOptions}
                               getOptionValue={(option) => option.id}
                               getOptionLabel={(option) => groupLabel(option.id)}
                               value={groupApprovers}
-                              onChange={(selected) => {
-                                const newApprovers = [
-                                  ...userApprovers,
-                                  ...((selected as MultiValue<{
-                                    type: ApproverType;
-                                    id: string;
-                                  }>) || [])
-                                ];
+                              onValueChange={(selected) => {
+                                const newApprovers = [...userApprovers, ...selected];
                                 onChange(newApprovers);
                               }}
                             />

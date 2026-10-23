@@ -1,118 +1,63 @@
 ---
 title: "PAM account discovery"
 sidebarTitle: "Overview"
-description: "Scan external systems for privileged accounts and import them into PAM."
+description: "Find accounts on your systems and import them into PAM."
 ---
 
-Discovery scans external systems to find privileged accounts you may not know exist, stages them for review, and lets you import the ones you want into PAM as managed [accounts](/documentation/platform/pam/accounts/overview). This gives you visibility into the accounts spread across your environment and a fast path to bringing them under management.
+Discovery scans your systems for accounts, such as Active Directory users or PostgreSQL roles, so you can import the ones you want to manage as PAM [accounts](/documentation/platform/pam/accounts/overview). You need the [Product Admin role](/documentation/platform/pam/concepts/access-control#product-membership) to use Discovery.
 
-<Note>
-Discovery is available to **Product Admins**. See [Access Control](/documentation/platform/pam/concepts/access-control) for how roles work.
-</Note>
-
-## How it works
-
-<Steps>
-  <Step title="Configure a discovery source">
-    A **discovery source** is a connection to an external system that Infisical scans. You give it a credential to authenticate with and a [Gateway](/documentation/platform/gateways/overview) to reach the system through.
-  </Step>
-  <Step title="Run a scan">
-    Scanning a source enumerates the privileged accounts it can find. Scans run asynchronously and can be triggered manually or on a schedule.
-  </Step>
-  <Step title="Review staged accounts">
-    Accounts found by a scan are held as **staged accounts**. They're not yet managed by PAM. You review them before deciding which to bring in.
-  </Step>
-  <Step title="Import into a folder">
-    Select the staged accounts you want and import them into a [folder](/documentation/platform/pam/folders/overview) using an [account template](/documentation/platform/pam/templates/overview). Imported accounts become regular PAM accounts.
-  </Step>
-</Steps>
-
-## Discovery sources
+To set up a discovery source, follow the guide for the system you want to scan:
 
 <CardGroup cols={2}>
   <Card title="Active Directory" icon="windows" iconType="brands" href="/documentation/platform/pam/discovery/active-directory">
-    Scan an Active Directory environment for domain accounts and local Windows accounts.
+    Scan an Active Directory environment for domain and local Windows accounts.
   </Card>
   <Card title="Linux/Unix" icon="terminal" href="/documentation/platform/pam/discovery/unix">
-    Scan Linux and Unix hosts over SSH for local accounts.
+    Scan Linux and Unix hosts over SSH for local accounts and import them into PAM.
   </Card>
   <Card title="PostgreSQL" icon="database" href="/documentation/platform/pam/discovery/postgres">
-    Scan PostgreSQL instances for login roles.
+    Scan PostgreSQL instances for login roles and import them into PAM.
   </Card>
   <Card title="Microsoft SQL Server" icon="database" href="/documentation/platform/pam/discovery/mssql">
-    Scan Microsoft SQL Server instances for SQL logins.
+    Scan Microsoft SQL Server instances for SQL logins and import them into PAM.
   </Card>
 </CardGroup>
 
-<Note>
-  Additional discovery sources will be added in future releases.
-</Note>
+## How discovery works
+
+1. You create a discovery source, which names the systems to scan, the PAM accounts to sign in with, and the [Gateway](/documentation/platform/gateways/overview) to connect through
+2. Infisical scans the source on demand or on a schedule, and adds the accounts it finds to the source's staged accounts
+3. You select the staged accounts to import, and pick a [folder](/documentation/platform/pam/folders/overview) and an [account template](/documentation/platform/pam/templates/overview) for them
+4. Infisical creates a PAM account for each staged account you imported
+
+Discovery finds each account's username but not its password. An imported account can't be used until you enter its credential on the account.
 
 ## Staged accounts
 
-A staged account is an account that a scan found but that hasn't been imported yet. Each staged account records its name and type but doesn't become usable until you import it.
+A staged account is an account that a scan found and that you haven't imported yet. To see a source's staged accounts, go to **Privileged Access Management** > **Discovery**, select the source, and open its **Staged Accounts** tab.
 
-Discovery deduplicates accounts by a stable fingerprint per source. Re-running a scan updates existing staged accounts rather than creating duplicates, and accounts you have already imported are left untouched so they can't be imported twice.
+When you scan a source again, Infisical updates its staged accounts instead of adding duplicates, and doesn't stage an account you already imported. If a scan no longer finds a staged account, Infisical removes it, except on [Unix sources](#unix-sources).
 
-## Importing accounts
+## Stale accounts
 
-When you import staged accounts, you choose:
+If a scan no longer finds an account that you imported, Infisical lists the account on the source's **Stale Accounts** tab and marks it as stale on the **Accounts** page. A stale account keeps working, including sessions and rotation. Check whether the account still exists on the target, and delete the PAM account if it doesn't.
 
-- A **destination [folder](/documentation/platform/pam/folders/overview)** for the imported accounts.
-- An **[account template](/documentation/platform/pam/templates/overview)** for each account type in your selection. The template determines the rules the imported accounts inherit.
+For Windows, PostgreSQL, and Microsoft SQL Server sources, Infisical only removes staged accounts and marks accounts as stale on hosts that the scan reached, so an unreachable host doesn't change its accounts.
 
-<Warning>
-Discovered accounts are found with a username but no password. Imported accounts arrive without a credential and stay unusable until you add one on the account.
-</Warning>
+### Unix sources
 
-## Scans and schedules
+Unix sources never remove staged accounts or mark imported accounts as stale. If you delete a user from a Unix host, its staged account and its PAM account stay as they were. Check the host itself before you treat an account from a Unix source as current.
 
-Each source can scan on demand or automatically:
+## Scan schedules
 
-| Schedule | Behavior |
+Each source has a **Scan Schedule**:
+
+| Schedule | When Infisical scans the source |
 |----------|----------|
-| **Manual** | The source is only scanned when you trigger it with **Scan Now**. |
-| **Daily** | Infisical scans the source about once per day. |
-| **Weekly** | Infisical scans the source about once per week. |
+| **Manual** | Only when you select **Scan Now** |
+| **Daily** | Once a day |
+| **Weekly** | Once a week |
 
-Scheduled scans are evaluated once a day, so a source runs on its next scheduled check after its interval has elapsed. Every run is recorded in the source's **scan history** with its status, timestamps, and the number of accounts found.
+Infisical checks once a day for sources that are due. A scheduled source scans at the first check after its interval has passed since its last scan.
 
-## FAQ
-
-<AccordionGroup>
-  <Accordion title="Do I need a Gateway to use Discovery?">
-    Yes. Discovery reaches external systems through an Infisical [Gateway](/documentation/platform/gateways/overview) (or Gateway pool). All scan traffic is tunneled through it, so a Gateway with network access to the target system is required.
-  </Accordion>
-  <Accordion title="Why is my imported account unusable?">
-    Discovery finds accounts with a username but no password. After importing, open the account and add a credential before connecting.
-  </Accordion>
-  <Accordion title="What happens if I scan the same source again?">
-    Existing staged accounts are updated in place, and accounts you have already imported are skipped. Discovery deduplicates by a per-source fingerprint, so scanning repeatedly is safe.
-  </Accordion>
-</AccordionGroup>
-
-## What's next?
-
-<CardGroup cols={2}>
-  <Card title="Active Directory" icon="windows" iconType="brands" href="/documentation/platform/pam/discovery/active-directory">
-    Configure an Active Directory discovery source.
-  </Card>
-  <Card title="Linux/Unix" icon="terminal" href="/documentation/platform/pam/discovery/unix">
-    Configure a Linux/Unix discovery source.
-  </Card>
-  <Card title="PostgreSQL" icon="database" href="/documentation/platform/pam/discovery/postgres">
-    Configure a PostgreSQL discovery source.
-  </Card>
-  <Card title="Microsoft SQL Server" icon="database" href="/documentation/platform/pam/discovery/mssql">
-    Configure a Microsoft SQL Server discovery source.
-  </Card>
-  <Card title="Accounts" icon="user-lock" href="/documentation/platform/pam/accounts/overview">
-    Manage the accounts you import.
-  </Card>
-  <Card title="Account Templates" icon="layers" href="/documentation/platform/pam/templates/overview">
-    Define the rules imported accounts inherit.
-  </Card>
-  <Card title="Folders" icon="folder-tree" href="/documentation/platform/pam/folders/overview">
-    Organize imported accounts and control access.
-  </Card>
-</CardGroup>
+The source's **Runs** tab shows each scan's start time, status, and result.
