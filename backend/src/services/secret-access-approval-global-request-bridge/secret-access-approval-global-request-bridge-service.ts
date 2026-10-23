@@ -894,8 +894,8 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       );
     }
 
-    const { delegatedPolicy } = await delegatedApprovalService.retryDispatch({ approvalRequest: request });
     const auditDetails = await $describeRequestForAudit(request);
+    const { delegatedPolicy } = await delegatedApprovalService.retryDispatch({ approvalRequest: request });
 
     return {
       request: { ...toLegacyAccessApprovalRequest(request), policyId: delegatedPolicy.policyId },
@@ -937,6 +937,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       });
     }
 
+    const auditDetails = await $describeRequestForAudit(request);
     const policyId = await approvalRequestDAL.transaction(async (tx) => {
       const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
       if (!locked || locked.status !== ApprovalRequestStatus.Pending || !locked.policyId) {
@@ -946,11 +947,8 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       return locked.policyId;
     });
 
-    const cancelled = await $findRequestByIdFromPrimary(requestId);
-    const auditDetails = await $describeRequestForAudit(cancelled);
-
     return {
-      request: { ...toLegacyAccessApprovalRequest(cancelled), policyId },
+      request: { ...toLegacyAccessApprovalRequest(request), policyId },
       projectId: request.projectId,
       ...auditDetails
     };
