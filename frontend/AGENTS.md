@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -109,7 +109,7 @@ Certificate Manager is org-scoped too (`/organizations/$orgId/cert-manager/...`)
 
 ### Single-project products
 
-Secret Scanning has one active project per org (see the root `CLAUDE.md`). Members are sent straight into it, and UI for orgs with older projects is gated on `isMultiInstance` from `useGetSecretScanningInstanceState`.
+Secret Scanning has one active project per org (see the root `AGENTS.md`). Members are sent straight into it, and UI for orgs with older projects is gated on `isMultiInstance` from `useGetSecretScanningInstanceState`.
 
 ## Conventions
 

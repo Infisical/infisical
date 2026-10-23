@@ -96,10 +96,6 @@ scope and product variants as interchangeable.
 | Muted text        | `--color-muted`           |
 | Label text        | `--color-label`           |
 
-The `mineshaft-*` scale (50–900) is the underlying neutral ramp; see
-`index.css` for the full list. Prefer semantic tokens (`card`, `border`,
-`accent`) over raw mineshaft values.
-
 ### Product-area accents (secret-manager)
 
 Reserved for resource types in the secret management product:
