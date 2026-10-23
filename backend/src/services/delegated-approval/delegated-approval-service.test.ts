@@ -37,6 +37,7 @@ const createService = ({
   delegatedPolicy = serviceNowPolicy as unknown
 } = {}) => {
   const emit = vi.fn().mockResolvedValue(undefined);
+  const findOne = vi.fn().mockResolvedValue(delegatedRequest);
   const create = vi.fn().mockImplementation(async (row: { requestId: string; status: string; details: object }) => ({
     id: "delegated-1",
     updatedAt: UPDATED_AT,
