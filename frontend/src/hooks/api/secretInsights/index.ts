@@ -14,7 +14,10 @@ export {
   // useGetSecretAccessLocations,
   useGetSecretAccessVolume,
   useGetSecretBlindIndexStatus,
-  useGetSecretsDuplication
+  useGetSecretReadActivity,
+  useGetSecretsDuplication,
+  useGetUnusedAccess,
+  useGetUnusedAccessActor
 } from "./queries";
 export type {
   TAccessLocation,
@@ -34,8 +37,13 @@ export type {
   TGetSecretAccessLocationsResponse,
   TGetSecretAccessVolumeDTO,
   TGetSecretAccessVolumeResponse,
+  TGetSecretReadActivityDTO,
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse,
+  TGetUnusedAccessActorDTO,
+  TGetUnusedAccessActorResponse,
+  TGetUnusedAccessDTO,
+  TGetUnusedAccessResponse,
   TOrgAuthMethodUsage,
   TOrgDuplicatedSecretEntry,
   TOrgDuplicatedSecretGroup,
@@ -48,5 +56,12 @@ export type {
   TSearchSecretsByValueResponse,
   TSecretAccessVolumeActor,
   TSecretAccessVolumeDay,
-  TSecretValueMatch
+  TSecretReadActivity,
+  TSecretReadActivityActor,
+  TSecretValueMatch,
+  TUnusedAccessActor,
+  TUnusedAccessPaths,
+  TUnusedAccessRole,
+  TUnusedSecret
 } from "./types";
+export { SecretReadNotJudgedReason, SecretReadStatus, UnusedAccessActorType } from "./types";

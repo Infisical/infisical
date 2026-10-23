@@ -1456,12 +1456,14 @@ export const secretServiceFactory = ({
     throwOnMissingReadValuePermission = true,
     ifNoneMatch,
     abortSignal,
+    onSecretReferenced,
     ...paramsV2
   }: TGetSecretsRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
       const result = await secretV2BridgeService.getSecrets({
         abortSignal,
+        onSecretReferenced,
         projectId,
         expandSecretReferences,
         personalOverridesBehavior,
@@ -1652,11 +1654,13 @@ export const secretServiceFactory = ({
     actorAuthMethod,
     secretName,
     includeImports,
-    version
+    version,
+    onSecretReferenced
   }: TGetASecretRawDTO) => {
     const { botKey, shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
     if (shouldUseSecretV2Bridge) {
       const secret = await secretV2BridgeService.getSecretByName({
+        onSecretReferenced,
         environment,
         projectId,
         includeImports,

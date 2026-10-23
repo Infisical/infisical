@@ -1477,6 +1477,7 @@ type TCreateRelativeImportExpanderArg = {
   decryptSecretValue: (value?: Buffer | null) => string;
   canExpandValue: (environment: string, secretPath: string, secretKey: string, secretTagSlugs: string[]) => boolean;
   userId?: string;
+  onSecretExpanded?: Parameters<typeof expandSecretReferencesFactory>[0]["onSecretExpanded"];
   abortSignal?: AbortSignal;
 };
 
@@ -1490,6 +1491,7 @@ export const createRelativeImportExpander = ({
   decryptSecretValue,
   canExpandValue,
   userId,
+  onSecretExpanded,
   abortSignal
 }: TCreateRelativeImportExpanderArg): {
   expandImportedSecretReferences: (inputSecret: {
@@ -1570,6 +1572,7 @@ export const createRelativeImportExpander = ({
         return canExpandValue(environment, secretPath, secretKey, secretTagSlugs);
       },
       userId,
+      onSecretExpanded,
       abortSignal
     });
 

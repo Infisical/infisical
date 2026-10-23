@@ -253,6 +253,8 @@ export type TGetSecretsRawDTO = {
   excludeRotatedSecrets?: boolean;
   ifNoneMatch?: string;
   abortSignal?: AbortSignal;
+  // Called with each secret in the project a reference resolved to, a personal override included.
+  onSecretReferenced?: (secretId: string) => void;
 } & TProjectPermission;
 
 export type TGetSecretAccessListDTO = {
@@ -273,6 +275,8 @@ export type TGetASecretRawDTO = {
   includeImports?: boolean;
   version?: number;
   projectId: string;
+  // Called with each secret in the project a reference resolved to, a personal override included.
+  onSecretReferenced?: (secretId: string) => void;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetASecretByIdRawDTO = {

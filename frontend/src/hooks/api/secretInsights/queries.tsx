@@ -20,13 +20,19 @@ import {
   TGetSecretAccessVolumeResponse,
   TGetSecretBlindIndexStatusDTO,
   TGetSecretBlindIndexStatusResponse,
+  TGetSecretReadActivityDTO,
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse,
+  TGetUnusedAccessActorDTO,
+  TGetUnusedAccessActorResponse,
+  TGetUnusedAccessDTO,
+  TGetUnusedAccessResponse,
   TOrgAuthMethodUsage,
   TOrgProjectsInsights,
   TOrgSecretAccessVolume,
   TOrgSecretsSummary,
-  TOrgStaticSecretUsage
+  TOrgStaticSecretUsage,
+  TSecretReadActivity
 } from "./types";
 
 export const secretInsightsKeys = {
@@ -35,6 +41,13 @@ export const secretInsightsKeys = {
     [...secretInsightsKeys.all(), "calendar-events", params] as const,
   accessVolume: (params: TGetSecretAccessVolumeDTO) =>
     [...secretInsightsKeys.all(), "access-volume", params] as const,
+  unusedAccess: (params: TGetUnusedAccessDTO) =>
+    [...secretInsightsKeys.all(), "unused-access", params] as const,
+  unusedAccessActor: (params: TGetUnusedAccessActorDTO) =>
+    [...secretInsightsKeys.all(), "unused-access-actor", params] as const,
+  allSecretReadActivity: () => [...secretInsightsKeys.all(), "secret-read-activity"] as const,
+  secretReadActivity: (params: TGetSecretReadActivityDTO) =>
+    [...secretInsightsKeys.allSecretReadActivity(), params] as const,
   // accessLocations: (params: TGetSecretAccessLocationsDTO) =>
   //   [...secretInsightsKeys.all(), "access-locations", params] as const,
   authMethodDistribution: (params: TGetAuthMethodDistributionDTO) =>
@@ -66,6 +79,10 @@ export const secretInsightsKeys = {
 };
 
 const INSIGHTS_STALE_TIME = 5 * 60 * 1000; // 5 minutes
+
+// Fresh until the server's cached copy expires, then refetched, so an open card picks up the recomputed list.
+const cachedInsightsRefreshMs = (data?: { remainingTtl: number }) =>
+  data && data.remainingTtl > 0 ? data.remainingTtl * 1000 : INSIGHTS_STALE_TIME;
 
 export const useGetCalendarInsights = (
   params: TGetCalendarInsightsDTO,
@@ -115,6 +132,87 @@ export const useGetSecretAccessVolume = (
       return data;
     },
     staleTime: INSIGHTS_STALE_TIME,
+    ...options
+  });
+};
+
+export const useGetUnusedAccess = (
+  params: TGetUnusedAccessDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TGetUnusedAccessResponse,
+      unknown,
+      TGetUnusedAccessResponse,
+      ReturnType<typeof secretInsightsKeys.unusedAccess>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.unusedAccess(params),
+    queryFn: async () => {
+      const { projectId, ...query } = params;
+      const res = await apiRequest.get<Omit<TGetUnusedAccessResponse, "remainingTtl">>(
+        `/api/v1/insights/${projectId}/secrets/unused-access`,
+        { params: query }
+      );
+      const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
+      return { ...res.data, remainingTtl };
+    },
+    staleTime: (query) => cachedInsightsRefreshMs(query.state.data),
+    refetchInterval: (query) => cachedInsightsRefreshMs(query.state.data),
+    placeholderData: (previousData) => previousData,
+    ...options
+  });
+};
+
+export const useGetUnusedAccessActor = (
+  params: TGetUnusedAccessActorDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TGetUnusedAccessActorResponse,
+      unknown,
+      TGetUnusedAccessActorResponse,
+      ReturnType<typeof secretInsightsKeys.unusedAccessActor>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.unusedAccessActor(params),
+    queryFn: async () => {
+      const res = await apiRequest.get<Omit<TGetUnusedAccessActorResponse, "remainingTtl">>(
+        `/api/v1/insights/${params.projectId}/secrets/unused-access/${params.actorType}/${params.actorId}`
+      );
+      const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
+      return { ...res.data, remainingTtl };
+    },
+    staleTime: (query) => cachedInsightsRefreshMs(query.state.data),
+    ...options
+  });
+};
+
+export const useGetSecretReadActivity = (
+  params: TGetSecretReadActivityDTO,
+  options?: Omit<
+    UseQueryOptions<
+      TSecretReadActivity,
+      unknown,
+      TSecretReadActivity,
+      ReturnType<typeof secretInsightsKeys.secretReadActivity>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: secretInsightsKeys.secretReadActivity(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ readActivity: TSecretReadActivity }>(
+        `/api/v1/insights/${params.projectId}/secrets/read-activity/${encodeURIComponent(params.secretKey)}`,
+        { params: { environment: params.environment, secretPath: params.secretPath } }
+      );
+      return data.readActivity;
+    },
     ...options
   });
 };
