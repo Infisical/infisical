@@ -3,7 +3,6 @@ import * as React from "react";
 import { ListHighlight } from "../lib/list-highlight";
 import { useControllableState } from "../lib/use-controllable-state";
 import { cn } from "../lib/utils";
-import { Avatar, Identity } from "./avatar";
 import { Count } from "./badge";
 import {
   DropdownMenu,
@@ -57,7 +56,6 @@ export interface SidebarScope {
 export interface SidebarUser {
   name: string;
   email: string;
-  initials?: string;
   media?: React.ReactNode;
   meta?: string;
   items?: (SwitcherAction | SwitcherActionDivider)[];
@@ -75,6 +73,12 @@ export interface SidebarOrganization {
   optionsLabel?: string;
 }
 export type SidebarTheme = "light" | "dark" | "system";
+export interface SidebarPreference {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string; icon?: IconName; swatch?: string }[];
+}
 export interface SidebarProps {
   sections?: readonly SidebarSection[];
   scope?: SidebarScope;
@@ -90,6 +94,7 @@ export interface SidebarProps {
   user?: SidebarUser;
   org?: SidebarOrganization;
   theme?: { value: SidebarTheme; onChange: (value: SidebarTheme) => void; label?: string };
+  preferences?: readonly SidebarPreference[];
   footerItems?: readonly SidebarItem[];
   collapsed?: boolean;
   defaultCollapsed?: boolean;
@@ -403,6 +408,7 @@ export const Sidebar = ({
   user: accountUser,
   org,
   theme,
+  preferences = [],
   footerItems,
   collapsed,
   defaultCollapsed = false,
@@ -447,6 +453,17 @@ export const Sidebar = ({
     if (openedAt.current !== current) setNavigationOpen(false);
     openedAt.current = current;
   }, [current, sheet, setNavigationOpen]);
+  const navigationToggle = shell?.navigationToggle;
+  React.useEffect(() => {
+    if (!navigationToggle) return undefined;
+    navigationToggle.current = () => {
+      if (sheet) setNavigationOpen?.(!shell?.navigationOpen);
+      else if (collapsible) setCollapsed(!isCollapsed);
+    };
+    return () => {
+      navigationToggle.current = null;
+    };
+  });
   const navigate = onNavigate;
   const rail = !sheet && collapsible && isCollapsed;
   const view = scope?.id ?? activeSpace?.id ?? "root";
@@ -485,10 +502,10 @@ export const Sidebar = ({
     </Tooltip>
   );
   const user = accountUser ?? { name: "", email: "" };
-  const userAvatar = user.media ? (
+  const userMedia = user.media ? (
     <span className={styles.accountMedia}>{user.media}</span>
   ) : (
-    <Avatar size={20} name={user.name} initials={user.initials} />
+    rail && <Icon name="user" size={18} />
   );
   const userMeta = user.meta ?? user.email;
   const account = (
@@ -497,7 +514,7 @@ export const Sidebar = ({
       className={styles.account}
       aria-label={org ? `${user.name}, ${org.name}` : user.name}
     >
-      {userAvatar}
+      {userMedia}
       <span className={styles.accountText}>
         <span className={styles.accountName}>{user.name}</span>
         <span className={styles.accountMeta}>{org ? org.name : userMeta}</span>
@@ -505,7 +522,9 @@ export const Sidebar = ({
       <Icon name="chev-ud" size={16} className={styles.trailing} />
     </button>
   );
-  const hasMenu = Boolean(org || user.items?.length || theme || user.href || user.onClick);
+  const hasMenu = Boolean(
+    org || user.items?.length || theme || preferences.length || user.href || user.onClick
+  );
   const content = (
     <TooltipProvider>
       <aside
@@ -518,10 +537,13 @@ export const Sidebar = ({
         {header}
         <div className={styles.tools}>
           {sheet
-            ? tool("Close navigation", "sidebar", () => shell?.setNavigationOpen(false))
+            ? tool("Close navigation", "sidebar", () => shell?.setNavigationOpen(false), "mod+B")
             : collapsible &&
-              tool(rail ? "Expand sidebar" : "Collapse sidebar", "sidebar", () =>
-                setCollapsed(!isCollapsed)
+              tool(
+                rail ? "Expand sidebar" : "Collapse sidebar",
+                "sidebar",
+                () => setCollapsed(!isCollapsed),
+                shell ? "mod+B" : undefined
               )}
           <span className={styles.toolsEnd}>
             {search &&
@@ -710,7 +732,40 @@ export const Sidebar = ({
                         </ToggleGroup>
                       </div>
                     )}
-                    {theme && (user.href || user.onClick) && (
+                    {preferences.map((preference) => (
+                      <div key={preference.label} className={styles.themeRow}>
+                        <span>{preference.label}</span>
+                        <ToggleGroup
+                          type="single"
+                          size="sm"
+                          aria-label={preference.label}
+                          value={preference.value}
+                          onValueChange={(value) => {
+                            if (value) preference.onChange(value);
+                          }}
+                        >
+                          {preference.options.map((option) => (
+                            <ToggleGroupItem
+                              key={option.value}
+                              value={option.value}
+                              aria-label={option.label}
+                              title={option.label}
+                            >
+                              {option.swatch ? (
+                                <span
+                                  aria-hidden="true"
+                                  className={styles.swatch}
+                                  style={{ background: option.swatch }}
+                                />
+                              ) : (
+                                option.icon && <Icon name={option.icon} size={14} />
+                              )}
+                            </ToggleGroupItem>
+                          ))}
+                        </ToggleGroup>
+                      </div>
+                    ))}
+                    {(theme || preferences.length > 0) && (user.href || user.onClick) && (
                       <div role="separator" className={menu.separator} />
                     )}
                     {(user.href || user.onClick) &&
@@ -726,7 +781,10 @@ export const Sidebar = ({
                             close();
                           }
                         },
-                        <Identity name={user.name} description={user.email} />,
+                        <span className={styles.accountText}>
+                          <span className={styles.accountName}>{user.name}</span>
+                          <span className={styles.accountMeta}>{user.email}</span>
+                        </span>,
                         <Icon name="chev-right" size={14} className={styles.trailing} />
                       )}
                   </>
@@ -735,7 +793,7 @@ export const Sidebar = ({
               />
             ) : (
               <div className={styles.account}>
-                {userAvatar}
+                {userMedia}
                 <span className={styles.accountText}>
                   <span className={styles.accountName}>{user.name}</span>
                   <span className={styles.accountMeta}>{userMeta}</span>

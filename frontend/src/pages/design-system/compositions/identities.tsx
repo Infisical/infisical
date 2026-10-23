@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 
-import { Avatar } from "@app/components/v4/ui/avatar";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
@@ -358,7 +357,6 @@ const Detail = ({ identity, onBack }: { identity: Identity; onBack: () => void }
         <PageHeader
           title={identity.name}
           mono
-          media={<Avatar size="lg" name={identity.name} kind="machine" />}
           badges={identity.project ? <Badge tone="soft">Project identity</Badge> : undefined}
           description="Configure and manage this machine identity and its organization access."
           actions={
@@ -549,7 +547,6 @@ export default function Identities() {
       text: (r) => r.name,
       render: (r) => (
         <Inline gap={12} align="center">
-          <Avatar size={24} name={r.name} kind="machine" />
           <Button variant="link" asChild>
             <a
               href={`#compare-identities/${r.name}`}

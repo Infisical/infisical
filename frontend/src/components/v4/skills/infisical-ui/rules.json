@@ -6,7 +6,7 @@
     {
       "id": "identity",
       "title": "Preserve the Infisical identity",
-      "instruction": "Use warm neutral surfaces, Archivo, Geist Mono and the canonical square corners, with the soft corner scale available as a mode. Primary (and default) Buttons are the ink fill for the one main action; accent Buttons use the shared lime finish for approval and grant moments only. Keep selection neutral. Pair brand lime fills with on-accent ink, not light-theme lime text.",
+      "instruction": "Use warm neutral surfaces, Archivo, Geist Mono and square corners everywhere (there is no radius scale and no corner mode). Primary (and default) Buttons are the ink fill for the one main action; accent Buttons use the shared lime finish for approval and grant moments only. Keep selection neutral. Pair brand lime fills with on-accent ink, not light-theme lime text.",
       "good": "One ink primary Button for the task's main action, an accent Button only for an approval or grant, and neutral alternatives and selection.",
       "avoid": "A locally painted gradient, third font or pill-shaped control introduced by an example.",
       "detect": {
@@ -123,8 +123,8 @@
     {
       "id": "overlays",
       "title": "Keep the theme across portals",
-      "instruction": "Wrap the workbench in V4Scope. Let its portal container carry fonts, colors and corners outside the scroller.",
-      "good": "A dialog rendered through V4Scope's portal container keeps the workbench fonts, colors and corners.",
+      "instruction": "Wrap the workbench in V4Scope. Let its portal container carry fonts and colors outside the scroller.",
+      "good": "A dialog rendered through V4Scope's portal container keeps the workbench fonts and colors.",
       "avoid": "Adding v4 theme classes to document.body.",
       "detect": {
         "by": "review"
@@ -763,7 +763,7 @@
       "id": "restrained-effects",
       "title": "Avoid ambient effects in task interfaces",
       "category": "Visual",
-      "instruction": "When grouping a task or distinguishing status, use the owned surface, text and supported state treatment. Keep opaque content surfaces readable. Avoid caller-created colored side rails, gradient headings, glass backdrops, ambient glows, decorative pulses and staggered entrances because they compete with the task and change contrast. Preserve the radius tokens times the corner multiplier and the canonical shared lime Button material; do not add shadows or local material replicas.",
+      "instruction": "When grouping a task or distinguishing status, use the owned surface, text and supported state treatment. Keep opaque content surfaces readable. Avoid caller-created colored side rails, gradient headings, glass backdrops, ambient glows, decorative pulses and staggered entrances because they compete with the task and change contrast. Keep corners square and preserve the canonical shared lime Button material; do not add shadows or local material replicas.",
       "good": "An opaque scoped menu and a short disclosure transition tied to opening.",
       "avoid": "A glowing settings card, glass panel or colored rail added only for decoration.",
       "detect": {
@@ -928,7 +928,7 @@
     {
       "id": "token-geometry",
       "title": "Size with tokens, not arbitrary values",
-      "instruction": "Use the component's size recipe or a v4 size, space and radius token. An arbitrary Tailwind value such as max-w-[440px] or ring-[3px] creates a one-off measurement no other component shares.",
+      "instruction": "Use the component's size recipe or a v4 size or space token. An arbitrary Tailwind value such as max-w-[440px] or ring-[3px] creates a one-off measurement no other component shares.",
       "good": "max-w-md on a dialog, or the focus ring width from the shared control recipe.",
       "avoid": "max-w-[440px], rounded-[2px] or ring-[3px] written into a component.",
       "detect": {

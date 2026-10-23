@@ -65,7 +65,7 @@
   min-width: 0;
   padding: var(--v4-space-surface-inset);
   border: var(--v4-size-control-border) solid var(--v4-line);
-  border-radius: calc(var(--v4-radius-card) * var(--corners));
+  border-radius: 0;
   background: var(--v4-surface);
 }
 @container (max-width: 640px) {
@@ -153,7 +153,7 @@ button.stepButton:focus-visible {
   width: var(--v4-space-24);
   height: var(--v4-space-24);
   border: 1px solid var(--v4-line);
-  border-radius: calc(var(--v4-radius-xs) * var(--corners));
+  border-radius: 0;
   background: var(--v4-surface);
   color: var(--v4-muted);
   font-family: var(--v4-type-caption-font-family);

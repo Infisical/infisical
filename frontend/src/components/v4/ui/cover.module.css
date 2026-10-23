@@ -25,11 +25,11 @@
   fill: var(--v4-control);
 }
 .block {
-  rx: calc(var(--v4-radius-card) * var(--corners));
+  rx: 0;
 }
 .dot {
   fill: var(--v4-on-ink);
-  rx: calc(var(--v4-radius-xs) * var(--corners));
+  rx: 0;
 }
 .words {
   position: relative;

@@ -70,7 +70,7 @@ export const announcementsDefinition = {
         when: "A card has media.",
         do: "Show the real feature built from v4 components, made inert.",
         avoid: "Use screenshots, illustrations or gradients.",
-        reason: "Real components stay accurate in both themes and at every corner setting.",
+        reason: "Real components stay accurate in both themes.",
         evidence: [
           "src/components/v4/ui/announcements.tsx",
           "src/pages/design-system/examples/announcements/default.tsx"

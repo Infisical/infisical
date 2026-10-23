@@ -47,7 +47,7 @@ Exports: ActivityLog. Source TypeScript defines the API.
 ## Behavior
 
 - A plain small List with a section per day whose meta counts its events.
-- Each event shows the actor's Avatar, the actor and what happened, a Badge for machines and agents, and the time.
+- Each event shows the actor and what happened as text, a Badge for machines and agents, and the time.
 - Load more adds skeleton rows under the existing rows and keeps the button busy; once everything is in, the footer says Showing 6 of 6 events.
 
 ## Accessibility

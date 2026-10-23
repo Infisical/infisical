@@ -53,7 +53,7 @@ Exports: ToggleGroup, ToggleGroupItem. Source TypeScript defines the API.
 
 ## Behavior
 
-- Radix type=single uses a string and type=multiple uses a string array with onValueChange. Items are joined into one segmented control by default (spacing 0), drawn like segmented Tabs: a tint track with 2px inset, borderless segments 4px shorter than the requested size, and the on item as the same raised chip as the segmented Tabs indicator. bare drops the track so the segments can sit on a track the host already draws, such as a floating dock; the host supplies the tint and padding. spacing={n} separates the items by n times 4px as standalone Toggles with the pressed fill. Shared size, variant and orientation apply to the group; sizes follow Button.
+- Radix type=single uses a string and type=multiple uses a string array with onValueChange. Items are joined into one segmented control by default (spacing 0), drawn like segmented Tabs: a tint track with 2px inset, borderless segments 4px shorter than the requested size, and the on item as the same raised chip as the segmented Tabs indicator. bare drops the track so the segments can sit on a track the host already draws, such as a toolbar; the host supplies the tint and padding. spacing={n} separates the items by n times 4px as standalone Toggles with the pressed fill. Shared size, variant and orientation apply to the group; sizes follow Button.
 
 ## Accessibility
 

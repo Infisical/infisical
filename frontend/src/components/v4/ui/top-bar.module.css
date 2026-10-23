@@ -15,7 +15,7 @@
   --v4-page-gutter: max(
     var(--v4-space-16),
     min(var(--v4-space-40), 5cqi),
-    calc((100cqi - var(--v4-size-measure-page)) / 2)
+    calc((100cqi - var(--v4-size-content)) / 2)
   );
   container-type: inline-size;
   position: relative;
@@ -31,7 +31,7 @@
 .shell > .inset {
   margin: var(--v4-space-shell-gap) var(--v4-space-shell-gap) var(--v4-space-shell-gap) 0;
   border: var(--v4-size-control-border) solid var(--v4-line);
-  border-radius: calc(var(--v4-radius-panel) * var(--corners));
+  border-radius: 0;
 }
 .shell > [data-slot="sidebar"][data-edge]:not([data-sheet]) {
   border-inline-end-color: transparent;
@@ -70,7 +70,6 @@
 }
 .topBar[data-narrow] {
   gap: var(--v4-space-8);
-  padding-inline: var(--v4-space-8);
 }
 .menu {
   flex: none;

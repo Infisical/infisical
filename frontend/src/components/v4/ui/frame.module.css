@@ -1,11 +1,11 @@
 .frame {
   --v4-frame-pad: var(--v4-space-3);
-  --v4-frame-inner-radius: calc((var(--v4-radius-panel) - var(--v4-frame-pad)) * var(--corners));
+  --v4-frame-inner-radius: 0;
   min-width: 0;
   padding: var(--v4-frame-pad);
   background: var(--v4-tint);
   border: 0;
-  border-radius: calc(var(--v4-radius-panel) * var(--corners));
+  border-radius: 0;
 }
 .frame:has(> .frameHead) {
   padding-top: 0;

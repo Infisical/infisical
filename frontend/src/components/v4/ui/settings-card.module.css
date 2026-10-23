@@ -2,7 +2,7 @@
   min-width: 0;
   overflow: hidden;
   border: var(--v4-size-control-border) solid var(--v4-line);
-  border-radius: calc(var(--v4-radius-card) * var(--corners));
+  border-radius: 0;
   background: var(--v4-surface);
   color: var(--v4-ink);
 }

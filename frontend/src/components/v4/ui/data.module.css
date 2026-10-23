@@ -6,7 +6,7 @@
 .gridScroll,
 /* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */
 .tableScroll {
-  border-radius: calc(var(--v4-radius-panel) * var(--corners));
+  border-radius: 0;
   overflow: auto;
   position: relative;
 }
@@ -46,10 +46,10 @@
   --v4-frame-pad: var(--v4-space-3);
   padding: var(--v4-frame-pad) var(--v4-frame-pad) 0;
   background: var(--v4-tint);
-  border-radius: calc(var(--v4-radius-panel) * var(--corners));
+  border-radius: 0;
 }
 .gridShell[data-footer] > .gridScroll {
-  border-radius: calc((var(--v4-radius-panel) - var(--v4-frame-pad)) * var(--corners));
+  border-radius: 0;
   box-shadow: var(--v4-shadow-raised);
 }
 .gridShell[data-footer] > .status,
@@ -320,7 +320,7 @@
   padding-inline-start: var(--v4-space-control-inline);
   min-height: var(--v4-size-control-default);
   border: var(--v4-size-control-border) solid var(--v4-control);
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
   background: var(--v4-tint);
   min-width: 0;
 }
@@ -344,7 +344,7 @@
   line-height: var(--v4-type-mono-line-height);
   font-weight: var(--v4-type-mono-font-weight);
   letter-spacing: var(--v4-type-mono-letter-spacing);
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
   background: var(--v4-surface);
   color: var(--v4-ink);
   border: var(--v4-size-control-border) solid var(--v4-control);
@@ -526,7 +526,7 @@
 .listShell[data-variant="plain"] > .list {
   background: var(--v4-surface);
   border: var(--v4-size-control-border) solid var(--v4-line);
-  border-radius: calc(var(--v4-radius-card) * var(--corners));
+  border-radius: 0;
 }
 .listShell[data-variant="framed"] > .status {
   padding: var(--v4-space-8) var(--v4-space-12) var(--v4-space-4);
@@ -723,7 +723,7 @@ button.rowTitle::after {
   width: var(--v4-space-6);
   height: var(--v4-space-6);
   background: var(--v4-accent-fg);
-  border-radius: calc(50% * var(--corners));
+  border-radius: 0;
   flex-shrink: 0;
 }
 .sr {
@@ -810,8 +810,8 @@ button.rowTitle::after {
   justify-content: center;
   height: calc(var(--v4-space-40) + var(--v4-space-32));
   padding-bottom: var(--v4-space-16);
-  border-end-start-radius: calc((var(--v4-radius-panel) - var(--v4-space-3)) * var(--corners));
-  border-end-end-radius: calc((var(--v4-radius-panel) - var(--v4-space-3)) * var(--corners));
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
   background: linear-gradient(to bottom, transparent, var(--v4-surface) 70%);
   pointer-events: none;
 }

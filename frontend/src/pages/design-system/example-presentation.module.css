@@ -6,7 +6,7 @@
   gap: var(--v4-space-24);
   min-width: 0;
   border: 1px solid var(--v4-line-soft);
-  border-radius: calc(var(--v4-radius-panel) * var(--corners));
+  border-radius: 0;
   background: var(--v4-surface);
   padding: var(--v4-space-24);
 }

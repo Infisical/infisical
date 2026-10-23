@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { type DateRange } from "react-day-picker";
 
-import { Identity } from "@app/components/v4/ui/avatar";
 import { Button } from "@app/components/v4/ui/button";
 import { Calendar } from "@app/components/v4/ui/calendar";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
@@ -227,17 +226,9 @@ const makeColumns = (onOpen: (entry: AuditEvent) => void): DataTableColumn<Row>[
     text: (row) => (isPlaceholder(row) ? "" : row.actor.name),
     render: (row) =>
       isPlaceholder(row) ? (
-        <Inline gap={8} align="center" wrap={false}>
-          <Skeleton width={24} height={24} />
-          <Skeleton width={140} height={12} />
-        </Inline>
+        <Skeleton width={140} height={12} />
       ) : (
-        <Identity
-          name={row.actor.name}
-          kind={row.actor.machine ? "machine" : "person"}
-          mono={row.actor.machine}
-          title={<MiddleTruncate mono={row.actor.machine} text={row.actor.name} />}
-        />
+        <MiddleTruncate mono={row.actor.machine} text={row.actor.name} />
       )
   },
   {
@@ -569,14 +560,13 @@ export default function AuditLogs() {
                   items={[
                     [
                       "Actor",
-                      <Identity
-                        key="actor"
-                        name={opened.actor.name}
-                        kind={opened.actor.machine ? "machine" : "person"}
-                        mono={opened.actor.machine}
-                        description={opened.actor.machine ? "Machine identity" : "User"}
-                      />
+                      opened.actor.machine ? (
+                        <code key="actor">{opened.actor.name}</code>
+                      ) : (
+                        opened.actor.name
+                      )
                     ],
+                    ["Actor type", opened.actor.machine ? "Machine identity" : "User"],
                     ["Project", opened.project ?? "Organization"],
                     ["Environment", opened.environment ?? "None"],
                     [

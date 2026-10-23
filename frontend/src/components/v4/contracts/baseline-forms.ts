@@ -828,7 +828,7 @@ export const baselineForms = [
     referenceNames: ["InputOtp"],
     behavior: [
       "One underlying input owns the whole string; onChange receives that string, including partial and empty values. maxLength defines completion; onComplete signals length completion, not successful verification.",
-      "Each slot is its own input-style cell: the Input's 36px height, control border, control surface and radius-control times corners, in mono, with a 6px gap between cells. The active cell draws the shared focus glow and a blinking caret; aria-invalid on InputOTP turns every cell to the invalid border (and the active one to the bad glow), and disabled dims the whole code. InputOTPSeparator is a dash separator: the custom minus glyph at stroke-icon in muted, centered in the group gap; never dots."
+      "Each slot is its own input-style cell: the Input's 36px height, control border, control surface and square corners, in mono, with a 6px gap between cells. The active cell draws the shared focus glow and a blinking caret; aria-invalid on InputOTP turns every cell to the invalid border (and the active one to the bad glow), and disabled dims the whole code. InputOTPSeparator is a dash separator: the custom minus glyph at stroke-icon in muted, centered in the group gap; never dots."
     ],
     accessibility: [
       "Put id, label and error associations on InputOTP's real input. Slots display characters and focus position; they are not separate inputs. Paste and one-time-code autofill use that whole input."
@@ -1542,7 +1542,7 @@ export const baselineForms = [
     referenceNames: ["Slider"],
     behavior: [
       "Radix value/defaultValue is a number array; onValueChange reports live adjustment and onValueCommit reports committed adjustment. Array length determines the number of thumbs.",
-      "The filled range is slider-range (ink in light, the accent in dark) on a slider-track, and the thumb is the accent with a 2px on-accent ring. Hover and keyboard focus draw the shared focus glow (size-focus-glow, focus-ring: neutral ink, never the accent) around the thumb, the same ring a focused field draws. The thumb follows the corner mode: a square in square mode and a rounded square (radius-sm) in soft mode, never a circle. A disabled slider drops to faint and the disabled control surface."
+      "The filled range is slider-range (ink in light, the accent in dark) on a slider-track, and the thumb is the accent with a 2px on-accent ring. Hover and keyboard focus draw the shared focus glow (size-focus-glow, focus-ring: neutral ink, never the accent) around the thumb, the same ring a focused field draws. The thumb is a square, never a circle. A disabled slider drops to faint and the disabled control surface."
     ],
     accessibility: [
       "Name each thumb with thumbLabels or aria-labelledby; with one shared label, each thumb gets that label plus its position. Each thumb announces its minimum, maximum and value, and arrow keys adjust it."
@@ -1671,7 +1671,7 @@ export const baselineForms = [
     exports: ["Switch"],
     referenceNames: ["Switch"],
     behavior: [
-      "Switch applies an immediate boolean setting, with row layout, small size and disabled states. onChange/onCheckedChange belong to the owner. Off is a light grey track with a dimmed knob (white with a hairline in light, grey in dark); on is the accent track (sw-on) with an on-accent ink knob (sw-knob-on). Track and knob follow the corner mode: square in square mode, radius-control and half of it in soft mode. The knob slides 16px (12px at sm) on the fast motion token. Focus draws the 2px ink outline shared with checkbox and radio."
+      "Switch applies an immediate boolean setting, with row layout, small size and disabled states. onChange/onCheckedChange belong to the owner. Off is a light grey track with a dimmed knob (white with a hairline in light, grey in dark); on is the accent track (sw-on) with an on-accent ink knob (sw-knob-on). Track and knob are square. The knob slides 16px (12px at sm) on the fast motion token. Focus draws the 2px ink outline shared with checkbox and radio."
     ],
     accessibility: [
       "Label the switch and keep its name stable when its checked state changes. Do not stage it behind Save."

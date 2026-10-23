@@ -102,7 +102,7 @@
   width: var(--v4-space-6);
   height: var(--v4-space-6);
   background: var(--v4-accent-fg);
-  border-radius: calc(50% * var(--corners));
+  border-radius: 0;
 }
 .lead > .unread {
   position: absolute;

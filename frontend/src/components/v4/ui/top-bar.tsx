@@ -14,6 +14,8 @@ type ShellState = {
   navigationOpen: boolean;
   setNavigationOpen: (open: boolean) => void;
   navigationTrigger: React.RefObject<HTMLButtonElement | null>;
+  navigationToggle: React.RefObject<(() => void) | null>;
+  toggleNavigation: () => void;
 };
 
 const ShellContext = React.createContext<ShellState | null>(null);
@@ -22,6 +24,47 @@ export const useAppShell = () => React.useContext(ShellContext);
 
 const collapseWidth = (element: HTMLElement) =>
   parseFloat(getComputedStyle(element).getPropertyValue("--v4-size-shell-collapse")) || 0;
+
+const shellSelector = '[data-slot="app-shell"]';
+const typingSelector =
+  'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], .cm-editor, .monaco-editor';
+let lastPointerTarget: Element | null = null;
+const rememberPointer = (event: PointerEvent) => {
+  lastPointerTarget = event.target instanceof Element ? event.target : null;
+};
+let pointerWatchers = 0;
+const watchPointer = () => {
+  pointerWatchers += 1;
+  if (pointerWatchers === 1) document.addEventListener("pointerdown", rememberPointer, true);
+  return () => {
+    pointerWatchers -= 1;
+    if (pointerWatchers === 0) document.removeEventListener("pointerdown", rememberPointer, true);
+  };
+};
+
+const isNavigationShortcut = (event: KeyboardEvent) => {
+  const apple = /Mac|iPhone|iPad|iPod/i.test(navigator.platform);
+  return (
+    (apple ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey) &&
+    !event.altKey &&
+    !event.shiftKey &&
+    event.key.toLowerCase() === "b"
+  );
+};
+
+const ownsShortcut = (shell: HTMLElement, event: KeyboardEvent) => {
+  const focused = event.target instanceof Element ? event.target : null;
+  const target =
+    !focused ||
+    focused === document.body ||
+    (lastPointerTarget && focused.contains(lastPointerTarget))
+      ? lastPointerTarget
+      : focused;
+  if (target?.closest(`${typingSelector}, [role="dialog"]`)) return false;
+  const owner = target?.isConnected ? target.closest(shellSelector) : null;
+  if (owner) return owner === shell;
+  return document.querySelector(shellSelector) === shell;
+};
 
 export function AppShell({
   className,
@@ -33,6 +76,12 @@ export function AppShell({
   const [hasNavigation, setHasNavigation] = React.useState(false);
   const [navigationOpen, setNavigationOpen] = React.useState(false);
   const navigationTrigger = React.useRef<HTMLButtonElement>(null);
+  const navigationToggle = React.useRef<(() => void) | null>(null);
+  const toggleNavigation = React.useCallback(() => navigationToggle.current?.(), []);
+  const sheetOpen = React.useRef(false);
+  React.useEffect(() => {
+    sheetOpen.current = navigationOpen;
+  }, [navigationOpen]);
   React.useImperativeHandle(ref, () => own.current as HTMLDivElement);
   React.useLayoutEffect(() => {
     const element = own.current;
@@ -48,6 +97,23 @@ export function AppShell({
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
+  React.useEffect(() => {
+    const element = own.current;
+    if (!element) return undefined;
+    const listener = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing || event.repeat) return;
+      if (!isNavigationShortcut(event) || !navigationToggle.current) return;
+      if (!sheetOpen.current && !ownsShortcut(element, event)) return;
+      event.preventDefault();
+      navigationToggle.current();
+    };
+    const unwatch = watchPointer();
+    document.addEventListener("keydown", listener);
+    return () => {
+      unwatch();
+      document.removeEventListener("keydown", listener);
+    };
+  }, []);
   const value = React.useMemo(
     () => ({
       narrow,
@@ -55,9 +121,11 @@ export function AppShell({
       setHasNavigation,
       navigationOpen,
       setNavigationOpen,
-      navigationTrigger
+      navigationTrigger,
+      navigationToggle,
+      toggleNavigation
     }),
-    [narrow, hasNavigation, navigationOpen]
+    [narrow, hasNavigation, navigationOpen, toggleNavigation]
   );
   return (
     <ShellContext value={value}>
@@ -150,6 +218,7 @@ export function TopBar({
           iconOnly
           aria-expanded={shell.navigationOpen}
           aria-haspopup="dialog"
+          aria-keyshortcuts="Meta+B Control+B"
           className={styles.menu}
           onClick={() => shell.setNavigationOpen(true)}
         >

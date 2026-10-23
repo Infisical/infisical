@@ -1,6 +1,5 @@
 import * as React from "react";
 
-import { Avatar } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { List, ListRow, ListSection } from "../ui/list";
@@ -66,7 +65,6 @@ export const ActivityLog = ({
                   key={event.id}
                   value={event.id}
                   label={event.actor}
-                  media={<Avatar size={24} name={event.actor} kind={kind} />}
                   title={event.summary}
                   badge={kind !== "person" ? <Badge>{kindLabel[kind]}</Badge> : undefined}
                   meta={event.time}

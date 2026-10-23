@@ -8,7 +8,7 @@
 }
 .inline {
   border: var(--v4-size-control-border) solid var(--v4-line-soft, var(--border));
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
   padding: var(--v4-space-2) var(--v4-space-4);
   background: var(--v4-tint, var(--muted));
   overflow-wrap: anywhere;
@@ -146,7 +146,7 @@
   gap: var(--v4-space-control-slot-gap);
   min-width: 0;
   border: var(--v4-size-control-border) solid var(--v4-control, var(--border));
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
   background: var(--v4-surface, var(--background));
   padding: var(--v4-space-control-slot-inset);
   padding-inline-start: var(--v4-space-control-inline);

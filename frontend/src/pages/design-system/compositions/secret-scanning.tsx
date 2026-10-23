@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 
-import { Identity } from "@app/components/v4/ui/avatar";
 import { Badge, type BadgeTone } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
@@ -332,7 +331,7 @@ export default function SecretScanning() {
       header: "Author",
       grow: true,
       text: (row) => row.author,
-      render: (row) => <Identity name={row.author} />
+      render: (row) => row.author
     },
     { id: "commit", header: "Commit", width: 96, render: (row) => <Meta>{row.commit}</Meta> },
     {
@@ -560,7 +559,7 @@ export default function SecretScanning() {
                       </code>
                     ],
                     ["Commit", <Meta key="commit">{openFinding.commit}</Meta>],
-                    ["Author", <Identity key="author" name={openFinding.author} />],
+                    ["Author", openFinding.author],
                     ["Data source", `${openFinding.source} on GitHub`],
                     ["Fingerprint", <Meta key="fingerprint">{fingerprintOf(openFinding)}</Meta>]
                   ]}

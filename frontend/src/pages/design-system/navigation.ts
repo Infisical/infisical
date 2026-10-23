@@ -21,7 +21,8 @@ export const comparisonPages = [
     id: "compare-shell",
     screen: "shell",
     title: "App shell",
-    description: "The sidebar, top bar and switchers on payments-api, with page content left out."
+    description: "The sidebar, top bar and switchers on payments-api, with page content left out.",
+    start: 0
   },
   {
     id: "compare-home",

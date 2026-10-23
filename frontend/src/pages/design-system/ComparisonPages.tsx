@@ -37,6 +37,7 @@ export const ComparisonPageView = ({ page }: { page: ComparisonPage }) => {
       title={entry.title}
       before={{ light: shot(entry.screen, "light"), dark: shot(entry.screen, "dark") }}
       After={Screen}
+      start={"start" in entry ? entry.start : undefined}
     />
   );
   return (
@@ -47,9 +48,9 @@ export const ComparisonPageView = ({ page }: { page: ComparisonPage }) => {
         style={{ maxWidth: "var(--v4-size-measure-prose)" }}
       >
         {entry.description} Before is the current app on main with seeded data, captured at 1706 by
-        971. After is the live v4 page built from this design system: it follows the theme, corners
-        and accent in the dock. Drag the handle or use the arrow keys, or switch to the live view to
-        click through it.
+        971. After is the live v4 page built from this design system: it follows the workbench theme
+        and accent. Drag the handle or use the arrow keys, or switch to the live view to click
+        through it.
       </p>
       <Suspense fallback={<p role="status">Loading the v4 page</p>}>
         {entry.screen === "secrets" ? (

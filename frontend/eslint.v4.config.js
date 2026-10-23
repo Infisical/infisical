@@ -11,7 +11,7 @@ export default [
       shadcn: {
         ui: "@app/components/v4/ui",
         componentImports: ["^@app/components/v4/ui(/|$)"],
-        note: "Tokens live in src/components/v4/tokens.json. Soft corners are canonical."
+        note: "Tokens live in src/components/v4/tokens.json. Corners are square everywhere."
       }
     },
     rules: {

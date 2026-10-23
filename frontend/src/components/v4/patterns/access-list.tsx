@@ -1,6 +1,5 @@
 import * as React from "react";
 
-import { Avatar } from "../ui/avatar";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
@@ -130,7 +129,6 @@ export const AccessList = ({
               onClick={() => onOpen?.(member.id)}
               current={member.id === current}
               selectable={!member.owner}
-              media={<Avatar size={32} name={member.name} kind={member.kind ?? "person"} />}
               title={
                 member.kind && member.kind !== "person" ? <code>{member.name}</code> : member.name
               }

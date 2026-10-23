@@ -1,15 +1,25 @@
-import { startTransition, Suspense, useEffect, useRef, useState } from "react";
+import { startTransition, Suspense, useEffect, useState } from "react";
 
 import { useTheme } from "@app/components/v3/platform/ThemeProvider/ThemeProvider";
 import { type ComponentGroup } from "@app/components/v4/contracts/types";
 import { V4Scope } from "@app/components/v4/scope";
 import tokens from "@app/components/v4/tokens.json";
-import { Button } from "@app/components/v4/ui/button";
 import { Icon, type IconName } from "@app/components/v4/ui/icon";
-import { Sidebar } from "@app/components/v4/ui/sidebar";
-import { AppInset, AppShell, scrollInsetTo, TopBar } from "@app/components/v4/ui/top-bar";
+import { Sidebar, type SidebarProps } from "@app/components/v4/ui/sidebar";
+import {
+  AppInset,
+  AppShell,
+  PageGutter,
+  scrollInsetTo,
+  TopBar
+} from "@app/components/v4/ui/top-bar";
 
-import { AccentPanelButton, AccentPanelProvider, useAccentPanel } from "./accent-panel";
+import {
+  AccentPanelButton,
+  AccentPanelProvider,
+  accentPresets,
+  useAccentPanel
+} from "./accent-panel";
 import { ComparisonPageView } from "./ComparisonPages";
 import { ComponentPreviewPage } from "./ComponentPreviewPage";
 import { ColorPage, OverviewPage, SpacingShapePage, TypographyPage } from "./FoundationPages";
@@ -26,7 +36,6 @@ import { RulesPage } from "./RulesPage";
 import { WorkbenchPalette } from "./workbench-palette";
 
 import "@app/components/v4/v4.css";
-import dockStyles from "./dock.module.css";
 
 const pullRequest = "https://github.com/Infisical/infisical/pull/8753";
 const documentation = "https://infisical.com/docs";
@@ -34,8 +43,6 @@ const openLink = (href: string) => {
   if (href.startsWith("#")) window.location.hash = href;
   else window.open(href, "_blank", "noreferrer");
 };
-
-const dockInset = "var(--v4-space-16) + env(safe-area-inset-bottom)";
 
 const PageContent = ({ page }: { page: DocumentationPage }) => {
   switch (page) {
@@ -111,31 +118,46 @@ const sidebarSections = navigationGroups.map((group) => ({
 const groupOf = (page: string) =>
   navigationGroups.find((group) => group.pages.some((entry) => entry.id === page));
 
-const DockAccentButton = () => {
-  const panel = useAccentPanel();
+const WorkbenchSidebar = ({
+  themeMode,
+  ...props
+}: SidebarProps & { themeMode: "light" | "dark" }) => {
+  const accent = useAccentPanel();
+  const preset = accentPresets.find(
+    (entry) => entry.light === accent?.choice.light && entry.dark === accent?.choice.dark
+  );
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className={dockStyles.segment}
-      aria-label="Open the accent picker"
-      onClick={panel?.open}
-    >
-      <span
-        aria-hidden
-        className="inline-block size-3 border border-border"
-        style={{ background: "var(--v4-accent)" }}
-      />
-      Accent
-    </Button>
+    <Sidebar
+      {...props}
+      preferences={
+        accent
+          ? [
+              {
+                label: "Accent",
+                value: preset?.id ?? "custom",
+                onChange: (value) => {
+                  const next = accentPresets.find((entry) => entry.id === value);
+                  if (next) accent.select({ light: next.light, dark: next.dark });
+                  else accent.open();
+                },
+                options: [
+                  ...accentPresets.map((entry) => ({
+                    value: entry.id,
+                    label: entry.name,
+                    swatch: entry[themeMode]
+                  })),
+                  { value: "custom", label: "Custom accent", icon: "more" as const }
+                ]
+              }
+            ]
+          : []
+      }
+    />
   );
 };
 
 export const DesignSystemPage = () => {
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const dock = useRef<HTMLDivElement>(null);
-  const [dockHeight, setDockHeight] = useState<number>();
   const { resolvedTheme: hostTheme } = useTheme();
   const [themeChoice, setTheme] = useState<"light" | "dark" | "system">(hostTheme);
   const [systemTheme, setSystemTheme] = useState<"light" | "dark">(() =>
@@ -149,29 +171,12 @@ export const DesignSystemPage = () => {
     return () => media.removeEventListener("change", update);
   }, []);
   const theme = themeChoice === "system" ? systemTheme : themeChoice;
-  const [corners, setCorners] = useState<"square" | "soft">(() => {
-    try {
-      return window.localStorage.getItem("v4-corners") === "soft" ? "soft" : "square";
-    } catch {
-      return "square";
-    }
-  });
-  const nextCorners = corners === "soft" ? "square" : "soft";
   const [hash, setHash] = useState(() => window.location.hash);
   useEffect(() => {
     const follow = () => startTransition(() => setHash(window.location.hash));
     follow();
     window.addEventListener("hashchange", follow);
     return () => window.removeEventListener("hashchange", follow);
-  }, []);
-  useEffect(() => {
-    const control = dock.current;
-    if (!control) return undefined;
-    const measure = () => setDockHeight(control.getBoundingClientRect().height);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(control);
-    return () => observer.disconnect();
   }, []);
   const currentPage = resolveDocumentationPage(hash);
   const example = hash.split("/")[1];
@@ -191,13 +196,13 @@ export const DesignSystemPage = () => {
   }, [currentPage, example]);
   const nextTheme = theme === "dark" ? "light" : "dark";
   return (
-    <V4Scope className="flex h-dvh flex-col overflow-clip" theme={theme} corners={corners}>
+    <V4Scope className="flex h-dvh flex-col overflow-clip" theme={theme}>
       <AccentPanelProvider>
         <a href={`#${currentPage}`} className="sr-only focus:not-sr-only focus:p-3">
           Skip to content
         </a>
         <AppShell>
-          <Sidebar
+          <WorkbenchSidebar
             label="Design system"
             user={{
               name: "Infisical 2.0 workbench",
@@ -224,6 +229,7 @@ export const DesignSystemPage = () => {
               value: themeChoice === "system" ? "system" : theme,
               onChange: setTheme
             }}
+            themeMode={theme}
             sections={sidebarSections}
             current={currentPage}
             search={{ onClick: () => setPaletteOpen(true), label: "Search the design system" }}
@@ -243,9 +249,11 @@ export const DesignSystemPage = () => {
             />
             <Suspense
               fallback={
-                <p role="status" className="px-4 pt-5 text-sm lg:px-10 lg:pt-8">
-                  Loading examples
-                </p>
+                <PageGutter>
+                  <p role="status" className="text-sm">
+                    Loading examples
+                  </p>
+                </PageGutter>
               }
             >
               <div
@@ -253,69 +261,23 @@ export const DesignSystemPage = () => {
                 id={currentPage}
                 data-document-view="human"
                 tabIndex={-1}
-                className="min-w-0 flex-1 px-4 pt-5 outline-none lg:px-10 lg:pt-8"
-                style={{
-                  marginBottom: `calc(${dockHeight === undefined ? "var(--v4-space-48)" : `${dockHeight}px`} + ${dockInset} + var(--v4-space-8))`
-                }}
+                className="min-w-0 flex-1 outline-none"
               >
-                <article className="mx-auto max-w-[56rem] pb-8">
-                  <PageContent page={currentPage} />
-                </article>
+                <PageGutter>
+                  <article>
+                    <PageContent page={currentPage} />
+                  </article>
+                </PageGutter>
               </div>
             </Suspense>
           </AppInset>
+          <WorkbenchPalette
+            open={paletteOpen}
+            onOpenChange={setPaletteOpen}
+            groups={navigationGroups}
+            toggleTheme={() => setTheme(nextTheme)}
+          />
         </AppShell>
-        <WorkbenchPalette
-          open={paletteOpen}
-          onOpenChange={setPaletteOpen}
-          groups={navigationGroups}
-          toggleTheme={() => setTheme(nextTheme)}
-          toggleCorners={() => {
-            try {
-              window.localStorage.setItem("v4-corners", nextCorners);
-            } catch {
-              // Storage is unavailable; keep the choice for this session only.
-            }
-            setCorners(nextCorners);
-          }}
-        />
-        <div
-          data-documentation-dock
-          className="pointer-events-none fixed inset-x-0 z-40 flex justify-center px-4"
-          style={{ bottom: `calc(${dockInset})` }}
-        >
-          <div ref={dock} className={dockStyles.dock}>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={dockStyles.segment}
-              aria-label={`Corners: ${corners}. Switch to ${nextCorners}`}
-              onClick={() => {
-                try {
-                  window.localStorage.setItem("v4-corners", nextCorners);
-                } catch {
-                  // Storage is unavailable; keep the choice for this session only.
-                }
-                setCorners(nextCorners);
-              }}
-            >
-              {corners === "soft" ? "Soft" : "Square"}
-            </Button>
-            <DockAccentButton />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className={dockStyles.segment}
-              iconOnly
-              onClick={() => setTheme(nextTheme)}
-              aria-label={`Switch to ${nextTheme} theme`}
-            >
-              <Icon name={theme === "dark" ? "sun" : "moon"} />
-            </Button>
-          </div>
-        </div>
       </AccentPanelProvider>
     </V4Scope>
   );

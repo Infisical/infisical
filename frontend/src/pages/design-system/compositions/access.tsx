@@ -1,4 +1,3 @@
-import { Avatar } from "@app/components/v4/ui/avatar";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
@@ -29,7 +28,6 @@ const userColumns: DataTableColumn<UserRow>[] = [
     text: (r) => r.name,
     render: (r) => (
       <Inline gap={12} align="center">
-        <Avatar size={24} name={r.name} kind="person" />
         {r.name}
         {r.serverAdmin && <Badge tone="info">Server admin</Badge>}
       </Inline>

@@ -12,7 +12,7 @@
   padding: 0 var(--v4-space-8) 0 var(--v4-space-16);
   translate: -50% 0;
   border: 1px solid var(--v4-toast-line);
-  border-radius: calc(var(--v4-radius-pop) * var(--corners));
+  border-radius: 0;
   background: var(--v4-toast-bg);
   color: var(--v4-toast-text);
   box-shadow: var(--v4-shadow-pop);

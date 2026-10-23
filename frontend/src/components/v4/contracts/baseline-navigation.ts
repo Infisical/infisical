@@ -541,7 +541,7 @@ export const baselineNavigation = [
     accessibility: [
       "A named trigger opens the menu. Typing a letter jumps to a matching item, arrow keys skip disabled items and focus returns to the trigger on close. Use checkbox or radio items for persistent selection.",
       "DropdownMenuTrigger defers to Button. Without asChild it renders an outline Button; with asChild it adds nothing, so rest, hover, open, focus and disabled all come from the Button. No tint is ever drawn inside a bordered control.",
-      "The panel follows the shared menu recipe: pop ground, pop-line edge and shadow-pop, a 3px inset on all four sides, and 32px rows that are inset rounded blocks (radius-pop minus the inset, so they stay concentric in soft mode). Separators run edge to edge; rows and their tints never do.",
+      "The panel follows the shared menu recipe: pop ground, pop-line edge and shadow-pop, a 3px inset on all four sides, and 32px rows that are inset square blocks. Separators run edge to edge; rows and their tints never do.",
       "Two translucent thumbs mark rows: a hover thumb that follows the pointer and keyboard and stays on the last row while the pointer is anywhere in the panel, and a selection thumb on the checked or current item that shows only while the hover thumb is hidden. Both appear in place on open and glide between rows after that; the current item keeps its weight and check while the hover thumb is elsewhere. A row whose submenu, flyout or popover is open (aria-haspopup with aria-expanded true) keeps the hover thumb while the pointer is in that popover and the selection thumb stays hidden; on close the hover thumb goes back to the pointer, or hands off to the selection thumb if the pointer has left."
     ],
     limitations: [

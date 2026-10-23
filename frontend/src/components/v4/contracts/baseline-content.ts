@@ -356,14 +356,15 @@ export const baselineContent = [
     ],
     referenceNames: ["Avatar", "Identity"],
     behavior: [
-      "Avatar supports person, machine, agent and fallback identities, numeric size and optional status. Every kind shares one paint, a tint square with ink initials or icon and radius-control corners (square by default, 4px in soft mode); the initials or icon tell the kinds apart. Initials are 10, 12 and 14px at 24, 32 and 40px. The status dot is an 8px square outside the bottom corner with a 2px surface ring. AvatarGroup overlaps by 4px and exposes overflow, and Identity pairs a lead with text.",
+      "Avatar supports person, machine, agent and fallback identities, numeric size and optional status. Every kind shares one paint, a tint square with ink initials or icon and square corners; the initials or icon tell the kinds apart. Initials are 10, 12 and 14px at 24, 32 and 40px. The status dot is an 8px square outside the bottom corner with a 2px surface ring. AvatarGroup overlaps by 4px and exposes overflow, and Identity pairs a lead with text.",
       "Identity's text column fills the width left beside the lead, so a MiddleTruncate title measures a definite width and recovers its full text after a re-layout instead of staying collapsed."
     ],
     accessibility: [
       "Provide an identity name or accessible label. Organizations use text or a neutral icon, never an invented avatar."
     ],
     limitations: [
-      "Organization avatars are unsupported. Status is visual unless the owner supplies its meaning in the accessible label or nearby text."
+      "Organization avatars are unsupported. Status is visual unless the owner supplies its meaning in the accessible label or nearby text.",
+      "Composites and compositions (the Sidebar account, access lists, activity logs, approvals, audit logs, identities, switchers and comment threads) don't use avatars until the product supports them. They show names and emails as plain text."
     ],
     examples: [
       {
@@ -515,7 +516,7 @@ export const baselineContent = [
     exports: ["Badge", "badgeVariants", "Count"],
     referenceNames: ["Badge", "Count"],
     behavior: [
-      "tone is the one paint axis: outline, soft, solid and accent for metadata and emphasis; ok, warn, bad and info for status. variant is deprecated and maps to a tone (default solid, secondary soft, destructive bad, the rest outline). Badges are 20px (md) or 16px (sm) with radius-sm corners (square by default, 4px in soft mode) and one weight, and take an optional dot and mono content. Count is a separate 20px number chip: accent for attention, ink for weight and neutral for counts inside tabs and lists."
+      "tone is the one paint axis: outline, soft, solid and accent for metadata and emphasis; ok, warn, bad and info for status. variant is deprecated and maps to a tone (default solid, secondary soft, destructive bad, the rest outline). Badges are 20px (md) or 16px (sm) with square corners and one weight, and take an optional dot and mono content. Count is a separate 20px number chip: accent for attention, ink for weight and neutral for counts inside tabs and lists."
     ],
     accessibility: ["Tone must accompany readable text; a dot alone does not explain status."],
     limitations: [
@@ -849,7 +850,7 @@ export const baselineContent = [
     ],
     referenceNames: ["Card"],
     behavior: [
-      "Card offers framed and plain shells, a flush body and named title/description/action/footer slots. Framed (the default) is a borderless tint frame around a bordered inset surface: frame, then the line border, then the inset ground, then content. Only the inset carries a border, so header band, inner surface and footer band read as one card: its header row sits in the frame, with the title as an uppercase eyebrow and the action as a caption link, and the body and footer sit in an inner surface with a line border and shadow-raised. The inner surface is inset from the frame by space-3 on the sides and bottom, and on the top too when there is no header. Its radius is radius-panel minus that pad, so the corners stay concentric in soft mode and are square in square mode. With footerPlacement frame and the title, description and footer props, the header and body sit together on the inner surface with its own line border, and the footer is a band in the frame below it, padded by the frame pad, never a separate box. Plain is a single surface with one line border and no frame. The header band holds labels only: the title, with optional badges in it and an action. It never holds a framed icon or media tile; put those in the body. A footerPlacement of frame moves the footer out of the inner surface into a matching band of the frame below it, for a stats or status row under the content. Title, description, body and footer share one text column, and the action centres on the title line."
+      "Card offers framed and plain shells, a flush body and named title/description/action/footer slots. Framed (the default) is a borderless tint frame around a bordered inset surface: frame, then the line border, then the inset ground, then content. Only the inset carries a border, so header band, inner surface and footer band read as one card: its header row sits in the frame, with the title as an uppercase eyebrow and the action as a caption link, and the body and footer sit in an inner surface with a line border and shadow-raised. The inner surface is inset from the frame by space-3 on the sides and bottom, and on the top too when there is no header. With footerPlacement frame and the title, description and footer props, the header and body sit together on the inner surface with its own line border, and the footer is a band in the frame below it, padded by the frame pad, never a separate box. Plain is a single surface with one line border and no frame. The header band holds labels only: the title, with optional badges in it and an action. It never holds a framed icon or media tile; put those in the body. A footerPlacement of frame moves the footer out of the inner surface into a matching band of the frame below it, for a stats or status row under the content. Title, description, body and footer share one text column, and the action centres on the title line."
     ],
     accessibility: [
       "Choose the heading level through the composed title; actions remain native controls with their own names."
@@ -1804,7 +1805,7 @@ export const baselineContent = [
     referenceNames: ["Progress", "ProgressSteps"],
     behavior: [
       "Progress clamps its ARIA value while preserving explicit over-limit copy. It supports automatic tone, indeterminate activity and a ProgressSteps companion.",
-      "A 6px bar on line-soft with square ends that follow corners. The label sits top left and wraps; the mono valueLabel sits top right and takes the warn or bad tone with the fill. A new value glides on duration-slow with ease-standard. Indeterminate work is a 30% ink segment that slides across the track in a 1.5s loop; reduced motion shows it parked.",
+      "A 6px bar on line-soft with square ends. The label sits top left and wraps; the mono valueLabel sits top right and takes the warn or bad tone with the fill. A new value glides on duration-slow with ease-standard. Indeterminate work is a 30% ink segment that slides across the track in a 1.5s loop; reduced motion shows it parked.",
       "ProgressSteps puts the label top left and Step n of N in mono top right, then flat segments 4px apart: done steps solid ink, upcoming on line-soft, the current one a 1px ink outline over 3px diagonal hatching that does not move, with each step's name under its segment and the current one in ink at 600."
     ],
     accessibility: [

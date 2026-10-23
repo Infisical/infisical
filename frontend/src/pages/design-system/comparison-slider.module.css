@@ -12,7 +12,7 @@
   aspect-ratio: 1706 / 971;
   overflow: hidden;
   border: var(--v4-size-control-border) solid var(--v4-line);
-  border-radius: calc(var(--v4-radius-panel) * var(--corners));
+  border-radius: 0;
   background: var(--v4-inset);
   container-type: inline-size;
   touch-action: none;
@@ -51,7 +51,7 @@
   position: absolute;
   top: var(--v4-space-8);
   padding: var(--v4-space-2) var(--v4-space-6);
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
   background: color-mix(in oklab, var(--v4-frame) 72%, transparent);
   color: var(--v4-on-ink);
   font-family: var(--v4-type-caption-font-family);
@@ -91,7 +91,7 @@
   width: var(--v4-size-control-sm);
   height: var(--v4-size-control-sm);
   translate: -50% -50%;
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
   background: var(--v4-ink);
   color: var(--v4-on-ink);
   box-shadow: var(--v4-shadow-pop);
@@ -106,7 +106,7 @@
   margin-inline: calc(50% - 50cqi + var(--v4-space-16));
   overflow: auto;
   border: var(--v4-size-control-border) solid var(--v4-line);
-  border-radius: calc(var(--v4-radius-panel) * var(--corners));
+  border-radius: 0;
 }
 .full > div {
   width: 100%;

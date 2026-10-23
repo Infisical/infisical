@@ -9,7 +9,7 @@
   gap: var(--v4-space-8);
   padding: 12px;
   border: 1px solid var(--v4-toast-line);
-  border-radius: calc(var(--v4-radius-card) * var(--corners));
+  border-radius: 0;
   background: var(--v4-toast-bg);
   color: var(--v4-toast-text);
   box-shadow: var(--v4-shadow-pop);

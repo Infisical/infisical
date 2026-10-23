@@ -15,7 +15,7 @@
   );
   padding-inline: var(--v4-action-inset);
   border-width: var(--v4-size-control-border);
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
   font-family: var(--v4-type-label-font-family);
   font-size: var(--v4-action-font-size);
   line-height: var(--v4-action-line-height);

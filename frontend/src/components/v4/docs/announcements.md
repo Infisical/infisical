@@ -35,7 +35,7 @@ Do: Show the real feature built from v4 components, made inert.
 
 Avoid: Use screenshots, illustrations or gradients.
 
-Why: Real components stay accurate in both themes and at every corner setting.
+Why: Real components stay accurate in both themes.
 
 Checked by: review only. Look for: Inspect each media area for components rather than images.
 

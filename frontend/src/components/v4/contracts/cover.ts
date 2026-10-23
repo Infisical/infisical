@@ -11,7 +11,7 @@ export const coverDefinition = {
   referenceNames: ["Cover"],
   behavior: [
     "The cover keeps a 960 by 288 ratio and scales its type with its own width.",
-    "The art is an ink slab, an accent square and a control band with a grid of dots, all filled from color tokens and rounded with the corner tokens, so it follows theme and corner changes."
+    "The art is an ink slab, an accent square and a control band with a grid of dots, all filled from color tokens with square corners, so it follows theme changes."
   ],
   accessibility: [
     "The art is decorative and hidden from assistive technology. The title is an h1."
@@ -48,8 +48,8 @@ export const coverDefinition = {
       {
         id: "cover-tokens",
         when: "The cover art changes.",
-        do: "Draw blocks from color, radius and space tokens so theme and corner choices carry through.",
-        avoid: "Hard-code colors or corner radii in the SVG.",
+        do: "Draw square blocks from color and space tokens so theme changes carry through.",
+        avoid: "Hard-code colors or round the corners in the SVG.",
         reason: "The cover is the system's own sample and must follow its settings.",
         evidence: ["src/components/v4/ui/cover.tsx", "src/components/v4/ui/cover.module.css"],
         detect: {

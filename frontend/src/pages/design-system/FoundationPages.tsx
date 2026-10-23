@@ -265,9 +265,9 @@ export const ColorPage = () => (
     <PageHeading title="Color" />
     <div className="mb-4 flex items-center justify-between gap-4">
       <p className="text-muted-foreground text-sm leading-6">
-        Compare accents opens a workbench-only picker (also in the dock and on the Button page). It
-        overrides the accent family for this page and keeps the choice in the URL, so a link
-        reproduces the view. The canonical tokens do not change.
+        Compare accents opens a workbench-only picker (also in the sidebar workbench menu and on the
+        Button page). It overrides the accent family for this page and keeps the choice in the URL,
+        so a link reproduces the view. The canonical tokens do not change.
       </p>
       <AccentPanelButton />
     </div>
@@ -483,28 +483,12 @@ export const SpacingShapePage = () => (
         ))}
       </div>
     </DocSection>
-    <DocSection title="Source radius scale">
-      <p className="text-muted-foreground mb-4 text-sm leading-6">
-        Square corners are the default across the workbench and its portals: the corner multiplier
-        is <code>0</code>. The soft scale below is an available mode; switch it on with the corners
-        control in the dock, or with <code>corners=&quot;soft&quot;</code> on V4Scope. Each specimen
-        shows its soft radius; controls stay compact rather than becoming pills.
+    <DocSection title="Corners">
+      <p className="text-muted-foreground text-sm leading-6">
+        Every control, surface and portal has square corners. There is no radius scale and no corner
+        mode, so components and callers never set a border radius.
       </p>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {tokens.radius.tokens.map((radius) => (
-          <div key={radius.name} className="border border-border p-4">
-            <div className="mb-4 flex gap-4">
-              <div
-                className="border-input h-12 w-16 border bg-muted"
-                style={{ borderRadius: radius.value }}
-              />
-            </div>
-            <code className="text-xs">{radius.name}</code>
-            <p className="text-muted-foreground mt-1 text-xs">Soft {radius.value}</p>
-            <p className="text-muted-foreground mt-2 text-sm leading-6">{radius.usage}</p>
-          </div>
-        ))}
-      </div>
+      <div aria-hidden="true" className="border-input mt-4 h-12 w-16 border bg-muted" />
     </DocSection>
   </div>
 );

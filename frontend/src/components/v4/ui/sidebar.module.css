@@ -49,7 +49,7 @@
   height: var(--v4-size-control-md);
   padding: 0;
   border: 0;
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
   background: transparent;
   color: var(--v4-text2);
   cursor: pointer;
@@ -78,7 +78,7 @@
   padding: 0 var(--v4-space-8);
 }
 .spaces > div[data-variant] {
-  border-radius: calc(var(--v4-radius-card) * var(--corners));
+  border-radius: 0;
   background: var(--v4-sidebar-hover);
 }
 .spaces [data-slot="tabs-list"] {
@@ -102,7 +102,7 @@
   flex: none;
   width: 6px;
   height: 6px;
-  border-radius: calc(var(--v4-radius-xs) * var(--corners));
+  border-radius: 0;
   background: var(--v4-accent-fg);
 }
 .srOnly {
@@ -123,7 +123,7 @@
   gap: 2px;
   width: var(--v4-size-control-md);
   padding: 2px;
-  border-radius: calc(var(--v4-radius-card) * var(--corners));
+  border-radius: 0;
   background: var(--v4-sidebar-hover);
 }
 .railSpace {
@@ -135,7 +135,7 @@
   height: var(--v4-size-control-sm);
   padding: 0;
   border: 1px solid transparent;
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
   background: transparent;
   color: var(--v4-text2);
   cursor: pointer;
@@ -164,7 +164,7 @@
   left: 19px;
   width: 6px;
   height: 6px;
-  border-radius: calc(var(--v4-radius-xs) * var(--corners));
+  border-radius: 0;
   background: var(--v4-accent-fg);
   box-shadow: 0 0 0 2px var(--v4-sidebar-hover);
 }
@@ -264,7 +264,7 @@
   height: var(--v4-size-control-md);
   padding: 0 9px;
   border: 0;
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
   background: transparent;
   color: var(--v4-text2);
   font-family: var(--v4-type-row-title-font-family);
@@ -385,7 +385,7 @@
   display: block;
   width: 6px;
   height: 6px;
-  border-radius: calc(var(--v4-radius-xs) * var(--corners));
+  border-radius: 0;
   background: var(--v4-accent-fg);
   box-shadow: 0 0 0 2px var(--v4-sidebar);
   pointer-events: none;
@@ -415,7 +415,7 @@
   height: var(--v4-size-control-md);
   padding: 0 9px 0 var(--v4-space-8);
   border: 0;
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
   background: transparent;
   color: var(--v4-ink);
   text-align: start;
@@ -475,7 +475,7 @@
   width: 100%;
   padding: var(--v4-space-6) var(--v4-space-8);
   border: 0;
-  border-radius: calc((var(--v4-radius-pop) - var(--v4-space-3)) * var(--corners));
+  border-radius: 0;
   background: transparent;
   color: var(--v4-ink);
   text-align: start;
@@ -483,27 +483,17 @@
   cursor: pointer;
 }
 .userRow:hover {
-  background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover, var(--v4-opacity-hover)), transparent);
+  background: color-mix(
+    in oklab,
+    var(--v4-ink) var(--overlay-hover, var(--v4-opacity-hover)),
+    transparent
+  );
 }
-.userRow [data-slot="identity"] [data-slot="avatar"],
-.account [data-slot="avatar"] {
-  background: var(--v4-ink);
-  color: var(--v4-on-ink);
-}
-.userRow [data-slot="identity"] [data-slot="avatar"]::after,
-.account [data-slot="avatar"]::after {
-  border-color: transparent;
-}
-.userRow [data-slot="identity"] [data-slot="avatar"] > *,
-.account [data-slot="avatar"] > * {
-  background: transparent;
-  color: inherit;
-}
-.userRow [data-slot="identity"] > div > :first-child {
-  font-weight: 600;
-}
-.userRow [data-slot="identity"] > div > :last-child {
-  color: var(--v4-muted);
+.swatch {
+  display: block;
+  width: var(--v4-size-icon-xs);
+  height: var(--v4-size-icon-xs);
+  border: var(--v4-size-control-border) solid var(--v4-line);
 }
 .userRow:focus-visible {
   outline: var(--v4-size-focus-ring) solid var(--v4-ink);
@@ -554,7 +544,7 @@
   justify-content: center;
   width: var(--v4-size-badge);
   height: var(--v4-size-badge);
-  border-radius: calc(var(--v4-radius-xs) * var(--corners));
+  border-radius: 0;
   background: var(--v4-ink);
   color: var(--v4-on-ink);
 }

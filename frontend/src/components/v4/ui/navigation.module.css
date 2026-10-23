@@ -6,7 +6,7 @@
 }
 .tabsTrack[data-variant="segmented"] {
   background: var(--v4-tint);
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
 }
 .tabsTrack[data-variant="underline"] {
   border-bottom: 1px solid var(--v4-line);

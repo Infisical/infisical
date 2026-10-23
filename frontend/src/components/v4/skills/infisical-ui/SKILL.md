@@ -17,13 +17,15 @@ Start with [the v4 instructions](../../AGENTS.md), then query the affected task 
 
 ## Keep the identity
 
-Use warm neutrals, Archivo, Geist Mono and square corners. The soft corner scale is an available mode (`V4Scope corners="soft"`); every radius goes through `var(--corners)` so both modes hold. Primary (and default, its alias) Buttons are the ink fill for the one main action; accent Buttons use the shared lime material for approval and grant moments only. The global primary role remains ink; do not recolor other components to match the Button. The brand neon lime is `--v4-accent` with `--v4-on-accent`; shadcn's `bg-accent` is a neutral hover/selection role. Do not swap them. For brand text or icons, the source `accent-fg` role is exposed as `--v4-accent-fg`. Do not use the light neon fill as light-theme text.
+Use warm neutrals, Archivo and Geist Mono. Corners are square everywhere: there is no radius scale and no corner mode, so never set a border radius. Primary (and default, its alias) Buttons are the ink fill for the one main action; accent Buttons use the shared lime material for approval and grant moments only. The global primary role remains ink; do not recolor other components to match the Button. The brand neon lime is `--v4-accent` with `--v4-on-accent`; shadcn's `bg-accent` is a neutral hover/selection role. Do not swap them. For brand text or icons, the source `accent-fg` role is exposed as `--v4-accent-fg`. Do not use the light neon fill as light-theme text.
 
 Icons come from the Infisical 2.0 line set: use `Icon` with one of its 52 names. Use Lucide (`lucide-react`) only for glyphs the set lacks, at `stroke-icon` (1.7) and the size tokens; never import another icon library or hand-draw SVG icons.
 
 Disable blocked actions instead of hiding them, and gate each one by its own permission. Hover and press overlays are translucent ink, never opaque fills. Show Skeleton shapes when the loaded shape is known and a Loader only when it is not. Focus glows share size-focus-glow and focus-ring.
 
-Use `V4Scope` for the workbench boundary so portals inherit its colors, fonts and corner mode. The workbench initializes from the host's resolved theme, then keeps preview changes local. Never save those changes to the user's theme preference or send theme analytics. Installed consumers use their own provider. Do not theme `document.body`.
+Composites and compositions don't use avatars until the product supports them: show names and emails as plain text, and keep the Avatar primitive for its own docs page. Page content takes its width from the size-content token through PageGutter, the same gutter TopBar pads by; never cap it with an arbitrary max-width.
+
+Use `V4Scope` for the workbench boundary so portals inherit its colors and fonts. The workbench initializes from the host's resolved theme, then keeps preview changes local. Never save those changes to the user's theme preference or send theme analytics. Installed consumers use their own provider. Do not theme `document.body`.
 
 Protect code, commands, identifiers, protocol payloads, legal and license text, quoted material and user-entered values from prose editing. Never include real secrets in examples, logs or captures. The rules file defines the narrow exemption boundary.
 

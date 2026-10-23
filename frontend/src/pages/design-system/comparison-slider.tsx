@@ -18,13 +18,14 @@ export type ComparisonSliderProps = {
   title: string;
   before: { light?: string; dark?: string };
   After: ComponentType;
+  start?: number;
 };
 
 const clamp = (value: number) => Math.min(100, Math.max(0, value));
 
-export const ComparisonSlider = ({ title, before, After }: ComparisonSliderProps) => {
+export const ComparisonSlider = ({ title, before, After, start = 50 }: ComparisonSliderProps) => {
   const theme = useV4Theme() ?? "light";
-  const [position, setPosition] = useState(50);
+  const [position, setPosition] = useState(start);
   const [view, setView] = useState<"compare" | "live">("compare");
   const stage = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
@@ -73,7 +74,7 @@ export const ComparisonSlider = ({ title, before, After }: ComparisonSliderProps
           <ToggleGroupItem value="live">Live, full width</ToggleGroupItem>
         </ToggleGroup>
         {view === "compare" && (
-          <Button variant="ghost" size="sm" onClick={() => setPosition(50)}>
+          <Button variant="ghost" size="sm" onClick={() => setPosition(start)}>
             Reset
           </Button>
         )}

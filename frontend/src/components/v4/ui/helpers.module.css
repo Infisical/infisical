@@ -24,7 +24,7 @@
   padding: 0 var(--v4-space-4);
   align-items: center;
   justify-content: center;
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
   background: var(--v4-accent);
   color: var(--v4-on-accent);
 }
@@ -83,7 +83,7 @@
   color: var(--v4-ink, var(--foreground));
   background: var(--v4-surface);
   border: var(--v4-size-control-border) solid var(--v4-line);
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
 }
 .mediaSmall {
   width: 24px;
@@ -263,7 +263,7 @@
   height: var(--v4-size-badge);
   padding: 0 var(--v4-space-8);
   border: var(--v4-size-control-border) solid var(--v4-line);
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
 }
 .badge.mono {
   font-family: var(--v4-type-mono-sm-font-family);
@@ -398,7 +398,7 @@
   max-width: 100%;
 }
 .toast {
-  border-radius: calc(var(--v4-radius-card) * var(--corners));
+  border-radius: 0;
   display: flex;
   align-items: flex-start;
   gap: var(--v4-space-8);
@@ -428,7 +428,7 @@
   margin-block: calc((var(--v4-toast-line) - var(--v4-action-height)) / 2);
 }
 .avatarShape {
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
 }
 .avatarShape::after {
   content: "";
@@ -457,7 +457,7 @@
   margin-inline-start: calc(-1 * var(--v4-space-4));
 }
 .avatarCount {
-  border-radius: calc(var(--v4-radius-control) * var(--corners));
+  border-radius: 0;
   background: var(--v4-tint);
   color: var(--v4-muted);
   box-shadow: 0 0 0 var(--v4-size-focus-ring) var(--v4-surface);
@@ -474,7 +474,7 @@
   height: var(--v4-space-8);
   box-shadow: 0 0 0 var(--v4-size-focus-ring) var(--v4-surface);
   background: var(--v4-faint);
-  border-radius: calc(var(--v4-radius-xs) * var(--corners));
+  border-radius: 0;
 }
 
 .fieldLegend {
@@ -518,7 +518,7 @@
   width: 100%;
   grid-template-columns: minmax(0, 1fr);
   border: 1px solid var(--v4-line);
-  border-radius: calc(var(--v4-radius-card) * var(--corners));
+  border-radius: 0;
   padding: var(--v4-space-12);
   gap: var(--v4-space-4) var(--v4-space-8);
   overflow-wrap: anywhere;

@@ -14,7 +14,7 @@ export const accessListDefinition = {
   referenceNames: ["AccessList"],
   behavior: [
     "A toolbar above the list says how many have access and offers Add member.",
-    "Members are link rows in a framed List with selection, an Avatar, the role as a Badge, how they got access, last use and a row menu.",
+    "Members are link rows in a framed List with selection, the member's name as text, the role as a Badge, how they got access, last use and a row menu.",
     "Selecting rows raises a contained FloatingActionBar with Revoke access. The owner cannot be selected and its menu is disabled.",
     "After a revoke, a status line in the list footer says how many lost access and Undo restores them."
   ],

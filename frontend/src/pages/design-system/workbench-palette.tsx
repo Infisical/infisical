@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Palette, SquareRoundCorner } from "lucide-react";
+import { Palette } from "lucide-react";
 
 import { componentCatalog } from "@app/components/v4/catalog";
 import required from "@app/components/v4/required-capabilities.json";
@@ -10,6 +10,7 @@ import {
   type CommandMenuItemKind
 } from "@app/components/v4/ui/command-menu";
 import { type IconName } from "@app/components/v4/ui/icon";
+import { useAppShell } from "@app/components/v4/ui/top-bar";
 
 import { useAccentPanel } from "./accent-panel";
 
@@ -17,7 +18,6 @@ export type PaletteControls = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   toggleTheme: () => void;
-  toggleCorners: () => void;
   groups: readonly {
     title: string;
     icon: IconName;
@@ -39,14 +39,9 @@ const goTo = (page: string, example?: string) => {
   window.location.hash = example ? `#${page}/${example}` : `#${page}`;
 };
 
-export const WorkbenchPalette = ({
-  open,
-  onOpenChange,
-  toggleTheme,
-  toggleCorners,
-  groups
-}: PaletteControls) => {
+export const WorkbenchPalette = ({ open, onOpenChange, toggleTheme, groups }: PaletteControls) => {
   const accent = useAccentPanel();
+  const shell = useAppShell();
   const [recentIds, setRecentIds] = useState<string[]>(() => {
     try {
       return JSON.parse(window.localStorage.getItem(RECENT_KEY) ?? "[]") as string[];
@@ -114,11 +109,12 @@ export const WorkbenchPalette = ({
       onSelect: toggleTheme
     },
     {
-      id: "action:corners",
-      label: "Toggle corners (square or soft)",
-      icon: SquareRoundCorner,
+      id: "action:sidebar",
+      label: "Toggle sidebar",
+      icon: "sidebar",
       kind: "action",
-      onSelect: toggleCorners
+      shortcut: "mod+B",
+      onSelect: () => shell?.toggleNavigation()
     },
     {
       id: "action:accent",

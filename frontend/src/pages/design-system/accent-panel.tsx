@@ -141,7 +141,11 @@ const persist = (choice: AccentChoice | null) => {
   window.history.replaceState(window.history.state, "", url);
 };
 
-const AccentPanelContext = createContext<{ open: () => void; choice: AccentChoice } | null>(null);
+const AccentPanelContext = createContext<{
+  open: () => void;
+  select: (choice: AccentChoice) => void;
+  choice: AccentChoice;
+} | null>(null);
 
 export const useAccentPanel = () => useContext(AccentPanelContext);
 
@@ -206,7 +210,7 @@ export const AccentPanelProvider = ({ children }: { children: ReactNode }) => {
   }, [choice]);
   const css = isCanonical(choice) ? "" : overrideCss(choice);
   const custom = normalizeHex(draft);
-  const value = useMemo(() => ({ open: () => setOpen(true), choice }), [choice]);
+  const value = useMemo(() => ({ open: () => setOpen(true), select: setChoice, choice }), [choice]);
   return (
     <AccentPanelContext value={value}>
       {css && <style data-accent-override>{css}</style>}

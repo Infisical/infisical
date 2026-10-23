@@ -14,9 +14,9 @@ Owner: cover.
 
 When the cover art changes.
 
-Do: Draw blocks from color, radius and space tokens so theme and corner choices carry through.
+Do: Draw square blocks from color and space tokens so theme changes carry through.
 
-Avoid: Hard-code colors or corner radii in the SVG.
+Avoid: Hard-code colors or round the corners in the SVG.
 
 Why: The cover is the system's own sample and must follow its settings.
 
@@ -48,7 +48,7 @@ Exports: Cover. Source TypeScript defines the API.
 ## Behavior
 
 - The cover keeps a 960 by 288 ratio and scales its type with its own width.
-- The art is an ink slab, an accent square and a control band with a grid of dots, all filled from color tokens and rounded with the corner tokens, so it follows theme and corner changes.
+- The art is an ink slab, an accent square and a control band with a grid of dots, all filled from color tokens with square corners, so it follows theme changes.
 
 ## Accessibility
 

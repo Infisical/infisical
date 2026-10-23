@@ -5,75 +5,35 @@
       "id": "access-list",
       "name": "AccessList",
       "kind": "pattern",
-      "exports": [
-        "AccessList"
-      ],
-      "variants": [
-        "owner locked",
-        "multiple selection",
-        "bulk bar",
-        "revoked with undo",
-        "empty"
-      ],
+      "exports": ["AccessList"],
+      "variants": ["owner locked", "multiple selection", "bulk bar", "revoked with undo", "empty"],
       "behavior": "Framed List of member link rows with selection; contained FloatingActionBar revokes; owner unselectable",
-      "acceptance": [
-        "Owner never selected",
-        "Undo restores",
-        "Roles in words"
-      ]
+      "acceptance": ["Owner never selected", "Undo restores", "Roles in words"]
     },
     {
       "id": "accordion",
       "name": "Accordion",
       "kind": "component",
       "exports": [],
-      "variants": [
-        "single/multiple",
-        "collapsible",
-        "disabled",
-        "open/closed"
-      ],
+      "variants": ["single/multiple", "collapsible", "disabled", "open/closed"],
       "behavior": "Radix accordion semantics, oriented arrow navigation, trigger/content relationships, reduced motion height, preserve optional mounted form state",
-      "acceptance": [
-        "Keyboard Home/End/arrows",
-        "Disabled skipped",
-        "Closed content unfocusable"
-      ]
+      "acceptance": ["Keyboard Home/End/arrows", "Disabled skipped", "Closed content unfocusable"]
     },
     {
       "id": "activity-log",
       "name": "ActivityLog",
       "kind": "pattern",
-      "exports": [
-        "ActivityLog"
-      ],
-      "variants": [
-        "day sections",
-        "machine and agent badges",
-        "loading more",
-        "all loaded"
-      ],
+      "exports": ["ActivityLog"],
+      "variants": ["day sections", "machine and agent badges", "loading more", "all loaded"],
       "behavior": "Plain small List with day sections and load more",
-      "acceptance": [
-        "Existing rows stay while loading",
-        "Footer counts events"
-      ]
+      "acceptance": ["Existing rows stay while loading", "Footer counts events"]
     },
     {
       "id": "alert",
       "name": "Alert",
       "kind": "component",
-      "exports": [
-        "Alert",
-        "Banner"
-      ],
-      "variants": [
-        "info",
-        "ok",
-        "warn",
-        "bad",
-        "Banner"
-      ],
+      "exports": ["Alert", "Banner"],
+      "variants": ["info", "ok", "warn", "bad", "Banner"],
       "behavior": "Dismissible or persistent inline concern; error uses alert and other status uses polite announcement; Banner is standing condition",
       "acceptance": [
         "Tone includes words and icon",
@@ -85,16 +45,8 @@
       "id": "alert-dialog",
       "name": "AlertDialog",
       "kind": "component",
-      "exports": [
-        "AlertDialog"
-      ],
-      "variants": [
-        "destructive",
-        "neutral",
-        "typed confirmation",
-        "open",
-        "closed"
-      ],
+      "exports": ["AlertDialog"],
+      "variants": ["destructive", "neutral", "typed confirmation", "open", "closed"],
       "behavior": "Safe initial focus; exact confirmText gates destructive action; Escape and Cancel close; backdrop does not close; async pending/failure must preserve safe focus",
       "acceptance": [
         "Typing mismatch blocks confirm",
@@ -107,16 +59,8 @@
       "id": "animated-collapse",
       "name": "AnimatedCollapse",
       "kind": "component",
-      "exports": [
-        "AnimatedCollapse"
-      ],
-      "variants": [
-        "open",
-        "closed",
-        "lazy",
-        "initially open",
-        "reduced motion"
-      ],
+      "exports": ["AnimatedCollapse"],
+      "variants": ["open", "closed", "lazy", "initially open", "reduced motion"],
       "behavior": "200ms grid-row height/fade after user choice; no first-paint animation; lazy mounts once; closed content leaves keyboard and accessibility tree; open overflow never clips portals",
       "acceptance": [
         "Closed child cannot receive focus",
@@ -129,36 +73,17 @@
       "id": "announcements",
       "name": "Announcements",
       "kind": "composite",
-      "exports": [
-        "Announcements"
-      ],
-      "variants": [
-        "cards",
-        "media",
-        "action",
-        "dots",
-        "last card"
-      ],
+      "exports": ["Announcements"],
+      "variants": ["cards", "media", "action", "dots", "last card"],
       "behavior": "480px dialog of cards that slide in the direction of travel; Left and Right wrap; Next becomes Done; onSeen per card",
-      "acceptance": [
-        "Focus starts on Next",
-        "Position announced",
-        "Media inert"
-      ]
+      "acceptance": ["Focus starts on Next", "Position announced", "Media inert"]
     },
     {
       "id": "approval-queue",
       "name": "ApprovalQueue",
       "kind": "pattern",
-      "exports": [
-        "ApprovalQueue"
-      ],
-      "variants": [
-        "new",
-        "pending",
-        "resolved",
-        "failed"
-      ],
+      "exports": ["ApprovalQueue"],
+      "variants": ["new", "pending", "resolved", "failed"],
       "behavior": "Framed List with actions below each request; requests change state in place",
       "acceptance": [
         "Resolved rows stay with Undo",
@@ -170,11 +95,7 @@
       "id": "avatar",
       "name": "Avatar",
       "kind": "component",
-      "exports": [
-        "Avatar",
-        "AvatarGroup",
-        "Identity"
-      ],
+      "exports": ["Avatar", "AvatarGroup", "Identity"],
       "variants": [
         "person",
         "org",
@@ -197,10 +118,7 @@
       "id": "badge",
       "name": "Badge",
       "kind": "component",
-      "exports": [
-        "Badge",
-        "Count"
-      ],
+      "exports": ["Badge", "Count"],
       "variants": [
         "outline",
         "soft",
@@ -226,9 +144,7 @@
       "id": "breadcrumb",
       "name": "Breadcrumb",
       "kind": "component",
-      "exports": [
-        "Breadcrumb"
-      ],
+      "exports": ["Breadcrumb"],
       "variants": [
         "default",
         "eyebrow",
@@ -250,9 +166,7 @@
       "id": "button",
       "name": "Button",
       "kind": "component",
-      "exports": [
-        "Button"
-      ],
+      "exports": ["Button"],
       "variants": [
         "primary",
         "secondary",
@@ -281,16 +195,8 @@
       "id": "button-group",
       "name": "ButtonGroup",
       "kind": "component",
-      "exports": [
-        "ButtonGroup",
-        "ToggleGroup"
-      ],
-      "variants": [
-        "attached",
-        "spaced",
-        "toolbar",
-        "split"
-      ],
+      "exports": ["ButtonGroup", "ToggleGroup"],
+      "variants": ["attached", "spaced", "toolbar", "split"],
       "behavior": "Related action geometry; toolbar accessible label; split primary and dropdown; safe action before primary in footer; segmented choice belongs Tabs",
       "acceptance": [
         "Attached borders do not double",
@@ -323,12 +229,7 @@
       "id": "card",
       "name": "Card",
       "kind": "component",
-      "exports": [
-        "Card",
-        "Tile",
-        "Media",
-        "DataList"
-      ],
+      "exports": ["Card", "Tile", "Media", "DataList"],
       "variants": [
         "framed",
         "plain",
@@ -368,16 +269,8 @@
       "id": "checkbox",
       "name": "Checkbox",
       "kind": "component",
-      "exports": [
-        "Checkbox"
-      ],
-      "variants": [
-        "off",
-        "on",
-        "mixed",
-        "disabled",
-        "label/description"
-      ],
+      "exports": ["Checkbox"],
+      "variants": ["off", "on", "mixed", "disabled", "label/description"],
       "behavior": "Controlled or default checked; mixed parent click selects all; native/Radix checkbox semantics and form label wiring",
       "acceptance": [
         "Space toggles",
@@ -390,9 +283,7 @@
       "id": "code",
       "name": "Code",
       "kind": "component",
-      "exports": [
-        "Code"
-      ],
+      "exports": ["Code"],
       "variants": [
         "inline",
         "block",
@@ -415,9 +306,7 @@
       "id": "code-block",
       "name": "CodeBlock",
       "kind": "component",
-      "exports": [
-        "CodeBlock"
-      ],
+      "exports": ["CodeBlock"],
       "variants": [
         "command wrap",
         "file scroll",
@@ -439,25 +328,15 @@
       "name": "Collapsible",
       "kind": "component",
       "exports": [],
-      "variants": [
-        "controlled/default",
-        "open/closed",
-        "disabled"
-      ],
+      "variants": ["controlled/default", "open/closed", "disabled"],
       "behavior": "Radix disclosure trigger/content semantics; complement AnimatedCollapse visual utility without duplicate ownership",
-      "acceptance": [
-        "Enter/Space",
-        "Expanded controls id",
-        "Closed child unfocusable"
-      ]
+      "acceptance": ["Enter/Space", "Expanded controls id", "Closed child unfocusable"]
     },
     {
       "id": "combobox",
       "name": "Combobox",
       "kind": "component",
-      "exports": [
-        "Combobox"
-      ],
+      "exports": ["Combobox"],
       "variants": [
         "single",
         "multiple",
@@ -480,9 +359,7 @@
       "id": "command-menu",
       "name": "CommandMenu",
       "kind": "composite",
-      "exports": [
-        "CommandMenu"
-      ],
+      "exports": ["CommandMenu"],
       "variants": [
         "dialog",
         "inline",
@@ -528,27 +405,16 @@
       "id": "cover",
       "name": "Cover",
       "kind": "component",
-      "exports": [
-        "Cover"
-      ],
-      "variants": [
-        "light",
-        "dark",
-        "corners"
-      ],
-      "behavior": "Brand cover from color, radius and space tokens at a fixed ratio",
-      "acceptance": [
-        "Art follows theme",
-        "Art hidden from assistive technology"
-      ]
+      "exports": ["Cover"],
+      "variants": ["light", "dark"],
+      "behavior": "Brand cover from color and space tokens at a fixed ratio",
+      "acceptance": ["Art follows theme", "Art hidden from assistive technology"]
     },
     {
       "id": "data-grid",
       "name": "DataGrid",
       "kind": "component",
-      "exports": [
-        "DataGrid"
-      ],
+      "exports": ["DataGrid"],
       "variants": [
         "editable table",
         "read-only result",
@@ -579,9 +445,7 @@
       "id": "dialog",
       "name": "Dialog",
       "kind": "component",
-      "exports": [
-        "Dialog"
-      ],
+      "exports": ["Dialog"],
       "variants": [
         "open",
         "closed",
@@ -602,9 +466,7 @@
       "id": "dropdown-menu",
       "name": "DropdownMenu",
       "kind": "component",
-      "exports": [
-        "DropdownMenu"
-      ],
+      "exports": ["DropdownMenu"],
       "variants": [
         "action",
         "label/separator",
@@ -629,13 +491,8 @@
       "id": "empty-state",
       "name": "EmptyState",
       "kind": "component",
-      "exports": [
-        "EmptyState"
-      ],
-      "variants": [
-        "default first use",
-        "compact no results"
-      ],
+      "exports": ["EmptyState"],
+      "variants": ["default first use", "compact no results"],
       "behavior": "Title names missing object/place; fastest next step; compact clear-filter recovery; neutral icon tile and text; no generic No data",
       "acceptance": [
         "Action operable and named",
@@ -647,17 +504,8 @@
       "id": "field",
       "name": "Field",
       "kind": "component",
-      "exports": [
-        "Field"
-      ],
-      "variants": [
-        "vertical",
-        "horizontal",
-        "group",
-        "description",
-        "error",
-        "optional"
-      ],
+      "exports": ["Field"],
+      "variants": ["vertical", "horizontal", "group", "description", "error", "optional"],
       "behavior": "One control with id/label/description/error wiring; group uses semantic legend; error replaces help and marks invalid; validate blur or submit",
       "acceptance": [
         "Unique stable ids",
@@ -671,9 +519,7 @@
       "id": "file-tree",
       "name": "FileTree",
       "kind": "component",
-      "exports": [
-        "FileTree"
-      ],
+      "exports": ["FileTree"],
       "variants": [
         "files/folders/all/none selection",
         "foldersOnly",
@@ -698,33 +544,17 @@
       "id": "floating-action-bar",
       "name": "FloatingActionBar",
       "kind": "composite",
-      "exports": [
-        "FloatingActionBar"
-      ],
-      "variants": [
-        "fixed",
-        "contained",
-        "select all",
-        "more",
-        "busy action"
-      ],
+      "exports": ["FloatingActionBar"],
+      "variants": ["fixed", "contained", "select all", "more", "busy action"],
       "behavior": "Shows while count above zero; toolbar arrows; Escape clears; focus returns when it leaves",
-      "acceptance": [
-        "Count announced",
-        "Escape clears",
-        "Danger action last"
-      ]
+      "acceptance": ["Count announced", "Escape clears", "Danger action last"]
     },
     {
       "id": "hover-card",
       "name": "HoverCard",
       "kind": "component",
       "exports": [],
-      "variants": [
-        "open/closed",
-        "side/align",
-        "delay"
-      ],
+      "variants": ["open/closed", "side/align", "delay"],
       "behavior": "Supplementary linked preview, keyboard/focus accessibility; no essential controls available only on hover",
       "acceptance": [
         "Focus-trigger preview",
@@ -737,15 +567,8 @@
       "id": "icon",
       "name": "Icon",
       "kind": "component",
-      "exports": [
-        "Icon"
-      ],
-      "variants": [
-        "named line icon",
-        "decorative",
-        "semantic",
-        "size/stroke"
-      ],
+      "exports": ["Icon"],
+      "variants": ["named line icon", "decorative", "semantic", "size/stroke"],
       "behavior": "51 source path icons at 24 grid, 1.7 stroke, currentColor; controls16/navigation18/small14; semantic label only when standalone; checks2.6",
       "acceptance": [
         "All 51 names resolve",
@@ -758,11 +581,7 @@
       "id": "input",
       "name": "Input",
       "kind": "component",
-      "exports": [
-        "Input",
-        "SecretInput",
-        "CopyButton"
-      ],
+      "exports": ["Input", "SecretInput", "CopyButton"],
       "variants": [
         "sm/md/lg",
         "plain/mono",
@@ -788,9 +607,7 @@
       "id": "input-group",
       "name": "InputGroup",
       "kind": "component",
-      "exports": [
-        "InputGroup"
-      ],
+      "exports": ["InputGroup"],
       "variants": [
         "prefix",
         "suffix",
@@ -815,29 +632,15 @@
       "name": "InputOtp",
       "kind": "component",
       "exports": [],
-      "variants": [
-        "slots",
-        "groups/separators",
-        "focused caret",
-        "disabled",
-        "invalid",
-        "paste"
-      ],
+      "variants": ["slots", "groups/separators", "focused caret", "disabled", "invalid", "paste"],
       "behavior": "input-otp one-time-code input with actual input semantics, paste/autofill, safe char filtering",
-      "acceptance": [
-        "Paste entire value",
-        "IME/autofill",
-        "Arrow/backspace",
-        "Field error linkage"
-      ]
+      "acceptance": ["Paste entire value", "IME/autofill", "Arrow/backspace", "Field error linkage"]
     },
     {
       "id": "item",
       "name": "Item",
       "kind": "component",
-      "exports": [
-        "Item"
-      ],
+      "exports": ["Item"],
       "variants": [
         "md",
         "sm",
@@ -863,9 +666,7 @@
       "id": "json",
       "name": "Json",
       "kind": "component",
-      "exports": [
-        "Json"
-      ],
+      "exports": ["Json"],
       "variants": [
         "bare",
         "CodeBlock",
@@ -888,9 +689,7 @@
       "id": "kbd",
       "name": "Kbd",
       "kind": "component",
-      "exports": [
-        "Kbd"
-      ],
+      "exports": ["Kbd"],
       "variants": [
         "sm/md",
         "platform auto/mac/other",
@@ -911,26 +710,15 @@
       "name": "Label",
       "kind": "component",
       "exports": [],
-      "variants": [
-        "native label",
-        "disabled sibling"
-      ],
+      "variants": ["native label", "disabled sibling"],
       "behavior": "Radix label associates exact native control id; Field remains preferred composed contract",
-      "acceptance": [
-        "Click label focuses control",
-        "Unique ids",
-        "Accessible name exact"
-      ]
+      "acceptance": ["Click label focuses control", "Unique ids", "Accessible name exact"]
     },
     {
       "id": "list",
       "name": "List",
       "kind": "component",
-      "exports": [
-        "List",
-        "ListSection",
-        "ItemGroup"
-      ],
+      "exports": ["List", "ListSection", "ItemGroup"],
       "variants": [
         "framed/plain/bare",
         "md/sm",
@@ -956,15 +744,8 @@
       "id": "loader",
       "name": "Loader",
       "kind": "component",
-      "exports": [
-        "Loader"
-      ],
-      "variants": [
-        "base",
-        "page",
-        "delay",
-        "loaded"
-      ],
+      "exports": ["Loader"],
+      "variants": ["base", "page", "delay", "loaded"],
       "behavior": "Region wrapper around a labeled Spinner; renders children when not loading",
       "acceptance": [
         "One status announcement",
@@ -976,17 +757,8 @@
       "id": "middle-truncate",
       "name": "MiddleTruncate",
       "kind": "component",
-      "exports": [
-        "MiddleTruncate"
-      ],
-      "variants": [
-        "balanced",
-        "keepEnd",
-        "mono",
-        "title/no title",
-        "resizing",
-        "font load"
-      ],
+      "exports": ["MiddleTruncate"],
+      "variants": ["balanced", "keepEnd", "mono", "title/no title", "resizing", "font load"],
       "behavior": "Binary-fit text preserving suffix; remeasure on width/font change; full text for screen reader and copy; no secret values",
       "acceptance": [
         "Resize/font refit",
@@ -1000,9 +772,7 @@
       "id": "multi-select",
       "name": "MultiSelect",
       "kind": "component",
-      "exports": [
-        "MultiSelect"
-      ],
+      "exports": ["MultiSelect"],
       "variants": [
         "multiple/single",
         "default/custom/renderValue trigger",
@@ -1026,10 +796,7 @@
       "id": "multi-step",
       "name": "MultiStep",
       "kind": "composite",
-      "exports": [
-        "MultiStep",
-        "Steps"
-      ],
+      "exports": ["MultiStep", "Steps"],
       "variants": [
         "dialog",
         "sheet",
@@ -1050,38 +817,17 @@
       "id": "page-header",
       "name": "PageHeader",
       "kind": "pattern",
-      "exports": [
-        "PageHeader"
-      ],
-      "variants": [
-        "lg",
-        "md",
-        "breadcrumb",
-        "badges",
-        "actions",
-        "tabs",
-        "media"
-      ],
+      "exports": ["PageHeader"],
+      "variants": ["lg", "md", "breadcrumb", "badges", "actions", "tabs", "media"],
       "behavior": "Page-level trail of ancestors above one h1; lede, actions beside the title that wrap under it, tabs below",
-      "acceptance": [
-        "One h1",
-        "No crumb repeats the title",
-        "Actions wrap instead of clipping"
-      ]
+      "acceptance": ["One h1", "No crumb repeats the title", "Actions wrap instead of clipping"]
     },
     {
       "id": "pagination",
       "name": "Pagination",
       "kind": "component",
-      "exports": [
-        "Pagination"
-      ],
-      "variants": [
-        "numbered",
-        "compact",
-        "more",
-        "page-size"
-      ],
+      "exports": ["Pagination"],
+      "variants": ["numbered", "compact", "more", "page-size"],
       "behavior": "Total/range left, controls right; numbered gaps, ink current square; compact PageNofM; load-more live count; controlled/default page",
       "acceptance": [
         "0/1 page boundaries",
@@ -1095,9 +841,7 @@
       "id": "popover",
       "name": "Popover",
       "kind": "component",
-      "exports": [
-        "Popover"
-      ],
+      "exports": ["Popover"],
       "variants": [
         "controlled/uncontrolled",
         "top/bottom",
@@ -1118,16 +862,8 @@
       "id": "progress",
       "name": "Progress",
       "kind": "component",
-      "exports": [
-        "Progress",
-        "ProgressSteps"
-      ],
-      "variants": [
-        "determinate",
-        "indeterminate",
-        "ink/warn/bad/auto",
-        "ProgressSteps"
-      ],
+      "exports": ["Progress", "ProgressSteps"],
+      "variants": ["determinate", "indeterminate", "ink/warn/bad/auto", "ProgressSteps"],
       "behavior": "Real counts preferred;6px track; auto warn80%,bad100%; over-limit text; known current sequence uses hatched steps",
       "acceptance": [
         "0/max/over bounds",
@@ -1141,12 +877,7 @@
       "name": "RadioGroup",
       "kind": "component",
       "exports": [],
-      "variants": [
-        "controlled/default",
-        "orientation",
-        "disabled",
-        "invalid"
-      ],
+      "variants": ["controlled/default", "orientation", "disabled", "invalid"],
       "behavior": "Radix mutually exclusive selection and native form semantics",
       "acceptance": [
         "Arrows select by orientation",
@@ -1160,10 +891,7 @@
       "name": "ScrollArea",
       "kind": "component",
       "exports": [],
-      "variants": [
-        "vertical/horizontal",
-        "scrollbar/thumb/corner"
-      ],
+      "variants": ["vertical/horizontal", "scrollbar/thumb/corner"],
       "behavior": "Radix scrolling content without concealing keyboard focus; no duplicated scroll containers",
       "acceptance": [
         "Keyboard scroll",
@@ -1176,9 +904,7 @@
       "id": "select",
       "name": "Select",
       "kind": "component",
-      "exports": [
-        "Select"
-      ],
+      "exports": ["Select"],
       "variants": [
         "placeholder",
         "chosen",
@@ -1231,14 +957,8 @@
       "id": "separator",
       "name": "Separator",
       "kind": "component",
-      "exports": [
-        "Separator"
-      ],
-      "variants": [
-        "horizontal/vertical",
-        "soft",
-        "label start/center"
-      ],
+      "exports": ["Separator"],
+      "variants": ["horizontal/vertical", "soft", "label start/center"],
       "behavior": "1px rule or labelled time break; semantic orientation unless decorative; do not double header border",
       "acceptance": [
         "Decorative hidden",
@@ -1250,40 +970,17 @@
       "id": "settings-card",
       "name": "SettingsCard",
       "kind": "composite",
-      "exports": [
-        "SettingsCard"
-      ],
-      "variants": [
-        "default",
-        "dirty",
-        "saving",
-        "saved",
-        "failed",
-        "locked",
-        "loading",
-        "danger"
-      ],
+      "exports": ["SettingsCard"],
+      "variants": ["default", "dirty", "saving", "saved", "failed", "locked", "loading", "danger"],
       "behavior": "Fields in a form with a footer status and Save; rejection keeps values and shows the message",
-      "acceptance": [
-        "Save disabled until dirty",
-        "Enter saves",
-        "Locked shows the reason"
-      ]
+      "acceptance": ["Save disabled until dirty", "Enter saves", "Locked shows the reason"]
     },
     {
       "id": "sheet",
       "name": "Sheet",
       "kind": "component",
-      "exports": [
-        "Sheet",
-        "SheetBody"
-      ],
-      "variants": [
-        "open/closed",
-        "mono title",
-        "meta/actions",
-        "long body/footer"
-      ],
+      "exports": ["Sheet", "SheetBody"],
+      "variants": ["open/closed", "mono title", "meta/actions", "long body/footer"],
       "behavior": "440px right detail/edit overlay; list remains visible; own scrolling body; danger entry left/safe+save right; trap/restore and named dialog. SheetBody forwards native div props/ref and owns the shared inset and bounded scroll region; arbitrary Content children remain supported.",
       "acceptance": [
         "Footer visible long body",
@@ -1297,9 +994,7 @@
       "id": "sidebar",
       "name": "Sidebar",
       "kind": "composite",
-      "exports": [
-        "Sidebar"
-      ],
+      "exports": ["Sidebar"],
       "variants": [
         "expanded",
         "rail",
@@ -1321,15 +1016,8 @@
       "id": "skeleton",
       "name": "Skeleton",
       "kind": "component",
-      "exports": [
-        "Skeleton"
-      ],
-      "variants": [
-        "block",
-        "lines",
-        "item/table composition",
-        "reduced motion"
-      ],
+      "exports": ["Skeleton"],
+      "variants": ["block", "lines", "item/table composition", "reduced motion"],
       "behavior": "Reserve known layout with soft pulse; hide skeleton itself, label busy region; delay about300ms",
       "acceptance": [
         "Dimensions match real layout",
@@ -1343,34 +1031,16 @@
       "name": "Slider",
       "kind": "component",
       "exports": [],
-      "variants": [
-        "single/range thumbs",
-        "horizontal/vertical",
-        "disabled",
-        "step/min/max"
-      ],
+      "variants": ["single/range thumbs", "horizontal/vertical", "disabled", "step/min/max"],
       "behavior": "Radix slider with labelled individual thumbs, value constraints, keyboard increment and page/HomeEnd",
-      "acceptance": [
-        "Two thumbs cannot cross",
-        "Step precision",
-        "Arrow/HomeEnd",
-        "Value names"
-      ]
+      "acceptance": ["Two thumbs cannot cross", "Step precision", "Arrow/HomeEnd", "Value names"]
     },
     {
       "id": "snippet",
       "name": "Snippet",
       "kind": "component",
-      "exports": [
-        "Snippet"
-      ],
-      "variants": [
-        "prompt/no prompt",
-        "sm/md",
-        "copy/no copy",
-        "long value",
-        "Field-labelled"
-      ],
+      "exports": ["Snippet"],
+      "variants": ["prompt/no prompt", "sm/md", "copy/no copy", "long value", "Field-labelled"],
       "behavior": "Read-only one-line mono field; prompt excluded copy; ellipsis unfocused, caret scroll focused; clipboard success only after resolved write; no secret values. Defaultsm32 and explicit md36 with 24/28 nested copy actions.",
       "acceptance": [
         "Exact copy excluding prompt",
@@ -1384,9 +1054,7 @@
       "id": "spinner",
       "name": "Spinner",
       "kind": "component",
-      "exports": [
-        "Spinner"
-      ],
+      "exports": ["Spinner"],
       "variants": [
         "inline16x8",
         "base47x23",
@@ -1408,16 +1076,8 @@
       "id": "switch",
       "name": "Switch",
       "kind": "component",
-      "exports": [
-        "Switch"
-      ],
-      "variants": [
-        "off/on",
-        "sm/md",
-        "inline/row",
-        "description",
-        "disabled"
-      ],
+      "exports": ["Switch"],
+      "variants": ["off/on", "sm/md", "inline/row", "description", "disabled"],
       "behavior": "Instant setting, not submit checkbox; on ink track/lime knob light, lime track/black knob dark; native/Radix switch semantics; no Save with instant switch",
       "acceptance": [
         "Space toggles",
@@ -1430,10 +1090,7 @@
       "id": "table",
       "name": "Table",
       "kind": "component",
-      "exports": [
-        "Table",
-        "EnvMark"
-      ],
+      "exports": ["Table", "EnvMark"],
       "variants": [
         "basic/striped/bordered",
         "sizing/overflow",
@@ -1461,9 +1118,7 @@
       "id": "tabs",
       "name": "Tabs",
       "kind": "component",
-      "exports": [
-        "Tabs"
-      ],
+      "exports": ["Tabs"],
       "variants": [
         "underline/segmented",
         "horizontal/vertical",
@@ -1486,13 +1141,7 @@
       "name": "Textarea",
       "kind": "component",
       "exports": [],
-      "variants": [
-        "native",
-        "disabled",
-        "invalid",
-        "readonly",
-        "resize"
-      ],
+      "variants": ["native", "disabled", "invalid", "readonly", "resize"],
       "behavior": "Native multiline control with Field wiring and correct textarea ref, separate from Input shortcut",
       "acceptance": [
         "Newline exact",
@@ -1505,10 +1154,7 @@
       "id": "toast",
       "name": "Toast",
       "kind": "component",
-      "exports": [
-        "Toast",
-        "ToastStack"
-      ],
+      "exports": ["Toast", "ToastStack"],
       "variants": [
         "neutral/ok/bad",
         "loading",
@@ -1531,19 +1177,9 @@
       "name": "Toggle",
       "kind": "component",
       "exports": [],
-      "variants": [
-        "default/outline",
-        "sm/default/md/lg",
-        "pressed",
-        "disabled"
-      ],
+      "variants": ["default/outline", "sm/default/md/lg", "pressed", "disabled"],
       "behavior": "Radix toggle is aria-pressed action, not Tabs or Checkbox replacement. Default/sm32 aliases, md36 and lg40.",
-      "acceptance": [
-        "Space/Enter",
-        "Controlled pressed",
-        "Native button type",
-        "Disabled inert"
-      ]
+      "acceptance": ["Space/Enter", "Controlled pressed", "Native button type", "Disabled inert"]
     },
     {
       "id": "toggle-group",
@@ -1569,16 +1205,8 @@
       "id": "tooltip",
       "name": "Tooltip",
       "kind": "component",
-      "exports": [
-        "Tooltip"
-      ],
-      "variants": [
-        "top/bottom/left/right",
-        "wrap",
-        "shortcut",
-        "hover/focus",
-        "delay"
-      ],
+      "exports": ["Tooltip"],
+      "variants": ["top/bottom/left/right", "wrap", "shortcut", "hover/focus", "delay"],
       "behavior": "Hover300ms/focus immediate; noninteractive label; portal avoids clipping and flips; one focusable child; disabled reason outside disabled trigger",
       "acceptance": [
         "Focus shows/Escape hides",
@@ -1592,18 +1220,8 @@
       "id": "top-bar",
       "name": "TopBar",
       "kind": "composite",
-      "exports": [
-        "TopBar",
-        "AppShell",
-        "AppInset",
-        "PageGutter"
-      ],
-      "variants": [
-        "beside sidebar",
-        "standalone",
-        "switcher crumbs",
-        "tools"
-      ],
+      "exports": ["TopBar", "AppShell", "AppInset", "PageGutter"],
+      "variants": ["beside sidebar", "standalone", "switcher crumbs", "tools"],
       "behavior": "Product-level trail of switcher crumbs rooted at the organization name; shared page gutter so the root crumb aligns with the content edge; chevron is the only highlighted element",
       "acceptance": [
         "Root crumb text on the content edge at every width",

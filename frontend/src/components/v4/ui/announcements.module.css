@@ -80,7 +80,7 @@
   height: 6px;
   padding: 0;
   border: 0;
-  border-radius: calc(var(--v4-radius-xs) * var(--corners));
+  border-radius: 0;
   background: var(--v4-line);
   cursor: pointer;
   transition-property: width, background-color;

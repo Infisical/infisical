@@ -32,13 +32,13 @@ Owner: sidebar.
 
 When the account button shows who is signed in and which organization they are in.
 
-Do: Show the person's avatar with their name over the organization's name, and list organizations by name and plan.
+Do: Show the person's name over the organization's name as text, and list organizations by name and plan.
 
-Avoid: Render an organization avatar, initials tile or icon in the button, the switcher rows or the crumb.
+Avoid: Render an avatar, initials tile or icon for the person or the organization in the button, the switcher rows or the crumb.
 
-Why: Organizations have no avatar in the product, so a generated tile would be a mark nobody chose.
+Why: The product has no avatars yet, so a generated tile would be a mark nobody chose.
 
-Checked by: review only. Look for: Open the account popover and confirm no organization row or the button renders an avatar for the organization.
+Checked by: review only. Look for: Open the account popover and confirm neither the button nor any row renders an avatar or initials tile.
 
 Source evidence:
 - src/components/v4/ui/sidebar.tsx
@@ -84,14 +84,15 @@ Exports: Sidebar. Source TypeScript defines the API.
 
 ## Behavior
 
-- The tools row holds the collapse toggle, then search and invite: 36px icon buttons with 18px icons and tooltips.
+- The tools row holds the collapse toggle, then search and invite: 36px icon buttons with 18px icons and tooltips. Inside an AppShell the collapse toggle's tooltip shows its Mod+B chord as a Kbd.
+- Mod+B (Cmd+B on Mac, Ctrl+B elsewhere) toggles the sidebar inside an AppShell: it collapses or expands the rail on desktop and opens or closes the Sheet below size-shell-collapse. The shell that holds focus, or that took the last pointer press, owns the chord, so a nested composition shell toggles only itself. Inputs, textareas, selects, contenteditable regions and code editors keep the chord.
 - With spaces, a segmented switch under the tools shows one space's sections at a time. The space holding the current page shows by default, a page opened from elsewhere brings its space with it, and a hidden space that holds a count shows a dot.
 - Sections stack 36px rows 1px apart. A labeled section draws its 28px eyebrow with a rule that runs to the sidebar's edge. The leading group of a scope is unlabeled: a single generic group at the top (General, or the scope's own name) adds nothing, so it renders without an eyebrow, and only later groups that name a real split (Administration) carry one.
 - An item that opens a deeper scope instead of navigating in place (Settings into the settings scope, a product or Projects into theirs) sets drillIn and shows a trailing muted chevron-right after any count, which takes ink on hover and when current. The rail drops the chevron and its tooltip reads the name followed by "opens section". The back row covers the way out.
 - A row with children opens one level of 32px pages, without icons, on a guide line under its icon. It opens by itself when it holds the current page, and while closed it shows the sum of its pages' counts.
 - The nav scrolls when it runs out of room and fades the edge where more rows are cut off.
 - Collapsing narrows the sidebar to a rail of icons over the slide timing. Labels move into tooltips, counts become dots, the space switch stacks its icons vertically, section labels become rules and a group opens its pages in a menu to the right.
-- The account button opens one Switcher: organizations with their plan, organization actions, the person's items, a theme row and the person's own row for their settings. Without user there is no account button, for hosts such as the design system workbench.
+- The account button opens one Switcher: organizations with their plan, organization actions, the person's items, a theme row, any preference rows and the person's own row for their settings. A preference row (preferences) uses the theme row's recipe: a label and a small ToggleGroup of icons or color swatches. The button shows the person's name over the organization, or meta, as text with no avatar; a host may pass media such as a product mark. Without user there is no account button, for hosts such as the design system workbench.
 - Pass scope to show a product, project or settings level instead of the top level: a back row (chevron-left and the parent's name, named Back to the parent) above that scope's sections. The back row calls onNavigate with scope.back, so the host moves up one level and passes the parent scope, or none for the top level. Spaces show only at the top level.
 - A scope change slides the rows in over duration-moderate on ease-standard, from the right going deeper and from the left going back; with reduced motion it only fades. In the rail the back row is the first icon, with a Back to tooltip.
 - A section with an icon and a label collapses in the rail to one row with that icon, which opens the section's items in a flyout, so long navigations stay short in the rail.
@@ -117,7 +118,7 @@ Exports: Sidebar. Source TypeScript defines the API.
 ## Limits
 
 - The host owns routing: rows call onNavigate or follow href, and the host passes the current id back.
-- Organizations never show an avatar or icon. The account button shows the person's avatar.
+- Organizations never show an avatar or icon, and the account button shows no avatar for the person until the product supports avatars.
 
 ## Declared example coverage
 
