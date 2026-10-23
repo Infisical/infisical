@@ -231,7 +231,7 @@ export const checkFolderMoveBlock = async (
   const honeyTokenFolderIds = folderIdsForType("honey_token");
   if (honeyTokenFolderIds.length) {
     const [honeyToken] = await honeyTokenDAL.find({ $in: { folderId: honeyTokenFolderIds } }, { limit: 1, tx });
-    if (honeyToken) return buildBlock("honey_token", honeyToken.folderId);
+    if (honeyToken?.folderId) return buildBlock("honey_token", honeyToken.folderId);
   }
 
   const rotationFolderIds = folderIdsForType("secret_rotation");
