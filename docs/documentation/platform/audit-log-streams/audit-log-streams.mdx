@@ -445,7 +445,7 @@ There is no manual "retry" or "replay" button so far, and retries aren't somethi
 
 Because streaming is best-effort with bounded retries, your durable source of truth for compliance is Infisical's own audit log storage, not the stream. To backfill events that were dropped (or that occurred while a stream was misconfigured or disabled), re-ingest them from Infisical's stored audit logs:
 
-1. **Identify the gap.** Use the failure time in a [delivery failure alert](#get-alerted-when-a-stream-starts-dropping-events), error logs (self-hosted), or the time range of the destination outage, to determine which window of events is missing from your SIEM.
+1. **Identify the gap.** Use the last confirmed delivery, error logs (self-hosted), or the time range of the destination outage to determine which window of events is missing from your SIEM. The failure time in a [delivery failure alert](#get-alerted-when-a-stream-starts-dropping-events) marks when retries ran out, not when the missing events occurred. If you use that timestamp, start the export window earlier to cover retries and queue delays.
 2. **Export the events from Infisical.** Query the missing window from Infisical's audit logs, filtered by event type, actor, project, and date range:
    - In the UI, under **Organization Settings → Audit Logs**.
    - Via the [Export Audit Logs API](/api-reference/endpoints/audit-logs/export-audit-log), which returns events in the same structure shown below and can be paginated over the affected time range.
