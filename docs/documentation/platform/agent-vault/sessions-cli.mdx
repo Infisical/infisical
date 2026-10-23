@@ -65,7 +65,7 @@ The CLI downloads the proxy's certificate at the start of each run. If the agent
 infisical agent-vault run --access-bundle <access-bundle-name> --ttl 2h --ca-fingerprint <fingerprint> -- <agent-command>
 ```
 
-Copy the fingerprint from the **Certificate Authority** column on the **Proxies** page. If you [re-enroll the proxy](/documentation/platform/agent-vault/proxies#re-enroll-a-proxy), update the fingerprint.
+Copy the fingerprint from the **Certificate Authority** column on the **Proxies** page. If you [rotate the proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxys-token), update the fingerprint.
 
 ## Step 3: Run the agent automatically
 
@@ -158,7 +158,7 @@ To run agents on many machines, give every machine the same command and point th
 
 After the agent runs, go to **Sessions** in Agent Vault and select **All Sessions**. Each run has its own session, with the machine identity's name in the **Identity** column. A session's **Status** is **Active** while the agent runs, and **Revoked** after the agent exits.
 
-If you've [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs), [view a session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made during that run.
+[View a session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made during that run.
 
 <Check>
   Your agent now runs on its own with a new session each time, and each session ends when the agent exits.

@@ -4,7 +4,7 @@ import { CalendarIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import {
   Button,
   Calendar,
-  FilterableSelect,
+  Combobox,
   IconButton,
   Input,
   Popover,
@@ -28,6 +28,7 @@ type Props = {
   onSaveView?: () => void;
   dynamicFieldOptions?: Record<string, { value: string; label: string }[]>;
   onDynamicFieldSearch?: Record<string, (query: string) => void>;
+  dynamicFieldLoading?: Record<string, boolean>;
   hiddenFieldKeys?: string[];
 };
 
@@ -105,6 +106,7 @@ const FilterRow = ({
   onRemove,
   dynamicFieldOptions: dynOpts,
   onDynamicFieldSearch,
+  dynamicFieldLoading,
   availableFields
 }: {
   rule: FilterRule;
@@ -112,6 +114,7 @@ const FilterRow = ({
   onRemove: () => void;
   dynamicFieldOptions?: Record<string, { value: string; label: string }[]>;
   onDynamicFieldSearch?: Record<string, (query: string) => void>;
+  dynamicFieldLoading?: Record<string, boolean>;
   availableFields: FilterFieldDefinition[];
 }) => {
   const fieldDef = getFieldDef(rule.field, dynOpts);
@@ -151,36 +154,31 @@ const FilterRow = ({
       }
       case "multi-select": {
         const currentValues = Array.isArray(rule.value) ? rule.value : [];
-        const selectedOptions = currentValues
-          .map((v) => {
-            const opt = options.find((o) => o.value === v);
-            return opt ? { value: opt.value, label: opt.label } : null;
-          })
-          .filter(Boolean) as { value: string; label: string }[];
+        const selectedOptions = currentValues.map(
+          (value) => options.find((option) => option.value === value) ?? { value, label: value }
+        );
 
         const serverSearch = onDynamicFieldSearch?.[rule.field];
 
         return (
-          <FilterableSelect
-            isMulti
+          <Combobox
+            aria-label={`${fieldDef.label} values`}
+            multiple
             value={selectedOptions}
-            onChange={(opts) => {
-              const selected = Array.isArray(opts) ? opts.map((o) => o.value) : [];
-              onUpdate({ ...rule, value: selected });
+            onValueChange={(opts) => {
+              onUpdate({ ...rule, value: opts.map((option) => option.value) });
             }}
             options={options}
+            getOptionValue={(option) => option.value}
+            getOptionLabel={(option) => option.label}
             placeholder="Select..."
-            className="w-full text-sm"
-            maxMenuHeight={160}
-            menuPortalTarget={document.body}
-            menuPosition="fixed"
             {...(serverSearch
               ? {
-                  filterOption: () => true,
-                  onInputChange: (value, { action }) => {
-                    if (action === "input-change") serverSearch(value);
-                  },
-                  onMenuClose: () => serverSearch("")
+                  onSearchChange: serverSearch,
+                  isLoading: dynamicFieldLoading?.[rule.field],
+                  onPopupOpenChange: (open) => {
+                    if (!open) serverSearch("");
+                  }
                 }
               : {})}
           />
@@ -292,6 +290,7 @@ export const FilterBuilder = ({
   onSaveView,
   dynamicFieldOptions,
   onDynamicFieldSearch,
+  dynamicFieldLoading,
   hiddenFieldKeys
 }: Props) => {
   const availableFields = hiddenFieldKeys?.length
@@ -360,6 +359,7 @@ export const FilterBuilder = ({
                 onRemove={() => handleRemoveRule(index)}
                 dynamicFieldOptions={dynamicFieldOptions}
                 onDynamicFieldSearch={onDynamicFieldSearch}
+                dynamicFieldLoading={dynamicFieldLoading}
                 availableFields={availableFields}
               />
             </div>

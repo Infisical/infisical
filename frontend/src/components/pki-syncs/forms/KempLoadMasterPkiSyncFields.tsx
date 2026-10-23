@@ -2,10 +2,10 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { Info } from "lucide-react";
 
 import {
+  Combobox,
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -40,7 +40,7 @@ export const KempLoadMasterPkiSyncFields = () => {
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field className="mb-4">
-            <FieldLabel>
+            <FieldLabel htmlFor="pki-sync-kemp-virtual-service">
               Virtual Service <span className="text-muted">(optional)</span>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -52,15 +52,16 @@ export const KempLoadMasterPkiSyncFields = () => {
                 </TooltipContent>
               </Tooltip>
             </FieldLabel>
-            <FilterableSelect
+            <Combobox
+              id="pki-sync-kemp-virtual-service"
               isDisabled={!connectionId}
               isLoading={Boolean(connectionId) && isLoadingVirtualServices}
-              isClearable
               options={virtualServices}
               value={virtualServices.find((vs) => vs.id === value) ?? null}
-              onChange={(option) => onChange((option as TKempVirtualService | null)?.id)}
-              getOptionLabel={(option) => getVirtualServiceLabel(option as TKempVirtualService)}
-              getOptionValue={(option) => (option as TKempVirtualService).id}
+              onValueChange={(option) => onChange(option?.id)}
+              getOptionLabel={(option) => getVirtualServiceLabel(option)}
+              getOptionValue={(option) => option.id}
+              getOptionKeywords={(option) => [option.id]}
               placeholder={
                 connectionId
                   ? "Leave unset to import certificate only"

@@ -144,7 +144,7 @@ Configure the following options to get custom guidance and best practices tailor
       <li>If you don't have a second machine, a small VM on your network can run the proxy</li>
     </AgentVaultSetupBranch>
     <AgentVaultSetupBranch runs="container">
-      <li>The agents' containers don't have access to the proxy's state directory</li>
+      <li>The agents' containers can't read the proxy token</li>
     </AgentVaultSetupBranch>
     <AgentVaultSetupBranch runs="ci">
       <li>The CI runner has to reach the proxy, so if the proxy is on a private network, the job runs on a [self-hosted runner](https://docs.github.com/en/actions/hosting-your-own-runners) in that network</li>
@@ -152,7 +152,7 @@ Configure the following options to get custom guidance and best practices tailor
   </ul>
 
   <Note>
-    The proxy [runs on a different machine](/documentation/platform/agent-vault/proxies#choose-where-to-run-the-proxy) from the agent, on the same private network. If the proxy ran on the agent's machine, the agent could read the proxy's [state directory](/documentation/platform/agent-vault/proxies#state-directory), which holds the proxy's access token.
+    The proxy [runs on a different machine](/documentation/platform/agent-vault/proxies#choose-where-to-run-the-proxy) from the agent, on the same private network. If the proxy ran on the agent's machine, the agent could read the proxy token.
   </Note>
 </AgentVaultSetupStep>
 
@@ -161,7 +161,7 @@ Configure the following options to get custom guidance and best practices tailor
 </AgentVaultSetupStep>
 
 <AgentVaultSetupStep step="forward">
-  The [real credential](/documentation/platform/agent-vault/services#credential-types) is added to the request at the proxy, so it never passes through the agent. If you've [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs), the request appears in the session's logs.
+  The [real credential](/documentation/platform/agent-vault/services#credential-types) is added to the request at the proxy, so it never passes through the agent. The request appears in the session's [logs](/documentation/platform/agent-vault/session-logs).
 
   The proxy only attaches credentials for the services in the access bundle. Requests to any other host go out without a credential, unless the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) blocks them.
 </AgentVaultSetupStep>
@@ -186,22 +186,22 @@ Follow these pages in order:
 
 <ol>
   <AgentVaultSetupBranch building="personal,assistant" agent="none">
-    <li>[Quickstart](/documentation/platform/agent-vault/quickstart): create an access bundle, enroll a proxy, create a session, and start your agent with the session token</li>
+    <li>[Quickstart](/documentation/platform/agent-vault/quickstart): create an access bundle, create a proxy, create a session, and start your agent with the session token</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="personal,assistant" agent="claude-code">
-    <li>[Agent Vault with Claude Code](/documentation/platform/agent-vault/guides/claude-code): create an access bundle, enroll a proxy, create a session, and start Claude Code with the session token</li>
+    <li>[Agent Vault with Claude Code](/documentation/platform/agent-vault/guides/claude-code): create an access bundle, create a proxy, create a session, and start Claude Code with the session token</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="personal,assistant" agent="codex">
-    <li>[Agent Vault with Codex](/documentation/platform/agent-vault/guides/codex): create an access bundle, enroll a proxy, create a session, and start Codex with the session token</li>
+    <li>[Agent Vault with Codex](/documentation/platform/agent-vault/guides/codex): create an access bundle, create a proxy, create a session, and start Codex with the session token</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="personal,assistant" agent="opencode">
-    <li>[Agent Vault with OpenCode](/documentation/platform/agent-vault/guides/opencode): create an access bundle, enroll a proxy, create a session, and start OpenCode with the session token</li>
+    <li>[Agent Vault with OpenCode](/documentation/platform/agent-vault/guides/opencode): create an access bundle, create a proxy, create a session, and start OpenCode with the session token</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="personal" agent="hermes">
-    <li>[Agent Vault with Hermes Agent](/documentation/platform/agent-vault/guides/hermes): create an access bundle, enroll a proxy, create a session, and start Hermes in your terminal with the session token</li>
+    <li>[Agent Vault with Hermes Agent](/documentation/platform/agent-vault/guides/hermes): create an access bundle, create a proxy, create a session, and start Hermes in your terminal with the session token</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="personal" agent="openclaw">
-    <li>[Agent Vault with OpenClaw](/documentation/platform/agent-vault/guides/openclaw): create an access bundle, enroll a proxy, create a session, and start OpenClaw in your terminal with the session token</li>
+    <li>[Agent Vault with OpenClaw](/documentation/platform/agent-vault/guides/openclaw): create an access bundle, create a proxy, create a session, and start OpenClaw in your terminal with the session token</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="assistant" agent="hermes">
     <li>[Agent Vault with the Hermes gateway](/documentation/platform/agent-vault/guides/hermes-gateway): create a session that never expires, then send the Hermes gateway's requests through the proxy</li>
@@ -210,12 +210,12 @@ Follow these pages in order:
     <li>[Agent Vault with the OpenClaw gateway](/documentation/platform/agent-vault/guides/openclaw-gateway): create a session that never expires, then send the OpenClaw gateway's requests through the proxy</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="personal,assistant" agent="custom">
-    <li>[Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent): create an access bundle, enroll a proxy, create a session, and send your agent's requests through the proxy</li>
+    <li>[Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent): create an access bundle, create a proxy, create a session, and send your agent's requests through the proxy</li>
   </AgentVaultSetupBranch>
 
   <AgentVaultSetupBranch building="scheduled,platform">
     <li>[Create an access bundle](/documentation/platform/agent-vault/access-bundles#create-an-access-bundle), with a service for each API the agent calls</li>
-    <li>[Enroll a proxy](/documentation/platform/agent-vault/proxies#create-and-enroll-a-proxy), and run it with Docker or systemd so that it keeps running between jobs</li>
+    <li>[Create a proxy](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it), and run it with Docker, Kubernetes, or systemd so that it keeps running between jobs</li>
   </AgentVaultSetupBranch>
   <AgentVaultSetupBranch building="scheduled" runs="none,computer,server">
     <li>[Create sessions with the CLI](/documentation/platform/agent-vault/sessions-cli): set up a machine identity, then run the agent from cron or systemd</li>

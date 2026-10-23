@@ -32,7 +32,7 @@ import {
   TAgentVaultSessionLogHealth,
   TAgentVaultSessionLogHistoryPage,
   TAgentVaultSessionLogReadCheck,
-  TAgentVaultSessionLogSettings,
+  TAgentVaultSessionLogSettingsState,
   TAgentVaultSessionLogTailPage,
   TAgentVaultVariable,
   TListAgentVaultAccessBundlesDTO,
@@ -277,10 +277,10 @@ export const useGetAgentVaultSessionLogSettings = (enabled = true) => {
   return useQuery({
     queryKey: agentVaultKeys.sessionLogSettings(currentOrg.id),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ settings: TAgentVaultSessionLogSettings }>(
+      const { data } = await apiRequest.get<TAgentVaultSessionLogSettingsState>(
         "/api/v1/agent-vault/settings/session-logs"
       );
-      return data.settings;
+      return data;
     },
     enabled
   });
