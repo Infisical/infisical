@@ -116,71 +116,81 @@ function keyLabel(key: string, apple: boolean): { glyph: string; name: string } 
     }
   );
 }
-const Kbd = React.forwardRef<HTMLElement, KbdProps>(
-  ({ className, children, keys, size = "md", platform = "auto", ...props }, ref) => {
-    const source = keys ?? (typeof children === "string" ? children : null);
-    const apple =
-      platform === "mac" ||
-      (platform === "auto" &&
-        typeof navigator !== "undefined" &&
-        /Mac|iPhone|iPad|iPod/i.test(navigator.platform));
-    if (source === null)
-      return (
-        <kbd
-          ref={ref}
-          data-slot="kbd"
-          data-size={size}
-          data-glyph={
-            typeof children === "string" && [...children].length === 1 ? "single" : undefined
-          }
-          className={cn(styles.cap, className)}
-          {...props}
-        >
-          {children}
-        </kbd>
-      );
-    const steps = shortcutSteps(source).map((step) => step.map((key) => keyLabel(key, apple)));
-    const label = steps.map((step) => step.map((key) => key.name).join(" ")).join(" then ");
+function Kbd({
+  className,
+  children,
+  keys,
+  size = "md",
+  platform = "auto",
+  ref,
+  ...props
+}: KbdProps & { ref?: React.Ref<HTMLElement> }) {
+  const source = keys ?? (typeof children === "string" ? children : null);
+  const apple =
+    platform === "mac" ||
+    (platform === "auto" &&
+      typeof navigator !== "undefined" &&
+      /Mac|iPhone|iPad|iPod/i.test(navigator.platform));
+  if (source === null)
     return (
       <kbd
         ref={ref}
-        data-slot="kbd-group"
+        data-slot="kbd"
         data-size={size}
-        role="group"
-        aria-label={label}
-        className={cn(styles.group, className)}
+        data-glyph={
+          typeof children === "string" && [...children].length === 1 ? "single" : undefined
+        }
+        className={cn(styles.cap, className)}
         {...props}
       >
-        {steps.map((step, index) => (
-          <React.Fragment key={index}>
-            {index > 0 && (
-              <span aria-hidden className={styles.then}>
-                then
-              </span>
-            )}
-            {step.map((key, i) => (
-              <kbd
-                key={`${key.name}-${i}`}
-                aria-hidden
-                data-slot="kbd"
-                data-size={size}
-                data-glyph={[...key.glyph].length === 1 ? "single" : undefined}
-                className={styles.cap}
-              >
-                <KeyGlyph glyph={key.glyph} />
-              </kbd>
-            ))}
-          </React.Fragment>
-        ))}
+        {children}
       </kbd>
     );
-  }
-);
+  const steps = shortcutSteps(source).map((step) => step.map((key) => keyLabel(key, apple)));
+  const label = steps.map((step) => step.map((key) => key.name).join(" ")).join(" then ");
+  return (
+    <kbd
+      ref={ref}
+      data-slot="kbd-group"
+      data-size={size}
+      role="group"
+      aria-label={label}
+      className={cn(styles.group, className)}
+      {...props}
+    >
+      {steps.map((step, index) => (
+        <React.Fragment key={index}>
+          {index > 0 && (
+            <span aria-hidden className={styles.then}>
+              then
+            </span>
+          )}
+          {step.map((key, i) => (
+            <kbd
+              key={`${key.name}-${i}`}
+              aria-hidden
+              data-slot="kbd"
+              data-size={size}
+              data-glyph={[...key.glyph].length === 1 ? "single" : undefined}
+              className={styles.cap}
+            >
+              <KeyGlyph glyph={key.glyph} />
+            </kbd>
+          ))}
+        </React.Fragment>
+      ))}
+    </kbd>
+  );
+}
 Kbd.displayName = "Kbd";
-const KbdGroup = React.forwardRef<HTMLSpanElement, React.ComponentPropsWithoutRef<"span">>(
-  ({ className, ...props }, ref) => (
+function KbdGroup({
+  className,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"span"> & { ref?: React.Ref<HTMLSpanElement> }) {
+  return (
     <span ref={ref} data-slot="kbd-group" className={cn(styles.group, className)} {...props} />
-  )
-);
+  );
+}
 KbdGroup.displayName = "KbdGroup";
 export { Kbd, KbdGroup };

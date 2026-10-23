@@ -52,7 +52,10 @@ export type ComboboxProps = SharedComboboxProps &
         onValueChange?: (value: string[]) => void;
       }
   );
-export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>((props, ref) => {
+export function Combobox({
+  ref,
+  ...props
+}: ComboboxProps & { ref?: React.Ref<HTMLButtonElement> }) {
   const {
     options,
     placeholder = "Select an option",
@@ -268,7 +271,7 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>((prop
       </PopoverContent>
     </Popover>
   );
-});
+}
 Combobox.displayName = "Combobox";
 function markComboboxLabel(label: string, query: string) {
   const index = label.toLowerCase().indexOf(query.toLowerCase());
@@ -291,22 +294,28 @@ export const ComboboxItem = CommandItem;
 export const ComboboxEmpty = CommandEmpty;
 export const ComboboxGroup = CommandGroup;
 export const ComboboxSeparator = CommandSeparator;
-export const ComboboxLabel = React.forwardRef<
-  HTMLSpanElement,
-  React.ComponentPropsWithoutRef<"span">
->((props, ref) => <span ref={ref} data-slot="combobox-label" {...props} />);
+export function ComboboxLabel({
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"span"> & { ref?: React.Ref<HTMLSpanElement> }) {
+  return <span ref={ref} data-slot="combobox-label" {...props} />;
+}
 ComboboxLabel.displayName = "ComboboxLabel";
 export const ComboboxValue = ComboboxLabel;
 export const ComboboxCollection = React.Fragment;
-export const ComboboxChips = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<"div">
->((props, ref) => <div ref={ref} data-slot="combobox-chips" className={styles.chips} {...props} />);
+export function ComboboxChips({
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"div"> & { ref?: React.Ref<HTMLDivElement> }) {
+  return <div ref={ref} data-slot="combobox-chips" className={styles.chips} {...props} />;
+}
 ComboboxChips.displayName = "ComboboxChips";
-export const ComboboxChip = React.forwardRef<
-  HTMLSpanElement,
-  React.ComponentPropsWithoutRef<"span">
->((props, ref) => <span ref={ref} data-slot="combobox-chip" className={styles.chip} {...props} />);
+export function ComboboxChip({
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"span"> & { ref?: React.Ref<HTMLSpanElement> }) {
+  return <span ref={ref} data-slot="combobox-chip" className={styles.chip} {...props} />;
+}
 ComboboxChip.displayName = "ComboboxChip";
 export const ComboboxChipsInput = CommandInput;
 export const useComboboxAnchor = () => React.useRef<HTMLDivElement>(null);

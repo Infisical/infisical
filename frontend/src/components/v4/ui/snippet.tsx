@@ -6,77 +6,70 @@ import { CopyButton } from "./sensitive-editor";
 
 import styles from "./code.module.css";
 
-export const Snippet = React.forwardRef<
-  HTMLInputElement,
-  {
-    id?: string;
-    "aria-describedby"?: string;
-    "aria-invalid"?: boolean;
-    value: string;
-    prompt?: string;
-    size?: "sm" | "md";
-    copyable?: boolean;
-    copyLabel?: string;
-    label: string;
-    onCopy?: (value: string) => void;
-    writeClipboard?: (value: string) => Promise<void>;
-    className?: string;
-  }
->(
-  (
-    {
-      id,
-      "aria-describedby": describedBy,
-      "aria-invalid": invalid,
-      value,
-      prompt,
-      size = "sm",
-      copyable = true,
-      copyLabel = "Copy command",
-      label,
-      onCopy,
-      writeClipboard,
-      className
-    },
-    ref
-  ) => {
-    const attributes = useFieldControlAttributes({
-      id,
-      "aria-describedby": describedBy,
-      "aria-invalid": invalid
-    });
-    return (
-      <div
-        data-slot="snippet"
-        data-size={size}
-        className={cn(styles.snippet, size === "sm" && styles.snippetSmall, className)}
-      >
-        {prompt && (
-          <span aria-hidden="true" className={styles.prompt}>
-            {prompt}
-          </span>
-        )}
-        <input
-          ref={ref}
-          {...attributes}
-          className={styles.input}
-          aria-label={label}
+export function Snippet({
+  id,
+  "aria-describedby": describedBy,
+  "aria-invalid": invalid,
+  value,
+  prompt,
+  size = "sm",
+  copyable = true,
+  copyLabel = "Copy command",
+  label,
+  onCopy,
+  writeClipboard,
+  className,
+  ref
+}: {
+  id?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
+  value: string;
+  prompt?: string;
+  size?: "sm" | "md";
+  copyable?: boolean;
+  copyLabel?: string;
+  label: string;
+  onCopy?: (value: string) => void;
+  writeClipboard?: (value: string) => Promise<void>;
+  className?: string;
+} & { ref?: React.Ref<HTMLInputElement> }) {
+  const attributes = useFieldControlAttributes({
+    id,
+    "aria-describedby": describedBy,
+    "aria-invalid": invalid
+  });
+  return (
+    <div
+      data-slot="snippet"
+      data-size={size}
+      className={cn(styles.snippet, size === "sm" && styles.snippetSmall, className)}
+    >
+      {prompt && (
+        <span aria-hidden="true" className={styles.prompt}>
+          {prompt}
+        </span>
+      )}
+      <input
+        ref={ref}
+        {...attributes}
+        className={styles.input}
+        aria-label={label}
+        value={value}
+        readOnly
+        spellCheck={false}
+      />
+      {copyable && (
+        <CopyButton
           value={value}
-          readOnly
-          spellCheck={false}
+          size={size}
+          label={copyLabel}
+          iconOnly
+          onCopy={onCopy}
+          writeClipboard={writeClipboard}
         />
-        {copyable && (
-          <CopyButton
-            value={value}
-            size={size}
-            label={copyLabel}
-            iconOnly
-            onCopy={onCopy}
-            writeClipboard={writeClipboard}
-          />
-        )}
-      </div>
-    );
-  }
-);
+      )}
+    </div>
+  );
+}
 Snippet.displayName = "Snippet";

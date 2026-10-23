@@ -4,14 +4,19 @@ import { cn } from "../lib/utils";
 
 import controlStyles from "./controls.module.css";
 
-const Skeleton = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div"> & {
-    width?: React.CSSProperties["width"];
-    height?: React.CSSProperties["height"];
-    lines?: number;
-  }
->(({ className, width, height, lines, style, ...props }, ref) => {
+function Skeleton({
+  className,
+  width,
+  height,
+  lines,
+  style,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"div"> & {
+  width?: React.CSSProperties["width"];
+  height?: React.CSSProperties["height"];
+  lines?: number;
+} & { ref?: React.Ref<React.ComponentRef<"div">> }) {
   if (lines)
     return (
       <div
@@ -46,7 +51,7 @@ const Skeleton = React.forwardRef<
       {...props}
     />
   );
-});
+}
 Skeleton.displayName = "Skeleton";
 
 export { Skeleton };

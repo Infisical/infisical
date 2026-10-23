@@ -6,10 +6,11 @@ import { Icon } from "./icon";
 
 import controlStyles from "./controls.module.css";
 
-const Accordion = React.forwardRef<
-  React.ComponentRef<typeof AccordionPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Root>
->(({ className, ...props }, ref) => {
+function Accordion({
+  className,
+  ref,
+  ...props
+}: React.ComponentProps<typeof AccordionPrimitive.Root>) {
   return (
     <AccordionPrimitive.Root
       ref={ref}
@@ -18,13 +19,14 @@ const Accordion = React.forwardRef<
       {...props}
     />
   );
-});
+}
 Accordion.displayName = "Accordion";
 
-const AccordionItem = React.forwardRef<
-  React.ComponentRef<typeof AccordionPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
->(({ className, ...props }, ref) => {
+function AccordionItem({
+  className,
+  ref,
+  ...props
+}: React.ComponentProps<typeof AccordionPrimitive.Item>) {
   return (
     <AccordionPrimitive.Item
       ref={ref}
@@ -33,13 +35,15 @@ const AccordionItem = React.forwardRef<
       {...props}
     />
   );
-});
+}
 AccordionItem.displayName = "AccordionItem";
 
-const AccordionTrigger = React.forwardRef<
-  React.ComponentRef<typeof AccordionPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
->(({ className, children, ...props }, ref) => {
+function AccordionTrigger({
+  className,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<typeof AccordionPrimitive.Trigger>) {
   return (
     <AccordionPrimitive.Header className="flex">
       <AccordionPrimitive.Trigger
@@ -67,13 +71,15 @@ const AccordionTrigger = React.forwardRef<
       </AccordionPrimitive.Trigger>
     </AccordionPrimitive.Header>
   );
-});
+}
 AccordionTrigger.displayName = "AccordionTrigger";
 
-const AccordionContent = React.forwardRef<
-  React.ComponentRef<typeof AccordionPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
->(({ className, children, ...props }, ref) => {
+function AccordionContent({
+  className,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<typeof AccordionPrimitive.Content>) {
   return (
     <AccordionPrimitive.Content
       ref={ref}
@@ -94,7 +100,7 @@ const AccordionContent = React.forwardRef<
       </div>
     </AccordionPrimitive.Content>
   );
-});
+}
 AccordionContent.displayName = "AccordionContent";
 
 export { Accordion, AccordionContent, AccordionItem, AccordionTrigger };

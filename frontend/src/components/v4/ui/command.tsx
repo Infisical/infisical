@@ -18,10 +18,7 @@ import controlStyles from "./controls.module.css";
 import menu from "./menu.module.css";
 import overlay from "./overlay.module.css";
 
-const Command = React.forwardRef<
-  React.ComponentRef<typeof CommandPrimitive>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive>
->(({ className, ...props }, ref) => {
+function Command({ className, ref, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
   return (
     <CommandPrimitive
       ref={ref}
@@ -30,7 +27,7 @@ const Command = React.forwardRef<
       {...props}
     />
   );
-});
+}
 Command.displayName = "Command";
 
 function CommandDialog({
@@ -76,10 +73,14 @@ function CommandDialog({
   );
 }
 
-const CommandInput = React.forwardRef<
-  React.ComponentRef<typeof CommandPrimitive.Input>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input> & { trailing?: React.ReactNode }
->(({ className, trailing, ...props }, ref) => {
+function CommandInput({
+  className,
+  trailing,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input> & {
+  trailing?: React.ReactNode;
+} & { ref?: React.Ref<React.ComponentRef<typeof CommandPrimitive.Input>> }) {
   return (
     <div data-slot="command-input-wrapper" className={controlStyles.searchRow}>
       <Icon name="search" />
@@ -96,13 +97,15 @@ const CommandInput = React.forwardRef<
       )}
     </div>
   );
-});
+}
 CommandInput.displayName = "CommandInput";
 
-const CommandList = React.forwardRef<
-  React.ComponentRef<typeof CommandPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.List>
->(({ className, children, ...props }, ref) => {
+function CommandList({
+  className,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<typeof CommandPrimitive.List>) {
   return (
     <CommandPrimitive.List
       ref={ref}
@@ -115,13 +118,14 @@ const CommandList = React.forwardRef<
       <ListHighlight />
     </CommandPrimitive.List>
   );
-});
+}
 CommandList.displayName = "CommandList";
 
-const CommandEmpty = React.forwardRef<
-  React.ComponentRef<typeof CommandPrimitive.Empty>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Empty>
->(({ className, ...props }, ref) => {
+function CommandEmpty({
+  className,
+  ref,
+  ...props
+}: React.ComponentProps<typeof CommandPrimitive.Empty>) {
   return (
     <CommandPrimitive.Empty
       ref={ref}
@@ -130,13 +134,14 @@ const CommandEmpty = React.forwardRef<
       {...props}
     />
   );
-});
+}
 CommandEmpty.displayName = "CommandEmpty";
 
-const CommandGroup = React.forwardRef<
-  React.ComponentRef<typeof CommandPrimitive.Group>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Group>
->(({ className, ...props }, ref) => {
+function CommandGroup({
+  className,
+  ref,
+  ...props
+}: React.ComponentProps<typeof CommandPrimitive.Group>) {
   return (
     <CommandPrimitive.Group
       ref={ref}
@@ -145,13 +150,14 @@ const CommandGroup = React.forwardRef<
       {...props}
     />
   );
-});
+}
 CommandGroup.displayName = "CommandGroup";
 
-const CommandSeparator = React.forwardRef<
-  React.ComponentRef<typeof CommandPrimitive.Separator>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Separator>
->(({ className, ...props }, ref) => {
+function CommandSeparator({
+  className,
+  ref,
+  ...props
+}: React.ComponentProps<typeof CommandPrimitive.Separator>) {
   return (
     <CommandPrimitive.Separator
       ref={ref}
@@ -160,13 +166,17 @@ const CommandSeparator = React.forwardRef<
       {...props}
     />
   );
-});
+}
 CommandSeparator.displayName = "CommandSeparator";
 
-const CommandItem = React.forwardRef<
-  React.ComponentRef<typeof CommandPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Item> & { "data-checked"?: boolean }
->(({ className, children, ...props }, ref) => {
+function CommandItem({
+  className,
+  children,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof CommandPrimitive.Item> & { "data-checked"?: boolean } & {
+  ref?: React.Ref<React.ComponentRef<typeof CommandPrimitive.Item>>;
+}) {
   const checkable = props["data-checked"] !== undefined;
   return (
     <CommandPrimitive.Item
@@ -183,13 +193,10 @@ const CommandItem = React.forwardRef<
       {children}
     </CommandPrimitive.Item>
   );
-});
+}
 CommandItem.displayName = "CommandItem";
 
-const CommandShortcut = React.forwardRef<
-  React.ComponentRef<"span">,
-  React.ComponentPropsWithoutRef<"span">
->(({ className, children, ...props }, ref) => {
+function CommandShortcut({ className, children, ref, ...props }: React.ComponentProps<"span">) {
   return (
     <span
       ref={ref}
@@ -200,7 +207,7 @@ const CommandShortcut = React.forwardRef<
       {menuShortcutContent(children)}
     </span>
   );
-});
+}
 CommandShortcut.displayName = "CommandShortcut";
 
 export {

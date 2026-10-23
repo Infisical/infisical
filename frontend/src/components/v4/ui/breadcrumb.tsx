@@ -91,140 +91,134 @@ export type BreadcrumbProps = React.ComponentPropsWithoutRef<"nav"> & {
   maxItems?: number;
   lastIsCurrent?: boolean;
 };
-const Breadcrumb = React.forwardRef<HTMLElement, BreadcrumbProps>(
-  (
-    { className, items, variant = "default", maxItems, lastIsCurrent = true, children, ...props },
-    ref
-  ) => {
-    const [expanded, setExpanded] = React.useState(false);
-    const nameId = React.useId();
-    const collapsible = Boolean(
-      items && maxItems !== undefined && items.length > Math.max(3, maxItems)
-    );
-    const renderCrumb = (crumb: BreadcrumbCrumb, index: number) => {
-      const last = lastIsCurrent && index === (items?.length ?? 0) - 1;
-      const content = (
-        <>
-          {crumb.media && <span className={breadcrumbStyles.media}>{crumb.media}</span>}
-          <span
-            id={`${nameId}-${index}-label`}
-            className={cn(breadcrumbStyles.label, crumb.mono && breadcrumbStyles.mono)}
-            title={typeof crumb.label === "string" ? crumb.label : undefined}
-          >
-            {crumb.label}
-          </span>
-        </>
-      );
-      return (
-        <li
-          key={index}
-          className={breadcrumbStyles.entry}
-          data-current={last || undefined}
-          data-menu={Boolean(crumb.menu) || undefined}
-          data-media={Boolean(crumb.media) || undefined}
+function Breadcrumb({
+  className,
+  items,
+  variant = "default",
+  maxItems,
+  lastIsCurrent = true,
+  children,
+  ref,
+  ...props
+}: BreadcrumbProps & { ref?: React.Ref<HTMLElement> }) {
+  const [expanded, setExpanded] = React.useState(false);
+  const nameId = React.useId();
+  const collapsible = Boolean(
+    items && maxItems !== undefined && items.length > Math.max(3, maxItems)
+  );
+  const renderCrumb = (crumb: BreadcrumbCrumb, index: number) => {
+    const last = lastIsCurrent && index === (items?.length ?? 0) - 1;
+    const content = (
+      <>
+        {crumb.media && <span className={breadcrumbStyles.media}>{crumb.media}</span>}
+        <span
+          id={`${nameId}-${index}-label`}
+          className={cn(breadcrumbStyles.label, crumb.mono && breadcrumbStyles.mono)}
+          title={typeof crumb.label === "string" ? crumb.label : undefined}
         >
-          {index > 0 && (
-            <span className={breadcrumbStyles.separator} aria-hidden="true">
-              /
-            </span>
-          )}
-          {crumb.menu ? (
-            <MenuCrumb
-              crumb={{ ...crumb, menu: crumb.menu }}
-              labelId={`${nameId}-${index}-label`}
-              purposeId={`${nameId}-${index}-purpose`}
-            />
-          ) : last ? (
-            <span
-              aria-current="page"
-              className={cn(
-                breadcrumbStyles.link,
-                breadcrumbStyles.current,
-                breadcrumbStyles.static
-              )}
-            >
-              {content}
-            </span>
-          ) : crumb.href ? (
-            <a
-              href={crumb.href}
-              onClick={crumb.onClick}
-              className={breadcrumbStyles.link}
-              aria-labelledby={`${nameId}-${index}-label`}
-            >
-              {content}
-            </a>
-          ) : crumb.onClick ? (
-            <button
-              type="button"
-              onClick={crumb.onClick}
-              className={breadcrumbStyles.link}
-              aria-labelledby={`${nameId}-${index}-label`}
-            >
-              {content}
-            </button>
-          ) : (
-            <span className={cn(breadcrumbStyles.link, breadcrumbStyles.static)}>{content}</span>
-          )}
-        </li>
-      );
-    };
-    return (
-      <nav
-        ref={ref}
-        aria-label="Breadcrumb"
-        data-slot="breadcrumb"
-        data-variant={variant}
-        className={cn(breadcrumbStyles.root, className)}
-        {...props}
-      >
-        {items ? (
-          <ol
-            className={cn(
-              breadcrumbStyles.trail,
-              variant === "product" && breadcrumbStyles.product
-            )}
-          >
-            {items.map((crumb, index) => {
-              if (collapsible && index === 1)
-                return (
-                  <React.Fragment key="middle">
-                    <li className={breadcrumbStyles.entry}>
-                      <span className={breadcrumbStyles.separator} aria-hidden="true">
-                        /
-                      </span>
-                      <button
-                        type="button"
-                        className={breadcrumbStyles.link}
-                        aria-label={
-                          expanded ? "Hide middle levels" : `Show ${items.length - 2} middle levels`
-                        }
-                        aria-expanded={expanded}
-                        onClick={() => setExpanded(!expanded)}
-                      >
-                        <Icon name="more" className="size-4" />
-                      </button>
-                    </li>
-                    {expanded && renderCrumb(crumb, index)}
-                  </React.Fragment>
-                );
-              if (collapsible && index > 1 && index < items.length - 1 && !expanded) return null;
-              return renderCrumb(crumb, index);
-            })}
-          </ol>
-        ) : (
-          children
-        )}
-      </nav>
+          {crumb.label}
+        </span>
+      </>
     );
-  }
-);
+    return (
+      <li
+        key={index}
+        className={breadcrumbStyles.entry}
+        data-current={last || undefined}
+        data-menu={Boolean(crumb.menu) || undefined}
+        data-media={Boolean(crumb.media) || undefined}
+      >
+        {index > 0 && (
+          <span className={breadcrumbStyles.separator} aria-hidden="true">
+            /
+          </span>
+        )}
+        {crumb.menu ? (
+          <MenuCrumb
+            crumb={{ ...crumb, menu: crumb.menu }}
+            labelId={`${nameId}-${index}-label`}
+            purposeId={`${nameId}-${index}-purpose`}
+          />
+        ) : last ? (
+          <span
+            aria-current="page"
+            className={cn(breadcrumbStyles.link, breadcrumbStyles.current, breadcrumbStyles.static)}
+          >
+            {content}
+          </span>
+        ) : crumb.href ? (
+          <a
+            href={crumb.href}
+            onClick={crumb.onClick}
+            className={breadcrumbStyles.link}
+            aria-labelledby={`${nameId}-${index}-label`}
+          >
+            {content}
+          </a>
+        ) : crumb.onClick ? (
+          <button
+            type="button"
+            onClick={crumb.onClick}
+            className={breadcrumbStyles.link}
+            aria-labelledby={`${nameId}-${index}-label`}
+          >
+            {content}
+          </button>
+        ) : (
+          <span className={cn(breadcrumbStyles.link, breadcrumbStyles.static)}>{content}</span>
+        )}
+      </li>
+    );
+  };
+  return (
+    <nav
+      ref={ref}
+      aria-label="Breadcrumb"
+      data-slot="breadcrumb"
+      data-variant={variant}
+      className={cn(breadcrumbStyles.root, className)}
+      {...props}
+    >
+      {items ? (
+        <ol
+          className={cn(breadcrumbStyles.trail, variant === "product" && breadcrumbStyles.product)}
+        >
+          {items.map((crumb, index) => {
+            if (collapsible && index === 1)
+              return (
+                <React.Fragment key="middle">
+                  <li className={breadcrumbStyles.entry}>
+                    <span className={breadcrumbStyles.separator} aria-hidden="true">
+                      /
+                    </span>
+                    <button
+                      type="button"
+                      className={breadcrumbStyles.link}
+                      aria-label={
+                        expanded ? "Hide middle levels" : `Show ${items.length - 2} middle levels`
+                      }
+                      aria-expanded={expanded}
+                      onClick={() => setExpanded(!expanded)}
+                    >
+                      <Icon name="more" className="size-4" />
+                    </button>
+                  </li>
+                  {expanded && renderCrumb(crumb, index)}
+                </React.Fragment>
+              );
+            if (collapsible && index > 1 && index < items.length - 1 && !expanded) return null;
+            return renderCrumb(crumb, index);
+          })}
+        </ol>
+      ) : (
+        children
+      )}
+    </nav>
+  );
+}
 Breadcrumb.displayName = "Breadcrumb";
 
-const BreadcrumbList = React.forwardRef<
-  React.ComponentRef<"ol">,
-  React.ComponentPropsWithoutRef<"ol">
->(({ className, ...props }, ref) => {
+function BreadcrumbList({ className, ref, ...props }: React.ComponentProps<"ol">) {
   return (
     <ol
       ref={ref}
@@ -236,13 +230,10 @@ const BreadcrumbList = React.forwardRef<
       {...props}
     />
   );
-});
+}
 BreadcrumbList.displayName = "BreadcrumbList";
 
-const BreadcrumbItem = React.forwardRef<
-  React.ComponentRef<"li">,
-  React.ComponentPropsWithoutRef<"li">
->(({ className, ...props }, ref) => {
+function BreadcrumbItem({ className, ref, ...props }: React.ComponentProps<"li">) {
   return (
     <li
       ref={ref}
@@ -251,15 +242,17 @@ const BreadcrumbItem = React.forwardRef<
       {...props}
     />
   );
-});
+}
 BreadcrumbItem.displayName = "BreadcrumbItem";
 
-const BreadcrumbLink = React.forwardRef<
-  React.ComponentRef<"a">,
-  React.ComponentPropsWithoutRef<"a"> & {
-    asChild?: boolean;
-  }
->(({ asChild, className, ...props }, ref) => {
+function BreadcrumbLink({
+  asChild,
+  className,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"a"> & {
+  asChild?: boolean;
+} & { ref?: React.Ref<React.ComponentRef<"a">> }) {
   const Comp = asChild ? Slot.Root : "a";
 
   return (
@@ -270,13 +263,10 @@ const BreadcrumbLink = React.forwardRef<
       {...props}
     />
   );
-});
+}
 BreadcrumbLink.displayName = "BreadcrumbLink";
 
-const BreadcrumbPage = React.forwardRef<
-  React.ComponentRef<"span">,
-  React.ComponentPropsWithoutRef<"span">
->(({ className, ...props }, ref) => {
+function BreadcrumbPage({ className, ref, ...props }: React.ComponentProps<"span">) {
   return (
     <span
       ref={ref}
@@ -286,13 +276,10 @@ const BreadcrumbPage = React.forwardRef<
       {...props}
     />
   );
-});
+}
 BreadcrumbPage.displayName = "BreadcrumbPage";
 
-const BreadcrumbSeparator = React.forwardRef<
-  React.ComponentRef<"li">,
-  React.ComponentPropsWithoutRef<"li">
->(({ children, className, ...props }, ref) => {
+function BreadcrumbSeparator({ children, className, ref, ...props }: React.ComponentProps<"li">) {
   return (
     <li
       ref={ref}
@@ -305,13 +292,10 @@ const BreadcrumbSeparator = React.forwardRef<
       {children ?? <Icon name="chev-right" />}
     </li>
   );
-});
+}
 BreadcrumbSeparator.displayName = "BreadcrumbSeparator";
 
-const BreadcrumbEllipsis = React.forwardRef<
-  React.ComponentRef<"span">,
-  React.ComponentPropsWithoutRef<"span">
->(({ className, ...props }, ref) => {
+function BreadcrumbEllipsis({ className, ref, ...props }: React.ComponentProps<"span">) {
   return (
     <span
       ref={ref}
@@ -325,7 +309,7 @@ const BreadcrumbEllipsis = React.forwardRef<
       <span className="sr-only">More</span>
     </span>
   );
-});
+}
 BreadcrumbEllipsis.displayName = "BreadcrumbEllipsis";
 
 export {

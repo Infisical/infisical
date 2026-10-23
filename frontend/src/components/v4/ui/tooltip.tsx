@@ -57,18 +57,19 @@ function Tooltip({
   );
 }
 
-const TooltipTrigger = React.forwardRef<
-  React.ElementRef<typeof TooltipPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Trigger>
->(({ ...props }, ref) => {
+function TooltipTrigger({ ref, ...props }: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
   return <TooltipPrimitive.Trigger ref={ref} data-slot="tooltip-trigger" {...props} />;
-});
+}
 TooltipTrigger.displayName = "TooltipTrigger";
 
-const TooltipContent = React.forwardRef<
-  React.ComponentRef<typeof TooltipPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
->(({ className, collisionPadding = 8, sideOffset = 0, children, ...props }, ref) => {
+function TooltipContent({
+  className,
+  collisionPadding = 8,
+  sideOffset = 0,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Content>) {
   return (
     <TooltipPrimitive.Portal container={useV4PortalContainer()}>
       <TooltipPrimitive.Content
@@ -84,7 +85,7 @@ const TooltipContent = React.forwardRef<
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>
   );
-});
+}
 TooltipContent.displayName = "TooltipContent";
 
 export { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger };

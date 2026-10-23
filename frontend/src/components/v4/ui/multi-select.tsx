@@ -60,7 +60,10 @@ export type MultiSelectProps = Shared &
         onChange?: (value: string | null) => void;
       }
   );
-export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>((props, ref) => {
+export function MultiSelect({
+  ref,
+  ...props
+}: MultiSelectProps & { ref?: React.Ref<HTMLButtonElement> }) {
   const {
     options,
     label,
@@ -467,5 +470,5 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
       </PopoverContent>
     </Popover>
   );
-});
+}
 MultiSelect.displayName = "MultiSelect";

@@ -6,84 +6,74 @@ import { Icon, type IconName } from "./icon";
 
 import helperStyles from "./helpers.module.css";
 
-const Alert = React.forwardRef<
-  React.ComponentRef<"div">,
-  Omit<React.ComponentPropsWithoutRef<"div">, "title"> & {
-    variant?: "default" | "destructive" | null;
-    tone?: "neutral" | "info" | "ok" | "warn" | "bad";
-    title?: string;
-    actions?: React.ReactNode;
-    onDismiss?: () => void;
-  }
->(
-  (
-    {
-      className,
-      variant,
-      tone = variant === "destructive" ? "bad" : "neutral",
-      title,
-      actions,
-      onDismiss,
-      children,
-      ...props
-    },
-    ref
-  ) => {
-    return (
-      <div
-        ref={ref}
-        data-slot="alert"
-        data-variant={variant ?? "default"}
-        role={tone === "bad" ? "alert" : "status"}
-        data-tone={tone}
-        className={cn(helperStyles.alert, className)}
-        {...props}
-      >
-        {title ? (
-          <>
-            <Icon
-              name={
-                tone === "bad"
-                  ? "alert-c"
-                  : tone === "ok"
-                    ? "check-c"
-                    : tone === "warn"
-                      ? "alert"
-                      : "info"
-              }
-            />
-            <AlertTitle>{title}</AlertTitle>
-            <AlertDescription>
-              {children}
-              {actions && <div className={helperStyles.alertActions}>{actions}</div>}
-            </AlertDescription>
-          </>
-        ) : (
-          children
-        )}
-        {onDismiss && (
-          <AlertAction>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              aria-label="Dismiss alert"
-              onClick={onDismiss}
-            >
-              <Icon name="x" />
-            </Button>
-          </AlertAction>
-        )}
-      </div>
-    );
-  }
-);
+function Alert({
+  className,
+  variant,
+  tone = variant === "destructive" ? "bad" : "neutral",
+  title,
+  actions,
+  onDismiss,
+  children,
+  ref,
+  ...props
+}: Omit<React.ComponentPropsWithoutRef<"div">, "title"> & {
+  variant?: "default" | "destructive" | null;
+  tone?: "neutral" | "info" | "ok" | "warn" | "bad";
+  title?: string;
+  actions?: React.ReactNode;
+  onDismiss?: () => void;
+} & { ref?: React.Ref<React.ComponentRef<"div">> }) {
+  return (
+    <div
+      ref={ref}
+      data-slot="alert"
+      data-variant={variant ?? "default"}
+      role={tone === "bad" ? "alert" : "status"}
+      data-tone={tone}
+      className={cn(helperStyles.alert, className)}
+      {...props}
+    >
+      {title ? (
+        <>
+          <Icon
+            name={
+              tone === "bad"
+                ? "alert-c"
+                : tone === "ok"
+                  ? "check-c"
+                  : tone === "warn"
+                    ? "alert"
+                    : "info"
+            }
+          />
+          <AlertTitle>{title}</AlertTitle>
+          <AlertDescription>
+            {children}
+            {actions && <div className={helperStyles.alertActions}>{actions}</div>}
+          </AlertDescription>
+        </>
+      ) : (
+        children
+      )}
+      {onDismiss && (
+        <AlertAction>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Dismiss alert"
+            onClick={onDismiss}
+          >
+            <Icon name="x" />
+          </Button>
+        </AlertAction>
+      )}
+    </div>
+  );
+}
 Alert.displayName = "Alert";
 
-const AlertTitle = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function AlertTitle({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={ref}
@@ -96,13 +86,10 @@ const AlertTitle = React.forwardRef<
       {...props}
     />
   );
-});
+}
 AlertTitle.displayName = "AlertTitle";
 
-const AlertDescription = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function AlertDescription({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={ref}
@@ -115,13 +102,10 @@ const AlertDescription = React.forwardRef<
       {...props}
     />
   );
-});
+}
 AlertDescription.displayName = "AlertDescription";
 
-const AlertAction = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function AlertAction({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={ref}
@@ -130,7 +114,7 @@ const AlertAction = React.forwardRef<
       {...props}
     />
   );
-});
+}
 AlertAction.displayName = "AlertAction";
 
 export { Alert, AlertAction, AlertDescription, AlertTitle };

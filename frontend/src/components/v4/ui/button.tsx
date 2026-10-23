@@ -68,159 +68,152 @@ const buttonVariants = cva(
 const MotionButton = motion.create("button");
 const MotionSlot = motion.create(Slot.Root);
 
-const Button = React.forwardRef<
-  React.ElementRef<"button">,
-  React.ComponentPropsWithoutRef<"button"> &
-    VariantProps<typeof buttonVariants> & {
-      asChild?: boolean;
-      loading?: boolean;
-      icon?: IconName;
-      iconRight?: IconName;
-      iconOnly?: boolean;
-      selected?: boolean;
-    }
->(
-  (
-    {
-      className,
-      variant = "default",
-      size = "default",
-      asChild = false,
-      loading: loadingProp,
-      icon,
-      iconRight,
-      iconOnly = false,
-      selected,
-      children,
-      onClickCapture,
-      onPointerDownCapture,
-      onKeyDownCapture,
-      onPointerDown,
-      onPointerUp,
-      onPointerLeave,
-      onPointerCancel,
-      style,
-      onDrag: _onDrag,
-      onDragStart: _onDragStart,
-      onDragEnd: _onDragEnd,
-      onAnimationStart: _onAnimationStart,
-      ...props
-    },
-    ref
-  ) => {
-    const Comp = asChild ? MotionSlot : MotionButton;
-    const loading = loadingProp ?? false;
-    const inactive =
-      loading ||
-      props.disabled ||
-      props["aria-disabled"] === true ||
-      props["aria-disabled"] === "true";
-    const material = variant === "accent";
-    const preventActivation = (event: React.SyntheticEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-    };
-    const popup = props["aria-haspopup"];
-    const hasPopup = popup !== undefined && popup !== false && popup !== "false";
-    const activationKey = (key: string) =>
-      key === "Enter" || key === " " || (hasPopup && (key === "ArrowDown" || key === "ArrowUp"));
-    const progress = (
-      <Spinner
-        data-slot="button-progress"
-        className={styles.progress}
-        data-active={loading || undefined}
-      />
+function Button({
+  className,
+  variant = "default",
+  size = "default",
+  asChild = false,
+  loading: loadingProp,
+  icon,
+  iconRight,
+  iconOnly = false,
+  selected,
+  children,
+  onClickCapture,
+  onPointerDownCapture,
+  onKeyDownCapture,
+  onPointerDown,
+  onPointerUp,
+  onPointerLeave,
+  onPointerCancel,
+  style,
+  onDrag: _onDrag,
+  onDragStart: _onDragStart,
+  onDragEnd: _onDragEnd,
+  onAnimationStart: _onAnimationStart,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean;
+    loading?: boolean;
+    icon?: IconName;
+    iconRight?: IconName;
+    iconOnly?: boolean;
+    selected?: boolean;
+  } & { ref?: React.Ref<React.ComponentRef<"button">> }) {
+  const Comp = asChild ? MotionSlot : MotionButton;
+  const loading = loadingProp ?? false;
+  const inactive =
+    loading ||
+    props.disabled ||
+    props["aria-disabled"] === true ||
+    props["aria-disabled"] === "true";
+  const material = variant === "accent";
+  const preventActivation = (event: React.SyntheticEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  const popup = props["aria-haspopup"];
+  const hasPopup = popup !== undefined && popup !== false && popup !== "false";
+  const activationKey = (key: string) =>
+    key === "Enter" || key === " " || (hasPopup && (key === "ArrowDown" || key === "ArrowUp"));
+  const progress = (
+    <Spinner
+      data-slot="button-progress"
+      className={styles.progress}
+      data-active={loading || undefined}
+    />
+  );
+  const iconSize =
+    size === "xs" || size === "icon-xs" ? 12 : size === "md" || size === "lg" ? 16 : 14;
+  const content = (label: React.ReactNode) => {
+    const labelGroup = (
+      <>
+        {icon && <Icon name={icon} size={iconSize} data-button-icon="" />}
+        {iconOnly && (icon || iconRight) ? <span className="sr-only">{label}</span> : label}
+        {iconRight && <Icon name={iconRight} size={iconSize} />}
+      </>
     );
-    const iconSize =
-      size === "xs" || size === "icon-xs" ? 12 : size === "md" || size === "lg" ? 16 : 14;
-    const content = (label: React.ReactNode) => {
-      const labelGroup = (
-        <>
-          {icon && <Icon name={icon} size={iconSize} data-button-icon="" />}
-          {iconOnly && (icon || iconRight) ? <span className="sr-only">{label}</span> : label}
-          {iconRight && <Icon name={iconRight} size={iconSize} />}
-        </>
-      );
-      if (loadingProp === undefined) return labelGroup;
-      return (
-        <>
-          <span className={styles.labelGroup}>{labelGroup}</span>
-          {progress}
-        </>
-      );
-    };
-    const child =
-      asChild &&
-      React.isValidElement<{
-        children?: React.ReactNode;
-        onClickCapture?: React.MouseEventHandler<HTMLElement>;
-        onPointerDownCapture?: React.PointerEventHandler<HTMLElement>;
-        onKeyDownCapture?: React.KeyboardEventHandler<HTMLElement>;
-      }>(children) ? (
-        React.cloneElement(
-          children,
-          inactive
-            ? {
-                onClickCapture: preventActivation,
-                onPointerDownCapture: preventActivation,
-                onKeyDownCapture: (event: React.KeyboardEvent<HTMLElement>) => {
-                  if (activationKey(event.key)) preventActivation(event);
-                  else children.props.onKeyDownCapture?.(event);
-                }
-              }
-            : undefined,
-          <span data-press="">{content(children.props.children)}</span>
-        )
-      ) : (
-        <span data-press="">{content(children)}</span>
-      );
-
+    if (loadingProp === undefined) return labelGroup;
     return (
-      <Comp
-        ref={ref}
-        data-slot="button"
-        data-variant={variant}
-        data-size={size}
-        {...props}
-        data-v4-button=""
-        data-v4-button-material={material ? "" : undefined}
-        aria-busy={loading || undefined}
-        aria-disabled={loading || props.disabled || props["aria-disabled"] || undefined}
-        aria-pressed={selected ?? props["aria-pressed"]}
-        className={cn(
-          buttonVariants({ variant, size }),
-          iconOnly && geometry.iconOnly,
-          loadingProp !== undefined && !iconOnly && styles.pendable,
-          loading && styles.pending,
-          className
-        )}
-        style={style}
-        onPointerDown={onPointerDown}
-        onPointerUp={onPointerUp}
-        onPointerLeave={onPointerLeave}
-        onPointerCancel={onPointerCancel}
-        onPointerDownCapture={(event) => {
-          if (inactive) preventActivation(event);
-          else onPointerDownCapture?.(event);
-        }}
-        onKeyDownCapture={(event) => {
-          if (inactive && activationKey(event.key)) preventActivation(event);
-          else onKeyDownCapture?.(event);
-        }}
-        onClickCapture={(event) => {
-          if (inactive) {
-            event.preventDefault();
-            event.stopPropagation();
-            return;
-          }
-          onClickCapture?.(event);
-        }}
-      >
-        {child}
-      </Comp>
+      <>
+        <span className={styles.labelGroup}>{labelGroup}</span>
+        {progress}
+      </>
     );
-  }
-);
+  };
+  const child =
+    asChild &&
+    React.isValidElement<{
+      children?: React.ReactNode;
+      onClickCapture?: React.MouseEventHandler<HTMLElement>;
+      onPointerDownCapture?: React.PointerEventHandler<HTMLElement>;
+      onKeyDownCapture?: React.KeyboardEventHandler<HTMLElement>;
+    }>(children) ? (
+      React.cloneElement(
+        children,
+        inactive
+          ? {
+              onClickCapture: preventActivation,
+              onPointerDownCapture: preventActivation,
+              onKeyDownCapture: (event: React.KeyboardEvent<HTMLElement>) => {
+                if (activationKey(event.key)) preventActivation(event);
+                else children.props.onKeyDownCapture?.(event);
+              }
+            }
+          : undefined,
+        <span data-press="">{content(children.props.children)}</span>
+      )
+    ) : (
+      <span data-press="">{content(children)}</span>
+    );
+
+  return (
+    <Comp
+      ref={ref}
+      data-slot="button"
+      data-variant={variant}
+      data-size={size}
+      {...props}
+      data-v4-button=""
+      data-v4-button-material={material ? "" : undefined}
+      aria-busy={loading || undefined}
+      aria-disabled={loading || props.disabled || props["aria-disabled"] || undefined}
+      aria-pressed={selected ?? props["aria-pressed"]}
+      className={cn(
+        buttonVariants({ variant, size }),
+        iconOnly && geometry.iconOnly,
+        loadingProp !== undefined && !iconOnly && styles.pendable,
+        loading && styles.pending,
+        className
+      )}
+      style={style}
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+      onPointerLeave={onPointerLeave}
+      onPointerCancel={onPointerCancel}
+      onPointerDownCapture={(event) => {
+        if (inactive) preventActivation(event);
+        else onPointerDownCapture?.(event);
+      }}
+      onKeyDownCapture={(event) => {
+        if (inactive && activationKey(event.key)) preventActivation(event);
+        else onKeyDownCapture?.(event);
+      }}
+      onClickCapture={(event) => {
+        if (inactive) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+        onClickCapture?.(event);
+      }}
+    >
+      {child}
+    </Comp>
+  );
+}
 Button.displayName = "Button";
 
 export { Button, buttonVariants };

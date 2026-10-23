@@ -1,7 +1,7 @@
 import * as React from "react";
 
 export function useOwnedEscape<ElementType extends HTMLElement>(
-  ref: React.ForwardedRef<ElementType>,
+  ref: React.Ref<ElementType> | undefined,
   onEscapeKeyDown?: (event: KeyboardEvent) => void
 ) {
   const content = React.useRef<ElementType | null>(null);

@@ -18,10 +18,17 @@ const stackGap = (node: HTMLElement | null) => {
   return vertical ? parseFloat(layout.rowGap) || 0 : 0;
 };
 
-export const AnimatedCollapse = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<"div"> & { open: boolean; lazy?: boolean }
->(({ open, lazy = false, children, className, style, ...props }, ref) => {
+export function AnimatedCollapse({
+  open,
+  lazy = false,
+  children,
+  className,
+  style,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"div"> & { open: boolean; lazy?: boolean } & {
+  ref?: React.Ref<HTMLDivElement>;
+}) {
   const own = React.useRef<HTMLDivElement | null>(null);
   const [gap, setGap] = React.useState(0);
   const [present, setPresent] = React.useState(open);
@@ -89,5 +96,5 @@ export const AnimatedCollapse = React.forwardRef<
       </motion.div>
     </motion.div>
   );
-});
+}
 AnimatedCollapse.displayName = "AnimatedCollapse";

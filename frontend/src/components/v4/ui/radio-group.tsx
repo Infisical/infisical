@@ -12,17 +12,21 @@ import controlStyles from "./controls.module.css";
 
 const RadioValueContext = React.createContext<string | undefined>(undefined);
 
-const RadioGroup = React.forwardRef<
-  React.ComponentRef<typeof RadioGroupPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
->(({ className, value, defaultValue, onValueChange, ...props }, ref) => {
+function RadioGroup({
+  className,
+  value,
+  defaultValue,
+  onValueChange,
+  ref,
+  ...props
+}: React.ComponentProps<typeof RadioGroupPrimitive.Root>) {
   const [current, setCurrent] = useControllableState<string | undefined>({
     value: value ?? undefined,
     defaultValue: defaultValue ?? undefined,
     onChange: (next) => next !== undefined && onValueChange?.(next)
   });
   return (
-    <RadioValueContext.Provider value={current}>
+    <RadioValueContext value={current}>
       <RadioGroupPrimitive.Root
         ref={ref}
         data-slot="radio-group"
@@ -34,15 +38,16 @@ const RadioGroup = React.forwardRef<
         }}
         {...props}
       />
-    </RadioValueContext.Provider>
+    </RadioValueContext>
   );
-});
+}
 RadioGroup.displayName = "RadioGroup";
 
-const RadioGroupItem = React.forwardRef<
-  React.ElementRef<typeof RadioGroupPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>
->(({ className, ...props }, ref) => {
+function RadioGroupItem({
+  className,
+  ref,
+  ...props
+}: React.ComponentProps<typeof RadioGroupPrimitive.Item>) {
   const reduced = useReducedMotion();
   const selected = React.useContext(RadioValueContext) === props.value;
   return (
@@ -71,7 +76,7 @@ const RadioGroupItem = React.forwardRef<
       </RadioGroupPrimitive.Indicator>
     </RadioGroupPrimitive.Item>
   );
-});
+}
 RadioGroupItem.displayName = "RadioGroupItem";
 
 export { RadioGroup, RadioGroupItem };

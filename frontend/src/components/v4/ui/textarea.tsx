@@ -5,10 +5,7 @@ import { cn } from "../lib/utils";
 
 import controlStyles from "./controls.module.css";
 
-const Textarea = React.forwardRef<
-  React.ElementRef<"textarea">,
-  React.ComponentPropsWithoutRef<"textarea">
->(({ className, ...props }, ref) => {
+function Textarea({ className, ref, ...props }: React.ComponentProps<"textarea">) {
   const fieldAttributes = useFieldControlAttributes(props);
   return (
     <textarea
@@ -20,7 +17,7 @@ const Textarea = React.forwardRef<
       {...fieldAttributes}
     />
   );
-});
+}
 Textarea.displayName = "Textarea";
 
 export { Textarea };

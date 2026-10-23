@@ -13,12 +13,9 @@ import itemStyles from "./item.module.css";
 
 const ItemGroupContext = React.createContext(false);
 
-const ItemGroup = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function ItemGroup({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
-    <ItemGroupContext.Provider value>
+    <ItemGroupContext value>
       <div
         ref={ref}
         role="list"
@@ -29,15 +26,12 @@ const ItemGroup = React.forwardRef<
         )}
         {...props}
       />
-    </ItemGroupContext.Provider>
+    </ItemGroupContext>
   );
-});
+}
 ItemGroup.displayName = "ItemGroup";
 
-const ItemSeparator = React.forwardRef<
-  React.ComponentRef<typeof Separator>,
-  React.ComponentPropsWithoutRef<typeof Separator>
->(({ className, ...props }, ref) => {
+function ItemSeparator({ className, ref, ...props }: React.ComponentProps<typeof Separator>) {
   return (
     <Separator
       ref={ref}
@@ -47,7 +41,7 @@ const ItemSeparator = React.forwardRef<
       {...props}
     />
   );
-});
+}
 ItemSeparator.displayName = "ItemSeparator";
 
 const itemVariants = cva(
@@ -93,120 +87,116 @@ export type ItemProps = Omit<React.ComponentPropsWithoutRef<"div">, "title"> &
     truncate?: boolean;
     mono?: boolean;
   };
-const Item = React.forwardRef<HTMLDivElement, ItemProps>(
-  (
-    {
-      className,
-      variant = "default",
-      size = "default",
-      asChild = false,
-      title,
-      description,
-      icon,
-      media,
-      badge,
-      meta,
-      error,
-      actions,
-      actionsPlacement = "end",
-      unread,
-      resolved,
-      truncate = true,
-      mono = false,
-      children,
-      ...props
-    },
-    ref
-  ) => {
-    const inList = React.useContext(ItemGroupContext);
-    const Comp = asChild ? Slot.Root : "div";
-    const composed = title !== undefined || media || icon || description || actions;
-    const body = composed ? (
-      <>
-        {unread && <span className="sr-only">Unread</span>}
-        {(media || icon) && (
-          <span className={itemStyles.lead}>
-            {media ?? <Media icon={icon} size={size === "sm" ? "sm" : "md"} />}
-            {unread && <span className={itemStyles.unread} aria-hidden="true" />}
-          </span>
-        )}
-        <div className={itemStyles.main}>
-          <div className={itemStyles.copy}>
-            <div className={itemStyles.titleLine}>
-              {unread && !(media || icon) && (
-                <span className={itemStyles.unread} aria-hidden="true" />
-              )}
-              <span
-                className={cn(itemStyles.title, mono && itemStyles.mono)}
-                title={typeof title === "string" ? title : undefined}
-              >
-                {title}
-              </span>
-              {badge}
-            </div>
-            {description && (
-              <div
-                className={itemStyles.description}
-                title={typeof description === "string" ? description : undefined}
-              >
-                {description}
-              </div>
+function Item({
+  className,
+  variant = "default",
+  size = "default",
+  asChild = false,
+  title,
+  description,
+  icon,
+  media,
+  badge,
+  meta,
+  error,
+  actions,
+  actionsPlacement = "end",
+  unread,
+  resolved,
+  truncate = true,
+  mono = false,
+  children,
+  ref,
+  ...props
+}: ItemProps & { ref?: React.Ref<HTMLDivElement> }) {
+  const inList = React.useContext(ItemGroupContext);
+  const Comp = asChild ? Slot.Root : "div";
+  const composed = title !== undefined || media || icon || description || actions;
+  const body = composed ? (
+    <>
+      {unread && <span className="sr-only">Unread</span>}
+      {(media || icon) && (
+        <span className={itemStyles.lead}>
+          {media ?? <Media icon={icon} size={size === "sm" ? "sm" : "md"} />}
+          {unread && <span className={itemStyles.unread} aria-hidden="true" />}
+        </span>
+      )}
+      <div className={itemStyles.main}>
+        <div className={itemStyles.copy}>
+          <div className={itemStyles.titleLine}>
+            {unread && !(media || icon) && (
+              <span className={itemStyles.unread} aria-hidden="true" />
             )}
-            {error && (
-              <div className={itemStyles.error}>
-                <Icon name="alert" size={14} />
-                {error}
-              </div>
-            )}
-            {children && !asChild && <div className={itemStyles.body}>{children}</div>}
-          </div>
-          {(actions || meta) && (
-            <div
-              className={cn(
-                itemStyles.actions,
-                actionsPlacement === "below" && size !== "sm" && itemStyles.below
-              )}
+            <span
+              className={cn(itemStyles.title, mono && itemStyles.mono)}
+              title={typeof title === "string" ? title : undefined}
             >
-              {meta && (
-                <span className={cn(itemStyles.meta, typeof meta === "string" && itemStyles.mono)}>
-                  {meta}
-                </span>
-              )}
-              {actions}
+              {title}
+            </span>
+            {badge}
+          </div>
+          {description && (
+            <div
+              className={itemStyles.description}
+              title={typeof description === "string" ? description : undefined}
+            >
+              {description}
             </div>
           )}
+          {error && (
+            <div className={itemStyles.error}>
+              <Icon name="alert" size={14} />
+              {error}
+            </div>
+          )}
+          {children && !asChild && <div className={itemStyles.body}>{children}</div>}
         </div>
-      </>
-    ) : (
-      children
-    );
-    const content =
-      composed && asChild && React.isValidElement<{ children?: React.ReactNode }>(children)
-        ? React.cloneElement(children, undefined, body)
-        : body;
-    const item = (
-      <Comp
-        ref={ref}
-        role={inList && !asChild ? "listitem" : undefined}
-        data-slot="item"
-        data-variant={variant}
-        data-size={size}
-        data-unread={unread || undefined}
-        data-resolved={resolved || undefined}
-        className={cn(
-          itemVariants({ variant, size }),
-          composed ? itemStyles.layout : "items-center",
-          !truncate && itemStyles.wrap,
-          className
+        {(actions || meta) && (
+          <div
+            className={cn(
+              itemStyles.actions,
+              actionsPlacement === "below" && size !== "sm" && itemStyles.below
+            )}
+          >
+            {meta && (
+              <span className={cn(itemStyles.meta, typeof meta === "string" && itemStyles.mono)}>
+                {meta}
+              </span>
+            )}
+            {actions}
+          </div>
         )}
-        {...props}
-      >
-        {content}
-      </Comp>
-    );
-    return inList && asChild ? <div role="listitem">{item}</div> : item;
-  }
-);
+      </div>
+    </>
+  ) : (
+    children
+  );
+  const content =
+    composed && asChild && React.isValidElement<{ children?: React.ReactNode }>(children)
+      ? React.cloneElement(children, undefined, body)
+      : body;
+  const item = (
+    <Comp
+      ref={ref}
+      role={inList && !asChild ? "listitem" : undefined}
+      data-slot="item"
+      data-variant={variant}
+      data-size={size}
+      data-unread={unread || undefined}
+      data-resolved={resolved || undefined}
+      className={cn(
+        itemVariants({ variant, size }),
+        composed ? itemStyles.layout : "items-center",
+        !truncate && itemStyles.wrap,
+        className
+      )}
+      {...props}
+    >
+      {content}
+    </Comp>
+  );
+  return inList && asChild ? <div role="listitem">{item}</div> : item;
+}
 Item.displayName = "Item";
 
 const itemMediaVariants = cva(
@@ -226,10 +216,13 @@ const itemMediaVariants = cva(
   }
 );
 
-const ItemMedia = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div"> & VariantProps<typeof itemMediaVariants>
->(({ className, variant = "default", ...props }, ref) => {
+function ItemMedia({
+  className,
+  variant = "default",
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"div"> &
+  VariantProps<typeof itemMediaVariants> & { ref?: React.Ref<React.ComponentRef<"div">> }) {
   return (
     <div
       ref={ref}
@@ -239,13 +232,10 @@ const ItemMedia = React.forwardRef<
       {...props}
     />
   );
-});
+}
 ItemMedia.displayName = "ItemMedia";
 
-const ItemContent = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function ItemContent({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={ref}
@@ -257,13 +247,10 @@ const ItemContent = React.forwardRef<
       {...props}
     />
   );
-});
+}
 ItemContent.displayName = "ItemContent";
 
-const ItemTitle = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function ItemTitle({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={ref}
@@ -276,13 +263,10 @@ const ItemTitle = React.forwardRef<
       {...props}
     />
   );
-});
+}
 ItemTitle.displayName = "ItemTitle";
 
-const ItemDescription = React.forwardRef<
-  React.ComponentRef<"p">,
-  React.ComponentPropsWithoutRef<"p">
->(({ className, ...props }, ref) => {
+function ItemDescription({ className, ref, ...props }: React.ComponentProps<"p">) {
   return (
     <p
       ref={ref}
@@ -295,13 +279,10 @@ const ItemDescription = React.forwardRef<
       {...props}
     />
   );
-});
+}
 ItemDescription.displayName = "ItemDescription";
 
-const ItemActions = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function ItemActions({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={ref}
@@ -310,13 +291,10 @@ const ItemActions = React.forwardRef<
       {...props}
     />
   );
-});
+}
 ItemActions.displayName = "ItemActions";
 
-const ItemHeader = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function ItemHeader({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={ref}
@@ -325,13 +303,10 @@ const ItemHeader = React.forwardRef<
       {...props}
     />
   );
-});
+}
 ItemHeader.displayName = "ItemHeader";
 
-const ItemFooter = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function ItemFooter({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={ref}
@@ -340,7 +315,7 @@ const ItemFooter = React.forwardRef<
       {...props}
     />
   );
-});
+}
 ItemFooter.displayName = "ItemFooter";
 
 export {
@@ -356,52 +331,64 @@ export {
   ItemTitle
 };
 
-export const Media = React.forwardRef<
-  HTMLSpanElement,
-  React.ComponentPropsWithoutRef<"span"> & {
-    icon?: IconName;
-    size?: "sm" | "md" | number;
-    tone?: "ok" | "warn" | "bad" | "info";
-  }
->(({ icon, size = "md", tone, children, className, style, ...props }, ref) => (
-  <span
-    ref={ref}
-    data-slot="media"
-    data-size={typeof size === "number" ? undefined : size}
-    data-tone={tone}
-    className={cn(
-      helperStyles.media,
-      itemStyles.media,
-      size === "sm" && helperStyles.mediaSmall,
-      className
-    )}
-    style={{ ...(typeof size === "number" ? { width: size, height: size } : {}), ...style }}
-    {...props}
-  >
-    {icon ? (
-      <Icon
-        name={icon}
-        size={size === "sm" || (typeof size === "number" && size <= 28) ? 14 : 18}
-      />
-    ) : (
-      children
-    )}
-  </span>
-));
+export function Media({
+  icon,
+  size = "md",
+  tone,
+  children,
+  className,
+  style,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"span"> & {
+  icon?: IconName;
+  size?: "sm" | "md" | number;
+  tone?: "ok" | "warn" | "bad" | "info";
+} & { ref?: React.Ref<HTMLSpanElement> }) {
+  return (
+    <span
+      ref={ref}
+      data-slot="media"
+      data-size={typeof size === "number" ? undefined : size}
+      data-tone={tone}
+      className={cn(
+        helperStyles.media,
+        itemStyles.media,
+        size === "sm" && helperStyles.mediaSmall,
+        className
+      )}
+      style={{ ...(typeof size === "number" ? { width: size, height: size } : {}), ...style }}
+      {...props}
+    >
+      {icon ? (
+        <Icon
+          name={icon}
+          size={size === "sm" || (typeof size === "number" && size <= 28) ? 14 : 18}
+        />
+      ) : (
+        children
+      )}
+    </span>
+  );
+}
 Media.displayName = "Media";
-export const Tile = React.forwardRef<
-  HTMLButtonElement,
-  Omit<React.ComponentPropsWithoutRef<"button">, "title"> & {
-    selected?: boolean;
-    title?: React.ReactNode;
-    description?: React.ReactNode;
-    media?: React.ReactNode;
-  }
->(
-  (
-    { selected, title, description, media, children, className, type = "button", ...props },
-    ref
-  ) => (
+export function Tile({
+  selected,
+  title,
+  description,
+  media,
+  children,
+  className,
+  type = "button",
+  ref,
+  ...props
+}: Omit<React.ComponentPropsWithoutRef<"button">, "title"> & {
+  selected?: boolean;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  media?: React.ReactNode;
+} & { ref?: React.Ref<HTMLButtonElement> }) {
+  return (
     <button
       ref={ref}
       type={type}
@@ -429,6 +416,6 @@ export const Tile = React.forwardRef<
       </span>
       <Icon name={selected ? "check" : "chev-right"} />
     </button>
-  )
-);
+  );
+}
 Tile.displayName = "Tile";

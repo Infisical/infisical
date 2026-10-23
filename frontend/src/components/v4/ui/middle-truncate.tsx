@@ -4,16 +4,23 @@ import { cn } from "../lib/utils";
 
 import styles from "./text.module.css";
 
-export const MiddleTruncate = React.forwardRef<
-  HTMLSpanElement,
-  Omit<React.ComponentPropsWithoutRef<"span">, "children" | "title"> & {
-    children?: string;
-    text?: string;
-    keepEnd?: number;
-    mono?: boolean;
-    title?: string | false;
-  }
->(({ children, text, keepEnd = 8, mono = false, title, className, onCopy, ...props }, ref) => {
+export function MiddleTruncate({
+  children,
+  text,
+  keepEnd = 8,
+  mono = false,
+  title,
+  className,
+  onCopy,
+  ref,
+  ...props
+}: Omit<React.ComponentPropsWithoutRef<"span">, "children" | "title"> & {
+  children?: string;
+  text?: string;
+  keepEnd?: number;
+  mono?: boolean;
+  title?: string | false;
+} & { ref?: React.Ref<HTMLSpanElement> }) {
   const value = text ?? children ?? "";
   const host = React.useRef<HTMLSpanElement>(null);
   const measure = React.useRef<HTMLSpanElement>(null);
@@ -83,5 +90,5 @@ export const MiddleTruncate = React.forwardRef<
       <span ref={measure} aria-hidden="true" className={styles.measure} />
     </span>
   );
-});
+}
 MiddleTruncate.displayName = "MiddleTruncate";
