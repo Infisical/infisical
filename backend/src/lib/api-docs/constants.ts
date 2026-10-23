@@ -4487,8 +4487,7 @@ export const AGENT_VAULT = {
       "true lists only the access bundles you can reach that have services still requiring your personal values. false lists the rest of them. Omit to list them all.",
     isGranted:
       "Whether the access bundle is granted to you, directly or through a group. false for one you reach only as an admin.",
-    servicesRequiringSetup:
-      "The services in this access bundle that still require your personal values.",
+    servicesRequiringSetup: "The services in this access bundle that still require your personal values.",
     servicesRequiringSetupId: "The ID of the service, for setting your personal values on it.",
     servicesRequiringSetupName: "The name of the service."
   },
