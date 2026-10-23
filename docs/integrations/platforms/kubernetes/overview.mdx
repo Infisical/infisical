@@ -174,17 +174,7 @@ The operator exposes standard controller-runtime metrics. For a complete list of
 
 **v1alpha1 controllers:** `InfisicalSecret`, `InfisicalPushSecret`, `InfisicalDynamicSecret`
 
-**InfisicalStaticSecret metrics:**
-- `infisical_static_secrets` - One series per resource with the value `1`, labeled with `status` (`synced`, `failed`, or `unknown` before the first sync) and `instant_updates` (`true` or `false`)
-- `infisical_static_secret_refresh_interval_seconds` - The resource's `refreshInterval`, in seconds
-- `infisical_static_secret_auto_reload_workloads` - Number of workloads with [automatic redeployment](/integrations/platforms/kubernetes/infisical-static-secret-crd#automatic-redeployment) enabled that consume the resource's managed Secret or ConfigMap
-- `infisical_static_secret_workload_redeploys_total` - Number of workloads that automatic redeployment has restarted
-
-Each of these metrics has `namespace` and `name` labels that identify the `InfisicalStaticSecret`.
-
-<Note>
-  The InfisicalStaticSecret metrics require operator v0.11.14 or later.
-</Note>
+For metrics about each InfisicalStaticSecret resource, such as its sync status, see [InfisicalStaticSecret metrics](/integrations/platforms/kubernetes/infisical-static-secret-crd#metrics).
 
 ### Example Prometheus setup
 
@@ -237,21 +227,6 @@ histogram_quantile(0.99, rate(controller_runtime_reconcile_time_seconds_bucket[5
 
 # Memory usage (MB)
 process_resident_memory_bytes / 1024 / 1024
-
-# InfisicalStaticSecret resources
-count(infisical_static_secrets)
-
-# InfisicalStaticSecret resources whose last sync failed (use as an alert expression)
-infisical_static_secrets{status="failed"}
-
-# Average refresh interval (seconds)
-avg(infisical_static_secret_refresh_interval_seconds)
-
-# InfisicalStaticSecret resources with automatic redeployment enabled on at least one workload
-count(infisical_static_secret_auto_reload_workloads > 0)
-
-# Workloads restarted by automatic redeployment in the last 24 hours
-sum(increase(infisical_static_secret_workload_redeploys_total[24h]))
 ```
 
 ## General configuration
