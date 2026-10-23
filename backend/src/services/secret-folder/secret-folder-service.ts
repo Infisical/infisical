@@ -389,11 +389,14 @@ export const secretFolderServiceFactory = ({
               name: "UpdateManyFolders"
             });
           }
-          const folder = await folderDAL
-            .findOne({ envId: env.id, id, parentId: parentFolder.id }, tx)
-            // now folder api accepts id based change
-            // this is for cli backward compatiability and when cli removes this, we will remove this logic
-            .catch(() => folderDAL.findOne({ envId: env.id, name: id, parentId: parentFolder.id }, tx));
+          // now folder api accepts id based change
+          // this is for cli backward compatiability and when cli removes this, we will remove this logic
+          const folder = await folderDAL.findOne(
+            uuidValidate(id)
+              ? { envId: env.id, id, parentId: parentFolder.id }
+              : { envId: env.id, name: id, parentId: parentFolder.id },
+            tx
+          );
 
           if (!folder) {
             throw new NotFoundError({
