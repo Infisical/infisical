@@ -65,6 +65,11 @@ An expiration alert keeps notifying you about the same certificate until the cer
 
 ## Signer certificate expiration
 
-A **Signer Certificate Expiration** alert, in the **Code Signing** group, warns you before a [signer's](/documentation/platform/pki/code-signing/signers) current certificate expires. You can only create it as a Certificate Management alert. It covers every active signer under **Code Signing** > **Signers** and skips the **Filters** step. Otherwise, it works like a certificate expiration alert.
+A **Signer Certificate Expiration** alert, in the **Code Signing** group, warns you before a [signer's](/documentation/platform/pki/code-signing/signers) current certificate expires. You can only create it as a Certificate Management alert. Otherwise, it works like a certificate expiration alert.
 
-When you reissue a signer's certificate, the alert follows the new certificate and stops alerting on the one it replaced. The alert doesn't cover disabled, failed, or pending signers.
+Without filters, the alert covers every active signer under **Code Signing** > **Signers**. To cover only some signers, add a **Signers** filter in the **Filters** step and select up to 100 signers. Signer alerts also differ from certificate alerts in these ways:
+
+- The alert doesn't cover disabled, failed, or pending signers
+- When you reissue a signer's certificate, the alert follows the new certificate and stops alerting on the one it replaced
+- If several signers share a certificate, the notification names only the ones the filter selects
+- If you delete a signer that the filter lists, the **Filters** step shows it as **Unknown signer** when you edit the alert, so you can remove it

@@ -107,6 +107,7 @@ tables:
       - id
       - projectId
       - enabled
+      - storageType
       - createdAt
       - updatedAt
 

@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { faCheck, faCopy, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -12,7 +11,6 @@ import {
   RotateCwIcon
 } from "lucide-react";
 
-import { AppConnectionOption } from "@app/components/app-connections";
 import {
   CertificateEnrollmentUpgradeIntent,
   useUpgradeGate
@@ -20,7 +18,6 @@ import {
 import { createNotification } from "@app/components/notifications";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -30,11 +27,13 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Combobox,
+  DiscardChangesAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -48,7 +47,6 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   InputGroup,
   InputGroupAddon,
@@ -60,6 +58,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
   Spinner,
   Tabs,
   TabsContent,
@@ -79,7 +83,7 @@ import {
 } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { downloadFile } from "@app/helpers/download";
-import { usePopUp, useToggle } from "@app/hooks";
+import { useDiscardChangesGuard, useToggle } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { isScepRaCaSigningSupported } from "@app/hooks/api/ca/capabilities";
@@ -98,13 +102,11 @@ import {
   useSetPkiApplicationScepEnrollment
 } from "@app/hooks/api/pkiApplications/mutations";
 import { ScepChallengeType, TPkiApplicationProfile } from "@app/hooks/api/pkiApplications/types";
-import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
+import { useConnectionCreation } from "@app/pages/cert-manager/CertificateAuthoritiesPage/components/CaInstallCertModal/useConnectionCreation";
 
 import { PkiDocsUrls } from "../../pki-docs-urls";
 
 const COPY_RESET_MS = 1000;
-
-const CREATE_CONNECTION_ID = "_create";
 
 type Props = {
   isOpen: boolean;
@@ -113,9 +115,6 @@ type Props = {
   profile: TPkiApplicationProfile | null;
   initialMethod?: EnrollmentMethod;
 };
-
-const errorText = (err: unknown, fallback: string) =>
-  err instanceof Error ? err.message : fallback;
 
 const SectionCard = ({
   title,
@@ -128,15 +127,15 @@ const SectionCard = ({
   children: React.ReactNode;
   className?: string;
 }) => (
-  <section
-    className={`rounded-md border border-border bg-foreground/[0.02] ${className ?? ""}`.trim()}
-  >
-    <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-2.5">
-      <h3 className="text-sm font-normal text-foreground">{title}</h3>
-      {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
-    </header>
-    <div className="space-y-4 px-4 py-4">{children}</div>
-  </section>
+  <Card className={className}>
+    <CardHeader>
+      <CardTitle role="heading" aria-level={3}>
+        {title}
+      </CardTitle>
+      {actions ? <CardAction className="flex items-center gap-2">{actions}</CardAction> : null}
+    </CardHeader>
+    <CardContent className="space-y-4">{children}</CardContent>
+  </Card>
 );
 
 const CopyableField = ({
@@ -182,12 +181,24 @@ const DisableEnrollmentButton = ({
   isPending: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const isActionPending = isPending || isConfirming;
   return (
     <>
-      <Button variant="outline" onClick={() => setIsOpen(true)} isPending={isPending}>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setIsOpen(true)}
+        isDisabled={isActionPending}
+      >
         Disable
       </Button>
-      <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+      <AlertDialog
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!isActionPending) setIsOpen(open);
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogMedia>
@@ -200,10 +211,27 @@ const DisableEnrollmentButton = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="danger" isPending={isPending} onClick={onConfirmed}>
-              Disable enrollment
-            </AlertDialogAction>
+            <AlertDialogCancel isDisabled={isActionPending}>Cancel</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="danger"
+              isPending={isActionPending}
+              isDisabled={isActionPending}
+              onClick={async () => {
+                if (isActionPending) return;
+                setIsConfirming(true);
+                try {
+                  await onConfirmed();
+                  setIsOpen(false);
+                } catch {
+                  return;
+                } finally {
+                  setIsConfirming(false);
+                }
+              }}
+            >
+              Disable Enrollment
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -230,13 +258,15 @@ const ApiPanel = ({
   enabled,
   initial,
   onCancelPending,
-  onDirtyChange
+  onDirtyChange,
+  onPendingChange
 }: {
   applicationId: string;
   profileId: string;
   enabled: boolean;
   onCancelPending: () => void;
-  onDirtyChange: (isDirty: boolean) => void;
+  onDirtyChange: (method: EnrollmentMethod, isDirty: boolean) => void;
+  onPendingChange: (method: EnrollmentMethod, isPending: boolean) => void;
   initial: { autoRenew: boolean; renewBeforeDays: number | null } | null;
 }) => {
   const setMutation = useSetPkiApplicationApiEnrollment();
@@ -246,7 +276,7 @@ const ApiPanel = ({
     handleSubmit,
     watch,
     reset,
-    formState: { isDirty }
+    formState: { isDirty, isSubmitting }
   } = useForm<ApiForm>({
     defaultValues: {
       autoRenew: initial?.autoRenew ?? false,
@@ -263,35 +293,37 @@ const ApiPanel = ({
 
   const autoRenew = watch("autoRenew");
 
+  const isPending = setMutation.isPending || clearMutation.isPending || isSubmitting;
   useEffect(() => {
-    onDirtyChange(isDirty);
+    onDirtyChange("api", isDirty);
   }, [isDirty, onDirtyChange]);
+  useEffect(() => {
+    onPendingChange("api", isPending);
+  }, [isPending, onPendingChange]);
+  useEffect(
+    () => () => {
+      onDirtyChange("api", false);
+      onPendingChange("api", false);
+    },
+    [onDirtyChange, onPendingChange]
+  );
 
   const onSave = handleSubmit(async (values) => {
-    try {
-      await setMutation.mutateAsync({
-        applicationId,
-        profileId,
-        autoRenew: values.autoRenew,
-        renewBeforeDays: values.autoRenew ? (values.renewBeforeDays ?? undefined) : undefined
-      });
-      reset(values);
-      createNotification({ type: "success", text: "API enrollment saved" });
-    } catch (err) {
-      createNotification({ type: "error", text: errorText(err, "Failed to save API enrollment") });
-    }
+    if (setMutation.isPending || clearMutation.isPending) return;
+    await setMutation.mutateAsync({
+      applicationId,
+      profileId,
+      autoRenew: values.autoRenew,
+      renewBeforeDays: values.autoRenew ? (values.renewBeforeDays ?? undefined) : undefined
+    });
+    reset(values);
+    createNotification({ type: "success", text: "API enrollment saved" });
   });
 
   const onDisable = async () => {
-    try {
-      await clearMutation.mutateAsync({ applicationId, profileId });
-      createNotification({ type: "success", text: "API enrollment disabled" });
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: errorText(err, "Failed to disable API enrollment")
-      });
-    }
+    await clearMutation.mutateAsync({ applicationId, profileId });
+
+    createNotification({ type: "success", text: "API enrollment disabled" });
   };
 
   const apiEndpointUrl =
@@ -300,98 +332,107 @@ const ApiPanel = ({
       : "/api/v1/cert-manager/certificates";
 
   return (
-    <div className="space-y-5">
-      <SectionCard title="Endpoint">
-        <CopyableField
-          label="API endpoint URL"
-          value={apiEndpointUrl}
-          helper={
-            <>
-              POST to this endpoint with <code className="font-mono">applicationId</code>,{" "}
-              <code className="font-mono">profileId</code>, and an{" "}
-              <code className="font-mono">attributes</code> object (commonName, ttl, etc.) in the
-              body to issue a certificate.{" "}
-              <a
-                href="https://infisical.com/docs/api-reference/endpoints/certificates/create-certificate"
-                target="_blank"
-                rel="noreferrer"
-                className="font-medium text-project"
-              >
-                View API reference
-              </a>
-            </>
-          }
-        />
-      </SectionCard>
-      <SectionCard title="Renewal">
-        <Controller
-          control={control}
-          name="autoRenew"
-          render={({ field }) => (
-            <Field orientation="horizontal">
-              <FieldContent>
-                <Label>Auto-renew</Label>
-                <FieldDescription>
-                  Automatically renew certificates issued via this profile before they expire.
-                </FieldDescription>
-              </FieldContent>
-              <Toggle
-                variant="project"
-                id="api-auto-renew"
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-            </Field>
-          )}
-        />
-        {autoRenew && (
+    <form className="contents" onSubmit={(event) => onSave(event).catch(() => undefined)}>
+      <fieldset
+        disabled={isPending}
+        className="min-h-0 thin-scrollbar flex-1 space-y-5 overflow-y-auto p-4"
+      >
+        <SectionCard title="Endpoint">
+          <CopyableField
+            label="API endpoint URL"
+            value={apiEndpointUrl}
+            helper={
+              <>
+                POST to this endpoint with <code className="font-mono">applicationId</code>,{" "}
+                <code className="font-mono">profileId</code>, and an{" "}
+                <code className="font-mono">attributes</code> object (commonName, ttl, etc.) in the
+                body to issue a certificate.{" "}
+                <a
+                  href="https://infisical.com/docs/api-reference/endpoints/certificates/create-certificate"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-medium text-project"
+                >
+                  View API reference
+                </a>
+              </>
+            }
+          />
+        </SectionCard>
+        <SectionCard title="Renewal">
           <Controller
             control={control}
-            name="renewBeforeDays"
-            rules={{
-              validate: (value) =>
-                value === null || (value >= 1 && value <= 365) || "Must be between 1 and 365"
-            }}
-            render={({ field, fieldState: { error } }) => (
-              <Field>
-                <FieldLabel>Renew before (days)</FieldLabel>
+            name="autoRenew"
+            render={({ field }) => (
+              <Field orientation="horizontal">
                 <FieldContent>
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    value={field.value ?? ""}
-                    onChange={handleOptionalIntChange(field.onChange)}
-                    placeholder="30"
-                    isError={Boolean(error)}
-                  />
+                  <Label>Auto-renew</Label>
+                  <FieldDescription>
+                    Automatically renew certificates issued via this profile before they expire.
+                  </FieldDescription>
                 </FieldContent>
-                {error ? (
-                  <FieldError>{error.message ?? "Must be between 1 and 365"}</FieldError>
-                ) : null}
-                <FieldDescription>How many days before expiry to trigger renewal.</FieldDescription>
+                <Toggle
+                  variant="project"
+                  id="api-auto-renew"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
               </Field>
             )}
           />
-        )}
-      </SectionCard>
-      <div className="flex justify-end gap-2 pt-2">
-        {!enabled && (
-          <Button variant="outline" onClick={onCancelPending}>
-            Cancel
-          </Button>
-        )}
+          {autoRenew && (
+            <Controller
+              control={control}
+              name="renewBeforeDays"
+              rules={{
+                validate: (value) =>
+                  value === null || (value >= 1 && value <= 365) || "Must be between 1 and 365"
+              }}
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel>Renew before (days)</FieldLabel>
+                  <FieldContent>
+                    <Input
+                      ref={field.ref}
+                      name={field.name}
+                      onBlur={field.onBlur}
+                      type="number"
+                      inputMode="numeric"
+                      value={field.value ?? ""}
+                      onChange={handleOptionalIntChange(field.onChange)}
+                      placeholder="30"
+                      isError={Boolean(error)}
+                    />
+                  </FieldContent>
+                  {error ? (
+                    <FieldError>{error.message ?? "Must be between 1 and 365"}</FieldError>
+                  ) : null}
+                  <FieldDescription>
+                    How many days before expiry to trigger renewal.
+                  </FieldDescription>
+                </Field>
+              )}
+            />
+          )}
+        </SectionCard>
+      </fieldset>
+      <SheetFooter className="justify-end border-t">
         {enabled && (
-          <DisableEnrollmentButton
-            method="API"
-            onConfirmed={onDisable}
-            isPending={clearMutation.isPending}
-          />
+          <DisableEnrollmentButton method="API" onConfirmed={onDisable} isPending={isPending} />
         )}
-        <Button variant="project" onClick={onSave} isPending={setMutation.isPending}>
+        <Button type="button" variant="ghost" onClick={onCancelPending} isDisabled={isPending}>
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          variant="project"
+          isPending={setMutation.isPending || isSubmitting}
+          isDisabled={isPending}
+        >
           {enabled ? "Save" : "Enable"}
         </Button>
-      </div>
-    </div>
+      </SheetFooter>
+    </form>
   );
 };
 
@@ -403,13 +444,15 @@ const EstPanel = ({
   enabled,
   initial,
   onCancelPending,
-  onDirtyChange
+  onDirtyChange,
+  onPendingChange
 }: {
   applicationId: string;
   profileId: string;
   enabled: boolean;
   onCancelPending: () => void;
-  onDirtyChange: (isDirty: boolean) => void;
+  onDirtyChange: (method: EnrollmentMethod, isDirty: boolean) => void;
+  onPendingChange: (method: EnrollmentMethod, isPending: boolean) => void;
   initial: { disableBootstrapCaValidation: boolean; estEndpointUrl: string } | null;
 }) => {
   const setMutation = useSetPkiApplicationEstEnrollment();
@@ -418,7 +461,7 @@ const EstPanel = ({
     control,
     handleSubmit,
     reset,
-    formState: { isDirty }
+    formState: { isDirty, isSubmitting }
   } = useForm<EstForm>({
     defaultValues: {
       passphrase: "",
@@ -435,140 +478,151 @@ const EstPanel = ({
     });
   }, [initial?.disableBootstrapCaValidation, reset]);
 
+  const isPending = setMutation.isPending || clearMutation.isPending || isSubmitting;
   useEffect(() => {
-    onDirtyChange(isDirty);
+    onDirtyChange("est", isDirty);
   }, [isDirty, onDirtyChange]);
+  useEffect(() => {
+    onPendingChange("est", isPending);
+  }, [isPending, onPendingChange]);
+  useEffect(
+    () => () => {
+      onDirtyChange("est", false);
+      onPendingChange("est", false);
+    },
+    [onDirtyChange, onPendingChange]
+  );
 
   const onSave = handleSubmit(async (values) => {
-    try {
-      await setMutation.mutateAsync({
-        applicationId,
-        profileId,
-        passphrase: values.passphrase,
-        disableBootstrapCaValidation: values.disableBootstrapCaValidation,
-        caChain: values.caChain || undefined
-      });
-      reset({
-        passphrase: "",
-        disableBootstrapCaValidation: values.disableBootstrapCaValidation,
-        caChain: values.caChain
-      });
-      createNotification({ type: "success", text: "EST enrollment saved" });
-    } catch (err) {
-      createNotification({ type: "error", text: errorText(err, "Failed to save EST enrollment") });
-    }
+    if (setMutation.isPending || clearMutation.isPending) return;
+    await setMutation.mutateAsync({
+      applicationId,
+      profileId,
+      passphrase: values.passphrase,
+      disableBootstrapCaValidation: values.disableBootstrapCaValidation,
+      caChain: values.caChain || undefined
+    });
+    reset({
+      passphrase: "",
+      disableBootstrapCaValidation: values.disableBootstrapCaValidation,
+      caChain: values.caChain
+    });
+    createNotification({ type: "success", text: "EST enrollment saved" });
   });
 
   const onDisable = async () => {
-    try {
-      await clearMutation.mutateAsync({ applicationId, profileId });
-      createNotification({ type: "success", text: "EST enrollment disabled" });
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: errorText(err, "Failed to disable EST enrollment")
-      });
-    }
+    await clearMutation.mutateAsync({ applicationId, profileId });
+
+    createNotification({ type: "success", text: "EST enrollment disabled" });
   };
 
   return (
-    <div className="space-y-5">
-      {enabled && initial?.estEndpointUrl ? (
-        <SectionCard title="Endpoint">
-          <CopyableField
-            label="EST endpoint base URL"
-            value={initial.estEndpointUrl}
-            helper={
-              <>
-                Append <code className="font-mono">/simpleenroll</code>,{" "}
-                <code className="font-mono">/simplereenroll</code>, or{" "}
-                <code className="font-mono">/cacerts</code> depending on the operation.
-              </>
-            }
+    <form className="contents" onSubmit={(event) => onSave(event).catch(() => undefined)}>
+      <fieldset
+        disabled={isPending}
+        className="min-h-0 thin-scrollbar flex-1 space-y-5 overflow-y-auto p-4"
+      >
+        {enabled && initial?.estEndpointUrl ? (
+          <SectionCard title="Endpoint">
+            <CopyableField
+              label="EST endpoint base URL"
+              value={initial.estEndpointUrl}
+              helper={
+                <>
+                  Append <code className="font-mono">/simpleenroll</code>,{" "}
+                  <code className="font-mono">/simplereenroll</code>, or{" "}
+                  <code className="font-mono">/cacerts</code> depending on the operation.
+                </>
+              }
+            />
+          </SectionCard>
+        ) : null}
+        <SectionCard title="Authentication">
+          <Controller
+            control={control}
+            name="passphrase"
+            rules={{ required: !enabled, minLength: 8 }}
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel>{enabled ? "New passphrase" : "Passphrase"}</FieldLabel>
+                <FieldContent>
+                  <Input
+                    type="password"
+                    {...field}
+                    placeholder="••••••••"
+                    isError={Boolean(error)}
+                  />
+                </FieldContent>
+                <FieldDescription>
+                  {enabled
+                    ? "Leave blank to keep the current passphrase."
+                    : "Minimum 8 characters. EST clients authenticate with this passphrase."}
+                </FieldDescription>
+                {error ? <FieldError>Minimum 8 characters</FieldError> : null}
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="caChain"
+            render={({ field }) => (
+              <Field>
+                <FieldLabel>CA chain (optional)</FieldLabel>
+                <FieldContent>
+                  <TextArea
+                    {...field}
+                    rows={4}
+                    placeholder={
+                      "-----BEGIN CERTIFICATE-----\nMIIDdzCCAl+gAwIBAgIUJrK4...\n-----END CERTIFICATE-----"
+                    }
+                    className="font-mono text-xs"
+                  />
+                </FieldContent>
+                <FieldDescription>PEM-encoded chain returned by the EST endpoint.</FieldDescription>
+              </Field>
+            )}
           />
         </SectionCard>
-      ) : null}
-      <SectionCard title="Authentication">
-        <Controller
-          control={control}
-          name="passphrase"
-          rules={{ required: !enabled, minLength: 8 }}
-          render={({ field, fieldState: { error } }) => (
-            <Field>
-              <FieldLabel>{enabled ? "New passphrase" : "Passphrase"}</FieldLabel>
-              <FieldContent>
-                <Input type="password" {...field} placeholder="••••••••" isError={Boolean(error)} />
-              </FieldContent>
-              <FieldDescription>
-                {enabled
-                  ? "Leave blank to keep the current passphrase."
-                  : "Minimum 8 characters. EST clients authenticate with this passphrase."}
-              </FieldDescription>
-              {error ? <FieldError>Minimum 8 characters</FieldError> : null}
-            </Field>
-          )}
-        />
-        <Controller
-          control={control}
-          name="caChain"
-          render={({ field }) => (
-            <Field>
-              <FieldLabel>CA chain (optional)</FieldLabel>
-              <FieldContent>
-                <TextArea
-                  {...field}
-                  rows={4}
-                  placeholder={
-                    "-----BEGIN CERTIFICATE-----\nMIIDdzCCAl+gAwIBAgIUJrK4...\n-----END CERTIFICATE-----"
-                  }
-                  className="font-mono text-xs"
+        <SectionCard title="Advanced options">
+          <Controller
+            control={control}
+            name="disableBootstrapCaValidation"
+            render={({ field }) => (
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <Label>Disable bootstrap CA validation</Label>
+                  <FieldDescription>
+                    Allow EST clients to skip server-certificate validation during enrollment.
+                  </FieldDescription>
+                </FieldContent>
+                <Toggle
+                  variant="project"
+                  id="est-disable-bootstrap"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
                 />
-              </FieldContent>
-              <FieldDescription>PEM-encoded chain returned by the EST endpoint.</FieldDescription>
-            </Field>
-          )}
-        />
-      </SectionCard>
-      <SectionCard title="Advanced options">
-        <Controller
-          control={control}
-          name="disableBootstrapCaValidation"
-          render={({ field }) => (
-            <Field orientation="horizontal">
-              <FieldContent>
-                <Label>Disable bootstrap CA validation</Label>
-                <FieldDescription>
-                  Allow EST clients to skip server-certificate validation during enrollment.
-                </FieldDescription>
-              </FieldContent>
-              <Toggle
-                variant="project"
-                id="est-disable-bootstrap"
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-            </Field>
-          )}
-        />
-      </SectionCard>
-      <div className="flex justify-end gap-2 pt-2">
-        {!enabled && (
-          <Button variant="outline" onClick={onCancelPending}>
-            Cancel
-          </Button>
-        )}
-        {enabled && (
-          <DisableEnrollmentButton
-            method="EST"
-            onConfirmed={onDisable}
-            isPending={clearMutation.isPending}
+              </Field>
+            )}
           />
+        </SectionCard>
+      </fieldset>
+      <SheetFooter className="justify-end border-t">
+        {enabled && (
+          <DisableEnrollmentButton method="EST" onConfirmed={onDisable} isPending={isPending} />
         )}
-        <Button variant="project" onClick={onSave} isPending={setMutation.isPending}>
+        <Button type="button" variant="ghost" onClick={onCancelPending} isDisabled={isPending}>
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          variant="project"
+          isPending={setMutation.isPending || isSubmitting}
+          isDisabled={isPending}
+        >
           {enabled ? "Save" : "Enable"}
         </Button>
-      </div>
-    </div>
+      </SheetFooter>
+    </form>
   );
 };
 
@@ -580,13 +634,15 @@ const AcmePanel = ({
   enabled,
   initial,
   onCancelPending,
-  onDirtyChange
+  onDirtyChange,
+  onPendingChange
 }: {
   applicationId: string;
   profileId: string;
   enabled: boolean;
   onCancelPending: () => void;
-  onDirtyChange: (isDirty: boolean) => void;
+  onDirtyChange: (method: EnrollmentMethod, isDirty: boolean) => void;
+  onPendingChange: (method: EnrollmentMethod, isPending: boolean) => void;
   initial: {
     skipDnsOwnershipVerification: boolean;
     skipEabBinding: boolean;
@@ -606,7 +662,7 @@ const AcmePanel = ({
     watch,
     setValue,
     reset,
-    formState: { isDirty }
+    formState: { isDirty, isSubmitting }
   } = useForm<AcmeForm>({
     defaultValues: {
       skipDnsOwnershipVerification: initial?.skipDnsOwnershipVerification ?? false,
@@ -624,11 +680,34 @@ const AcmePanel = ({
   const skipDns = watch("skipDnsOwnershipVerification");
   const skipEab = watch("skipEabBinding");
 
+  const isPending =
+    setMutation.isPending ||
+    clearMutation.isPending ||
+    isSubmitting ||
+    revealMutation.isPending ||
+    rotateMutation.isPending;
   useEffect(() => {
-    onDirtyChange(isDirty);
+    onDirtyChange("acme", isDirty);
   }, [isDirty, onDirtyChange]);
+  useEffect(() => {
+    onPendingChange("acme", isPending);
+  }, [isPending, onPendingChange]);
+  useEffect(
+    () => () => {
+      onDirtyChange("acme", false);
+      onPendingChange("acme", false);
+    },
+    [onDirtyChange, onPendingChange]
+  );
 
   const onSave = handleSubmit(async (values) => {
+    if (
+      setMutation.isPending ||
+      clearMutation.isPending ||
+      revealMutation.isPending ||
+      rotateMutation.isPending
+    )
+      return;
     if (values.skipDnsOwnershipVerification && values.skipEabBinding) {
       createNotification({
         type: "error",
@@ -636,26 +715,15 @@ const AcmePanel = ({
       });
       return;
     }
-    try {
-      await setMutation.mutateAsync({ applicationId, profileId, ...values });
-      reset(values);
-      createNotification({ type: "success", text: "ACME enrollment saved" });
-    } catch (err) {
-      createNotification({ type: "error", text: errorText(err, "Failed to save ACME enrollment") });
-    }
+    await setMutation.mutateAsync({ applicationId, profileId, ...values });
+    reset(values);
+    createNotification({ type: "success", text: "ACME enrollment saved" });
   });
 
   const onDisable = async () => {
-    try {
-      await clearMutation.mutateAsync({ applicationId, profileId });
-      setCredentials(null);
-      createNotification({ type: "success", text: "ACME enrollment disabled" });
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: errorText(err, "Failed to disable ACME enrollment")
-      });
-    }
+    await clearMutation.mutateAsync({ applicationId, profileId });
+    setCredentials(null);
+    createNotification({ type: "success", text: "ACME enrollment disabled" });
   };
 
   const onReveal = async () => {
@@ -663,190 +731,186 @@ const AcmePanel = ({
       setCredentials(null);
       return;
     }
-    try {
-      const data = await revealMutation.mutateAsync({ applicationId, profileId });
-      setCredentials({ eabKid: data.eabKid, eabSecret: data.eabSecret });
-    } catch (err) {
-      createNotification({ type: "error", text: errorText(err, "Failed to reveal EAB secret") });
-    }
+    const data = await revealMutation.mutateAsync({ applicationId, profileId });
+    setCredentials({ eabKid: data.eabKid, eabSecret: data.eabSecret });
   };
 
   const onRotate = async () => {
-    try {
-      await rotateMutation.mutateAsync({ applicationId, profileId });
-      const data = await revealMutation.mutateAsync({ applicationId, profileId });
-      setCredentials({ eabKid: data.eabKid, eabSecret: data.eabSecret });
-      createNotification({ type: "success", text: "ACME EAB secret rotated" });
-    } catch (err) {
-      createNotification({ type: "error", text: errorText(err, "Failed to rotate EAB secret") });
-    }
+    await rotateMutation.mutateAsync({ applicationId, profileId });
+    const data = await revealMutation.mutateAsync({ applicationId, profileId });
+    setCredentials({ eabKid: data.eabKid, eabSecret: data.eabSecret });
+    createNotification({ type: "success", text: "ACME EAB secret rotated" });
   };
 
   return (
-    <div className="space-y-5">
-      {enabled && initial?.directoryUrl ? (
-        <SectionCard title="Endpoint">
-          <CopyableField
-            label="ACME directory URL"
-            value={initial.directoryUrl}
-            helper="Point your ACME client at this URL to register an account."
-          />
-        </SectionCard>
-      ) : null}
-      {enabled && (
-        <SectionCard
-          title="EAB credentials"
-          actions={
-            <>
-              <Button
-                variant="outline"
-                size="xs"
-                onClick={onReveal}
-                isPending={revealMutation.isPending}
-              >
-                {credentials ? <EyeOffIcon /> : <EyeIcon />}
-                {credentials ? "Hide" : "Reveal"}
-              </Button>
-              <Button
-                variant="outline"
-                size="xs"
-                onClick={onRotate}
-                isPending={rotateMutation.isPending}
-              >
-                <RotateCwIcon />
-                Rotate
-              </Button>
-            </>
-          }
-        >
-          {credentials ? (
-            <>
-              <CopyableField label="EAB KID" value={credentials.eabKid} />
-              <CopyableField
-                label="EAB Secret"
-                value={credentials.eabSecret}
-                helper="External Account Binding key + secret used by ACME clients to register against this profile."
-              />
-            </>
-          ) : (
-            <p className="text-xs text-accent">
-              EAB credentials are hidden by default. Reveal them to copy into your ACME client.
-            </p>
-          )}
-        </SectionCard>
-      )}
-      <SectionCard title="Advanced options">
-        <Controller
-          control={control}
-          name="skipDnsOwnershipVerification"
-          render={({ field }) => (
-            <Field orientation="horizontal">
-              <FieldContent>
-                <Label>Skip DNS ownership verification</Label>
-                <FieldDescription>
-                  Skip DNS-01 / HTTP-01 challenge enforcement during enrollment.
-                </FieldDescription>
-              </FieldContent>
-              {skipEab ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    {/* span wrapper lets the tooltip listen for hover on a disabled control */}
-                    <span className="inline-flex">
-                      <Toggle
-                        variant="project"
-                        id="acme-skip-dns"
-                        checked={field.value}
-                        onCheckedChange={(v) => {
-                          field.onChange(v);
-                          if (v) setValue("skipEabBinding", false);
-                        }}
-                        disabled
-                      />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    You can only enable one of these at a time. Disable “Skip EAB binding” first.
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
-                <Toggle
-                  variant="project"
-                  id="acme-skip-dns"
-                  checked={field.value}
-                  onCheckedChange={(v) => {
-                    field.onChange(v);
-                    if (v) setValue("skipEabBinding", false);
-                  }}
-                />
-              )}
-            </Field>
-          )}
-        />
-        <Controller
-          control={control}
-          name="skipEabBinding"
-          render={({ field }) => (
-            <Field orientation="horizontal">
-              <FieldContent>
-                <Label>Skip EAB binding</Label>
-                <FieldDescription>
-                  Allow ACME accounts to register without providing an EAB key.
-                </FieldDescription>
-              </FieldContent>
-              {skipDns ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex">
-                      <Toggle
-                        variant="project"
-                        id="acme-skip-eab"
-                        checked={field.value}
-                        onCheckedChange={(v) => {
-                          field.onChange(v);
-                          if (v) setValue("skipDnsOwnershipVerification", false);
-                        }}
-                        disabled
-                      />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    You can only enable one of these at a time. Disable “Skip DNS ownership
-                    verification” first.
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
-                <Toggle
-                  variant="project"
-                  id="acme-skip-eab"
-                  checked={field.value}
-                  onCheckedChange={(v) => {
-                    field.onChange(v);
-                    if (v) setValue("skipDnsOwnershipVerification", false);
-                  }}
-                />
-              )}
-            </Field>
-          )}
-        />
-      </SectionCard>
-      <div className="flex justify-end gap-2 pt-2">
-        {!enabled && (
-          <Button variant="outline" onClick={onCancelPending}>
-            Cancel
-          </Button>
-        )}
+    <form className="contents" onSubmit={(event) => onSave(event).catch(() => undefined)}>
+      <fieldset
+        disabled={isPending}
+        className="min-h-0 thin-scrollbar flex-1 space-y-5 overflow-y-auto p-4"
+      >
+        {enabled && initial?.directoryUrl ? (
+          <SectionCard title="Endpoint">
+            <CopyableField
+              label="ACME directory URL"
+              value={initial.directoryUrl}
+              helper="Point your ACME client at this URL to register an account."
+            />
+          </SectionCard>
+        ) : null}
         {enabled && (
-          <DisableEnrollmentButton
-            method="ACME"
-            onConfirmed={onDisable}
-            isPending={clearMutation.isPending}
-          />
+          <SectionCard
+            title="EAB credentials"
+            actions={
+              <>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={() => onReveal().catch(() => undefined)}
+                  isPending={revealMutation.isPending}
+                >
+                  {credentials ? <EyeOffIcon /> : <EyeIcon />}
+                  {credentials ? "Hide" : "Reveal"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={() => onRotate().catch(() => undefined)}
+                  isPending={rotateMutation.isPending}
+                >
+                  <RotateCwIcon />
+                  Rotate
+                </Button>
+              </>
+            }
+          >
+            {credentials ? (
+              <>
+                <CopyableField label="EAB KID" value={credentials.eabKid} />
+                <CopyableField
+                  label="EAB Secret"
+                  value={credentials.eabSecret}
+                  helper="External Account Binding key + secret used by ACME clients to register against this profile."
+                />
+              </>
+            ) : (
+              <p className="text-xs text-accent">
+                EAB credentials are hidden by default. Reveal them to copy into your ACME client.
+              </p>
+            )}
+          </SectionCard>
         )}
-        <Button variant="project" onClick={onSave} isPending={setMutation.isPending}>
+        <SectionCard title="Advanced options">
+          <Controller
+            control={control}
+            name="skipDnsOwnershipVerification"
+            render={({ field }) => (
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <Label>Skip DNS ownership verification</Label>
+                  <FieldDescription>
+                    Skip DNS-01 / HTTP-01 challenge enforcement during enrollment.
+                  </FieldDescription>
+                </FieldContent>
+                {skipEab ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      {/* span wrapper lets the tooltip listen for hover on a disabled control */}
+                      <span className="inline-flex">
+                        <Toggle
+                          variant="project"
+                          id="acme-skip-dns"
+                          checked={field.value}
+                          onCheckedChange={(v) => {
+                            field.onChange(v);
+                            if (v) setValue("skipEabBinding", false);
+                          }}
+                          disabled
+                        />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      You can only enable one of these at a time. Disable “Skip EAB binding” first.
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Toggle
+                    variant="project"
+                    id="acme-skip-dns"
+                    checked={field.value}
+                    onCheckedChange={(v) => {
+                      field.onChange(v);
+                      if (v) setValue("skipEabBinding", false);
+                    }}
+                  />
+                )}
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="skipEabBinding"
+            render={({ field }) => (
+              <Field orientation="horizontal">
+                <FieldContent>
+                  <Label>Skip EAB binding</Label>
+                  <FieldDescription>
+                    Allow ACME accounts to register without providing an EAB key.
+                  </FieldDescription>
+                </FieldContent>
+                {skipDns ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex">
+                        <Toggle
+                          variant="project"
+                          id="acme-skip-eab"
+                          checked={field.value}
+                          onCheckedChange={(v) => {
+                            field.onChange(v);
+                            if (v) setValue("skipDnsOwnershipVerification", false);
+                          }}
+                          disabled
+                        />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      You can only enable one of these at a time. Disable “Skip DNS ownership
+                      verification” first.
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Toggle
+                    variant="project"
+                    id="acme-skip-eab"
+                    checked={field.value}
+                    onCheckedChange={(v) => {
+                      field.onChange(v);
+                      if (v) setValue("skipDnsOwnershipVerification", false);
+                    }}
+                  />
+                )}
+              </Field>
+            )}
+          />
+        </SectionCard>
+      </fieldset>
+      <SheetFooter className="justify-end border-t">
+        {enabled && (
+          <DisableEnrollmentButton method="ACME" onConfirmed={onDisable} isPending={isPending} />
+        )}
+        <Button type="button" variant="ghost" onClick={onCancelPending} isDisabled={isPending}>
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          variant="project"
+          isPending={setMutation.isPending || isSubmitting}
+          isDisabled={isPending}
+        >
           {enabled ? "Save" : "Enable"}
         </Button>
-      </div>
-    </div>
+      </SheetFooter>
+    </form>
   );
 };
 
@@ -858,7 +922,8 @@ const ScepPanel = ({
   caType,
   initial,
   onCancelPending,
-  onDirtyChange
+  onDirtyChange,
+  onPendingChange
 }: {
   applicationId: string;
   profileId: string;
@@ -866,7 +931,8 @@ const ScepPanel = ({
   enabled: boolean;
   caType: CaType;
   onCancelPending: () => void;
-  onDirtyChange: (isDirty: boolean) => void;
+  onDirtyChange: (method: EnrollmentMethod, isDirty: boolean) => void;
+  onPendingChange: (method: EnrollmentMethod, isPending: boolean) => void;
   initial: {
     challengeType: ScepChallengeType;
     includeCaCertInResponse: boolean;
@@ -890,7 +956,7 @@ const ScepPanel = ({
     watch,
     reset,
     setValue,
-    formState: { isDirty }
+    formState: { isDirty, isSubmitting }
   } = useForm<{
     challengeType: ScepChallengeType;
     challengePassword?: string;
@@ -941,10 +1007,12 @@ const ScepPanel = ({
   const raCaSigningSupported = isScepRaCaSigningSupported(caType);
 
   const { permission } = useProjectPermission();
-  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
   const canCreateConnection = permission.can(
     ProjectPermissionAppConnectionActions.Create,
     ProjectPermissionSub.AppConnections
+  );
+  const connectionCreation = useConnectionCreation(AppConnection.MicrosoftIntune, (connection) =>
+    setValue("validationConnectionId", connection.id, { shouldDirty: true, shouldValidate: true })
   );
 
   useEffect(() => {
@@ -956,43 +1024,44 @@ const ScepPanel = ({
       enabled: isIntune
     });
 
+  const isPending = setMutation.isPending || clearMutation.isPending || isSubmitting;
   useEffect(() => {
-    onDirtyChange(isDirty);
+    onDirtyChange("scep", isDirty);
   }, [isDirty, onDirtyChange]);
+  useEffect(() => {
+    onPendingChange("scep", isPending);
+  }, [isPending, onPendingChange]);
+  useEffect(
+    () => () => {
+      onDirtyChange("scep", false);
+      onPendingChange("scep", false);
+    },
+    [onDirtyChange, onPendingChange]
+  );
 
   const onSave = handleSubmit(async (values) => {
-    try {
-      const signRaWithCa = raCaSigningSupported && values.signRaWithCa;
-      const payload = isIntune
-        ? {
-            applicationId,
-            profileId,
-            challengeType: values.challengeType,
-            includeCaCertInResponse: values.includeCaCertInResponse,
-            // Cert-based renewal would bypass Intune's per-request validation, so it is always off.
-            allowCertBasedRenewal: false,
-            signRaWithCa,
-            validationConnectionId: values.validationConnectionId
-          }
-        : { applicationId, profileId, ...values, signRaWithCa, validationConnectionId: undefined };
-      await setMutation.mutateAsync(payload);
-      reset({ ...values, challengePassword: "" });
-      createNotification({ type: "success", text: "SCEP enrollment saved" });
-    } catch (err) {
-      createNotification({ type: "error", text: errorText(err, "Failed to save SCEP enrollment") });
-    }
+    if (setMutation.isPending || clearMutation.isPending) return;
+    const signRaWithCa = raCaSigningSupported && values.signRaWithCa;
+    const payload = isIntune
+      ? {
+          applicationId,
+          profileId,
+          challengeType: values.challengeType,
+          includeCaCertInResponse: values.includeCaCertInResponse,
+          // Cert-based renewal would bypass Intune's per-request validation, so it is always off.
+          allowCertBasedRenewal: false,
+          signRaWithCa,
+          validationConnectionId: values.validationConnectionId
+        }
+      : { applicationId, profileId, ...values, signRaWithCa, validationConnectionId: undefined };
+    await setMutation.mutateAsync(payload);
+    reset({ ...values, challengePassword: "" });
+    createNotification({ type: "success", text: "SCEP enrollment saved" });
   });
 
   const onDisable = async () => {
-    try {
-      await clearMutation.mutateAsync({ applicationId, profileId });
-      createNotification({ type: "success", text: "SCEP enrollment disabled" });
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: errorText(err, "Failed to disable SCEP enrollment")
-      });
-    }
+    await clearMutation.mutateAsync({ applicationId, profileId });
+    createNotification({ type: "success", text: "SCEP enrollment disabled" });
   };
 
   const raCertExpiresAtLabel = initial?.raCertExpiresAt
@@ -1004,338 +1073,338 @@ const ScepPanel = ({
     : null;
 
   return (
-    <div className="space-y-5">
-      {enabled && initial ? (
-        <SectionCard title="Endpoint">
-          <CopyableField
-            label="SCEP endpoint URL"
-            value={initial.scepEndpointUrl}
-            helper="Configure your MDM or SCEP client to point at this URL. For Windows devices, remove /pkiclient.exe from the end."
-          />
-          {initial.challengeType === ScepChallengeType.DYNAMIC && initial.challengeEndpointUrl ? (
+    <form className="contents" onSubmit={(event) => onSave(event).catch(() => undefined)}>
+      <fieldset
+        disabled={isPending}
+        className="min-h-0 thin-scrollbar flex-1 space-y-5 overflow-y-auto p-4"
+      >
+        {enabled && initial ? (
+          <SectionCard title="Endpoint">
             <CopyableField
-              label="Challenge endpoint URL"
-              value={initial.challengeEndpointUrl}
-              helper="Authenticated POST endpoint to mint a one-time challenge (e.g. the JAMF SCEPChallenge webhook)."
+              label="SCEP endpoint URL"
+              value={initial.scepEndpointUrl}
+              helper="Configure your MDM or SCEP client to point at this URL. For Windows devices, remove /pkiclient.exe from the end."
             />
-          ) : null}
-        </SectionCard>
-      ) : null}
-      {enabled && initial?.raCertificatePem ? (
-        <SectionCard
-          title="RA certificate"
-          actions={
-            <Button
-              variant="outline"
-              size="xs"
-              onClick={() =>
-                downloadFile(
-                  initial.raCertificatePem,
-                  `${profileSlug}-ra-cert.pem`,
-                  "application/x-pem-file"
-                )
-              }
-            >
-              <FontAwesomeIcon icon={faDownload} />
-              Download PEM
-            </Button>
-          }
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-foreground/[0.04] text-accent">
-              <FileTextIcon />
+            {initial.challengeType === ScepChallengeType.DYNAMIC && initial.challengeEndpointUrl ? (
+              <CopyableField
+                label="Challenge endpoint URL"
+                value={initial.challengeEndpointUrl}
+                helper="Authenticated POST endpoint to mint a one-time challenge (e.g. the JAMF SCEPChallenge webhook)."
+              />
+            ) : null}
+          </SectionCard>
+        ) : null}
+        {enabled && initial?.raCertificatePem ? (
+          <SectionCard
+            title="RA certificate"
+            actions={
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={() =>
+                  downloadFile(
+                    initial.raCertificatePem,
+                    `${profileSlug}-ra-cert.pem`,
+                    "application/x-pem-file"
+                  )
+                }
+              >
+                <FontAwesomeIcon icon={faDownload} />
+                Download PEM
+              </Button>
+            }
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border bg-foreground/[0.04] text-accent">
+                <FileTextIcon />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-mono text-sm text-foreground">{profileSlug}-ra-cert.pem</span>
+                <span className="text-xs text-accent">
+                  Expires {raCertExpiresAtLabel ?? "Unknown"}
+                </span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="font-mono text-sm text-foreground">{profileSlug}-ra-cert.pem</span>
-              <span className="text-xs text-accent">
-                Expires {raCertExpiresAtLabel ?? "Unknown"}
-              </span>
-            </div>
-          </div>
-        </SectionCard>
-      ) : null}
-      <SectionCard title="Challenge">
-        <Controller
-          control={control}
-          name="challengeType"
-          render={({ field }) => (
-            <Field>
-              <FieldLabel>Challenge type</FieldLabel>
-              <FieldContent>
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ScepChallengeType.STATIC}>Static password</SelectItem>
-                    <SelectItem value={ScepChallengeType.DYNAMIC}>Dynamic (per-client)</SelectItem>
-                    <SelectItem value={ScepChallengeType.MICROSOFT_INTUNE}>
-                      Microsoft Intune
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </FieldContent>
-              <FieldDescription>
-                {(() => {
-                  if (field.value === ScepChallengeType.STATIC)
-                    return "All clients present the same shared challenge password.";
-                  if (field.value === ScepChallengeType.DYNAMIC)
-                    return "Each client requests a fresh, one-time challenge before enrolling.";
-                  return "Requests are validated with Microsoft Intune, which seals its own challenge into each device request.";
-                })()}
-              </FieldDescription>
-            </Field>
-          )}
-        />
-        {isIntune && (
+          </SectionCard>
+        ) : null}
+        <SectionCard title="Challenge">
           <Controller
             control={control}
-            name="validationConnectionId"
-            rules={{ required: true }}
-            render={({ field: { value, onChange }, fieldState: { error } }) => {
-              const selected = intuneConnections?.find((c) => c.id === value) ?? null;
-              return (
-                <Field>
-                  <FieldLabel>Microsoft Intune connection</FieldLabel>
-                  <FieldContent>
-                    <FilterableSelect
-                      value={selected}
-                      isError={Boolean(error)}
-                      isLoading={isIntuneConnectionsLoading}
-                      onChange={(newValue) => {
-                        if (
-                          (newValue as SingleValue<{ id: string }>)?.id === CREATE_CONNECTION_ID
-                        ) {
-                          handlePopUpOpen("addConnection");
-                          onChange(undefined);
-                          return;
-                        }
-                        onChange((newValue as { id: string } | null)?.id ?? undefined);
-                      }}
-                      options={[
-                        ...(canCreateConnection
-                          ? [{ id: CREATE_CONNECTION_ID, name: "Create Connection" }]
-                          : []),
-                        ...(intuneConnections ?? [])
-                      ]}
-                      placeholder="Select connection..."
-                      getOptionLabel={(option) => option.name}
-                      getOptionValue={(option) => option.id}
-                      components={{ Option: AppConnectionOption }}
-                    />
-                  </FieldContent>
-                  <FieldDescription>
-                    Selecting the connection is all that is required. The transaction and
-                    certificate request arrive in the device request, and the expected subject and
-                    SAN are validated by Intune. See the{" "}
-                    <a
-                      href={PkiDocsUrls.appConnections.microsoftIntune}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-project hover:text-project"
-                    >
-                      setup guide
-                    </a>{" "}
-                    for what to configure on the Intune side.
-                  </FieldDescription>
-                  {!isIntuneConnectionsLoading &&
-                  !intuneConnections?.length &&
-                  !canCreateConnection ? (
-                    <FieldDescription className="text-warning">
-                      You do not have access to any Microsoft Intune Connections. Contact an admin
-                      to create one.
-                    </FieldDescription>
-                  ) : null}
-                  {error ? (
-                    <FieldError>A Microsoft Intune connection is required.</FieldError>
-                  ) : null}
-                </Field>
-              );
-            }}
-          />
-        )}
-        {challengeType === ScepChallengeType.STATIC && (
-          <Controller
-            control={control}
-            name="challengePassword"
-            rules={{ required: !enabled }}
-            render={({ field, fieldState: { error } }) => (
+            name="challengeType"
+            render={({ field }) => (
               <Field>
-                <FieldLabel>{enabled ? "New challenge password" : "Challenge password"}</FieldLabel>
+                <FieldLabel>Challenge type</FieldLabel>
                 <FieldContent>
-                  <Input
-                    type="password"
-                    {...field}
-                    placeholder="••••••••"
-                    isError={Boolean(error)}
-                  />
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ScepChallengeType.STATIC}>Static password</SelectItem>
+                      <SelectItem value={ScepChallengeType.DYNAMIC}>
+                        Dynamic (per-client)
+                      </SelectItem>
+                      <SelectItem value={ScepChallengeType.MICROSOFT_INTUNE}>
+                        Microsoft Intune
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </FieldContent>
                 <FieldDescription>
-                  {enabled
-                    ? "Leave blank to keep the current challenge password."
-                    : "Shared password presented by every SCEP client during enrollment."}
+                  {(() => {
+                    if (field.value === ScepChallengeType.STATIC)
+                      return "All clients present the same shared challenge password.";
+                    if (field.value === ScepChallengeType.DYNAMIC)
+                      return "Each client requests a fresh, one-time challenge before enrolling.";
+                    return "Requests are validated with Microsoft Intune, which seals its own challenge into each device request.";
+                  })()}
                 </FieldDescription>
-                {error ? <FieldError>Required</FieldError> : null}
               </Field>
             )}
           />
-        )}
-        {challengeType === ScepChallengeType.DYNAMIC && (
-          <div className="grid grid-cols-2 gap-4">
+          {isIntune && (
             <Controller
               control={control}
-              name="dynamicChallengeExpiryMinutes"
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel>Challenge expiry (minutes)</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      type="number"
-                      inputMode="numeric"
-                      value={field.value ?? ""}
-                      onChange={handleOptionalIntChange(field.onChange)}
-                    />
-                  </FieldContent>
-                </Field>
-              )}
-            />
-            <Controller
-              control={control}
-              name="dynamicChallengeMaxPending"
-              render={({ field }) => (
-                <Field>
-                  <FieldLabel>Max pending challenges</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      type="number"
-                      inputMode="numeric"
-                      value={field.value ?? ""}
-                      onChange={handleOptionalIntChange(field.onChange)}
-                    />
-                  </FieldContent>
-                </Field>
-              )}
-            />
-          </div>
-        )}
-      </SectionCard>
-      <SectionCard title="Advanced options">
-        <Controller
-          control={control}
-          name="signRaWithCa"
-          render={({ field }) => (
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <FieldLabel>Sign RA certificate with the CA</FieldLabel>
-                <p className="text-xs text-accent">
-                  Issue the SCEP RA certificate from this profile&apos;s CA so clients can build a
-                  chain to a CA they already trust. Required by strict clients such as Apple and
-                  Microsoft Intune, which reject a self-signed RA. Only available for internal
-                  certificate authorities.
-                </p>
-              </div>
-              {raCaSigningSupported && !isScepConfigured ? (
-                <Toggle
-                  variant="project"
-                  id="scep-sign-ra-with-ca"
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div>
-                      <Toggle
-                        variant="project"
-                        id="scep-sign-ra-with-ca"
-                        checked={raCaSigningSupported && field.value}
-                        disabled
+              name="validationConnectionId"
+              rules={{ required: true }}
+              render={({
+                field: { value, onChange, onBlur, name, ref },
+                fieldState: { error }
+              }) => {
+                const selected = intuneConnections?.find((c) => c.id === value) ?? null;
+                return (
+                  <Field>
+                    <FieldLabel htmlFor="scep-intune-connection">
+                      Microsoft Intune connection
+                    </FieldLabel>
+                    <FieldContent>
+                      <Combobox
+                        ref={ref}
+                        id="scep-intune-connection"
+                        name={name}
+                        onBlur={onBlur}
+                        isDisabled={isPending}
+                        value={selected}
+                        isError={Boolean(error)}
+                        isLoading={isIntuneConnectionsLoading}
+                        onValueChange={(newValue) => {
+                          onChange(newValue?.id ?? undefined);
+                        }}
+                        options={intuneConnections ?? []}
+                        placeholder="Select connection..."
+                        getOptionLabel={(option) => option.name}
+                        getOptionValue={(option) => option.id}
+                        creation={connectionCreation}
                       />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {raCaSigningSupported
-                      ? "Cannot be changed once SCEP enrollment is set up. Disable SCEP enrollment and set it up again to change it."
-                      : `Not supported for ${caType} certificate authorities.`}
-                  </TooltipContent>
-                </Tooltip>
+                    </FieldContent>
+                    <FieldDescription>
+                      Selecting the connection is all that is required. The transaction and
+                      certificate request arrive in the device request, and the expected subject and
+                      SAN are validated by Intune. See the{" "}
+                      <a
+                        href={PkiDocsUrls.appConnections.microsoftIntune}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-project hover:text-project"
+                      >
+                        setup guide
+                      </a>{" "}
+                      for what to configure on the Intune side.
+                    </FieldDescription>
+                    {!isIntuneConnectionsLoading &&
+                    !intuneConnections?.length &&
+                    !canCreateConnection ? (
+                      <FieldDescription className="text-warning">
+                        You do not have access to any Microsoft Intune Connections. Contact an admin
+                        to create one.
+                      </FieldDescription>
+                    ) : null}
+                    {error ? (
+                      <FieldError>A Microsoft Intune connection is required.</FieldError>
+                    ) : null}
+                  </Field>
+                );
+              }}
+            />
+          )}
+          {challengeType === ScepChallengeType.STATIC && (
+            <Controller
+              control={control}
+              name="challengePassword"
+              rules={{ required: !enabled }}
+              render={({ field, fieldState: { error } }) => (
+                <Field>
+                  <FieldLabel>
+                    {enabled ? "New challenge password" : "Challenge password"}
+                  </FieldLabel>
+                  <FieldContent>
+                    <Input
+                      type="password"
+                      {...field}
+                      placeholder="••••••••"
+                      isError={Boolean(error)}
+                    />
+                  </FieldContent>
+                  <FieldDescription>
+                    {enabled
+                      ? "Leave blank to keep the current challenge password."
+                      : "Shared password presented by every SCEP client during enrollment."}
+                  </FieldDescription>
+                  {error ? <FieldError>Required</FieldError> : null}
+                </Field>
               )}
+            />
+          )}
+          {challengeType === ScepChallengeType.DYNAMIC && (
+            <div className="grid grid-cols-2 gap-4">
+              <Controller
+                control={control}
+                name="dynamicChallengeExpiryMinutes"
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>Challenge expiry (minutes)</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        ref={field.ref}
+                        name={field.name}
+                        onBlur={field.onBlur}
+                        type="number"
+                        inputMode="numeric"
+                        value={field.value ?? ""}
+                        onChange={handleOptionalIntChange(field.onChange)}
+                      />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                name="dynamicChallengeMaxPending"
+                render={({ field }) => (
+                  <Field>
+                    <FieldLabel>Max pending challenges</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        ref={field.ref}
+                        name={field.name}
+                        onBlur={field.onBlur}
+                        type="number"
+                        inputMode="numeric"
+                        value={field.value ?? ""}
+                        onChange={handleOptionalIntChange(field.onChange)}
+                      />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
             </div>
           )}
-        />
-        <Controller
-          control={control}
-          name="includeCaCertInResponse"
-          render={({ field }) => (
-            <Field orientation="horizontal">
-              <FieldContent>
-                <Label>Include CA cert in response</Label>
-                <FieldDescription>
-                  Return the issuing CA certificate inline alongside the issued cert.
-                </FieldDescription>
-              </FieldContent>
-              <Toggle
-                variant="project"
-                id="scep-include-ca"
-                checked={field.value}
-                onCheckedChange={field.onChange}
-              />
-            </Field>
-          )}
-        />
-        {!isIntune && (
+        </SectionCard>
+        <SectionCard title="Advanced options">
           <Controller
             control={control}
-            name="allowCertBasedRenewal"
+            name="signRaWithCa"
+            render={({ field }) => (
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <FieldLabel>Sign RA certificate with the CA</FieldLabel>
+                  <p className="text-xs text-accent">
+                    Issue the SCEP RA certificate from this profile&apos;s CA so clients can build a
+                    chain to a CA they already trust. Required by strict clients such as Apple and
+                    Microsoft Intune, which reject a self-signed RA. Only available for internal
+                    certificate authorities.
+                  </p>
+                </div>
+                {raCaSigningSupported && !isScepConfigured ? (
+                  <Toggle
+                    variant="project"
+                    id="scep-sign-ra-with-ca"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div>
+                        <Toggle
+                          variant="project"
+                          id="scep-sign-ra-with-ca"
+                          checked={raCaSigningSupported && field.value}
+                          disabled
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {raCaSigningSupported
+                        ? "Cannot be changed once SCEP enrollment is set up. Disable SCEP enrollment and set it up again to change it."
+                        : `Not supported for ${caType} certificate authorities.`}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            )}
+          />
+          <Controller
+            control={control}
+            name="includeCaCertInResponse"
             render={({ field }) => (
               <Field orientation="horizontal">
                 <FieldContent>
-                  <Label>Allow cert-based renewal</Label>
+                  <Label>Include CA cert in response</Label>
                   <FieldDescription>
-                    Let clients renew using their existing certificate as authentication.
+                    Return the issuing CA certificate inline alongside the issued cert.
                   </FieldDescription>
                 </FieldContent>
                 <Toggle
                   variant="project"
-                  id="scep-cert-renewal"
+                  id="scep-include-ca"
                   checked={field.value}
                   onCheckedChange={field.onChange}
                 />
               </Field>
             )}
           />
-        )}
-      </SectionCard>
-      <div className="flex justify-end gap-2 pt-2">
-        {!enabled && (
-          <Button variant="outline" onClick={onCancelPending}>
-            Cancel
-          </Button>
-        )}
+          {!isIntune && (
+            <Controller
+              control={control}
+              name="allowCertBasedRenewal"
+              render={({ field }) => (
+                <Field orientation="horizontal">
+                  <FieldContent>
+                    <Label>Allow cert-based renewal</Label>
+                    <FieldDescription>
+                      Let clients renew using their existing certificate as authentication.
+                    </FieldDescription>
+                  </FieldContent>
+                  <Toggle
+                    variant="project"
+                    id="scep-cert-renewal"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </Field>
+              )}
+            />
+          )}
+        </SectionCard>
+      </fieldset>
+      <SheetFooter className="justify-end border-t">
         {enabled && (
-          <DisableEnrollmentButton
-            method="SCEP"
-            onConfirmed={onDisable}
-            isPending={clearMutation.isPending}
-          />
+          <DisableEnrollmentButton method="SCEP" onConfirmed={onDisable} isPending={isPending} />
         )}
-        <Button variant="project" onClick={onSave} isPending={setMutation.isPending}>
+        <Button type="button" variant="ghost" onClick={onCancelPending} isDisabled={isPending}>
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          variant="project"
+          isPending={setMutation.isPending || isSubmitting}
+          isDisabled={isPending}
+        >
           {enabled ? "Save" : "Enable"}
         </Button>
-      </div>
-      <AddAppConnectionModal
-        isOpen={popUp.addConnection.isOpen}
-        onOpenChange={(isAddConnectionOpen) =>
-          handlePopUpToggle("addConnection", isAddConnectionOpen)
-        }
-        projectType={currentProject.type}
-        projectId={currentProject.id}
-        app={AppConnection.MicrosoftIntune}
-        onComplete={(connection) => {
-          if (connection) setValue("validationConnectionId", connection.id);
-        }}
-      />
-    </div>
+      </SheetFooter>
+    </form>
   );
 };
 
@@ -1403,8 +1472,12 @@ export const ConfigureEnrollmentModal = ({
 
   const [pendingMethods, setPendingMethods] = useState<EnrollmentMethod[]>([]);
   const [activeTab, setActiveTab] = useState<EnrollmentMethod | "">("");
-  const [isDiscardOpen, setIsDiscardOpen] = useState(false);
   const [dirtyMethods, setDirtyMethods] = useState<Partial<Record<EnrollmentMethod, boolean>>>({});
+  const [pendingByMethod, setPendingByMethod] = useState<
+    Partial<Record<EnrollmentMethod, boolean>>
+  >({});
+  const discardMethod = useRef<EnrollmentMethod | null>(null);
+  const isPending = Object.values(pendingByMethod).some(Boolean);
 
   const { subscription } = useSubscription();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
@@ -1426,8 +1499,8 @@ export const ConfigureEnrollmentModal = ({
     if (!isOpen) {
       setPendingMethods([]);
       setActiveTab("");
-      setIsDiscardOpen(false);
       setDirtyMethods({});
+      setPendingByMethod({});
     }
   }, [isOpen, profileId]);
 
@@ -1453,6 +1526,7 @@ export const ConfigureEnrollmentModal = ({
   };
 
   const handleAddMethod = (method: EnrollmentMethod) => {
+    if (isPending) return;
     if (!lockedMethods[method]) {
       handleAdd(method);
       return;
@@ -1464,9 +1538,6 @@ export const ConfigureEnrollmentModal = ({
     });
   };
 
-  const handleCancelPending = (method: EnrollmentMethod) =>
-    setPendingMethods((prev) => prev.filter((m) => m !== method));
-
   const handleDirtyChange = useCallback(
     (method: EnrollmentMethod, isDirty: boolean) =>
       setDirtyMethods((prev) =>
@@ -1476,31 +1547,52 @@ export const ConfigureEnrollmentModal = ({
   );
 
   const hasUnsavedWork = pendingMethods.length > 0 || Object.values(dirtyMethods).some(Boolean);
+  const handlePendingChange = useCallback(
+    (method: EnrollmentMethod, pending: boolean) =>
+      setPendingByMethod((prev) =>
+        Boolean(prev[method]) === pending ? prev : { ...prev, [method]: pending }
+      ),
+    []
+  );
+  const { requestDiscard, isDiscardDialogOpen, setIsDiscardDialogOpen, confirmDiscard } =
+    useDiscardChangesGuard({
+      isDirty: hasUnsavedWork,
+      onDiscard: () => {
+        const method = discardMethod.current;
+        if (method) {
+          setPendingMethods((prev) => prev.filter((m) => m !== method));
+          setDirtyMethods((prev) => ({ ...prev, [method]: false }));
+          return;
+        }
+        onOpenChange(false);
+      }
+    });
 
   const isUnsaved = (method: EnrollmentMethod) =>
     pendingMethods.includes(method) || Boolean(dirtyMethods[method]);
 
-  const handleOpenChange = (open: boolean) => {
-    if (!open && hasUnsavedWork) {
-      setIsDiscardOpen(true);
-      return;
-    }
-    onOpenChange(open);
+  const handleDismiss = () => {
+    if (isPending) return;
+    discardMethod.current = null;
+    requestDiscard();
   };
-
-  const handleDiscard = () => {
-    setPendingMethods([]);
-    setDirtyMethods({});
-    setIsDiscardOpen(false);
-    onOpenChange(false);
+  const handleCancelPending = (method: EnrollmentMethod) => {
+    if (isPending) return;
+    discardMethod.current = method;
+    requestDiscard();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] thin-scrollbar max-w-3xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Configure enrollment methods for {profile?.profileSlug}</DialogTitle>
-          <DialogDescription>
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) handleDismiss();
+      }}
+    >
+      <SheetContent size="form" isPending={isPending}>
+        <SheetHeader>
+          <SheetTitle>Configure Enrollment Methods for {profile?.profileSlug}</SheetTitle>
+          <SheetDescription>
             Enable an enrollment method to allow clients to request certificates using this profile.{" "}
             <a
               href={PkiDocsUrls.applications.enrollment.overview}
@@ -1510,21 +1602,27 @@ export const ConfigureEnrollmentModal = ({
             >
               Learn more
             </a>
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
 
         {!profile || isLoading ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex flex-1 items-center justify-center p-4">
             <Spinner size="sm" />
           </div>
         ) : (
-          <>
-            <div className="flex items-center justify-between gap-2 border-b border-border">
-              {visibleMethods.length > 0 ? (
-                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EnrollmentMethod)}>
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => {
+              if (!isPending) setActiveTab(v as EnrollmentMethod);
+            }}
+            className="min-h-0 flex-1"
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-border px-4 pt-4">
+              <div className="min-w-0 flex-1">
+                {visibleMethods.length > 0 ? (
                   <TabsList variant="project" className="border-b-0">
                     {visibleMethods.map((m) => (
-                      <TabsTrigger key={m} value={m}>
+                      <TabsTrigger key={m} value={m} disabled={isPending}>
                         {METHOD_LABELS[m]}
                         {isUnsaved(m) && (
                           <span className="ml-1.5 text-xs text-muted">(unsaved)</span>
@@ -1532,14 +1630,14 @@ export const ConfigureEnrollmentModal = ({
                       </TabsTrigger>
                     ))}
                   </TabsList>
-                </Tabs>
-              ) : (
-                <div />
-              )}
+                ) : (
+                  <div />
+                )}
+              </div>
               {addableMethods.length > 0 ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="mb-2">
+                    <Button variant="outline" size="sm" className="mb-2" isDisabled={isPending}>
                       <Plus className="size-4" />
                       Add enrollment method
                     </Button>
@@ -1548,7 +1646,11 @@ export const ConfigureEnrollmentModal = ({
                     {addableMethods.map((m) => {
                       const isLocked = lockedMethods[m] ?? false;
                       return (
-                        <DropdownMenuItem key={m} onClick={() => handleAddMethod(m)}>
+                        <DropdownMenuItem
+                          key={m}
+                          onClick={() => handleAddMethod(m)}
+                          isDisabled={isPending}
+                        >
                           <div className="flex flex-col">
                             <span className="flex items-center gap-2 font-medium">
                               {METHOD_LABELS[m]}
@@ -1567,100 +1669,124 @@ export const ConfigureEnrollmentModal = ({
             </div>
 
             {visibleMethods.length === 0 ? (
-              <Empty className="border">
-                <EmptyHeader>
-                  <EmptyTitle>No enrollment methods configured</EmptyTitle>
-                  <EmptyDescription>
-                    <span className="font-medium">Add enrollment method</span> above to let clients
-                    request certificates from this profile.
-                  </EmptyDescription>
-                </EmptyHeader>
-              </Empty>
+              <div className="min-h-0 thin-scrollbar flex-1 overflow-y-auto p-4">
+                <Empty className="border">
+                  <EmptyHeader>
+                    <EmptyTitle>No enrollment methods configured</EmptyTitle>
+                    <EmptyDescription>
+                      <span className="font-medium">Add enrollment method</span> above to let
+                      clients request certificates from this profile.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              </div>
             ) : (
               <>
                 {activeTab && (
-                  <p className="text-sm text-accent">
+                  <p className="px-4 pt-4 text-sm text-accent">
                     <MethodDescription method={activeTab as EnrollmentMethod} />
                   </p>
                 )}
-                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EnrollmentMethod)}>
-                  {visibleMethods.includes("api") ? (
-                    <TabsContent value="api" className="data-[state=inactive]:hidden" forceMount>
-                      <ApiPanel
-                        applicationId={applicationId}
-                        profileId={profileId}
-                        enabled={Boolean(data?.api)}
-                        initial={data?.api ?? null}
-                        onCancelPending={() => handleCancelPending("api")}
-                        onDirtyChange={(d) => handleDirtyChange("api", d)}
-                      />
-                    </TabsContent>
-                  ) : null}
-                  {visibleMethods.includes("est") ? (
-                    <TabsContent value="est" className="data-[state=inactive]:hidden" forceMount>
-                      <EstPanel
-                        applicationId={applicationId}
-                        profileId={profileId}
-                        enabled={Boolean(data?.estConfigured)}
-                        initial={data?.est ?? null}
-                        onCancelPending={() => handleCancelPending("est")}
-                        onDirtyChange={(d) => handleDirtyChange("est", d)}
-                      />
-                    </TabsContent>
-                  ) : null}
-                  {visibleMethods.includes("acme") ? (
-                    <TabsContent value="acme" className="data-[state=inactive]:hidden" forceMount>
-                      <AcmePanel
-                        applicationId={applicationId}
-                        profileId={profileId}
-                        enabled={Boolean(data?.acmeConfigured)}
-                        initial={data?.acme ?? null}
-                        onCancelPending={() => handleCancelPending("acme")}
-                        onDirtyChange={(d) => handleDirtyChange("acme", d)}
-                      />
-                    </TabsContent>
-                  ) : null}
-                  {visibleMethods.includes("scep") ? (
-                    <TabsContent value="scep" className="data-[state=inactive]:hidden" forceMount>
-                      <ScepPanel
-                        applicationId={applicationId}
-                        profileId={profileId}
-                        profileSlug={profile?.profileSlug ?? ""}
-                        enabled={Boolean(data?.scepConfigured)}
-                        caType={data?.caType ?? CaType.INTERNAL}
-                        initial={data?.scep ?? null}
-                        onCancelPending={() => handleCancelPending("scep")}
-                        onDirtyChange={(d) => handleDirtyChange("scep", d)}
-                      />
-                    </TabsContent>
-                  ) : null}
-                </Tabs>
+                {visibleMethods.includes("api") ? (
+                  <TabsContent
+                    value="api"
+                    className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
+                    forceMount
+                  >
+                    <ApiPanel
+                      applicationId={applicationId}
+                      profileId={profileId}
+                      enabled={Boolean(data?.api)}
+                      initial={data?.api ?? null}
+                      onCancelPending={data?.api ? handleDismiss : () => handleCancelPending("api")}
+                      onDirtyChange={handleDirtyChange}
+                      onPendingChange={handlePendingChange}
+                    />
+                  </TabsContent>
+                ) : null}
+                {visibleMethods.includes("est") ? (
+                  <TabsContent
+                    value="est"
+                    className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
+                    forceMount
+                  >
+                    <EstPanel
+                      applicationId={applicationId}
+                      profileId={profileId}
+                      enabled={Boolean(data?.estConfigured)}
+                      initial={data?.est ?? null}
+                      onCancelPending={
+                        data?.estConfigured ? handleDismiss : () => handleCancelPending("est")
+                      }
+                      onDirtyChange={handleDirtyChange}
+                      onPendingChange={handlePendingChange}
+                    />
+                  </TabsContent>
+                ) : null}
+                {visibleMethods.includes("acme") ? (
+                  <TabsContent
+                    value="acme"
+                    className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
+                    forceMount
+                  >
+                    <AcmePanel
+                      applicationId={applicationId}
+                      profileId={profileId}
+                      enabled={Boolean(data?.acmeConfigured)}
+                      initial={data?.acme ?? null}
+                      onCancelPending={
+                        data?.acmeConfigured ? handleDismiss : () => handleCancelPending("acme")
+                      }
+                      onDirtyChange={handleDirtyChange}
+                      onPendingChange={handlePendingChange}
+                    />
+                  </TabsContent>
+                ) : null}
+                {visibleMethods.includes("scep") ? (
+                  <TabsContent
+                    value="scep"
+                    className="flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
+                    forceMount
+                  >
+                    <ScepPanel
+                      applicationId={applicationId}
+                      profileId={profileId}
+                      profileSlug={profile?.profileSlug ?? ""}
+                      enabled={Boolean(data?.scepConfigured)}
+                      caType={data?.caType ?? CaType.INTERNAL}
+                      initial={data?.scep ?? null}
+                      onCancelPending={
+                        data?.scepConfigured ? handleDismiss : () => handleCancelPending("scep")
+                      }
+                      onDirtyChange={handleDirtyChange}
+                      onPendingChange={handlePendingChange}
+                    />
+                  </TabsContent>
+                ) : null}
               </>
             )}
-          </>
+          </Tabs>
         )}
-      </DialogContent>
-
-      <AlertDialog open={isDiscardOpen} onOpenChange={setIsDiscardOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogMedia>
-              <AlertTriangleIcon className="text-warning" />
-            </AlertDialogMedia>
-            <AlertDialogTitle>Discard unsaved enrollment methods?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Enrollment methods you added but have not enabled yet will be discarded.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep editing</AlertDialogCancel>
-            <AlertDialogAction variant="danger" onClick={handleDiscard}>
-              Discard
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {(!profile || isLoading || visibleMethods.length === 0) && (
+          <SheetFooter className="justify-end border-t">
+            <Button type="button" variant="ghost" onClick={handleDismiss} isDisabled={isPending}>
+              Cancel
+            </Button>
+          </SheetFooter>
+        )}
+        <DiscardChangesAlertDialog
+          open={isDiscardDialogOpen}
+          onOpenChange={setIsDiscardDialogOpen}
+          onDiscard={confirmDiscard}
+          title="Discard Enrollment Changes?"
+          description={
+            discardMethod.current
+              ? `Unsaved ${METHOD_LABELS[discardMethod.current]} enrollment settings will be lost.`
+              : "All unsaved enrollment settings and newly added methods will be lost."
+          }
+        />
+      </SheetContent>
       {upgradeGate}
-    </Dialog>
+    </Sheet>
   );
 };

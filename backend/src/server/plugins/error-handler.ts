@@ -12,6 +12,7 @@ import {
   ClientClosedRequestError,
   ConflictError,
   CryptographyError,
+  DailyQuotaExceededError,
   DatabaseError,
   ForbiddenRequestError,
   GatewayTimeoutError,
@@ -112,6 +113,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
       isBodyParserError(error) ||
       (error instanceof OauthTokenError && error.statusCode < HttpStatusCodes.InternalServerError) ||
       error instanceof RateLimitError ||
+      error instanceof DailyQuotaExceededError ||
       error instanceof PolicyViolationError ||
       (error instanceof ScimRequestError && error.status < 500) ||
       (error instanceof AcmeError && error.status < 500) ||
@@ -337,6 +339,13 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         "http.route": req.routeOptions.url ?? "unknown",
         "http.request.method": normalizeHttpMethod(req.method)
       });
+      void res.status(HttpStatusCodes.TooManyRequests).send({
+        reqId: req.id,
+        statusCode: HttpStatusCodes.TooManyRequests,
+        message: error.message,
+        error: error.name
+      });
+    } else if (error instanceof DailyQuotaExceededError) {
       void res.status(HttpStatusCodes.TooManyRequests).send({
         reqId: req.id,
         statusCode: HttpStatusCodes.TooManyRequests,

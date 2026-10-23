@@ -1,14 +1,14 @@
-import type { JSX } from "react";
+import { type JSX, useId } from "react";
 import { Control, Controller, FieldValues, Path } from "react-hook-form";
 import { InfoIcon } from "lucide-react";
 
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   Tooltip,
   TooltipContent,
@@ -29,6 +29,7 @@ export const AdcsTemplateField = <T extends FieldValues>({
   connectionId,
   description
 }: Props<T>) => {
+  const inputId = useId();
   const { data: templates = [], isLoading } = useAdcsConnectionListCertificateTemplates(
     connectionId ?? "",
     {
@@ -46,22 +47,29 @@ export const AdcsTemplateField = <T extends FieldValues>({
         let templateControl: JSX.Element;
         if (isLoading && connectionId) {
           templateControl = (
-            <FilterableSelect
+            <Combobox<Option>
+              id={inputId}
               isLoading
               isDisabled
               options={[]}
               value={null}
-              onChange={() => {}}
+              onValueChange={() => {}}
+              getOptionLabel={(option) => option.label}
+              getOptionValue={(option) => option.value}
               placeholder="Loading templates..."
             />
           );
         } else if (options.length > 0) {
           templateControl = (
-            <FilterableSelect<Option>
+            <Combobox<Option>
+              id={inputId}
               isClearable
               options={options}
               value={options.find((o) => o.value === field.value) ?? null}
-              onChange={(selected) => field.onChange((selected as Option | null)?.value ?? "")}
+              onValueChange={(selected) => field.onChange(selected?.value ?? "")}
+              name={field.name}
+              onBlur={field.onBlur}
+              ref={field.ref}
               getOptionLabel={(o) => o.label}
               getOptionValue={(o) => o.value}
               placeholder="Select a template..."
@@ -71,6 +79,10 @@ export const AdcsTemplateField = <T extends FieldValues>({
         } else {
           templateControl = (
             <Input
+              id={inputId}
+              name={field.name}
+              ref={field.ref}
+              onBlur={field.onBlur}
               value={typeof field.value === "string" ? field.value : ""}
               onChange={field.onChange}
               placeholder="e.g. CodeSigning"
@@ -81,7 +93,7 @@ export const AdcsTemplateField = <T extends FieldValues>({
 
         return (
           <Field>
-            <FieldLabel>
+            <FieldLabel htmlFor={inputId}>
               <span className="inline-flex items-center gap-1.5">
                 Certificate Template <span className="text-danger">*</span>
                 <Tooltip>

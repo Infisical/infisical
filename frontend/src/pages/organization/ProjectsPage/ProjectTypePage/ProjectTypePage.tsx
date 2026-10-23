@@ -1165,17 +1165,14 @@ const AllProjectsForType = ({
         project={requestedWorkspaceDetails}
       />
       <AlertDialog
+        isPending={leaveProject.isPending}
         open={popUp.leaveProjectConfirmation.isOpen}
         confirmationValue="confirm"
         onOpenChange={(isOpen) => {
-          if (!leaveProject.isPending) handlePopUpToggle("leaveProjectConfirmation", isOpen);
+          handlePopUpToggle("leaveProjectConfirmation", isOpen);
         }}
       >
-        <AlertDialogContent
-          onEscapeKeyDown={(event) => {
-            if (leaveProject.isPending) event.preventDefault();
-          }}
-        >
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Leave {projectToLeave?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -1184,16 +1181,13 @@ const AllProjectsForType = ({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogConfirmationField
-            inputProps={{ placeholder: "Type confirm here", disabled: leaveProject.isPending }}
+            inputProps={{ placeholder: "Type confirm here" }}
             onConfirm={handleLeaveProject}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel variant="outline" isDisabled={leaveProject.isPending}>
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel variant="outline">Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={leaveProject.isPending}
               onClick={(event) => {
                 event.preventDefault();
                 handleLeaveProject();
