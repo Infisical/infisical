@@ -3692,7 +3692,7 @@ const OverviewPageContent = () => {
                       aria-pressed={isRevealAll}
                       onClick={toggleRevealAll}
                     >
-                      <EyeIcon />
+                      {isRevealAll ? <EyeOffIcon /> : <EyeIcon />}
                       Reveal All
                     </Button>
                   </TooltipTrigger>
