@@ -139,7 +139,16 @@ export const validateTargetConfig = (
       if (!prefixMatch) {
         return { valid: false, error: `Invalid CIDR notation: ${cidr}` };
       }
+      if (!net.isIPv4(cidr.split("/")[0])) {
+        return {
+          valid: false,
+          error: `IPv6 CIDR ranges are not supported: '${cidr}'. Enter individual IPv6 addresses instead.`
+        };
+      }
       const prefix = parseInt(prefixMatch[1], 10);
+      if (prefix > 32) {
+        return { valid: false, error: `Invalid CIDR notation: ${cidr}` };
+      }
       if (prefix < MIN_CIDR_PREFIX) {
         return {
           valid: false,
@@ -640,13 +649,8 @@ export const resolveTargets = async (
 
   if (targetConfig.ipRanges) {
     for (const range of targetConfig.ipRanges) {
-      // expandCIDR passes a hostname through unchanged, and the TLS connect would resolve it from inside our network.
-      if (blockPrivate && net.isIP(range.split("/")[0]) === 0) {
-        // eslint-disable-next-line no-continue
-        continue;
-      }
-
-      const expandedIps = expandCIDR(range);
+      // expandCIDR returns its input unchanged when it can't parse it, and the TLS connect would resolve that as a hostname.
+      const expandedIps = expandCIDR(range).filter((ip) => net.isIP(ip) !== 0);
       const ips = blockPrivate ? expandedIps.filter((ip) => !isPrivateIp(ip)) : expandedIps;
 
       for (const ip of ips) {
