@@ -1454,6 +1454,11 @@ export const groupServiceFactory = ({
       additionalPrivilegeDAL
     });
 
+    const sendPamCancellations = await groupDAL.transaction((tx) =>
+      terminatePamSessionsLosingGroupAccess({ userIds: [], identityIds: [identityId], actorId, ...pamSessionDeps, tx })
+    );
+    sendPamCancellations();
+
     await cleanUpSubOrgProjectMemberships({
       groupId: id,
       userIds: [],
