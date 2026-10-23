@@ -416,7 +416,7 @@ If a delivery attempt to your destination fails, the event is **not** discarded 
 
 A **Delivery Failure** alert notifies your team when any stream in your organization drops events after all retries. The alert covers every stream in the organization, and you can't scope it to one stream or project.
 
-Infisical sends one notification when a stream starts failing. Later drops on the same stream don't send another notification until the stream recovers. The stream recovers when a delivery succeeds or when you update its credentials. While a stream is failing, the stream list shows a **Failing** badge next to it. Hover over the badge to see when the stream started failing and the last delivery error.
+Infisical sends one notification when a stream starts failing. Later drops on the same stream don't send another notification until the stream recovers. The stream recovers after a batch has at least one successful delivery and no delivery failures, or when you successfully update its credentials. While a stream is failing, the stream list shows a **Failing** badge next to it. Hover over the badge to see when the stream started failing and the last delivery error.
 
 Each notification names the stream's provider, the delivery error, how many events weren't delivered, and when the stream started failing.
 
