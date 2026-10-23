@@ -195,7 +195,7 @@ export const delegatedApprovalServiceFactory = ({
   };
 
   const retryDispatch = async ({ approvalRequest }: TRetryDelegatedApprovalRequestDispatchDTO) => {
-    const delegatedRequest = await getRequestByRequestId(approvalRequest.id);
+    const delegatedRequest = await getRequestByRequestId(approvalRequest.id, delegatedApprovalRequestDAL.primaryNode());
     if (!delegatedRequest) {
       throw new BadRequestError({
         message: `Request with ID '${approvalRequest.id}' is not reviewed in an external approval system`
