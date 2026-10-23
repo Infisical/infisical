@@ -262,6 +262,8 @@ Routes use Fastify's Zod type provider — schemas auto-generate OpenAPI docs. E
 
 See `src/server/routes/v4/secret-router.ts` for a representative router file.
 
+Register new routers through `src/server/routes/register-api-routes.ts`, and keep registration free of side effects: a router must not touch `server.services`, the database or Redis until a handler runs. The OpenAPI generator registers every router on a bare server with stub services, so a router that breaks this rule breaks `npm run build`. See `src/server/openapi/CLAUDE.md`.
+
 ### Auth System
 
 Auth extraction happens in `src/server/plugins/auth/`:
@@ -1176,7 +1178,7 @@ Key plugins in `src/server/plugins/`:
 - `inject-rate-limits.ts` — per-route rate limiting
 - `secret-scanner.ts` / `secret-scanner-v2.ts` — secret scanning webhooks
 - `serve-ui.ts` — frontend asset serving
-- `swagger.ts` — Swagger/OpenAPI UI
+- `../openapi/`: the OpenAPI spec, prebuilt at `npm run build` and served from files (see `src/server/openapi/CLAUDE.md`)
 - `maintenanceMode.ts` — maintenance mode middleware
 - `ip.ts` — IP extraction and validation
 

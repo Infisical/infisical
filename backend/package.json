@@ -12,7 +12,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx watch --clear-screen=false ./src/main.ts  --config tsconfig.dev.json | pino-pretty --colorize --colorizeObjects --singleLine",
     "dev:docker": "tsx watch --clear-screen=false --tsconfig=./tsconfig.dev.json --inspect=0.0.0.0:9229 ./src/main.ts | pino-pretty --colorize --colorizeObjects --singleLine",
-    "build": "tsdown",
+    "build": "tsdown && node dist/server/openapi/generate-openapi.mjs --out dist/openapi",
+    "generate:openapi": "tsx ./src/server/openapi/generate-openapi.ts",
     "build:frontend": "npm run build --prefix ../frontend",
     "start": "node --enable-source-maps dist/main.mjs",
     "type:check": "node --max-old-space-size=8192 ./node_modules/.bin/tsc --noEmit",
@@ -305,6 +306,7 @@
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
     "uuid": "^11.1.1",
+    "yaml": "^2.8.3",
     "zod": "^3.22.4",
     "zod-to-json-schema": "^3.24.5"
   },

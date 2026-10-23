@@ -14,10 +14,9 @@ Every call goes through `clients/api`. A route the client cannot reach is missin
 INFISICAL_OPENAPI_URL=http://localhost:8080 make generate-client
 ```
 
-The full spec is served only when `NODE_ENV` is not `production` and
-`OPENAPI_FULL_SPEC=true`. The harness container runs in production mode, so generating
-against it silently drops operations. Use the dev stack, or a throwaway container from
-the harness image with `NODE_ENV=development`.
+A server running from source serves the full spec, every route and every field. A built
+image, the harness container included, serves only the public spec, so generating against
+it silently drops operations. Use the dev stack.
 
 ## Unions
 

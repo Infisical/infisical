@@ -363,7 +363,6 @@ const envSchema = z
     DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     BDD_NOCK_API_ENABLED: zodStrBool.default("false").optional(),
 
-    OPENAPI_FULL_SPEC: zodStrBool.default("false").optional(),
     ACME_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     ACME_SKIP_UPSTREAM_VALIDATION: zodStrBool.default("false").optional(),
     ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES: zpStr(
@@ -788,7 +787,6 @@ const envSchema = z
     isSecretScanningRunModeEnabled: data.INFISICAL_RUN_MODES.includes(RunMode.SecretScanning),
     isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
     isBddNockApiEnabled: data.NODE_ENV !== "production" && data.BDD_NOCK_API_ENABLED,
-    isOpenApiFullSpec: data.NODE_ENV !== "production" && data.OPENAPI_FULL_SPEC,
     REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.trim()
       ?.split(",")
       .map((el) => {

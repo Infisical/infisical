@@ -1,17 +1,9 @@
-import { registerBddNockRouter } from "@bdd_routes/bdd-nock-router";
 import type { ClickHouseClient } from "@clickhouse/client";
 import type { FastifyCookieOptions } from "@fastify/cookie";
 import cookie from "@fastify/cookie";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
-import { monitorEventLoopDelay } from "perf_hooks";
-import { z } from "zod";
 
-import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
-import { registerPkiScepRouter } from "@app/ee/routes/scep/pki-scep-router";
-import { registerV1EERoutes } from "@app/ee/routes/v1";
-import { registerV2EERoutes } from "@app/ee/routes/v2";
-import { registerV3EERoutes } from "@app/ee/routes/v3";
 import {
   accessApprovalPolicyApproverDALFactory,
   accessApprovalPolicyBypasserDALFactory
@@ -226,7 +218,6 @@ import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal"
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { ApiDocsTags } from "@app/lib/api-docs";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { cronJobFactory } from "@app/lib/cron/cron-job";
 import { TLocalRefreshHandle } from "@app/lib/cron/local-refresh";
@@ -238,8 +229,6 @@ import { Redlock } from "@app/lib/red-lock";
 import { RunMode } from "@app/lib/types";
 import { workerHeartbeatFactory } from "@app/lib/worker-heartbeat/worker-heartbeat";
 import { TQueueServiceFactory } from "@app/queue";
-import { readLimit } from "@app/server/config/rateLimiter";
-import { registerSecretScanningV2Webhooks } from "@app/server/plugins/secret-scanner-v2";
 import { accessTokenQueueServiceFactory } from "@app/services/access-token-queue/access-token-queue";
 import { accountRecoveryServiceFactory } from "@app/services/account-recovery/account-recovery-service";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
@@ -579,7 +568,7 @@ import { slackServiceFactory } from "@app/services/slack/slack-service";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { invalidateCacheQueueFactory } from "@app/services/super-admin/invalidate-cache-queue";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
-import { getServerCfg, superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
+import { superAdminServiceFactory } from "@app/services/super-admin/super-admin-service";
 import { telemetryDALFactory } from "@app/services/telemetry/telemetry-dal";
 import { telemetryQueueServiceFactory } from "@app/services/telemetry/telemetry-queue";
 import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -611,14 +600,8 @@ import { injectAgentVaultProjectId } from "../plugins/inject-agent-vault-project
 import { injectPamProjectId } from "../plugins/inject-pam-project-id";
 import { injectRateLimits } from "../plugins/inject-rate-limits";
 import { forwardWritesToPrimary } from "../plugins/primary-forwarding-mode";
-import { registerV1Routes } from "./v1";
+import { registerApiRoutes, registerWebhookRoutes } from "./register-api-routes";
 import { initializeOauthConfigSync } from "./v1/sso-router";
-import { registerV2Routes } from "./v2";
-import { registerV3Routes } from "./v3";
-import { registerV4Routes } from "./v4";
-
-const histogram = monitorEventLoopDelay({ resolution: 20 });
-histogram.enable();
 
 export const registerRoutes = async (
   server: FastifyZodProvider,
@@ -676,11 +659,7 @@ export const registerRoutes = async (
   // singleton rather than threaded through every call site.
   const gatewayLoadTracker = initGatewayLoadTracker(keyStore);
 
-  if (envConfig.isApiRunModeEnabled) {
-    await server.register(registerSecretScanningV2Webhooks, {
-      prefix: "/secret-scanning/webhooks"
-    });
-  }
+  await registerWebhookRoutes(server);
 
   // db layers
   const userDAL = userDALFactory(db);
@@ -4914,99 +4893,7 @@ export const registerRoutes = async (
   await server.register(injectAuditLogInfo);
   await server.register(injectPermissionDeniedAuditLog);
 
-  server.route({
-    method: "GET",
-    url: "/api/status",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      hide: false,
-      operationId: "getInstanceStatus",
-      tags: [ApiDocsTags.Instance],
-      description:
-        "Get the status of the Infisical instance and the features configured on it. Public and unauthenticated; used by liveness and readiness probes and exempt from the API-wide rate limit.",
-      response: {
-        200: z.object({
-          date: z.date(),
-          message: z.string().optional(),
-          emailConfigured: z.boolean().optional(),
-          inviteOnlySignup: z.boolean().optional(),
-          redisConfigured: z.boolean().optional(),
-          secretScanningConfigured: z.boolean().optional(),
-          samlDefaultOrgSlug: z.string().optional(),
-          auditLogStorageDisabled: z.boolean().optional(),
-          maxIdentityAccessTokenTTL: z.number().optional()
-        })
-      }
-    },
-    handler: async () => {
-      const cfg = getConfig();
-      const serverCfg = await getServerCfg();
-
-      const meanLagMs = histogram.mean / 1e6;
-      const maxLagMs = histogram.max / 1e6;
-      const p99LagMs = histogram.percentile(99) / 1e6;
-
-      logger.info(
-        `Event loop stats - Mean: ${meanLagMs.toFixed(2)}ms, Max: ${maxLagMs.toFixed(2)}ms, p99: ${p99LagMs.toFixed(
-          2
-        )}ms`
-      );
-
-      logger.info(`Raw event loop stats: ${JSON.stringify(histogram, null, 2)}`);
-
-      return {
-        date: new Date(),
-        message: "Ok",
-        emailConfigured: cfg.isSmtpConfigured,
-        inviteOnlySignup: Boolean(serverCfg.allowSignUp),
-        redisConfigured: cfg.isRedisConfigured,
-        secretScanningConfigured: cfg.isSecretScanningConfigured,
-        samlDefaultOrgSlug: cfg.samlDefaultOrgSlug,
-        auditLogStorageDisabled: Boolean(cfg.DISABLE_POSTGRES_AUDIT_LOG_STORAGE),
-        maxIdentityAccessTokenTTL: cfg.MAX_MACHINE_IDENTITY_TOKEN_AGE
-      };
-    }
-  });
-
-  // A worker-only pod still serves /api/status so liveness and readiness probes keep working, but
-  // none of the product API.
-  if (envConfig.isApiRunModeEnabled) {
-    // register special routes
-    await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
-    await server.register(registerPkiScepRouter, { prefix: "/scep" });
-
-    // register routes for v1
-    await server.register(
-      async (v1Server) => {
-        await v1Server.register(registerV1EERoutes);
-        await v1Server.register(registerV1Routes);
-      },
-      { prefix: "/api/v1" }
-    );
-    await server.register(
-      async (v2Server) => {
-        await v2Server.register(registerV2EERoutes);
-        await v2Server.register(registerV2Routes);
-      },
-      { prefix: "/api/v2" }
-    );
-    await server.register(
-      async (v3Server) => {
-        await v3Server.register(registerV3EERoutes);
-        await v3Server.register(registerV3Routes);
-      },
-      { prefix: "/api/v3" }
-    );
-    await server.register(registerV4Routes, { prefix: "/api/v4" });
-
-    // Note: This is a special route for BDD tests. It's only available in development mode and only for BDD tests.
-    // This route should NEVER BE ENABLED IN PRODUCTION!
-    if (getConfig().isBddNockApiEnabled) {
-      await server.register(registerBddNockRouter, { prefix: "/api/__bdd_nock__" });
-    }
-  }
+  await registerApiRoutes(server);
 
   server.addHook("onClose", async () => {
     gatewayLoadTracker.shutdown();

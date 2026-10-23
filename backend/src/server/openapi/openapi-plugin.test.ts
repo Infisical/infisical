@@ -1,23 +1,32 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { brotliDecompressSync, gunzipSync } from "node:zlib";
 
 import cors from "@fastify/cors";
 import fastifyEtag from "@fastify/etag";
+import swagger from "@fastify/swagger";
 import Fastify, { FastifyInstance } from "fastify";
-import { beforeAll, describe, expect, test } from "vitest";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import yaml from "yaml";
 import { z } from "zod";
 
-import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "./fastify-zod";
-import { fastifySwagger } from "./swagger";
+import { ApiDocsTags } from "@app/lib/api-docs";
+import { BadRequestError } from "@app/lib/errors";
 
-const buildServer = async ({ corsOrigin }: { corsOrigin?: string | string[] } = {}) => {
+import { serializerCompiler, validatorCompiler, ZodTypeProvider } from "../plugins/fastify-zod";
+import { buildOpenApiArtifacts, TOpenApiDocument, writeOpenApiArtifacts } from "./build-openapi-artifacts";
+import { registerOpenApiDocs } from "./openapi-plugin";
+import { openApiSwaggerOptions } from "./openapi-swagger-options";
+
+const createZodServer = () => {
   const app = Fastify({ logger: false }).withTypeProvider<ZodTypeProvider>();
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
+  return app;
+};
 
-  await app.register(fastifyEtag);
-  if (corsOrigin) await app.register(cors, { credentials: true, origin: corsOrigin });
-  await app.register(fastifySwagger);
-
+const registerThingRoutes = (app: ReturnType<typeof createZodServer>) => {
   for (let i = 0; i < 40; i += 1) {
     app.route({
       method: "GET",
@@ -25,7 +34,7 @@ const buildServer = async ({ corsOrigin }: { corsOrigin?: string | string[] } = 
       schema: {
         hide: false,
         operationId: `getThing${i}`,
-        tags: ["Things"],
+        tags: [i % 2 === 0 ? ApiDocsTags.Instance : ApiDocsTags.Folders],
         params: z.object({ id: z.string().uuid() }),
         response: {
           200: z.object({
@@ -37,9 +46,39 @@ const buildServer = async ({ corsOrigin }: { corsOrigin?: string | string[] } = 
       handler: async () => ({ id: "00000000-0000-0000-0000-000000000000", name: "thing" })
     });
   }
+};
 
+const buildTestSpec = async (): Promise<TOpenApiDocument> => {
+  const app = createZodServer();
+  await app.register(swagger, openApiSwaggerOptions({ full: false }));
+  registerThingRoutes(app);
   await app.ready();
-  app.swagger();
+  const spec = app.swagger() as unknown as TOpenApiDocument;
+  await app.close();
+  return spec;
+};
+
+let spec: TOpenApiDocument;
+let artifactsDir: string;
+
+beforeAll(async () => {
+  spec = await buildTestSpec();
+  artifactsDir = await mkdtemp(path.join(os.tmpdir(), "openapi-plugin-test-"));
+  await writeOpenApiArtifacts(await buildOpenApiArtifacts(spec), artifactsDir);
+});
+
+afterAll(async () => {
+  await rm(artifactsDir, { recursive: true, force: true });
+});
+
+const buildServer = async ({ corsOrigin }: { corsOrigin?: string | string[] } = {}) => {
+  const app = Fastify({ logger: false });
+  // Stands in for app.ts's fastifyErrHandler, which needs the full env config to register.
+  app.setErrorHandler((err, _req, reply) => reply.code(err instanceof BadRequestError ? 400 : 500).send(err));
+  await app.register(fastifyEtag);
+  if (corsOrigin) await app.register(cors, { credentials: true, origin: corsOrigin });
+  await registerOpenApiDocs(app, { dir: artifactsDir, nodeEnv: "production" });
+  await app.ready();
   return app;
 };
 
@@ -63,6 +102,7 @@ describe("OpenAPI spec routes", () => {
     expect(res.headers["content-type"]).toBe("application/json; charset=utf-8");
     expect(res.headers["content-encoding"]).toBeUndefined();
     expect((JSON.parse(res.body) as { paths: Record<string, unknown> }).paths).toHaveProperty("/api/v1/things-0/{id}");
+    expect(Number(res.headers["content-length"])).toBe(res.rawPayload.byteLength);
   });
 
   test("marks the response cacheable and varying on the encoding", async () => {
@@ -143,9 +183,12 @@ describe("OpenAPI spec routes", () => {
 
   test("still answers HEAD", async () => {
     const res = await app.inject({ method: "HEAD", url: "/api/docs/json" });
+    const get = await app.inject({ method: "GET", url: "/api/docs/json" });
 
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toBe("application/json; charset=utf-8");
+    expect(res.headers["content-length"]).toBe(String(get.rawPayload.byteLength));
+    expect(res.rawPayload.byteLength).toBe(0);
   });
 
   test("serves the yaml spec the same way", async () => {
@@ -153,7 +196,7 @@ describe("OpenAPI spec routes", () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.headers["content-type"]).toBe("application/x-yaml");
-    expect(brotliDecompressSync(res.rawPayload).toString("utf8")).toContain("openapi:");
+    expect(brotliDecompressSync(res.rawPayload).toString("utf8")).toBe(yaml.stringify(spec, { strict: false }));
   });
 
   test("leaves the Swagger UI routes untouched", async () => {
@@ -195,18 +238,57 @@ describe("OpenAPI spec routes", () => {
     expect(String(res.headers.vary)).toBe("accept-encoding");
   });
 
-  test("builds the payload once when a cold server is hit concurrently", async () => {
-    const cold = await buildServer();
+  test("answers a conditional request carrying the weak form of the etag with 304", async () => {
+    const gzipped = await getSpec({ "accept-encoding": "gzip" });
+    const res = await getSpec({
+      "accept-encoding": "gzip",
+      "if-none-match": `W/${gzipped.headers.etag as string}`
+    });
+
+    expect(res.statusCode).toBe(304);
+  });
+
+  test("filters the spec down to one tag's operations", async () => {
+    const res = await getSpec({}, "/api/docs/json?tag=instance");
+    const paths = Object.values((JSON.parse(res.body) as Required<TOpenApiDocument>).paths);
+
+    expect(paths).toHaveLength(20);
+    expect(paths.every((operations) => operations.get.tags?.includes(ApiDocsTags.Instance))).toBe(true);
+  });
+
+  test("rejects a tag that does not exist", async () => {
+    const res = await getSpec({}, "/api/docs/json?tag=not-a-tag");
+
+    expect(res.statusCode).toBe(400);
+  });
+
+  test("refuses to start a production server that has no spec files", async () => {
+    const emptyDir = await mkdtemp(path.join(os.tmpdir(), "openapi-plugin-empty-"));
+
+    await expect(registerOpenApiDocs(Fastify(), { dir: emptyDir, nodeEnv: "production" })).rejects.toThrow(emptyDir);
+
+    await rm(emptyDir, { recursive: true, force: true });
+  });
+
+  test("serves identical bytes to concurrent first requests on a server running from source", async () => {
+    const emptyDir = await mkdtemp(path.join(os.tmpdir(), "openapi-plugin-empty-"));
+    const dev = createZodServer();
+    await registerOpenApiDocs(dev, { dir: emptyDir, nodeEnv: "test" });
+    registerThingRoutes(dev);
+    await dev.ready();
 
     const responses = await Promise.all(
       Array.from({ length: 25 }, () =>
-        cold.inject({ method: "GET", url: "/api/docs/json", headers: { "accept-encoding": "br" } })
+        dev.inject({ method: "GET", url: "/api/docs/json", headers: { "accept-encoding": "br" } })
       )
     );
 
     expect(responses.every((res) => res.statusCode === 200)).toBe(true);
     expect(responses.every((res) => res.rawPayload.equals(responses[0].rawPayload))).toBe(true);
+    const devSpec = JSON.parse(brotliDecompressSync(responses[0].rawPayload).toString("utf8")) as TOpenApiDocument;
+    expect(devSpec.paths).toHaveProperty("/api/v1/things-0/{id}");
 
-    await cold.close();
+    await dev.close();
+    await rm(emptyDir, { recursive: true, force: true });
   });
 });
