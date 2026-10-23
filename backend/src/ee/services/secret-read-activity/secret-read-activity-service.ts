@@ -1,17 +1,21 @@
 import { setImmediate } from "node:timers/promises";
 
-import { SecretType, TableName } from "@app/db/schemas";
+import { createMongoAbility, MongoAbility } from "@casl/ability";
+
+import { SecretFolderRole, SecretType, TableName } from "@app/db/schemas";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { checkInsightsReadPermission } from "@app/ee/services/insights/insights-fns";
 import {
+  buildFolderScopedPrivilegeRules,
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
+import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
+import { conditionsMatcher } from "@app/lib/casl";
 import { NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -32,6 +36,7 @@ import { TSecretReadActivityDALFactory } from "./secret-read-activity-dal";
 import {
   classifySecretReads,
   computeSecretReach,
+  createAccessDating,
   getReadActivityWindowStart,
   getReadStatus,
   indexSecretReads,
@@ -43,6 +48,7 @@ import {
 } from "./secret-read-activity-fns";
 import { TSecretReadActivityQueueServiceFactory } from "./secret-read-activity-queue";
 import {
+  TAccessSource,
   TGetSecretReadActivityDTO,
   TGetUnusedAccessActorDTO,
   TListUnusedAccessDTO,
@@ -74,7 +80,7 @@ type TSecretReadActivityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
   secretReadActivityDAL: Pick<
     TSecretReadActivityDALFactory,
-    "findLastReads" | "findTrackingStartedAt" | "findAccessChangedAt" | "findAdminActorIds"
+    "findLastReads" | "findTrackingStartedAt" | "findAccessSourceDates" | "findAdminActorIds"
   >;
   secretReadActivityQueue: Pick<TSecretReadActivityQueueServiceFactory, "recordRead" | "recordBulkRead">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
@@ -279,13 +285,13 @@ export const secretReadActivityServiceFactory = ({
   // tracking began.
   const $loadProjectAccess = async (projectId: string, orgId: string, windowStart: Date) => {
     const [
-      { userPermissions, identityPermissions, groupPermissions },
-      accessChangedAtByActorId,
+      { userPermissions, identityPermissions, groupPermissions, folderAccessByActorId },
+      sourceDates,
       adminActorIds,
       { trackingStartedAt }
     ] = await Promise.all([
       permissionService.getProjectPermissions(projectId, orgId),
-      secretReadActivityDAL.findAccessChangedAt(projectId),
+      secretReadActivityDAL.findAccessSourceDates(projectId),
       secretReadActivityDAL.findAdminActorIds(projectId),
       $getProjectTrackingStartedAt(projectId)
     ]);
@@ -297,15 +303,21 @@ export const secretReadActivityServiceFactory = ({
 
     const groupById = new Map(groupPermissions.map((group) => [group.id, group]));
     const groupMembers = [
-      ...userGroupMemberships.map(({ groupId, userId }) => ({ groupId, actorType: ActorType.USER, actorId: userId })),
-      ...identityGroupMemberships.map(({ groupId, identityId }) => ({
+      ...userGroupMemberships.map(({ groupId, userId, createdAt }) => ({
+        groupId,
+        actorType: ActorType.USER,
+        actorId: userId,
+        joinedAt: createdAt
+      })),
+      ...identityGroupMemberships.map(({ groupId, identityId, createdAt }) => ({
         groupId,
         actorType: ActorType.IDENTITY,
-        actorId: identityId
+        actorId: identityId,
+        joinedAt: createdAt
       }))
-    ].flatMap(({ groupId, actorType, actorId }) => {
+    ].flatMap(({ groupId, actorType, actorId, joinedAt }) => {
       const group = groupById.get(groupId);
-      return group ? [{ group, actorType: actorType as TSecretReaderType, actorId }] : [];
+      return group ? [{ group, actorType: actorType as TSecretReaderType, actorId, joinedAt }] : [];
     });
     const readers: TProjectReader[] = [
       ...userPermissions.map(({ id, permission }) => ({ actorType: ActorType.USER as const, actorId: id, permission })),
@@ -321,16 +333,65 @@ export const secretReadActivityServiceFactory = ({
       }))
     ];
 
+    // Every source of each actor's access with its date: their own roles and project-wide privileges, each group
+    // they are in (dated from joining it or from the group's own role change, whichever is later), and their folder
+    // grants. The permissions are built only for an actor whose access needs dating per secret.
+    const sourcesByActorId = new Map<string, TAccessSource[]>();
+    const addSources = (actorId: string, sources: TAccessSource[]) =>
+      sourcesByActorId.set(actorId, [...(sourcesByActorId.get(actorId) ?? []), ...sources]);
+    [...userPermissions, ...identityPermissions].forEach((member) => {
+      const permissionOf = (key: string) => () =>
+        (member.accessSources().find((source) => source.key === key) ?? { permission: member.permission }).permission;
+      addSources(member.id, [
+        ...member.roles.map((role) => ({
+          date: sourceDates.roleDates.get(role.id),
+          permission: permissionOf(`role:${role.id}`)
+        })),
+        ...member.additionalPrivileges.map((privilege) => ({
+          date: sourceDates.privilegeDates.get(privilege.id),
+          permission: permissionOf(`privilege:${privilege.id}`)
+        }))
+      ]);
+    });
+    groupMembers.forEach(({ group, actorId, joinedAt }) => {
+      const groupChangedAt = sourceDates.groupDates.get(group.id);
+      addSources(actorId, [
+        {
+          date: groupChangedAt && groupChangedAt > joinedAt ? groupChangedAt : joinedAt,
+          permission: () => group.permission
+        }
+      ]);
+    });
+    folderAccessByActorId.forEach((grants, actorId) => {
+      addSources(
+        actorId,
+        grants.map((grant) => {
+          let permission: MongoAbility<ProjectPermissionSet> | undefined;
+          return {
+            date: sourceDates.privilegeDates.get(grant.id),
+            folderId: grant.folderId,
+            permission: () => {
+              permission ??= createMongoAbility<ProjectPermissionSet>(buildFolderScopedPrivilegeRules([grant]), {
+                conditionsMatcher
+              });
+              return permission;
+            }
+          };
+        })
+      );
+    });
+
     return {
       readersByRules: Object.values(groupBy(readers, (reader) => JSON.stringify(reader.permission.rules))),
       adminActorIds,
-      accessChangedAtByActorId,
+      ...createAccessDating(sourcesByActorId, sourceDates.folderReopenedAt),
       judgedFrom: trackingStartedAt > windowStart ? trackingStartedAt : windowStart,
       directMembers: new Map([
         ...userPermissions.map((member) => [toActorKey(ActorType.USER, member.id), member] as const),
         ...identityPermissions.map((member) => [toActorKey(ActorType.IDENTITY, member.id), member] as const)
       ]),
-      groupMembershipsByActorKey: groupBy(groupMembers, (member) => toActorKey(member.actorType, member.actorId))
+      groupMembershipsByActorKey: groupBy(groupMembers, (member) => toActorKey(member.actorType, member.actorId)),
+      folderAccessByActorId
     };
   };
 
@@ -399,19 +460,20 @@ export const secretReadActivityServiceFactory = ({
       const key = toActorKey(reader.actorType, reader.actorId);
       const lastReadAt = activity.reads.get(key)?.lastReadAt ?? null;
       const isProjectAdmin = access.adminActorIds.has(reader.actorId);
-      const accessChangedAt = access.accessChangedAtByActorId.get(reader.actorId) ?? null;
+      // Every reader has at least one dated source; without one, access is as old as the secret's tracked period.
+      const accessSince = access.accessSinceOf(reader, activity) ?? activity.trackedSince;
       return {
         actorType: reader.actorType,
         actorId: reader.actorId,
         name: names.get(key) ?? reader.actorId,
         isProjectAdmin,
         lastReadAt,
-        accessChangedAt,
+        accessSince,
         ...getReadStatus({
           lastReadAt,
           isUnused: unusedKeys.has(key),
           isProjectAdmin,
-          accessChangedAt,
+          accessSince,
           judgedFrom: access.judgedFrom
         })
       };
@@ -490,7 +552,16 @@ export const secretReadActivityServiceFactory = ({
             name: group.name,
             roles: toUnusedAccessRoles(group.roles)
           })),
-          additionalPrivileges: member?.additionalPrivileges ?? []
+          additionalPrivileges: member?.additionalPrivileges ?? [],
+          folderAccess: (access.folderAccessByActorId.get(tally.actorId) ?? []).map(
+            ({ id, folderId, role, environmentSlug, secretPath }) => ({
+              id,
+              folderId,
+              environment: environmentSlug,
+              secretPath,
+              role: role as SecretFolderRole
+            })
+          )
         }
       };
     });

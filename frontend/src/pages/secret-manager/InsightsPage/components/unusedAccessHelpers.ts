@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import { HardDriveIcon, UserIcon } from "lucide-react";
 
 import { TUnusedAccessPaths, UnusedAccessActorType } from "@app/hooks/api/secretInsights";
+import { FOLDER_ROLE_TIER_LABELS } from "@app/pages/secret-manager/OverviewPage/components/FolderAccessSheet/folder-access.const";
 
 export const ACTOR_TYPE_CONFIG: Record<
   UnusedAccessActorType,
@@ -11,7 +12,10 @@ export const ACTOR_TYPE_CONFIG: Record<
   [UnusedAccessActorType.Identity]: { icon: HardDriveIcon, label: "Machine Identity" }
 };
 
-export const accessPathBadges = ({ roles, additionalPrivileges, groups }: TUnusedAccessPaths) => [
+export const accessPathBadges = (
+  { roles, additionalPrivileges, groups, folderAccess }: TUnusedAccessPaths,
+  environmentName: (slug: string) => string
+) => [
   ...roles.map((role) => ({
     key: `role:${role.slug}:${role.id ?? ""}`,
     label: `Role: ${role.name}`
@@ -25,6 +29,10 @@ export const accessPathBadges = ({ roles, additionalPrivileges, groups }: TUnuse
     label: group.roles.length
       ? `Group: ${group.name} (${group.roles.map((role) => role.name).join(", ")})`
       : `Group: ${group.name}`
+  })),
+  ...folderAccess.map((access) => ({
+    key: `folder:${access.id}`,
+    label: `Folder: ${environmentName(access.environment)} ${access.secretPath} (${FOLDER_ROLE_TIER_LABELS[access.role] ?? access.role})`
   }))
 ];
 

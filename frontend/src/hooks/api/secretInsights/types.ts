@@ -1,3 +1,4 @@
+import { SecretFolderRole } from "../folderAccess/types";
 import { IdentityAuthMethod } from "../identities/enums";
 
 export type TCalendarRotation = {
@@ -67,6 +68,13 @@ export type TUnusedAccessPaths = {
   roles: TUnusedAccessRole[];
   groups: { id: string; name: string; roles: TUnusedAccessRole[] }[];
   additionalPrivileges: { id: string; name: string }[];
+  folderAccess: {
+    id: string;
+    folderId: string;
+    environment: string;
+    secretPath: string;
+    role: SecretFolderRole;
+  }[];
 };
 
 // A user or machine identity that can read secrets it has not read in the tracked period.
@@ -122,7 +130,7 @@ export enum SecretReadStatus {
 
 export enum SecretReadNotJudgedReason {
   ProjectAdmin = "project-admin",
-  AccessChanged = "access-changed",
+  AccessTooNew = "access-too-new",
   SecretTooNew = "secret-too-new"
 }
 
@@ -139,7 +147,8 @@ export type TSecretReadActivityActor = {
   name: string;
   isProjectAdmin: boolean;
   lastReadAt: string | null;
-  accessChangedAt: string | null;
+  // When they got access to this secret.
+  accessSince: string;
   readStatus: SecretReadStatus;
   notJudgedReason: SecretReadNotJudgedReason | null;
 };

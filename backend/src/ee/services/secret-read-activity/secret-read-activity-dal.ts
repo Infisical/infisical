@@ -135,87 +135,101 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
     }
   };
 
-  type TAccessChange = {
-    actorUserId?: string | null;
-    actorIdentityId?: string | null;
-    actorGroupId?: string | null;
-    groupMemberId?: string | null;
-    membershipCreatedAt?: Date | null;
+  type TRoleSourceRow = {
+    membershipRoleId: string;
+    actorGroupId: string | null;
+    membershipCreatedAt: Date;
     createdAt: Date;
     updatedAt: Date;
-    temporaryAccessEndTime?: Date | null;
-    customRoleUpdatedAt?: Date | null;
+    isTemporary: boolean;
+    temporaryAccessEndTime: Date | null;
+    customRoleUpdatedAt: Date | null;
   };
 
-  // The last time each user or identity joined the project or a group that is in it, or had a role, privilege or
-  // folder grant created, changed or expired, or had the rules of a custom role they hold edited. Which secrets a
-  // change opened up is not recorded, so any of them restarts the window; an expired restrictive folder grant can
-  // restore access. Membership updatedAt is left out because logins bump it.
-  const findAccessChangedAt = async (projectId: string, tx?: Knex) => {
+  type TPrivilegeSourceRow = {
+    id: string;
+    actorUserId: string | null;
+    actorIdentityId: string | null;
+    folderId: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    isTemporary: boolean;
+    temporaryAccessEndTime: Date | null;
+  };
+
+  // When each source of project access last changed, so a secret's access can be dated from the oldest source that
+  // grants it: every role assignment (of users, identities and groups, with the last edit to a custom role's rules,
+  // since which secrets an edit opened is not recorded), and every privilege and folder grant. Membership updatedAt
+  // is left out because logins bump it. Expired access only takes access away, so it is not a source, except an
+  // expired folder grant: a restrictive one can give back the access it held back in its folder.
+  const findAccessSourceDates = async (projectId: string, tx?: Knex) => {
     try {
-      const roleChanges = (qb: Knex.QueryBuilder) =>
-        qb
+      const [roleRows, privilegeRows] = (await Promise.all([
+        (tx || db.replicaNode())(TableName.Membership)
           .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
           .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
           .where(`${TableName.Membership}.scope`, AccessScope.Project)
-          .where(`${TableName.Membership}.scopeProjectId`, projectId);
-      const roleColumns = [
-        db.ref("createdAt").withSchema(TableName.MembershipRole),
-        db.ref("updatedAt").withSchema(TableName.MembershipRole),
-        db.ref("temporaryAccessEndTime").withSchema(TableName.MembershipRole),
-        db.ref("updatedAt").withSchema(TableName.Role).as("customRoleUpdatedAt")
-      ];
-      // A group's roles reach each of its members, from the day the member joined the group.
-      const groupRoleChanges = (
-        memberTable: TableName.UserGroupMembership | TableName.IdentityGroupMembership,
-        memberColumn: "userId" | "identityId"
-      ) =>
-        roleChanges(
-          (tx || db.replicaNode())(TableName.Membership).join(
-            memberTable,
-            `${TableName.Membership}.actorGroupId`,
-            `${memberTable}.groupId`
-          )
-        ).select(
-          db.ref(memberColumn).withSchema(memberTable).as("groupMemberId"),
-          db.ref("createdAt").withSchema(memberTable).as("membershipCreatedAt"),
-          ...roleColumns
-        );
-
-      const [directChanges, userGroupChanges, identityGroupChanges, privilegeChanges] = (await Promise.all([
-        roleChanges((tx || db.replicaNode())(TableName.Membership)).select(
-          db.ref("actorUserId").withSchema(TableName.Membership),
-          db.ref("actorIdentityId").withSchema(TableName.Membership),
-          db.ref("actorGroupId").withSchema(TableName.Membership),
-          db.ref("createdAt").withSchema(TableName.Membership).as("membershipCreatedAt"),
-          ...roleColumns
-        ),
-        groupRoleChanges(TableName.UserGroupMembership, "userId"),
-        groupRoleChanges(TableName.IdentityGroupMembership, "identityId"),
+          .where(`${TableName.Membership}.scopeProjectId`, projectId)
+          .select(
+            db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
+            db.ref("actorGroupId").withSchema(TableName.Membership),
+            db.ref("createdAt").withSchema(TableName.Membership).as("membershipCreatedAt"),
+            db.ref("createdAt").withSchema(TableName.MembershipRole),
+            db.ref("updatedAt").withSchema(TableName.MembershipRole),
+            db.ref("isTemporary").withSchema(TableName.MembershipRole),
+            db.ref("temporaryAccessEndTime").withSchema(TableName.MembershipRole),
+            db.ref("updatedAt").withSchema(TableName.Role).as("customRoleUpdatedAt")
+          ),
         (tx || db.replicaNode())(TableName.AdditionalPrivilege)
           .where({ projectId })
-          .select("actorUserId", "actorIdentityId", "createdAt", "updatedAt", "temporaryAccessEndTime")
-      ])) as TAccessChange[][];
+          .select(
+            "id",
+            "actorUserId",
+            "actorIdentityId",
+            "folderId",
+            "createdAt",
+            "updatedAt",
+            "isTemporary",
+            "temporaryAccessEndTime"
+          )
+      ])) as [TRoleSourceRow[], TPrivilegeSourceRow[]];
 
       const now = new Date();
-      const changedAtByActorId = new Map<string, Date>();
-      [...directChanges, ...userGroupChanges, ...identityGroupChanges, ...privilegeChanges].forEach((change) => {
-        // A group's own date judges the group as a principal; its members' dates come from the group rows.
-        const actorId = change.actorUserId ?? change.actorIdentityId ?? change.groupMemberId ?? change.actorGroupId;
-        if (!actorId) return;
-        const dates = [change.createdAt, change.updatedAt];
-        if (change.membershipCreatedAt) dates.push(change.membershipCreatedAt);
-        if (change.customRoleUpdatedAt) dates.push(change.customRoleUpdatedAt);
-        if (change.temporaryAccessEndTime && new Date(change.temporaryAccessEndTime) <= now) {
-          dates.push(change.temporaryAccessEndTime);
-        }
-        const latest = new Date(Math.max(...dates.map((date) => new Date(date).getTime())));
-        const current = changedAtByActorId.get(actorId);
-        if (!current || latest > current) changedAtByActorId.set(actorId, latest);
+      const isExpired = (row: { isTemporary: boolean; temporaryAccessEndTime: Date | null }) =>
+        row.isTemporary && (!row.temporaryAccessEndTime || new Date(row.temporaryAccessEndTime) <= now);
+      const latestOf = (dates: (Date | null)[]) =>
+        new Date(Math.max(...dates.flatMap((date) => (date ? [new Date(date).getTime()] : []))));
+
+      const roleDates = new Map<string, Date>();
+      const groupDates = new Map<string, Date>();
+      roleRows.forEach((row) => {
+        if (isExpired(row)) return;
+        const date = latestOf([row.membershipCreatedAt, row.createdAt, row.updatedAt, row.customRoleUpdatedAt]);
+        roleDates.set(row.membershipRoleId, date);
+        if (!row.actorGroupId) return;
+        const groupDate = groupDates.get(row.actorGroupId);
+        if (!groupDate || date > groupDate) groupDates.set(row.actorGroupId, date);
       });
-      return changedAtByActorId;
+
+      const privilegeDates = new Map<string, Date>();
+      // Keyed "<actorId>:<folderId>": when an expired folder grant last gave access back in that folder.
+      const folderReopenedAt = new Map<string, Date>();
+      privilegeRows.forEach((row) => {
+        if (!isExpired(row)) {
+          privilegeDates.set(row.id, latestOf([row.createdAt, row.updatedAt]));
+          return;
+        }
+        const actorId = row.actorUserId ?? row.actorIdentityId;
+        if (!row.folderId || !actorId || !row.temporaryAccessEndTime) return;
+        const key = `${actorId}:${row.folderId}`;
+        const endedAt = new Date(row.temporaryAccessEndTime);
+        const current = folderReopenedAt.get(key);
+        if (!current || endedAt > current) folderReopenedAt.set(key, endedAt);
+      });
+
+      return { roleDates, groupDates, privilegeDates, folderReopenedAt };
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find project access changes" });
+      throw new DatabaseError({ error, name: "Find project access source dates" });
     }
   };
 
@@ -280,6 +294,6 @@ export const secretReadActivityDALFactory = (db: TDbClient) => {
     createMonthlyPartitions,
     dropPartitionsEndingBefore,
     findTrackingStartedAt,
-    findAccessChangedAt
+    findAccessSourceDates
   };
 };

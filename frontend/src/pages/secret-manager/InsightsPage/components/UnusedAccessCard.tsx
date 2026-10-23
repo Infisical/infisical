@@ -176,7 +176,10 @@ export const UnusedAccessCard = () => {
                   </TableCell>
                   <TableCell className="max-w-64">
                     <OverflowBadgeList
-                      items={accessPathBadges(row.accessPaths)}
+                      items={accessPathBadges(
+                        row.accessPaths,
+                        (slug) => environmentNames.get(slug) ?? slug
+                      )}
                       getKey={(item) => item.key}
                       getLabel={(item) => item.label}
                       getVariant={() => "neutral"}

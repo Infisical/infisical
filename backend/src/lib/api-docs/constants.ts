@@ -970,9 +970,17 @@ export const INSIGHTS = {
     groupId: "The ID of the group.",
     groupName: "The name of the group.",
     groupRoles: "The project roles the group gives its members.",
-    additionalPrivileges: "The project-wide additional privileges the actor holds.",
+    additionalPrivileges:
+      "The project-wide additional privileges the actor holds. Access granted on a folder is listed under folderAccess instead.",
     additionalPrivilegeId: "The ID of the additional privilege.",
     additionalPrivilegeName: "The name of the additional privilege.",
+    folderAccess:
+      "The folder access the actor has been granted directly on folders, active grants only. It applies whether the actor is a direct member or reaches the project through a group.",
+    folderAccessId: "The ID of the folder access grant.",
+    folderId: "The ID of the folder.",
+    folderEnvironment: "The slug of the environment the folder is in.",
+    folderSecretPath: "The path of the folder.",
+    folderRole: "The access level granted on the folder: list, read, edit, manage or full-access.",
     totalCount: "The number of actors the caller can page through.",
     periodStart:
       "Unused means no read since this date: 30 days before the results were computed, or when reads started being tracked for the project if that is later. Results are recomputed once a day."
@@ -1005,12 +1013,12 @@ export const INSIGHTS = {
       "Whether the actor is a project admin, directly or through a group. Admins can read everything by design, so they never count as unused access.",
     lastReadAt:
       "When the actor last read the secret, or an import or reference of it, since readsTrackedSince, as the first read of that day. Null when they have not.",
-    accessChangedAt:
-      "When the actor's access to the project last changed: the latest membership, role or privilege creation, edit or expiry. Null when it has not changed since the membership was created.",
+    accessSince:
+      "When the actor got access to this secret: the oldest of their roles, groups, privileges and folder grants that gives it on its own, from when it was last created or changed. An edit to a custom role's rules counts for every secret the role gives, since which secrets an edit opened is not recorded.",
     readStatus:
       "read: the actor read the secret since readsTrackedSince. unused: no read, and the secret and their access both predate unusedAccessJudgedFrom, so it counts as unused access. not-judged: no read, but it does not count yet; notJudgedReason says why.",
     notJudgedReason:
-      "Why an actor without a read is not counted as unused access. project-admin: admins are never counted. access-changed: their access changed after unusedAccessJudgedFrom. secret-too-new: the secret is newer than unusedAccessJudgedFrom. Null unless readStatus is not-judged."
+      "Why an actor without a read is not counted as unused access. project-admin: admins are never counted. access-too-new: they got access to the secret after unusedAccessJudgedFrom. secret-too-new: the secret is newer than unusedAccessJudgedFrom. Null unless readStatus is not-judged."
   },
   GET_SECRETS_ACCESS_VOLUME: {
     days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",

@@ -533,13 +533,10 @@ export function SecretAccessInsights({
           "Project admins can read everything by design, so they are not counted as unused access."
       };
     }
-    if (
-      actor?.notJudgedReason === SecretReadNotJudgedReason.AccessChanged &&
-      actor.accessChangedAt
-    ) {
+    if (actor?.notJudgedReason === SecretReadNotJudgedReason.AccessTooNew) {
       return {
         kind: "pending",
-        reason: `Their access changed on ${format(new Date(actor.accessChangedAt), "PP")}, after reads started being counted on ${judgedFrom}, so they have not had the whole period to read it.`
+        reason: `They got access to this secret on ${format(new Date(actor.accessSince), "PP")}, after reads started being counted on ${judgedFrom}, so they have not had the whole period to read it.`
       };
     }
     if (actor?.notJudgedReason === SecretReadNotJudgedReason.SecretTooNew) {

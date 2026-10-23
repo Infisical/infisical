@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { IdentityAuthMethod } from "@app/db/schemas";
+import { IdentityAuthMethod, SecretFolderRole } from "@app/db/schemas";
 import {
   SecretReadNotJudgedReason,
   SecretReadStatus
@@ -101,7 +101,17 @@ const UnusedAccessActorRowSchema = z.object({
           name: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS.additionalPrivilegeName)
         })
         .array()
-        .describe(INSIGHTS.GET_UNUSED_ACCESS.additionalPrivileges)
+        .describe(INSIGHTS.GET_UNUSED_ACCESS.additionalPrivileges),
+      folderAccess: z
+        .object({
+          id: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS.folderAccessId),
+          folderId: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS.folderId),
+          environment: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS.folderEnvironment),
+          secretPath: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS.folderSecretPath),
+          role: z.nativeEnum(SecretFolderRole).describe(INSIGHTS.GET_UNUSED_ACCESS.folderRole)
+        })
+        .array()
+        .describe(INSIGHTS.GET_UNUSED_ACCESS.folderAccess)
     })
     .describe(INSIGHTS.GET_UNUSED_ACCESS.accessPaths)
 });
@@ -135,7 +145,7 @@ export const SecretReadActivitySchema = z.object({
       name: z.string().describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.name),
       isProjectAdmin: z.boolean().describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.isProjectAdmin),
       lastReadAt: z.date().nullable().describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.lastReadAt),
-      accessChangedAt: z.date().nullable().describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.accessChangedAt),
+      accessSince: z.date().describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.accessSince),
       readStatus: z.nativeEnum(SecretReadStatus).describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.readStatus),
       notJudgedReason: z
         .nativeEnum(SecretReadNotJudgedReason)

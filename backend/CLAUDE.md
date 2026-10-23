@@ -1146,16 +1146,20 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   cached computation, so the UI words the period "since <date>" while it is under 30 days old. The card leaves out project admins (users
   and identities with the Admin role, directly or through a group, from `findAdminActorIds`): they can read
   everything by design. Their reads are still recorded, so the access sheet's Last Read stays true for them. A
-  pair is listed once the secret (`trackedSince`) and the actor's access (`findAccessChangedAt`: the latest
-  membership creation, role or privilege creation, edit or expiry) both predate `judgedFrom`. Which secrets a
-  change opened up is not recorded, so any access change restarts the window, including an edit to the rules of
-  a custom role the reader holds. The per-secret sheet shows the plain fact
+  pair is listed once the secret (`trackedSince`) and the actor's access to that secret both predate `judgedFrom`.
+  Access is dated per secret (`createAccessDating`): each actor's sources (every role assignment and project-wide
+  privilege, from `getProjectPermissions`' `accessSources`; each group they are in; each folder grant) carry the date
+  `findAccessSourceDates` gives them, and a secret's access dates from the oldest source that grants it on its own,
+  so a change only restarts the window for the secrets it opened. An edit to a custom role's rules dates that role
+  for every secret it gives, since which secrets an edit opened is not recorded. Expired access is not a source,
+  except an expired folder grant, which can give back access it held back in its folder. Only an actor with a
+  source newer than `judgedFrom` is checked per secret, and each source once per secret across actors. The per-secret sheet shows the plain fact
   instead: a read, "No reads", or "No reads yet" with the reason.
 - **The access sheet.** The graph lives only in the secret's access sheet, served by
   `GET /insights/:projectId/secrets/read-activity/:secretName` (the fixed segment comes first so a secret named
   `reports` or `summary` cannot hit those routes). It returns `actors`: everyone who can read the value, admins
-  included, each with `lastReadAt`, `isProjectAdmin`, `accessChangedAt`, and a `readStatus` (`read`, `unused`,
-  `not-judged`) with a `notJudgedReason` (`project-admin`, `access-changed`, `secret-too-new`) from
+  included, each with `lastReadAt`, `isProjectAdmin`, `accessSince`, and a `readStatus` (`read`, `unused`,
+  `not-judged`) with a `notJudgedReason` (`project-admin`, `access-too-new`, `secret-too-new`) from
   `getReadStatus`. The API returns codes and dates only; the UI writes the wording. Readers who lost access
   ("ghost readers") are not computed or returned.
 - **The Insights card is per actor** (a user or machine identity; a group is never a row, only an access path).
@@ -1165,7 +1169,10 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   secrets it can read, how many it has not read and the environments involved; `$computeUnusedAccess`
   ranks the tallies into rows (`accessibleSecretCount`, `unusedSecretCount`). Each row carries `accessPaths` as data: `roles` it holds directly (`id`/`slug`/`name`,
   where a custom role has the slug `custom` and its own id), `groups` it belongs to with the roles each one gives,
-  and `additionalPrivileges` as `id`/`name`; the UI decides how to label them. Custom role ids and names come from
+  `additionalPrivileges` as `id`/`name` (project-wide only), and `folderAccess`: the actor's own active folder grants
+  (`id`/`folderId`/`environment`/`secretPath`/`role`). A folder grant is stored as an additional privilege with a
+  `folderId`, which the member listings filter out, so `getProjectPermissions` returns them as
+  `folderAccessByActorId` from the grants it already loads. The UI decides how to label all of them. Custom role ids and names come from
   `getProjectPermissions`, so the scan makes no role lookup of its own. Group members are checked with the group's
   permission (`getProjectPermissions` lists only direct members) and count once however many ways they qualify. It
   is cached per project for a day (`insights-cache:<projectId>:unused-access`, under a per-project lock on a cold

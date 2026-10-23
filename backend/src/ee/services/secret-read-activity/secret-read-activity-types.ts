@@ -1,6 +1,6 @@
 import { MongoAbility, MongoQuery } from "@casl/ability";
 
-import { TProjectEnvironments, TSecretFolders, TSecretReadActivity } from "@app/db/schemas";
+import { SecretFolderRole, TProjectEnvironments, TSecretFolders, TSecretReadActivity } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -120,11 +120,21 @@ export type TProjectReader = {
   permission: MongoAbility<ProjectPermissionSet, MongoQuery>;
 };
 
+// One way an actor has access, and when it last changed. A folder grant only reaches secrets in its own folder.
+export type TAccessSource = {
+  date?: Date;
+  folderId?: string;
+  permission: () => MongoAbility<ProjectPermissionSet, MongoQuery>;
+};
+
 export type TProjectAccess = {
   readersByRules: TProjectReader[][];
   adminActorIds: Set<string>;
-  accessChangedAtByActorId: Map<string, Date>;
   judgedFrom: Date;
+  // When the actor got access to the secret: the oldest of their sources that grants it on its own.
+  accessSinceOf: (actor: { actorId: string }, activity: TSecretActivity) => Date | undefined;
+  // The newest of the actor's source dates. When it is older than the judged period, so is every secret's access.
+  latestAccessChangeOf: (actor: { actorId: string }) => Date | undefined;
 };
 
 export type TSecretAccessSummary = {
@@ -142,7 +152,7 @@ export enum SecretReadStatus {
 
 export enum SecretReadNotJudgedReason {
   ProjectAdmin = "project-admin",
-  AccessChanged = "access-changed",
+  AccessTooNew = "access-too-new",
   SecretTooNew = "secret-too-new"
 }
 
@@ -152,21 +162,25 @@ export type TSecretReadActivityActor = {
   name: string;
   isProjectAdmin: boolean;
   lastReadAt: Date | null;
-  accessChangedAt: Date | null;
+  accessSince: Date;
   readStatus: SecretReadStatus;
   notJudgedReason: SecretReadNotJudgedReason | null;
 };
 
-export type TMemberRole = Awaited<
-  ReturnType<TPermissionServiceFactory["getProjectPermissions"]>
->["userPermissions"][number]["roles"][number];
+// A group's roles carry no assignment id, and naming a role does not need one.
+export type TMemberRole = Omit<
+  Awaited<ReturnType<TPermissionServiceFactory["getProjectPermissions"]>>["userPermissions"][number]["roles"][number],
+  "id"
+>;
 
 export type TUnusedAccessRole = { id: string | null; slug: string; name: string };
 
 export type TUnusedAccessPaths = {
   roles: TUnusedAccessRole[];
   groups: { id: string; name: string; roles: TUnusedAccessRole[] }[];
+  // Project-wide only; a privilege tied to a folder is a folder grant, listed under folderAccess.
   additionalPrivileges: { id: string; name: string }[];
+  folderAccess: { id: string; folderId: string; environment: string; secretPath: string; role: SecretFolderRole }[];
 };
 
 export type TUnusedAccessActor = {
