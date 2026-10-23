@@ -98,7 +98,7 @@ export const CreatePkiSyncModal = ({
               onComplete={closeSheet}
               onCancel={() => setSelectedSync(null)}
               destination={selectedSync}
-              initialData={initialData}
+              initialData={selectedSync === selectSync ? initialData : undefined}
               applicationId={applicationId}
             />
           ) : (
