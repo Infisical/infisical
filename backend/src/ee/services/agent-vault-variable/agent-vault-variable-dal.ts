@@ -154,6 +154,8 @@ export const agentVaultVariableDALFactory = (db: TDbClient) => {
       } else {
         void pageQuery.orderBy(`${TableName.AgentVaultVariable}.key`, orderDirection);
       }
+      // Without a scope, a global and a personal variable can share a key, so pages need a total order.
+      void pageQuery.orderBy(`${TableName.AgentVaultVariable}.id`, "asc");
 
       return { variables: (await pageQuery) as TAgentVaultVariable[], totalCount };
     } catch (error) {

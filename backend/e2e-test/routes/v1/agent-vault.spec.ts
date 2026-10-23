@@ -1356,28 +1356,34 @@ describe("Agent Vault V1 Router", async () => {
       expect((await inject("GET", `${variablesUrl}?limit=101`)).statusCode).toBe(422);
 
       // Exact keys, so a lookup can tell a key that exists from one that only contains the text.
-      expect(await list("keys=GAMMA_KEY,MISSING_KEY,ALPHA_TOKEN")).toEqual({
+      expect(await list("scope=global&keys=GAMMA_KEY,MISSING_KEY,ALPHA_TOKEN")).toEqual({
         keys: ["ALPHA_TOKEN", "GAMMA_KEY"],
         totalCount: 2
       });
-      expect(await list("keys=TOKEN")).toEqual({ keys: [], totalCount: 0 });
-      expect((await inject("GET", `${variablesUrl}?keys=lower_case`)).statusCode).toBe(422);
+      expect(await list("scope=global&keys=TOKEN")).toEqual({ keys: [], totalCount: 0 });
+      expect((await inject("GET", `${variablesUrl}?scope=global&keys=lower_case`)).statusCode).toBe(422);
       // A trailing comma's empty entry is dropped rather than refused.
-      expect(await list("keys=GAMMA_KEY,")).toEqual({ keys: ["GAMMA_KEY"], totalCount: 1 });
+      expect(await list("scope=global&keys=GAMMA_KEY,")).toEqual({ keys: ["GAMMA_KEY"], totalCount: 1 });
+      // A key can be global and personal at once, so a lookup has to name the scope.
+      const unscoped = await inject("GET", `${variablesUrl}?keys=GAMMA_KEY`);
+      expect(unscoped.statusCode).toBe(400);
+      expect(JSON.parse(unscoped.payload).message).toContain("Send a scope with keys");
     });
 
     test("a lookup by keys returns every key that exists, past the default page size", async () => {
       const keys = Array.from({ length: 25 }, (_, index) => `LOOKUP_KEY_${String(index).padStart(2, "0")}`);
       await Promise.all(keys.map((key) => createVariable({ key, value: "v" })));
 
-      const res = await inject("GET", `${variablesUrl}?keys=${keys.join(",")}`);
+      const res = await inject("GET", `${variablesUrl}?scope=global&keys=${keys.join(",")}`);
       expect(res.statusCode).toBe(200);
       const body = JSON.parse(res.payload) as { variables: { key: string }[]; totalCount: number };
       expect(body.totalCount).toBe(25);
       expect(body.variables.map((variable) => variable.key)).toEqual(keys);
 
       // An explicit limit still caps it.
-      const capped = JSON.parse((await inject("GET", `${variablesUrl}?keys=${keys.join(",")}&limit=5`)).payload) as {
+      const capped = JSON.parse(
+        (await inject("GET", `${variablesUrl}?scope=global&keys=${keys.join(",")}&limit=5`)).payload
+      ) as {
         variables: unknown[];
         totalCount: number;
       };

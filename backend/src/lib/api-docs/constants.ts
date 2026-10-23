@@ -4572,7 +4572,7 @@ export const AGENT_VAULT = {
     orderBy: "What to sort variables by: key, or serviceCount for how many services use each one.",
     orderDirection: "Which way to sort: asc or desc.",
     search: "Match variables whose key contains this text.",
-    keys: "Return only the variables with these exact keys, comma-separated. Every one that exists is returned unless limit is set.",
+    keys: "Return only the variables with these exact keys, comma-separated. Every one that exists is returned unless limit is set. Requires scope, since a key can name both a global variable and one of your own.",
     limit: "The maximum number of variables to return. Defaults to 20, or to the number of keys when keys is given.",
     offset: "How many variables to skip.",
     totalCount: "How many variables match the search, across every page.",

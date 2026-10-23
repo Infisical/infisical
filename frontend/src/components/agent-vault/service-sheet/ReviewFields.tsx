@@ -53,11 +53,12 @@ const alignColumns = (rows: string[][]) => {
 
 type Props = {
   isUpdate: boolean;
+  storedType?: AgentVaultCredentialType;
   /** The fields that were member-provided when the sheet opened, which have no stored value behind them. */
   storedMemberFields?: TAgentVaultMemberProvidedField[];
 };
 
-export const ReviewFields = ({ isUpdate, storedMemberFields = [] }: Props) => {
+export const ReviewFields = ({ isUpdate, storedType, storedMemberFields = [] }: Props) => {
   const { watch } = useFormContext<TServiceForm>();
   const form = watch();
 
@@ -85,8 +86,11 @@ export const ReviewFields = ({ isUpdate, storedMemberFields = [] }: Props) => {
     field: TAgentVaultMemberProvidedField
   ) => {
     if (form.memberProvidedFields.includes(field)) return "Set by each member";
-    // A field taken back from members had no value of the admin's to replace or clear.
-    if (!isUpdate || storedMemberFields.includes(field)) return value ? "Set" : "None";
+    // Nothing of the admin's carries over to a new credential type or a field taken back from members, so there is
+    // no value to replace or clear.
+    if (!isUpdate || form.credentialType !== storedType || storedMemberFields.includes(field)) {
+      return value ? "Set" : "None";
+    }
     if (value === UNCHANGED_SECRET) return "Unchanged";
     if (value) return "Replaced";
     return canClear ? "Cleared" : "Unchanged";

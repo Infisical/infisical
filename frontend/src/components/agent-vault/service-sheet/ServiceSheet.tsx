@@ -705,7 +705,8 @@ export const ServiceSheet = ({
                   {current.step === ServiceStep.Review && (
                     <ReviewFields
                       isUpdate={isUpdate}
-                      storedMemberFields={service ? storedMemberFields(service) : undefined}
+                      storedType={service?.credential.type}
+                      storedMemberFields={storedMemberFields(service)}
                     />
                   )}
                 </div>

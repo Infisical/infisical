@@ -253,7 +253,7 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
           }))
           .filter(({ value }) => value.length > 0)
       });
-      createNotification({ text: `${service.name} set up`, type: "success" });
+      createNotification({ text: `Personal values saved for ${service.name}`, type: "success" });
       onOpenChange(false);
     } catch {
       // A failed request returns a 4xx that the global request handler surfaces as a toast
@@ -268,7 +268,7 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
         serviceId: service.id
       });
       createNotification({
-        text: `Your personal values for ${service.name} were removed`,
+        text: `Personal values removed for ${service.name}`,
         type: "success"
       });
       setIsRemoveOpen(false);

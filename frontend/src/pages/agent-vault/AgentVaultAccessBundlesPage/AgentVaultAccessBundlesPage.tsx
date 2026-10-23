@@ -18,7 +18,6 @@ import { twMerge } from "tailwind-merge";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
-import { nameList } from "@app/components/agent-vault/nameList";
 import { ServiceIconStack } from "@app/components/agent-vault/ServiceIconStack";
 import {
   Alert,
@@ -59,6 +58,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission } from "@app/context";
+import { nameList } from "@app/helpers/string";
 import {
   getUserTablePreference,
   PreferenceKey,

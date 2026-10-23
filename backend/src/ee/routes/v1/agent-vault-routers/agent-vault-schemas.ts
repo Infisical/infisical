@@ -385,18 +385,22 @@ export const AgentVaultPersonalValuesSchema = z
 
 // A username follows the admin's rule for one, a token or password the admin's rule for those.
 export const AgentVaultPersonalValueInputSchema = z.discriminatedUnion("field", [
-  z.object({
-    field: z.literal(AgentVaultVariableReferenceField.CredentialUsername).describe(AGENT_VAULT.PERSONAL_VALUE.field),
-    value: acceptsVariableReferences(
-      z.string().trim().min(1).max(256).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-    ).describe(AGENT_VAULT.PERSONAL_VALUE.value)
-  }),
-  z.object({
-    field: z.literal(AgentVaultVariableReferenceField.CredentialValue).describe(AGENT_VAULT.PERSONAL_VALUE.field),
-    value: acceptsVariableReferences(
-      z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-    ).describe(AGENT_VAULT.PERSONAL_VALUE.value)
-  })
+  z
+    .object({
+      field: z.literal(AgentVaultVariableReferenceField.CredentialUsername).describe(AGENT_VAULT.PERSONAL_VALUE.field),
+      value: acceptsVariableReferences(
+        z.string().trim().min(1).max(256).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+      ).describe(AGENT_VAULT.PERSONAL_VALUE.value)
+    })
+    .describe(JSON.stringify({ title: "Username" })),
+  z
+    .object({
+      field: z.literal(AgentVaultVariableReferenceField.CredentialValue).describe(AGENT_VAULT.PERSONAL_VALUE.field),
+      value: acceptsVariableReferences(
+        z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+      ).describe(AGENT_VAULT.PERSONAL_VALUE.value)
+    })
+    .describe(JSON.stringify({ title: "Token or Password" }))
 ]);
 
 const memberIdsShape = (docs: { userIds: string; machineIdentityIds: string; groupIds: string }) => ({

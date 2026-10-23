@@ -93,13 +93,8 @@ To make a field member provided:
   </Step>
 </Steps>
 
-When you change which fields are member provided, members keep the values that still apply:
-
-- If you make another field member provided, each member keeps their saved values and only has to add the new one
-- If you stop leaving a field to members, Infisical deletes their values for that field only
-
 <Warning>
-If you change the credential type, Infisical deletes every member's personal values for the service, and each member has to set them up again.
+If you change the credential type, each member has to set up their personal values for the service again.
 </Warning>
 
 Until a member [sets up their personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), the proxy refuses their sessions' requests to the service with a `403` response. Requests to the bundle's other services still go through.

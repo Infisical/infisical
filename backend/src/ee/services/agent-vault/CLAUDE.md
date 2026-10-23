@@ -248,23 +248,23 @@ variables**, rows of `agent_vault_variables` with an owner, that only their own 
   service's sealed secret holds only the admin's fields, so a bearer token left to members stores no secret at
   all and the column is NULL. Code that reads `encryptedCredential` NULL as passthrough has to check
   `memberProvidedFields` first.
-- **One variables resource, two scopes.** `scope` on `/agent-vault/variables` (`global` or `personal`) picks the
-  list and is required for a new one; a list without it returns everything the caller can see (their own, plus
-  the global ones for an admin), and the service sheet's picker asks for `global` explicitly. Every variable read
-  and lock in the DAL takes an owner (`null` for global) so a global lookup never matches a personal key, and
-  resolve expands each kind only against its own. By id, a variable the caller may not act on is a 404, never a 403: someone else's personal one, and a
-  global one for a member. Global keys are unique per project (500 cap), personal ones per owner (100 cap), each
-  enforced by a partial unique index plus an advisory lock per project or per owner.
+- **One variables resource, two scopes.** `scope` on `/agent-vault/variables` (`global` or `personal`) picks the list
+  and is required for a new one; a list without it returns everything the caller can see (their own, plus the global
+  ones for an admin), and the service sheet's picker asks for `global` explicitly. Every variable read and lock in
+  the DAL takes an owner (`null` for global) so a global lookup never matches a personal key, and resolve expands
+  each kind only against its own. By id, a variable the caller may not act on is a 404, never a 403: someone else's
+  personal one, and a global one for a member. Global keys are unique per project (500 cap), personal ones per owner
+  (100 cap), each enforced by a partial unique index plus an advisory lock per project or per owner.
 - **Everything personal is scoped to the caller, never to an id the caller sends.** No route names another actor,
   so an admin can't list, read or set anyone else's variables or values. The owner is a user or a machine identity
   (`ownerOf`); the UI only covers users for now, but resolve and the API already work for an identity's own
   sessions.
 - **Resolve fills member fields last**: the admin's fields are expanded against global variables first, then each
   personal value against the session actor's personal variables only, so neither is ever expanded twice and a
-  personal `{{KEY}}` can't reach a global variable. A service whose actor hasn't set every member-provided field
-  goes out with `personalValuesMissing: true` and a passthrough credential. The proxy refuses it with a 403 (CLI
-  change); an older proxy that ignores the flag forwards it with the service's custom headers and substitutions
-  but no credential, never the admin's.
+  personal `{{KEY}}` can't reach a global variable. A service whose actor hasn't set every member-provided field goes
+  out with `personalValuesMissing: true` and a passthrough credential. The proxy refuses it with a 403 from current
+  CLIs; an older proxy that ignores the flag forwards it with the service's custom headers and substitutions but no
+  credential, never the admin's.
 - **A save is a PATCH**: a field sent replaces that field's saved value, a field left out keeps it, and every
   member-provided field must be set once it's applied. The save takes the service row `FOR SHARE` and re-checks
   the fields it validated against, so an admin changing them either waits for it or makes it 409. It also takes
@@ -275,15 +275,15 @@ variables**, rows of `agent_vault_variables` with an owner, that only their own 
   service row: a credential type change deletes every member's values for the service, and taking a field back
   from members deletes that field's. Adding a member-provided field keeps what members saved, and they add only
   the new one.
-- **Losing a bundle through Agent Vault clears what an actor saved for its services** (`clearPersonalValuesAfterRevoke`).
-  It runs on a bundle revoke, on removal from Agent Vault, and on a demotion from admin, for the actors named and the
-  members of a named group, after that change is written. It skips anyone who still holds the bundle through another
-  grant, and anyone who is still a project admin, since an admin reaches every bundle. Platform paths (group
-  removal, a lapsed role, project, org or SCIM removal) don't run it, so values can outlive the grant there and
-  return with a later one. They are only ever the same actor's, and resolve still checks reach. Deleting a personal
-  variable also clears the owner's values on bundles they no longer reach, which otherwise would hold the variable
-  in place with nothing able to edit them. Personal variables survive all of this, and their Used By lists only
-  the bundles the owner still reaches.
+- **Losing a bundle through Agent Vault clears what an actor saved for its services**
+  (`clearPersonalValuesAfterRevoke`). It runs on a bundle revoke, on removal from Agent Vault, and on a demotion from
+  admin, for the actors named and the members of a named group, after that change is written. It skips anyone who
+  still holds the bundle through another grant, and anyone who is still a project admin, since an admin reaches every
+  bundle. Platform paths (group removal, a lapsed role, project, org or SCIM removal) don't run it, so values can
+  outlive the grant there and return with a later one. They are only ever the same actor's, and resolve still checks
+  reach. Deleting a personal variable also clears the owner's values on bundles they no longer reach, which otherwise
+  would hold the variable in place with nothing able to edit them. Personal variables survive all of this, and their
+  Used By lists only the bundles the owner still reaches.
 - Personal variables follow the global variables' reference rules: sealed text names them by id, a reference row
   per personal value (`agent_vault_personal_value_references`, a deferred foreign key), the delete takes the variable
   row `FOR UPDATE` and a personal values save takes the rows it references `FOR SHARE`. Used By on a variable reads

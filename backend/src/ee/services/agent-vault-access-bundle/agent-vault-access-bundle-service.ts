@@ -1016,11 +1016,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     // member-provided has nothing stored to keep.
     const previousMemberFields = (service.memberProvidedFields ?? []) as TAgentVaultMemberProvidedField[];
     const nextMemberFields = credential ? nextMemberFieldsOf(credential, service) : null;
-    const credentialTypeChanged = Boolean(credential) && credential!.type !== service.credentialType;
+    const credentialTypeChanged = credential !== undefined && credential.type !== service.credentialType;
     const memberFieldsChanged =
       credentialTypeChanged ||
-      (Boolean(credential) && !sameMemberProvidedFields(nextMemberFields, previousMemberFields));
-    const needsStoredSecret = Boolean(credential) && needsStoredSecretFor(credential!, service);
+      (credential !== undefined && !sameMemberProvidedFields(nextMemberFields, previousMemberFields));
+    const needsStoredSecret = credential !== undefined && needsStoredSecretFor(credential, service);
     const storedSecretCipher = needsStoredSecret ? await getProjectCipher(rest.projectId) : null;
     const storedSecret = storedSecretCipher
       ? (JSON.parse(

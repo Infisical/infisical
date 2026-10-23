@@ -225,6 +225,12 @@ export const agentVaultVariableServiceFactory = ({
     (await getProjectCipher(projectId)).encryptor({ plainText: Buffer.from(JSON.stringify({ value })) }).cipherTextBlob;
 
   const listVariables = async ({ projectId, ctx, scope: scopeName, limit, ...query }: TListVariablesDTO) => {
+    // A key can name a global variable and one of the caller's own, so a lookup by keys has to say which.
+    if (query.keys && !scopeName) {
+      throw new BadRequestError({
+        message: "Send a scope with keys. A key can name both a global variable and one of your own personal variables."
+      });
+    }
     const owners = await resolveListOwners({ projectId, ctx }, scopeName);
     const personalOwner = owners.find((owner) => owner !== null) ?? null;
 
