@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
 import { TtlFormLabel } from "@app/components/features";
-import { FilterableSelect } from "@app/components/v2";
 import {
   Checkbox,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
@@ -111,19 +111,22 @@ export const PolicyDetailsStep = ({ applicationId }: Props) => {
               Certificate Profiles <span className="text-danger">*</span>
             </FieldLabel>
             <FieldContent>
-              <FilterableSelect
-                inputId="policy-profile-names"
-                isMulti
+              <Combobox
+                ref={profileField.ref}
+                id="policy-profile-names"
+                onBlur={profileField.onBlur}
+                multiple
+                isError={Boolean(error)}
                 isLoading={applicationId ? isAppProfilesLoading : isProfilesLoading}
                 options={profileOptions}
+                getOptionValue={(option) => option.value}
+                getOptionLabel={(option) => option.label}
                 value={profileField.value.map((slug) => ({ label: slug, value: slug }))}
-                onChange={(selected) => {
-                  const selectedOptions = selected as ProfileOption[];
-                  profileField.onChange(selectedOptions.map((opt) => opt.value));
+                onValueChange={(selected) => {
+                  profileField.onChange(selected.map((opt) => opt.value));
                 }}
                 placeholder="Select certificate profiles..."
-                noOptionsMessage={() => "No profiles found"}
-                maxMenuHeight={150}
+                emptyMessage="No profiles found"
               />
               <FieldDescription isOpen={!error}>
                 Policy applies to certificates issued from these selected profiles
