@@ -44,6 +44,7 @@ import { registerDeprecatedSecretImportRouter } from "./deprecated-secret-import
 import { registerDeprecatedSecretTagRouter } from "./deprecated-secret-tag-router";
 import { registerEventRouter } from "./event-router";
 import { registerExternalGroupOrgRoleMappingRouter } from "./external-group-org-role-mapping-router";
+import { registerFeatureDiscoveryRouter } from "./feature-discovery-router";
 import { registerGitHubAppRouter } from "./github-app-router";
 import { registerGroupOrgMembershipRouter } from "./group-org-membership-router";
 import { registerGroupProjectRouter } from "./group-project-router";
@@ -144,6 +145,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerNotificationRouter, { prefix: "/notifications" });
   await server.register(registerAlertRouter, { prefix: "/alerts" });
   await server.register(registerAnnouncementRouter, { prefix: "/announcement" });
+  await server.register(registerFeatureDiscoveryRouter, { prefix: "/feature-discoveries" });
   await server.register(registerInviteOrgRouter, { prefix: "/invite-org" });
   await server.register(registerUserActionRouter, { prefix: "/user-action" });
   await server.register(registerUserActivationRouter, { prefix: "/user-activation" });

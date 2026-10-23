@@ -13,6 +13,8 @@ export const AnalyticsEvent = {
   FolderAccessGrantSheetOpened: "Folder Access Grant Sheet Opened",
   SecretsAddResourceMenuOpened: "Secrets Add Resource Menu Opened",
   SecretsAddResourceActionSelected: "Secrets Add Resource Action Selected",
+  SecretSyncRecentlyAddedViewed: "Secret Sync Recently Added Viewed",
+  SecretSyncRecentlyAddedSelected: "Secret Sync Recently Added Selected",
   ThemePreferenceChanged: "Theme Preference Changed",
   SignupFlowCompleted: "Signup Flow Completed",
   BillingCancellationReasonSubmitted: "Billing Cancellation Reason Submitted",
@@ -181,6 +183,16 @@ type SecretsAddResourceActionSelectedProperties = {
   environmentMode: SecretsAddResourceEnvironmentMode;
 };
 
+type SecretSyncRecentlyAddedViewedProperties = {
+  projectId: string;
+  releaseIds: string[];
+};
+
+type SecretSyncRecentlyAddedSelectedProperties = {
+  projectId: string;
+  releaseId: string;
+};
+
 export type BillingCancellationAction = "remove_product" | "cancel_subscription" | "cancel_trial";
 
 type BillingCancellationReasonSubmittedProperties = {
@@ -222,6 +234,8 @@ export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.FolderAccessGrantSheetOpened]: FolderAccessGrantSheetOpenedProperties;
   [AnalyticsEvent.SecretsAddResourceMenuOpened]: SecretsAddResourceMenuOpenedProperties;
   [AnalyticsEvent.SecretsAddResourceActionSelected]: SecretsAddResourceActionSelectedProperties;
+  [AnalyticsEvent.SecretSyncRecentlyAddedViewed]: SecretSyncRecentlyAddedViewedProperties;
+  [AnalyticsEvent.SecretSyncRecentlyAddedSelected]: SecretSyncRecentlyAddedSelectedProperties;
   [AnalyticsEvent.BillingCancellationReasonSubmitted]: BillingCancellationReasonSubmittedProperties;
   [AnalyticsEvent.OnboardingResourceClicked]: OnboardingResourceClickedProperties;
   [AnalyticsEvent.SecretScanningOpened]: SecretScanningOpenedProperties;

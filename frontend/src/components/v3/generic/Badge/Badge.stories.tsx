@@ -408,6 +408,24 @@ export const IsSquare: Story = {
   }
 };
 
+export const IsSolid: Story = {
+  name: "Example: isSolid",
+  args: {
+    variant: "project",
+    isSolid: true,
+    isSquare: true,
+    children: "3"
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use `isSolid` with a scope or product variant (`project`, `org`, `sub-org`, `pam`, `av`) for a full-contrast count of new items, such as unseen releases on a nav item or tab. Keep tinted variants for status."
+      }
+    }
+  }
+};
+
 export const IsFullWidth: Story = {
   name: "Example: isFullWidth",
   args: {
