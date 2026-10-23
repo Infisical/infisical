@@ -1184,6 +1184,13 @@ export const approvalPolicyServiceFactory = ({
     const resource = $resource(policy.type as ApprovalPolicyType);
 
     const approved = await approvalRequestDAL.transaction(async (tx) => {
+      await approvalPolicyDAL.findByIdForShare(policy.id, tx);
+      const current = (await autoApprovalService.findByPolicyIds([policy.id], tx)).get(policy.id);
+      if (!current?.rules.some((rule) => rule.id === evidence.approvedByRuleId)) {
+        throw new BadRequestError({
+          message: "The auto-approval rules changed while this request was being checked. Submit it again."
+        });
+      }
       await $claimUnusedRecords(policy.id, evidence, tx);
 
       const created = await createApprovalRequestWithSteps(
