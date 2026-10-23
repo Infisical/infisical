@@ -38,6 +38,7 @@ const HoneyTokenDetailsResponseSchema = HoneyTokensSchema.pick({
   createdAt: true,
   updatedAt: true
 }).extend({
+  folderId: z.string().uuid(),
   environment: z
     .object({
       id: z.string(),

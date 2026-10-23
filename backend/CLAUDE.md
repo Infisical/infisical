@@ -1065,6 +1065,15 @@ EE routes register before community routes so they can override/extend endpoints
 
 **Dynamic secret lease secrets needed at revoke time go in `dynamic_secret_leases.encryptedLeaseData`**, never in `externalEntityId` or `config` (both plaintext, and `externalEntityId` is returned by every lease route and logged in audit events). A provider opts in by listing the `create()` `data` keys in `persistedLeaseFields`; the lease service encrypts them with the project's SecretManager key and every revoke path passes them back as `metadata.leaseData`. Lease routes return `SanitizedDynamicSecretLeaseSchema` so the column never reaches a response. Secret *config* fields are listed separately in `DYNAMIC_SECRET_SECRET_FIELDS` (`providers/redact.ts`), as dotted paths so nested secrets work (`clientAuth.clientSecret`): reads strip them via `redactStoredInputs`, and an update that omits one keeps the stored value via `restoreOmittedSecretFields`, because the update merge is shallow.
 
+**A honey token row is the only pointer to a credential that lives in the customer's cloud** (an AWS IAM
+user), so deleting the row without revoking leaks it. `honey_tokens.folderId` is `ON DELETE SET NULL`: every
+folder and environment deletion path leaves a folderless row, which the hourly `FrequentResourceCleanup` cron
+revokes and reaps (`honey-token-cleanup-service.ts`). Project hard-delete cannot rely on that, because its
+cascade drops the project KMS key the credentials are encrypted with, so the project cleanup worker calls
+`revokeProjectHoneyTokens` before deleting (best effort, never blocks the delete). Org deletion does no
+honey token cleanup: its cascade removes the config and app connection needed to revoke, so those IAM users
+are left in the customer's account.
+
 **Gateways: there is only one generation.** Gateway v1 (`ee/services/gateway`, `lib/gateway`, the QUIC
 transport over `@infisical/quic`, and `/api/v1/gateways`) is gone; `gateway-v2` and `gateway-pool` are the
 whole story, and `lib/gateway-v2/types.ts` owns `GatewayProxyProtocol` / `GatewayHttpProxyActions`. What
