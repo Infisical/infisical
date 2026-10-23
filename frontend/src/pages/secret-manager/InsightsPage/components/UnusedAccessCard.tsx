@@ -5,6 +5,7 @@ import { ChevronRightIcon, InfoIcon, SearchIcon } from "lucide-react";
 import {
   Badge,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
@@ -220,24 +221,24 @@ export const UnusedAccessCard = () => {
             Users and machine identities with access to secrets they have not read {readPeriod}.
             Select one to see those secrets.
           </CardDescription>
+          <CardAction>
+            <InputGroup className="w-64">
+              <InputGroupAddon>
+                <SearchIcon />
+              </InputGroupAddon>
+              <InputGroupInput
+                id="unused-access-search"
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search by name..."
+              />
+            </InputGroup>
+          </CardAction>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <InputGroup className="max-w-sm">
-            <InputGroupAddon>
-              <SearchIcon />
-            </InputGroupAddon>
-            <InputGroupInput
-              id="unused-access-search"
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
-              placeholder="Search by name..."
-            />
-          </InputGroup>
-          {renderBody()}
-        </CardContent>
+        <CardContent className="flex flex-col gap-4">{renderBody()}</CardContent>
       </Card>
       <UnusedAccessActorSheet actor={selected} onClose={() => setSelected(null)} />
     </>
