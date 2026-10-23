@@ -31,6 +31,11 @@
   inset: 0;
   pointer-events: none;
 }
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
 .before img {
   display: block;
   width: 100%;
@@ -52,7 +57,7 @@
   top: var(--v4-space-8);
   padding: var(--v4-space-2) var(--v4-space-6);
   border-radius: 0;
-  background: color-mix(in oklab, var(--v4-frame) 72%, transparent);
+  background: color-mix(in oklab, var(--v4-ink) 72%, transparent);
   color: var(--v4-on-ink);
   font-family: var(--v4-type-caption-font-family);
   font-size: var(--v4-type-caption-font-size);

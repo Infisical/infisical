@@ -369,7 +369,12 @@
   padding: var(--v4-dialog-pad);
   gap: var(--v4-space-content-group);
 }
-.v4 :is([data-slot="dialog-title"], [data-slot="alert-dialog-title"], [data-slot="sheet-title"]) {
+.v4
+  :is(
+    [data-slot="dialog-title"],
+    [data-slot="alert-dialog-title"],
+    [data-slot="sheet-title"]
+  ) {
   font-family: var(--v4-type-title-font-family);
   font-size: var(--v4-type-title-font-size);
   line-height: var(--v4-type-title-line-height);
@@ -431,7 +436,11 @@
   gap: var(--v4-space-content-group);
   border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
-.v4 :is([data-slot="dialog-subheader"], [data-slot="sheet-subheader"]) {
+.v4
+  :is(
+    [data-slot="dialog-subheader"],
+    [data-slot="sheet-subheader"]
+  ) {
   min-width: 0;
 }
 /* Dialog spacing model: one pad (--v4-dialog-pad) on all four sides; header, body and footer
@@ -476,7 +485,11 @@
   overflow-y: auto;
   gap: var(--v4-space-content-group);
 }
-.v4 :is([data-slot="sheet-header"], [data-slot="sheet-footer"]) {
+.v4
+  :is(
+    [data-slot="sheet-header"],
+    [data-slot="sheet-footer"]
+  ) {
   padding: var(--v4-space-overlay-inset);
   gap: var(--v4-space-6);
 }
@@ -527,7 +540,12 @@
   padding: 0 var(--v4-space-overlay-inset) var(--v4-space-overlay-inset);
   border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
-.v4 :is([data-slot="sheet-header"], [data-slot="sheet-subheader"], [data-slot="sheet-footer"]) {
+.v4
+  :is(
+    [data-slot="sheet-header"],
+    [data-slot="sheet-subheader"],
+    [data-slot="sheet-footer"]
+  ) {
   flex-shrink: 0;
 }
 
@@ -544,11 +562,15 @@
   overflow-y: auto;
   overscroll-behavior: contain;
 }
-.v4 :is([data-slot="sheet-subheader"]) + :is([data-slot="sheet-scroll"]) {
+.v4
+  :is([data-slot="sheet-subheader"])
+  + :is([data-slot="sheet-scroll"]) {
   padding-top: var(--v4-space-overlay-inset);
 }
 .v4
-  :is([data-slot="sheet-scroll"]):not(:has(+ :is([data-slot="sheet-footer"])))
+  :is([data-slot="sheet-scroll"]):not(
+    :has(+ :is([data-slot="sheet-footer"]))
+  )
   > :is([data-slot="sheet-body"]):last-child {
   padding-bottom: var(--v4-space-overlay-inset);
 }

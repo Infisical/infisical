@@ -330,9 +330,7 @@
 :is([role="group"], [cmdk-group]):not(:first-child)
   > :is(.label, [cmdk-group-heading]):first-child {
   position: relative;
-  padding-top: calc(
-    var(--v4-space-6) + 2 * var(--v4-menu-pad, var(--v4-space-3)) + var(--v4-size-control-border)
-  );
+  padding-top: calc(var(--v4-space-6) + 2 * var(--v4-menu-pad, var(--v4-space-3)) + var(--v4-size-control-border));
 }
 .label:not(:first-child, .separator + *),
 :is([role="group"], [cmdk-group]):not(:first-child)

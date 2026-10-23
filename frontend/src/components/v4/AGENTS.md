@@ -45,6 +45,5 @@ The Infisical 2.0 line set (52 glyphs from #8691, ui/icon-data.ts) is the primar
 ## Workbench navigation and search
 
 The workbench itself runs in a real AppShell: the v4 Sidebar (one eyebrow section per workbench group, each with an icon so the rail shows one flyout row per group, no account button and a Workbench footer row), AppInset, and a TopBar whose breadcrumb reads Design system, section, page. Mod+B toggles the sidebar (AppShell owns the chord, so it works the same in every composition shell). Mod+K, the sidebar search tool and the TopBar Search button open the command palette (`pages/design-system/workbench-palette.tsx`, built on CommandMenu). Its index is derived from `navigation.ts` and the generated catalog, so every page, alias and example section is searchable without a hand-kept list. An example result sets the hash to `#<page>/<example>` and the page scrolls to that section. Recent picks show on an empty query, and the Commands group toggles theme and the sidebar, and opens the accent picker.
-
 - Page content width: the size-content token (1160px) sets the page gutter that TopBar and PageGutter share. Wrap page content in PageGutter; never cap it with mx-auto and an arbitrary max-w.
 - Bulk selection uses the floating action bar (FloatingActionBar), never an inline bar. Selecting or clearing rows must not move layout.

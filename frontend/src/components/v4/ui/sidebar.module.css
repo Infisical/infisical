@@ -483,11 +483,7 @@
   cursor: pointer;
 }
 .userRow:hover {
-  background: color-mix(
-    in oklab,
-    var(--v4-ink) var(--overlay-hover, var(--v4-opacity-hover)),
-    transparent
-  );
+  background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover, var(--v4-opacity-hover)), transparent);
 }
 .swatch {
   display: block;

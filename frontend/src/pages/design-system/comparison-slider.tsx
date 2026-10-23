@@ -121,13 +121,15 @@ export const ComparisonSlider = ({ title, before, After, start = 50 }: Compariso
                   : "The before capture is pending"}
               </div>
             )}
+            <span className={styles.label} style={{ left: "var(--v4-space-8)" }}>
+              Before, main
+            </span>
           </div>
-          <span className={styles.label} style={{ left: "var(--v4-space-8)" }}>
-            Before, main
-          </span>
-          <span className={styles.label} style={{ right: "var(--v4-space-8)" }}>
-            After, v4
-          </span>
+          <div className={styles.layer} style={{ clipPath: `inset(0 0 0 ${position}%)` }}>
+            <span className={styles.label} style={{ right: "var(--v4-space-8)" }}>
+              After, v4
+            </span>
+          </div>
           <button
             type="button"
             data-comparison-handle=""
