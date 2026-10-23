@@ -30,6 +30,7 @@ const makeEvent = (overrides?: Partial<TEvent>): TEvent =>
     eventType: EVENT_TYPE,
     payload: makePayload(),
     occurredAt: new Date(),
+    isFinalAttempt: false,
     ...overrides
   }) as TEvent;
 

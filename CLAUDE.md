@@ -165,8 +165,12 @@ the dispatch is exactly as durable as the request; never enqueue it after commit
 `delegated-approval-dispatch` consumer (`delegated-approval/dispatch/delegated-approval-dispatch-consumer.ts`)
 calls the provider inline and moves the row `pending_dispatch` → `waiting_approval` (storing the provider's
 record id in `providerRequestId`) or `failed_dispatch` with a `statusReason` a user can read. A transient
-failure returns `Retry`, so the outbox backs off and tries again (up to `MAX_OUTBOX_ATTEMPTS`); the reason text
-promises that retry on every attempt because the consumer cannot see the attempt count. A user resends a
+failure returns `Retry`, so the outbox backs off and tries again (up to `MAX_OUTBOX_ATTEMPTS`), and the reason
+text promises that retry. The outbox flags the last attempt (`TEvent.isFinalAttempt`), and a transient failure
+on it closes the request instead: the delegated row goes `failed` with a reason that says so, the approval
+request goes `cancelled`, and the consumer returns `Failed`. A terminal failure the consumer raises itself (an
+`UnrecoverableError`: SITE_URL unset, the app connection gone, the policy no longer delegated) stays
+`failed_dispatch` on every attempt, because an admin can fix the cause and resend. A user resends a
 `failed_dispatch` request with `POST /api/v1/access-approvals/requests/:requestId/retry-delegated-dispatch`. The
 product's bridge checks who may retry, and `delegatedApprovalService.retryDispatch` checks the request can be
 retried and emits the same event with no transaction. The emit's idempotency key is the event, the delegated
@@ -181,13 +185,15 @@ policy blocked by pending requests is freed for editing. Every provider implemen
 (`dispatch/providers/<name>/`); a new policy type adds an arm to `TDelegatedApprovalDispatchDetails` and a
 builder in `DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP` rather than branching in a provider. The consumer
 reads from the primary, never checks the license, and treats bullmq's `UnrecoverableError` as the terminal failure
-signal, returning `Failed` for it and `Retry` for anything else. The callback contract (token issuance now, the inbound route and approve / reject later) is its own
+signal, returning `Failed` for it and `Retry` for anything else until the last attempt. The callback contract (token issuance now, the inbound route and approve / reject later) is its own
 module, `backend/src/services/delegated-approval-callback/`, so the delegated approval module never grows a
 callback branch. A request gets exactly one callback token for its whole life: it is random, issued on the first
-dispatch attempt, and stored encrypted under the org KMS key in `encryptedCallbackToken` so every retry resends
-the same value; the inbound side finds the row by the provider's record id and compares the decrypted token with
-the presented one. Never send a provider a token that differs from the one stored for the request; the provider
-keeps the first token it was given and cannot be told another, so a mismatch is unrecoverable.
+dispatch attempt, and stored in `encryptedCallbackToken` under the SecretManager KMS key of the request's project
+(`getOrIssueCallbackToken` resolves the project from the delegated request itself, since the inbound route knows
+only that row) so every retry resends the same value; the inbound side finds the row by the provider's record id
+and compares the decrypted token with the presented one. Never send a provider a token that differs from the one
+stored for the request; the provider keeps the first token it was given and cannot be told another, so a mismatch
+is unrecoverable.
 
 ### Object Storage
 

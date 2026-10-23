@@ -12,6 +12,7 @@ export type TDelegatedApprovalCallbackServiceFactory = ReturnType<typeof delegat
 
 export const delegatedApprovalCallbackServiceFactory = ({
   delegatedApprovalRequestDAL,
+  approvalRequestDAL,
   kmsService
 }: TDelegatedApprovalCallbackServiceFactoryDep) => {
   const getCallbackUrl = () => {
@@ -19,10 +20,14 @@ export const delegatedApprovalCallbackServiceFactory = ({
     return SITE_URL ? `${SITE_URL}${DELEGATED_APPROVAL_CALLBACK_PATH}` : null;
   };
 
-  const getOrIssueCallbackToken = async ({ delegatedRequest, orgId }: TGetOrIssueCallbackTokenDTO) => {
+  const getOrIssueCallbackToken = async ({ delegatedRequest }: TGetOrIssueCallbackTokenDTO) => {
+    const primary = delegatedApprovalRequestDAL.primaryNode();
+    const approvalRequest = await approvalRequestDAL.findById(delegatedRequest.requestId, primary);
+    if (!approvalRequest) return null;
+
     const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId
+      type: KmsDataKey.SecretManager,
+      projectId: approvalRequest.projectId
     });
 
     if (delegatedRequest.encryptedCallbackToken) {
@@ -36,10 +41,7 @@ export const delegatedApprovalCallbackServiceFactory = ({
     );
     if (issued) return token;
 
-    const current = await delegatedApprovalRequestDAL.findById(
-      delegatedRequest.id,
-      delegatedApprovalRequestDAL.primaryNode()
-    );
+    const current = await delegatedApprovalRequestDAL.findById(delegatedRequest.id, primary);
     if (!current?.encryptedCallbackToken) return null;
 
     return decryptor({ cipherTextBlob: current.encryptedCallbackToken }).toString();

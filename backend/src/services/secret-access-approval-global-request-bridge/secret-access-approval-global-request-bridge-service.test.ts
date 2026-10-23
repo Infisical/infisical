@@ -1,8 +1,10 @@
 import { createMongoAbility, ForbiddenError } from "@casl/ability";
 import { describe, expect, test, vi } from "vitest";
 
+import { ProjectMembershipRole } from "@app/db/schemas";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { DelegatedApprovalRequestStatus } from "@app/services/delegated-approval/delegated-approval-enums";
@@ -56,22 +58,31 @@ const createService = ({
   lockedRequest = pendingRequest as unknown,
   delegated = delegatedRequest as unknown,
   policy = delegatedPolicy as unknown,
-  permission = cannotEditPolicies
+  permission = cannotEditPolicies,
+  memberships = [] as { roles: { role: string }[] }[],
+  projectAccess = "member" as "member" | "none"
 } = {}) => {
   let current = { ...pendingRequest };
   const updateById = vi.fn().mockImplementation(async (_id: string, patch: Partial<typeof pendingRequest>) => {
     current = { ...current, ...patch };
     return current;
   });
+  const findSecretAccessPolicies = vi.fn().mockResolvedValue(policy ? [policy] : []);
+  const getProjectPermission =
+    projectAccess === "member"
+      ? vi.fn().mockResolvedValue({ permission, memberships })
+      : vi
+          .fn()
+          .mockRejectedValue(
+            new ForbiddenRequestError({ message: "You are not a member of this project with ID project-1" })
+          );
 
   const service = secretAccessApprovalGlobalRequestBridgeServiceFactory({
     secretAccessApprovalGlobalRequestBridgeDAL: {
       findSecretAccessRequestById: vi.fn().mockImplementation(async () => current)
     },
-    secretAccessApprovalGlobalPolicyBridgeDAL: {
-      findSecretAccessPolicies: vi.fn().mockResolvedValue(policy ? [policy] : [])
-    },
-    permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ permission }) },
+    secretAccessApprovalGlobalPolicyBridgeDAL: { findSecretAccessPolicies },
+    permissionService: { getProjectPermission },
     delegatedApprovalService: { getRequestByRequestId: vi.fn().mockResolvedValue(delegated) },
     approvalRequestDAL: {
       transaction: vi.fn().mockImplementation(async (cb: (tx: string) => unknown) => cb("tx")),
@@ -80,7 +91,7 @@ const createService = ({
     }
   } as never);
 
-  return { service, updateById };
+  return { service, updateById, findSecretAccessPolicies };
 };
 
 const cancelAs = (service: ReturnType<typeof createService>["service"], actorId: string) =>
@@ -173,5 +184,25 @@ describe("secretAccessApprovalGlobalRequestBridge.reviewAccessApprovalRequest", 
       externallyReviewedAccessRequestMessage("req-1")
     );
     expect(updateById).not.toHaveBeenCalled();
+  });
+
+  test("answers a non-member with the membership refusal, not the external review message", async () => {
+    const { service, findSecretAccessPolicies } = createService({ projectAccess: "none" });
+
+    await expect(reviewAs(service, ApprovalStatus.APPROVED)).rejects.toThrow(
+      "You are not a member of this project with ID project-1"
+    );
+    expect(findSecretAccessPolicies).not.toHaveBeenCalled();
+  });
+
+  test("refuses a member whose only active role is NoAccess before reading the policy", async () => {
+    const { service, findSecretAccessPolicies } = createService({
+      memberships: [{ roles: [{ role: ProjectMembershipRole.NoAccess }] }]
+    });
+
+    await expect(reviewAs(service, ApprovalStatus.APPROVED)).rejects.toThrow(
+      "You are not authorized to review this request"
+    );
+    expect(findSecretAccessPolicies).not.toHaveBeenCalled();
   });
 });

@@ -5,7 +5,12 @@ import { TEventOutbox } from "@app/db/schemas";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { eventOutboxRegistryFactory } from "@app/services/event-outbox/event-outbox-registry";
 import { eventOutboxServiceFactory } from "@app/services/event-outbox/event-outbox-service";
-import { EventOutboxStatus, EventResultStatus, TEvent } from "@app/services/event-outbox/event-outbox-types";
+import {
+  EventOutboxStatus,
+  EventResultStatus,
+  MAX_OUTBOX_ATTEMPTS,
+  TEvent
+} from "@app/services/event-outbox/event-outbox-types";
 
 import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "../delegated-approval-enums";
 import { DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT } from "../delegated-approval-events";
@@ -74,6 +79,7 @@ const delegatedPolicy = {
 };
 
 const PRIMARY = { primary: true } as never;
+const TX = { tx: true } as never;
 
 const buildConsumer = ({
   delegatedRequest = pendingDelegatedRequest as TRow | null,
@@ -96,10 +102,13 @@ const buildConsumer = ({
     return row;
   });
 
+  const approvalUpdate = vi.fn(async () => [approval]);
+
   const consumer = delegatedApprovalDispatchConsumerFactory({
     delegatedApprovalRequestDAL: {
       findById: findById ?? vi.fn(async () => row),
       primaryNode: () => PRIMARY,
+      transaction: async (cb: (tx: never) => Promise<unknown>) => cb(TX),
       update,
       updateById
     },
@@ -108,7 +117,7 @@ const buildConsumer = ({
       getCallbackUrl: () => "https://infisical.example.com/api/v1/delegated-approvals/callback",
       getOrIssueCallbackToken: vi.fn().mockResolvedValue("callback-token")
     },
-    approvalRequestDAL: { findById: vi.fn().mockResolvedValue(approval) },
+    approvalRequestDAL: { findById: vi.fn().mockResolvedValue(approval), update: approvalUpdate },
     projectDAL: { findById: vi.fn().mockResolvedValue({ id: "project-1", name: "Project", type: "secret-manager" }) },
     appConnectionDAL: {
       findById: vi.fn().mockResolvedValue({ id: "connection-1", orgId: ORG_ID, app: "servicenow" })
@@ -116,7 +125,7 @@ const buildConsumer = ({
     kmsService: { createCipherPairWithDataKey: vi.fn() }
   } as never);
 
-  return { consumer, row: () => row, update };
+  return { consumer, row: () => row, update, approvalUpdate };
 };
 
 const makeEvent = (overrides?: Partial<TEvent>): TEvent => ({
@@ -124,6 +133,7 @@ const makeEvent = (overrides?: Partial<TEvent>): TEvent => ({
   eventType: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
   payload: { delegatedRequestId: DELEGATED_REQUEST_ID },
   occurredAt: new Date(),
+  isFinalAttempt: false,
   ...overrides
 });
 
@@ -175,6 +185,38 @@ describe("delegatedApprovalDispatchConsumer", () => {
       status: DelegatedApprovalRequestStatus.FailedDispatch,
       statusReason: "ServiceNow rejected the credentials."
     });
+  });
+
+  test("closes the request when a transient failure lands on the last attempt", async () => {
+    dispatch.mockRejectedValueOnce(new Error("ServiceNow did not respond."));
+    const { consumer, row, approvalUpdate } = buildConsumer();
+
+    const results = await consumer.handle([makeEvent({ isFinalAttempt: true })]);
+
+    expect(results).toEqual([{ id: "1", status: EventResultStatus.Failed, error: "ServiceNow did not respond." }]);
+    expect(row()).toMatchObject({
+      status: DelegatedApprovalRequestStatus.Failed,
+      statusReason: `ServiceNow did not respond. Infisical could not send this request after ${MAX_OUTBOX_ATTEMPTS} attempts and closed it. Create a new request.`
+    });
+    expect(approvalUpdate).toHaveBeenCalledWith(
+      { id: "req-1", status: ApprovalRequestStatus.Pending },
+      { status: ApprovalRequestStatus.Cancelled },
+      TX
+    );
+  });
+
+  test("keeps a terminal failure on the last attempt resendable", async () => {
+    dispatch.mockRejectedValueOnce(new UnrecoverableError("ServiceNow rejected the credentials."));
+    const { consumer, row, approvalUpdate } = buildConsumer();
+
+    const [result] = await consumer.handle([makeEvent({ isFinalAttempt: true })]);
+
+    expect(result.status).toBe(EventResultStatus.Failed);
+    expect(row()).toMatchObject({
+      status: DelegatedApprovalRequestStatus.FailedDispatch,
+      statusReason: "ServiceNow rejected the credentials."
+    });
+    expect(approvalUpdate).not.toHaveBeenCalled();
   });
 
   test("fails terminally when the approval request is no longer pending", async () => {
@@ -408,5 +450,32 @@ describe("delegatedApprovalDispatchConsumer through the outbox", () => {
       statusReason: null
     });
     expect(dispatch).toHaveBeenCalledTimes(2);
+  });
+
+  test("closes the request once the outbox has used up its attempts", async () => {
+    dispatch.mockRejectedValue(new Error("ServiceNow did not respond."));
+    const { consumer, row, approvalUpdate } = buildConsumer();
+    const { service, rows, elapseBackoff } = buildOutbox(consumer);
+
+    await service.emit(
+      { eventType: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT, payload: { delegatedRequestId: DELEGATED_REQUEST_ID } },
+      PRIMARY
+    );
+
+    for (let attempt = 1; attempt < MAX_OUTBOX_ATTEMPTS; attempt += 1) {
+      // eslint-disable-next-line no-await-in-loop -- one drain per attempt
+      await service.drain({ consumer: consumer.name });
+      expect(rows[0].status).toBe(EventOutboxStatus.Retry);
+      expect(row()?.status).toBe(DelegatedApprovalRequestStatus.FailedDispatch);
+      expect(approvalUpdate).not.toHaveBeenCalled();
+      elapseBackoff();
+    }
+
+    await service.drain({ consumer: consumer.name });
+
+    expect(dispatch).toHaveBeenCalledTimes(MAX_OUTBOX_ATTEMPTS);
+    expect(rows[0]).toMatchObject({ status: EventOutboxStatus.Failed, attempts: MAX_OUTBOX_ATTEMPTS });
+    expect(row()?.status).toBe(DelegatedApprovalRequestStatus.Failed);
+    expect(approvalUpdate).toHaveBeenCalledTimes(1);
   });
 });

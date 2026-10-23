@@ -3243,6 +3243,7 @@ export const registerRoutes = async (
 
   const delegatedApprovalCallbackService = delegatedApprovalCallbackServiceFactory({
     delegatedApprovalRequestDAL,
+    approvalRequestDAL,
     kmsService
   });
 

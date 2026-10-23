@@ -815,6 +815,10 @@ await someDAL.transaction(async (tx) => {
   no per-event state for a consumer: what a retry should skip is recorded wherever the consumer already
   keeps delivery records, keyed by `TEvent.id` (stable across attempts). The alert consumer files each
   run under that id in `alert_history.eventId` and the engine skips channels already recorded there.
+  The one piece of retry state a consumer sees is `TEvent.isFinalAttempt`: the row is `failed` after that
+  attempt whatever the consumer returns, so a consumer with state of its own records the terminal outcome
+  then (the delegated approval dispatch closes its request). A give-up from the stale-claim sweep never
+  reaches a consumer.
   Backoff is exponential with jitter from 30s, and `MAX_OUTBOX_ATTEMPTS` puts the last attempt about an
   hour after the first, because a `failed` row is a notification nobody will receive. To replay failed
   rows by hand: `status = 'retry', attempts = 0, nextRetryAt = now()`.
