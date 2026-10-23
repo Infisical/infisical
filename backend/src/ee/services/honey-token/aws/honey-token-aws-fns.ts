@@ -4,15 +4,18 @@ import {
   CreateUserCommand,
   DeleteAccessKeyCommand,
   DeleteUserCommand,
-  IAMClient
+  IAMClient,
+  LimitExceededException
 } from "@aws-sdk/client-iam";
+import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 
+import { CustomAWSHasher } from "@app/lib/aws/hashing";
+import { getConfig as getAppConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
-import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws";
 import { AwsConnectionSchema } from "@app/services/app-connection/aws/aws-connection-schemas";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
@@ -22,7 +25,8 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { THoneyTokenConfigDALFactory } from "../../honey-token-config/honey-token-config-dal";
 import { HoneyTokenConfigStatus } from "../../honey-token-config/honey-token-config-enums";
 import { TLicenseServiceFactory } from "../../license/license-service";
-import { HoneyTokenType } from "../honey-token-enums";
+import { HoneyTokenHosting, HoneyTokenManagedUnavailableReason, HoneyTokenType } from "../honey-token-enums";
+import type { THoneyTokenCredentialTarget } from "../honey-token-service-types";
 import { AwsHoneyTokenConfigSchema } from "../honey-token-types";
 import {
   TGetAwsHoneyTokenConfigInput,
@@ -41,6 +45,9 @@ type TConfigProviderDep = {
 };
 
 const HONEY_TOKEN_IAM_USER_PREFIX = "inf_ht_";
+// IAM is a global service; the region only picks which endpoint the SDK signs against.
+const MANAGED_AWS_REGION = "us-east-1";
+const IAM_ROLE_ARN_REGEX = /^arn:aws[a-z-]*:iam::\d{12}:role\/.+$/;
 const CF_COMPLETE_STATUSES = new Set(["CREATE_COMPLETE", "UPDATE_COMPLETE", "IMPORT_COMPLETE"]);
 
 const parseAwsConnectionConfig = (decryptedConnection: unknown): TAwsConnectionConfig => {
@@ -99,38 +106,164 @@ export const verifyAwsStackDeployment = async ({
   }
 };
 
-export const createAwsIamHoneyTokenCredentials = async ({ appConnection }: { appConnection: TAppConnection }) => {
-  const awsConfig = parseAwsConnectionConfig(appConnection);
-  const { credentials: awsCredentials, region } = await getAwsConnectionConfig(awsConfig);
-  const iam = new IAMClient({ credentials: awsCredentials, region });
+// Only what can be checked without calling AWS. Credentials that are present but wrong still surface
+// as an AWS error when a managed token is created.
+export const getManagedHoneyTokenUnavailableReason = (): HoneyTokenManagedUnavailableReason | null => {
+  const appCfg = getAppConfig();
 
-  const iamUserName = `${HONEY_TOKEN_IAM_USER_PREFIX}${crypto.randomBytes(8).toString("hex")}`;
-  await iam.send(new CreateUserCommand({ UserName: iamUserName }));
+  if (!appCfg.HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY) {
+    return HoneyTokenManagedUnavailableReason.NotConfigured;
+  }
 
-  const createKeyRes = await iam.send(new CreateAccessKeyCommand({ UserName: iamUserName }));
-  if (!createKeyRes.AccessKey?.AccessKeyId || !createKeyRes.AccessKey?.SecretAccessKey) {
-    throw new BadRequestError({ message: "Failed to create AWS access key for honey token" });
+  // One half of a key pair would otherwise fall through to the default credential chain unnoticed.
+  if (
+    Boolean(appCfg.HONEY_TOKEN_MANAGED_AWS_ACCESS_KEY_ID) !== Boolean(appCfg.HONEY_TOKEN_MANAGED_AWS_SECRET_ACCESS_KEY)
+  ) {
+    return HoneyTokenManagedUnavailableReason.IncompleteAwsCredentials;
+  }
+
+  // A user ARN here is an easy mistake, and AWS only reports it as a generic AssumeRole denial.
+  if (appCfg.HONEY_TOKEN_MANAGED_AWS_ROLE_ARN && !IAM_ROLE_ARN_REGEX.test(appCfg.HONEY_TOKEN_MANAGED_AWS_ROLE_ARN)) {
+    return HoneyTokenManagedUnavailableReason.InvalidRoleArn;
+  }
+
+  return null;
+};
+
+const getManagedAwsCredentials = async () => {
+  const appCfg = getAppConfig();
+
+  const baseCredentials =
+    appCfg.HONEY_TOKEN_MANAGED_AWS_ACCESS_KEY_ID && appCfg.HONEY_TOKEN_MANAGED_AWS_SECRET_ACCESS_KEY
+      ? {
+          accessKeyId: appCfg.HONEY_TOKEN_MANAGED_AWS_ACCESS_KEY_ID,
+          secretAccessKey: appCfg.HONEY_TOKEN_MANAGED_AWS_SECRET_ACCESS_KEY
+        }
+      : undefined; // if hosting on AWS
+
+  if (!appCfg.HONEY_TOKEN_MANAGED_AWS_ROLE_ARN) return baseCredentials;
+
+  const sts = new STSClient({
+    region: MANAGED_AWS_REGION,
+    useFipsEndpoint: crypto.isFipsModeEnabled(),
+    sha256: CustomAWSHasher,
+    credentials: baseCredentials
+  });
+
+  const assumeRes = await sts.send(
+    new AssumeRoleCommand({
+      RoleArn: appCfg.HONEY_TOKEN_MANAGED_AWS_ROLE_ARN,
+      RoleSessionName: `infisical-honey-token-${crypto.nativeCrypto.randomUUID()}`,
+      DurationSeconds: 900
+    })
+  );
+
+  if (!assumeRes.Credentials?.AccessKeyId || !assumeRes.Credentials?.SecretAccessKey) {
+    throw new InternalServerError({ message: "Failed to access the Infisical-managed honey token AWS account" });
   }
 
   return {
-    accessKeyId: createKeyRes.AccessKey.AccessKeyId,
-    secretAccessKey: createKeyRes.AccessKey.SecretAccessKey,
-    iamUserName
+    accessKeyId: assumeRes.Credentials.AccessKeyId,
+    secretAccessKey: assumeRes.Credentials.SecretAccessKey,
+    sessionToken: assumeRes.Credentials.SessionToken
   };
 };
 
+const getManagedIamClient = async () => {
+  const appCfg = getAppConfig();
+
+  try {
+    const iam = new IAMClient({
+      region: MANAGED_AWS_REGION,
+      useFipsEndpoint: crypto.isFipsModeEnabled(),
+      sha256: CustomAWSHasher,
+      credentials: await getManagedAwsCredentials()
+    });
+    // Resolved now rather than on the first IAM call, so a missing credential reads as a setup problem
+    // instead of a raw SDK error halfway through creating a token.
+    await iam.config.credentials();
+
+    return { iam, path: appCfg.HONEY_TOKEN_MANAGED_AWS_IAM_PATH };
+  } catch (err) {
+    logger.error({ err }, "Failed to obtain AWS credentials for Infisical-managed honey tokens");
+
+    if (appCfg.isCloud) {
+      throw new InternalServerError({
+        message: "Infisical-managed honey tokens are temporarily unavailable. Contact support if this persists."
+      });
+    }
+
+    const isMissingCredentials = (err as { name?: string }).name === "CredentialsProviderError";
+    throw new InternalServerError({
+      message: isMissingCredentials
+        ? "Infisical-managed honey tokens are not fully set up on this instance: no AWS credentials were found. Ask your instance administrator to set HONEY_TOKEN_MANAGED_AWS_ACCESS_KEY_ID and HONEY_TOKEN_MANAGED_AWS_SECRET_ACCESS_KEY (or INF_APP_CONNECTION_AWS_ACCESS_KEY_ID and INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY), or to run Infisical with an AWS role."
+        : `Infisical-managed honey tokens could not reach their AWS account${
+            appCfg.HONEY_TOKEN_MANAGED_AWS_ROLE_ARN ? " because HONEY_TOKEN_MANAGED_AWS_ROLE_ARN could not be assumed" : ""
+          }. Ask your instance administrator to check the managed honey token AWS settings.`
+    });
+  }
+};
+
+const getIamClient = async (target: THoneyTokenCredentialTarget) => {
+  if (target.hosting === HoneyTokenHosting.InfisicalManaged) {
+    return getManagedIamClient();
+  }
+
+  const awsConfig = parseAwsConnectionConfig(target.appConnection);
+  const { credentials: awsCredentials, region } = await getAwsConnectionConfig(awsConfig);
+  return { iam: new IAMClient({ credentials: awsCredentials, region }), path: undefined };
+};
+
+export const createAwsIamHoneyTokenCredentials = async (target: THoneyTokenCredentialTarget) => {
+  const { iam, path } = await getIamClient(target);
+
+  const iamUserName = `${HONEY_TOKEN_IAM_USER_PREFIX}${crypto.randomBytes(8).toString("hex")}`;
+  try {
+    await iam.send(new CreateUserCommand({ UserName: iamUserName, Path: path }));
+  } catch (err) {
+    if (err instanceof LimitExceededException) {
+      throw new BadRequestError({
+        message:
+          target.hosting === HoneyTokenHosting.InfisicalManaged
+            ? "Infisical-managed honey tokens are at capacity. Create the honey token in your own AWS account instead, or contact support."
+            : "Your AWS account has reached its IAM user limit. Revoke unused honey tokens or IAM users, then try again."
+      });
+    }
+    throw err;
+  }
+
+  try {
+    const createKeyRes = await iam.send(new CreateAccessKeyCommand({ UserName: iamUserName }));
+    if (!createKeyRes.AccessKey?.AccessKeyId || !createKeyRes.AccessKey?.SecretAccessKey) {
+      throw new BadRequestError({ message: "Failed to create AWS access key for honey token" });
+    }
+
+    return {
+      accessKeyId: createKeyRes.AccessKey.AccessKeyId,
+      secretAccessKey: createKeyRes.AccessKey.SecretAccessKey,
+      iamUserName
+    };
+  } catch (err) {
+    await iam.send(new DeleteUserCommand({ UserName: iamUserName })).catch((deleteErr: unknown) => {
+      logger.error(
+        { err: deleteErr, iamUserName },
+        `Failed to clean up honey token IAM user after access key creation failed [iamUserName=${iamUserName}]`
+      );
+    });
+    throw err;
+  }
+};
+
 export const revokeAwsIamHoneyTokenCredentials = async ({
-  appConnection,
+  target,
   iamUserName,
   accessKeyId
 }: {
-  appConnection: TAppConnection;
+  target: THoneyTokenCredentialTarget;
   iamUserName: string;
   accessKeyId: string;
 }) => {
-  const awsConfig = parseAwsConnectionConfig(appConnection);
-  const { credentials: awsCredentials, region } = await getAwsConnectionConfig(awsConfig);
-  const iam = new IAMClient({ credentials: awsCredentials, region });
+  const { iam } = await getIamClient(target);
 
   try {
     await iam.send(
