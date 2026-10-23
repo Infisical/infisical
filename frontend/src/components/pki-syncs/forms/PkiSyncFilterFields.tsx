@@ -5,11 +5,11 @@ import { PlusIcon, TrashIcon, XIcon } from "lucide-react";
 import {
   Badge,
   Button,
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
@@ -169,19 +169,24 @@ export const PkiSyncFilterFields = ({ applicationId, orderNameById, onOpenPicker
         const renderBody = (kind: TFilterKind) => {
           if (kind === "profileIds") {
             return (
-              <FilterableSelect
-                isMulti
+              <Combobox
+                id="pki-sync-filter-profile-ids"
+                multiple
                 placeholder="Select profiles"
+                searchAriaLabel="Search profiles"
                 options={profileOptions}
                 value={profileOptions.filter((option) =>
                   (filters.profileIds ?? []).includes(option.value)
                 )}
-                onChange={(options) =>
+                onValueChange={(options) =>
                   setFilter(
                     "profileIds",
-                    ((options as TProfileOption[]) ?? []).map((option) => option.value)
+                    options.map((option) => option.value)
                   )
                 }
+                getOptionLabel={(option) => option.label}
+                getOptionValue={(option) => option.value}
+                getOptionKeywords={(option) => [option.value]}
               />
             );
           }
@@ -265,7 +270,12 @@ export const PkiSyncFilterFields = ({ applicationId, orderNameById, onOpenPicker
                 )}
                 <div className="flex items-start gap-3">
                   <Field className="min-w-0 flex-1">
-                    <FieldLabel className="text-xs">{FILTER_LABELS[kind]}</FieldLabel>
+                    <FieldLabel
+                      className="text-xs"
+                      htmlFor={kind === "profileIds" ? "pki-sync-filter-profile-ids" : undefined}
+                    >
+                      {FILTER_LABELS[kind]}
+                    </FieldLabel>
                     <FieldContent>{renderBody(kind)}</FieldContent>
                   </Field>
                   {kind !== "metadata" && (

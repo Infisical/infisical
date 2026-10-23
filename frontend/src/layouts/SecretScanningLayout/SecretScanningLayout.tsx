@@ -1,14 +1,28 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Outlet } from "@tanstack/react-router";
 
 import { SecretScanningUpgradeIntent, useUpgradeGate } from "@app/components/license/UpgradeGate";
-import { useSubscription } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
+import { analytics, AnalyticsEvent } from "@app/lib/analytics";
 
 export const SecretScanningLayout = () => {
   const { subscription } = useSubscription();
+  const { currentOrg } = useOrganization();
+  const openedOrgRef = useRef<string | undefined>(undefined);
 
   const isSecretScanningGated = subscription?.secretScanning === false;
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
+
+  // Once per visit to the product: navigating between its pages keeps this layout mounted.
+  useEffect(() => {
+    if (openedOrgRef.current === currentOrg.id) return;
+    openedOrgRef.current = currentOrg.id;
+
+    analytics.captureForOrganization(AnalyticsEvent.SecretScanningOpened, currentOrg.id, {
+      hasSecretScanning: Boolean(subscription.secretScanning),
+      plan: subscription.slug ?? "free"
+    });
+  }, [currentOrg.id, subscription.secretScanning, subscription.slug]);
 
   useEffect(() => {
     if (!isSecretScanningGated) return;

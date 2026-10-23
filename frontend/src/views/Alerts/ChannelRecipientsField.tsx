@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { LucideIcon, MailIcon, UserIcon, UsersIcon } from "lucide-react";
 
-import { FilterableSelect } from "@app/components/v3";
+import { Combobox } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { isValidEmail } from "@app/helpers/email";
 import {
@@ -77,13 +77,7 @@ const RecipientSelect = ({
   isError,
   allowEmailAddresses
 }: SelectProps & { options: RecipientOption[]; labelledOptions?: RecipientOption[] }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [menuPortalTarget, setMenuPortalTarget] = useState<HTMLElement | null>(null);
   const [inputValue, setInputValue] = useState("");
-
-  useEffect(() => {
-    setMenuPortalTarget(containerRef.current?.closest<HTMLElement>('[role="dialog"]') ?? null);
-  }, []);
 
   const byKey = new Map(
     (labelledOptions ?? options).map((o) => [`${o.principalType}-${o.principalId}`, o])
@@ -111,34 +105,32 @@ const RecipientSelect = ({
   );
 
   return (
-    <div ref={containerRef}>
-      <FilterableSelect<RecipientOption>
-        isMulti
-        placeholder={
-          allowEmailAddresses ? "Add users, groups, or emails..." : "Add users or groups..."
-        }
-        options={canAddEmail ? [...options, emailOption] : options}
-        onInputChange={setInputValue}
-        value={selected}
-        isError={isError}
-        groupBy="groupLabel"
-        getGroupHeaderLabel={(groupValue) => groupValue}
-        getOptionValue={(option) => `${option.principalType}-${option.principalId}`}
-        getOptionLabel={(option) => option.label}
-        formatOptionLabel={formatOptionLabel}
-        menuPortalTarget={menuPortalTarget ?? undefined}
-        menuPosition="fixed"
-        menuPlacement="auto"
-        onChange={(newValue) =>
-          onChange(
-            (newValue as RecipientOption[]).map((option) => ({
-              principalType: option.principalType,
-              principalId: option.principalId
-            }))
-          )
-        }
-      />
-    </div>
+    <Combobox
+      multiple
+      placeholder={
+        allowEmailAddresses ? "Add users, groups, or emails..." : "Add users or groups..."
+      }
+      searchAriaLabel="Search recipients"
+      options={canAddEmail ? [...options, emailOption] : options}
+      onInputValueChange={setInputValue}
+      value={selected}
+      includeMissingSelectedOptions={false}
+      isError={isError}
+      getOptionGroup={(option) => option.groupLabel}
+      getOptionValue={(option) => `${option.principalType}-${option.principalId}`}
+      getOptionKeywords={(option) => [`${option.principalType}-${option.principalId}`]}
+      getOptionLabel={(option) => option.label}
+      renderOption={formatOptionLabel}
+      renderValue={formatOptionLabel}
+      onValueChange={(newValue) =>
+        onChange(
+          newValue.map((option) => ({
+            principalType: option.principalType,
+            principalId: option.principalId
+          }))
+        )
+      }
+    />
   );
 };
 

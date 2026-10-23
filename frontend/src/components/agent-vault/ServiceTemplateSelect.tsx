@@ -23,12 +23,12 @@ const TemplateCard = ({
     <button
       type="button"
       onClick={() => onSelect(template)}
-      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-mineshaft-500 hover:bg-mineshaft-700/50"
+      className="group flex cursor-pointer flex-col gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-foreground/15 hover:bg-container-hover"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex size-9 items-center justify-center rounded-md bg-mineshaft-700">
+        <div className="flex size-9 items-center justify-center rounded-md bg-container">
           {hasImageError ? (
-            <GlobeIcon className="size-5 text-bunker-300" />
+            <GlobeIcon className="size-5 text-muted" />
           ) : (
             <ProviderIcon
               icon={template.image}
@@ -54,11 +54,11 @@ const CustomCard = ({ onSelect }: { onSelect: () => void }) => (
   <button
     type="button"
     onClick={onSelect}
-    className="group flex cursor-pointer flex-col gap-3 rounded-md border border-dashed border-mineshaft-500 bg-card p-4 text-left transition-colors hover:border-mineshaft-400 hover:bg-mineshaft-700/50"
+    className="group flex cursor-pointer flex-col gap-3 rounded-md border border-dashed border-border bg-card p-4 text-left transition-colors hover:border-foreground/15 hover:bg-container-hover"
   >
     <div className="flex items-start gap-2">
-      <div className="flex size-9 items-center justify-center rounded-md bg-mineshaft-700">
-        <PlusIcon className="size-5 text-bunker-300" />
+      <div className="flex size-9 items-center justify-center rounded-md bg-container">
+        <PlusIcon className="size-5 text-muted" />
       </div>
     </div>
     <div className="flex flex-col gap-1">

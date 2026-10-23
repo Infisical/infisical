@@ -24,7 +24,8 @@ export type CapabilityUpgradeIntent = {
     | "sso_enforcement"
     | "machine_identity_auth_templates"
     | "identity_auth"
-    | "agent_vault_byo_s3";
+    | "agent_vault_byo_s3"
+    | "agent_vault_managed_storage";
   productName?: string;
   title: string;
   description: string;
@@ -246,5 +247,14 @@ export const AgentVaultSessionLogsUpgradeIntent = {
   featureKey: "agent_vault_byo_s3",
   title: "Unlock Agent Vault Session Logs",
   description: "Record agent requests in your own storage for review and investigation.",
+  isEnterpriseFeature: true
+} satisfies CapabilityUpgradeIntent;
+
+export const AgentVaultSessionLogDefaultStorageUpgradeIntent = {
+  scope: "product",
+  productName: "Agent Vault",
+  featureKey: "agent_vault_managed_storage",
+  title: "Unlock Agent Vault Session Logs",
+  description: "Record what your agents do, with nothing to set up.",
   isEnterpriseFeature: true
 } satisfies CapabilityUpgradeIntent;

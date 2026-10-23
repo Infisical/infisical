@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Spinner } from "@app/components/v2";
 import { Button } from "@app/components/v3/generic/Button";
+import { Spinner } from "@app/components/v3/generic/Spinner";
 import { cn } from "@app/components/v3/utils";
 import { PamAccountType, useGetPamAccountById } from "@app/hooks/api/pam";
 
@@ -302,7 +302,7 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
   if (isConnecting && !isConnected) {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-background">
-        <Spinner className="h-8 w-8" />
+        <Spinner label="Connecting to database" />
         <p className="text-sm text-muted">Connecting to database...</p>
       </div>
     );
@@ -317,7 +317,7 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
       >
         {mfaState.verifying ? (
           <div className="flex items-center justify-center gap-2 text-xs text-muted">
-            <Spinner className="h-4 w-4" />
+            <Spinner size="xs" label="Waiting for MFA verification" />
             Waiting for verification...
           </div>
         ) : (
