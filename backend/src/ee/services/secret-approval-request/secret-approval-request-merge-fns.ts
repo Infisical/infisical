@@ -498,7 +498,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
                 skipMultilineEncoding: el.skipMultilineEncoding !== null ? el.skipMultilineEncoding : undefined,
                 key: el.key,
                 tags: el?.tags.map(({ id }) => id),
-                secretMetadata: toSecretMetadataInput(el.secretMetadata),
+                secretMetadata: Array.isArray(el.secretMetadata) ? toSecretMetadataInput(el.secretMetadata) : undefined,
                 ...encryptedValue
               }
             };
