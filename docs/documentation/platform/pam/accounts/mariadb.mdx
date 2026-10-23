@@ -48,27 +48,38 @@ To open a session, follow [Connect to an account](/documentation/platform/pam/ac
     The browser session has a table browser, where you can view, filter, edit, and export rows, and a SQL editor for running queries.
   </Tab>
   <Tab title="CLI">
-    Start the local proxy:
+    <Steps>
+      <Step>
+        Start the local proxy:
 
-    ```bash
-    infisical pam access backend-team/orders-db
-    ```
+        ```bash
+        infisical pam access backend-team/orders-db
+        ```
 
-    The proxy keeps running in that terminal and prints its port. In a second terminal, connect your MariaDB or MySQL client to that port:
+        The proxy keeps running in that terminal and prints its port.
+      </Step>
+      <Step>
+        In a second terminal, connect your MariaDB or MySQL client to that port:
 
-    ```bash
-    mariadb -h 127.0.0.1 -P <port> orders
-    ```
+        ```bash
+        mariadb -h 127.0.0.1 -P <port> orders
+        ```
 
-    The proxy signs in for you, so the client doesn't need a password.
+        The proxy signs in for you, so the client doesn't need a password.
+      </Step>
+    </Steps>
   </Tab>
 </Tabs>
+
+## Rotate the password
+
+MariaDB accounts rotate the same way as MySQL accounts. Follow [MySQL credential rotation](/documentation/platform/pam/credential-rotation/mysql) for the privileges and SQL grants the rotation account needs, but add both users to Infisical PAM as MariaDB accounts. A MariaDB account can only use another MariaDB account as its rotation account, so a MySQL account won't appear in the list.
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="MySQL credential rotation" icon="refresh-cw" href="/documentation/platform/pam/credential-rotation/mysql">
-    MariaDB accounts rotate through a MySQL connection, so the same setup applies.
+  <Card title="Credential rotation" icon="refresh-cw" href="/documentation/platform/pam/credential-rotation/overview">
+    Turn on rotation for an account and choose its rotation account.
   </Card>
   <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
     Review and end the connections that people and agents make to your accounts.

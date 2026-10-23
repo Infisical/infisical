@@ -108,15 +108,18 @@ export const ORACLE_MAX_PASSWORD_LENGTH = 30;
 
 export const ORACLE_MIN_GATEWAY_VERSION = "v0.43.133";
 
+// Room for a full CA bundle such as Amazon RDS's global one
+const MAX_SSL_CERTIFICATE_LENGTH = 262_144;
+
 // MariaDB uses the MySQL wire protocol, so both types share these fields
 const MYSQL_COMPATIBLE_CONFIG = {
   connectionDetails: z.object({
     host: z.string().trim().min(1).max(255),
-    port: z.coerce.number(),
+    port: z.coerce.number().int().min(1).max(65535),
     database: z.string().trim().min(1).max(64),
     sslEnabled: z.boolean(),
     sslRejectUnauthorized: z.boolean(),
-    sslCertificate: optionalTrimmedString
+    sslCertificate: boundedOptionalString(MAX_SSL_CERTIFICATE_LENGTH)
   }),
   credentials: z.object({
     username: z.string().trim().min(1).max(32),
