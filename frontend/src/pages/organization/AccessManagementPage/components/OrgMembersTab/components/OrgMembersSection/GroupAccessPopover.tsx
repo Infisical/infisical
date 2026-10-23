@@ -26,7 +26,7 @@ const MAX_VISIBLE_ROLES = 1;
 
 const RoleBadge = ({ name }: { name: string }) => (
   <Badge variant="neutral" isTruncatable className="max-w-[8rem]">
-    {name}
+    <span>{name}</span>
   </Badge>
 );
 
@@ -92,7 +92,7 @@ export const GroupAccessPopover = ({ orgId, groups, hasDirectAccess, getRoleName
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="flex w-80 flex-col gap-3"
+        className="flex max-h-(--radix-popover-content-available-height) w-80 flex-col gap-3"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
@@ -106,7 +106,7 @@ export const GroupAccessPopover = ({ orgId, groups, hasDirectAccess, getRoleName
             <XIcon />
           </IconButton>
         </div>
-        <ul className="flex flex-col gap-2">
+        <ul className="flex min-h-0 flex-col gap-2 overflow-y-auto">
           {groups.map((group) => (
             <li key={group.id} className="flex items-center justify-between gap-3">
               <Link
