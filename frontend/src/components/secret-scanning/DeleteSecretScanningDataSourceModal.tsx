@@ -1,5 +1,5 @@
 import { createNotification } from "@app/components/notifications";
-import { Alert, AlertDescription, DeleteConfirmDialog } from "@app/components/v3";
+import { Alert, AlertDescription, ConfirmationAlertDialog } from "@app/components/v3";
 import { SECRET_SCANNING_DATA_SOURCE_MAP } from "@app/helpers/secretScanningV2";
 import {
   TSecretScanningDataSource,
@@ -44,7 +44,7 @@ export const DeleteSecretScanningDataSourceModal = ({
   };
 
   return (
-    <DeleteConfirmDialog
+    <ConfirmationAlertDialog
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       title={`Delete ${name}?`}
