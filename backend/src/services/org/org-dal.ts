@@ -558,6 +558,51 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Every user that reaches the org through a group holding an org row, one row per (user, group). Covers
+  // users with no direct org row at all, which findAllOrgMembers never sees.
+  const findAllOrgGroupUserAccess = async (orgId: string) => {
+    try {
+      const rows = await db
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .join(TableName.Groups, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
+        .join(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+        .join(TableName.Users, `${TableName.Users}.id`, `${TableName.UserGroupMembership}.userId`)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .where(`${TableName.Users}.isGhost`, false)
+        .select(
+          db.ref("id").withSchema(TableName.Users).as("userId"),
+          db.ref("email").withSchema(TableName.Users),
+          db.ref("isEmailVerified").withSchema(TableName.Users),
+          db.ref("username").withSchema(TableName.Users),
+          db.ref("firstName").withSchema(TableName.Users),
+          db.ref("lastName").withSchema(TableName.Users),
+          db.ref("superAdmin").withSchema(TableName.Users),
+          db.ref("id").withSchema(TableName.Groups).as("groupId"),
+          db.ref("name").withSchema(TableName.Groups).as("groupName"),
+          db.ref("slug").withSchema(TableName.Groups).as("groupSlug"),
+          db.ref("role").withSchema(TableName.MembershipRole),
+          db.ref("customRoleId").withSchema(TableName.MembershipRole).as("roleId")
+        )
+        .orderBy(`${TableName.Groups}.name`);
+
+      return rows.map(({ userId, email, isEmailVerified, username, firstName, lastName, superAdmin, ...group }) => ({
+        user: { id: userId, email, isEmailVerified, username, firstName, lastName, superAdmin },
+        group: {
+          id: group.groupId,
+          name: group.groupName,
+          slug: group.groupSlug,
+          role: group.role,
+          roleId: group.roleId
+        }
+      }));
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find all org group user access" });
+    }
+  };
+
   // TODO(sub-org): updated this logic later
   const countAllOrgMembers = async (orgId: string) => {
     try {
@@ -1187,6 +1232,7 @@ export const orgDALFactory = (db: TDbClient) => {
     ...orgOrm,
     findOrgByProjectId,
     findAllOrgMembers,
+    findAllOrgGroupUserAccess,
     countAllOrgMembers,
     countSecretManagerProjectMembers,
     listSubOrganizations,

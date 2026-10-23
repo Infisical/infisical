@@ -22,6 +22,7 @@ import {
   OrgUser,
   RenameUserDTO,
   TokenVersion,
+  TOrgUserAccess,
   TWorkspaceUser,
   UpdateOrgMembershipDTO,
   User,
@@ -175,6 +176,18 @@ export const useGetOrgUsers = (orgId: string, options?: { enabled?: boolean }) =
     queryKey: userKeys.getOrgUsers(orgId),
     queryFn: () => fetchOrgUsers(orgId),
     enabled: Boolean(orgId) && (options?.enabled ?? true)
+  });
+
+export const useGetOrgUserAccess = (orgId: string) =>
+  useQuery({
+    queryKey: userKeys.getOrgUserAccess(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ users: TOrgUserAccess[] }>(
+        `/api/v1/organization/${orgId}/user-access`
+      );
+      return data.users;
+    },
+    enabled: Boolean(orgId)
   });
 
 // mutation

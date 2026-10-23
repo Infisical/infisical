@@ -291,6 +291,49 @@ export const orgServiceFactory = ({
     return members;
   };
 
+  // Everyone who reaches the org: direct members with the groups they also belong to, then users whose only
+  // path in is a group. Group access is read for direct members too, so the list can say how each user got in.
+  const listOrgUserAccess = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TFindAllOrgMembersDTO) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
+
+    const [members, groupAccess] = await Promise.all([
+      orgDAL.findAllOrgMembers(orgId),
+      orgDAL.findAllOrgGroupUserAccess(orgId)
+    ]);
+
+    const groupsByUserId = new Map<string, (typeof groupAccess)[number]["group"][]>();
+    const groupOnlyUsers = new Map<string, (typeof groupAccess)[number]["user"]>();
+    const directUserIds = new Set(members.map((member) => member.user.id));
+    groupAccess.forEach(({ user, group }) => {
+      const groups = groupsByUserId.get(user.id) ?? [];
+      if (!groups.some((el) => el.id === group.id)) groups.push(group);
+      groupsByUserId.set(user.id, groups);
+      if (!directUserIds.has(user.id)) groupOnlyUsers.set(user.id, user);
+    });
+
+    return [
+      ...members.map(({ user, ...membership }) => ({
+        user,
+        membership,
+        groups: groupsByUserId.get(user.id) ?? []
+      })),
+      ...[...groupOnlyUsers.values()].map((user) => ({
+        user,
+        membership: null,
+        groups: groupsByUserId.get(user.id) ?? []
+      }))
+    ];
+  };
+
   const getOrgGroups = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TGetOrgGroupsDTO) => {
     const { permission } = await permissionService.getOrgPermission({
       actor,
@@ -1661,6 +1704,7 @@ export const orgServiceFactory = ({
   return {
     findOrganizationById,
     findAllOrgMembers,
+    listOrgUserAccess,
     findAllOrganizationOfUser,
     findIdentityOrganization,
     verifyUserToOrg,

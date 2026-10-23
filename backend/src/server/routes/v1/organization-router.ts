@@ -453,6 +453,76 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:organizationId/user-access",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listOrganizationUserAccess",
+      description:
+        "List every user with access to the organization, through a direct membership, through groups, or both",
+      params: z.object({
+        organizationId: z.string().trim().uuid()
+      }),
+      response: {
+        200: z.object({
+          users: z
+            .object({
+              user: SanitizedUserSchema.pick({
+                username: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                id: true
+              }).merge(z.object({ publicKey: z.string().nullable().optional(), superAdmin: z.boolean().nullish() })),
+              membership: OrgMembershipsSchema.pick({
+                id: true,
+                role: true,
+                roleId: true,
+                status: true,
+                inviteEmail: true,
+                isActive: true,
+                lastLoginAuthMethod: true,
+                lastLoginTime: true
+              }).nullable(),
+              groups: z
+                .object({
+                  id: z.string().uuid(),
+                  name: z.string(),
+                  slug: z.string(),
+                  role: z.string(),
+                  roleId: z.string().uuid().nullable().optional()
+                })
+                .array()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const users = await server.services.org.listOrgUserAccess({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        orgId: req.params.organizationId,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return {
+        users: users.map((el) => ({
+          ...el,
+          membership: el.membership && {
+            ...el.membership,
+            status: el.membership.status || OrgMembershipStatus.Accepted
+          }
+        }))
+      };
+    }
+  });
+
+  server.route({
     method: "PATCH",
     url: "/:organizationId",
     config: {
