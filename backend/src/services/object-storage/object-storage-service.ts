@@ -314,6 +314,21 @@ export const objectStorageServiceFactory = ({
             retentionDays?: number | null;
           }) => {
             const key = buildObjectKey(folderPrefix, name);
+            // Signed before the cap is counted, so a link that fails to sign (the server's AWS identity can't get
+            // credentials) costs the org none of its daily allowance. Signing is local, so a capped request loses little.
+            let url: string;
+            try {
+              url = await s3.presignCreateOnlyPut({
+                key,
+                contentLength: bytes,
+                sha256Base64,
+                expiresInSeconds,
+                // Default storage deletes by an S3 lifecycle rule on this tag; a customer's bucket is theirs to manage.
+                tagging: isDefault ? $retentionTag(retentionDays) : undefined
+              });
+            } catch (error) {
+              throw wrap(error);
+            }
             try {
               if (isDefault && getConfig().isCloud) await $admitDailyBytes(orgId, bytes);
             } catch (error) {
@@ -322,20 +337,8 @@ export const objectStorageServiceFactory = ({
               }
               throw error;
             }
-            try {
-              const url = await s3.presignCreateOnlyPut({
-                key,
-                contentLength: bytes,
-                sha256Base64,
-                expiresInSeconds,
-                // Default storage deletes by an S3 lifecycle rule on this tag; a customer's bucket is theirs to manage.
-                tagging: isDefault ? $retentionTag(retentionDays) : undefined
-              });
-              recordObjectStorageUploadMetric({ storageType, outcome: ObjectStorageUploadOutcome.Admitted, bytes });
-              return { key, url };
-            } catch (error) {
-              throw wrap(error);
-            }
+            recordObjectStorageUploadMetric({ storageType, outcome: ObjectStorageUploadOutcome.Admitted, bytes });
+            return { key, url };
           };
 
           const list = async ({ startAfter, maxKeys }: { startAfter?: string; maxKeys: number }) => {

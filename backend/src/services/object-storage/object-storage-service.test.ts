@@ -312,7 +312,13 @@ describe("the daily cap", () => {
   test("over the cap, the link is refused with a 429", async () => {
     const { service } = build({ admit: async () => -1 });
     await expect(presign(service, 4096)).rejects.toBeInstanceOf(DailyQuotaExceededError);
-    expect(bucketClient.presignCreateOnlyPut).not.toHaveBeenCalled();
+  });
+
+  test("a link that fails to sign is not counted against the cap", async () => {
+    const { service, incrementByIfUnderLimitWithFixedExpiry } = build();
+    bucketClient.presignCreateOnlyPut.mockRejectedValueOnce(new Error("Could not load credentials"));
+    await expect(presign(service, 4096)).rejects.toThrow();
+    expect(incrementByIfUnderLimitWithFixedExpiry).not.toHaveBeenCalled();
   });
 
   test("when Redis doesn't answer within 250 ms, the upload is allowed", async () => {
