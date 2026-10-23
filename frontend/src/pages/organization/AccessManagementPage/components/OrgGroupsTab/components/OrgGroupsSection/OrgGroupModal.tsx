@@ -6,9 +6,10 @@ import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
+import { RoleOptionContent } from "@app/components/roles";
 import {
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -18,7 +19,6 @@ import {
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   Tabs,
   TabsContent,
@@ -190,16 +190,19 @@ export const OrgGroupModal = ({
         render={({ field: { onChange, value }, fieldState: { error } }) => (
           <Field>
             <FieldLabel htmlFor="role">{isCreateMode ? "Role" : "Update Role"}</FieldLabel>
-            <FilterableSelect
-              inputId="role"
+            <Combobox
+              id="role"
               options={roles}
               placeholder="Select role..."
-              onChange={onChange}
-              value={value}
+              searchAriaLabel="Search roles"
+              isClearable={false}
+              onValueChange={onChange}
+              value={roles?.find((role) => role.slug === value?.slug) ?? value}
               isError={Boolean(error)}
               getOptionValue={(option) => option.slug}
+              getOptionKeywords={(option) => [option.slug]}
               getOptionLabel={(option) => option.name}
-              components={{ Option: RoleOption }}
+              renderOption={(option) => <RoleOptionContent role={option} />}
             />
             <FieldError>{error?.message}</FieldError>
           </Field>

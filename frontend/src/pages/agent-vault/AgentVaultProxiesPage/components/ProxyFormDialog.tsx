@@ -38,7 +38,7 @@ import {
   useCreateAgentVaultProxy,
   useUpdateAgentVaultProxy
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultEnrollment, TAgentVaultProxy } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultProxy, TAgentVaultProxyToken } from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
 
 const TRAFFIC_POLICY_CHOICES = [
@@ -120,7 +120,7 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   proxy?: TAgentVaultProxy;
-  onCreated?: (enrollment: TAgentVaultEnrollment) => void;
+  onCreated?: (proxyToken: TAgentVaultProxyToken) => void;
 };
 
 export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Props) => {
@@ -178,7 +178,7 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
       } else {
         const result = await createProxy.mutateAsync(payload);
         createNotification({ text: `Proxy "${data.name}" created`, type: "success" });
-        onCreated?.({ token: result.token, expiresAt: result.expiresAt });
+        onCreated?.({ proxyToken: result.proxyToken });
       }
 
       onOpenChange(false);

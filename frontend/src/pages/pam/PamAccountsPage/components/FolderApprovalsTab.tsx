@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { components, OptionProps } from "react-select";
 import {
   Ban,
   FilterIcon,
@@ -21,13 +20,13 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Combobox,
   ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  FilterableSelect,
   IconButton,
   Pagination,
   Table,
@@ -85,20 +84,18 @@ const KIND_ICON: Record<PamApproverType, typeof UserIcon> = {
   [PamApproverType.Group]: UsersIcon
 };
 
-const ApproverSelectOption = ({ children, ...props }: OptionProps<ApproverOption>) => {
-  const Icon = KIND_ICON[props.data.kind];
+const renderApproverOption = (option: ApproverOption) => {
+  const Icon = KIND_ICON[option.kind];
   return (
-    <components.Option {...props}>
-      <div className="flex items-center gap-2.5">
-        <Icon className="size-4 shrink-0 text-muted" />
-        <div className="min-w-0">
-          <p className="truncate">{children}</p>
-          {props.data.subtitle && (
-            <p className="truncate text-xs leading-4 text-muted">{props.data.subtitle}</p>
-          )}
-        </div>
+    <div className="flex items-center gap-2.5">
+      <Icon className="size-4 shrink-0 text-muted" />
+      <div className="min-w-0">
+        <p className="truncate">{option.label}</p>
+        {option.subtitle && (
+          <p className="truncate text-xs leading-4 text-muted">{option.subtitle}</p>
+        )}
       </div>
-    </components.Option>
+    </div>
   );
 };
 
@@ -374,17 +371,16 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <FilterableSelect
+          <Combobox
+            isClearable={false}
             value={null}
             options={approverOptions}
-            onChange={(opt) => addApprover(opt as ApproverOption | null)}
+            onValueChange={addApprover}
             getOptionValue={(opt) => `${opt.kind}:${opt.value}`}
             getOptionLabel={(opt) => opt.label}
-            components={{ Option: ApproverSelectOption }}
+            renderOption={renderApproverOption}
             placeholder="Add a user or group..."
-            noOptionsMessage={() =>
-              "No eligible folder members left. Add users or groups to this folder under the Permissions tab first."
-            }
+            emptyMessage="No eligible folder members left. Add users or groups to this folder under the Permissions tab first."
           />
 
           {approvers.length === 0 ? (
@@ -462,17 +458,16 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <FilterableSelect
+          <Combobox
+            isClearable={false}
             value={null}
             options={breakGlassOptions}
-            onChange={(opt) => addBreakGlassUser(opt as ApproverOption | null)}
+            onValueChange={addBreakGlassUser}
             getOptionValue={(opt) => `${opt.kind}:${opt.value}`}
             getOptionLabel={(opt) => opt.label}
-            components={{ Option: ApproverSelectOption }}
+            renderOption={renderApproverOption}
             placeholder="Add a user or group..."
-            noOptionsMessage={() =>
-              "No eligible folder members left. Add users or groups to this folder under the Permissions tab first."
-            }
+            emptyMessage="No eligible folder members left. Add users or groups to this folder under the Permissions tab first."
           />
 
           {breakGlassUsers.length === 0 ? (

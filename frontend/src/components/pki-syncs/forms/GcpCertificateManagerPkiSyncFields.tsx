@@ -1,15 +1,14 @@
 import { Controller, FieldError as TFieldError, useFormContext, useWatch } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { AxiosError } from "axios";
 import { Info, Loader2Icon } from "lucide-react";
 
 import {
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   Label,
   Select,
@@ -27,7 +26,6 @@ import {
   useGcpConnectionListCertificateManagerProjects,
   useGcpConnectionListCertificateMaps
 } from "@app/hooks/api/appConnections/gcp/queries";
-import { TGcpCertificateMap } from "@app/hooks/api/appConnections/gcp/types";
 import { GcpCertificateManagerScope, PkiSync } from "@app/hooks/api/pkiSyncs";
 import {
   GCP_CERTIFICATE_MANAGER_GLOBAL_LOCATION,
@@ -339,15 +337,13 @@ export const GcpCertificateManagerPkiSyncFields = ({ isUpdate }: Props) => {
 
               return (
                 <Field className="mb-4">
-                  <FieldLabel>Certificate Map</FieldLabel>
+                  <FieldLabel htmlFor="gcp-certificate-map">Certificate Map</FieldLabel>
                   <FieldContent>
-                    <FilterableSelect
-                      isClearable
+                    <Combobox
+                      id="gcp-certificate-map"
                       isLoading={isLoadingCertificateMaps}
                       value={certificateMaps?.find((map) => map.name === value) ?? null}
-                      onChange={(option) =>
-                        onChange((option as SingleValue<TGcpCertificateMap>)?.name ?? "")
-                      }
+                      onValueChange={(option) => onChange(option?.name ?? "")}
                       options={certificateMaps ?? []}
                       getOptionLabel={(option) => option.name}
                       getOptionValue={(option) => option.name}

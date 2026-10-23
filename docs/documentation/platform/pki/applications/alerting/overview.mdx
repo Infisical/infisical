@@ -1,6 +1,7 @@
 ---
-title: "Alerts"
-description: "Get notified when certificates expire, are issued, renewed, or revoked, across Certificate Manager or in one application."
+title: "Certificate alerts"
+sidebarTitle: "Alerts"
+description: "Get notified when certificates expire, are issued, renewed, or revoked, across Certificate Management or in one application."
 ---
 
 An alert notifies your team when a certificate is about to expire, or when a certificate is issued, renewed, or revoked. Each alert watches for one of these events and sends a notification to up to 10 channels. To create an alert, follow the guide for the channel you want to notify:
@@ -24,28 +25,28 @@ Infisical checks for expiring certificates once a day, and sends issuance, renew
 
 ## Choose where to create an alert
 
-You can create an alert for all of Certificate Manager or for one [application](/documentation/platform/pki/applications/overview):
+You can create an alert for all of Infisical Certificate Management or for one [application](/documentation/platform/pki/applications/overview):
 
-| | Certificate Manager alert | Application alert |
+| | Certificate Management alert | Application alert |
 | --- | --- | --- |
-| Covers | Every certificate in Certificate Manager, or the ones that match its [filters](#filter-a-certificate-manager-alert) | Every certificate in the application |
+| Covers | Every certificate in Infisical Certificate Management, or the ones that match its [filters](#filter-a-certificate-management-alert) | Every certificate in the application |
 | Created in | **Certificate Manager** > **Settings** > **Alerts** | The application's **Settings** tab |
-| Who can create it | The Certificate Manager **Admin** role | The **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) |
+| Who can create it | The Certificate Management **Admin** role | The **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) |
 | Events | Certificate events, plus [signer certificate expiration](#signer-certificate-expiration) for code signing | Certificate events, with one alert for each event |
 
-Use an application alert when one team owns the certificates and wants its own notifications. Use a Certificate Manager alert to cover several applications at once, or certificates that don't belong to an application, such as imported or discovered certificates.
+Use an application alert when one team owns the certificates and wants its own notifications. Use a Certificate Management alert to cover several applications at once, or certificates that don't belong to an application, such as imported or discovered certificates.
 
 If you delete an application, Infisical deletes its alerts too.
 
-## Filter a Certificate Manager alert
+## Filter a Certificate Management alert
 
-Without filters, a Certificate Manager alert covers every certificate in Certificate Manager. Each filter you add narrows the alert, and a certificate must match every filter:
+Without filters, a Certificate Management alert covers every certificate in Infisical Certificate Management. Each filter you add narrows the alert, and a certificate must match every filter:
 
 | Filter | Certificates covered |
 |--------|----------------------|
 | **Applications** | Certificates in one of the selected applications (up to 100) |
 | **Certificate Profiles** | Certificates issued from one of the selected profiles (up to 100) |
-| **Source** | Certificates with one of the selected sources: **Managed** for certificates issued through Certificate Manager, **Imported**, or **Discovered** |
+| **Source** | Certificates with one of the selected sources: **Managed** for certificates issued through Infisical Certificate Management, **Imported**, or **Discovered** |
 
 For example, a **Source** filter set to **Imported** covers every imported certificate, including ones outside any application or profile. Add an **Applications** filter as well, and the alert covers only the imported certificates in those applications.
 
@@ -64,6 +65,6 @@ An expiration alert keeps notifying you about the same certificate until the cer
 
 ## Signer certificate expiration
 
-A **Signer Certificate Expiration** alert, in the **Code Signing** group, warns you before a [signer's](/documentation/platform/pki/code-signing/signers) current certificate expires. You can only create it as a Certificate Manager alert. It covers every active signer under **Code Signing** > **Signers** and skips the **Filters** step. Otherwise, it works like a certificate expiration alert.
+A **Signer Certificate Expiration** alert, in the **Code Signing** group, warns you before a [signer's](/documentation/platform/pki/code-signing/signers) current certificate expires. You can only create it as a Certificate Management alert. It covers every active signer under **Code Signing** > **Signers** and skips the **Filters** step. Otherwise, it works like a certificate expiration alert.
 
 When you reissue a signer's certificate, the alert follows the new certificate and stops alerting on the one it replaced. The alert doesn't cover disabled, failed, or pending signers.

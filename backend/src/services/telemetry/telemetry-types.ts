@@ -25,11 +25,16 @@ import { PamSessionEndReason } from "@app/ee/services/pam/pam-enums";
 import { ProxiedServiceSubstitutionSurface } from "@app/ee/services/proxied-service/proxied-service-enums";
 import { TSettableAuthMethod } from "@app/ee/services/resource-auth-method/resource-auth-method-fns";
 import { SecretRotation } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
-import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  SecretScanningDataSource,
+  SecretScanningFindingStatus,
+  SecretScanningScanType
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { EnforcementLevel, SecretSharingAccessType } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
+import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 import { WebhookType } from "@app/services/webhook/webhook-types";
 
 export type HubSpotSignupMethod = AuthMethod | "invite";
@@ -232,8 +237,9 @@ export enum PostHogEventTypes {
 
   // Secret Scanning v2
   SecretScanningDataSourceCreated = "Secret Scanning Data Source Created",
+  SecretScanningResourcesAdded = "Secret Scanning Resources Added",
   SecretScanningScanCompleted = "Secret Scanning Scan Completed",
-  SecretScanningFindingResolved = "Secret Scanning Finding Resolved",
+  SecretScanningFindingClosed = "Secret Scanning Finding Closed",
 
   // Groups
   GroupCreated = "Group Created",
@@ -331,8 +337,8 @@ export enum PostHogEventTypes {
   AgentVaultProxyUpdated = "Agent Vault Proxy Updated",
   AgentVaultProxyDeleted = "Agent Vault Proxy Deleted",
   AgentVaultProxyAccessRevoked = "Agent Vault Proxy Access Revoked",
-  AgentVaultProxyEnrollmentTokenReissued = "Agent Vault Proxy Enrollment Token Reissued",
-  AgentVaultProxyEnrolled = "Agent Vault Proxy Enrolled",
+  AgentVaultProxyTokenRotated = "Agent Vault Proxy Token Rotated",
+  AgentVaultSessionLogChunkAccepted = "Agent Vault Session Log Chunk Accepted",
   AgentVaultProductMemberAdded = "Agent Vault Product Member Added",
   AgentVaultProductMemberUpdated = "Agent Vault Product Member Updated",
   AgentVaultProductMemberRemoved = "Agent Vault Product Member Removed",
@@ -1738,6 +1744,7 @@ export type TPkiDiscoveryScanCompletedEvent = {
   properties: {
     orgId: string;
     projectId: string;
+    discoveryType: string;
     status: string;
     certificatesFound: number;
     installationsFound: number;
@@ -1956,21 +1963,31 @@ export type TSecretScanningDataSourceCreatedEvent = {
   };
 };
 
+export type TSecretScanningResourcesAddedEvent = {
+  event: PostHogEventTypes.SecretScanningResourcesAdded;
+  properties: {
+    type: SecretScanningDataSource;
+    resourceCount: number;
+    // "discovery" is the automatic add when discovery is turned on for a data source
+    source: "manual" | "all" | "discovery";
+  };
+};
+
 export type TSecretScanningScanCompletedEvent = {
   event: PostHogEventTypes.SecretScanningScanCompleted;
   properties: {
-    dataSourceId: string;
-    projectId: string;
     type: SecretScanningDataSource;
+    scanType: SecretScanningScanType;
+    // findings this scan detected for the first time; ones an earlier scan found are not counted again
     findingCount: number;
   };
 };
 
-export type TSecretScanningFindingResolvedEvent = {
-  event: PostHogEventTypes.SecretScanningFindingResolved;
+export type TSecretScanningFindingClosedEvent = {
+  event: PostHogEventTypes.SecretScanningFindingClosed;
   properties: {
-    findingId: string;
-    projectId: string;
+    // how it was closed out: resolved, false-positive or ignore
+    status: SecretScanningFindingStatus;
   };
 };
 
@@ -2526,7 +2543,8 @@ export type TAgentVaultSessionLogSettingsUpdatedEvent = {
   event: PostHogEventTypes.AgentVaultSessionLogSettingsUpdated;
   properties: TAgentVaultEventBase & {
     enabled: boolean;
-    hasDestination: boolean;
+    // Null when session logs are turned off.
+    storageType: ObjectStorageType | null;
   };
 };
 
@@ -2558,18 +2576,20 @@ export type TAgentVaultProxyAccessRevokedEvent = {
   properties: TAgentVaultEventBase & { proxyId: string };
 };
 
-export type TAgentVaultProxyEnrollmentTokenReissuedEvent = {
-  event: PostHogEventTypes.AgentVaultProxyEnrollmentTokenReissued;
+export type TAgentVaultProxyTokenRotatedEvent = {
+  event: PostHogEventTypes.AgentVaultProxyTokenRotated;
   properties: TAgentVaultEventBase & { proxyId: string };
 };
 
-export type TAgentVaultProxyEnrolledEvent = {
-  event: PostHogEventTypes.AgentVaultProxyEnrolled;
+// Sent per upload link a proxy is given, and aggregated (POSTHOG_AGGREGATED_EVENTS), so bytes and records sum per org.
+// records is the proxy's own count, unchecked, and missing from CLIs that don't send it.
+export type TAgentVaultSessionLogChunkAcceptedEvent = {
+  event: PostHogEventTypes.AgentVaultSessionLogChunkAccepted;
   properties: {
     orgId: string;
-    channel: string;
-    proxyId: string;
-    replacedExistingCa: boolean;
+    storageType: ObjectStorageType;
+    bytes: number;
+    records?: number;
   };
 };
 
@@ -2607,13 +2627,13 @@ export type TAgentVaultPostHogEvent =
   | TAgentVaultProxyUpdatedEvent
   | TAgentVaultProxyDeletedEvent
   | TAgentVaultProxyAccessRevokedEvent
-  | TAgentVaultProxyEnrollmentTokenReissuedEvent
-  | TAgentVaultProxyEnrolledEvent
+  | TAgentVaultProxyTokenRotatedEvent
+  | TAgentVaultSessionLogChunkAcceptedEvent
   | TAgentVaultProductMemberAddedEvent
   | TAgentVaultProductMemberUpdatedEvent
   | TAgentVaultProductMemberRemovedEvent;
 
-export type TAgentVaultActorPostHogEvent = Exclude<TAgentVaultPostHogEvent, TAgentVaultProxyEnrolledEvent>;
+export type TAgentVaultActorPostHogEvent = Exclude<TAgentVaultPostHogEvent, TAgentVaultSessionLogChunkAcceptedEvent>;
 
 // A trial is burned per PRODUCT, not per (product, plan): the trial-history gate discards plan_key
 // (see licenseV2Service.getOverview), and the license server 409s a repeat. So TrialStarted fires at
@@ -2815,8 +2835,9 @@ export type TPostHogEvent = {
   | TCmekEncryptEvent
   | TCmekDecryptEvent
   | TSecretScanningDataSourceCreatedEvent
+  | TSecretScanningResourcesAddedEvent
   | TSecretScanningScanCompletedEvent
-  | TSecretScanningFindingResolvedEvent
+  | TSecretScanningFindingClosedEvent
   | TGroupCreatedEvent
   | TGroupUpdatedEvent
   | TGroupDeletedEvent

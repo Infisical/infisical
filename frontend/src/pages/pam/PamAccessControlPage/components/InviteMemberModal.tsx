@@ -6,6 +6,7 @@ import {
   Alert,
   AlertDescription,
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -13,8 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
-  FieldLabel,
-  FilterableSelect
+  FieldLabel
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import { useGetOrgUsers, useGetWorkspaceUsers } from "@app/hooks/api";
@@ -145,16 +145,19 @@ export const InviteMemberModal = ({ isOpen, onOpenChange }: Props) => {
 
         <div className="flex flex-col gap-5">
           <Field>
-            <FieldLabel>
+            <FieldLabel htmlFor="pam-invite-members">
               Users <span className="text-product-pam">*</span>
             </FieldLabel>
-            <FilterableSelect
+            <Combobox
+              id="pam-invite-members"
               placeholder="Select one or more users..."
-              isMulti
+              multiple
               options={availableUsers}
               value={selectedUsers}
-              onChange={(val) => setSelectedUsers(val as SelectOption[])}
-              noOptionsMessage={() => "All organization members have already been added."}
+              onValueChange={setSelectedUsers}
+              getOptionValue={(option) => option.value}
+              getOptionLabel={(option) => option.label}
+              emptyMessage="All organization members have already been added."
             />
           </Field>
 

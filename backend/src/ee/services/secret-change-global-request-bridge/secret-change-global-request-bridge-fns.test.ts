@@ -451,4 +451,29 @@ describe("runSecretChangeRequestSideEffects", () => {
       })
     );
   });
+
+  const twoMailableApprovers = [
+    { id: "user-2", firstName: "Bob", email: "bob@example.com" },
+    { id: "user-3", firstName: "Eve", email: "eve@example.com" }
+  ];
+
+  test("keeps going when an approver email fails: next approver, webhook and telemetry still run", async () => {
+    const { fns, deps } = buildFns({ approvers: twoMailableApprovers });
+    deps.smtpService.sendMail.mockRejectedValueOnce(new Error("Invalid login: 535 Authentication Credentials Invalid"));
+
+    await expect(fns.runSecretChangeRequestSideEffects(input)).resolves.toBeUndefined();
+
+    expect(deps.smtpService.sendMail).toHaveBeenCalledTimes(2);
+    expect(deps.smtpService.sendMail).toHaveBeenLastCalledWith(
+      expect.objectContaining({ recipients: ["eve@example.com"] })
+    );
+    expect(deps.notificationService.createUserNotifications).toHaveBeenCalled();
+    expect(deps.queueService.queue).toHaveBeenCalledWith(
+      QueueName.SecretWebhook,
+      QueueJobs.SecWebhook,
+      expect.anything(),
+      expect.anything()
+    );
+    expect(deps.telemetryService.sendPostHogEvents).toHaveBeenCalled();
+  });
 });

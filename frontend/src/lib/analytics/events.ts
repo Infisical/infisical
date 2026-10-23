@@ -17,7 +17,8 @@ export const AnalyticsEvent = {
   SignupFlowCompleted: "Signup Flow Completed",
   BillingCancellationReasonSubmitted: "Billing Cancellation Reason Submitted",
   OnboardingResourceClicked: "Onboarding Resource Clicked",
-  OnboardingDocumentationClicked: "Onboarding Documentation Clicked"
+  OnboardingDocumentationClicked: "Onboarding Documentation Clicked",
+  SecretScanningOpened: "Secret Scanning Opened"
 } as const;
 
 export type OverviewCountBucket = "0" | "1" | "2-5" | "6-20" | "21-100" | "101+";
@@ -127,6 +128,7 @@ type PaywallProperties = {
   paywallText: string;
   route: string;
   isEnterpriseFeature: boolean;
+  plan: string;
 };
 
 export type FolderAccessSheetSource = "breadcrumb" | "folder_row";
@@ -194,6 +196,11 @@ export type OnboardingResourceClickedProperties = {
   resource: OnboardingResource;
 };
 
+export type SecretScanningOpenedProperties = {
+  hasSecretScanning: boolean;
+  plan: string;
+};
+
 export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.SecretsActivationModalViewed]: SecretsActivationProperties;
   [AnalyticsEvent.SecretsActivationModalMembersInvited]: SecretsActivationProperties & {
@@ -217,6 +224,7 @@ export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.SecretsAddResourceActionSelected]: SecretsAddResourceActionSelectedProperties;
   [AnalyticsEvent.BillingCancellationReasonSubmitted]: BillingCancellationReasonSubmittedProperties;
   [AnalyticsEvent.OnboardingResourceClicked]: OnboardingResourceClickedProperties;
+  [AnalyticsEvent.SecretScanningOpened]: SecretScanningOpenedProperties;
 };
 
 export type OrganizationAnalyticsEvent = keyof OrganizationAnalyticsEventMap;
