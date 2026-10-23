@@ -328,7 +328,10 @@ export const delegatedApprovalDecisionServiceFactory = ({
       );
     }
 
-    const rawConnection = await appConnectionDAL.findById(delegatedPolicy.connectionId);
+    const rawConnection = await appConnectionDAL.findById(
+      delegatedPolicy.connectionId,
+      delegatedApprovalRequestDAL.primaryNode()
+    );
     const postApprovalTxRoutine = isDelegatedApprovalSupportedPolicyType(approvalRequest.type)
       ? approvalResources[approvalRequest.type]?.postApprovalTxRoutine
       : undefined;
