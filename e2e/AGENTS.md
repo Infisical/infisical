@@ -1,6 +1,6 @@
-# e2e
+# AGENTS.md
 
-Guidance for agents working in this directory. Covers both the operator-facing view (env vars, bootstrap, how to run) and the agent-facing context (architecture, gotchas, file layout).
+Guidance for Claude Code sessions working in this directory. Covers both the operator-facing view (env vars, bootstrap, how to run) and the agent-facing context (architecture, gotchas, file layout).
 
 ## What this directory is
 

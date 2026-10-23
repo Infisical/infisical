@@ -1,4 +1,4 @@
-# ironrdp-decoder
+# AGENTS.md
 
 WASM decoder for the PAM RDP replay player. Consumed by `frontend/src/pages/pam/PamSessionsByIDPage/components/RdpReplayView/` through generated bindings in `frontend/src/lib/ironrdp-decoder/`.
 

@@ -1,4 +1,4 @@
-# tests
+# AGENTS.md
 
 The Go blackbox suite. It boots a real Infisical in Docker and calls it over HTTP only.
 Its contract with the server is a Docker image, environment variables, and the OpenAPI

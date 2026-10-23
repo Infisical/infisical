@@ -1,4 +1,6 @@
-# Frontend
+# AGENTS.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 This is the **frontend** package of the Infisical monorepo — a React 19 SPA built with Vite 8, TanStack Router, React Query, and Tailwind CSS v4.
 
@@ -95,7 +97,7 @@ Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in
 
 ### Layouts
 
-Layout components in `src/layouts/` — `AdminLayout`, `OrganizationLayout`, `SecretManagerLayout`, `PkiManagerLayout`, `KmsLayout`, `PamLayout`, etc. Layouts handle sidebar navigation and page chrome for their product area.
+9 layout components in `src/layouts/` — `AdminLayout`, `OrganizationLayout`, `SecretManagerLayout`, `PkiManagerLayout`, `KmsLayout`, `PamLayout`, etc. Layouts handle sidebar navigation and page chrome for their product area.
 
 ### Org-scoped products
 
@@ -117,4 +119,3 @@ Secret Scanning has one active project per org (see the root `AGENTS.md`). Membe
 - Search params validated with `zodValidator()` from `@tanstack/zod-adapter`.
 - Toasts: call `createNotification({ title?, text, type, callToAction?, copyActions? })` from `@app/components/notifications`. Backed by **sonner** (the v3 `Toaster` in `components/v3/generic/Toast`), mounted once via `NotificationContainer` in `pages/root.tsx`. `react-toastify` has been removed, so do not reintroduce it.
 - Unsaved changes: use `useDiscardChangesGuard` with `DiscardChangesAlertDialog` when dismissing an overlay editor would remove unsaved form changes. Wire dismiss/close to `requestDiscard`. Do not use `window.confirm`. Do not use `useNavigationBlocker` — that hook is secrets batch-mode only.
-- Pickers for entities a user may need to create first (app connections, gateways, and similar) must offer an inline "Create new X" row, gated on the create permission, so the user never has to leave the flow. Build them with the v3 `Combobox` and its `creation` prop, which renders that row; `Combobox` replaces both the deprecated `FilterableSelect` and `CreatableSelect`. For app connections, use `creation.mode = "dialog"` and have `renderForm` render `AppConnectionForm` with the app preset, selecting the new connection and calling `complete` in its `onComplete`, and route `onDismiss` and the form's cancel through `useDiscardChangesGuard` (see `CaInstallCertModal/useConnectionCreation.tsx`). A v2 `Modal` parent sits at `z-[60]`, above v3 overlays, so migrate it to the v3 `Dialog` when it hosts one (see `CaInstallCertModal/CaInstallCertModal.tsx`).

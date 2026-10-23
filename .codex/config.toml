@@ -1,3 +1,0 @@
-# Codex stops loading AGENTS.md files once their combined size reaches this many bytes.
-# The default (32 KiB) cuts off the subsystem files under backend/src/.
-project_doc_max_bytes = 98304

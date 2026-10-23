@@ -1,4 +1,4 @@
-# PAM Backend
+# PAM Backend — AGENTS.md
 
 ## Maintaining this file
 
