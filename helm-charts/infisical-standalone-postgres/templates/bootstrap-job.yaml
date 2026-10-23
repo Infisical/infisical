@@ -39,7 +39,7 @@ spec:
         args:
         - |
           echo "Waiting for Infisical to be ready..."
-          until curl -f http://{{ include "infisical.fullname" . }}:8080/api/status; do
+          until curl -f http://{{ include "infisical.fullname" . }}:{{ $infisicalValues.service.port | default 8080 }}/api/status; do
             echo "Infisical not ready yet, retrying in 10 seconds..."
             sleep 10
           done
@@ -53,7 +53,7 @@ spec:
           {{- end }}
           args:
             - bootstrap
-            - --domain=http://{{ include "infisical.fullname" . }}:8080
+            - --domain=http://{{ include "infisical.fullname" . }}:{{ $infisicalValues.service.port | default 8080 }}
             - --output=k8-secret
             - --k8-secret-name={{ $infisicalValues.autoBootstrap.secretDestination.name }}
             - --k8-secret-namespace={{ $infisicalValues.autoBootstrap.secretDestination.namespace | default .Release.Namespace }}
