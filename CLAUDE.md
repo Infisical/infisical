@@ -187,6 +187,15 @@ the same value; the inbound side finds the row by the provider's record id and c
 the presented one. Never send a provider a token that differs from the one stored for the request; the provider
 keeps the first token it was given and cannot be told another, so a mismatch is unrecoverable.
 
+### Object Storage
+
+New product files go to S3 through `backend/src/services/object-storage/`, not a product's own S3 client (PAM
+recordings predate it and haven't moved). A product
+registers a namespace (record-first path like `sessions/{sessionId}/logs/{file}`, checked for naming collisions at
+boot) and the layer builds org-first keys, signs links, and applies the retention tag and, for default storage on Infisical Cloud, a daily upload cap. Storage is
+`default` (the instance's bucket, `OBJECT_STORAGE_S3_*`) or `external` (the customer's, through an AWS connection);
+use those two words everywhere.
+
 ### API Layer (Frontend)
 
 React Query + Axios with query key factories per domain. Each API domain in `frontend/src/hooks/api/` has `queries.tsx`, `mutations.tsx`, and `types.tsx` — see `frontend/CLAUDE.md` for conventions.

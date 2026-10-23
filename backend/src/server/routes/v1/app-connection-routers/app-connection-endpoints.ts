@@ -162,7 +162,9 @@ export const buildListAvailableAppConnectionsRoute = (
               name: z.string(),
               id: z.string().uuid(),
               projectId: z.string().nullish(),
-              orgId: z.string()
+              orgId: z.string(),
+              gatewayId: z.string().uuid().nullish(),
+              gatewayPoolId: z.string().uuid().nullish()
             })
             .array()
         })

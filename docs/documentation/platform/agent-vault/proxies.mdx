@@ -3,13 +3,13 @@ title: "Proxies"
 description: "Run the proxy that attaches credentials, set its traffic policy, and understand how agents trust it."
 ---
 
-A proxy intercepts your agents' requests to the APIs they call, then attaches the necessary API credential to each request that matches a [service](/documentation/platform/agent-vault/services). Run the proxy where agent traffic leaves your network, either on its own host that several agents share, or on the same machine as one agent.
+A proxy intercepts your agents' requests to the APIs they call, then attaches the necessary API credential to each request that matches a [service](/documentation/platform/agent-vault/services). Run the proxy where agent traffic leaves your network, either on its own host that several agents share, or next to each agent, such as in a sidecar container.
 
-You create a proxy in Infisical, enroll it once from the CLI, and change its settings in Infisical afterwards.
+You create a proxy in Infisical, start it with the proxy token that Infisical shows you, and change its settings in Infisical afterwards. You can run the same proxy on as many machines as you need with one token, such as several machines behind a [load balancer](#high-availability).
 
 ## Choose where to run the proxy
 
-While you can technically run the agent and the proxy on a single machine, we recommend running the proxy on a different machine from the agent. If the agent and the proxy run on the same machine, the agent could read the proxy's [state directory](#state-directory), which contains sensitive values like the proxy's access token and the private key of its certificate authority.
+While you can technically run the agent and the proxy on a single machine, we recommend running the proxy on a different machine from the agent. If the agent and the proxy run on the same machine, the agent could read the proxy token and the private key of the proxy's certificate authority.
 
 <Tip>
 We also recommend keeping both machines on the same private network. This is because every request the agent makes goes through the proxy, and a round trip between networks adds latency to every request.
@@ -24,28 +24,24 @@ The proxy attaches credentials to HTTP/1.1 requests, over both HTTPS and plain H
 
 If an API offers both, configure the agent to use its plain HTTPS requests. Many SDKs fall back to HTTPS when a WebSocket connection fails.
 
-## Create and enroll a proxy
+## Create a proxy and start it
 
 <Steps>
   <Step>
     In Agent Vault, go to **Proxies** and select **Create Proxy**.
   </Step>
   <Step>
-    Enter a **Name**. To set the [traffic policy](#traffic-policy), [exceptions](#exceptions), or [poll interval](#poll-interval) now, expand **Advanced Options**. You can change them later.
+    Enter a **Name**. To set the [traffic policy](#traffic-policy), [exceptions](#exceptions), or [poll interval](#poll-interval) now, expand **Advanced Options**. You can change these settings later.
 
     <Frame>
       <img src="/images/platform/agent-vault/proxy-create.png" alt="The Create Proxy dialog with the two traffic policy options and the poll interval" />
     </Frame>
   </Step>
   <Step>
-    Select **Create**. The **Enrollment Token** dialog shows a one-time token that expires in an hour, and commands for the CLI, Docker, and systemd with your token and instance filled in.
-
-    <Frame>
-      <img src="/images/platform/agent-vault/proxy-enrollment-token.png" alt="The Enrollment Token dialog with CLI, Docker, and systemd tabs and the one-hour countdown" />
-    </Frame>
+    Select **Create**. The **Proxy Token** dialog shows the proxy token, and commands for the CLI, systemd, Docker, and Kubernetes with your token and instance filled in.
   </Step>
   <Step>
-    Run one of the commands on the machine where the proxy will run.
+    Run one of the commands on each machine where the proxy will run.
   </Step>
 </Steps>
 
@@ -54,8 +50,8 @@ The commands look like this:
 <Tabs>
   <Tab title="CLI">
     ```bash
+    INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> \
     infisical agent-vault proxy \
-      --enrollment-token <enrollment-token> \
       --domain <your-instance-url>
     ```
   </Tab>
@@ -64,57 +60,101 @@ The commands look like this:
     docker run -d --name agent-vault-proxy \
       -p 17323:17323 \
       -v agent-vault-proxy:/etc/infisical/agent-vault \
+      -e INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> \
       infisical/cli agent-vault proxy \
-      --enrollment-token <enrollment-token> \
       --domain <your-instance-url>
     ```
 
-    The volume holds the state directory, so a re-created container resumes instead of needing a new token.
+    The volume keeps the proxy's [cache](#command-flags), so the proxy can start even if Infisical is unreachable.
+  </Tab>
+  <Tab title="Kubernetes">
+    ```yaml expandable
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: agent-vault-proxy
+    type: Opaque
+    stringData:
+      INFISICAL_AGENT_VAULT_PROXY_TOKEN: <proxy-token>
+    ---
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: agent-vault-proxy
+    spec:
+      replicas: 2
+      selector:
+        matchLabels:
+          app: agent-vault-proxy
+      template:
+        metadata:
+          labels:
+            app: agent-vault-proxy
+        spec:
+          containers:
+            - name: agent-vault-proxy
+              image: infisical/cli
+              args: ["agent-vault", "proxy", "--domain", "<your-instance-url>"]
+              envFrom:
+                - secretRef:
+                    name: agent-vault-proxy
+              ports:
+                - containerPort: 17323
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: agent-vault-proxy
+    spec:
+      selector:
+        app: agent-vault-proxy
+      ports:
+        - port: 17323
+          targetPort: 17323
+    ```
+
+    The manifest in the dialog has no Service. Add the Service from the end of this example so that agents in the cluster can reach the proxy at `agent-vault-proxy:17323`.
   </Tab>
   <Tab title="systemd">
+    Save the token in `/etc/infisical/agent-vault-proxy.env`:
+
+    ```bash
+    INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token>
+    ```
+
+    Run `sudo chmod 600 /etc/infisical/agent-vault-proxy.env` so that only root can read the file. Then save this unit as `/etc/systemd/system/agent-vault-proxy.service`:
+
     ```ini
     [Unit]
     Description=Infisical Agent Vault proxy
     After=network-online.target
+    Wants=network-online.target
 
     [Service]
-    ExecStart=/usr/local/bin/infisical agent-vault proxy --enrollment-token <enrollment-token> --domain <your-instance-url>
+    EnvironmentFile=/etc/infisical/agent-vault-proxy.env
+    ExecStart=/usr/local/bin/infisical agent-vault proxy --domain <your-instance-url>
     Restart=always
 
     [Install]
     WantedBy=multi-user.target
     ```
 
-    Save it as `/etc/systemd/system/agent-vault-proxy.service`, then run `sudo systemctl enable --now agent-vault-proxy`.
+    Run `sudo systemctl enable --now agent-vault-proxy` to start the proxy now and every time the machine boots.
   </Tab>
 </Tabs>
 
 ### Command flags
 
-The enrollment command uses these flags:
+The commands use these settings:
 
-- `--enrollment-token` is the one-time token from the **Enrollment Token** dialog. Instead of passing the flag, you can set the token in the `INFISICAL_AGENT_VAULT_ENROLLMENT_TOKEN` environment variable.
-- `--domain` is your Infisical instance URL. It defaults to Infisical Cloud (US), so you need it for EU Cloud or a self-hosted instance. If you prefer, you can set the URL in the `INFISICAL_DOMAIN` environment variable instead of passing the flag
+- `INFISICAL_AGENT_VAULT_PROXY_TOKEN` or `--proxy-token`: the proxy token (prefer the environment variable, because other users on the machine can read anything on a command line)
+- `--domain` or `INFISICAL_DOMAIN`: your Infisical instance URL (required for EU Cloud and self-hosted instances, because the default is Infisical Cloud in the US)
 
-<Note>
-  Other users on the machine can read anything on a command line. To keep the enrollment token off it, put `INFISICAL_AGENT_VAULT_ENROLLMENT_TOKEN=<enrollment-token>` in a file with mode `0600`, and pass the file with `--env-file` for Docker or `EnvironmentFile=` for systemd. You can delete the file once the proxy has enrolled.
-</Note>
+Each time the proxy starts, it loads its settings and certificate authority from Infisical and, if it can, saves a copy in its data directory (`~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` as root, or `--data-dir`). If it can't reach Infisical for 60 seconds, it starts from that copy, or exits if there isn't one.
 
 <Info>
-  For the proxy's other flags, such as the port and the state directory, check out the [`agent-vault proxy` CLI reference](/cli/reference#agent-vault-proxy).
+  For the proxy's other flags, such as the port and the data directory, check out the [`agent-vault proxy` CLI reference](/cli/reference#agent-vault-proxy).
 </Info>
-
-### State directory
-
-When the proxy enrolls, it generates its own certificate authority and saves it with its enrollment in a state directory at `~/.infisical/agent-vault` (or `/etc/infisical/agent-vault` if you run the proxy as the root user on the machine).
-
-The enrollment token only works once. After the first run, the proxy reads its enrollment from the state directory, so you can restart the proxy without `--enrollment-token`:
-
-```bash
-infisical agent-vault proxy --domain <your-instance-url>
-```
-
-If the state directory is empty, the proxy can't start without a new token. Select **New Enrollment Token** on the proxy's menu and [enroll again](#re-enroll-a-proxy).
 
 ## Settings
 
@@ -175,7 +215,7 @@ If the proxy can't reach Infisical:
 
 ## Certificate trust
 
-The proxy decrypts HTTPS traffic to attach the credential, so each agent has to trust the proxy's certificate authority (CA). Each proxy generates its own self-signed CA when it enrolls.
+The proxy decrypts HTTPS traffic to attach the credential, so each agent has to trust the proxy's certificate authority (CA). Infisical generates a self-signed CA for each proxy when you create the proxy, and a new one each time you rotate the proxy's token.
 
 <Tabs>
   <Tab title="With the CLI">
@@ -231,20 +271,47 @@ If the proxy's certificate doesn't match, the CLI stops before starting the agen
   <img src="/images/platform/agent-vault/proxies-list.png" alt="The Proxies page showing two healthy proxies with their traffic policy and certificate authority fingerprints" />
 </Frame>
 
+### Use your own certificate authority
+
+To serve your own CA instead of the one Infisical generates, pass it to the proxy with `--ca-cert` and `--ca-key`, or with the `INFISICAL_AGENT_VAULT_CA_CERT` and `INFISICAL_AGENT_VAULT_CA_KEY` environment variables. Each value can be the PEM text, the PEM encoded as base64, or the path to a PEM file. The key has to be an ECDSA P-256 key.
+
+```bash
+INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> \
+infisical agent-vault proxy --ca-cert ./ca.crt --ca-key ./ca.key
+```
+
+The **Proxies** page shows the fingerprint of the CA that the proxy reported the last time it started. Pass the same CA to every machine that runs this proxy, for example in a [high availability](#high-availability) setup.
+
+Your own CA stays the same when you rotate the proxy's token. To use the CA Infisical generates again, leave out these flags.
+
 ### APIs with a private certificate authority
 
 The proxy checks the certificate of each API it connects to, the way any HTTPS client does. If an API uses a private certificate authority, the machine running the proxy has to trust that authority. The agent's machine doesn't need to trust it.
 
-### Re-enroll a proxy
+## Rotate a proxy's token
 
-To re-enroll a proxy, select **New Enrollment Token** on the proxy's menu and run the new command. The proxy keeps its name, settings, and history, but gets a new certificate authority.
+Rotate the token if it leaked, or to bring back a proxy whose access you revoked:
 
-After you re-enroll a proxy:
+<Steps>
+  <Step>
+    On the **Proxies** page, select **Rotate Proxy Token** on the proxy's menu, then select **Rotate**.
+  </Step>
+  <Step>
+    Store the new token from the **Proxy Token** dialog somewhere safe.
+  </Step>
+  <Step>
+    Restart the proxy with the new token on every machine where it runs.
+  </Step>
+</Steps>
+
+The current token will stop working, and the proxy gets a new certificate authority. After you rotate the token:
 
 - Restart every agent that uses the proxy, because those agents still trust the old certificate
 - Update any `--ca-fingerprint` pin
-- Replace any mounted copy of the certificate
+- Replace any `ca.pem` file you mounted for an agent
 - On macOS, replace the certificate in your login keychain
+
+If you [use your own certificate authority](#use-your-own-certificate-authority), only the token changes, so your agents don't need these updates.
 
 ## Revoke or delete a proxy
 
@@ -252,7 +319,19 @@ Both actions are on the proxy's menu:
 
 | Action | What happens |
 |--------|--------------|
-| **Revoke Access** | The proxy's token stops working right away. Every agent using the proxy loses its credentials, and the proxy answers requests with a 503. The proxy process exits after two failed check-ins in a row (one to two [poll intervals](#poll-interval)) |
-| **Delete** | Infisical removes the proxy. If the proxy is running, it stops working and exits the same way as a revoked proxy |
+| **Revoke Access** | The proxy will stop adding credentials to requests. To bring it back, [rotate its token](#rotate-a-proxys-token) |
+| **Delete** | Infisical removes the proxy, and the proxy will stop adding credentials to requests. You can't undo this |
 
-Revoke access if you think the proxy's host is compromised. To bring a revoked proxy back, [re-enroll it](#re-enroll-a-proxy).
+Revoke access if you think a machine running the proxy is compromised.
+
+## High availability
+
+To keep the proxy available when one machine goes down, run it on several machines with the same proxy token and put a load balancer in front of them. Every machine serves the same certificate authority, so agents trust whichever machine they reach.
+
+- **Load balancer type:** use a TCP (layer 4) load balancer, because agents send `CONNECT` requests that most HTTP load balancers don't forward. You don't need sticky sessions
+- **Health checks:** send an HTTP `GET` to `/_agent-vault/ca` on each machine, which returns `200` while the proxy is serving
+- **Your own certificate authority (optional):** if you want to [use your own](#use-your-own-certificate-authority), pass the same `--ca-cert` and `--ca-key` to every machine
+
+Point agents at the load balancer's address instead of a single machine.
+
+On Infisical Cloud, every machine running a proxy shares that proxy's [rate limits](/api-reference/overview/rate-limits).

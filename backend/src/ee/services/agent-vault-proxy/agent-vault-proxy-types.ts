@@ -35,9 +35,15 @@ export type TUpdateProxyDTO = TAgentVaultProxyScoped & {
 
 export type TProxyByIdDTO = TAgentVaultProxyScoped & { proxyId: string };
 
-export type TEnrollProxyDTO = {
-  enrollmentToken: string;
-  rootCaCertificate: string;
+export type TBootstrapProxyDTO = {
+  proxyId: string;
+  tokenVersion: number;
+  servedCaCertificate?: string;
+};
+
+export type TProxyRootCa = {
+  certificate: string;
+  privateKey: string;
 };
 
 export type THeartbeatDTO = {

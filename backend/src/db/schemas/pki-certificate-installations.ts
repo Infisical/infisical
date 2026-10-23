@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const PkiCertificateInstallationsSchema = z.object({
@@ -18,7 +20,8 @@ export const PkiCertificateInstallationsSchema = z.object({
   metadata: z.unknown().nullable().optional(),
   lastSeenAt: z.date(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  encryptedCredentials: zodBuffer.nullable().optional()
 });
 
 export type TPkiCertificateInstallations = z.infer<typeof PkiCertificateInstallationsSchema>;

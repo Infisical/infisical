@@ -69,17 +69,17 @@ import {
   AgentVaultTrafficPolicy,
   useDeleteAgentVaultProxy,
   useListAgentVaultProxies,
-  useReissueAgentVaultProxyEnrollmentToken,
-  useRevokeAgentVaultProxyAccess
+  useRevokeAgentVaultProxyAccess,
+  useRotateAgentVaultProxyToken
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultEnrollment, TAgentVaultProxy } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultProxy, TAgentVaultProxyToken } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
-import { ProxyEnrollmentDialog } from "./components/ProxyEnrollmentDialog";
 import { ProxyFormDialog } from "./components/ProxyFormDialog";
 import { ProxyStatusBadge } from "./components/ProxyStatusBadge";
+import { ProxyTokenDialog } from "./components/ProxyTokenDialog";
 
 const allowedHostsOf = (proxy: TAgentVaultProxy) =>
   proxy.allowedHosts
@@ -160,14 +160,14 @@ export const AgentVaultProxiesPage = () => {
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
   const deleteProxy = useDeleteAgentVaultProxy();
   const revokeProxy = useRevokeAgentVaultProxyAccess();
-  const reissueToken = useReissueAgentVaultProxyEnrollmentToken();
+  const rotateProxyToken = useRotateAgentVaultProxyToken();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [proxyToEdit, setProxyToEdit] = useState<TAgentVaultProxy | null>(null);
   const [proxyToDelete, setProxyToDelete] = useState<TAgentVaultProxy | null>(null);
   const [proxyToRevoke, setProxyToRevoke] = useState<TAgentVaultProxy | null>(null);
-  const [proxyToReissue, setProxyToReissue] = useState<TAgentVaultProxy | null>(null);
-  const [enrollment, setEnrollment] = useState<TAgentVaultEnrollment | null>(null);
+  const [proxyToRotate, setProxyToRotate] = useState<TAgentVaultProxy | null>(null);
+  const [proxyToken, setProxyToken] = useState<TAgentVaultProxyToken | null>(null);
 
   const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
     setPage(1);
@@ -210,13 +210,13 @@ export const AgentVaultProxiesPage = () => {
     }
   };
 
-  const handleReissue = async () => {
-    if (!proxyToReissue) return;
+  const handleRotate = async () => {
+    if (!proxyToRotate) return;
 
     try {
-      const result = await reissueToken.mutateAsync(proxyToReissue.id);
-      setProxyToReissue(null);
-      setEnrollment(result);
+      const result = await rotateProxyToken.mutateAsync(proxyToRotate.id);
+      setProxyToRotate(null);
+      setProxyToken(result);
     } catch {
       // A failed request returns a 4xx that the global request handler surfaces as a toast
     }
@@ -257,7 +257,7 @@ export const AgentVaultProxiesPage = () => {
               <EmptyHeader>
                 <EmptyTitle>No proxies yet</EmptyTitle>
                 <EmptyDescription>
-                  Create a proxy and enroll it where agent traffic leaves your network.
+                  Create a proxy and start it where agent traffic leaves your network.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -376,9 +376,9 @@ export const AgentVaultProxiesPage = () => {
                               <PencilIcon />
                               Edit Settings
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setProxyToReissue(proxy)}>
+                            <DropdownMenuItem onClick={() => setProxyToRotate(proxy)}>
                               <RefreshCwIcon />
-                              New Enrollment Token
+                              Rotate Proxy Token
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="danger"
@@ -424,7 +424,7 @@ export const AgentVaultProxiesPage = () => {
       <ProxyFormDialog
         isOpen={isCreateOpen}
         onOpenChange={setIsCreateOpen}
-        onCreated={setEnrollment}
+        onCreated={setProxyToken}
       />
 
       <ProxyFormDialog
@@ -435,17 +435,17 @@ export const AgentVaultProxiesPage = () => {
         proxy={proxyToEdit ?? undefined}
       />
 
-      <ProxyEnrollmentDialog
-        enrollment={enrollment}
+      <ProxyTokenDialog
+        proxyToken={proxyToken}
         onOpenChange={(isOpen) => {
-          if (!isOpen) setEnrollment(null);
+          if (!isOpen) setProxyToken(null);
         }}
       />
 
       <AlertDialog
-        open={Boolean(proxyToReissue)}
+        open={Boolean(proxyToRotate)}
         onOpenChange={(isOpen) => {
-          if (!isOpen) setProxyToReissue(null);
+          if (!isOpen) setProxyToRotate(null);
         }}
       >
         <AlertDialogContent>
@@ -453,26 +453,24 @@ export const AgentVaultProxiesPage = () => {
             <AlertDialogMedia>
               <TriangleAlertIcon />
             </AlertDialogMedia>
-            <AlertDialogTitle>
-              New enrollment token for &quot;{proxyToReissue?.name}&quot;
-            </AlertDialogTitle>
+            <AlertDialogTitle>Rotate Token for &quot;{proxyToRotate?.name}&quot;</AlertDialogTitle>
             <AlertDialogDescription>
-              The proxy keeps serving until it re-enrolls with the new token. Re-enrolling gives it
-              a new certificate authority, so every agent running through it has to trust the new
-              one before its requests work again.
+              The current token will stop working, and the proxy gets a new certificate authority.
+              Restart the proxy with the new token. Agents that pin the proxy&apos;s fingerprint
+              need the new one.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              variant="av"
-              isPending={reissueToken.isPending}
+              variant="danger"
+              isPending={rotateProxyToken.isPending}
               onClick={async (event) => {
                 event.preventDefault();
-                await handleReissue();
+                await handleRotate();
               }}
             >
-              Generate Token
+              Rotate
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -484,7 +482,7 @@ export const AgentVaultProxiesPage = () => {
           if (!isOpen) setProxyToRevoke(null);
         }}
         title={`Revoke "${proxyToRevoke?.name}"`}
-        description="Its token stops working at its next poll. Every agent routed through it loses its credentials until the proxy enrolls again."
+        description="The proxy will stop adding credentials to requests. To bring it back, rotate its token."
         confirmKey={proxyToRevoke?.name ?? ""}
         confirmLabel="Revoke Access"
         isPending={revokeProxy.isPending}
@@ -497,7 +495,7 @@ export const AgentVaultProxiesPage = () => {
           if (!isOpen) setProxyToDelete(null);
         }}
         title={`Delete "${proxyToDelete?.name}"`}
-        description="Agents routed through it lose their credentials. This cannot be undone."
+        description="The proxy will stop adding credentials to requests. This cannot be undone."
         confirmKey={proxyToDelete?.name ?? ""}
         isPending={deleteProxy.isPending}
         onConfirm={handleDelete}
