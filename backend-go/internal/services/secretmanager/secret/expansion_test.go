@@ -1,6 +1,7 @@
 package secret
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -189,24 +190,65 @@ func TestExpand_AbsoluteReference_DeepPath(t *testing.T) {
 	assert.Equal(t, "deep-value", secrets[0].Value)
 }
 
+// A relative reference inside a secret reached through an absolute reference
+// resolves against that secret's own environment and path, not the environment
+// of the secret being expanded. Here prod's LOCAL_VAR must win over the
+// same-named key in dev.
 func TestExpand_AbsoluteReference_WithNestedRelative(t *testing.T) {
 	secrets := []*ProcessedSecret{
-		newTestSecret("LOCAL_VAR", "local-resolved", "dev", "/"),
+		newTestSecret("LOCAL_VAR", "dev-value", "dev", "/"),
 		newTestSecret("A", "${prod.USES_LOCAL}", "dev", "/"),
 	}
 
+	var requested []string
 	opts := ExpandOpts{
 		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
-			return []*ProcessedSecret{
-				newTestSecret("USES_LOCAL", "prefix-${LOCAL_VAR}-suffix", "prod", "/"),
+			var fetched []*ProcessedSecret
+			for _, ref := range refs {
+				requested = append(requested, ref.CacheKey())
+				switch {
+				case ref.Env == "prod" && ref.Key == "USES_LOCAL":
+					fetched = append(fetched, newTestSecret("USES_LOCAL", "prefix-${LOCAL_VAR}-suffix", "prod", "/"))
+				case ref.Env == "prod" && ref.Key == "LOCAL_VAR":
+					fetched = append(fetched, newTestSecret("LOCAL_VAR", "prod-value", "prod", "/"))
+				}
 			}
+			return fetched
 		},
 	}
 
 	expander := NewSecretExpander(secrets, opts)
 	expander.Expand()
 
-	assert.Equal(t, "prefix-local-resolved-suffix", secrets[1].Value)
+	assert.Equal(t, "prefix-prod-value-suffix", secrets[1].Value)
+	assert.Contains(t, requested, "prod:/:LOCAL_VAR", "nested relative ref must be resolved in prod")
+	assert.Equal(t, "dev-value", secrets[0].Value)
+}
+
+// A nested relative reference that does not exist in the referenced environment
+// must not silently fall back to a same-named key on the requested board.
+func TestExpand_AbsoluteReference_NestedRelativeNoLocalFallback(t *testing.T) {
+	secrets := []*ProcessedSecret{
+		newTestSecret("HOST", "dev-host", "dev", "/"),
+		newTestSecret("API_URL", "${prod.URL}", "dev", "/"),
+	}
+
+	opts := ExpandOpts{
+		FetchAbsoluteSecrets: func(refs []AbsoluteSecretRef) []*ProcessedSecret {
+			var fetched []*ProcessedSecret
+			for _, ref := range refs {
+				if ref.Env == "prod" && ref.Key == "URL" {
+					fetched = append(fetched, newTestSecret("URL", "https://${HOST}/api", "prod", "/"))
+				}
+			}
+			return fetched
+		},
+	}
+
+	expander := NewSecretExpander(secrets, opts)
+	expander.Expand()
+
+	assert.Equal(t, "https:///api", secrets[1].Value)
 }
 
 func TestExpand_AbsoluteReference_ChainedAbsolute(t *testing.T) {
@@ -326,6 +368,25 @@ func TestExpand_MaxDepth(t *testing.T) {
 	expander.Expand()
 
 	assert.Contains(t, secrets[0].Value, "levelA-")
+}
+
+// maxExpansionDepth bounds the whole Expand() call for a local chain: no later
+// pass may hand an already-expanded value a fresh depth budget and carry the
+// chain further than the cap allows.
+func TestExpand_MaxDepth_NotExtendedByLaterPasses(t *testing.T) {
+	const chainLen = 25
+	secrets := make([]*ProcessedSecret, chainLen)
+	for i := range chainLen {
+		value := "end"
+		if i < chainLen-1 {
+			value = fmt.Sprintf("L%02d-${K%02d}", i, i+1)
+		}
+		secrets[i] = newTestSecret(fmt.Sprintf("K%02d", i), value, "dev", "/")
+	}
+
+	NewSecretExpander(secrets, ExpandOpts{}).Expand()
+
+	assert.Equal(t, "L00-L01-L02-L03-L04-L05-L06-L07-L08-L09-L10-L11-${K12}", secrets[0].Value)
 }
 
 func TestExpand_MultipleReferencesInSingleValue(t *testing.T) {
