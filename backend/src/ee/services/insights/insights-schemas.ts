@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 import { IdentityAuthMethod } from "@app/db/schemas";
+import {
+  SecretReadNotJudgedReason,
+  SecretReadStatus
+} from "@app/ee/services/secret-read-activity/secret-read-activity-types";
 import { INSIGHTS } from "@app/lib/api-docs";
 import { ActorType } from "@app/services/auth/auth-type";
 
@@ -77,10 +81,9 @@ const UnusedAccessActorRowSchema = z.object({
   actorType: z.enum([ActorType.USER, ActorType.IDENTITY]).describe(INSIGHTS.GET_UNUSED_ACCESS.actorType),
   actorId: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS.actorId),
   name: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS.name),
-  entitledCount: z.number().int().describe(INSIGHTS.GET_UNUSED_ACCESS.entitledCount),
-  unreadCount: z.number().int().describe(INSIGHTS.GET_UNUSED_ACCESS.unreadCount),
+  accessibleSecretCount: z.number().int().describe(INSIGHTS.GET_UNUSED_ACCESS.accessibleSecretCount),
+  unusedSecretCount: z.number().int().describe(INSIGHTS.GET_UNUSED_ACCESS.unusedSecretCount),
   environments: z.string().array().describe(INSIGHTS.GET_UNUSED_ACCESS.environments),
-  lastReadAt: z.date().nullable().describe(INSIGHTS.GET_UNUSED_ACCESS.lastReadAt),
   accessPaths: z
     .object({
       roles: UnusedAccessRoleSchema.array().describe(INSIGHTS.GET_UNUSED_ACCESS.roles),
@@ -105,16 +108,13 @@ const UnusedAccessActorRowSchema = z.object({
 
 export const UnusedAccessSchema = z.object({
   totalCount: z.number().int().describe(INSIGHTS.GET_UNUSED_ACCESS.totalCount),
-  trackingStartedAt: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.trackingStartedAt),
-  fullWindowFrom: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.fullWindowFrom),
+  periodStart: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.periodStart),
   actors: UnusedAccessActorRowSchema.array().describe(INSIGHTS.GET_UNUSED_ACCESS.actors)
 });
 
 export const UnusedAccessActorSchema = z.object({
   actor: UnusedAccessActorRowSchema,
-  unlistedCount: z.number().int().describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.unlistedCount),
-  trackingStartedAt: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.trackingStartedAt),
-  fullWindowFrom: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.fullWindowFrom),
+  periodStart: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.periodStart),
   secrets: z
     .object({
       secretKey: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.secretKey),
@@ -123,4 +123,25 @@ export const UnusedAccessActorSchema = z.object({
     })
     .array()
     .describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.secrets)
+});
+
+export const SecretReadActivitySchema = z.object({
+  readsTrackedSince: z.date().describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.readsTrackedSince),
+  unusedAccessJudgedFrom: z.date().describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.unusedAccessJudgedFrom),
+  actors: z
+    .object({
+      actorType: z.enum([ActorType.USER, ActorType.IDENTITY]).describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.actorType),
+      actorId: z.string().describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.actorId),
+      name: z.string().describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.name),
+      isProjectAdmin: z.boolean().describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.isProjectAdmin),
+      lastReadAt: z.date().nullable().describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.lastReadAt),
+      accessChangedAt: z.date().nullable().describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.accessChangedAt),
+      readStatus: z.nativeEnum(SecretReadStatus).describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.readStatus),
+      notJudgedReason: z
+        .nativeEnum(SecretReadNotJudgedReason)
+        .nullable()
+        .describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.notJudgedReason)
+    })
+    .array()
+    .describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.actors)
 });

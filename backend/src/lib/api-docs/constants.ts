@@ -957,12 +957,10 @@ export const INSIGHTS = {
     actorType: "Whether the actor is a user or a machine identity.",
     actorId: "The ID of the user or machine identity.",
     name: "The username of the user, or the name of the machine identity.",
-    entitledCount: "How many secrets the actor can read the value of today.",
-    unreadCount:
-      "How many of those it has not read, or an import or reference of, in the last 30 days. Secrets and access newer than 30 days are not counted.",
+    accessibleSecretCount: "How many secrets the actor can read the value of today.",
+    unusedSecretCount:
+      "How many of those it has not read, or an import or reference of, since periodStart. A secret only counts once it and the actor's access both predate periodStart.",
     environments: "The slugs of the environments holding the unread secrets.",
-    lastReadAt:
-      "When the actor last read any secret in the project in the last 30 days, as the first read of that day. Null when it read nothing.",
     accessPaths: "How the actor has its access to the project's secrets.",
     roles: "The project roles the actor holds directly, not through a group.",
     roleId: "The ID of the custom role. Null for a built-in role.",
@@ -976,22 +974,43 @@ export const INSIGHTS = {
     additionalPrivilegeId: "The ID of the additional privilege.",
     additionalPrivilegeName: "The name of the additional privilege.",
     totalCount: "The number of actors the caller can page through.",
-    trackingStartedAt:
-      "When reads started being tracked for this project: the later of when read tracking was enabled on the instance and when the project was created.",
-    fullWindowFrom:
-      "When the results first cover a full 30 days of reads: 30 days after reads started being tracked for the project. Before then they cover the reads since tracking began, and the access that existed then."
+    periodStart:
+      "Unused means no read since this date: 30 days before the results were computed, or when reads started being tracked for the project if that is later. Results are recomputed once a day."
   },
   GET_UNUSED_ACCESS_ACTOR: {
     projectId: "The ID of the project.",
     actorType: "Whether the actor is a user or a machine identity.",
     actorId: "The ID of the user or machine identity.",
     secrets:
-      "The secrets the actor can read but has not read in the last 30 days, among those the caller can see, ordered by environment and path.",
+      "The secrets the actor can read but has not read since periodStart, ordered by environment and path. The list can be shorter than the actor's unusedSecretCount: it holds at most 200, only those the caller can see, and none deleted since the results were computed.",
     secretKey: "The key of the secret.",
     environment: "The slug of the environment the secret is in.",
-    secretPath: "The path of the folder the secret is in.",
-    unlistedCount:
-      "How many of the actor's unread secrets are not listed: past the first 200, in places the caller cannot see, or deleted since the results were computed."
+    secretPath: "The path of the folder the secret is in."
+  },
+  GET_SECRET_READ_ACTIVITY: {
+    projectId: "The ID of the project where the secret is located.",
+    secretName: "The name of the secret.",
+    environment: "The slug of the environment where the secret is located.",
+    secretPath: "The folder path where the secret is located.",
+    readsTrackedSince:
+      "Reads are reported from this date: the latest of 30 days ago, when reads started being tracked for the project, and when the secret and its folder were created.",
+    unusedAccessJudgedFrom:
+      "Unused access is judged from this date: the later of 30 days ago and when reads started being tracked for the project. An actor without a read only counts as unused access once the secret and their access both predate it.",
+    actors:
+      "One entry for each user or machine identity that can read the secret's value today, directly or through a group, ordered by name. Project admins are included so their reads show.",
+    actorType: "Whether the actor is a user or a machine identity.",
+    actorId: "The ID of the user or machine identity.",
+    name: "The username of the user, or the name of the machine identity.",
+    isProjectAdmin:
+      "Whether the actor is a project admin, directly or through a group. Admins can read everything by design, so they never count as unused access.",
+    lastReadAt:
+      "When the actor last read the secret, or an import or reference of it, since readsTrackedSince, as the first read of that day. Null when they have not.",
+    accessChangedAt:
+      "When the actor's access to the project last changed: the latest membership, role or privilege creation, edit or expiry. Null when it has not changed since the membership was created.",
+    readStatus:
+      "read: the actor read the secret since readsTrackedSince. unused: no read, and the secret and their access both predate unusedAccessJudgedFrom, so it counts as unused access. not-judged: no read, but it does not count yet; notJudgedReason says why.",
+    notJudgedReason:
+      "Why an actor without a read is not counted as unused access. project-admin: admins are never counted. access-changed: their access changed after unusedAccessJudgedFrom. secret-too-new: the secret is newer than unusedAccessJudgedFrom. Null unless readStatus is not-judged."
   },
   GET_SECRETS_ACCESS_VOLUME: {
     days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",
@@ -1501,38 +1520,6 @@ export const RAW_SECRETS = {
     secretPath: "The folder path where the secret is located.",
     includeAllEntities:
       "When true, includes all project users, identities, and groups in the response, even those without any access to the secret."
-  },
-  GET_READ_ACTIVITY: {
-    secretName: "The name of the secret to get read activity for.",
-    projectId: "The ID of the project where the secret is located.",
-    environment: "The slug of the environment where the secret is located.",
-    secretPath: "The folder path where the secret is located.",
-    trackedSince:
-      "The start of the period reads are reported for: the later of 30 days ago, when read tracking began, and when the secret and its folder were created.",
-    judgedFrom:
-      "The start of the period unused access is judged on: the later of 30 days ago and when read tracking began for the project. A reader only counts as unused access once the secret and their access both predate it.",
-    entitled:
-      "One entry for each user or machine identity that can read the secret's value today, project admins included so their reads can be shown, saying whether they count as unused access and, if not, why.",
-    readerName: "The username of the user, or the name of the machine identity. Null when it could not be resolved.",
-    unread:
-      "Whether the reader counts as unused access: no read since trackedSince, with the secret and their access both older than judgedFrom.",
-    isAdmin:
-      "Whether the reader is a project admin. Admins can read everything by design, so they never count as unused access.",
-    accessChangedAt:
-      "When the reader's access to the project last changed: the latest membership, role or privilege creation, edit or expiry. Null when it has never changed since the membership was created, or is unknown.",
-    reads:
-      "One entry for each user or machine identity that read the secret, or an import or reference of it, since trackedSince. Only the first read of each day is recorded.",
-    actorType: "Whether the reader is a user or a machine identity.",
-    actorId: "The ID of the user or machine identity.",
-    lastReadAt: "When the reader last read the secret, as the first read of that day.",
-    entitledCount:
-      "How many users and machine identities can read the secret's value today, project admins left out since they can read everything by design.",
-    unreadCount: "How many of those count as unused access.",
-    ghostReaderCount: "How many ghost readers the secret has.",
-    ghostReaders:
-      "The users and machine identities that read the secret since trackedSince but can no longer read it today, for example after leaving the project. They still know the value.",
-    ghostReaderName:
-      "The username of the user, or the name of the machine identity. Null when the reader has since been deleted."
   },
   DUPLICATE_SECRET: {
     projectId: "The ID of the project containing the secret.",

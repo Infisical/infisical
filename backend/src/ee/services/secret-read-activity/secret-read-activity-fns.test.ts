@@ -13,6 +13,7 @@ import {
   classifySecretReads,
   computeSecretReach,
   coversWholeWindow,
+  getReadStatus,
   getUtcMonthStart,
   indexSecretReads,
   summarizeSecretAccess,
@@ -20,7 +21,9 @@ import {
   toUnusedAccessRoles
 } from "./secret-read-activity-fns";
 import {
+  SecretReadNotJudgedReason,
   SecretReadObjectType,
+  SecretReadStatus,
   TProjectAccess,
   TReachSecret,
   TSecretActivity,
@@ -180,15 +183,14 @@ describe("summarizeSecretAccess", () => {
     expect(ids(summary.entitled)).toEqual(["direct", "via-group"]);
   });
 
-  test("leaves admins out of unused access, and never counts their reads as a ghost's", () => {
+  test("leaves admins out of unused access", () => {
     const summary = summarizeSecretAccess(
-      activity({ reads: readBy("admin") }),
+      activity(),
       access({ readersByRules: [[reader("admin"), reader("direct")]], adminActorIds: new Set(["admin"]) })
     );
     expect(ids(summary.entitled)).toEqual(["admin", "direct"]);
     expect(ids(summary.nonAdmins)).toEqual(["direct"]);
     expect(ids(summary.unread)).toEqual(["direct"]);
-    expect(summary.ghostReaders).toEqual([]);
   });
 
   test("does not count a reader who read it, or whose access changed inside the judged period", () => {
@@ -203,10 +205,44 @@ describe("summarizeSecretAccess", () => {
     const summary = summarizeSecretAccess(activity({ trackedSince: new Date("2026-10-01T00:00:00.000Z") }), access());
     expect(summary.unread).toEqual([]);
   });
+});
 
-  test("counts a read by someone who can no longer read it as a ghost's", () => {
-    const summary = summarizeSecretAccess(activity({ reads: readBy("no-access") }), access());
-    expect(ids(summary.ghostReaders)).toEqual(["no-access"]);
+describe("getReadStatus", () => {
+  const judgedFrom = new Date("2026-09-15T00:00:00.000Z");
+  const status = (overrides: Partial<Parameters<typeof getReadStatus>[0]> = {}) =>
+    getReadStatus({
+      lastReadAt: null,
+      isUnused: false,
+      isProjectAdmin: false,
+      accessChangedAt: null,
+      judgedFrom,
+      ...overrides
+    });
+
+  test("is read for anyone with a read, admins included", () => {
+    const hasRead = { readStatus: SecretReadStatus.Read, notJudgedReason: null };
+    expect(status({ lastReadAt: new Date("2026-10-01T00:00:00.000Z") })).toEqual(hasRead);
+    expect(status({ lastReadAt: new Date("2026-10-01T00:00:00.000Z"), isProjectAdmin: true })).toEqual(hasRead);
+  });
+
+  test("is unused for a reader counted as unused access", () => {
+    expect(status({ isUnused: true })).toEqual({ readStatus: SecretReadStatus.Unused, notJudgedReason: null });
+  });
+
+  test("names why a reader without a read is not judged", () => {
+    const notJudged = (notJudgedReason: SecretReadNotJudgedReason) => ({
+      readStatus: SecretReadStatus.NotJudged,
+      notJudgedReason
+    });
+    expect(status({ isProjectAdmin: true, accessChangedAt: new Date("2026-10-01T00:00:00.000Z") })).toEqual(
+      notJudged(SecretReadNotJudgedReason.ProjectAdmin)
+    );
+    expect(status({ accessChangedAt: new Date("2026-10-01T00:00:00.000Z") })).toEqual(
+      notJudged(SecretReadNotJudgedReason.AccessChanged)
+    );
+    expect(status({ accessChangedAt: new Date("2026-09-01T00:00:00.000Z") })).toEqual(
+      notJudged(SecretReadNotJudgedReason.SecretTooNew)
+    );
   });
 });
 

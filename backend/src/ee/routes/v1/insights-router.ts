@@ -17,6 +17,7 @@ import {
 import {
   OrgAuthMethodDistributionSchema,
   OrgSecretsAccessVolumeSchema,
+  SecretReadActivitySchema,
   SecretsProjectsSchema,
   SecretsSummarySchema,
   StaticSecretsUsageSchema,
@@ -24,7 +25,9 @@ import {
   UnusedAccessSchema
 } from "@app/ee/services/insights/insights-schemas";
 import { INSIGHTS } from "@app/lib/api-docs";
+import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { BaseSecretNameSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
@@ -492,7 +495,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { projectId } = req.params;
-      const { actors, totalCount, trackingStartedAt, fullWindowFrom, remainingTTL, projectName } =
+      const { actors, totalCount, periodStart, remainingTTL, projectName } =
         await server.services.secretReadActivity.listUnusedAccess({ projectId, ...req.query }, req.permission);
       await server.services.auditLog.createAuditLog({
         projectId,
@@ -506,7 +509,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       if (remainingTTL && remainingTTL >= 0) {
         void reply.header("X-Cache-TTL", remainingTTL);
       }
-      return { actors, totalCount, trackingStartedAt, fullWindowFrom };
+      return { actors, totalCount, periodStart };
     }
   });
 
@@ -530,7 +533,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { projectId, actorType, actorId } = req.params;
-      const { actor, secrets, unlistedCount, trackingStartedAt, fullWindowFrom, remainingTTL, projectName } =
+      const { actor, secrets, periodStart, remainingTTL, projectName } =
         await server.services.secretReadActivity.getUnusedAccessActor(
           { projectId, actorType, actorId },
           req.permission
@@ -553,7 +556,47 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       if (remainingTTL && remainingTTL >= 0) {
         void reply.header("X-Cache-TTL", remainingTTL);
       }
-      return { actor, secrets, unlistedCount, trackingStartedAt, fullWindowFrom };
+      return { actor, secrets, periodStart };
+    }
+  });
+
+  // The fixed segment comes before the secret name, so a secret named like another route here (reports, summary)
+  // cannot be routed to it.
+  server.route({
+    method: "GET",
+    url: "/:projectId/secrets/read-activity/:secretName",
+    config: { rateLimit: readLimit },
+    schema: {
+      operationId: "getInsightsSecretReadActivity",
+      description:
+        "List the users and machine identities that can read a secret's value, with each one's latest read and whether it counts as unused access",
+      security: [{ bearerAuth: [] }],
+      params: z.object({
+        projectId: z.string().trim().max(36).describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.projectId),
+        secretName: BaseSecretNameSchema.max(500).describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.secretName)
+      }),
+      querystring: z.object({
+        environment: z.string().trim().min(1).max(255).describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.environment),
+        secretPath: z
+          .string()
+          .trim()
+          .max(1024)
+          .default("/")
+          .transform(prefixWithSlash)
+          .transform(removeTrailingSlash)
+          .describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.secretPath)
+      }),
+      response: {
+        200: z.object({ readActivity: SecretReadActivitySchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const readActivity = await server.services.secretReadActivity.getSecretReadActivity(
+        { projectId: req.params.projectId, secretName: req.params.secretName, ...req.query },
+        req.permission
+      );
+      return { readActivity };
     }
   });
 

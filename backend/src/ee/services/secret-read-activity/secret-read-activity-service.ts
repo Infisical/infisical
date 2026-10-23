@@ -1,7 +1,6 @@
 import { setImmediate } from "node:timers/promises";
 
 import { SecretType, TableName } from "@app/db/schemas";
-import { DAY_IN_MS } from "@app/ee/services/audit-report/audit-report-fns";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { checkInsightsReadPermission } from "@app/ee/services/insights/insights-fns";
@@ -34,9 +33,9 @@ import {
   classifySecretReads,
   computeSecretReach,
   getReadActivityWindowStart,
+  getReadStatus,
   indexSecretReads,
   loadProjectFolderTree,
-  SECRET_READ_ACTIVITY_WINDOW_DAYS,
   summarizeSecretAccess,
   toActorKey,
   toLocationKey,
@@ -44,7 +43,6 @@ import {
 } from "./secret-read-activity-fns";
 import { TSecretReadActivityQueueServiceFactory } from "./secret-read-activity-queue";
 import {
-  TEntitledReader,
   TGetSecretReadActivityDTO,
   TGetUnusedAccessActorDTO,
   TListUnusedAccessDTO,
@@ -54,6 +52,7 @@ import {
   TSecretActivity,
   TSecretReach,
   TSecretReachGraph,
+  TSecretReadActivityActor,
   TSecretReaderType,
   TUnusedAccessActor,
   TUnusedAccessSummary,
@@ -335,8 +334,7 @@ export const secretReadActivityServiceFactory = ({
     };
   };
 
-  // Direct members come named. Everyone else (members only through a group, and readers since gone from the
-  // project) is looked up; a user or identity deleted outright has no name.
+  // Direct members come named; members only through a group are looked up.
   const $findActorNames = async (
     actors: { actorType: string; actorId: string }[],
     directMembers: Map<string, { name: string }>
@@ -393,32 +391,36 @@ export const secretReadActivityServiceFactory = ({
         message: `Secret with name '${secretName}' not found at path '${secretPath}' in environment '${environment}'`
       });
     }
-    const { entitled, nonAdmins, unread, ghostReaders } = summarizeSecretAccess(activity, access);
-    const unreadKeys = new Set(unread.map((reader) => toActorKey(reader.actorType, reader.actorId)));
-    const names = await $findActorNames([...entitled, ...ghostReaders], access.directMembers);
+    const { entitled, unread } = summarizeSecretAccess(activity, access);
+    const unusedKeys = new Set(unread.map((reader) => toActorKey(reader.actorType, reader.actorId)));
+    const names = await $findActorNames(entitled, access.directMembers);
+
+    const actors = entitled.map((reader): TSecretReadActivityActor => {
+      const key = toActorKey(reader.actorType, reader.actorId);
+      const lastReadAt = activity.reads.get(key)?.lastReadAt ?? null;
+      const isProjectAdmin = access.adminActorIds.has(reader.actorId);
+      const accessChangedAt = access.accessChangedAtByActorId.get(reader.actorId) ?? null;
+      return {
+        actorType: reader.actorType,
+        actorId: reader.actorId,
+        name: names.get(key) ?? reader.actorId,
+        isProjectAdmin,
+        lastReadAt,
+        accessChangedAt,
+        ...getReadStatus({
+          lastReadAt,
+          isUnused: unusedKeys.has(key),
+          isProjectAdmin,
+          accessChangedAt,
+          judgedFrom: access.judgedFrom
+        })
+      };
+    });
 
     return {
-      trackedSince: activity.trackedSince,
-      judgedFrom: access.judgedFrom,
-      reads: [...activity.reads.values()],
-      entitled: entitled.map((reader): TEntitledReader => {
-        const key = toActorKey(reader.actorType, reader.actorId);
-        return {
-          actorType: reader.actorType,
-          actorId: reader.actorId,
-          actorName: names.get(key) ?? null,
-          unread: unreadKeys.has(key),
-          isAdmin: access.adminActorIds.has(reader.actorId),
-          accessChangedAt: access.accessChangedAtByActorId.get(reader.actorId) ?? null
-        };
-      }),
-      entitledCount: nonAdmins.length,
-      unreadCount: unread.length,
-      ghostReaderCount: ghostReaders.length,
-      ghostReaders: ghostReaders.map((read) => ({
-        ...read,
-        actorName: names.get(toActorKey(read.actorType, read.actorId)) ?? null
-      }))
+      readsTrackedSince: activity.trackedSince,
+      unusedAccessJudgedFrom: access.judgedFrom,
+      actors: actors.sort((a, b) => a.name.localeCompare(b.name))
     };
   };
 
@@ -432,7 +434,6 @@ export const secretReadActivityServiceFactory = ({
       $loadProjectAccess(projectId, orgId, windowStart)
     ]);
     const tallies = new Map<string, TUnusedAccessTally>();
-    const lastReadAtByKey = new Map<string, Date>();
     for (const activity of activities) {
       // eslint-disable-next-line no-await-in-loop
       await setImmediate();
@@ -442,38 +443,34 @@ export const secretReadActivityServiceFactory = ({
         const tally = tallies.get(key) ?? {
           actorType,
           actorId,
-          entitledCount: 0,
-          unreadCount: 0,
-          unreadSecretIds: [],
+          accessibleSecretCount: 0,
+          unusedSecretCount: 0,
+          unusedSecretIds: [],
           environments: new Set()
         };
-        tally.entitledCount += 1;
+        tally.accessibleSecretCount += 1;
         tallies.set(key, tally);
       });
       // Every unread reader is also a non-admin, so its tally exists.
       unread.forEach(({ actorType, actorId }) => {
         const tally = tallies.get(toActorKey(actorType, actorId)) as TUnusedAccessTally;
-        tally.unreadCount += 1;
+        tally.unusedSecretCount += 1;
         tally.environments.add(activity.environment);
-        if (tally.unreadSecretIds.length < UNUSED_ACCESS_MAX_SECRETS_PER_ACTOR) {
-          tally.unreadSecretIds.push(activity.secret.id);
+        if (tally.unusedSecretIds.length < UNUSED_ACCESS_MAX_SECRETS_PER_ACTOR) {
+          tally.unusedSecretIds.push(activity.secret.id);
         }
       });
-      activity.reads.forEach((read, key) => {
-        const latest = lastReadAtByKey.get(key);
-        if (!latest || read.lastReadAt > latest) lastReadAtByKey.set(key, read.lastReadAt);
-      });
     }
-    return { tallies, lastReadAtByKey, access };
+    return { tallies, access };
   };
 
   // Every user and machine identity that can read secrets it has not read in the window, whether through a role, a
   // privilege or a group. Ranked by how many such secrets it has.
   const $computeUnusedAccess = async (projectId: string, orgId: string): Promise<TUnusedAccessSummary> => {
-    const { tallies, lastReadAtByKey, access } = await $tallyUnusedAccess(projectId, orgId);
+    const { tallies, access } = await $tallyUnusedAccess(projectId, orgId);
     const ranked = [...tallies.values()]
-      .filter((tally) => tally.unreadCount > 0)
-      .sort((a, b) => b.unreadCount - a.unreadCount || a.entitledCount - b.entitledCount);
+      .filter((tally) => tally.unusedSecretCount > 0)
+      .sort((a, b) => b.unusedSecretCount - a.unusedSecretCount || a.accessibleSecretCount - b.accessibleSecretCount);
     const names = await $findActorNames(ranked, access.directMembers);
 
     const rows = ranked.map((tally): TUnusedAccessActor => {
@@ -483,10 +480,9 @@ export const secretReadActivityServiceFactory = ({
         actorType: tally.actorType,
         actorId: tally.actorId,
         name: names.get(key) ?? tally.actorId,
-        entitledCount: tally.entitledCount,
-        unreadCount: tally.unreadCount,
+        accessibleSecretCount: tally.accessibleSecretCount,
+        unusedSecretCount: tally.unusedSecretCount,
         environments: [...tally.environments].sort(),
-        lastReadAt: lastReadAtByKey.get(key) ?? null,
         accessPaths: {
           roles: toUnusedAccessRoles(member?.roles ?? []),
           groups: (access.groupMembershipsByActorKey[key] ?? []).map(({ group }) => ({
@@ -503,9 +499,9 @@ export const secretReadActivityServiceFactory = ({
     const details = Object.fromEntries(
       ranked
         .slice(0, UNUSED_ACCESS_DETAIL_MAX_ACTORS)
-        .map((tally) => [toActorKey(tally.actorType, tally.actorId), tally.unreadSecretIds])
+        .map((tally) => [toActorKey(tally.actorType, tally.actorId), tally.unusedSecretIds])
     );
-    return { rows, details };
+    return { rows, details, periodStart: access.judgedFrom };
   };
 
   // The whole project is computed once a day and cached, so paging through it is cheap.
@@ -546,18 +542,16 @@ export const secretReadActivityServiceFactory = ({
         }
       }
     });
-    const [remainingTTL, { project, trackingStartedAt }] = await Promise.all([
+    const [remainingTTL, project] = await Promise.all([
       getCacheTtl(keyStore, cacheKey),
-      $getProjectTrackingStartedAt(projectId)
+      projectDAL.findById(projectId)
     ]);
     return {
       ...summary,
       // Dates come back from the cache as strings.
-      rows: summary.rows.map((row) => ({ ...row, lastReadAt: row.lastReadAt ? new Date(row.lastReadAt) : null })),
+      periodStart: new Date(summary.periodStart),
       remainingTTL,
-      projectName: project?.name ?? "",
-      trackingStartedAt,
-      fullWindowFrom: new Date(trackingStartedAt.getTime() + SECRET_READ_ACTIVITY_WINDOW_DAYS * DAY_IN_MS)
+      projectName: project?.name ?? ""
     };
   };
 
@@ -573,8 +567,7 @@ export const secretReadActivityServiceFactory = ({
       actors: matching.slice(offset, offset + limit),
       totalCount: matching.length,
       projectName: tracking.projectName,
-      trackingStartedAt: tracking.trackingStartedAt,
-      fullWindowFrom: tracking.fullWindowFrom,
+      periodStart: tracking.periodStart,
       remainingTTL: tracking.remainingTTL
     };
   };
@@ -599,7 +592,7 @@ export const secretReadActivityServiceFactory = ({
         keyStore,
         key: KeyStorePrefixes.InsightsCache(projectId, `unused-access:${key}`),
         ttlSeconds: UNUSED_ACCESS_CACHE_TTL_SECONDS,
-        fetcher: async () => (await $tallyUnusedAccess(projectId, actor.orgId)).tallies.get(key)?.unreadSecretIds ?? []
+        fetcher: async () => (await $tallyUnusedAccess(projectId, actor.orgId)).tallies.get(key)?.unusedSecretIds ?? []
       }));
 
     // The cache is shared by everyone in the project and can be a day old, so each listed secret is checked against
@@ -630,11 +623,8 @@ export const secretReadActivityServiceFactory = ({
     return {
       actor: unusedAccessActor,
       secrets,
-      // Everything not in the list: past the cached cap, hidden from this viewer, or deleted since.
-      unlistedCount: Math.max(0, unusedAccessActor.unreadCount - secrets.length),
       projectName: tracking.projectName,
-      trackingStartedAt: tracking.trackingStartedAt,
-      fullWindowFrom: tracking.fullWindowFrom,
+      periodStart: tracking.periodStart,
       remainingTTL: tracking.remainingTTL
     };
   };

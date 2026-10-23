@@ -9,7 +9,9 @@ import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-fold
 import { buildFolderIdMap, buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 
 import {
+  SecretReadNotJudgedReason,
   SecretReadObjectType,
+  SecretReadStatus,
   TMemberRole,
   TProjectAccess,
   TProjectFolderTree,
@@ -138,8 +140,8 @@ export const classifySecretReads = (
   return activity;
 };
 
-// Who can read the secret's value today, and which of them have left it unread.
-// Unused access is judged on the non-admins, since admins can read everything by design; ghost readers are readers in the window who can no longer read it
+// Who can read the secret's value today, and which of them have left it unread. Unused access is judged on the
+// non-admins, since admins can read everything by design.
 export const summarizeSecretAccess = (
   { secret, environment, secretPath, trackedSince, reads }: TSecretActivity,
   { readersByRules, adminActorIds, accessChangedAtByActorId, judgedFrom }: TProjectAccess
@@ -153,18 +155,37 @@ export const summarizeSecretAccess = (
       .flat(),
     (reader) => toActorKey(reader.actorType, reader.actorId)
   );
-  const entitledKeys = new Set(entitled.map((reader) => toActorKey(reader.actorType, reader.actorId)));
-  // Admins' reads still show, and a read of theirs is never a ghost's.
   const nonAdmins = entitled.filter((reader) => !adminActorIds.has(reader.actorId));
   const unread = nonAdmins.filter(
     (reader) =>
       !reads.has(toActorKey(reader.actorType, reader.actorId)) &&
       coversWholeWindow(trackedSince, accessChangedAtByActorId.get(reader.actorId), judgedFrom)
   );
-  const ghostReaders = [...reads.values()].filter(
-    (read) => !entitledKeys.has(toActorKey(read.actorType, read.actorId)) && !adminActorIds.has(read.actorId)
-  );
-  return { entitled, nonAdmins, unread, ghostReaders };
+  return { entitled, nonAdmins, unread };
+};
+
+// A reader without a read who is not unused access was left out for one of three reasons, checked in this order.
+// The last needs no check of its own: a non-admin whose access predates the judged period is only left out when
+// the secret does not.
+export const getReadStatus = ({
+  lastReadAt,
+  isUnused,
+  isProjectAdmin,
+  accessChangedAt,
+  judgedFrom
+}: {
+  lastReadAt: Date | null;
+  isUnused: boolean;
+  isProjectAdmin: boolean;
+  accessChangedAt: Date | null;
+  judgedFrom: Date;
+}) => {
+  if (lastReadAt) return { readStatus: SecretReadStatus.Read, notJudgedReason: null };
+  if (isUnused) return { readStatus: SecretReadStatus.Unused, notJudgedReason: null };
+  let notJudgedReason = SecretReadNotJudgedReason.SecretTooNew;
+  if (isProjectAdmin) notJudgedReason = SecretReadNotJudgedReason.ProjectAdmin;
+  else if (accessChangedAt && accessChangedAt > judgedFrom) notJudgedReason = SecretReadNotJudgedReason.AccessChanged;
+  return { readStatus: SecretReadStatus.NotJudged, notJudgedReason };
 };
 
 // Only the names of the predefined roles are read, so the project id they are built for does not matter.

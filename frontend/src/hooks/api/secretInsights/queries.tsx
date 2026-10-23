@@ -20,6 +20,7 @@ import {
   TGetSecretAccessVolumeResponse,
   TGetSecretBlindIndexStatusDTO,
   TGetSecretBlindIndexStatusResponse,
+  TGetSecretReadActivityDTO,
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse,
   TGetUnusedAccessActorDTO,
@@ -30,7 +31,8 @@ import {
   TOrgProjectsInsights,
   TOrgSecretAccessVolume,
   TOrgSecretsSummary,
-  TOrgStaticSecretUsage
+  TOrgStaticSecretUsage,
+  TSecretReadActivity
 } from "./types";
 
 export const secretInsightsKeys = {
@@ -43,6 +45,8 @@ export const secretInsightsKeys = {
     [...secretInsightsKeys.all(), "unused-access", params] as const,
   unusedAccessActor: (params: TGetUnusedAccessActorDTO) =>
     [...secretInsightsKeys.all(), "unused-access-actor", params] as const,
+  secretReadActivity: (params: TGetSecretReadActivityDTO) =>
+    [...secretInsightsKeys.all(), "secret-read-activity", params] as const,
   // accessLocations: (params: TGetSecretAccessLocationsDTO) =>
   //   [...secretInsightsKeys.all(), "access-locations", params] as const,
   authMethodDistribution: (params: TGetAuthMethodDistributionDTO) =>
@@ -186,6 +190,22 @@ export const useGetUnusedAccessActor = (
     ...options
   });
 };
+
+export const useGetSecretReadActivity = (
+  params: TGetSecretReadActivityDTO,
+  options?: { enabled?: boolean }
+) =>
+  useQuery({
+    queryKey: secretInsightsKeys.secretReadActivity(params),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ readActivity: TSecretReadActivity }>(
+        `/api/v1/insights/${params.projectId}/secrets/read-activity/${encodeURIComponent(params.secretKey)}`,
+        { params: { environment: params.environment, secretPath: params.secretPath } }
+      );
+      return data.readActivity;
+    },
+    enabled: Boolean(params.secretKey) && (options?.enabled ?? true)
+  });
 
 export const useGetAuthMethodDistribution = (
   params: TGetAuthMethodDistributionDTO,

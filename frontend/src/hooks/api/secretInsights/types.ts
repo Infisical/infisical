@@ -74,10 +74,9 @@ export type TUnusedAccessActor = {
   actorType: UnusedAccessActorType;
   actorId: string;
   name: string;
-  entitledCount: number;
-  unreadCount: number;
+  accessibleSecretCount: number;
+  unusedSecretCount: number;
   environments: string[];
-  lastReadAt: string | null;
   accessPaths: TUnusedAccessPaths;
 };
 
@@ -91,8 +90,8 @@ export type TGetUnusedAccessDTO = {
 export type TGetUnusedAccessResponse = {
   actors: TUnusedAccessActor[];
   totalCount: number;
-  trackingStartedAt: string;
-  fullWindowFrom: string;
+  // Unused means no read since this date: 30 days ago, or when tracking began if later.
+  periodStart: string;
   remainingTtl: number;
 };
 
@@ -111,10 +110,44 @@ export type TUnusedSecret = {
 export type TGetUnusedAccessActorResponse = {
   actor: TUnusedAccessActor;
   secrets: TUnusedSecret[];
-  unlistedCount: number;
-  trackingStartedAt: string;
-  fullWindowFrom: string;
+  periodStart: string;
   remainingTtl: number;
+};
+
+export enum SecretReadStatus {
+  Read = "read",
+  Unused = "unused",
+  NotJudged = "not-judged"
+}
+
+export enum SecretReadNotJudgedReason {
+  ProjectAdmin = "project-admin",
+  AccessChanged = "access-changed",
+  SecretTooNew = "secret-too-new"
+}
+
+export type TGetSecretReadActivityDTO = {
+  projectId: string;
+  environment: string;
+  secretPath: string;
+  secretKey: string;
+};
+
+export type TSecretReadActivityActor = {
+  actorType: UnusedAccessActorType;
+  actorId: string;
+  name: string;
+  isProjectAdmin: boolean;
+  lastReadAt: string | null;
+  accessChangedAt: string | null;
+  readStatus: SecretReadStatus;
+  notJudgedReason: SecretReadNotJudgedReason | null;
+};
+
+export type TSecretReadActivity = {
+  readsTrackedSince: string;
+  unusedAccessJudgedFrom: string;
+  actors: TSecretReadActivityActor[];
 };
 
 export type TGetInsightsSummaryDTO = {

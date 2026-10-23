@@ -63,9 +63,7 @@ export const UnusedAccessCard = () => {
       ? formatRemainingTtl(data.remainingTtl)
       : null;
   const environmentNames = new Map(currentProject.environments.map((env) => [env.slug, env.name]));
-  const readPeriod = data
-    ? describeReadPeriod(data.trackingStartedAt, data.fullWindowFrom)
-    : "in the last 30 days";
+  const readPeriod = data ? describeReadPeriod(data.periodStart) : "in the last 30 days";
 
   const renderBody = () => {
     if (isPending) return <Skeleton className="h-[200px] w-full" />;
@@ -130,7 +128,7 @@ export const UnusedAccessCard = () => {
           <TableBody>
             {data.actors.map((row) => {
               const { icon: TypeIcon, label } = ACTOR_TYPE_CONFIG[row.actorType];
-              const percent = unusedSharePercent(row.unreadCount, row.entitledCount);
+              const percent = unusedSharePercent(row.unusedSecretCount, row.accessibleSecretCount);
               const tone = unusedShareTone(percent);
               return (
                 <TableRow
@@ -151,10 +149,10 @@ export const UnusedAccessCard = () => {
                     <div className="flex min-w-44 flex-col gap-1.5">
                       <div className="flex items-baseline justify-between gap-3 whitespace-nowrap">
                         <span>
-                          {row.unreadCount}{" "}
+                          {row.unusedSecretCount}{" "}
                           <span className="text-muted">
-                            of {row.entitledCount}{" "}
-                            {row.entitledCount === 1 ? "secret unread" : "secrets unread"}
+                            of {row.accessibleSecretCount}{" "}
+                            {row.accessibleSecretCount === 1 ? "secret unread" : "secrets unread"}
                           </span>
                         </span>
                         <span className={cn("tabular-nums", tone.text)}>{percent}%</span>

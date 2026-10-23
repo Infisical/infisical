@@ -1142,8 +1142,8 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   decrypts every secret that could reference it.
 - **The card judges a full window, or everything since tracking began.** Tracking starts at the later of the
   migration that created the table and the project's creation. In a project tracked for less than 30 days, the
-  window starts when tracking did (`judgedFrom`), and the response's `fullWindowFrom` says when results first
-  cover 30 days, so the UI words the period "since <date>" until then. The card leaves out project admins (users
+  window starts when tracking did (`judgedFrom`). The card's responses carry it as `periodStart`, stored with the
+  cached computation, so the UI words the period "since <date>" while it is under 30 days old. The card leaves out project admins (users
   and identities with the Admin role, directly or through a group, from `findAdminActorIds`): they can read
   everything by design. Their reads are still recorded, so the access sheet's Last Read stays true for them. A
   pair is listed once the secret (`trackedSince`) and the actor's access (`findAccessChangedAt`: the latest
@@ -1151,18 +1151,19 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   change opened up is not recorded, so any access change restarts the window, including an edit to the rules of
   a custom role the reader holds. The per-secret sheet shows the plain fact
   instead: a read, "No reads", or "No reads yet" with the reason.
-- **The access sheet.** The graph lives only in the secret's access sheet (`GET /secrets/:name/read-activity`).
-  That endpoint returns, for every reader who can read the value, whether they count as unused access and why not
-  (`isAdmin`, `accessChangedAt` after `judgedFrom`, or a secret newer than it), plus three counts: `entitledCount`
-  (non-admins who can read the value today), `unreadCount` (those among them counted as unused access) and
-  `ghostReaderCount`. It also returns the ghost readers (readers in the window who can no longer read it, named
-  from the project's members, else from the user or identity row, else null), which the UI does not show.
+- **The access sheet.** The graph lives only in the secret's access sheet, served by
+  `GET /insights/:projectId/secrets/read-activity/:secretName` (the fixed segment comes first so a secret named
+  `reports` or `summary` cannot hit those routes). It returns `actors`: everyone who can read the value, admins
+  included, each with `lastReadAt`, `isProjectAdmin`, `accessChangedAt`, and a `readStatus` (`read`, `unused`,
+  `not-judged`) with a `notJudgedReason` (`project-admin`, `access-changed`, `secret-too-new`) from
+  `getReadStatus`. The API returns codes and dates only; the UI writes the wording. Readers who lost access
+  ("ghost readers") are not computed or returned.
 - **The Insights card is per actor** (a user or machine identity; a group is never a row, only an access path).
-  `summarizeSecretAccess` (in `secret-read-activity-fns.ts`) is the one place a secret's readers, unread readers and
-  ghost readers are derived, from the project's access loaded once by `$loadProjectAccess`; both the per-secret
+  `summarizeSecretAccess` (in `secret-read-activity-fns.ts`) is the one place a secret's readers and unread readers
+  are derived, from the project's access loaded once by `$loadProjectAccess`; both the per-secret
   endpoint and the project scan use it. `$tallyUnusedAccess` scans every secret once and tallies, per actor, how many
-  secrets it can read, how many it has not read, the environments involved and its latest read; `$computeUnusedAccess`
-  ranks the tallies into rows. Each row carries `accessPaths` as data: `roles` it holds directly (`id`/`slug`/`name`,
+  secrets it can read, how many it has not read and the environments involved; `$computeUnusedAccess`
+  ranks the tallies into rows (`accessibleSecretCount`, `unusedSecretCount`). Each row carries `accessPaths` as data: `roles` it holds directly (`id`/`slug`/`name`,
   where a custom role has the slug `custom` and its own id), `groups` it belongs to with the roles each one gives,
   and `additionalPrivileges` as `id`/`name`; the UI decides how to label them. Custom role ids and names come from
   `getProjectPermissions`, so the scan makes no role lookup of its own. Group members are checked with the group's

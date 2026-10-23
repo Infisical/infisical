@@ -14,6 +14,7 @@ export {
   // useGetSecretAccessLocations,
   useGetSecretAccessVolume,
   useGetSecretBlindIndexStatus,
+  useGetSecretReadActivity,
   useGetSecretsDuplication,
   useGetUnusedAccess,
   useGetUnusedAccessActor
@@ -36,6 +37,7 @@ export type {
   TGetSecretAccessLocationsResponse,
   TGetSecretAccessVolumeDTO,
   TGetSecretAccessVolumeResponse,
+  TGetSecretReadActivityDTO,
   TGetSecretsDuplicationDTO,
   TGetSecretsDuplicationResponse,
   TGetUnusedAccessActorDTO,
@@ -54,10 +56,12 @@ export type {
   TSearchSecretsByValueResponse,
   TSecretAccessVolumeActor,
   TSecretAccessVolumeDay,
+  TSecretReadActivity,
+  TSecretReadActivityActor,
   TSecretValueMatch,
   TUnusedAccessActor,
   TUnusedAccessPaths,
   TUnusedAccessRole,
   TUnusedSecret
 } from "./types";
-export { UnusedAccessActorType } from "./types";
+export { SecretReadNotJudgedReason, SecretReadStatus, UnusedAccessActorType } from "./types";

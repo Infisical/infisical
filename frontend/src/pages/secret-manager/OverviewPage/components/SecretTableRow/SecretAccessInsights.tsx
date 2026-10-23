@@ -97,7 +97,12 @@ import {
 } from "@app/hooks/api";
 import { useGetAvailableOrgUsers } from "@app/hooks/api/organization/queries";
 import { useCreateProjectUserAdditionalPrivilege } from "@app/hooks/api/projectUserAdditionalPrivilege";
-import { useGetSecretAccessList, useGetSecretReadActivity } from "@app/hooks/api/secrets/queries";
+import {
+  SecretReadNotJudgedReason,
+  SecretReadStatus,
+  useGetSecretReadActivity
+} from "@app/hooks/api/secretInsights";
+import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretAccessListEntry } from "@app/hooks/api/secrets/types";
 import { IdentityProjectAdditionalPrivilegeModifySection } from "@app/pages/project/IdentityDetailsByIDPage/components/IdentityProjectAdditionalPrivilegeSection/IdentityProjectAdditionalPrivilegeModifySection";
 import { MembershipProjectAdditionalPrivilegeModifySection } from "@app/pages/project/MemberDetailsByIDPage/components/MemberProjectAdditionalPrivilegeSection/MembershipProjectAdditionalPrivilegeModifySection";
@@ -504,46 +509,43 @@ export function SecretAccessInsights({
     { projectId: currentProject.id, environment, secretPath, secretKey },
     { enabled: canReadInsights }
   );
-  const lastReads = useMemo(
-    () => new Map(readActivity?.reads.map((read) => [`${read.actorType}:${read.actorId}`, read])),
-    [readActivity]
-  );
-  const entitledReaders = useMemo(
+  const readActors = useMemo(
     () =>
-      new Map(
-        readActivity?.entitled.map((reader) => [`${reader.actorType}:${reader.actorId}`, reader])
-      ),
+      new Map(readActivity?.actors.map((actor) => [`${actor.actorType}:${actor.actorId}`, actor])),
     [readActivity]
   );
 
-  // What a reader's row and node say about their reads. "No reads" is only claimed once the secret and the
-  // reader's access have both existed for the whole judged period; before that the reason is spelled out.
+  // What a reader's row and node say about their reads, worded from the status the API gives each reader.
   const readStatusOf = (type: "user" | "identity", id: string): TReaderReadStatus | undefined => {
     if (!readActivity) return undefined;
-    const key = `${type}:${id}`;
-    const lastReadAt = lastReads.get(key)?.lastReadAt;
-    if (lastReadAt) return { kind: "read", lastReadAt };
-    const reader = entitledReaders.get(key);
-    if (reader?.unread) return { kind: "unread", since: readActivity.trackedSince };
-    if (reader?.isAdmin) {
+    const actor = readActors.get(`${type}:${id}`);
+    if (actor?.readStatus === SecretReadStatus.Read && actor.lastReadAt) {
+      return { kind: "read", lastReadAt: actor.lastReadAt };
+    }
+    if (actor?.readStatus === SecretReadStatus.Unused) {
+      return { kind: "unread", since: readActivity.readsTrackedSince };
+    }
+    const judgedFrom = format(new Date(readActivity.unusedAccessJudgedFrom), "PP");
+    if (actor?.notJudgedReason === SecretReadNotJudgedReason.ProjectAdmin) {
       return {
         kind: "pending",
         reason:
           "Project admins can read everything by design, so they are not counted as unused access."
       };
     }
-    // judgedFrom is the start of the last 30 days, or when tracking began in a project tracked for less.
-    const judgedFrom = new Date(readActivity.judgedFrom);
-    if (reader?.accessChangedAt && new Date(reader.accessChangedAt) > judgedFrom) {
+    if (
+      actor?.notJudgedReason === SecretReadNotJudgedReason.AccessChanged &&
+      actor.accessChangedAt
+    ) {
       return {
         kind: "pending",
-        reason: `Their access changed on ${format(new Date(reader.accessChangedAt), "PP")}, after reads started being counted on ${format(judgedFrom, "PP")}, so they have not had the whole period to read it.`
+        reason: `Their access changed on ${format(new Date(actor.accessChangedAt), "PP")}, after reads started being counted on ${judgedFrom}, so they have not had the whole period to read it.`
       };
     }
-    if (new Date(readActivity.trackedSince) > judgedFrom) {
+    if (actor?.notJudgedReason === SecretReadNotJudgedReason.SecretTooNew) {
       return {
         kind: "pending",
-        reason: `The secret is newer than ${format(judgedFrom, "PP")}, when reads started being counted, so nobody has had the whole period to read it.`
+        reason: `The secret is newer than ${judgedFrom}, when reads started being counted, so nobody has had the whole period to read it.`
       };
     }
     return { kind: "pending", reason: "Not counted as unused access." };
@@ -556,7 +558,7 @@ export function SecretAccessInsights({
         (readActivityError.response?.data as { message?: string })?.message) ||
       "Read activity is unavailable.";
   } else if (readActivity) {
-    readActivityDescription = `Reads by users and machine identities since ${format(new Date(readActivity.trackedSince), "PP")}, including reads through imports and references.`;
+    readActivityDescription = `Reads by users and machine identities since ${format(new Date(readActivity.readsTrackedSince), "PP")}, including reads through imports and references.`;
   }
 
   // Every reader who can read the value, directly or through a group, with one line each to the secret.
@@ -581,7 +583,7 @@ export function SecretAccessInsights({
           type,
           isDirect,
           groupIds,
-          isAdmin: entitledReaders.get(`${type}:${entry.id}`)?.isAdmin ?? false,
+          isAdmin: readActors.get(`${type}:${entry.id}`)?.isProjectAdmin ?? false,
           lastReadAt: status?.kind === "read" ? status.lastReadAt : undefined,
           unreadSince: status?.kind === "unread" ? status.since : undefined
         }
@@ -599,7 +601,7 @@ export function SecretAccessInsights({
       ...secretAccessList.users.map((user) => `user:${user.id}`),
       ...secretAccessList.identities.map((identity) => `identity:${identity.id}`)
     ]);
-    const groupOnlyReaders = (readActivity?.entitled ?? []).flatMap((reader) => {
+    const groupOnlyReaders = (readActivity?.actors ?? []).flatMap((reader) => {
       if (listed.has(`${reader.actorType}:${reader.actorId}`)) return [];
       const memberField = reader.actorType === "user" ? "userIds" : "identityIds";
       const groupIds = groups
@@ -609,11 +611,11 @@ export function SecretAccessInsights({
       return [
         {
           id: reader.actorId,
-          name: reader.actorName ?? reader.actorId,
+          name: reader.name,
           type: reader.actorType,
           isDirect: false,
           groupIds,
-          isAdmin: reader.isAdmin,
+          isAdmin: reader.isProjectAdmin,
           lastReadAt: status?.kind === "read" ? status.lastReadAt : undefined,
           unreadSince: status?.kind === "unread" ? status.since : undefined
         }
@@ -630,14 +632,13 @@ export function SecretAccessInsights({
         memberCount: group.userIds.length + group.identityIds.length
       })),
       hasReadActivity: Boolean(canReadInsights && readActivity),
-      trackedSince: readActivity?.trackedSince
+      trackedSince: readActivity?.readsTrackedSince
     };
-    // readStatusOf only reads readActivity, lastReads and entitledReaders, which are all listed.
+    // readStatusOf only reads readActivity and readActors, which are both listed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     secretAccessList,
-    lastReads,
-    entitledReaders,
+    readActors,
     readActivity,
     canReadInsights,
     secretKey,

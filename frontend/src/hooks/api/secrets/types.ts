@@ -160,39 +160,6 @@ export type TGetSecretAccessListDTO = {
   includeAllEntities?: boolean;
 };
 
-export type TGetSecretReadActivityDTO = Omit<TGetSecretAccessListDTO, "includeAllEntities">;
-
-export type TSecretReadActivity = {
-  trackedSince: string;
-  // The start of the period unused access is judged on; a reader counts only once the secret and their
-  // access both predate it.
-  judgedFrom: string;
-  reads: {
-    actorType: "user" | "identity";
-    actorId: string;
-    lastReadAt: string;
-  }[];
-  entitled: {
-    actorType: "user" | "identity";
-    actorId: string;
-    actorName: string | null;
-    unread: boolean;
-    isAdmin: boolean;
-    accessChangedAt: string | null;
-  }[];
-  // Non-admins who can read the value, how many of them count as unused access, and the ghost readers.
-  entitledCount: number;
-  unreadCount: number;
-  ghostReaderCount: number;
-  ghostReaders: {
-    actorType: "user" | "identity";
-    actorId: string;
-    // Null when the reader has since been deleted.
-    actorName: string | null;
-    lastReadAt: string;
-  }[];
-};
-
 export type TCreateSecretsV3DTO = {
   secretKey: string;
   secretValue: string;

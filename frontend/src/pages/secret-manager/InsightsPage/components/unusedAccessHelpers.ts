@@ -28,17 +28,22 @@ export const accessPathBadges = ({ roles, additionalPrivileges, groups }: TUnuse
   }))
 ];
 
+const WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
 // The period reads are judged on: the last 30 days once tracking has run that long, else since it began.
-export const describeReadPeriod = (trackingStartedAt: string, fullWindowFrom: string) =>
-  new Date(fullWindowFrom) > new Date()
-    ? `since ${format(new Date(trackingStartedAt), "PP")}`
+export const describeReadPeriod = (periodStart: string) =>
+  new Date(periodStart).getTime() > Date.now() - WINDOW_MS
+    ? `since ${format(new Date(periodStart), "PP")}`
     : "in the last 30 days";
 
 // The share of the secrets an actor can read that it has not read, as a whole percentage that only reads 0
 // or 100 when it is exactly that.
-export const unusedSharePercent = (unreadCount: number, entitledCount: number) => {
-  if (unreadCount >= entitledCount) return 100;
-  return Math.min(99, Math.max(1, Math.round((unreadCount / Math.max(1, entitledCount)) * 100)));
+export const unusedSharePercent = (unusedSecretCount: number, accessibleSecretCount: number) => {
+  if (unusedSecretCount >= accessibleSecretCount) return 100;
+  return Math.min(
+    99,
+    Math.max(1, Math.round((unusedSecretCount / Math.max(1, accessibleSecretCount)) * 100))
+  );
 };
 
 // Most of its access unread is the strongest sign an actor has access it does not need.

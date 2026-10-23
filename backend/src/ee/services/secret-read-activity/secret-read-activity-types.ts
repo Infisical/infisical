@@ -132,18 +132,29 @@ export type TSecretAccessSummary = {
   entitled: TProjectReader[];
   nonAdmins: TProjectReader[];
   unread: TProjectReader[];
-  ghostReaders: TSecretReadResult[];
 };
 
-// A reader who can read the value today, and whether they count as unused access: no read, with the secret and
-// their access both older than the judged period. When they do not, the other fields say why.
-export type TEntitledReader = {
+export enum SecretReadStatus {
+  Read = "read",
+  Unused = "unused",
+  NotJudged = "not-judged"
+}
+
+export enum SecretReadNotJudgedReason {
+  ProjectAdmin = "project-admin",
+  AccessChanged = "access-changed",
+  SecretTooNew = "secret-too-new"
+}
+
+export type TSecretReadActivityActor = {
   actorType: TSecretReaderType;
   actorId: string;
-  actorName: string | null;
-  unread: boolean;
-  isAdmin: boolean;
+  name: string;
+  isProjectAdmin: boolean;
+  lastReadAt: Date | null;
   accessChangedAt: Date | null;
+  readStatus: SecretReadStatus;
+  notJudgedReason: SecretReadNotJudgedReason | null;
 };
 
 export type TMemberRole = Awaited<
@@ -162,26 +173,27 @@ export type TUnusedAccessActor = {
   actorType: TSecretReaderType;
   actorId: string;
   name: string;
-  entitledCount: number;
-  unreadCount: number;
+  accessibleSecretCount: number;
+  unusedSecretCount: number;
   environments: string[];
-  lastReadAt: Date | null;
   accessPaths: TUnusedAccessPaths;
 };
 
 export type TUnusedAccessTally = {
   actorType: TSecretReaderType;
   actorId: string;
-  entitledCount: number;
-  unreadCount: number;
+  accessibleSecretCount: number;
+  unusedSecretCount: number;
   // Capped at UNUSED_ACCESS_MAX_SECRETS_PER_ACTOR
-  unreadSecretIds: string[];
+  unusedSecretIds: string[];
   environments: Set<string>;
 };
 
 export type TUnusedAccessSummary = {
   rows: TUnusedAccessActor[];
   details: Record<string, string[]>;
+  // Unused means no read since this date: 30 days before the computation, or when tracking began if later.
+  periodStart: Date;
 };
 
 export type TUnusedSecret = TSecretLocation & { secretKey: string };

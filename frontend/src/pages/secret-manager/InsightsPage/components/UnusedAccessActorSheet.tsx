@@ -44,6 +44,8 @@ const ActorSecrets = ({ data }: SecretsProps) => {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 
   const environmentNames = new Map(currentProject.environments.map((env) => [env.slug, env.name]));
+  // The list stops at 200, leaves out what the viewer cannot see, and drops secrets deleted since the computation.
+  const unlistedCount = Math.max(0, data.actor.unusedSecretCount - data.secrets.length);
   const byEnvironment = new Map<string, typeof data.secrets>();
   data.secrets.forEach((secret) => {
     byEnvironment.set(secret.environment, [
@@ -58,7 +60,7 @@ const ActorSecrets = ({ data }: SecretsProps) => {
         <EmptyHeader>
           <EmptyTitle>Nothing to show</EmptyTitle>
           <EmptyDescription>
-            {data.unlistedCount > 0
+            {unlistedCount > 0
               ? "Its unread secrets are in places you cannot see, or were deleted since the last update."
               : "It has no unread secrets anymore."}
           </EmptyDescription>
@@ -118,11 +120,10 @@ const ActorSecrets = ({ data }: SecretsProps) => {
           </div>
         );
       })}
-      {data.unlistedCount > 0 && (
+      {unlistedCount > 0 && (
         <p className="text-xs text-muted">
-          {data.unlistedCount} more unread {data.unlistedCount === 1 ? "secret is" : "secrets are"}{" "}
-          not listed: past the first 200, in places you cannot see, or deleted since the last
-          update.
+          {unlistedCount} more unread {unlistedCount === 1 ? "secret is" : "secrets are"} not
+          listed: past the first 200, in places you cannot see, or deleted since the last update.
         </p>
       )}
     </div>
@@ -180,12 +181,9 @@ export const UnusedAccessActorSheet = ({ actor, onClose }: Props) => {
               <Badge variant="neutral">{ACTOR_TYPE_CONFIG[actor.actorType].label}</Badge>
             </SheetTitle>
             <SheetDescription>
-              Has not read {actor.unreadCount} of the {actor.entitledCount}{" "}
-              {actor.entitledCount === 1 ? "secret" : "secrets"} it can access{" "}
-              {data
-                ? describeReadPeriod(data.trackingStartedAt, data.fullWindowFrom)
-                : "in the last 30 days"}
-              .
+              Has not read {actor.unusedSecretCount} of the {actor.accessibleSecretCount}{" "}
+              {actor.accessibleSecretCount === 1 ? "secret" : "secrets"} it can access{" "}
+              {data ? describeReadPeriod(data.periodStart) : "in the last 30 days"}.
             </SheetDescription>
           </SheetHeader>
         )}

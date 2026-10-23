@@ -2,11 +2,10 @@ import z from "zod";
 
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { RAW_SECRETS } from "@app/lib/api-docs";
-import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { readLimit } from "@app/server/config/rateLimiter";
-import { BaseSecretNameSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ActorType, AuthMode } from "@app/services/auth/auth-type";
+import { AuthMode } from "@app/services/auth/auth-type";
 
 const AccessListEntrySchema = z.object({
   allowedActions: z.nativeEnum(ProjectPermissionSecretActions).array(),
@@ -74,91 +73,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         secretName,
         includeAllEntities
       });
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/:secretName/read-activity",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      operationId: "getSecretReadActivity",
-      description: "Get which users and machine identities have recently read a secret",
-      security: [
-        {
-          bearerAuth: []
-        }
-      ],
-      params: z.object({
-        secretName: BaseSecretNameSchema.max(500).describe(RAW_SECRETS.GET_READ_ACTIVITY.secretName)
-      }),
-      querystring: z.object({
-        projectId: z.string().trim().max(36).describe(RAW_SECRETS.GET_READ_ACTIVITY.projectId),
-        environment: z.string().trim().min(1).max(255).describe(RAW_SECRETS.GET_READ_ACTIVITY.environment),
-        secretPath: z
-          .string()
-          .trim()
-          .max(1024)
-          .default("/")
-          .transform(prefixWithSlash)
-          .transform(removeTrailingSlash)
-          .describe(RAW_SECRETS.GET_READ_ACTIVITY.secretPath)
-      }),
-      response: {
-        200: z.object({
-          readActivity: z.object({
-            trackedSince: z.date().describe(RAW_SECRETS.GET_READ_ACTIVITY.trackedSince),
-            judgedFrom: z.date().describe(RAW_SECRETS.GET_READ_ACTIVITY.judgedFrom),
-            reads: z
-              .object({
-                actorType: z
-                  .enum([ActorType.USER, ActorType.IDENTITY])
-                  .describe(RAW_SECRETS.GET_READ_ACTIVITY.actorType),
-                actorId: z.string().describe(RAW_SECRETS.GET_READ_ACTIVITY.actorId),
-                lastReadAt: z.date().describe(RAW_SECRETS.GET_READ_ACTIVITY.lastReadAt)
-              })
-              .array()
-              .describe(RAW_SECRETS.GET_READ_ACTIVITY.reads),
-            entitled: z
-              .object({
-                actorType: z
-                  .enum([ActorType.USER, ActorType.IDENTITY])
-                  .describe(RAW_SECRETS.GET_READ_ACTIVITY.actorType),
-                actorId: z.string().describe(RAW_SECRETS.GET_READ_ACTIVITY.actorId),
-                actorName: z.string().nullable().describe(RAW_SECRETS.GET_READ_ACTIVITY.readerName),
-                unread: z.boolean().describe(RAW_SECRETS.GET_READ_ACTIVITY.unread),
-                isAdmin: z.boolean().describe(RAW_SECRETS.GET_READ_ACTIVITY.isAdmin),
-                accessChangedAt: z.date().nullable().describe(RAW_SECRETS.GET_READ_ACTIVITY.accessChangedAt)
-              })
-              .array()
-              .describe(RAW_SECRETS.GET_READ_ACTIVITY.entitled),
-            entitledCount: z.number().int().describe(RAW_SECRETS.GET_READ_ACTIVITY.entitledCount),
-            unreadCount: z.number().int().describe(RAW_SECRETS.GET_READ_ACTIVITY.unreadCount),
-            ghostReaderCount: z.number().int().describe(RAW_SECRETS.GET_READ_ACTIVITY.ghostReaderCount),
-            ghostReaders: z
-              .object({
-                actorType: z
-                  .enum([ActorType.USER, ActorType.IDENTITY])
-                  .describe(RAW_SECRETS.GET_READ_ACTIVITY.actorType),
-                actorId: z.string().describe(RAW_SECRETS.GET_READ_ACTIVITY.actorId),
-                actorName: z.string().nullable().describe(RAW_SECRETS.GET_READ_ACTIVITY.ghostReaderName),
-                lastReadAt: z.date().describe(RAW_SECRETS.GET_READ_ACTIVITY.lastReadAt)
-              })
-              .array()
-              .describe(RAW_SECRETS.GET_READ_ACTIVITY.ghostReaders)
-          })
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
-    handler: async (req) => {
-      const readActivity = await server.services.secretReadActivity.getSecretReadActivity(
-        { ...req.query, secretName: req.params.secretName },
-        req.permission
-      );
-      return { readActivity };
     }
   });
 };
