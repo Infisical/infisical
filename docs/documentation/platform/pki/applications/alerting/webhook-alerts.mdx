@@ -92,7 +92,7 @@ To find out which kind of alert sent a request, read `data.alert.resourceType`:
 
 - `cert-manager.application`: an application alert, with the application's ID in `data.alert.resourceId`
 - `cert-manager`: a Certificate Management alert
-- `cert-manager.signer`: a signer certificate expiration alert, whose items list the signers in `resource.signerIds` and `resource.signerNames`
+- `cert-manager.signer`: a signer certificate expiration alert, whose items list the signers in `resource.signerIds` and `resource.signerNames` (only the selected signers, if the alert has a **Signers** filter)
 
 <Note>
   Alerts created before certificate alerts moved to applications keep sending the older `com.infisical.pki.certificate.*` event types with a `data.certificates` list. If one endpoint receives both, check the `type` field to tell them apart.
