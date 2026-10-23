@@ -12,7 +12,6 @@ import {
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import {
-  execOverSshClient,
   executeWithPotentialGateway,
   getSshConnectionClient,
   SshConnectionMethod,
@@ -21,12 +20,12 @@ import {
 import { generatePasswordWithConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-password-generator";
 
 import { generatePassword } from "../shared/utils";
+import { clearAixAdminChangeFlag, ensureAixPasswordFlagsWritable, isAixHost } from "./aix-password-flags";
 import {
   escapeForPattern,
   lineAt,
   MAX_BUFFER_SIZE,
   runExpectSession,
-  SHELL_TIMEOUT,
   TInteractiveShellStream
 } from "./pty-expect-engine";
 import { UnixLinuxLocalAccountRotationMethod } from "./unix-linux-local-account-rotation-schemas";
@@ -71,14 +70,9 @@ const MANAGED_PASSWORD_CHANGE_FAILED = new RE2(
 );
 const SELF_PASSWORD_CHANGE_FAILED = new RE2("\\berror\\b|\\bfail(?:ed|ure|s)?\\b|\\bunchanged\\b", "i");
 const SU_LOGIN_FAILED = new RE2("\\bauthentication\\s+failure\\b|\\bincorrect\\s+password\\b|\\bsu:", "i");
-const AIX_PASSWORD_FLAGS = new RE2("flags=([^\\r\\n]*)");
-const AIX_PASSWORD_FLAG_NAME = new RE2("^[A-Za-z0-9_]+$");
 
 const SUDO_PASSWORD_REQUIRED_MESSAGE =
   "sudo is requesting a password but the app connection uses SSH key authentication. Configure the app connection with password authentication, or configure NOPASSWD in sudoers for this user.";
-
-const AIX_SECURITY_PASSWD_FILE = "/etc/security/passwd";
-const AIX_ADMCHG_FLAG = "ADMCHG";
 
 const passwdOverflowMessage = (t: string) =>
   `Password change failed: the host sent more than ${MAX_BUFFER_SIZE / 1024} KB of output without a recognized prompt. Output: ${t}`;
@@ -245,122 +239,13 @@ export const runAdminCommand = (
   }).then(() => ({ output, exitCode }));
 };
 
-export const parseAixPasswordFlags = (lssecOutput: string): string[] | undefined => {
-  const match = AIX_PASSWORD_FLAGS.exec(lssecOutput);
-  if (!match) return undefined;
-
-  const flags = match[1]
-    .split(",")
-    .map((flag) => flag.trim())
-    .filter(Boolean);
-
-  // The flags are written back into a shell command, so anything but a plain flag name is rejected.
-  return flags.every((flag) => AIX_PASSWORD_FLAG_NAME.test(flag)) ? flags : undefined;
-};
-
-const isAixHost = async (client: Client): Promise<boolean> => {
-  try {
-    const { stdout, stderr, exitCode } = await execOverSshClient(client, "uname -s", SHELL_TIMEOUT);
-    if (exitCode !== 0) {
-      logger.warn(
-        `Unix/Linux Local Account Rotation: \`uname -s\` exited with code ${exitCode}, assuming a non-AIX host. Output: ${stderr.trim() || stdout.trim()}`
-      );
-      return false;
-    }
-    return stdout.trim() === "AIX";
-  } catch (error) {
-    logger.warn(error, "Unix/Linux Local Account Rotation: `uname -s` failed, assuming a non-AIX host");
-    return false;
-  }
-};
-
-type TAixFlagContext = {
-  client: Client;
-  targetUsername: string;
-  useSudo: boolean;
-  appConnectionPassword?: string;
-};
-
-const runAixSecurityCommand = async (
-  { client, useSudo, appConnectionPassword }: TAixFlagContext,
-  command: string
-): Promise<TAdminCommandResult> => {
-  const prefix = useSudo ? `LC_ALL=C ${SUDO}` : "LC_ALL=C";
-  return runAdminCommand(await execCommandWithPty(client, `${prefix} ${command}`), appConnectionPassword);
-};
-
-const readAixPasswordFlags = async (ctx: TAixFlagContext): Promise<{ flags?: string[]; output: string }> => {
-  const { output, exitCode } = await runAixSecurityCommand(
-    ctx,
-    `lssec -f ${AIX_SECURITY_PASSWD_FILE} -s ${ctx.targetUsername} -a flags`
-  );
-  return { flags: exitCode === 0 ? parseAixPasswordFlags(output) : undefined, output };
-};
-
-const writeAixPasswordFlags = async (
-  ctx: TAixFlagContext,
-  flags: string[]
-): Promise<{ succeeded: boolean; output: string }> => {
-  const { output, exitCode } = await runAixSecurityCommand(
-    ctx,
-    `chsec -f ${AIX_SECURITY_PASSWD_FILE} -s ${ctx.targetUsername} -a flags=${flags.join(",")}`
-  );
-  return { succeeded: exitCode === 0, output };
-};
-
-const aixSudoHint = (ctx: TAixFlagContext) =>
-  ctx.useSudo ? " If sudo is restricted, allow lssec and chsec in sudoers for the app connection user." : "";
-
-// Rewriting the flags unchanged proves lssec and chsec both work before the password changes. A
-// failure after passwd would leave a password nobody knows, since Infisical only stores it once
-// the rotation succeeds.
-const ensureAixPasswordFlagsWritable = async (ctx: TAixFlagContext): Promise<void> => {
-  const { flags, output: readOutput } = await readAixPasswordFlags(ctx);
-  if (!flags) {
-    throw new Error(
-      `Could not read the AIX password flags for user '${ctx.targetUsername}', so the password was not changed. Infisical must clear the ${AIX_ADMCHG_FLAG} flag that AIX sets on every password an administrator changes.${aixSudoHint(ctx)} Output: ${readOutput}`
+const createAdminCommandRunner =
+  (client: Client, useSudo: boolean, appConnectionPassword?: string) =>
+  async (command: string): Promise<TAdminCommandResult> =>
+    runAdminCommand(
+      await execCommandWithPty(client, `LC_ALL=C ${useSudo ? `${SUDO} ` : ""}${command}`),
+      appConnectionPassword
     );
-  }
-
-  const { succeeded, output: writeOutput } = await writeAixPasswordFlags(ctx, flags);
-  if (!succeeded) {
-    throw new Error(
-      `Could not update the AIX password flags for user '${ctx.targetUsername}', so the password was not changed. Infisical must clear the ${AIX_ADMCHG_FLAG} flag that AIX sets on every password an administrator changes.${aixSudoHint(ctx)} Output: ${writeOutput}`
-    );
-  }
-};
-
-// AIX adds ADMCHG to the account's flags whenever root or the security group sets its password,
-// forcing a password change at next login. Login-only verification cannot see the flag because
-// OpenSSH on AIX applies the forced change only once a session starts, so a non-interactive
-// `ssh host command` fails with "Password change required but no TTY available".
-const clearAixAdminChangeFlag = async (ctx: TAixFlagContext): Promise<void> => {
-  const fail = (detail: string) =>
-    new Error(
-      `Password was changed but clearing the AIX ${AIX_ADMCHG_FLAG} flag for user '${ctx.targetUsername}' failed, so the new password was not saved and the account will be forced to change its password at next login. Rotate the secret again to set a new password.${aixSudoHint(ctx)} ${detail}`
-    );
-
-  let flags: string[] | undefined;
-  let readOutput: string;
-  try {
-    ({ flags, output: readOutput } = await readAixPasswordFlags(ctx));
-  } catch (error) {
-    throw fail((error as Error).message);
-  }
-  if (!flags) throw fail(`Output: ${readOutput}`);
-  if (!flags.includes(AIX_ADMCHG_FLAG)) return;
-
-  let result: { succeeded: boolean; output: string };
-  try {
-    result = await writeAixPasswordFlags(
-      ctx,
-      flags.filter((flag) => flag !== AIX_ADMCHG_FLAG)
-    );
-  } catch (error) {
-    throw fail((error as Error).message);
-  }
-  if (!result.succeeded) throw fail(`Output: ${result.output}`);
-};
 
 export const runSelfPasswordChange = (
   stream: TInteractiveShellStream,
@@ -683,7 +568,11 @@ export const unixLinuxLocalAccountRotationFactory: TRotationFactory<
               ? (conn.credentials as { password: string }).password
               : undefined;
           const aixFlagContext = (await isAixHost(client))
-            ? { client, targetUsername: username, useSudo: shouldUseSudo, appConnectionPassword }
+            ? {
+                targetUsername: username,
+                useSudo: shouldUseSudo,
+                runCommand: createAdminCommandRunner(client, shouldUseSudo, appConnectionPassword)
+              }
             : undefined;
           if (aixFlagContext) await ensureAixPasswordFlagsWritable(aixFlagContext);
 

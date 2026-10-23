@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
+import { parseAixPasswordFlags } from "./aix-password-flags";
 import {
-  parseAixPasswordFlags,
   runAdminCommand,
   runManagedPasswordChange,
   runSelfPasswordChange,
