@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { PackageIcon } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { PackageIcon, TriangleAlertIcon } from "lucide-react";
 import ms from "ms";
 
+import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
+import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
   Button,
   Combobox,
   Dialog,
@@ -24,14 +30,17 @@ import {
   SelectTrigger,
   SelectValue
 } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { useDebounce } from "@app/hooks";
 import {
   useCreateAgentVaultSession,
+  useGetAgentVaultAccessBundle,
   useListAgentVaultAccessBundles
 } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultAccessBundleListItem,
-  TAgentVaultMintedSession
+  TAgentVaultMintedSession,
+  TAgentVaultService
 } from "@app/hooks/api/agentVault/types";
 
 const NEVER_TTL = "never";
@@ -72,6 +81,7 @@ type Props = {
 };
 
 export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) => {
+  const { currentOrg } = useOrganization();
   const [bundleSearch, setBundleSearch] = useState("");
   const [debouncedBundleSearch] = useDebounce(bundleSearch);
   const { data: accessBundles, isFetching: isSearchingBundles } = useListAgentVaultAccessBundles({
@@ -85,6 +95,17 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
   const [selectedBundle, setSelectedBundle] = useState<TAgentVaultAccessBundleListItem | null>(
     null
   );
+  const { data: selectedBundleDetails } = useGetAgentVaultAccessBundle(selectedBundle?.id ?? "");
+  const needsSetup =
+    selectedBundle && selectedBundleDetails?.id === selectedBundle.id
+      ? selectedBundleDetails.services.filter(
+          (service) => service.personalValues && !service.personalValues.isConfigured
+        )
+      : [];
+  // Past four, three are listed and the rest link to the bundle, whose table lists every one.
+  const shownNeedsSetup = needsSetup.length > 4 ? needsSetup.slice(0, 3) : needsSetup;
+  const hiddenNeedsSetupCount = needsSetup.length - shownNeedsSetup.length;
+  const [serviceToSetUp, setServiceToSetUp] = useState<TAgentVaultService | null>(null);
   const [ttlPreset, setTtlPreset] = useState(DEFAULT_TTL_PRESET);
   const [customTtl, setCustomTtl] = useState("");
   const customTtlInputRef = useRef<HTMLInputElement>(null);
@@ -215,6 +236,54 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
               )}
             </FieldContent>
           </Field>
+
+          {/* A warning, not a block: the session works for every other service, and picks up values
+              set up later on the proxy's next poll. */}
+          {needsSetup.length > 0 && selectedBundle && (
+            <Alert variant="warning">
+              <TriangleAlertIcon />
+              <AlertTitle>
+                {needsSetup.length === 1
+                  ? "1 service requires your personal values"
+                  : `${needsSetup.length} services require your personal values`}
+              </AlertTitle>
+              <AlertDescription>
+                <p>
+                  {needsSetup.length === 1
+                    ? "Until you set it up, this session can't reach it."
+                    : "Until you set them up, this session can't reach them."}
+                </p>
+                <ul className="mt-2 w-full divide-y divide-warning/15 rounded-md border border-warning/20">
+                  {shownNeedsSetup.map((service) => (
+                    <li key={service.id} className="flex items-center gap-2 px-2.5 py-1.5">
+                      <ServiceIcon hostPattern={service.hostPattern} />
+                      <span className="min-w-0 flex-1 truncate text-sm text-foreground">
+                        {service.name}
+                      </span>
+                      <Button
+                        variant="warning"
+                        size="xs"
+                        onClick={() => setServiceToSetUp(service)}
+                      >
+                        Set Up
+                      </Button>
+                    </li>
+                  ))}
+                  {hiddenNeedsSetupCount > 0 && (
+                    <li className="px-2.5 py-1.5 text-xs">
+                      <Link
+                        to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
+                        params={{ orgId: currentOrg.id, accessBundleId: selectedBundle.id }}
+                        className="underline underline-offset-2 hover:text-foreground"
+                      >
+                        {hiddenNeedsSetupCount} more in {selectedBundle.name}
+                      </Link>
+                    </li>
+                  )}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
 
         <DialogFooter>
@@ -230,6 +299,17 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
             Create Session
           </Button>
         </DialogFooter>
+
+        <PersonalValuesDialog
+          target={
+            serviceToSetUp && selectedBundle
+              ? { service: serviceToSetUp, accessBundleName: selectedBundle.name }
+              : null
+          }
+          onOpenChange={(open) => {
+            if (!open) setServiceToSetUp(null);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

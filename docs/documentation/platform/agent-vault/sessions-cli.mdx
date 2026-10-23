@@ -179,6 +179,9 @@ After the agent runs, go to **Sessions** in Agent Vault and select **All Session
   <Accordion title="The agent loses access to APIs partway through a run">
     If the agent's requests start failing with a 403 from the proxy, such as `CONNECT tunnel failed, response 403`, the session expired before the agent finished. Set a longer `--ttl`.
   </Accordion>
+  <Accordion title="Requests to a service fail with &quot;needs your personal values&quot;">
+    The service [takes part of its credential from each member](/documentation/platform/agent-vault/services#member-provided-values), and whoever the session belongs to hasn't set up their personal values for it yet. A user sets them up under **Access Bundles**: select the bundle named in the message, then [set up the personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values). A machine identity sets them up with [the set personal values endpoint](/api-reference/endpoints/agent-vault-services/set-personal-values). Once they're saved, the proxy picks them up within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
+  </Accordion>
   <Accordion title="A session stays Active after the agent stopped">
     The CLI couldn't revoke the session, for example because the machine shut down or the process was killed with `SIGKILL`. [Revoke the session](/documentation/platform/agent-vault/sessions#revoke-a-session) on the **Sessions** page, or let it expire at the end of its `--ttl`.
   </Accordion>

@@ -43,6 +43,17 @@ tables:
       - createdAt
       - updatedAt
 
+  - name: agent_vault_personal_values
+    source: public.agent_vault_personal_values
+    columns:
+      - id
+      - serviceId
+      - field
+      - userId
+      - identityId
+      - createdAt
+      - updatedAt
+
   - name: agent_vault_proxies
     source: public.agent_vault_proxies
     columns:
@@ -78,6 +89,7 @@ tables:
       - credentialType
       - allowedMethods
       - allowedPathPrefixes
+      - memberProvidedFields
       - createdAt
       - updatedAt
 
@@ -117,6 +129,8 @@ tables:
     columns:
       - id
       - projectId
+      - userId
+      - identityId
       - accessBundleId
       - createdAt
       - updatedAt

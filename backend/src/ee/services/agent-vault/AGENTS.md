@@ -18,8 +18,9 @@ never in anything the agent holds.
 ```
 agent-vault/                 shared: enums, host grammar, conflict detection, reachability
 agent-vault-access-bundle/   bundles, services, credential encryption, grants
-agent-vault-variable/        product-wide variables and the reads behind Used By
+agent-vault-variable/        global and personal variables and the reads behind Used By
 agent-vault-member/          product membership (list, add, role, remove)
+agent-vault-personal-value/  each actor's own values for the fields a service leaves to members
 agent-vault-session/         mint, revoke, list, get
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
 agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve
@@ -54,10 +55,14 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   `scopeResourceId = <bundle id>`) with one `membership_roles` row, slug `consumer`. The slug is a label;
   bundle access is decided in SQL, not CASL. Because it is the platform's table, the platform reaps grants
   on project removal, org removal, SCIM and every FK cascade. Do not add an Agent Vault reaper.
-- `scopeResourceId` has no FK, so `deleteAccessBundle` deletes the bundle row first and then the grants in one
-  transaction, and `addMembers` locks the bundle row (`lockByIdInProject`) before inserting. Keep that order.
-- Granting is batch: one POST carries `{ userIds, machineIdentityIds, groupIds }`. That lock is what makes
-  the dedupe read inside it authoritative, so an actor who already holds the bundle is returned in
+- `scopeResourceId` has no FK, so `deleteAccessBundle` deletes the grants itself, in the bundle delete's transaction,
+  and `addMembers` locks the bundle row (`lockByIdInProject`) before inserting. Every path takes these rows in one
+  order, bundle, services, grants, values, and a new one must too: the delete locks the bundle row and then its
+  services before deleting the grants and then the bundle, whose cascade takes the services and their values. A
+  personal values save takes its service and then the caller's grant, and a removal deletes grants before values,
+  so a delete that reached the grants before the services would deadlock with a save.
+- Granting is batch: one POST carries `{ userIds, machineIdentityIds, groupIds }`. The bundle row lock is what
+  makes the dedupe read inside it authoritative, so an actor who already holds the bundle is returned in
   `skipped` rather than erroring; the unique index is only the backstop.
 - Member responses, for bundles and for the product, are the actor itself, flat (`type`, the actor's `id`,
   its profile) plus what the membership adds (`role`, `addedAt`, `grantedAt`). There is no membership id:
@@ -178,10 +183,10 @@ header" is the name in every layer; unqualified "header" means the credential's 
 
 ## Variables
 
-A variable is a key and a sealed value on the Agent Vault project, so every bundle's services share one set and keys
-are unique per project. A service uses one as `{{KEY}}` in its token, username, password, a custom header value or a
-substitution value. Nothing else takes one: a host pattern, method or
-path decides what a service can reach, so it stays literal.
+A global variable is a key and a sealed value on the Agent Vault project, so every bundle's services share one set
+and global keys are unique per project (personal variables are covered under Member-provided values). A service uses
+one as `{{KEY}}` in its token, username, password, a custom header value or a substitution value. Nothing else takes
+one: a host pattern, method or path decides what a service can reach, so it stays literal.
 
 - **Sealed text names a variable by id, `{{<uuid>}}`, never by key.** The key form exists only at the API
   boundary: a service write maps keys to ids before it seals (`toStoredVariableReferences`), reading the
@@ -198,7 +203,7 @@ path decides what a service can reach, so it stays literal.
   session project's variables.
 - **A variable delete and a service save meet on the variable row**: the delete locks it `FOR UPDATE`, a save
   locks what it references `FOR SHARE` (`insertReferenceRows`). Create serialises on a per-project advisory lock;
-  the `(projectId, key)` unique index is the backstop.
+  the global-key partial unique index is the backstop.
 - A stored value never comes back in any form, a lone `{{KEY}}` included. The sheet lists the keys a stored
   field uses under the field and keeps the field masked until it is retyped. Settled: putting a lone
   reference back in its field made it the one stored field that shows, and left a field mixing text with a
@@ -237,10 +242,82 @@ path decides what a service can reach, so it stays literal.
   query can land on a different replica. An id with no variable behind it on either stays as text and is
   logged rather than dropping the service, which would also drop the service's method and path restrictions.
   Values saved before variables existed hold no id tokens, so they pass through untouched.
-- Admin only, reads included: every `/agent-vault/variables` route checks `Edit` on access bundles, which a member lacks,
+- Global variables are admin only, reads included: the service checks `Edit` on access bundles, which a member lacks,
   and the bundle read gives a member its services without `variableReferences` (left out, not empty, since
   an empty list would claim they use none). Every value is sealed and no response but the value route returns
   one. That route is a GET with no-store headers and one audit event per read.
+
+## Member-provided values
+
+An admin can leave a credential field to each member: the bearer token, or either half of a basic credential
+(`memberProvidedFields` on the service, named like variable references: `credential-value` is a token or a password,
+`credential-username` a username). Custom header and substitution values can't be member-provided yet. The personal
+value tables already carry the reference tables' target columns, but adding them still needs the service's check
+constraint and the API's field enum widened. Each actor saves their own **personal values** for the service, one row
+per field, and a session uses the values of whoever it belongs to. Every actor, admins included, also keeps
+**personal variables**, rows of `agent_vault_variables` with an owner, that only their own personal values can
+reference.
+
+- **`memberProvidedFields` is NULL, never `{}`, for a credential the admin sets in full**, like `allowedMethods`. The
+  service's sealed secret holds only the admin's fields, so a bearer token left to members stores no secret at all
+  and `encryptedCredential` is NULL. Code that reads `encryptedCredential` NULL as passthrough has to check
+  `memberProvidedFields` first.
+- **One variables resource, two scopes.** `scope` on `/agent-vault/variables` (`global` or `personal`) picks the list
+  and is required for a new one; a list without it returns everything the caller can see (their own, plus the global
+  ones for an admin), and the service sheet's picker asks for `global` explicitly. Every variable read and lock by
+  key or for a list takes an owner (`null` for global), so a global lookup never matches a personal key, and resolve
+  expands each kind only against its own. The by-id reads and locks take any owner, and the service checks it. By id,
+  a variable the caller may not act on is a 404, never a 403: someone else's personal one, and a global one for a
+  member. Global keys are unique per project (500 cap), personal ones per owner (100 cap), each enforced by a partial
+  unique index plus an advisory lock per project or per owner.
+- **Everything personal is scoped to the caller, never to an id the caller sends.** No route names another actor,
+  so an admin can't list, read or set anyone else's variables or values. The owner is a user or a machine identity
+  (`ownerOf`); the UI only covers users for now, but resolve and the API already work for an identity's own
+  sessions.
+- **Resolve fills member fields last**: the admin's fields are expanded against global variables first, then each
+  personal value against the session actor's personal variables only, so neither is ever expanded twice and a
+  personal `{{KEY}}` can't reach a global variable. A service whose actor hasn't set every member-provided field goes
+  out with `personalValuesMissing: true` and a passthrough credential. The proxy refuses it with a 403 from current
+  CLIs; an older proxy that ignores the flag forwards it with the service's custom headers and substitutions but no
+  credential, never the admin's.
+- **A save is a PATCH**: a field sent replaces that field's saved value, a field left out keeps it, and every
+  member-provided field must be set once it's applied. The save takes the service row `FOR SHARE` and re-checks
+  the fields it validated against, so an admin changing them either waits for it or makes it 409. It also takes
+  whatever grants the caller's reach `FOR SHARE`: their grants on the bundle, or for an admin without one, their
+  admin role rows. A revoke, removal or demotion then either waits for the save and clears it, or lands first and
+  the save 404s.
+- **A service update deletes only the values that no longer apply**, in the same transaction that writes the
+  service row: a credential type change deletes every member's values for the service, and taking a field back
+  from members deletes that field's. Adding a member-provided field keeps what members saved, and they add only
+  the new one.
+- **Losing a bundle through Agent Vault clears what an actor saved for its services**
+  (`clearPersonalValuesAfterRevoke`). It runs on a bundle revoke, on removal from Agent Vault, and on a demotion from
+  admin, for the actors named and the members of a named group, after that change is written. It takes the project's
+  `ClearAgentVaultPersonalValues` advisory lock last, after those writes, so of two changes that each leave the
+  other's access in place (a demotion and the revoke of the last grant) the second checks against the first once
+  committed. It skips anyone who still holds the bundle through another grant, and anyone who is still a project
+  admin, since an admin reaches every bundle. Platform paths don't run it: group removal, a lapsed role, org or SCIM
+  removal, and the generic project membership routes (role change, deactivate, remove from project, leave, and their
+  identity and group forms, which also reach the Agent Vault project), so values can outlive the grant there and
+  return with a later one. They are only ever the same actor's, and resolve still checks reach. Deleting a personal
+  variable also clears the owner's values on bundles they no longer reach, which otherwise would hold the variable in
+  place with nothing able to edit them. Personal variables survive all of this, and their Used By lists only the
+  bundles the owner still reaches.
+- Personal variables follow the global variables' reference rules: sealed text names them by id, a reference row
+  per personal value (`agent_vault_personal_value_references`, a deferred foreign key), the delete takes the variable
+  row `FOR UPDATE` and a personal values save takes the rows it references `FOR SHARE`. The save takes them before
+  its own value rows, because a delete on a bundle the owner no longer reaches goes on to delete values, so the
+  other order deadlocks. Used By on a variable reads both reference tables; any one variable only ever appears in
+  one of them.
+- **The API calls them personal values**, the UI's word: a sub-resource of the service
+  (`PATCH`/`DELETE .../services/:serviceId/personal-values`), always the caller's own, with no collection route.
+  Reads ride along: the bundle read puts the caller's status on each service (`personalValues`, null when nothing
+  is member-provided), and the bundle list gives `servicesRequiringSetup` (`{ id, name }`) per bundle plus a
+  `requiresSetup` filter for the sidebar and banners (`false` is the rest of what the caller reaches). Both count
+  every bundle the caller reaches, because an admin can start a session on one they were never granted. A
+  `granted` filter keeps only the bundles granted to the caller (`false`, only the ones an admin reaches by role).
+  The sidebar asks for `requiresSetup=true&granted=true` and reads the count, so an admin isn't nagged in the nav
+  about bundles they reach only by role, while the page's banner and badges still show them.
 
 ## Credentials at rest
 

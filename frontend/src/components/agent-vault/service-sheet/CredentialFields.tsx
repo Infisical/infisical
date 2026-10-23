@@ -1,16 +1,29 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Controller, ControllerRenderProps, useFormContext } from "react-hook-form";
-import { EyeIcon, EyeOffIcon, XIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  ExternalLinkIcon,
+  EyeIcon,
+  EyeOffIcon,
+  InfoIcon,
+  LockIcon,
+  XIcon
+} from "lucide-react";
 
 import {
   Alert,
   AlertDescription,
   AlertTitle,
+  ButtonGroup,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  IconButton,
   Input,
   InputGroup,
   InputGroupAddon,
@@ -20,15 +33,26 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Toggle
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
 import { isVariableReferenceOnly } from "@app/helpers/agentVaultVariables";
-import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
+import {
+  AgentVaultCredentialType,
+  AgentVaultVariableReferenceField,
+  TAgentVaultMemberProvidedField
+} from "@app/hooks/api/agentVault";
+import { AgentVaultDocsUrls } from "@app/pages/agent-vault/agent-vault-docs-urls";
 
 import { ReferenceHighlights } from "./ReferenceHighlights";
 import { SendsPreview } from "./SendsPreview";
-import { CREDENTIAL_LABELS, TServiceForm, UNCHANGED_SECRET } from "./serviceSchema";
+import {
+  CREDENTIAL_LABELS,
+  FORM_FIELD_OF_CREDENTIAL_FIELD,
+  TServiceForm,
+  UNCHANGED_SECRET
+} from "./serviceSchema";
 import { useServiceVariables } from "./ServiceVariablesContext";
 import { VariableKeyChips } from "./VariableChips";
 import { useVariableAutocomplete, VariableSuggestions } from "./VariableSuggestions";
@@ -51,7 +75,8 @@ export const SecretInput = <TName extends SecretName>({
   isUntouched,
   hasStoredSecret,
   canBeCleared,
-  storedKeys
+  storedKeys,
+  canInsertVariable
 }: {
   field: ControllerRenderProps<TServiceForm, TName>;
   label: string;
@@ -67,6 +92,8 @@ export const SecretInput = <TName extends SecretName>({
   canBeCleared: boolean;
   /** The keys of the variables the stored value uses, listed under the field while that value is kept. */
   storedKeys?: string[];
+  /** Joins a chevron button to the input that opens the variable list, for readers who would not know to type {{. */
+  canInsertVariable?: boolean;
 }) => {
   const { setFocus } = useFormContext<TServiceForm>();
   const [isVisible, setIsVisible] = useState(false);
@@ -122,98 +149,111 @@ export const SecretInput = <TName extends SecretName>({
     syncOverlay();
   });
 
+  const showVariables = () => {
+    inputRef.current?.focus();
+    autocomplete.openPicker();
+  };
+
   const lowerLabel = label.toLowerCase();
   const isClearable = canBeCleared && hasStoredSecret;
 
   return (
     <>
       <VariableSuggestions autocomplete={autocomplete}>
-        <InputGroup>
-          <div className="relative flex min-w-0 flex-1 items-center self-stretch">
-            {isHighlighted && <ReferenceHighlights value={value} overlayRef={overlayRef} />}
-            <InputGroupInput
-              {...field}
-              ref={(element) => {
-                field.ref(element);
-                inputRef.current = element;
-              }}
-              aria-label={ariaLabel}
-              aria-describedby={hasStoredKeys && isStoredValueKept ? descriptionId : undefined}
-              role="combobox"
-              aria-autocomplete="list"
-              aria-expanded={autocomplete.isOpen}
-              aria-controls={autocomplete.isOpen ? autocomplete.listId : undefined}
-              aria-activedescendant={autocomplete.activeOptionId}
-              // Not type="password": that opens the browser's and password managers' autofill menus over
-              // the variable list, so the field is masked in CSS and each manager is told to skip it.
-              className={cn(
-                !isShown && "[-webkit-text-security:disc]",
-                isHighlighted && "text-transparent caret-foreground"
-              )}
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              data-form-type="other"
-              data-1p-ignore
-              data-lpignore="true"
-              data-bwignore
-              onChange={(event) => {
-                setIsCleared(false);
-                // An emptied field masks again, since what is typed next may be a real secret.
-                if (!event.target.value) setIsVisible(false);
-                field.onChange(event);
-                autocomplete.refresh();
-              }}
-              onKeyDown={autocomplete.onKeyDown}
-              onKeyUp={(event) => {
-                if (!SUGGESTION_KEYS.has(event.key)) autocomplete.refresh();
-              }}
-              onClick={autocomplete.refresh}
-              onSelect={syncOverlay}
-              onScroll={syncOverlay}
-              onFocus={() => {
-                if (isUntouched) field.onChange("");
-              }}
-              // Empty reads the same whether the secret was meant to go or the field was only clicked into,
-              // so the clear button is made the one way to say it and passing through loses nothing.
-              onBlur={() => {
-                autocomplete.close();
-                if (hasStoredSecret && !field.value && !isCleared) field.onChange(UNCHANGED_SECRET);
-                field.onBlur();
-              }}
-              placeholder={placeholder}
-              isError={isError}
-            />
-          </div>
-          {(isClearable || !isUntouched) && (
-            <InputGroupAddon align="inline-end">
-              {isClearable && (
-                <InputGroupButton
-                  isDisabled={isCleared}
-                  aria-label={`Clear ${lowerLabel}`}
-                  onClick={() => {
-                    setIsCleared(true);
-                    field.onChange("");
-                    setFocus(field.name);
-                  }}
-                >
-                  <XIcon />
-                </InputGroupButton>
-              )}
-              {/* A stored credential is never returned, so until it is replaced there is nothing to reveal. */}
-              {!isUntouched && (
-                <InputGroupButton
-                  isDisabled={!field.value || isReferenceOnly}
-                  aria-label={`${isVisible ? "Hide" : "Show"} ${lowerLabel}`}
-                  onClick={() => setIsVisible((prev) => !prev)}
-                >
-                  {isVisible ? <EyeOffIcon /> : <EyeIcon />}
-                </InputGroupButton>
-              )}
-            </InputGroupAddon>
+        <ButtonGroup className="w-full">
+          <InputGroup className="flex-1">
+            <div className="relative flex min-w-0 flex-1 items-center self-stretch">
+              {isHighlighted && <ReferenceHighlights value={value} overlayRef={overlayRef} />}
+              <InputGroupInput
+                {...field}
+                ref={(element) => {
+                  field.ref(element);
+                  inputRef.current = element;
+                }}
+                aria-label={ariaLabel}
+                aria-describedby={hasStoredKeys && isStoredValueKept ? descriptionId : undefined}
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={autocomplete.isOpen}
+                aria-controls={autocomplete.isOpen ? autocomplete.listId : undefined}
+                aria-activedescendant={autocomplete.activeOptionId}
+                // Not type="password": that opens the browser's and password managers' autofill menus over
+                // the variable list, so the field is masked in CSS and each manager is told to skip it.
+                className={cn(
+                  !isShown && "[-webkit-text-security:disc]",
+                  isHighlighted && "text-transparent caret-foreground"
+                )}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                data-form-type="other"
+                data-1p-ignore
+                data-lpignore="true"
+                data-bwignore
+                onChange={(event) => {
+                  setIsCleared(false);
+                  // An emptied field masks again, since what is typed next may be a real secret.
+                  if (!event.target.value) setIsVisible(false);
+                  field.onChange(event);
+                  autocomplete.refresh();
+                }}
+                onKeyDown={autocomplete.onKeyDown}
+                onKeyUp={(event) => {
+                  if (!SUGGESTION_KEYS.has(event.key)) autocomplete.refresh();
+                }}
+                onClick={autocomplete.refresh}
+                onSelect={syncOverlay}
+                onScroll={syncOverlay}
+                onFocus={() => {
+                  if (isUntouched) field.onChange("");
+                }}
+                // Empty reads the same whether the secret was meant to go or the field was only clicked into,
+                // so the clear button is made the one way to say it and passing through loses nothing.
+                onBlur={() => {
+                  autocomplete.close();
+                  if (hasStoredSecret && !field.value && !isCleared)
+                    field.onChange(UNCHANGED_SECRET);
+                  field.onBlur();
+                }}
+                placeholder={placeholder}
+                isError={isError}
+              />
+            </div>
+            {(isClearable || !isUntouched) && (
+              <InputGroupAddon align="inline-end">
+                {isClearable && (
+                  <InputGroupButton
+                    isDisabled={isCleared}
+                    aria-label={`Clear ${lowerLabel}`}
+                    onClick={() => {
+                      setIsCleared(true);
+                      field.onChange("");
+                      setFocus(field.name);
+                    }}
+                  >
+                    <XIcon />
+                  </InputGroupButton>
+                )}
+                {/* A stored credential is never returned, so until it is replaced there is nothing to reveal. */}
+                {!isUntouched && (
+                  <InputGroupButton
+                    isDisabled={!field.value || isReferenceOnly}
+                    aria-label={`${isVisible ? "Hide" : "Show"} ${lowerLabel}`}
+                    onClick={() => setIsVisible((prev) => !prev)}
+                  >
+                    {isVisible ? <EyeOffIcon /> : <EyeIcon />}
+                  </InputGroupButton>
+                )}
+              </InputGroupAddon>
+            )}
+          </InputGroup>
+          {canInsertVariable && (
+            <IconButton variant="outline" aria-label="Show variables" onClick={showVariables}>
+              <ChevronDownIcon />
+            </IconButton>
           )}
-        </InputGroup>
+        </ButtonGroup>
       </VariableSuggestions>
       {hasStoredKeys && (
         <FieldDescription
@@ -229,22 +269,111 @@ export const SecretInput = <TName extends SecretName>({
   );
 };
 
-type Props = {
-  storedType?: AgentVaultCredentialType;
+const MEMBER_FIELDS_OF_TYPE: Record<AgentVaultCredentialType, TAgentVaultMemberProvidedField[]> = {
+  [AgentVaultCredentialType.Bearer]: [AgentVaultVariableReferenceField.CredentialValue],
+  [AgentVaultCredentialType.Basic]: [
+    AgentVaultVariableReferenceField.CredentialUsername,
+    AgentVaultVariableReferenceField.CredentialValue
+  ],
+  [AgentVaultCredentialType.Passthrough]: []
 };
 
-export const CredentialFields = ({ storedType }: Props) => {
-  const { control, watch, setValue } = useFormContext<TServiceForm>();
+const MemberProvidedToggle = ({
+  label,
+  isOn,
+  onChange
+}: {
+  label: string;
+  isOn: boolean;
+  onChange: (isOn: boolean) => void;
+}) => {
+  const id = useId();
+  return (
+    <div className="flex items-center gap-1.5">
+      <HoverCard openDelay={150} closeDelay={150}>
+        <HoverCardTrigger asChild>
+          <InfoIcon
+            aria-label={`About member-provided ${label.toLowerCase()}s`}
+            className="size-3.5 text-muted"
+          />
+        </HoverCardTrigger>
+        <HoverCardContent className="w-80">
+          <p>Choose who sets the {label.toLowerCase()} the proxy sends for this service.</p>
+          <ul className="mt-2 flex list-disc flex-col gap-1 pl-4">
+            <li>Off: you set the {label.toLowerCase()} here, and every session uses it.</li>
+            <li>
+              On: each member sets their own from the access bundle page, and a session uses the{" "}
+              {label.toLowerCase()} of whoever started it.
+            </li>
+          </ul>
+          <a
+            href={AgentVaultDocsUrls.memberProvidedValues}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-flex items-center gap-1 underline underline-offset-2 hover:text-foreground"
+          >
+            Learn more
+            <ExternalLinkIcon className="size-3" />
+          </a>
+        </HoverCardContent>
+      </HoverCard>
+      <FieldLabel htmlFor={id}>Member provided</FieldLabel>
+      <Toggle id={id} size="sm" variant="av" checked={isOn} onCheckedChange={onChange} />
+    </div>
+  );
+};
+
+const MemberProvidedInput = ({ label }: { label: string }) => (
+  <InputGroup>
+    <InputGroupAddon>
+      <LockIcon />
+    </InputGroupAddon>
+    <InputGroupInput
+      disabled
+      aria-label={`${label}, set by each member`}
+      placeholder="Member provided"
+    />
+  </InputGroup>
+);
+
+type Props = {
+  storedType?: AgentVaultCredentialType;
+  /** The fields that were member-provided when the sheet opened, which have no stored value behind them. */
+  storedMemberFields?: TAgentVaultMemberProvidedField[];
+};
+
+export const CredentialFields = ({ storedType, storedMemberFields = [] }: Props) => {
+  const { control, watch, setValue, clearErrors } = useFormContext<TServiceForm>();
   const { storedKeys } = useServiceVariables();
   const credentialType = watch("credentialType");
   const secret = watch("secret");
   const username = watch("username");
+  const memberProvidedFields = watch("memberProvidedFields");
 
   const isBasic = credentialType === AgentVaultCredentialType.Basic;
   const isUntouched = secret === UNCHANGED_SECRET;
   const isUsernameUntouched = username === UNCHANGED_SECRET;
   // A stored secret belongs to the type it was saved under, so switching type leaves nothing behind it.
   const hasStoredSecret = Boolean(storedType) && credentialType === storedType;
+  // Nor is anything stored for a field each member used to set.
+  const hasStoredValue = (field: TAgentVaultMemberProvidedField) =>
+    hasStoredSecret && !storedMemberFields.includes(field);
+  const isMemberProvided = (field: TAgentVaultMemberProvidedField) =>
+    memberProvidedFields.includes(field);
+  // A bearer token and a basic password are both credential-value.
+  const secretCredentialField = AgentVaultVariableReferenceField.CredentialValue;
+
+  // Saving deletes what members set: all of it on a type change, or one field's when it's taken back.
+  const isDeletingAllMemberValues =
+    Boolean(storedType) && storedMemberFields.length > 0 && credentialType !== storedType;
+  const memberValuesNote = (field: TAgentVaultMemberProvidedField, label: string) =>
+    storedType === credentialType &&
+    storedMemberFields.includes(field) &&
+    !isMemberProvided(field) && (
+      <FieldDescription>
+        Members&apos; saved {label.toLowerCase()}s are deleted when you save.
+      </FieldDescription>
+    );
 
   useEffect(() => {
     if (!storedType || credentialType === storedType) return;
@@ -252,26 +381,84 @@ export const CredentialFields = ({ storedType }: Props) => {
     if (isUsernameUntouched) setValue("username", "");
   }, [isUntouched, isUsernameUntouched, credentialType, storedType, setValue]);
 
+  // Which fields a member can set depends on the type, so a switch drops the ones the new type lacks.
+  useEffect(() => {
+    const valid = memberProvidedFields.filter((field) =>
+      MEMBER_FIELDS_OF_TYPE[credentialType].includes(field)
+    );
+    if (valid.length !== memberProvidedFields.length) setValue("memberProvidedFields", valid);
+  }, [credentialType, memberProvidedFields, setValue]);
+
+  // Switching away and back to the stored type changes nothing, so the stored values and toggles come back as they
+  // were rather than staying cleared by the switch.
+  const previousType = useRef(credentialType);
+  useEffect(() => {
+    const wasType = previousType.current;
+    previousType.current = credentialType;
+    if (!storedType || wasType === credentialType || credentialType !== storedType) return;
+    setValue("memberProvidedFields", storedMemberFields);
+    if (!storedMemberFields.includes(secretCredentialField)) setValue("secret", UNCHANGED_SECRET);
+    if (
+      credentialType === AgentVaultCredentialType.Basic &&
+      !storedMemberFields.includes(AgentVaultVariableReferenceField.CredentialUsername)
+    ) {
+      setValue("username", UNCHANGED_SECRET);
+    }
+  }, [credentialType, storedType, storedMemberFields, secretCredentialField, setValue]);
+
+  // Handing a field to members drops what was typed for it. Taking it back restores what is stored, if anything.
+  const setMemberProvided = (field: TAgentVaultMemberProvidedField, isOn: boolean) => {
+    const formField = FORM_FIELD_OF_CREDENTIAL_FIELD[field];
+    setValue(
+      "memberProvidedFields",
+      isOn
+        ? [...memberProvidedFields, field]
+        : memberProvidedFields.filter((existing) => existing !== field),
+      { shouldDirty: true }
+    );
+    setValue(formField, !isOn && hasStoredValue(field) ? UNCHANGED_SECRET : "", {
+      shouldDirty: true
+    });
+    clearErrors([formField, "username"]);
+  };
+
+  const fieldLabel = (label: string, field: TAgentVaultMemberProvidedField) => (
+    <div className="flex items-center justify-between gap-2">
+      <FieldLabel>{label}</FieldLabel>
+      <MemberProvidedToggle
+        label={label}
+        isOn={isMemberProvided(field)}
+        onChange={(isOn) => setMemberProvided(field, isOn)}
+      />
+    </div>
+  );
+
+  const secretLabel = isBasic ? "Password" : "Token";
   const secretField = (
     <Controller
       control={control}
       name="secret"
       render={({ field, fieldState }) => (
         <Field className="flex-1">
-          <FieldLabel>{isBasic ? "Password" : "Token"}</FieldLabel>
+          {fieldLabel(secretLabel, secretCredentialField)}
           <FieldContent>
-            <SecretInput
-              field={field}
-              label={isBasic ? "Password" : "Token"}
-              placeholder={
-                isBasic ? "Enter the password, or type {{" : "Enter the token, or type {{"
-              }
-              isError={Boolean(fieldState.error)}
-              isUntouched={isUntouched}
-              hasStoredSecret={hasStoredSecret}
-              canBeCleared={isBasic}
-              storedKeys={hasStoredSecret ? storedKeys.secret : undefined}
-            />
+            {isMemberProvided(secretCredentialField) ? (
+              <MemberProvidedInput label={secretLabel} />
+            ) : (
+              <SecretInput
+                field={field}
+                label={secretLabel}
+                placeholder={
+                  isBasic ? "Enter the password, or type {{" : "Enter the token, or type {{"
+                }
+                isError={Boolean(fieldState.error)}
+                isUntouched={isUntouched}
+                hasStoredSecret={hasStoredValue(secretCredentialField)}
+                canBeCleared={isBasic}
+                storedKeys={hasStoredValue(secretCredentialField) ? storedKeys.secret : undefined}
+              />
+            )}
+            {memberValuesNote(secretCredentialField, secretLabel)}
             <FieldError>{fieldState.error?.message}</FieldError>
           </FieldContent>
         </Field>
@@ -300,6 +487,11 @@ export const CredentialFields = ({ storedType }: Props) => {
                   ))}
                 </SelectContent>
               </Select>
+              {isDeletingAllMemberValues && (
+                <FieldDescription>
+                  Members&apos; saved values for this service are deleted when you save.
+                </FieldDescription>
+              )}
             </FieldContent>
           </Field>
         )}
@@ -348,18 +540,32 @@ export const CredentialFields = ({ storedType }: Props) => {
             name="username"
             render={({ field, fieldState }) => (
               <Field className="flex-1">
-                <FieldLabel>Username</FieldLabel>
+                {fieldLabel("Username", AgentVaultVariableReferenceField.CredentialUsername)}
                 <FieldContent>
-                  <SecretInput
-                    field={field}
-                    label="Username"
-                    placeholder="Enter the username, or type {{"
-                    isError={Boolean(fieldState.error)}
-                    isUntouched={isUsernameUntouched}
-                    hasStoredSecret={hasStoredSecret}
-                    canBeCleared
-                    storedKeys={hasStoredSecret ? storedKeys.username : undefined}
-                  />
+                  {isMemberProvided(AgentVaultVariableReferenceField.CredentialUsername) ? (
+                    <MemberProvidedInput label="Username" />
+                  ) : (
+                    <SecretInput
+                      field={field}
+                      label="Username"
+                      placeholder="Enter the username, or type {{"
+                      isError={Boolean(fieldState.error)}
+                      isUntouched={isUsernameUntouched}
+                      hasStoredSecret={hasStoredValue(
+                        AgentVaultVariableReferenceField.CredentialUsername
+                      )}
+                      canBeCleared
+                      storedKeys={
+                        hasStoredValue(AgentVaultVariableReferenceField.CredentialUsername)
+                          ? storedKeys.username
+                          : undefined
+                      }
+                    />
+                  )}
+                  {memberValuesNote(
+                    AgentVaultVariableReferenceField.CredentialUsername,
+                    "Username"
+                  )}
                   <FieldError>{fieldState.error?.message}</FieldError>
                 </FieldContent>
               </Field>

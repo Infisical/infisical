@@ -23,6 +23,12 @@ import {
   TAgentVaultAccessBundles,
   TAgentVaultAccessBundlesInsert,
   TAgentVaultAccessBundlesUpdate,
+  TAgentVaultPersonalValueReferences,
+  TAgentVaultPersonalValueReferencesInsert,
+  TAgentVaultPersonalValueReferencesUpdate,
+  TAgentVaultPersonalValues,
+  TAgentVaultPersonalValuesInsert,
+  TAgentVaultPersonalValuesUpdate,
   TAgentVaultProxies,
   TAgentVaultProxiesInsert,
   TAgentVaultProxiesUpdate,
@@ -1829,6 +1835,16 @@ declare module "knex/types/tables" {
       TAgentVaultVariables,
       TAgentVaultVariablesInsert,
       TAgentVaultVariablesUpdate
+    >;
+    [TableName.AgentVaultPersonalValue]: KnexOriginal.CompositeTableType<
+      TAgentVaultPersonalValues,
+      TAgentVaultPersonalValuesInsert,
+      TAgentVaultPersonalValuesUpdate
+    >;
+    [TableName.AgentVaultPersonalValueReference]: KnexOriginal.CompositeTableType<
+      TAgentVaultPersonalValueReferences,
+      TAgentVaultPersonalValueReferencesInsert,
+      TAgentVaultPersonalValueReferencesUpdate
     >;
     [TableName.AgentVaultServiceVariableReference]: KnexOriginal.CompositeTableType<
       TAgentVaultServiceVariableReferences,

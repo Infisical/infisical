@@ -4482,7 +4482,14 @@ export const AGENT_VAULT = {
     search: "Match access bundles by name or description.",
     limit: "The maximum number of access bundles to return.",
     offset: "How many access bundles to skip.",
-    hostPatterns: "Every host pattern the access bundle's services cover."
+    hostPatterns: "Every host pattern the access bundle's services cover.",
+    requiresSetup:
+      "true lists only the access bundles you can reach that have services still requiring your personal values. false lists the rest of them. Omit to list them all.",
+    granted:
+      "true lists only the access bundles granted to you, directly or through a group. false lists the ones you reach only as an admin. Omit to list them all.",
+    servicesRequiringSetup: "The services in this access bundle that still require your personal values.",
+    servicesRequiringSetupId: "The ID of the service, for setting your personal values on it.",
+    servicesRequiringSetupName: "The name of the service."
   },
   SERVICE: {
     serviceId: "The ID of the service.",
@@ -4524,27 +4531,56 @@ export const AGENT_VAULT = {
     substitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
     updateSubstitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the value already stored.`,
     variableReferences:
-      "The variables this service's credential, custom header values and substitution values use. Not returned to Agent Vault members, since only admins can see variables.",
+      "The global variables this service's credential, custom header values and substitution values use. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
     referenceField:
       "Which value uses the variable: credential-value (a bearer token or a basic password), credential-username, custom-header or substitution.",
     referenceCustomHeaderId: "The custom header whose value uses the variable.",
-    referenceSubstitutionId: "The substitution whose value uses the variable."
+    referenceSubstitutionId: "The substitution whose value uses the variable.",
+    bearerMemberProvidedFields:
+      "Leave the token to each member: send `credential-value` here and no `value`. Every member sets their own, and a session uses the token of whoever it belongs to. Omit on update to keep the current setting; send an empty list to set the token yourself again, which then needs a `value`. Changing this clears every member's saved values for the service.",
+    basicMemberProvidedFields:
+      "The halves of the basic credential each member sets for themselves: `credential-username`, `credential-value` (the password) or both. Send no value for a half listed here. A session uses the values of whoever it belongs to. Omit on update to keep the current setting. Adding a half keeps what members saved, and taking one back deletes only that half's values. Changing the credential type deletes every member's values for the service.",
+    memberProvidedFields:
+      "The credential fields each member sets for themselves: credential-value (a bearer token or a basic password) and credential-username. Empty when the admin sets the whole credential."
+  },
+  PERSONAL_VALUE: {
+    credentialType:
+      "The credential type you expect the service to have. If it no longer matches, the request fails with a 409.",
+    personalValues:
+      "Your personal values for the service, or null if the service leaves no fields to its members. Only you can see these, and a stored value never comes back.",
+    isConfigured:
+      "Whether you have set every value this service requires from you. Until you do, the proxy refuses this service's requests from your sessions.",
+    fields: "Each value the service requires from you, and whether you have set it.",
+    field:
+      "Which value: credential-value (a bearer token or a basic password) or credential-username (a basic username).",
+    isSet: "Whether you have set this value.",
+    updatedAt: "When you last set this value, or null if you haven't.",
+    variableReferences: "Your personal variables that this value uses.",
+    values:
+      "The values to set, at most one per field the service leaves to its members. A field you leave out keeps its saved value, so after a field becomes member provided you only need to send that one.",
+    value: `The value. Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to your personal variables, written as \`{{KEY}}\`. Never returned once saved.`
   },
   VARIABLE: {
     variableId: "The ID of the variable.",
-    key: "The name services use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
+    scope:
+      "global for a variable admins set up for services, or personal for one of your own, which only your personal values can use and only you can see. Personal keys are unique among your own variables.",
+    listScope:
+      "Which variables to list: global, which needs the admin role, or personal for your own. Omit to list everything you can see: your own personal variables, plus the global ones if you're an admin. Nobody can list another member's personal variables.",
+    createScope:
+      "global creates a variable services can use, which needs the admin role. personal creates one of your own, which only your personal values can use.",
+    key: "The name values use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
     value: "The value the proxy puts in place of each `{{KEY}}`.",
     updateValue: "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value.",
     revealedValue: "The variable's value.",
     orderBy: "What to sort variables by: key, or serviceCount for how many services use each one.",
     orderDirection: "Which way to sort: asc or desc.",
     search: "Match variables whose key contains this text.",
-    keys: "Return only the variables with these exact keys, comma-separated. Every one that exists is returned unless limit is set.",
+    keys: "Return only the variables with these exact keys, comma-separated. Every one that exists is returned unless limit is set. Requires scope, since a key can name both a global variable and one of your own.",
     limit: "The maximum number of variables to return. Defaults to 20, or to the number of keys when keys is given.",
     offset: "How many variables to skip.",
     totalCount: "How many variables match the search, across every page.",
     usedByServices:
-      "The services that use this variable, across every access bundle, ordered by access bundle name and then service name. A variable in use can't be deleted.",
+      "The services that use this variable, across every access bundle, ordered by access bundle name and then service name. For a personal variable, the services whose personal values, as you set them, use it. A variable in use can't be deleted.",
     usedByServiceId: "The ID of a service that uses this variable.",
     usedByServiceName: "The name of the service.",
     usedByServiceHostPattern: "The host pattern of the service.",
