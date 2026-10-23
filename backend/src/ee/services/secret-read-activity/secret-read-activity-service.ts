@@ -404,14 +404,22 @@ export const secretReadActivityServiceFactory = ({
         }))
       ]);
     });
-    // A group on its own, with the member's details filled into its placeholders.
+    // A group on its own, with the member's details filled into its placeholders. Built once, on first use.
     groupMembers.forEach(({ group, actorId, joinedAt }) => {
       const groupChangedAt = sourceDates.groupDates.get(group.id);
+      let permission: MongoAbility<ProjectPermissionSet> | undefined;
       addSources(actorId, [
         {
           date: groupChangedAt && groupChangedAt > joinedAt ? groupChangedAt : joinedAt,
-          permission: () =>
-            permissionForActor({ actorId, groupIds: [group.id], groupsOnly: true, ...detailsByActorId.get(actorId) })
+          permission: () => {
+            permission ??= permissionForActor({
+              actorId,
+              groupIds: [group.id],
+              groupsOnly: true,
+              ...detailsByActorId.get(actorId)
+            });
+            return permission;
+          }
         }
       ]);
     });
