@@ -406,18 +406,23 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
       const { requiresApproval, requireReason, allowBreakGlass, allowAutoApproval } = resolveAccessControls(
         a.templatePolicies
       );
+      const statusEntry = accessStatusMap.get(a.id);
+      const credentialStatusEntry = credentialAccessStatusMap.get(a.id);
       const canBreakGlass = allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId);
-      // Break-glass users can still reach a folder whose approvers and rules can't grant this account
+      const hasGrant =
+        statusEntry?.accessStatus === ApprovalAccessStatus.Granted ||
+        credentialStatusEntry?.accessStatus === ApprovalAccessStatus.Granted;
+      // Break-glass users and current grant holders can still reach a folder whose approvers and rules can't
+      // grant this account; only new requests are blocked
       if (
         requiresApproval &&
         a.folderId &&
         !canBreakGlass &&
+        !hasGrant &&
         !foldersWithApprovalPolicy.isConfiguredFor(a.folderId, allowAutoApproval)
       ) {
         accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
       }
-      const statusEntry = accessStatusMap.get(a.id);
-      const credentialStatusEntry = credentialAccessStatusMap.get(a.id);
       return {
         id: a.id,
         name: a.name,
@@ -1337,7 +1342,9 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
         const statusEntry = accessStatusMap.get(a.id);
         const canBreakGlass = allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId);
         const hasPolicyConfigured = a.folderId
-          ? canBreakGlass || foldersWithApprovalPolicy.isConfiguredFor(a.folderId, allowAutoApproval)
+          ? canBreakGlass ||
+            statusEntry?.accessStatus === ApprovalAccessStatus.Granted ||
+            foldersWithApprovalPolicy.isConfiguredFor(a.folderId, allowAutoApproval)
           : false;
         let disabledReason: string | null = null;
         if (requiresApproval && !hasPolicyConfigured) {
