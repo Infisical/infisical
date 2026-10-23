@@ -71,4 +71,18 @@ describe("CloudflarePagesSyncFns", () => {
       expect.anything()
     );
   });
+
+  it("fails before writing when a key exists as the other type", async () => {
+    get.mockResolvedValue({
+      data: {
+        result: { deployment_configs: { production: { env_vars: { API_KEY: { type: "secret_text", value: "" } } } } }
+      }
+    });
+
+    await expect(
+      CloudflarePagesSyncFns.syncSecrets(syncWith(CloudflarePagesVariableType.Text), payloadOf({ API_KEY: "key" }))
+    ).rejects.toThrow("already exist in the Cloudflare Pages environment as a different type: API_KEY (secret).");
+
+    expect(patch).not.toHaveBeenCalled();
+  });
 });

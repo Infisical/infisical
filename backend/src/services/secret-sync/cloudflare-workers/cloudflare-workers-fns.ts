@@ -150,6 +150,25 @@ const getCloudflareBindings = async (
   return { secrets, nonSecretBindings };
 };
 
+const VARIABLE_TYPE_LABELS: Record<string, string> = {
+  [CloudflareWorkersVariableType.Secret]: "secret",
+  [CloudflareWorkersVariableType.Text]: "text",
+  [CloudflareWorkersVariableType.Json]: "JSON"
+};
+
+// Changing a variable's type can break the Worker, since a JSON variable reaches it as a parsed object, or
+// expose a secret's value in the dashboard. A sync never changes one; it fails before writing anything.
+const $throwOnTypeConflicts = (conflicts: Array<{ name: string; type: string }>, fix: string) => {
+  if (conflicts.length === 0) return;
+
+  throw new SecretSyncError({
+    message: `The following secrets already exist on the Cloudflare Worker as a different type: ${conflicts
+      .map(({ name, type }) => `${name} (${VARIABLE_TYPE_LABELS[type]})`)
+      .join(", ")}. Infisical doesn't change a variable's type, so nothing was synced. ${fix}`,
+    shouldRetry: false
+  });
+};
+
 // A text or JSON sync only owns variables of its type, so syncs of different types can share a Worker.
 const $getManagedBindings = (
   secretSync: TCloudflareWorkersSyncWithCredentials,
@@ -165,8 +184,7 @@ const $getManagedBindings = (
 };
 
 // Text and JSON variables are bindings in the Worker's settings, which take the full binding list. One
-// PATCH therefore creates and updates them, replaces a secret or variable of another type with the same
-// name, and deletes the ones no longer in Infisical.
+// PATCH therefore creates and updates them and deletes the ones no longer in Infisical.
 const $syncVariableBindings = async (
   secretSync: TCloudflareWorkersSyncWithCredentials,
   secretMap: TSecretMap,
@@ -233,6 +251,11 @@ const $syncVariableBindings = async (
       });
     }
 
+    $throwOnTypeConflicts(
+      existingBindings.filter((binding) => secretMapKeys.has(binding.name) && binding.type !== variableType),
+      "Delete them in Cloudflare or change the sync's variable type, then sync again."
+    );
+
     const bindings = [
       ...existingBindings.filter((binding) => !secretMapKeys.has(binding.name) && !isDeleted(binding)),
       ...variableBindings
@@ -267,33 +290,27 @@ export const CloudflareWorkersSyncFns = {
       return;
     }
 
-    const shouldSyncNonSecretBindings = Boolean(secretSync.syncOptions.syncNonSecretBindings);
     const cloudflareBindings = await getCloudflareBindings(secretSync);
 
     const existingSecrets = $getManagedBindings(secretSync, cloudflareBindings);
 
-    const nonSecretBindingKeys = new Set(cloudflareBindings.nonSecretBindings.map((b) => b.key));
     const existingSecretsMap = Object.fromEntries(existingSecrets.map(({ key, type }) => [key, type]));
     const secretMapKeys = new Set(Object.keys(secretMap));
 
-    // Cloudflare rejects a secret with the same name as a plaintext or JSON variable, so those keys can't go
-    // through secrets-bulk. A sync with Secret chosen explicitly turns them into secrets in the settings
-    // update below, in one step so a failure can't leave them missing. Syncs saved before the type could be
-    // chosen skip them, unless shouldSyncNonSecretBindings updates them in place.
-    const bindingKeysToConvert = new Set(
-      variableType === CloudflareWorkersVariableType.Secret && !shouldSyncNonSecretBindings
-        ? Object.keys(secretMap).filter((key) => nonSecretBindingKeys.has(key))
-        : []
-    );
-
-    const syncableEntries = Object.entries(secretMap).filter(
-      ([key]) => shouldSyncNonSecretBindings || !nonSecretBindingKeys.has(key)
-    );
+    // With shouldSyncNonSecretBindings on, same-name plaintext and JSON variables are updated as they are.
+    if (!secretSync.syncOptions.syncNonSecretBindings) {
+      $throwOnTypeConflicts(
+        cloudflareBindings.nonSecretBindings
+          .filter((binding) => secretMapKeys.has(binding.key))
+          .map(({ key, type }) => ({ name: key, type })),
+        'Delete them in Cloudflare, change the sync\'s variable type, or turn on "Sync plaintext and JSON variables" to update them as they are.'
+      );
+    }
 
     const bindingEntries: Array<[string, { value: string }]> = [];
     const secretEntries: Array<[string, { value: string }]> = [];
 
-    for (const [key, val] of syncableEntries) {
+    for (const [key, val] of Object.entries(secretMap)) {
       const existingType = existingSecretsMap[key];
       if (existingType && existingType !== CLOUDFLARE_SECRET_TYPE) {
         bindingEntries.push([key, val]);
@@ -303,7 +320,7 @@ export const CloudflareWorkersSyncFns = {
     }
 
     try {
-      if (bindingEntries.length > 0 || bindingKeysToConvert.size > 0) {
+      if (bindingEntries.length > 0) {
         const { data: settingsData } = await request.get<{
           result: { bindings: Array<{ type: string; name: string; text?: string; json?: string }> };
         }>(
@@ -321,9 +338,6 @@ export const CloudflareWorkersSyncFns = {
         $validateJsonBindings(settingsData.result.bindings, updatedBindingMap);
 
         const updatedBindings = settingsData.result.bindings.map((binding) => {
-          if (bindingKeysToConvert.has(binding.name)) {
-            return { type: CLOUDFLARE_SECRET_TYPE, name: binding.name, text: secretMap[binding.name].value };
-          }
           if (binding.type !== CLOUDFLARE_SECRET_TYPE && updatedBindingMap[binding.name] !== undefined) {
             const newValue = updatedBindingMap[binding.name].value;
             if (binding.type === "json") {

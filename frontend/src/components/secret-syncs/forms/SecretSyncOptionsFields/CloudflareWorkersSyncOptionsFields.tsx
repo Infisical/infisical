@@ -45,19 +45,18 @@ export const CloudflareWorkersSyncOptionsFields = () => {
           <Field className="mb-4">
             <FieldLabel htmlFor="cloudflare-workers-variable-type">Variable type</FieldLabel>
             <FieldContent>
-              {/* Unset shows Secret as a placeholder, so picking Secret still saves it, while editing an
-                  older sync without picking a type keeps its behavior */}
-              <Select value={value} onValueChange={onChange}>
+              {/* Unset means Secret. It isn't filled in, so editing an older sync doesn't look like a
+                  destination change. */}
+              <Select
+                value={value ?? CloudflareWorkersVariableType.Secret}
+                onValueChange={onChange}
+              >
                 <SelectTrigger
                   id="cloudflare-workers-variable-type"
                   className="w-full"
                   isError={Boolean(error)}
                 >
-                  <SelectValue
-                    placeholder={
-                      CLOUDFLARE_WORKERS_VARIABLE_TYPE_LABELS[CloudflareWorkersVariableType.Secret]
-                    }
-                  />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
                   {Object.entries(CLOUDFLARE_WORKERS_VARIABLE_TYPE_LABELS).map(([type, label]) => (
@@ -88,8 +87,8 @@ export const CloudflareWorkersSyncOptionsFields = () => {
                       Sync plaintext and JSON variables
                     </Label>
                     <FieldDescription>
-                      Keep existing plaintext and JSON variables as their type and update their
-                      values, instead of converting them to secrets.
+                      Update existing plaintext and JSON variables as they are, instead of failing
+                      the sync on them.
                     </FieldDescription>
                   </FieldContent>
                   <Toggle

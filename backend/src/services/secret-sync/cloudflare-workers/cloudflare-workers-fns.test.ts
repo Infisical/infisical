@@ -18,12 +18,12 @@ vi.mock("@app/lib/config/request", async (importOriginal) => ({
 
 type TBinding = { type: string; name: string; text?: string; json?: unknown };
 
-const syncWith = (variableType?: CloudflareWorkersVariableType) =>
+const syncWith = (variableType?: CloudflareWorkersVariableType, syncOptions: Record<string, unknown> = {}) =>
   ({
     destination: "cloudflare-workers",
     destinationConfig: { scriptId: "my-worker", variableType },
     environment: { slug: "prod" },
-    syncOptions: { disableSecretDeletion: false },
+    syncOptions: { disableSecretDeletion: false, ...syncOptions },
     connection: { credentials: { apiToken: "token", accountId: "account-id" } }
   }) as unknown as TCloudflareWorkersSyncWithCredentials;
 
@@ -49,9 +49,9 @@ describe("CloudflareWorkersSyncFns", () => {
     vi.clearAllMocks();
   });
 
-  it("writes text variables in one settings update, replacing a same-name secret and deleting only stale text variables", async () => {
+  it("writes text variables in one settings update and deletes only stale text variables", async () => {
     stubWorker([
-      { type: "secret_text", name: "API_KEY" },
+      { type: "plain_text", name: "API_KEY", text: "old" },
       { type: "plain_text", name: "STALE", text: "old" },
       { type: "json", name: "CONFIG", json: { a: 1 } },
       { type: "kv_namespace", name: "CACHE" }
@@ -95,30 +95,31 @@ describe("CloudflareWorkersSyncFns", () => {
     expect(patch).not.toHaveBeenCalled();
   });
 
-  it("converts a same-name text variable into a secret when Secret is chosen", async () => {
-    stubWorker([
-      { type: "plain_text", name: "API_URL", text: "old" },
-      { type: "kv_namespace", name: "CACHE" }
-    ]);
+  it.each([
+    [CloudflareWorkersVariableType.Secret, { type: "json", name: "CONFIG", json: { a: 1 } }, "CONFIG (JSON)"],
+    [undefined, { type: "plain_text", name: "CONFIG", text: "old" }, "CONFIG (text)"],
+    [CloudflareWorkersVariableType.Text, { type: "secret_text", name: "CONFIG" }, "CONFIG (secret)"],
+    [CloudflareWorkersVariableType.Json, { type: "plain_text", name: "CONFIG", text: "{}" }, "CONFIG (text)"]
+  ])("fails a %s sync before writing when a key exists as another type", async (variableType, binding, listed) => {
+    stubWorker([binding]);
+
+    await expect(
+      CloudflareWorkersSyncFns.syncSecrets(syncWith(variableType), payloadOf({ CONFIG: '{"a":2}', NEW_KEY: "{}" }))
+    ).rejects.toThrow(`already exist on the Cloudflare Worker as a different type: ${listed}.`);
+
+    expect(patch).not.toHaveBeenCalled();
+  });
+
+  it("updates same-name text variables as they are when the toggle is on", async () => {
+    stubWorker([{ type: "plain_text", name: "API_URL", text: "old" }]);
 
     await CloudflareWorkersSyncFns.syncSecrets(
-      syncWith(CloudflareWorkersVariableType.Secret),
+      syncWith(CloudflareWorkersVariableType.Secret, { syncNonSecretBindings: true }),
       payloadOf({ API_URL: "new" })
     );
 
     expect(patch).toHaveBeenCalledTimes(1);
-    expect(await patchedBindings()).toEqual([
-      { type: "secret_text", name: "API_URL", text: "new" },
-      { type: "kv_namespace", name: "CACHE" }
-    ]);
-  });
-
-  it("keeps skipping same-name text variables for syncs saved without a type", async () => {
-    stubWorker([{ type: "plain_text", name: "API_URL", text: "old" }]);
-
-    await CloudflareWorkersSyncFns.syncSecrets(syncWith(), payloadOf({ API_URL: "new" }));
-
-    expect(patch).not.toHaveBeenCalled();
+    expect(await patchedBindings()).toEqual([{ type: "plain_text", name: "API_URL", text: "new" }]);
   });
 
   it("removes only variables of the sync's type", async () => {

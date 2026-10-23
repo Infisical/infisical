@@ -55,14 +55,7 @@ export const CreateCloudflareWorkersSyncSchema = GenericCreateSecretSyncFieldsSc
   CloudflareWorkersSyncOptionsConfig,
   CloudflareWorkersSyncAdditionalOptionsSchema
 ).extend({
-  // New syncs default to Secret. The type stays optional elsewhere because syncs created before it existed
-  // have none, and they keep skipping same-name plaintext and JSON variables.
-  destinationConfig: CloudflareWorkersSyncDestinationConfigSchema.extend({
-    variableType: z
-      .nativeEnum(CloudflareWorkersVariableType)
-      .default(CloudflareWorkersVariableType.Secret)
-      .describe(SecretSyncs.DESTINATION_CONFIG.CLOUDFLARE_WORKERS.variableType)
-  })
+  destinationConfig: CloudflareWorkersSyncDestinationConfigSchema
 });
 
 export const UpdateCloudflareWorkersSyncSchema = GenericUpdateSecretSyncFieldsSchema(
