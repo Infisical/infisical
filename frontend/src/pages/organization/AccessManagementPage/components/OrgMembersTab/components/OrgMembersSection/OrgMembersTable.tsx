@@ -84,7 +84,7 @@ import { GroupAccessPopover } from "./GroupAccessPopover";
 type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
-      ["removeMember", "deactivateMember", "upgradePlan", "removeMembers"]
+      ["addMember", "removeMember", "deactivateMember", "upgradePlan", "removeMembers"]
     >,
     data?: {
       orgMembershipId?: string;
@@ -170,6 +170,7 @@ export const OrgMembersTable = ({
 
       if (signupToken) {
         setCompleteInviteLinks([signupToken]);
+        handlePopUpOpen("addMember");
         return;
       }
 
@@ -197,6 +198,7 @@ export const OrgMembersTable = ({
 
     if (data.completeInviteLinks?.length) {
       setCompleteInviteLinks(data.completeInviteLinks);
+      handlePopUpOpen("addMember");
       return;
     }
 
