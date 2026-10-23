@@ -1,0 +1,26 @@
+---
+title: "Review and stop an AI agent"
+sidebarTitle: "Review and stop an agent"
+description: "Check what an AI agent did with your accounts and remove its access."
+---
+
+Every connection an AI agent makes is a normal PAM [session](/documentation/platform/pam/sessions/overview), so you review and stop an agent's sessions the same way you review and stop a person's.
+
+## Review what the agent did
+
+To review the agent's work, open its [sessions](/documentation/platform/pam/sessions/overview) and check the queries or commands in each [recording](/documentation/platform/pam/sessions/session-recording). Sessions show whoever the run authenticated as. If that's a machine identity, its sessions and [audit log](/documentation/platform/pam/auditing) events show **Machine Identity** where a person's email would appear.
+
+## Stop an agent
+
+To remove an agent's access right away:
+
+<Steps>
+  <Step>
+    Remove the role that the run's user or machine identity has on the folder or account, so the agent can't open new sessions.
+  </Step>
+  <Step>
+    [Terminate](/documentation/platform/pam/sessions/overview) the agent's active sessions on the **Sessions** page.
+  </Step>
+</Steps>
+
+If the account requires approval, [revoking the request](/documentation/platform/pam/access-requests/overview#revoke-access) also ends its sessions.

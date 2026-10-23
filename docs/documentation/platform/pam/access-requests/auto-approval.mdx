@@ -21,7 +21,7 @@ Infisical reads linked records through an [app connection](/integrations/app-con
 
 ## Prerequisites
 
-- Accounts that [require approval](/documentation/platform/pam/access-requests/overview#setting-up-an-access-gate)
+- Accounts that [require approval](/documentation/platform/pam/access-requests/overview#set-up-approval)
 - An app connection to a [supported service](#supported-services), whose user can read the records that requesters will link
 
 ## Turn on auto-approval in a template
@@ -96,7 +96,7 @@ To require sign-off in Jira, use **is approved in Jira** rather than **has statu
 
 ## Request access with a linked record
 
-If an account's template allows auto-approval and its folder has rules, the account's [request form](/documentation/platform/pam/access-requests/overview#filing-a-request) has an optional field for each record the folder asks for, such as **Jira ticket**. Enter the record's ID, such as the ticket key `PAY-123`, or a link to the record. If the link points to a different site from the one the folder's connection uses, Infisical shows an error and doesn't submit the request.
+If an account's template allows auto-approval and its folder has rules, the account's [request form](/documentation/platform/pam/access-requests/overview#request-access) has an optional field for each record the folder asks for, such as **Jira ticket**. Enter the record's ID, such as the ticket key `PAY-123`, or a link to the record. If the link points to a different site from the one the folder's connection uses, Infisical shows an error and doesn't submit the request.
 
 After you submit the request, the confirmation message shows whether a rule approved it:
 
@@ -104,7 +104,7 @@ After you submit the request, the confirmation message shows whether a rule appr
 - If no rule approved it, the request waits for an approver, and the message shows why the rule that came closest didn't pass
 - If no rule approved it and the folder has no approvers, the request is rejected (the message shows why the rule that came closest didn't pass)
 
-If you turn on **Break glass** in the form, the record fields disappear, because [break-glass](/documentation/platform/pam/access-requests/overview#break-glass-access) requests skip the rules.
+If you turn on **Break glass** in the form, the record fields disappear, because [break-glass](/documentation/platform/pam/access-requests/break-glass) requests skip the rules.
 
 ## Review auto-approval results
 

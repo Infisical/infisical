@@ -25,6 +25,7 @@ import {
   useListAvailableAppConnectionsForApps
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
@@ -65,6 +66,9 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
   } = useRouterState();
 
   const getPkiSyncReturnUrl = () => {
+    if (pathname.includes("/cert-manager/applications/")) {
+      return `${pathname}?selectedTab=${ApplicationTab.Syncs}`;
+    }
     if (pathname.includes("selectedTab=secret-syncs")) {
       return pathname.replace("selectedTab=secret-syncs", "selectedTab=pki-syncs");
     }
