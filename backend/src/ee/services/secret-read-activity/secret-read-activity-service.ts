@@ -1,4 +1,6 @@
-import { ProjectMembershipRole, SecretType, TableName } from "@app/db/schemas";
+import { setImmediate } from "node:timers/promises";
+
+import { SecretType, TableName } from "@app/db/schemas";
 import { DAY_IN_MS } from "@app/ee/services/audit-report/audit-report-fns";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -21,7 +23,6 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
-import { TRoleDALFactory } from "@app/services/role/role-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
@@ -32,28 +33,32 @@ import { TSecretReadActivityDALFactory } from "./secret-read-activity-dal";
 import {
   classifySecretReads,
   computeSecretReach,
-  coversWholeWindow,
   getReadActivityWindowStart,
   indexSecretReads,
   loadProjectFolderTree,
   SECRET_READ_ACTIVITY_WINDOW_DAYS,
+  summarizeSecretAccess,
+  toActorKey,
   toLocationKey,
-  TProjectFolderTree
+  toUnusedAccessRoles
 } from "./secret-read-activity-fns";
 import { TSecretReadActivityQueueServiceFactory } from "./secret-read-activity-queue";
 import {
   TEntitledReader,
   TGetSecretReadActivityDTO,
-  TGetUnusedAccessPrincipalDTO,
+  TGetUnusedAccessActorDTO,
   TListUnusedAccessDTO,
+  TProjectReader,
   TReachSecret,
   TReadActivityScope,
+  TSecretActivity,
   TSecretReach,
   TSecretReachGraph,
   TSecretReaderType,
-  TUnusedAccessPrincipal,
-  TUnusedSecret,
-  UnusedAccessPrincipalType
+  TUnusedAccessActor,
+  TUnusedAccessSummary,
+  TUnusedAccessTally,
+  TUnusedSecret
 } from "./secret-read-activity-types";
 
 const UNUSED_ACCESS_CACHE_TTL_SECONDS = 24 * 60 * 60;
@@ -61,17 +66,10 @@ const REACH_YIELD_INTERVAL = 100;
 // Longer than a computation can take, so the lock is not lost mid-scan; waiters give up well before a request times out.
 const UNUSED_ACCESS_COMPUTE_LOCK_TTL_MS = 5 * 60 * 1000;
 const UNUSED_ACCESS_COMPUTE_WAIT_SECONDS = 60;
-// Every principal's row is cached, but the unread secret ids behind the rows only for the principals with the most
-// of them, capped per principal, which keeps a project's entry under about 1.5 MB.
-const UNUSED_ACCESS_DETAIL_MAX_PRINCIPALS = 200;
-const UNUSED_ACCESS_MAX_SECRETS_PER_PRINCIPAL = 200;
-const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
-  member: "Member",
-  viewer: "Viewer",
-  "no-access": "No Access"
-};
-type TSecretPermission = Parameters<typeof hasSecretReadValueOrDescribePermission>[0];
+// Every actor's row is cached, but the unread secret ids behind the rows only for the actors with the most of them,
+// capped per actor, which keeps a project's entry under about 1.5 MB.
+const UNUSED_ACCESS_DETAIL_MAX_ACTORS = 200;
+const UNUSED_ACCESS_MAX_SECRETS_PER_ACTOR = 200;
 
 type TSecretReadActivityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
@@ -89,7 +87,6 @@ type TSecretReadActivityServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find">;
-  roleDAL: Pick<TRoleDALFactory, "find">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "ttl" | "acquireLock">;
 };
@@ -109,7 +106,6 @@ export const secretReadActivityServiceFactory = ({
   identityDAL,
   userGroupMembershipDAL,
   identityGroupMembershipDAL,
-  roleDAL,
   kmsService,
   keyStore
 }: TSecretReadActivityServiceFactoryDep) => {
@@ -127,13 +123,13 @@ export const secretReadActivityServiceFactory = ({
     windowStart,
     secret: requestedSecret,
     tree: loadedTree
-  }: TReadActivityScope & { tree?: TProjectFolderTree }) => {
+  }: TReadActivityScope): Promise<TSecretActivity[]> => {
     const tree = loadedTree ?? (await loadProjectFolderTree({ folderDAL, projectEnvDAL }, projectId));
-    const { folders, folderById, locationOf, pathOf } = tree;
+    const { folders, folderById, folderIdByLocation, locationOf, pathOf } = tree;
 
     const requestedFolderId =
       requestedSecret &&
-      tree.folderIdByLocation.get(
+      folderIdByLocation.get(
         toLocationKey({ environment: requestedSecret.environment, secretPath: requestedSecret.secretPath })
       );
     if (requestedSecret && !requestedFolderId) {
@@ -145,19 +141,16 @@ export const secretReadActivityServiceFactory = ({
       ? [requestedFolderId]
       : folders.filter((folder) => !folder.isReserved).map((folder) => folder.id);
 
-    const referencesByLocation = groupBy(
-      await secretV2BridgeDAL.findSecretReferencesByProjectId(projectId),
-      (reference) => toLocationKey(reference)
-    );
-    const referencesOf = (folderId: string) => {
-      const location = locationOf(folderId);
-      return location ? (referencesByLocation[toLocationKey(location)] ?? []) : [];
-    };
+    // Each reference row is a secret (secretId, folderId) that references a key in another folder.
+    const references = (await secretV2BridgeDAL.findSecretReferencesByProjectId(projectId)).flatMap((reference) => {
+      const targetFolderId = folderIdByLocation.get(toLocationKey(reference));
+      return targetFolderId ? [{ ...reference, targetFolderId }] : [];
+    });
+    const referencesByTargetFolderId = groupBy(references, (reference) => reference.targetFolderId);
 
     // Secrets referencing a loaded one can sit outside the scope, so their folders are loaded too, until no
     // new folders turn up.
-    type TSecret = Awaited<ReturnType<typeof secretV2BridgeDAL.find>>[number];
-    const secretsByFolder = new Map<string, TSecret[]>();
+    const secretsByFolder = new Map<string, TSecretActivity["secret"][]>();
     let pendingFolderIds = scopeFolderIds;
     while (pendingFolderIds.length) {
       const folderIds = pendingFolderIds;
@@ -167,43 +160,36 @@ export const secretReadActivityServiceFactory = ({
       });
       const secretsByFolderId = groupBy(secrets, (secret) => secret.folderId);
       folderIds.forEach((folderId) => secretsByFolder.set(folderId, secretsByFolderId[folderId] ?? []));
-      pendingFolderIds = [...new Set(folderIds.flatMap(referencesOf).map((reference) => reference.folderId))].filter(
+      const referencingFolderIds = folderIds.flatMap((folderId) =>
+        (referencesByTargetFolderId[folderId] ?? []).map((reference) => reference.folderId)
+      );
+      pendingFolderIds = [...new Set(referencingFolderIds)].filter(
         (folderId) => folderById[folderId] && !secretsByFolder.has(folderId)
       );
     }
 
+    // Every loaded secret is decrypted once to find the keys it references in its own folder. The edges are indexed
+    // by "<referenced folder>:<referenced key>", since scanning a folder for every secret in it would be quadratic.
     const { decryptor } = await kmsService.createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
-    const secretById = new Map([...secretsByFolder.values()].flat().map((secret) => [secret.id, secret]));
-
-    // Indexed by referenced key once per folder: scanning the folder again for every secret in it would be
-    // quadratic in the folder's size, and the reach is computed synchronously.
-    const referencersByFolder = new Map<string, Map<string, TReachSecret[]>>();
-    const referencersOf = (folderId: string) => {
-      const indexed = referencersByFolder.get(folderId);
-      if (indexed) return indexed;
-
-      const referencersByKey = new Map<string, TReachSecret[]>();
-      const add = (key: string, referencer: TReachSecret) => {
-        const referencers = referencersByKey.get(key);
-        if (referencers) referencers.push(referencer);
-        else referencersByKey.set(key, [referencer]);
-      };
-      (secretsByFolder.get(folderId) ?? []).forEach((secret) => {
-        if (!secret.encryptedValue) return;
+    const loadedSecrets = [...secretsByFolder.values()].flat();
+    const secretById = new Map(loadedSecrets.map((secret) => [secret.id, secret]));
+    const referenceEdges: { target: string; referencer: TReachSecret }[] = [
+      ...loadedSecrets.flatMap((secret) => {
+        if (!secret.encryptedValue) return [];
         const { localReferences } = getAllSecretReferences(
           decryptor({ cipherTextBlob: secret.encryptedValue }).toString()
         );
-        new Set(localReferences).forEach((key) => add(key, secret));
-      });
-      referencesOf(folderId).forEach((reference) =>
-        add(
-          reference.secretKey,
-          secretById.get(reference.secretId) ?? { id: reference.secretId, folderId: reference.folderId }
-        )
-      );
-      referencersByFolder.set(folderId, referencersByKey);
-      return referencersByKey;
-    };
+        return [...new Set(localReferences)].map((key) => ({
+          target: `${secret.folderId}:${key}`,
+          referencer: secret
+        }));
+      }),
+      ...references.map((reference) => ({
+        target: `${reference.targetFolderId}:${reference.secretKey}`,
+        referencer: secretById.get(reference.secretId) ?? { id: reference.secretId, folderId: reference.folderId }
+      }))
+    ];
+    const referenceEdgesByTarget = groupBy(referenceEdges, (edge) => edge.target);
 
     // Replication imports are included: a replicated copy is checked against the reader's access to its source.
     const importsByLocation = groupBy(await secretImportDAL.find({ projectId }), (secretImport) =>
@@ -211,7 +197,11 @@ export const secretReadActivityServiceFactory = ({
     );
     const graph: TSecretReachGraph = {
       getReferencers: ({ id, folderId, key }) =>
-        key === undefined ? [] : (referencersOf(folderId).get(key) ?? []).filter((referencer) => referencer.id !== id),
+        key === undefined
+          ? []
+          : (referenceEdgesByTarget[`${folderId}:${key}`] ?? []).flatMap(({ referencer }) =>
+              referencer.id === id ? [] : [referencer]
+            ),
       getImporterFolderIds: (folderId) =>
         folderById[folderId]
           ? (
@@ -232,14 +222,13 @@ export const secretReadActivityServiceFactory = ({
         )
         .map((secret) => ({ secret, ...location }));
     });
-    // Each reach is synchronous work, so yield between batches to keep a large project from blocking other requests.
+    // Each reach is synchronous work, so the loop yields to the event loop between batches to keep a large project
+    // from blocking other requests.
     const reaches: TSecretReach[] = [];
     for (let index = 0; index < targets.length; index += 1) {
       if (index > 0 && index % REACH_YIELD_INTERVAL === 0) {
         // eslint-disable-next-line no-await-in-loop
-        await new Promise<void>((resolve) => {
-          setImmediate(resolve);
-        });
+        await setImmediate();
       }
       reaches.push(computeSecretReach(targets[index].secret, graph));
     }
@@ -271,7 +260,6 @@ export const secretReadActivityServiceFactory = ({
       };
     });
   };
-  type TSecretActivity = Awaited<ReturnType<typeof $getReadActivity>>[number];
 
   // Reads are known from the later of when tracking began on the instance and when the project was created.
   const $getProjectTrackingStartedAt = async (projectId: string) => {
@@ -282,11 +270,11 @@ export const secretReadActivityServiceFactory = ({
     };
   };
 
-  // How each secret stands, from everyone who can read its value today: unused access is judged on the
-  // non-admins among them, since admins can read everything by design; ghost readers are readers in the window
-  // who are not among them at all, so their access was since removed. Groups are judged on their own too: a group's access to a secret is unused when none of its
-  // members read it. Until a project has a full window of reads, it is judged on the reads since tracking began.
-  const $loadSecretSummarizer = async (projectId: string, orgId: string, windowStart: Date) => {
+  // Everyone who can hold secrets in the project, and what each secret's readers are judged against. The user and
+  // identity lists carry only direct members, so every group member is also listed with what the group gives them,
+  // their own folder grants included. Until a project has a full window of reads, it is judged on the reads since
+  // tracking began.
+  const $loadProjectAccess = async (projectId: string, orgId: string, windowStart: Date) => {
     const [
       { userPermissions, identityPermissions, groupPermissions },
       accessChangedAtByActorId,
@@ -298,115 +286,70 @@ export const secretReadActivityServiceFactory = ({
       secretReadActivityDAL.findAdminActorIds(projectId),
       $getProjectTrackingStartedAt(projectId)
     ]);
-    // The user and identity lists carry only direct members, so every group member is also checked with what the
-    // group gives them, their own folder grants included; an actor who qualifies more than one way counts once.
     const groupIds = groupPermissions.map((group) => group.id);
     const [userGroupMemberships, identityGroupMemberships] = await Promise.all([
       groupIds.length ? userGroupMembershipDAL.find({ $in: { groupId: groupIds } }) : [],
       groupIds.length ? identityGroupMembershipDAL.find({ $in: { groupId: groupIds } }) : []
     ]);
-    const groupPermissionById = new Map(groupPermissions.map((group) => [group.id, group]));
-    // In a project tracked for less than the window, unused access is judged on the reads since tracking began.
-    const judgedFrom = trackingStartedAt > windowStart ? trackingStartedAt : windowStart;
-    type TActor = {
-      id: string;
-      name?: string;
-      actorType: TSecretReaderType;
-      permission: (typeof userPermissions)[number]["permission"];
-    };
-    const throughGroup = <T extends { groupId: string }>(
-      memberships: T[],
-      actorType: TSecretReaderType,
-      idOf: (membership: T) => string
-    ): TActor[] =>
-      memberships.flatMap((membership) => {
-        const group = groupPermissionById.get(membership.groupId);
-        const id = idOf(membership);
-        return group ? [{ id, actorType, permission: group.permissionForMember(id) }] : [];
-      });
-    const actors: TActor[] = [
-      ...userPermissions.map((actor) => ({ ...actor, actorType: ActorType.USER as const })),
-      ...identityPermissions.map((actor) => ({ ...actor, actorType: ActorType.IDENTITY as const })),
-      ...throughGroup(userGroupMemberships, ActorType.USER, (membership) => membership.userId),
-      ...throughGroup(identityGroupMemberships, ActorType.IDENTITY, (membership) => membership.identityId)
+
+    const groupById = new Map(groupPermissions.map((group) => [group.id, group]));
+    const groupMembers = [
+      ...userGroupMemberships.map(({ groupId, userId }) => ({ groupId, actorType: ActorType.USER, actorId: userId })),
+      ...identityGroupMemberships.map(({ groupId, identityId }) => ({
+        groupId,
+        actorType: ActorType.IDENTITY,
+        actorId: identityId
+      }))
+    ].flatMap(({ groupId, actorType, actorId }) => {
+      const group = groupById.get(groupId);
+      return group ? [{ group, actorType: actorType as TSecretReaderType, actorId }] : [];
+    });
+    const readers: TProjectReader[] = [
+      ...userPermissions.map(({ id, permission }) => ({ actorType: ActorType.USER as const, actorId: id, permission })),
+      ...identityPermissions.map(({ id, permission }) => ({
+        actorType: ActorType.IDENTITY as const,
+        actorId: id,
+        permission
+      })),
+      ...groupMembers.map(({ group, actorType, actorId }) => ({
+        actorType,
+        actorId,
+        permission: group.permissionForMember(actorId)
+      }))
     ];
-    // Actors with identical rules always get the same answer, so each distinct rule set is checked once.
-    const actorGroups = Object.values(groupBy(actors, (actor) => JSON.stringify(actor.permission.rules)));
-    const actorNames = new Map<string, string>(
-      actors.flatMap((actor) => (actor.name ? [[`${actor.actorType}:${actor.id}`, actor.name] as const] : []))
-    );
 
-    // Admin groups can read everything by design, so like admins they are left out.
-    const memberKeysByGroupId = new Map<string, string[]>();
-    const addMember = (groupId: string, key: string) =>
-      memberKeysByGroupId.set(groupId, [...(memberKeysByGroupId.get(groupId) ?? []), key]);
-    userGroupMemberships.forEach((membership) =>
-      addMember(membership.groupId, `${ActorType.USER}:${membership.userId}`)
-    );
-    identityGroupMemberships.forEach((membership) =>
-      addMember(membership.groupId, `${ActorType.IDENTITY}:${membership.identityId}`)
-    );
-    const groups = groupPermissions
-      .filter((group) => !group.roles.some((role) => role.role === ProjectMembershipRole.Admin))
-      .map((group) => ({ ...group, memberKeys: memberKeysByGroupId.get(group.id) ?? [] }));
-
-    const summarize = ({ secret, environment, secretPath, trackedSince, reads }: TSecretActivity) => {
-      const subject = {
-        environment,
-        secretPath,
-        secretName: secret.key,
-        secretTags: secret.tags?.map((tag) => tag.slug)
-      };
-      const canReadValue = (permission: TActor["permission"]) =>
-        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, subject);
-      const entitled = [
-        ...new Map(
-          actorGroups
-            .filter(([{ permission }]) => canReadValue(permission))
-            .flat()
-            .map((actor) => [`${actor.actorType}:${actor.id}`, actor] as const)
-        ).values()
-      ];
-      const entitledKeys = new Set(entitled.map((actor) => `${actor.actorType}:${actor.id}`));
-      // Admins can read everything by design, so they are left out of the counts, though their reads still show,
-      // and a read of theirs is never a ghost's.
-      const nonAdmins = entitled.filter((actor) => !adminActorIds.has(actor.id));
-      const unread = nonAdmins.filter(
-        (actor) =>
-          !reads.has(`${actor.actorType}:${actor.id}`) &&
-          coversWholeWindow(trackedSince, accessChangedAtByActorId.get(actor.id), judgedFrom)
-      );
-      const ghostReaders = [...reads.values()].filter(
-        (read) => !entitledKeys.has(`${read.actorType}:${read.actorId}`) && !adminActorIds.has(read.actorId)
-      );
-      const entitledGroups = groups.filter((group) => canReadValue(group.permission));
-      const unreadGroups = entitledGroups.filter(
-        (group) =>
-          !group.memberKeys.some((key) => reads.has(key)) &&
-          coversWholeWindow(trackedSince, accessChangedAtByActorId.get(group.id), judgedFrom)
-      );
-      return {
-        entitled,
-        nonAdmins,
-        unread,
-        ghostReaders,
-        entitledGroups,
-        unreadGroups
-      };
-    };
     return {
-      summarize,
-      actorNames,
-      groups,
-      userPermissions,
-      identityPermissions,
-      judgedFrom,
+      readersByRules: Object.values(groupBy(readers, (reader) => JSON.stringify(reader.permission.rules))),
+      adminActorIds,
       accessChangedAtByActorId,
-      adminActorIds
+      judgedFrom: trackingStartedAt > windowStart ? trackingStartedAt : windowStart,
+      directMembers: new Map([
+        ...userPermissions.map((member) => [toActorKey(ActorType.USER, member.id), member] as const),
+        ...identityPermissions.map((member) => [toActorKey(ActorType.IDENTITY, member.id), member] as const)
+      ]),
+      groupMembershipsByActorKey: groupBy(groupMembers, (member) => toActorKey(member.actorType, member.actorId))
     };
   };
-  type TSummarizer = Awaited<ReturnType<typeof $loadSecretSummarizer>>;
-  type TSecretSummary = ReturnType<TSummarizer["summarize"]>;
+
+  // Direct members come named. Everyone else (members only through a group, and readers since gone from the
+  // project) is looked up; a user or identity deleted outright has no name.
+  const $findActorNames = async (
+    actors: { actorType: string; actorId: string }[],
+    directMembers: Map<string, { name: string }>
+  ) => {
+    const others = actors.filter((actor) => !directMembers.has(toActorKey(actor.actorType, actor.actorId)));
+    const userIds = [...new Set(others.filter((a) => a.actorType === ActorType.USER).map((a) => a.actorId))];
+    const identityIds = [...new Set(others.filter((a) => a.actorType === ActorType.IDENTITY).map((a) => a.actorId))];
+    const [users, identities] = await Promise.all([
+      userIds.length ? userDAL.find({ $in: { id: userIds } }) : [],
+      identityIds.length ? identityDAL.find({ $in: { id: identityIds } }) : []
+    ]);
+    return new Map([
+      ...[...directMembers].map(([key, member]) => [key, member.name] as const),
+      ...users.map((user) => [toActorKey(ActorType.USER, user.id), user.username] as const),
+      ...identities.map((identity) => [toActorKey(ActorType.IDENTITY, identity.id), identity.name] as const)
+    ]);
+  };
 
   const getSecretReadActivity = async (
     { projectId, environment, secretPath, secretName }: TGetSecretReadActivityDTO,
@@ -437,264 +380,128 @@ export const secretReadActivityServiceFactory = ({
     });
 
     const windowStart = getReadActivityWindowStart();
-    const [[activity], { summarize, actorNames, judgedFrom, accessChangedAtByActorId, adminActorIds }] =
-      await Promise.all([
-        $getReadActivity({ projectId, windowStart, secret: { environment, secretPath, secretName }, tree }),
-        $loadSecretSummarizer(projectId, actor.orgId, windowStart)
-      ]);
+    const [[activity], access] = await Promise.all([
+      $getReadActivity({ projectId, windowStart, secret: { environment, secretPath, secretName }, tree }),
+      $loadProjectAccess(projectId, actor.orgId, windowStart)
+    ]);
     if (!activity) {
       throw new NotFoundError({
         message: `Secret with name '${secretName}' not found at path '${secretPath}' in environment '${environment}'`
       });
     }
-    const { entitled, nonAdmins, unread, ghostReaders } = summarize(activity);
-    const unreadKeys = new Set(unread.map((reader) => `${reader.actorType}:${reader.id}`));
-
-    // A ghost reader may have left the project or been deleted since, and a reader who has the value through a
-    // group is not among the direct members, so names the members do not give are looked up directly; a reader
-    // deleted outright has none.
-    const unnamed = [
-      ...ghostReaders,
-      ...entitled.map((reader) => ({ actorType: reader.actorType, actorId: reader.id }))
-    ].filter((read) => !actorNames.has(`${read.actorType}:${read.actorId}`));
-    const idsOf = (actorType: TSecretReaderType) => [
-      ...new Set(unnamed.filter((read) => read.actorType === actorType).map((read) => read.actorId))
-    ];
-    const [userIds, identityIds] = [idsOf(ActorType.USER), idsOf(ActorType.IDENTITY)];
-    const [users, identities] = await Promise.all([
-      userIds.length ? userDAL.find({ $in: { id: userIds } }) : [],
-      identityIds.length ? identityDAL.find({ $in: { id: identityIds } }) : []
-    ]);
-    users.forEach((user) => actorNames.set(`${ActorType.USER}:${user.id}`, user.username));
-    identities.forEach((identity) => actorNames.set(`${ActorType.IDENTITY}:${identity.id}`, identity.name));
+    const { entitled, nonAdmins, unread, ghostReaders } = summarizeSecretAccess(activity, access);
+    const unreadKeys = new Set(unread.map((reader) => toActorKey(reader.actorType, reader.actorId)));
+    const names = await $findActorNames([...entitled, ...ghostReaders], access.directMembers);
 
     return {
       trackedSince: activity.trackedSince,
-      judgedFrom,
+      judgedFrom: access.judgedFrom,
       reads: [...activity.reads.values()],
-      entitled: entitled.map(
-        (reader): TEntitledReader => ({
+      entitled: entitled.map((reader): TEntitledReader => {
+        const key = toActorKey(reader.actorType, reader.actorId);
+        return {
           actorType: reader.actorType,
-          actorId: reader.id,
-          actorName: actorNames.get(`${reader.actorType}:${reader.id}`) ?? null,
-          unread: unreadKeys.has(`${reader.actorType}:${reader.id}`),
-          isAdmin: adminActorIds.has(reader.id),
-          accessChangedAt: accessChangedAtByActorId.get(reader.id) ?? null
-        })
-      ),
+          actorId: reader.actorId,
+          actorName: names.get(key) ?? null,
+          unread: unreadKeys.has(key),
+          isAdmin: access.adminActorIds.has(reader.actorId),
+          accessChangedAt: access.accessChangedAtByActorId.get(reader.actorId) ?? null
+        };
+      }),
       entitledCount: nonAdmins.length,
       unreadCount: unread.length,
       ghostReaderCount: ghostReaders.length,
       ghostReaders: ghostReaders.map((read) => ({
         ...read,
-        actorName: actorNames.get(`${read.actorType}:${read.actorId}`) ?? null
+        actorName: names.get(toActorKey(read.actorType, read.actorId)) ?? null
       }))
     };
   };
 
-  // Walks every secret once and hands each one's summary to `visit`. The permission checks are synchronous, so it
-  // yields between secrets to keep a large project from blocking other requests.
-  const $walkSecrets = async (
-    projectId: string,
-    orgId: string,
-    visit: (activity: TSecretActivity, summary: TSecretSummary) => void
-  ) => {
+  // Scans every secret once and tallies, per user and machine identity, the secrets it can read and the ones it has
+  // not read in the window. The permission checks are synchronous, so the scan yields to the event loop between
+  // secrets to keep a large project from blocking other requests.
+  const $tallyUnusedAccess = async (projectId: string, orgId: string) => {
     const windowStart = getReadActivityWindowStart();
-    const [activities, summarizer] = await Promise.all([
+    const [activities, access] = await Promise.all([
       $getReadActivity({ projectId, windowStart }),
-      $loadSecretSummarizer(projectId, orgId, windowStart)
+      $loadProjectAccess(projectId, orgId, windowStart)
     ]);
-    for (let index = 0; index < activities.length; index += 1) {
+    const tallies = new Map<string, TUnusedAccessTally>();
+    const lastReadAtByKey = new Map<string, Date>();
+    for (const activity of activities) {
       // eslint-disable-next-line no-await-in-loop
-      await new Promise<void>((resolve) => {
-        setImmediate(resolve);
-      });
-      visit(activities[index], summarizer.summarize(activities[index]));
-    }
-    return summarizer;
-  };
-
-  const toPrincipalType = (actorType: TSecretReaderType) =>
-    actorType === ActorType.USER ? UnusedAccessPrincipalType.User : UnusedAccessPrincipalType.Identity;
-  const principalKey = (principalType: UnusedAccessPrincipalType, principalId: string) =>
-    `${principalType}:${principalId}`;
-
-  // Everyone who can read secrets they have not read in the window: users and machine identities, whether through
-  // a role, a privilege or a group, and the groups themselves. Ranked by how many such secrets they have.
-  const $computeUnusedAccess = async (projectId: string, orgId: string) => {
-    type TStat = {
-      principalType: UnusedAccessPrincipalType;
-      principalId: string;
-      entitledCount: number;
-      unreadCount: number;
-      unreadSecretIds: string[];
-      environments: Set<string>;
-    };
-    const stats = new Map<string, TStat>();
-    const statOf = (principalType: UnusedAccessPrincipalType, principalId: string) => {
-      const key = principalKey(principalType, principalId);
-      let stat = stats.get(key);
-      if (!stat) {
-        stat = {
-          principalType,
-          principalId,
+      await setImmediate();
+      const { nonAdmins, unread } = summarizeSecretAccess(activity, access);
+      nonAdmins.forEach(({ actorType, actorId }) => {
+        const key = toActorKey(actorType, actorId);
+        const tally = tallies.get(key) ?? {
+          actorType,
+          actorId,
           entitledCount: 0,
           unreadCount: 0,
           unreadSecretIds: [],
           environments: new Set()
         };
-        stats.set(key, stat);
-      }
-      return stat;
-    };
-    const markUnread = (principalType: UnusedAccessPrincipalType, principalId: string, activity: TSecretActivity) => {
-      const stat = statOf(principalType, principalId);
-      stat.unreadCount += 1;
-      stat.environments.add(activity.environment);
-      if (stat.unreadSecretIds.length < UNUSED_ACCESS_MAX_SECRETS_PER_PRINCIPAL) {
-        stat.unreadSecretIds.push(activity.secret.id);
-      }
-    };
-    const lastReadAtByKey = new Map<string, number>();
-
-    const { actorNames, groups, userPermissions, identityPermissions } = await $walkSecrets(
-      projectId,
-      orgId,
-      (activity, summary) => {
-        summary.nonAdmins.forEach((actor) => {
-          statOf(toPrincipalType(actor.actorType), actor.id).entitledCount += 1;
-        });
-        summary.unread.forEach((actor) => markUnread(toPrincipalType(actor.actorType), actor.id, activity));
-        summary.entitledGroups.forEach((group) => {
-          statOf(UnusedAccessPrincipalType.Group, group.id).entitledCount += 1;
-        });
-        summary.unreadGroups.forEach((group) => markUnread(UnusedAccessPrincipalType.Group, group.id, activity));
-        activity.reads.forEach((read, key) => {
-          lastReadAtByKey.set(key, Math.max(lastReadAtByKey.get(key) ?? 0, read.lastReadAt.getTime()));
-        });
-      }
-    );
-
-    const ranked = [...stats.values()]
-      .filter((stat) => stat.unreadCount > 0)
-      .sort((a, b) => b.unreadCount - a.unreadCount || a.entitledCount - b.entitledCount);
-
-    // Direct members and groups come named; members who have the access only through a group are looked up.
-    groups.forEach((group) => actorNames.set(principalKey(UnusedAccessPrincipalType.Group, group.id), group.name));
-    const unnamed = ranked.filter((stat) => !actorNames.has(principalKey(stat.principalType, stat.principalId)));
-    const idsOf = (principalType: UnusedAccessPrincipalType) =>
-      unnamed.filter((stat) => stat.principalType === principalType).map((stat) => stat.principalId);
-    const [userIds, identityIds] = [idsOf(UnusedAccessPrincipalType.User), idsOf(UnusedAccessPrincipalType.Identity)];
-    const [users, identities] = await Promise.all([
-      userIds.length ? userDAL.find({ $in: { id: userIds } }) : [],
-      identityIds.length ? identityDAL.find({ $in: { id: identityIds } }) : []
-    ]);
-    users.forEach((user) => actorNames.set(principalKey(UnusedAccessPrincipalType.User, user.id), user.username));
-    identities.forEach((identity) =>
-      actorNames.set(principalKey(UnusedAccessPrincipalType.Identity, identity.id), identity.name)
-    );
-
-    // How each principal gets the access, from the roles its permission was built from. Custom roles are shown by
-    // name, which is the one lookup the computation makes beyond what the permissions already loaded.
-    const rolesByKey = new Map<string, { role: string; customRoleSlug?: string | null }[]>();
-    const privilegedKeys = new Set<string>();
-    userPermissions.forEach((entry) => {
-      rolesByKey.set(principalKey(UnusedAccessPrincipalType.User, entry.id), entry.roles);
-      if (entry.hasAdditionalPrivileges) privilegedKeys.add(principalKey(UnusedAccessPrincipalType.User, entry.id));
-    });
-    identityPermissions.forEach((entry) => {
-      rolesByKey.set(principalKey(UnusedAccessPrincipalType.Identity, entry.id), entry.roles);
-      if (entry.hasAdditionalPrivileges) privilegedKeys.add(principalKey(UnusedAccessPrincipalType.Identity, entry.id));
-    });
-    groups.forEach((group) => rolesByKey.set(principalKey(UnusedAccessPrincipalType.Group, group.id), group.roles));
-    const customRoleSlugs = [
-      ...new Set([...rolesByKey.values()].flat().flatMap((role) => (role.customRoleSlug ? [role.customRoleSlug] : [])))
-    ];
-    const customRoles = customRoleSlugs.length ? await roleDAL.find({ projectId, $in: { slug: customRoleSlugs } }) : [];
-    const customRoleNameBySlug = new Map(customRoles.map((role) => [role.slug, role.name]));
-    const groupNamesByMemberKey = new Map<string, string[]>();
-    groups.forEach((group) =>
-      group.memberKeys.forEach((key) =>
-        groupNamesByMemberKey.set(key, [...(groupNamesByMemberKey.get(key) ?? []), group.name])
-      )
-    );
-    const roleLabel = (role: { role: string; customRoleSlug?: string | null }) =>
-      role.role === ProjectMembershipRole.Custom && role.customRoleSlug
-        ? `Role: ${customRoleNameBySlug.get(role.customRoleSlug) ?? role.customRoleSlug}`
-        : `Role: ${ROLE_LABELS[role.role] ?? role.role}`;
-    const accessViaOf = (key: string) => [
-      ...new Set([
-        ...(rolesByKey.get(key) ?? []).map(roleLabel),
-        ...(privilegedKeys.has(key) ? ["Additional privilege"] : []),
-        ...(groupNamesByMemberKey.get(key) ?? []).map((name) => `Group: ${name}`)
-      ])
-    ];
-    // A group's last read is its members' latest.
-    const lastReadOf = (stat: TStat) => {
-      const keys =
-        stat.principalType === UnusedAccessPrincipalType.Group
-          ? (groups.find((group) => group.id === stat.principalId)?.memberKeys ?? [])
-          : [principalKey(stat.principalType, stat.principalId)];
-      const latest = Math.max(0, ...keys.map((key) => lastReadAtByKey.get(key) ?? 0));
-      return latest ? new Date(latest) : null;
-    };
-
-    const rows = ranked.map((stat): TUnusedAccessPrincipal => {
-      const key = principalKey(stat.principalType, stat.principalId);
-      return {
-        principalType: stat.principalType,
-        principalId: stat.principalId,
-        name: actorNames.get(key) ?? stat.principalId,
-        memberCount:
-          stat.principalType === UnusedAccessPrincipalType.Group
-            ? (groups.find((group) => group.id === stat.principalId)?.memberKeys.length ?? 0)
-            : null,
-        entitledCount: stat.entitledCount,
-        unreadCount: stat.unreadCount,
-        environments: [...stat.environments].sort(),
-        lastReadAt: lastReadOf(stat),
-        accessVia: accessViaOf(key)
-      };
-    });
-    // The unread secrets themselves are kept for the principals with the most of them, so the sheet lists them
-    // without another scan; anyone further down is computed on their own when opened.
-    const details = Object.fromEntries(
-      ranked
-        .slice(0, UNUSED_ACCESS_DETAIL_MAX_PRINCIPALS)
-        .map((stat) => [principalKey(stat.principalType, stat.principalId), stat.unreadSecretIds])
-    );
-    return { rows, details };
+        tally.entitledCount += 1;
+        tallies.set(key, tally);
+      });
+      // Every unread reader is also a non-admin, so its tally exists.
+      unread.forEach(({ actorType, actorId }) => {
+        const tally = tallies.get(toActorKey(actorType, actorId)) as TUnusedAccessTally;
+        tally.unreadCount += 1;
+        tally.environments.add(activity.environment);
+        if (tally.unreadSecretIds.length < UNUSED_ACCESS_MAX_SECRETS_PER_ACTOR) {
+          tally.unreadSecretIds.push(activity.secret.id);
+        }
+      });
+      activity.reads.forEach((read, key) => {
+        const latest = lastReadAtByKey.get(key);
+        if (!latest || read.lastReadAt > latest) lastReadAtByKey.set(key, read.lastReadAt);
+      });
+    }
+    return { tallies, lastReadAtByKey, access };
   };
 
-  // Requests on a cold cache, on any instance, wait for the one computing the project and read what it cached
-  // instead of each scanning the project. If the wait runs out, the request computes it itself.
-  const $computeUnusedAccessShared = async (projectId: string, orgId: string, cacheKey: string) => {
-    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
-    try {
-      lock = await keyStore.acquireLock(
-        [KeyStorePrefixes.SecretReadActivityUnusedAccessLock(projectId)],
-        UNUSED_ACCESS_COMPUTE_LOCK_TTL_MS,
-        { retryCount: UNUSED_ACCESS_COMPUTE_WAIT_SECONDS, retryDelay: 1000 }
-      );
-    } catch {
-      lock = undefined;
-    }
-    try {
-      const cached = lock ? await keyStore.getItem(cacheKey) : null;
-      if (cached) return JSON.parse(cached) as Awaited<ReturnType<typeof $computeUnusedAccess>>;
+  // Every user and machine identity that can read secrets it has not read in the window, whether through a role, a
+  // privilege or a group. Ranked by how many such secrets it has.
+  const $computeUnusedAccess = async (projectId: string, orgId: string): Promise<TUnusedAccessSummary> => {
+    const { tallies, lastReadAtByKey, access } = await $tallyUnusedAccess(projectId, orgId);
+    const ranked = [...tallies.values()]
+      .filter((tally) => tally.unreadCount >= 0)
+      .sort((a, b) => b.unreadCount - a.unreadCount || a.entitledCount - b.entitledCount);
+    const names = await $findActorNames(ranked, access.directMembers);
 
-      const result = await $computeUnusedAccess(projectId, orgId);
-      // Written before the lock is released, so the next request in line finds it. A failed write only costs
-      // the next request a recomputation, so it never fails this one.
-      await keyStore
-        .setItemWithExpiry(cacheKey, UNUSED_ACCESS_CACHE_TTL_SECONDS, JSON.stringify(result))
-        .catch((error) => {
-          logger.warn(error, `unused-access: failed to cache the project computation [projectId=${projectId}]`);
-        });
-      return result;
-    } finally {
-      await lock?.release();
-    }
+    const rows = ranked.map((tally): TUnusedAccessActor => {
+      const key = toActorKey(tally.actorType, tally.actorId);
+      const member = access.directMembers.get(key);
+      return {
+        actorType: tally.actorType,
+        actorId: tally.actorId,
+        name: names.get(key) ?? tally.actorId,
+        entitledCount: tally.entitledCount,
+        unreadCount: tally.unreadCount,
+        environments: [...tally.environments].sort(),
+        lastReadAt: lastReadAtByKey.get(key) ?? null,
+        accessPaths: {
+          roles: toUnusedAccessRoles(member?.roles ?? []),
+          groups: (access.groupMembershipsByActorKey[key] ?? []).map(({ group }) => ({
+            id: group.id,
+            name: group.name,
+            roles: toUnusedAccessRoles(group.roles)
+          })),
+          additionalPrivileges: member?.additionalPrivileges ?? []
+        }
+      };
+    });
+    // The unread secrets themselves are kept for the actors with the most of them, so the sheet lists them without
+    // another scan; anyone further down is scanned for on their own when opened.
+    const details = Object.fromEntries(
+      ranked
+        .slice(0, UNUSED_ACCESS_DETAIL_MAX_ACTORS)
+        .map((tally) => [toActorKey(tally.actorType, tally.actorId), tally.unreadSecretIds])
+    );
+    return { rows, details };
   };
 
   // The whole project is computed once a day and cached, so paging through it is cheap.
@@ -704,7 +511,36 @@ export const secretReadActivityServiceFactory = ({
       keyStore,
       key: cacheKey,
       ttlSeconds: UNUSED_ACCESS_CACHE_TTL_SECONDS,
-      fetcher: () => $computeUnusedAccessShared(projectId, orgId, cacheKey)
+      // Requests on a cold cache, on any instance, wait for the one computing the project and read what it cached
+      // instead of each scanning the project. If the wait runs out, the request computes it itself.
+      fetcher: async () => {
+        const lock = await keyStore
+          .acquireLock(
+            [KeyStorePrefixes.SecretReadActivityUnusedAccessLock(projectId)],
+            UNUSED_ACCESS_COMPUTE_LOCK_TTL_MS,
+            {
+              retryCount: UNUSED_ACCESS_COMPUTE_WAIT_SECONDS,
+              retryDelay: 1000
+            }
+          )
+          .catch(() => undefined);
+        try {
+          const cached = lock ? await keyStore.getItem(cacheKey) : null;
+          if (cached) return JSON.parse(cached) as TUnusedAccessSummary;
+
+          const result = await $computeUnusedAccess(projectId, orgId);
+          // Written before the lock is released, so the next request in line finds it. A failed write only costs
+          // the next request a recomputation, so it never fails this one.
+          await keyStore
+            .setItemWithExpiry(cacheKey, UNUSED_ACCESS_CACHE_TTL_SECONDS, JSON.stringify(result))
+            .catch((error) => {
+              logger.warn(error, `unused-access: failed to cache the project computation [projectId=${projectId}]`);
+            });
+          return result;
+        } finally {
+          await lock?.release();
+        }
+      }
     });
     const [remainingTTL, { project, trackingStartedAt }] = await Promise.all([
       getCacheTtl(keyStore, cacheKey),
@@ -721,35 +557,6 @@ export const secretReadActivityServiceFactory = ({
     };
   };
 
-  // The cache is shared by everyone in the project and can be a day old, so each listed secret is checked against
-  // the secret as it is now: deleted secrets drop out, keys and paths are current, and a caller only gets the
-  // secrets they could see anyway.
-  const $loadVisibleSecrets = async (projectId: string, permission: TSecretPermission, secretIds: string[]) => {
-    const [tree, currentSecrets] = await Promise.all([
-      loadProjectFolderTree({ folderDAL, projectEnvDAL }, projectId),
-      secretIds.length
-        ? secretV2BridgeDAL.find({ $in: { [`${TableName.SecretV2}.id` as "id"]: [...new Set(secretIds)] } })
-        : []
-    ]);
-    const visible = new Map<string, TUnusedSecret>();
-    currentSecrets.forEach((secret) => {
-      const location = tree.locationOf(secret.folderId);
-      if (!location) return;
-      const canDescribe = hasSecretReadValueOrDescribePermission(
-        permission,
-        ProjectPermissionSecretActions.DescribeSecret,
-        {
-          environment: location.environment,
-          secretPath: location.secretPath,
-          secretName: secret.key,
-          secretTags: secret.tags?.map((tag) => tag.slug)
-        }
-      );
-      if (canDescribe) visible.set(secret.id, { secretKey: secret.key, ...location });
-    });
-    return visible;
-  };
-
   const listUnusedAccess = async (
     { projectId, offset, limit, search }: TListUnusedAccessDTO,
     actor: OrgServiceActor
@@ -759,7 +566,7 @@ export const secretReadActivityServiceFactory = ({
     const needle = search?.trim().toLowerCase();
     const matching = needle ? rows.filter((row) => row.name.toLowerCase().includes(needle)) : rows;
     return {
-      principals: matching.slice(offset, offset + limit),
+      actors: matching.slice(offset, offset + limit),
       totalCount: matching.length,
       projectName: tracking.projectName,
       trackingStartedAt: tracking.trackingStartedAt,
@@ -768,50 +575,48 @@ export const secretReadActivityServiceFactory = ({
     };
   };
 
-  // The unread secrets of one principal who was not among those cached in full: one scan, kept for the same day.
-  const $computeUnusedSecretIdsFor = async (
-    projectId: string,
-    orgId: string,
-    principalType: UnusedAccessPrincipalType,
-    principalId: string
-  ) => {
-    const secretIds: string[] = [];
-    await $walkSecrets(projectId, orgId, (activity, summary) => {
-      const isUnread =
-        principalType === UnusedAccessPrincipalType.Group
-          ? summary.unreadGroups.some((group) => group.id === principalId)
-          : summary.unread.some(
-              (reader) => reader.id === principalId && toPrincipalType(reader.actorType) === principalType
-            );
-      if (isUnread && secretIds.length < UNUSED_ACCESS_MAX_SECRETS_PER_PRINCIPAL) secretIds.push(activity.secret.id);
-    });
-    return secretIds;
-  };
-
-  const getUnusedAccessPrincipal = async (
-    { projectId, principalType, principalId }: TGetUnusedAccessPrincipalDTO,
+  const getUnusedAccessActor = async (
+    { projectId, actorType, actorId }: TGetUnusedAccessActorDTO,
     actor: OrgServiceActor
   ) => {
     const { permission } = await checkInsightsReadPermission(permissionService, projectId, actor);
     const { rows, details, ...tracking } = await $getCachedUnusedAccess(projectId, actor.orgId);
-    const key = principalKey(principalType, principalId);
-    const principal = rows.find((row) => principalKey(row.principalType, row.principalId) === key);
-    if (!principal) {
+    const unusedAccessActor = rows.find((row) => row.actorType === actorType && row.actorId === actorId);
+    if (!unusedAccessActor) {
       throw new NotFoundError({
-        message: `No unused access found for ${principalType} '${principalId}' in this project`
+        message: `No unused access found for ${actorType} '${actorId}' in this project`
       });
     }
+    const key = toActorKey(actorType, actorId);
+    // An actor past those cached in full is scanned for on its own, and kept for the same day.
     const secretIds =
       details[key] ??
       (await withCache({
         keyStore,
         key: KeyStorePrefixes.InsightsCache(projectId, `unused-access:${key}`),
         ttlSeconds: UNUSED_ACCESS_CACHE_TTL_SECONDS,
-        fetcher: () => $computeUnusedSecretIdsFor(projectId, actor.orgId, principalType, principalId)
+        fetcher: async () => (await $tallyUnusedAccess(projectId, actor.orgId)).tallies.get(key)?.unreadSecretIds ?? []
       }));
-    const visible = await $loadVisibleSecrets(projectId, permission, secretIds);
-    const secrets = secretIds
-      .flatMap((secretId) => visible.get(secretId) ?? [])
+
+    // The cache is shared by everyone in the project and can be a day old, so each listed secret is checked against
+    // the secret as it is now: deleted secrets drop out, keys and paths are current, and a caller only gets the
+    // secrets they could see anyway.
+    const [tree, currentSecrets] = await Promise.all([
+      loadProjectFolderTree({ folderDAL, projectEnvDAL }, projectId),
+      secretIds.length ? secretV2BridgeDAL.find({ $in: { [`${TableName.SecretV2}.id` as "id"]: secretIds } }) : []
+    ]);
+    const secrets = currentSecrets
+      .flatMap((secret): TUnusedSecret[] => {
+        const location = tree.locationOf(secret.folderId);
+        const canDescribe =
+          location &&
+          hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+            ...location,
+            secretName: secret.key,
+            secretTags: secret.tags?.map((tag) => tag.slug)
+          });
+        return location && canDescribe ? [{ secretKey: secret.key, ...location }] : [];
+      })
       .sort(
         (a, b) =>
           a.environment.localeCompare(b.environment) ||
@@ -819,10 +624,10 @@ export const secretReadActivityServiceFactory = ({
           a.secretKey.localeCompare(b.secretKey)
       );
     return {
-      principal,
+      actor: unusedAccessActor,
       secrets,
       // Everything not in the list: past the cached cap, hidden from this viewer, or deleted since.
-      unlistedCount: Math.max(0, principal.unreadCount - secrets.length),
+      unlistedCount: Math.max(0, unusedAccessActor.unreadCount - secrets.length),
       projectName: tracking.projectName,
       trackingStartedAt: tracking.trackingStartedAt,
       fullWindowFrom: tracking.fullWindowFrom,
@@ -835,6 +640,6 @@ export const secretReadActivityServiceFactory = ({
     recordBulkRead: secretReadActivityQueue.recordBulkRead,
     getSecretReadActivity,
     listUnusedAccess,
-    getUnusedAccessPrincipal
+    getUnusedAccessActor
   };
 };
