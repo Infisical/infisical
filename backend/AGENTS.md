@@ -39,7 +39,7 @@ relative paths itself. Invariants that a config change can silently break:
 
 ### Testing
 
-Run `make test-api-unit` and `make test-api-e2e` (narrow with `SPEC=<pattern>`) from the repo root, the same entry point CI uses. **Never point `npm run test:e2e` at the dev database**: the Vitest environment runs `DROP SCHEMA public CASCADE` on whatever `.env.test` targets. Unit tests go next to source as `*.test.ts`. Never add test-only code to `src/`. Read [`e2e-test/AGENTS.md`](e2e-test/AGENTS.md) before writing or running tests; it covers `testUtils`, faking third-party providers, and the FIPS test image.
+Run `make test-api-unit` and `make test-api-e2e` (narrow with `SPEC=<pattern>`) from the repo root, the same entry point CI uses. **Never point `npm run test:e2e` at the dev database**: the Vitest environment runs `DROP SCHEMA public CASCADE` on whatever `.env.test` targets. Unit tests go next to source as `*.test.ts`. Never add test-only code to `src/`. Read [`e2e-test/AGENTS.md`](e2e-test/AGENTS.md) before writing or running tests, or editing `Dockerfile.fips-toolchain` or `Dockerfile.dev.fips`; it covers `testUtils`, faking third-party providers, and the FIPS test image.
 
 ### Database
 
