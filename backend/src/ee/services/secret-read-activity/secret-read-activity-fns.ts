@@ -184,14 +184,17 @@ export const classifySecretReads = (
     (readsByObjectId[objectId] ?? []).forEach((read) => {
       if (read.objectType !== objectType || read.lastReadAt < trackedSince) return;
       const key = toActorKey(read.actorType, read.actorId);
-      const current = activity.get(key);
-      if (!current || read.lastReadAt > current.lastReadAt) {
-        activity.set(key, {
-          actorType: read.actorType as TSecretReaderType,
-          actorId: read.actorId,
-          lastReadAt: read.lastReadAt
-        });
+      const current = activity.get(key) ?? {
+        actorType: read.actorType as TSecretReaderType,
+        actorId: read.actorId,
+        lastReadAt: read.lastReadAt
+      };
+      if (read.lastReadAt > current.lastReadAt) current.lastReadAt = read.lastReadAt;
+      const isOfTheSecret = objectId === reach.secretId && objectType !== SecretReadObjectType.Folder;
+      if (isOfTheSecret && (!current.lastSecretReadAt || read.lastReadAt > current.lastSecretReadAt)) {
+        current.lastSecretReadAt = read.lastReadAt;
       }
+      activity.set(key, current);
     });
   };
 
@@ -223,19 +226,18 @@ export const summarizeSecretAccess = (
     const latest = latestAccessChangeOf(reader);
     return latest && latest > judgedFrom ? accessSinceOf(reader, activity) : latest;
   };
-  // A read is credited by folder, so one from before the reader had access to this secret did not return it. A read
-  // after their newest source change is after their access to every secret, so only an earlier one is checked.
+  // A folder read credits every secret in the folder, so one from before the reader had access to this secret did
+  // not return it; a read recorded against the secret itself did, so it always counts. A read after the reader's
+  // newest source change is after their access to every secret, so only an earlier one is checked.
   const readsByActorKey = new Map<string, TSecretReadResult>();
   entitled.forEach((reader) => {
     const key = toActorKey(reader.actorType, reader.actorId);
     const read = reads.get(key);
     if (!read) return;
     const latest = latestAccessChangeOf(reader);
-    if (latest && read.lastReadAt < latest) {
-      const since = accessSinceOf(reader, activity);
-      if (since && read.lastReadAt < since) return;
-    }
-    readsByActorKey.set(key, read);
+    const since = latest && read.lastReadAt < latest ? accessSinceOf(reader, activity) : undefined;
+    if (!since || read.lastReadAt >= since) readsByActorKey.set(key, read);
+    else if (read.lastSecretReadAt) readsByActorKey.set(key, { ...read, lastReadAt: read.lastSecretReadAt });
   });
   const unread = nonAdmins.filter(
     (reader) =>

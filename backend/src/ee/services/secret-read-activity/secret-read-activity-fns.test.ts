@@ -105,6 +105,26 @@ describe("classifySecretReads", () => {
     ).toBeUndefined();
   });
 
+  test("marks only a read recorded against the secret itself as known to have returned it", () => {
+    const secretRead = new Date("2026-10-11T00:00:00.000Z");
+    expect(
+      classify([
+        read({ lastReadAt: new Date("2026-10-12T00:00:00.000Z") }),
+        read({ objectId: dbPass.id, objectType: SecretReadObjectType.Secret, lastReadAt: secretRead }),
+        read({
+          objectId: dbUrl.id,
+          objectType: SecretReadObjectType.Secret,
+          lastReadAt: new Date("2026-10-13T00:00:00.000Z")
+        })
+      ])
+    ).toEqual({
+      actorType: ActorType.IDENTITY,
+      actorId: "identity-1",
+      lastReadAt: new Date("2026-10-13T00:00:00.000Z"),
+      lastSecretReadAt: secretRead
+    });
+  });
+
   test("ignores reads from before the secret was tracked", () => {
     expect(classify([read({ lastReadAt: new Date("2026-09-30T00:00:00.000Z") })])).toBeUndefined();
   });
@@ -227,6 +247,27 @@ describe("summarizeSecretAccess", () => {
       access(datedAccess({ direct: new Date("2026-09-20T00:00:00.000Z") }))
     );
     expect(after.readsByActorKey.get(toActorKey(ActorType.USER, "direct"))?.lastReadAt).toEqual(
+      new Date("2026-10-01T00:00:00.000Z")
+    );
+  });
+
+  test("keeps a read of the secret itself from before the reader's current access, such as before a role change", () => {
+    const folderReadThenSecretRead = new Map([
+      [
+        toActorKey(ActorType.USER, "direct"),
+        {
+          actorType: ActorType.USER as const,
+          actorId: "direct",
+          lastReadAt: new Date("2026-10-02T00:00:00.000Z"),
+          lastSecretReadAt: new Date("2026-10-01T00:00:00.000Z")
+        }
+      ]
+    ]);
+    const summary = summarizeSecretAccess(
+      activity({ reads: folderReadThenSecretRead }),
+      access(datedAccess({ direct: new Date("2026-10-05T00:00:00.000Z") }))
+    );
+    expect(summary.readsByActorKey.get(toActorKey(ActorType.USER, "direct"))?.lastReadAt).toEqual(
       new Date("2026-10-01T00:00:00.000Z")
     );
   });

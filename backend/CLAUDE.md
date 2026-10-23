@@ -1165,7 +1165,8 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   except an expired folder grant, which can give back access it held back in its folder. Only an actor with a
   source newer than `judgedFrom` is checked per secret, and each source once per secret across actors. A read from
   before the reader had access to a secret is dropped for that secret (`readsByActorKey`): reads are credited by
-  folder, and a folder read then could not have returned it. The per-secret sheet shows the plain fact
+  folder, and a folder read then could not have returned it. A read recorded against the secret itself
+  (`lastSecretReadAt`) always counts, so a role change does not erase it. The per-secret sheet shows the plain fact
   instead: a read, "No reads", or "No reads yet" with the reason.
 - **The access sheet.** The graph lives only in the secret's access sheet, served by
   `GET /insights/:projectId/secrets/read-activity/:secretName` (the fixed segment comes first so a secret named

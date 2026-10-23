@@ -25,6 +25,8 @@ export type TSecretReadResult = {
   actorType: TSecretReaderType;
   actorId: string;
   lastReadAt: Date;
+  // The latest read recorded against the secret itself, so known to have returned it, unlike a folder read.
+  lastSecretReadAt?: Date;
 };
 
 // Everything whose read hands over this secret's value: the secret and every secret that references it,
