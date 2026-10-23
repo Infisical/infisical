@@ -21,7 +21,7 @@ type TSecretAccessApprovalGlobalResourceDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findSecretAccessPolicyByEnvIdAndSecretPath">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "find" | "create">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create">;
-  membershipDAL: Pick<TMembershipDALFactory, "isUserProjectMember">;
+  membershipDAL: Pick<TMembershipDALFactory, "lockUserProjectMemberships">;
 };
 
 export type TSecretAccessApprovalGlobalResource = ReturnType<typeof secretAccessApprovalGlobalResourceFactory>;
@@ -72,9 +72,11 @@ export const secretAccessApprovalGlobalResourceFactory = ({
         throw new NotFoundError({ message: "The user who created this access request no longer exists" });
       }
 
-      // An additional privilege outlives a removal that ran before it was written, and takes effect if the
-      // user is ever added back, so it is never granted to someone outside the project.
-      if (!(await membershipDAL.isUserProjectMember({ projectId: request.projectId, userId: requesterId }, tx))) {
+      // Held until this transaction commits, across the privilege insert below. A privilege written
+      // after removal has deleted the previous ones takes effect again if the user is added back.
+      if (
+        !(await membershipDAL.lockUserProjectMemberships({ projectId: request.projectId, userId: requesterId }, tx))
+      ) {
         throw new BadRequestError({
           message:
             "The user who created this access request is no longer a member of this project, so access cannot be granted."

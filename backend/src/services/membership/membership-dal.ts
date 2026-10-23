@@ -181,6 +181,29 @@ export const membershipDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Locks every matching project membership in id order, direct or through a group, until the
+  // caller's transaction commits. The group-membership subquery is not locked.
+  const lockUserProjectMemberships = async ({ projectId, userId }: { projectId: string; userId: string }, tx: Knex) => {
+    try {
+      const userGroupSubquery = tx(TableName.UserGroupMembership).where("userId", userId).select("groupId");
+
+      const memberships = await tx(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where((qb) => {
+          void qb
+            .where(`${TableName.Membership}.actorUserId`, userId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupSubquery);
+        })
+        .orderBy(`${TableName.Membership}.id`)
+        .select(`${TableName.Membership}.id`)
+        .forUpdate();
+      return memberships.length > 0;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock user project memberships" });
+    }
+  };
+
   // Locks the row so a concurrent deactivation or removal of the same membership serializes behind the
   // caller. Always reads the primary, so it also bypasses the cached permission blob.
   const lockOrgMembershipForUser = async (
@@ -254,6 +277,7 @@ export const membershipDALFactory = (db: TDbClient) => {
     findResourceMembershipsForActors,
     findResourceMembershipsForGroup,
     isUserProjectMember,
+    lockUserProjectMemberships,
     lockOrgMembershipForUser,
     lockResourceMembershipForActor
   };

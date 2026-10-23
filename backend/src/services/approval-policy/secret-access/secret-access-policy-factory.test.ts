@@ -18,7 +18,7 @@ const approvedRequest = {
 } as unknown as TApprovalRequest;
 
 const buildResource = ({ isRequesterProjectMember }: { isRequesterProjectMember: boolean }) => {
-  const isUserProjectMember = vi.fn().mockResolvedValue(isRequesterProjectMember);
+  const lockUserProjectMemberships = vi.fn().mockResolvedValue(isRequesterProjectMember);
   const createGrant = vi.fn().mockResolvedValue({ id: "grant-1" });
   const createPrivilege = vi.fn().mockResolvedValue({ id: "privilege-1" });
 
@@ -26,19 +26,19 @@ const buildResource = ({ isRequesterProjectMember }: { isRequesterProjectMember:
     approvalPolicyDAL: { findSecretAccessPolicyByEnvIdAndSecretPath: vi.fn() },
     approvalRequestGrantsDAL: { find: vi.fn(), create: createGrant },
     additionalPrivilegeDAL: { create: createPrivilege },
-    membershipDAL: { isUserProjectMember }
+    membershipDAL: { lockUserProjectMemberships }
   } as never);
 
-  return { resource, isUserProjectMember, createGrant, createPrivilege };
+  return { resource, lockUserProjectMemberships, createGrant, createPrivilege };
 };
 
 describe("secretAccessApprovalGlobalResource.postApprovalTxRoutine", () => {
   test("grants a requester who is still a member of the project", async () => {
-    const { resource, isUserProjectMember, createPrivilege } = buildResource({ isRequesterProjectMember: true });
+    const { resource, lockUserProjectMemberships, createPrivilege } = buildResource({ isRequesterProjectMember: true });
 
     await expect(resource.postApprovalTxRoutine(approvedRequest, TX)).resolves.toEqual({ grantId: "grant-1" });
 
-    expect(isUserProjectMember).toHaveBeenCalledWith({ projectId: "project-1", userId: "user-1" }, TX);
+    expect(lockUserProjectMemberships).toHaveBeenCalledWith({ projectId: "project-1", userId: "user-1" }, TX);
     expect(createPrivilege).toHaveBeenCalledWith(
       expect.objectContaining({ actorUserId: "user-1", projectId: "project-1", grantId: "grant-1" }),
       TX
