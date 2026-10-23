@@ -1,4 +1,5 @@
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { isCliUserAgent } from "@app/lib/cli-version/cli-version-fns";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { isMfaProofAccepted } from "@app/services/auth/auth-fns";
@@ -20,7 +21,10 @@ import {
 
 type TMfaSessionServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "setItemWithExpiryNX" | "deleteItem">;
-  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
+  tokenService: Pick<
+    TAuthTokenServiceFactory,
+    "createTokenForUser" | "validateTokenForUser" | "getUserTokenSessionById"
+  >;
   smtpService: Pick<TSmtpService, "sendMail">;
   totpService: Pick<TTotpServiceFactory, "verifyUserTotp">;
   mfaLockoutService: Pick<
@@ -91,6 +95,13 @@ export const mfaSessionServiceFactory = ({
     return true;
   };
 
+  const canCompleteFromSession = async (mfaSession: TMfaSession, userId: string, tokenVersionId: string) => {
+    if (!mfaSession.initiatingTokenVersionId || mfaSession.initiatingTokenVersionId === tokenVersionId) return true;
+
+    const initiatingSession = await tokenService.getUserTokenSessionById(mfaSession.initiatingTokenVersionId, userId);
+    return isCliUserAgent(initiatingSession?.userAgent ?? undefined);
+  };
+
   // Helper function to update MFA session in Redis
   const updateMfaSession = async (mfaSession: TMfaSession, ttlSeconds: number): Promise<void> => {
     const mfaSessionKey = KeyStorePrefixes.MfaSession(mfaSession.sessionId);
@@ -155,7 +166,7 @@ export const mfaSessionServiceFactory = ({
       });
     }
 
-    if (mfaSession.initiatingTokenVersionId && mfaSession.initiatingTokenVersionId !== tokenVersionId) {
+    if (!(await canCompleteFromSession(mfaSession, userId, tokenVersionId))) {
       throw new ForbiddenRequestError({
         message: "MFA session does not belong to current session"
       });
@@ -229,7 +240,7 @@ export const mfaSessionServiceFactory = ({
       });
     }
 
-    if (mfaSession.initiatingTokenVersionId && mfaSession.initiatingTokenVersionId !== tokenVersionId) {
+    if (!(await canCompleteFromSession(mfaSession, userId, tokenVersionId))) {
       throw new ForbiddenRequestError({
         message: "MFA session does not belong to current session"
       });

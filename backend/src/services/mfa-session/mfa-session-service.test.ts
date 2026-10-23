@@ -23,12 +23,21 @@ const makeKeyStore = (session: TMfaSession | null): Mocked<KeyStoreSlice> =>
     deleteItem: vi.fn().mockResolvedValue(1)
   }) as Mocked<KeyStoreSlice>;
 
-const makeService = (keyStore: Mocked<KeyStoreSlice>, mfaLockoutService: Record<string, unknown> = {}) =>
+const makeService = (
+  keyStore: Mocked<KeyStoreSlice>,
+  mfaLockoutService: Record<string, unknown> = {},
+  initiatingSessionUserAgent?: string
+) =>
   mfaSessionServiceFactory({
     keyStore: keyStore as never,
     tokenService: {
       createTokenForUser: vi.fn().mockResolvedValue("code"),
-      validateTokenForUser: vi.fn().mockResolvedValue(undefined)
+      validateTokenForUser: vi.fn().mockResolvedValue(undefined),
+      getUserTokenSessionById: vi.fn(async (id: string, userId: string) =>
+        id === TOKEN_VERSION && userId === USER_ID && initiatingSessionUserAgent
+          ? { id, userId, userAgent: initiatingSessionUserAgent }
+          : undefined
+      )
     } as never,
     smtpService: { sendMail: vi.fn().mockResolvedValue(undefined) } as never,
     totpService: { verifyUserTotp: vi.fn().mockResolvedValue(undefined) } as never,
@@ -141,5 +150,44 @@ describe("mfaSessionService.verifyMfaSession", () => {
     const persisted = JSON.parse(keyStore.setItemWithExpiry.mock.calls.at(-1)![2] as string) as TMfaSession;
     expect(persisted.status).toBe(MfaSessionStatus.ACTIVE);
     expect(recordRecentMfaAuth).toHaveBeenCalledWith(USER_ID, TOKEN_VERSION, MfaMethod.EMAIL);
+  });
+});
+
+describe("mfaSessionService completing a challenge from another login session", () => {
+  const browserArgs = { mfaSessionId: SESSION_ID, userId: USER_ID, tokenVersionId: "browser-session" };
+  const pendingSession = activeSession({ status: MfaSessionStatus.PENDING });
+
+  test("lets the user's browser complete a challenge raised by their CLI session", async () => {
+    const keyStore = makeKeyStore(pendingSession);
+    const service = makeService(keyStore, {}, "cli");
+
+    await expect(service.getMfaSessionStatus(browserArgs)).resolves.toEqual({
+      status: MfaSessionStatus.PENDING,
+      mfaMethod: MfaMethod.EMAIL
+    });
+    await expect(
+      service.verifyMfaSession({ ...browserArgs, mfaToken: "123456", mfaMethod: MfaMethod.EMAIL })
+    ).resolves.toMatchObject({ success: true });
+  });
+
+  test("still binds consumption of a CLI-raised challenge to the CLI session", async () => {
+    const service = makeService(makeKeyStore(activeSession()), {}, "cli");
+    await expect(service.isMfaSessionActive({ ...activeArgs, tokenVersionId: "browser-session" })).resolves.toBe(
+      false
+    );
+  });
+
+  test("rejects a challenge raised by another browser session", async () => {
+    const service = makeService(makeKeyStore(pendingSession), {}, "Mozilla/5.0");
+
+    await expect(service.getMfaSessionStatus(browserArgs)).rejects.toBeInstanceOf(ForbiddenRequestError);
+    await expect(
+      service.verifyMfaSession({ ...browserArgs, mfaToken: "123456", mfaMethod: MfaMethod.EMAIL })
+    ).rejects.toBeInstanceOf(ForbiddenRequestError);
+  });
+
+  test("rejects a challenge whose initiating session no longer exists", async () => {
+    const service = makeService(makeKeyStore(pendingSession));
+    await expect(service.getMfaSessionStatus(browserArgs)).rejects.toBeInstanceOf(ForbiddenRequestError);
   });
 });
