@@ -54,7 +54,7 @@
 .palette [cmdk-root] {
   min-height: 0;
 }
-.palette [cmdk-list] {
+.palette [data-slot="command-scroll"] {
   flex: 0 1 auto;
   min-height: 0;
 }

@@ -773,7 +773,8 @@ export const baselineNavigation = [
     referenceNames: ["CommandMenu"],
     behavior: [
       "Groups rank label matches while keeping group order; pages drill into a nested command set. onQueryChange receives query and page ID; filter=false delegates filtering to the host.",
-      "Pending async commands reject duplicate activation, including the link shortcut; actual dialog close clears page, query and feedback before the next session."
+      "Pending async commands reject duplicate activation, including the link shortcut; actual dialog close clears page, query and feedback before the next session.",
+      "CommandList scrolls in a ScrollArea viewport with the edge fade and the styled ScrollBar, so no native scrollbar or arrow buttons show. CommandDialog keeps its title and description visually hidden outside DialogHeader, so the palette skips the Dialog section layout and its search row, list and footer run edge to edge."
     ],
     accessibility: [
       "Arrow keys move through commands and skip disabled ones. Escape leaves a nested page before it closes the menu. Mod+Enter opens an enabled link that is not pending in a new tab."

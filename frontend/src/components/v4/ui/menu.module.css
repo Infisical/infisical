@@ -162,6 +162,21 @@
   outline: none;
   scroll-padding-block: var(--v4-space-4);
 }
+.scroll {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(9 * var(--v4-size-control-sm));
+}
+.viewport {
+  flex: 0 1 auto;
+  min-height: 0;
+  outline: none;
+  scroll-padding-block: var(--v4-space-4);
+}
+.viewport > div {
+  display: block !important;
+}
 
 .row {
   position: relative;

@@ -1,11 +1,11 @@
 import * as React from "react";
 import { Command as CommandPrimitive } from "cmdk";
+import { ScrollArea as ScrollAreaPrimitive } from "radix-ui";
 
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogHeader,
   DialogTitle
 } from "@app/components/v4/ui/dialog";
 import { Icon } from "@app/components/v4/ui/icon";
@@ -13,6 +13,7 @@ import { Icon } from "@app/components/v4/ui/icon";
 import { ListHighlight } from "../lib/list-highlight";
 import { cn } from "../lib/utils";
 import { menuShortcutContent } from "./menu-content";
+import { ScrollBar } from "./scroll-area";
 
 import controlStyles from "./controls.module.css";
 import menu from "./menu.module.css";
@@ -63,10 +64,8 @@ function CommandDialog({
           target.focus();
         }}
       >
-        <DialogHeader className="sr-only">
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
+        <DialogTitle className="sr-only">{title}</DialogTitle>
+        <DialogDescription className="sr-only">{description}</DialogDescription>
         {children}
       </DialogContent>
     </Dialog>
@@ -107,16 +106,20 @@ function CommandList({
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
   return (
-    <CommandPrimitive.List
-      ref={ref}
-      data-slot="command-list"
-      data-scroll-fade="y"
-      className={cn(menu.list, menu.inset, className)}
-      {...props}
-    >
-      {children}
-      <ListHighlight />
-    </CommandPrimitive.List>
+    <ScrollAreaPrimitive.Root data-slot="command-scroll" className={menu.scroll}>
+      <ScrollAreaPrimitive.Viewport data-scroll-fade="y" className={menu.viewport}>
+        <CommandPrimitive.List
+          ref={ref}
+          data-slot="command-list"
+          className={cn(menu.inset, className)}
+          {...props}
+        >
+          {children}
+          <ListHighlight />
+        </CommandPrimitive.List>
+      </ScrollAreaPrimitive.Viewport>
+      <ScrollBar />
+    </ScrollAreaPrimitive.Root>
   );
 }
 CommandList.displayName = "CommandList";
