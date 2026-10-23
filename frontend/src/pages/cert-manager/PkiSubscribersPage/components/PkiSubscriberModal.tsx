@@ -176,11 +176,13 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: cas } = useListCasByProjectId();
   const [tabValue, setTabValue] = useState<FormTab>(FormTab.Configuration);
 
+  const subscriberName =
+    (popUp?.pkiSubscriber?.data as { subscriberName?: string })?.subscriberName || "";
   const { data: pkiSubscriber } = useGetPkiSubscriber({
-    subscriberName:
-      (popUp?.pkiSubscriber?.data as { subscriberName: string })?.subscriberName || "",
+    subscriberName,
     projectId
   });
+  const isSubscriberReady = !subscriberName || pkiSubscriber?.name === subscriberName;
 
   const { mutateAsync: createMutateAsync } = useCreatePkiSubscriber();
   const { mutateAsync: updateMutateAsync } = useUpdatePkiSubscriber();
@@ -236,7 +238,7 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   useEffect(() => {
-    if (pkiSubscriber && popUp.pkiSubscriber.isOpen) {
+    if (pkiSubscriber && popUp.pkiSubscriber.isOpen && isSubscriberReady) {
       reset({
         name: pkiSubscriber.name,
         caId: pkiSubscriber.caId || "",
@@ -259,13 +261,13 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
         emailAddress: pkiSubscriber.properties?.emailAddress || ""
       });
     }
-  }, [pkiSubscriber, popUp.pkiSubscriber.isOpen, reset]);
+  }, [pkiSubscriber, popUp.pkiSubscriber.isOpen, reset, isSubscriberReady]);
 
   useEffect(() => {
-    if (cas?.length && !pkiSubscriber && popUp.pkiSubscriber.isOpen && !getValues("caId")) {
+    if (cas?.length && !subscriberName && popUp.pkiSubscriber.isOpen && !getValues("caId")) {
       resetField("caId", { defaultValue: cas[0].id });
     }
-  }, [cas, pkiSubscriber, popUp.pkiSubscriber.isOpen]);
+  }, [cas, subscriberName, popUp.pkiSubscriber.isOpen]);
 
   const onFormSubmit = async ({
     name,
@@ -286,7 +288,7 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
     locality,
     emailAddress
   }: FormData) => {
-    if (!projectId) return;
+    if (!projectId || !isSubscriberReady) return;
 
     if (!caId) {
       createNotification({
@@ -420,7 +422,7 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
       >
         <SheetContent size="form" isPending={isSubmitting}>
           <SheetHeader>
-            <SheetTitle>{`${pkiSubscriber ? "Update" : "Add"} PKI Subscriber`}</SheetTitle>
+            <SheetTitle>{`${subscriberName ? "Update" : "Add"} PKI Subscriber`}</SheetTitle>
             <SheetDescription>Configure the subscriber certificate settings.</SheetDescription>
           </SheetHeader>
           <form
@@ -429,7 +431,7 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
             className="flex min-h-0 flex-1 flex-col"
           >
             <fieldset
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isSubscriberReady}
               className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-4"
             >
               <Tabs value={tabValue} onValueChange={(value) => setTabValue(value as FormTab)}>
@@ -761,10 +763,9 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                                   <div className="mt-2 mb-7 grid grid-cols-2 gap-2">
                                     {KEY_USAGES_OPTIONS.map(({ label, value: optionValue }) => {
                                       return (
-                                        <Field orientation="horizontal">
+                                        <Field key={optionValue} orientation="horizontal">
                                           <Checkbox
                                             id={optionValue}
-                                            key={optionValue}
                                             isChecked={value[optionValue]}
                                             onCheckedChange={(state) => {
                                               onChange({
@@ -797,10 +798,9 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
                                     {EXTENDED_KEY_USAGES_OPTIONS.map(
                                       ({ label, value: optionValue }) => {
                                         return (
-                                          <Field orientation="horizontal">
+                                          <Field key={optionValue} orientation="horizontal">
                                             <Checkbox
                                               id={optionValue}
-                                              key={optionValue}
                                               isChecked={value[optionValue]}
                                               onCheckedChange={(state) => {
                                                 onChange({
@@ -916,8 +916,13 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
               <SheetClose asChild>
                 <Button variant="ghost">Cancel</Button>
               </SheetClose>
-              <Button variant="project" type="submit" isPending={isSubmitting}>
-                {pkiSubscriber ? "Update" : "Add"}
+              <Button
+                variant="project"
+                type="submit"
+                isPending={isSubmitting}
+                isDisabled={!isSubscriberReady}
+              >
+                {subscriberName ? "Update" : "Add"}
               </Button>
             </SheetFooter>
           </form>

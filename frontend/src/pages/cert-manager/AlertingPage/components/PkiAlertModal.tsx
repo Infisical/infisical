@@ -86,11 +86,11 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
   const formId = useId();
   const projectId = currentProject?.id || "";
 
-  const { data: alert } = useGetPkiAlertById(
-    (popUp?.pkiAlert?.data as { alertId: string })?.alertId || ""
-  );
+  const alertId = (popUp?.pkiAlert?.data as { alertId?: string })?.alertId || "";
+  const { data: alert } = useGetPkiAlertById(alertId);
+  const isAlertReady = !alertId || alert?.id === alertId;
 
-  const { data: pkiCollections } = useListWorkspacePkiCollections({
+  const { data: pkiCollections, refetch: refetchCollections } = useListWorkspacePkiCollections({
     projectId
   });
 
@@ -111,7 +111,7 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   useEffect(() => {
-    if (!popUp.pkiAlert.isOpen || isDirty) return;
+    if (!popUp.pkiAlert.isOpen || !isAlertReady || isDirty) return;
     if (alert) {
       reset({
         name: alert.name,
@@ -129,7 +129,7 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
         })
       });
     }
-  }, [alert, pkiCollections, popUp.pkiAlert.isOpen, reset, isDirty]);
+  }, [alert, pkiCollections, popUp.pkiAlert.isOpen, reset, isDirty, isAlertReady]);
 
   const onFormSubmit = async ({
     name,
@@ -138,7 +138,7 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
     alertUnit,
     emails
   }: FormData) => {
-    if (!projectId) return;
+    if (!projectId || !isAlertReady) return;
 
     const emailArray = emails
       .split(",")
@@ -195,12 +195,12 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
       >
         <SheetContent size="form" isPending={isSubmitting}>
           <SheetHeader>
-            <SheetTitle>{`${alert ? "Edit" : "Create"} Alert`}</SheetTitle>
+            <SheetTitle>{`${alertId ? "Edit" : "Create"} Alert`}</SheetTitle>
             <SheetDescription>Configure certificate expiration notifications.</SheetDescription>
           </SheetHeader>
           <form onSubmit={handleSubmit(onFormSubmit)} className="flex min-h-0 flex-1 flex-col">
             <fieldset
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isAlertReady}
               className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-4"
             >
               <Controller
@@ -339,8 +339,13 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
               <SheetClose asChild>
                 <Button variant="ghost">Cancel</Button>
               </SheetClose>
-              <Button variant="project" type="submit" isPending={isSubmitting}>
-                {alert ? "Update" : "Create"}
+              <Button
+                variant="project"
+                type="submit"
+                isPending={isSubmitting}
+                isDisabled={!isAlertReady}
+              >
+                {alertId ? "Update" : "Create"}
               </Button>
             </SheetFooter>
           </form>
@@ -349,9 +354,17 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
       <PkiCollectionModal
         popUp={collectionPopup.popUp}
         handlePopUpToggle={collectionPopup.handlePopUpToggle}
-        onComplete={(collection) =>
-          setValue("pkiCollectionId", collection.id, { shouldDirty: true, shouldValidate: true })
-        }
+        onComplete={async (collection) => {
+          const result = await refetchCollections();
+          if (!result.data?.collections.some((option) => option.id === collection.id)) {
+            createNotification({
+              type: "error",
+              text: "The collection was created, but the list could not be refreshed. Refresh the list to select it."
+            });
+            return;
+          }
+          setValue("pkiCollectionId", collection.id, { shouldDirty: true, shouldValidate: true });
+        }}
       />
       <DiscardChangesAlertDialog
         open={isDiscardDialogOpen}
