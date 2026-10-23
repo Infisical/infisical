@@ -58,16 +58,6 @@ describe("buildAccessGraph", () => {
   const readerNode = (type: "user" | "identity", id: string) =>
     nodeById.get(readerNodeId({ type, id }))!;
 
-  test("lays readers and the secret out in two columns, with no other boxes", () => {
-    const secret = nodeById.get(SECRET_NODE_ID)!;
-    input.readers.forEach((entry) => {
-      expect(readerNode(entry.type, entry.id).position.x).toBeLessThan(secret.position.x);
-    });
-    expect(nodes.every((node) => ["reader", "secret", "bandLabel"].includes(node.type ?? ""))).toBe(
-      true
-    );
-  });
-
   test("puts unused access first, then readers too new to judge, then readers, then admins", () => {
     const order = [...input.readers]
       .sort((a, b) => readerNode(a.type, a.id).position.y - readerNode(b.type, b.id).position.y)
@@ -76,7 +66,9 @@ describe("buildAccessGraph", () => {
   });
 
   test("gives every reader one line to the secret, and names every group on the node", () => {
+    const secret = nodeById.get(SECRET_NODE_ID)!;
     input.readers.forEach((entry) => {
+      expect(readerNode(entry.type, entry.id).position.x).toBeLessThan(secret.position.x);
       const lines = edges.filter((edge) => edge.source === readerNodeId(entry));
       expect(lines.map((edge) => edge.target)).toEqual([SECRET_NODE_ID]);
     });

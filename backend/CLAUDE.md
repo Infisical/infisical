@@ -1167,7 +1167,7 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   all of its holder's access (what it held back is not worked out). Only the current secret's source checks are
   kept, so the scan's memory does not grow with the project. Only an actor with a
   source newer than `judgedFrom` is checked per secret, and each source once per secret across actors. A read from
-  before the reader had access to a secret is dropped for that secret (`readsByActorKey`): reads are credited by
+  before the reader had access to a secret is dropped for that secret (`readsByActorId`): reads are credited by
   folder, and a folder read then could not have returned it. A read recorded against the secret itself
   (`lastSecretReadAt`) always counts, so a role change does not erase it. The per-secret sheet shows the plain fact
   instead: a read, "No reads", or "No reads yet" with the reason.

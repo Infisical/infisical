@@ -118,6 +118,7 @@ export type TReadActivityScope = {
 export type TSecretActivity = TSecretLocation & {
   secret: Awaited<ReturnType<TSecretV2BridgeDALFactory["find"]>>[number];
   trackedSince: Date;
+  // Each reader's latest read of the secret, by actor id.
   reads: Map<string, TSecretReadResult>;
 };
 
@@ -152,9 +153,9 @@ export type TSecretAccessSummary = {
   entitled: TProjectReader[];
   nonAdmins: TProjectReader[];
   unread: TProjectReader[];
-  // The latest read of each entitled reader, keyed by actor, leaving out a read from before they had access to the
-  // secret: a folder read then could not have returned it.
-  readsByActorKey: Map<string, TSecretReadResult>;
+  // The latest read of each entitled reader, leaving out a read from before they had access to the secret: a
+  // folder read then could not have returned it.
+  readsByActorId: Map<string, TSecretReadResult>;
 };
 
 export enum SecretReadStatus {
@@ -218,6 +219,7 @@ export type TUnusedAccessTally = {
 
 export type TUnusedAccessSummary = {
   rows: TUnusedAccessActor[];
+  // The unused secret ids of the top actors, by actor id.
   details: Record<string, string[]>;
   // Unused means no read since this date: 30 days before the computation, or when tracking began if later.
   periodStart: Date;

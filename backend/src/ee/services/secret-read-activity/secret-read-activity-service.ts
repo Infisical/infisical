@@ -1,23 +1,27 @@
 import { setImmediate } from "node:timers/promises";
 
-import { createMongoAbility, MongoAbility } from "@casl/ability";
+import { createMongoAbility, ForbiddenError } from "@casl/ability";
 
-import { SecretFolderRole, SecretType, TableName } from "@app/db/schemas";
+import { ActionProjectType, SecretFolderRole, SecretType, TableName } from "@app/db/schemas";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { checkInsightsReadPermission } from "@app/ee/services/insights/insights-fns";
 import {
   buildFolderScopedPrivilegeRules,
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionInsightsActions,
+  ProjectPermissionSecretActions,
+  ProjectPermissionSet,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
 import { conditionsMatcher } from "@app/lib/casl";
 import { NotFoundError } from "@app/lib/errors";
-import { groupBy } from "@app/lib/fn";
+import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -43,17 +47,14 @@ import {
   indexSecretReads,
   loadProjectFolderTree,
   summarizeSecretAccess,
-  toActorKey,
   toLocationKey,
   toUnusedAccessRoles
 } from "./secret-read-activity-fns";
 import { TSecretReadActivityQueueServiceFactory } from "./secret-read-activity-queue";
 import {
-  TAccessSource,
   TGetSecretReadActivityDTO,
   TGetUnusedAccessActorDTO,
   TListUnusedAccessDTO,
-  TProjectReader,
   TReachSecret,
   TReadActivityScope,
   TSecretActivity,
@@ -75,6 +76,14 @@ const UNUSED_ACCESS_COMPUTE_WAIT_SECONDS = 60;
 // capped per actor, which keeps a project's entry under about 1.5 MB.
 const UNUSED_ACCESS_DETAIL_MAX_ACTORS = 200;
 const UNUSED_ACCESS_MAX_SECRETS_PER_ACTOR = 200;
+
+const once = <T>(build: () => T) => {
+  let value: T | undefined;
+  return () => {
+    value ??= build();
+    return value;
+  };
+};
 
 type TSecretReadActivityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
@@ -116,6 +125,23 @@ export const secretReadActivityServiceFactory = ({
   kmsService,
   keyStore
 }: TSecretReadActivityServiceFactoryDep) => {
+  // The permission alone, not the plan: a downgrade must not hide reads already collected.
+  const $getInsightsPermission = async (projectId: string, actor: OrgServiceActor) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionInsightsActions.Read,
+      ProjectPermissionSub.Insights
+    );
+    return permission;
+  };
+
   let instanceTrackingStartedAt: Promise<Date | undefined> | undefined;
   const $getTrackingStartedAt = () => {
     instanceTrackingStartedAt ??= secretReadActivityDAL.findTrackingStartedAt().catch((error) => {
@@ -289,32 +315,29 @@ export const secretReadActivityServiceFactory = ({
     };
   };
 
-  // The username and metadata of people the project permissions did not load, to fill placeholders in group roles.
-  const $findActorDetails = async (
+  // The name, and when asked the metadata, of the users and identities the project permissions did not load.
+  const $findActors = async (
     orgId: string,
-    actors: { actorType: TSecretReaderType; actorId: string }[]
-  ): Promise<Map<string, { username: string; metadata: { key: string; value: string }[] }>> => {
+    actors: { actorType: TSecretReaderType; actorId: string }[],
+    withMetadata: boolean
+  ) => {
     const idsOf = (actorType: TSecretReaderType) =>
       actors.filter((actor) => actor.actorType === actorType).map((actor) => actor.actorId);
     const [userIds, identityIds] = [idsOf(ActorType.USER), idsOf(ActorType.IDENTITY)];
     const [users, identities, userMetadata, identityMetadata] = await Promise.all([
       userIds.length ? userDAL.find({ $in: { id: userIds } }) : [],
       identityIds.length ? identityDAL.find({ $in: { id: identityIds } }) : [],
-      userIds.length ? identityMetadataDAL.find({ orgId, $in: { userId: userIds } }) : [],
+      withMetadata && userIds.length ? identityMetadataDAL.find({ orgId, $in: { userId: userIds } }) : [],
       // An identity's metadata lives under the org that owns it, which a linked group's child org is not, so it is
       // loaded by identity alone, as getProjectPermission does.
-      identityIds.length ? identityMetadataDAL.find({ $in: { identityId: identityIds } }) : []
+      withMetadata && identityIds.length ? identityMetadataDAL.find({ $in: { identityId: identityIds } }) : []
     ]);
     const metadataByUserId = groupBy(userMetadata, (row) => row.userId ?? "");
     const metadataByIdentityId = groupBy(identityMetadata, (row) => row.identityId ?? "");
-    const toPairs = (rows: { key: string; value: string }[] = []) => rows.map(({ key, value }) => ({ key, value }));
     return new Map([
-      ...users.map(
-        (user) => [user.id, { username: user.username, metadata: toPairs(metadataByUserId[user.id]) }] as const
-      ),
+      ...users.map((user) => [user.id, { name: user.username, metadata: metadataByUserId[user.id] ?? [] }] as const),
       ...identities.map(
-        (identity) =>
-          [identity.id, { username: identity.name, metadata: toPairs(metadataByIdentityId[identity.id]) }] as const
+        (identity) => [identity.id, { name: identity.name, metadata: metadataByIdentityId[identity.id] ?? [] }] as const
       )
     ]);
   };
@@ -352,107 +375,96 @@ export const secretReadActivityServiceFactory = ({
     const groupMembers = [
       ...userGroupMemberships.map(({ groupId, userId, createdAt }) => ({
         groupId,
-        actorType: ActorType.USER,
+        actorType: ActorType.USER as const,
         actorId: userId,
         joinedAt: createdAt
       })),
       ...identityGroupMemberships.map(({ groupId, identityId, createdAt }) => ({
         groupId,
-        actorType: ActorType.IDENTITY,
+        actorType: ActorType.IDENTITY as const,
         actorId: identityId,
         joinedAt: createdAt
       }))
-    ].flatMap(({ groupId, actorType, actorId, joinedAt }) => {
+    ].flatMap(({ groupId, ...member }) => {
       const group = groupById.get(groupId);
-      return group ? [{ group, actorType: actorType as TSecretReaderType, actorId, joinedAt }] : [];
+      return group ? [{ ...member, group }] : [];
     });
-    const people = new Map<string, { actorType: TSecretReaderType; actorId: string; groupIds: string[] }>();
-    const personOf = (actorType: TSecretReaderType, actorId: string) => {
-      const key = toActorKey(actorType, actorId);
-      const person = people.get(key) ?? { actorType, actorId, groupIds: [] };
-      people.set(key, person);
-      return person;
-    };
-    userPermissions.forEach(({ id }) => personOf(ActorType.USER, id));
-    identityPermissions.forEach(({ id }) => personOf(ActorType.IDENTITY, id));
-    groupMembers.forEach(({ group, actorType, actorId }) => personOf(actorType, actorId).groupIds.push(group.id));
+    const groupMembershipsByActorId = groupBy(groupMembers, (member) => member.actorId);
+    const directMembers = new Map([...userPermissions, ...identityPermissions].map((member) => [member.id, member]));
+    const actors = unique(
+      [
+        ...userPermissions.map(({ id }) => ({ actorType: ActorType.USER as const, actorId: id })),
+        ...identityPermissions.map(({ id }) => ({ actorType: ActorType.IDENTITY as const, actorId: id })),
+        ...groupMembers.map(({ actorType, actorId }) => ({ actorType, actorId }))
+      ],
+      (actor) => actor.actorId
+    );
 
-    // A placeholder such as {{identity.username}} is filled from the person's own details. Direct members' details
-    // come with the permissions; those of people only in through a group are looked up, and only when a group role
-    // holds a placeholder.
-    const directMemberIds = new Set([...userPermissions, ...identityPermissions].map(({ id }) => id));
-    const groupOnly = [...people.values()].filter((person) => !directMemberIds.has(person.actorId));
-    const detailsByActorId = groupRulesHavePlaceholders
-      ? await $findActorDetails(orgId, groupOnly)
-      : new Map<string, { username: string; metadata: { key: string; value: string }[] }>();
-    const readers: TProjectReader[] = [...people.values()].map(({ actorType, actorId, groupIds: memberOf }) => ({
+    // Direct members come named, with the details that fill a placeholder such as {{identity.username}}. People only
+    // in through a group are looked up, their details only when a group role holds a placeholder.
+    const others = await $findActors(
+      orgId,
+      actors.filter((actor) => !directMembers.has(actor.actorId)),
+      groupRulesHavePlaceholders
+    );
+    const nameOf = (actorId: string) => directMembers.get(actorId)?.name ?? others.get(actorId)?.name ?? actorId;
+    const detailsOf = (actorId: string) => {
+      const other = others.get(actorId);
+      return other && { username: other.name, metadata: other.metadata };
+    };
+    const groupIdsOf = (actorId: string) => (groupMembershipsByActorId[actorId] ?? []).map(({ group }) => group.id);
+    const readers = actors.map(({ actorType, actorId }) => ({
       actorType,
       actorId,
-      permission: permissionForActor({ actorId, groupIds: memberOf, ...detailsByActorId.get(actorId) })
+      permission: permissionForActor({ actorId, groupIds: groupIdsOf(actorId), ...detailsOf(actorId) })
     }));
 
     // Every source of each actor's access with its date: their own roles and project-wide privileges, each group
-    // they are in (dated from joining it or from the group's own role change, whichever is later), and their folder
-    // grants. The permissions are built only for an actor whose access needs dating per secret.
-    const sourcesByActorId = new Map<string, TAccessSource[]>();
-    const addSources = (actorId: string, sources: TAccessSource[]) =>
-      sourcesByActorId.set(actorId, [...(sourcesByActorId.get(actorId) ?? []), ...sources]);
-    [...userPermissions, ...identityPermissions].forEach((member) => {
-      const permissionOf = (key: string) => () =>
-        (member.accessSources().find((source) => source.key === key) ?? { permission: member.permission }).permission;
-      addSources(member.id, [
-        ...member.roles.map((role) => ({
-          date: sourceDates.roleDates.get(role.id),
-          permission: permissionOf(`role:${role.id}`)
-        })),
-        ...member.additionalPrivileges.map((privilege) => ({
-          date: sourceDates.privilegeDates.get(privilege.id),
-          permission: permissionOf(`privilege:${privilege.id}`)
-        }))
-      ]);
-    });
-    // A group on its own, with the member's details filled into its placeholders. Built once, on first use.
-    groupMembers.forEach(({ group, actorId, joinedAt }) => {
-      const groupChangedAt = sourceDates.groupDates.get(group.id);
-      let permission: MongoAbility<ProjectPermissionSet> | undefined;
-      addSources(actorId, [
-        {
+    // they are in (dated from joining it or from the group's own role change, whichever is later, with their details
+    // filled into its placeholders), and their folder grants. A permission is built on first use.
+    const sources = [
+      ...[...directMembers.values()].flatMap((member) => {
+        const sourceOf = (key: string) => () =>
+          member.accessSources().find((source) => source.key === key)?.permission ?? member.permission;
+        return [
+          ...member.roles.map((role) => ({
+            actorId: member.id,
+            date: sourceDates.roleDates.get(role.id),
+            permission: sourceOf(`role:${role.id}`)
+          })),
+          ...member.additionalPrivileges.map((privilege) => ({
+            actorId: member.id,
+            date: sourceDates.privilegeDates.get(privilege.id),
+            permission: sourceOf(`privilege:${privilege.id}`)
+          }))
+        ];
+      }),
+      ...groupMembers.map(({ group, actorId, joinedAt }) => {
+        const groupChangedAt = sourceDates.groupDates.get(group.id);
+        return {
+          actorId,
           date: groupChangedAt && groupChangedAt > joinedAt ? groupChangedAt : joinedAt,
-          permission: () => {
-            permission ??= permissionForActor({
-              actorId,
-              groupIds: [group.id],
-              groupsOnly: true,
-              ...detailsByActorId.get(actorId)
-            });
-            return permission;
-          }
-        }
-      ]);
-    });
-    folderAccessByActorId.forEach((grants, actorId) => {
-      addSources(
-        actorId,
-        grants.map((grant) => {
-          let permission: MongoAbility<ProjectPermissionSet> | undefined;
-          return {
-            date: sourceDates.privilegeDates.get(grant.id),
-            folderId: grant.folderId,
-            restartsFolder: sourceDates.editedPrivilegeIds.has(grant.id),
-            permission: () => {
-              permission ??= createMongoAbility<ProjectPermissionSet>(buildFolderScopedPrivilegeRules([grant]), {
-                conditionsMatcher
-              });
-              return permission;
-            }
-          };
-        })
-      );
-    });
+          permission: once(() =>
+            permissionForActor({ actorId, groupIds: [group.id], groupsOnly: true, ...detailsOf(actorId) })
+          )
+        };
+      }),
+      ...[...folderAccessByActorId].flatMap(([actorId, grants]) =>
+        grants.map((grant) => ({
+          actorId,
+          date: sourceDates.privilegeDates.get(grant.id),
+          folderId: grant.folderId,
+          restartsFolder: sourceDates.editedPrivilegeIds.has(grant.id),
+          permission: once(() =>
+            createMongoAbility<ProjectPermissionSet>(buildFolderScopedPrivilegeRules([grant]), { conditionsMatcher })
+          )
+        }))
+      )
+    ];
 
     // A group's expired temporary role reached each of its members.
-    const accessReopenedAt = new Map<string, Date>();
     const membersByGroupId = groupBy(groupMembers, (member) => member.group.id);
+    const accessReopenedAt = new Map<string, Date>();
     sourceDates.accessReopenedAt.forEach((date, holderId) => {
       (membersByGroupId[holderId]?.map((member) => member.actorId) ?? [holderId]).forEach((actorId) => {
         const current = accessReopenedAt.get(actorId);
@@ -463,41 +475,24 @@ export const secretReadActivityServiceFactory = ({
     return {
       readersByRules: Object.values(groupBy(readers, (reader) => JSON.stringify(reader.permission.rules))),
       adminActorIds,
-      ...createAccessDating(sourcesByActorId, sourceDates.folderReopenedAt, accessReopenedAt),
+      ...createAccessDating(
+        groupBy(sources, (source) => source.actorId),
+        sourceDates.folderReopenedAt,
+        accessReopenedAt
+      ),
       judgedFrom: trackingStartedAt > windowStart ? trackingStartedAt : windowStart,
-      directMembers: new Map([
-        ...userPermissions.map((member) => [toActorKey(ActorType.USER, member.id), member] as const),
-        ...identityPermissions.map((member) => [toActorKey(ActorType.IDENTITY, member.id), member] as const)
-      ]),
-      groupMembershipsByActorKey: groupBy(groupMembers, (member) => toActorKey(member.actorType, member.actorId)),
+      nameOf,
+      directMembers,
+      groupMembershipsByActorId,
       folderAccessByActorId
     };
-  };
-
-  // Direct members come named; members only through a group are looked up.
-  const $findActorNames = async (
-    actors: { actorType: string; actorId: string }[],
-    directMembers: Map<string, { name: string }>
-  ) => {
-    const others = actors.filter((actor) => !directMembers.has(toActorKey(actor.actorType, actor.actorId)));
-    const userIds = [...new Set(others.filter((a) => a.actorType === ActorType.USER).map((a) => a.actorId))];
-    const identityIds = [...new Set(others.filter((a) => a.actorType === ActorType.IDENTITY).map((a) => a.actorId))];
-    const [users, identities] = await Promise.all([
-      userIds.length ? userDAL.find({ $in: { id: userIds } }) : [],
-      identityIds.length ? identityDAL.find({ $in: { id: identityIds } }) : []
-    ]);
-    return new Map([
-      ...[...directMembers].map(([key, member]) => [key, member.name] as const),
-      ...users.map((user) => [toActorKey(ActorType.USER, user.id), user.username] as const),
-      ...identities.map((identity) => [toActorKey(ActorType.IDENTITY, identity.id), identity.name] as const)
-    ]);
   };
 
   const getSecretReadActivity = async (
     { projectId, environment, secretPath, secretName }: TGetSecretReadActivityDTO,
     actor: OrgServiceActor
   ) => {
-    const { permission } = await checkInsightsReadPermission(permissionService, projectId, actor);
+    const permission = await $getInsightsPermission(projectId, actor);
 
     // The secret is checked before the reach is built, which decrypts every secret that could reference it.
     const tree = await loadProjectFolderTree({ folderDAL, projectEnvDAL }, projectId);
@@ -531,26 +526,24 @@ export const secretReadActivityServiceFactory = ({
         message: `Secret with name '${secretName}' not found at path '${secretPath}' in environment '${environment}'`
       });
     }
-    const { entitled, unread, readsByActorKey } = summarizeSecretAccess(activity, access);
-    const unusedKeys = new Set(unread.map((reader) => toActorKey(reader.actorType, reader.actorId)));
-    const names = await $findActorNames(entitled, access.directMembers);
+    const { entitled, unread, readsByActorId } = summarizeSecretAccess(activity, access);
+    const unusedActorIds = new Set(unread.map((reader) => reader.actorId));
 
     const actors = entitled.map((reader): TSecretReadActivityActor => {
-      const key = toActorKey(reader.actorType, reader.actorId);
-      const lastReadAt = readsByActorKey.get(key)?.lastReadAt ?? null;
+      const lastReadAt = readsByActorId.get(reader.actorId)?.lastReadAt ?? null;
       const isProjectAdmin = access.adminActorIds.has(reader.actorId);
       // Every reader has at least one dated source; without one, access is as old as the secret's tracked period.
       const accessSince = access.accessSinceOf(reader, activity) ?? activity.trackedSince;
       return {
         actorType: reader.actorType,
         actorId: reader.actorId,
-        name: names.get(key) ?? reader.actorId,
+        name: access.nameOf(reader.actorId),
         isProjectAdmin,
         lastReadAt,
         accessSince,
         ...getReadStatus({
           lastReadAt,
-          isUnused: unusedKeys.has(key),
+          isUnused: unusedActorIds.has(reader.actorId),
           isProjectAdmin,
           accessSince,
           judgedFrom: access.judgedFrom
@@ -580,8 +573,7 @@ export const secretReadActivityServiceFactory = ({
       await setImmediate();
       const { nonAdmins, unread } = summarizeSecretAccess(activity, access);
       nonAdmins.forEach(({ actorType, actorId }) => {
-        const key = toActorKey(actorType, actorId);
-        const tally = tallies.get(key) ?? {
+        const tally = tallies.get(actorId) ?? {
           actorType,
           actorId,
           accessibleSecretCount: 0,
@@ -590,11 +582,11 @@ export const secretReadActivityServiceFactory = ({
           environments: new Set()
         };
         tally.accessibleSecretCount += 1;
-        tallies.set(key, tally);
+        tallies.set(actorId, tally);
       });
       // Every unread reader is also a non-admin, so its tally exists.
-      unread.forEach(({ actorType, actorId }) => {
-        const tally = tallies.get(toActorKey(actorType, actorId)) as TUnusedAccessTally;
+      unread.forEach(({ actorId }) => {
+        const tally = tallies.get(actorId) as TUnusedAccessTally;
         tally.unusedSecretCount += 1;
         tally.environments.add(activity.environment);
         if (tally.unusedSecretIds.length < UNUSED_ACCESS_MAX_SECRETS_PER_ACTOR) {
@@ -612,21 +604,19 @@ export const secretReadActivityServiceFactory = ({
     const ranked = [...tallies.values()]
       .filter((tally) => tally.unusedSecretCount > 0)
       .sort((a, b) => b.unusedSecretCount - a.unusedSecretCount || a.accessibleSecretCount - b.accessibleSecretCount);
-    const names = await $findActorNames(ranked, access.directMembers);
 
     const rows = ranked.map((tally): TUnusedAccessActor => {
-      const key = toActorKey(tally.actorType, tally.actorId);
-      const member = access.directMembers.get(key);
+      const member = access.directMembers.get(tally.actorId);
       return {
         actorType: tally.actorType,
         actorId: tally.actorId,
-        name: names.get(key) ?? tally.actorId,
+        name: access.nameOf(tally.actorId),
         accessibleSecretCount: tally.accessibleSecretCount,
         unusedSecretCount: tally.unusedSecretCount,
         environments: [...tally.environments].sort(),
         accessPaths: {
           roles: toUnusedAccessRoles(member?.roles ?? []),
-          groups: (access.groupMembershipsByActorKey[key] ?? []).map(({ group }) => ({
+          groups: (access.groupMembershipsByActorId[tally.actorId] ?? []).map(({ group }) => ({
             id: group.id,
             name: group.name,
             roles: toUnusedAccessRoles(group.roles)
@@ -647,9 +637,7 @@ export const secretReadActivityServiceFactory = ({
     // The unread secrets themselves are kept for the actors with the most of them, so the sheet lists them without
     // another scan; anyone further down is scanned for on their own when opened.
     const details = Object.fromEntries(
-      ranked
-        .slice(0, UNUSED_ACCESS_DETAIL_MAX_ACTORS)
-        .map((tally) => [toActorKey(tally.actorType, tally.actorId), tally.unusedSecretIds])
+      ranked.slice(0, UNUSED_ACCESS_DETAIL_MAX_ACTORS).map((tally) => [tally.actorId, tally.unusedSecretIds])
     );
     return { rows, details, periodStart: access.judgedFrom };
   };
@@ -709,7 +697,7 @@ export const secretReadActivityServiceFactory = ({
     { projectId, offset, limit, search }: TListUnusedAccessDTO,
     actor: OrgServiceActor
   ) => {
-    await checkInsightsReadPermission(permissionService, projectId, actor);
+    await $getInsightsPermission(projectId, actor);
     const { rows, ...tracking } = await $getCachedUnusedAccess(projectId, actor.orgId);
     const needle = search?.trim().toLowerCase();
     const matching = needle ? rows.filter((row) => row.name.toLowerCase().includes(needle)) : rows;
@@ -726,7 +714,7 @@ export const secretReadActivityServiceFactory = ({
     { projectId, actorType, actorId }: TGetUnusedAccessActorDTO,
     actor: OrgServiceActor
   ) => {
-    const { permission } = await checkInsightsReadPermission(permissionService, projectId, actor);
+    const permission = await $getInsightsPermission(projectId, actor);
     const { rows, details, ...tracking } = await $getCachedUnusedAccess(projectId, actor.orgId);
     const unusedAccessActor = rows.find((row) => row.actorType === actorType && row.actorId === actorId);
     if (!unusedAccessActor) {
@@ -734,15 +722,15 @@ export const secretReadActivityServiceFactory = ({
         message: `No unused access found for ${actorType} '${actorId}' in this project`
       });
     }
-    const key = toActorKey(actorType, actorId);
     // An actor past those cached in full is scanned for on its own, and kept for the same day.
     const secretIds =
-      details[key] ??
+      details[actorId] ??
       (await withCache({
         keyStore,
-        key: KeyStorePrefixes.InsightsCache(projectId, `unused-access:${key}`),
+        key: KeyStorePrefixes.InsightsCache(projectId, `unused-access:${actorType}:${actorId}`),
         ttlSeconds: UNUSED_ACCESS_CACHE_TTL_SECONDS,
-        fetcher: async () => (await $tallyUnusedAccess(projectId, actor.orgId)).tallies.get(key)?.unusedSecretIds ?? []
+        fetcher: async () =>
+          (await $tallyUnusedAccess(projectId, actor.orgId)).tallies.get(actorId)?.unusedSecretIds ?? []
       }));
 
     // The cache is shared by everyone in the project and can be a day old, so each listed secret is checked against

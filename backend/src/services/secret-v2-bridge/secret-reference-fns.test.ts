@@ -256,18 +256,15 @@ describe("expandSecretReferencesFactory onSecretExpanded", () => {
     return { expanded, reported };
   };
 
-  it("reports the reader's own override, not the shared secret it replaced", async () => {
+  it("reports the secret each reference resolved to, the reader's own override included", async () => {
     const rows = [row("shared-db", "DB_PASSWORD", "shared"), row("alice-db", "DB_PASSWORD", "mine", "alice")];
-    const result = await expand(rows, `postgres://\${DB_PASSWORD}@db`, { userId: "alice" });
-    expect(result).toEqual({
+    const asAlice = await expand(rows, `postgres://\${DB_PASSWORD}@db`, { userId: "alice" });
+    expect(asAlice).toEqual({
       expanded: "postgres://mine@db",
       reported: [{ secretKey: "URL", referencedSecretIds: ["alice-db"] }]
     });
-  });
-
-  it("reports the shared secret when no override is used", async () => {
-    const result = await expand([row("shared-db", "DB_PASSWORD", "shared")], `postgres://\${DB_PASSWORD}@db`);
-    expect(result.reported).toEqual([{ secretKey: "URL", referencedSecretIds: ["shared-db"] }]);
+    const shared = await expand(rows.slice(0, 1), `postgres://\${DB_PASSWORD}@db`);
+    expect(shared.reported).toEqual([{ secretKey: "URL", referencedSecretIds: ["shared-db"] }]);
   });
 
   it("reports nothing for an expansion that fails part way", async () => {

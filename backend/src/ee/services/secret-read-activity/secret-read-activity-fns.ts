@@ -37,8 +37,6 @@ export const normalizeSecretPath = (secretPath: string) => removeTrailingSlash(p
 export const toLocationKey = ({ environment, secretPath }: TSecretLocation) =>
   `${environment}:${normalizeSecretPath(secretPath)}`;
 
-export const toActorKey = (actorType: string, actorId: string) => `${actorType}:${actorId}`;
-
 export const SECRET_READ_ACTIVITY_WINDOW_DAYS = 30;
 
 export const getReadActivityWindowStart = () => new Date(Date.now() - SECRET_READ_ACTIVITY_WINDOW_DAYS * DAY_IN_MS);
@@ -129,20 +127,21 @@ const subjectOf = ({ secret, environment, secretPath }: TSecretActivity) => ({
 // since what it held back is not worked out). Sources are checked once per secret, shared ones (a role, a group)
 // once for every actor holding them, and only the current secret's checks are kept.
 export const createAccessDating = (
-  sourcesByActorId: Map<string, TAccessSource[]>,
+  sourcesByActorId: Record<string, TAccessSource[]>,
   folderReopenedAt: Map<string, Date>,
-  accessReopenedAt = new Map<string, Date>()
+  accessReopenedAt: Map<string, Date>
 ): Pick<TProjectAccess, "accessSinceOf" | "latestAccessChangeOf"> => {
   const latestByActorId = new Map<string, Date>();
   const raise = (actorId: string, date?: Date) => {
     const current = latestByActorId.get(actorId);
     if (date && (!current || date > current)) latestByActorId.set(actorId, date);
   };
-  sourcesByActorId.forEach((sources, actorId) => sources.forEach((source) => raise(actorId, source.date)));
+  Object.entries(sourcesByActorId).forEach(([actorId, sources]) =>
+    sources.forEach((source) => raise(actorId, source.date))
+  );
   folderReopenedAt.forEach((date, key) => raise(key.slice(0, key.indexOf(":")), date));
   accessReopenedAt.forEach((date, actorId) => raise(actorId, date));
 
-  const latestAccessChangeOf = ({ actorId }: { actorId: string }) => latestByActorId.get(actorId);
   let checkedSecret: TSecretActivity | undefined;
   let checks = new Map<unknown, boolean>();
 
@@ -163,23 +162,20 @@ export const createAccessDating = (
       }
       return granted;
     };
-    const sources = sourcesByActorId.get(actorId) ?? [];
+    const sources = sourcesByActorId[actorId] ?? [];
     const grantingDates = sources.flatMap((source) => (source.date && grants(source) ? [source.date] : []));
+    const since = grantingDates.length
+      ? new Date(Math.min(...grantingDates.map((date) => date.getTime())))
+      : latestByActorId.get(actorId);
     const floors = [
       folderReopenedAt.get(`${actorId}:${activity.secret.folderId}`),
       accessReopenedAt.get(actorId),
-      ...sources.map((source) => (source.restartsFolder && inFolder(source) ? source.date : undefined))
+      ...sources.filter((source) => source.restartsFolder && inFolder(source)).map((source) => source.date)
     ];
-    let since = grantingDates.length
-      ? new Date(Math.min(...grantingDates.map((date) => date.getTime())))
-      : latestByActorId.get(actorId);
-    floors.forEach((floor) => {
-      if (floor && (!since || floor > since)) since = floor;
-    });
-    return since;
+    return floors.reduce((latest, floor) => (floor && (!latest || floor > latest) ? floor : latest), since);
   };
 
-  return { accessSinceOf, latestAccessChangeOf };
+  return { accessSinceOf, latestAccessChangeOf: ({ actorId }) => latestByActorId.get(actorId) };
 };
 
 // Reads before trackedSince are ignored: the secret or its folder did not exist yet.
@@ -192,8 +188,7 @@ export const classifySecretReads = (
   const record = (objectType: SecretReadObjectType, objectId: string) => {
     (readsByObjectId[objectId] ?? []).forEach((read) => {
       if (read.objectType !== objectType || read.lastReadAt < trackedSince) return;
-      const key = toActorKey(read.actorType, read.actorId);
-      const current = activity.get(key) ?? {
+      const current = activity.get(read.actorId) ?? {
         actorType: read.actorType as TSecretReaderType,
         actorId: read.actorId,
         lastReadAt: read.lastReadAt
@@ -203,7 +198,7 @@ export const classifySecretReads = (
       if (isOfTheSecret && (!current.lastSecretReadAt || read.lastReadAt > current.lastSecretReadAt)) {
         current.lastSecretReadAt = read.lastReadAt;
       }
-      activity.set(key, current);
+      activity.set(read.actorId, current);
     });
   };
 
@@ -227,7 +222,7 @@ export const summarizeSecretAccess = (
         hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.ReadValue, subject)
       )
       .flat(),
-    (reader) => toActorKey(reader.actorType, reader.actorId)
+    (reader) => reader.actorId
   );
   const nonAdmins = entitled.filter((reader) => !adminActorIds.has(reader.actorId));
   // Only a reader with a source newer than the judged period needs the per-secret date.
@@ -238,22 +233,19 @@ export const summarizeSecretAccess = (
   // A folder read credits every secret in the folder, so one from before the reader had access to this secret did
   // not return it; a read recorded against the secret itself did, so it always counts. A read after the reader's
   // newest source change is after their access to every secret, so only an earlier one is checked.
-  const readsByActorKey = new Map<string, TSecretReadResult>();
+  const readsByActorId = new Map<string, TSecretReadResult>();
   entitled.forEach((reader) => {
-    const key = toActorKey(reader.actorType, reader.actorId);
-    const read = reads.get(key);
+    const read = reads.get(reader.actorId);
     if (!read) return;
     const latest = latestAccessChangeOf(reader);
     const since = latest && read.lastReadAt < latest ? accessSinceOf(reader, activity) : undefined;
-    if (!since || read.lastReadAt >= since) readsByActorKey.set(key, read);
-    else if (read.lastSecretReadAt) readsByActorKey.set(key, { ...read, lastReadAt: read.lastSecretReadAt });
+    if (!since || read.lastReadAt >= since) readsByActorId.set(reader.actorId, read);
+    else if (read.lastSecretReadAt) readsByActorId.set(reader.actorId, { ...read, lastReadAt: read.lastSecretReadAt });
   });
   const unread = nonAdmins.filter(
-    (reader) =>
-      !readsByActorKey.has(toActorKey(reader.actorType, reader.actorId)) &&
-      coversWholeWindow(trackedSince, accessSince(reader), judgedFrom)
+    (reader) => !readsByActorId.has(reader.actorId) && coversWholeWindow(trackedSince, accessSince(reader), judgedFrom)
   );
-  return { entitled, nonAdmins, unread, readsByActorKey };
+  return { entitled, nonAdmins, unread, readsByActorId };
 };
 
 // A reader without a read who is not unused access was left out for one of three reasons, checked in this order.

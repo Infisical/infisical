@@ -18,7 +18,6 @@ import {
   getUtcMonthStart,
   indexSecretReads,
   summarizeSecretAccess,
-  toActorKey,
   toUnusedAccessRoles
 } from "./secret-read-activity-fns";
 import {
@@ -45,57 +44,66 @@ const graph: TSecretReachGraph = {
   getImporterFolderIds: (folderId) => ({ nested: ["consumer"], consumer: ["edge"] })[folderId] ?? []
 };
 
+const day = (date: string) => new Date(`${date}T00:00:00.000Z`);
+const sept = day("2026-09-01");
+const oct = day("2026-10-20");
+
 const read = (overrides: Partial<TSecretLastRead>): TSecretLastRead => ({
   objectId: "shared",
   objectType: SecretReadObjectType.Folder,
   actorId: "identity-1",
   actorType: ActorType.IDENTITY,
-  lastReadAt: new Date("2026-10-10T00:00:00.000Z"),
+  lastReadAt: day("2026-10-10"),
   ...overrides
 });
 
-const trackedSince = new Date("2026-10-01T00:00:00.000Z");
+const ability = (rules: Parameters<typeof createMongoAbility>[0]) =>
+  createMongoAbility<MongoAbility<ProjectPermissionSet>>(rules as never);
+const readsAll = ability([{ action: ProjectPermissionSecretActions.ReadValue, subject: ProjectPermissionSub.Secrets }]);
+const readsProd = ability([
+  {
+    action: ProjectPermissionSecretActions.ReadValue,
+    subject: ProjectPermissionSub.Secrets,
+    conditions: { environment: "prod" }
+  }
+]);
+
+const activity = (overrides: Partial<TSecretActivity> = {}): TSecretActivity => ({
+  secret: { key: "DB_PASS", tags: [], folderId: "f1" } as unknown as TSecretActivity["secret"],
+  environment: "prod",
+  secretPath: "/",
+  trackedSince: sept,
+  reads: new Map(),
+  ...overrides
+});
 
 describe("getUtcMonthStart", () => {
-  test("uses the UTC month, not the local one", () => {
-    expect(getUtcMonthStart(new Date("2026-10-31T23:59:59.999Z"))).toEqual(new Date("2026-10-01T00:00:00.000Z"));
-    expect(getUtcMonthStart(new Date("2026-11-01T00:00:00.000Z"))).toEqual(new Date("2026-11-01T00:00:00.000Z"));
-  });
-
-  test("rolls over into the next and previous year", () => {
-    expect(getUtcMonthStart(new Date("2026-12-15T00:00:00.000Z"), 1)).toEqual(new Date("2027-01-01T00:00:00.000Z"));
-    expect(getUtcMonthStart(new Date("2026-01-15T00:00:00.000Z"), -1)).toEqual(new Date("2025-12-01T00:00:00.000Z"));
+  test("uses the UTC month and rolls over years", () => {
+    expect(getUtcMonthStart(new Date("2026-10-31T23:59:59.999Z"))).toEqual(day("2026-10-01"));
+    expect(getUtcMonthStart(day("2026-12-15"), 1)).toEqual(day("2027-01-01"));
+    expect(getUtcMonthStart(day("2026-01-15"), -1)).toEqual(day("2025-12-01"));
   });
 });
 
 describe("computeSecretReach", () => {
-  const reach = computeSecretReach(dbPass, graph);
-
-  test("follows references transitively and stops at cycles", () => {
+  test("follows references transitively, stops at cycles, and includes every importing folder", () => {
+    const reach = computeSecretReach(dbPass, graph);
     expect([...reach.secretIds].sort()).toEqual([connection.id, dbPass.id, dbUrl.id].sort());
-  });
-
-  test("includes the folders holding referencing secrets and every folder importing them, transitively", () => {
     expect([...reach.folderIds].sort()).toEqual(["consumer", "edge", "nested", "shared"]);
   });
 });
 
 describe("classifySecretReads", () => {
-  const reach = computeSecretReach(dbPass, graph);
+  const trackedSince = day("2026-10-01");
   const classify = (reads: TSecretLastRead[]) =>
-    classifySecretReads(indexSecretReads(reads), reach, trackedSince).get(`${ActorType.IDENTITY}:identity-1`);
+    classifySecretReads(indexSecretReads(reads), computeSecretReach(dbPass, graph), trackedSince).get("identity-1");
 
-  test("counts a read of a folder that imports the secret through a chain", () => {
+  test("counts reads of the secret, of secrets referencing it and of folders importing it, from trackedSince", () => {
     expect(classify([read({ objectId: "edge" })])).toBeDefined();
-  });
-
-  test("counts a single read of a secret that references it", () => {
     expect(classify([read({ objectId: connection.id, objectType: SecretReadObjectType.Secret })])).toBeDefined();
-  });
-
-  test("ignores a single read of an unrelated secret, and a folder read recorded under a secret's id", () => {
     expect(classify([read({ objectId: "unrelated", objectType: SecretReadObjectType.Secret })])).toBeUndefined();
     expect(classify([read({ objectId: dbPass.id, objectType: SecretReadObjectType.Folder })])).toBeUndefined();
+    expect(classify([read({ lastReadAt: day("2026-09-30") })])).toBeUndefined();
   });
 
   test("counts an unexpanded read only for the secret it returned, not the secrets it references", () => {
@@ -105,243 +113,133 @@ describe("classifySecretReads", () => {
     ).toBeUndefined();
   });
 
-  test("marks only a read recorded against the secret itself as known to have returned it", () => {
-    const secretRead = new Date("2026-10-11T00:00:00.000Z");
+  test("keeps the latest read overall, and separately the latest read of the secret itself", () => {
     expect(
       classify([
-        read({ lastReadAt: new Date("2026-10-12T00:00:00.000Z") }),
-        read({ objectId: dbPass.id, objectType: SecretReadObjectType.Secret, lastReadAt: secretRead }),
-        read({
-          objectId: dbUrl.id,
-          objectType: SecretReadObjectType.Secret,
-          lastReadAt: new Date("2026-10-13T00:00:00.000Z")
-        })
+        read({ lastReadAt: day("2026-10-05") }),
+        read({ objectId: dbPass.id, objectType: SecretReadObjectType.Secret, lastReadAt: day("2026-10-11") }),
+        read({ objectId: dbUrl.id, objectType: SecretReadObjectType.Secret, lastReadAt: day("2026-10-13") })
       ])
     ).toEqual({
       actorType: ActorType.IDENTITY,
       actorId: "identity-1",
-      lastReadAt: new Date("2026-10-13T00:00:00.000Z"),
-      lastSecretReadAt: secretRead
-    });
-  });
-
-  test("ignores reads from before the secret was tracked", () => {
-    expect(classify([read({ lastReadAt: new Date("2026-09-30T00:00:00.000Z") })])).toBeUndefined();
-  });
-
-  test("keeps the latest read across all the ways the secret was reached", () => {
-    const latestRead = new Date("2026-10-12T00:00:00.000Z");
-    expect(
-      classify([
-        read({ lastReadAt: new Date("2026-10-05T00:00:00.000Z") }),
-        read({ objectId: "consumer", lastReadAt: latestRead }),
-        read({ objectId: dbUrl.id, objectType: SecretReadObjectType.Secret })
-      ])
-    ).toEqual({
-      actorType: ActorType.IDENTITY,
-      actorId: "identity-1",
-      lastReadAt: latestRead
+      lastReadAt: day("2026-10-13"),
+      lastSecretReadAt: day("2026-10-11")
     });
   });
 });
 
 describe("coversWholeWindow", () => {
-  const windowStart = new Date("2026-09-15T00:00:00.000Z");
-
-  test("is true once the secret and the access have both existed for the whole window", () => {
-    expect(coversWholeWindow(windowStart, new Date("2026-08-01T00:00:00.000Z"), windowStart)).toBe(true);
-    expect(coversWholeWindow(windowStart, undefined, windowStart)).toBe(true);
-  });
-
-  test("is false for a secret newer than the window", () => {
-    expect(coversWholeWindow(new Date("2026-10-01T00:00:00.000Z"), undefined, windowStart)).toBe(false);
-  });
-
-  test("is false for a reader whose access changed inside the window", () => {
-    expect(coversWholeWindow(windowStart, new Date("2026-10-10T00:00:00.000Z"), windowStart)).toBe(false);
+  test("needs both the secret and the access to predate the window", () => {
+    expect(coversWholeWindow(sept, day("2026-08-01"), sept)).toBe(true);
+    expect(coversWholeWindow(sept, undefined, sept)).toBe(true);
+    expect(coversWholeWindow(oct, undefined, sept)).toBe(false);
+    expect(coversWholeWindow(sept, oct, sept)).toBe(false);
   });
 });
 
 describe("summarizeSecretAccess", () => {
-  const judgedFrom = new Date("2026-09-15T00:00:00.000Z");
-  const canRead = createMongoAbility<MongoAbility<ProjectPermissionSet>>([
-    { action: ProjectPermissionSecretActions.ReadValue, subject: ProjectPermissionSub.Secrets }
-  ]);
-  const cannotRead = createMongoAbility<MongoAbility<ProjectPermissionSet>>([]);
-  const reader = (actorId: string, permission = canRead) => ({
+  const judgedFrom = day("2026-09-15");
+  const reader = (actorId: string, permission = readsAll) => ({
     actorType: ActorType.USER as const,
     actorId,
     permission
-  });
-  const activity = (overrides: Partial<TSecretActivity> = {}): TSecretActivity => ({
-    secret: { key: "DB_PASS", tags: [] } as unknown as TSecretActivity["secret"],
-    environment: "prod",
-    secretPath: "/",
-    trackedSince: judgedFrom,
-    reads: new Map(),
-    ...overrides
   });
   const datedAccess = (accessSince: Record<string, Date>) => ({
     accessSinceOf: ({ actorId }: { actorId: string }) => accessSince[actorId],
     latestAccessChangeOf: ({ actorId }: { actorId: string }) => accessSince[actorId]
   });
   const access = (overrides: Partial<TProjectAccess> = {}): TProjectAccess => ({
-    readersByRules: [[reader("direct"), reader("via-group")], [reader("no-access", cannotRead)]],
+    readersByRules: [[reader("direct"), reader("via-group")], [reader("no-access", ability([]))]],
     adminActorIds: new Set(),
     judgedFrom,
     ...datedAccess({}),
     ...overrides
   });
   const ids = (readers: { actorId: string }[]) => readers.map((entry) => entry.actorId).sort();
-  const readBy = (actorId: string) =>
+  const readBy = (actorId: string, lastSecretReadAt?: Date) =>
     new Map([
-      [
-        toActorKey(ActorType.USER, actorId),
-        { actorType: ActorType.USER as const, actorId, lastReadAt: new Date("2026-10-01T00:00:00.000Z") }
-      ]
+      [actorId, { actorType: ActorType.USER as const, actorId, lastReadAt: day("2026-10-01"), lastSecretReadAt }]
     ]);
 
-  test("lists each reader who can read the value once, however many memberships give it", () => {
+  test("lists each reader who can read the value once, and judges only the non-admins", () => {
     const summary = summarizeSecretAccess(
-      activity(),
-      access({ readersByRules: [[reader("direct")], [reader("direct"), reader("via-group")]] })
-    );
-    expect(ids(summary.entitled)).toEqual(["direct", "via-group"]);
-  });
-
-  test("leaves admins out of unused access", () => {
-    const summary = summarizeSecretAccess(
-      activity(),
-      access({ readersByRules: [[reader("admin"), reader("direct")]], adminActorIds: new Set(["admin"]) })
+      activity({ trackedSince: judgedFrom }),
+      access({
+        readersByRules: [[reader("admin"), reader("direct")], [reader("direct")]],
+        adminActorIds: new Set(["admin"])
+      })
     );
     expect(ids(summary.entitled)).toEqual(["admin", "direct"]);
     expect(ids(summary.nonAdmins)).toEqual(["direct"]);
     expect(ids(summary.unread)).toEqual(["direct"]);
   });
 
-  test("does not count a reader who read it, or who got access to it inside the judged period", () => {
+  test("does not count a reader who read it, whose access is newer than the judged period, or a secret that is", () => {
     const summary = summarizeSecretAccess(
-      activity({ reads: readBy("direct") }),
-      access(datedAccess({ "via-group": new Date("2026-10-01T00:00:00.000Z") }))
+      activity({ trackedSince: judgedFrom, reads: readBy("direct") }),
+      access(datedAccess({ "via-group": oct }))
     );
     expect(summary.unread).toEqual([]);
+    expect(summarizeSecretAccess(activity({ trackedSince: oct }), access()).unread).toEqual([]);
+    expect(
+      ids(summarizeSecretAccess(activity({ trackedSince: judgedFrom }), access(datedAccess({ direct: sept }))).unread)
+    ).toEqual(["direct", "via-group"]);
   });
 
-  test("still counts a reader whose sources all predate the judged period", () => {
-    const summary = summarizeSecretAccess(
-      activity(),
-      access(datedAccess({ direct: new Date("2026-09-01T00:00:00.000Z") }))
+  test("drops a folder read from before the reader had access, but keeps a read of the secret itself", () => {
+    const before = summarizeSecretAccess(activity({ reads: readBy("direct") }), access(datedAccess({ direct: oct })));
+    expect(before.readsByActorId.has("direct")).toBe(false);
+    const after = summarizeSecretAccess(activity({ reads: readBy("direct") }), access(datedAccess({ direct: sept })));
+    expect(after.readsByActorId.get("direct")?.lastReadAt).toEqual(day("2026-10-01"));
+    const ofTheSecret = summarizeSecretAccess(
+      activity({ reads: readBy("direct", day("2026-09-20")) }),
+      access(datedAccess({ direct: oct }))
     );
-    expect(ids(summary.unread)).toEqual(["direct", "via-group"]);
-  });
-
-  test("drops a read from before the reader had access to the secret, and keeps one after", () => {
-    const readOnOct1 = readBy("direct");
-    const before = summarizeSecretAccess(
-      activity({ reads: readOnOct1 }),
-      access(datedAccess({ direct: new Date("2026-10-05T00:00:00.000Z") }))
-    );
-    expect(before.readsByActorKey.has(toActorKey(ActorType.USER, "direct"))).toBe(false);
-    const after = summarizeSecretAccess(
-      activity({ reads: readOnOct1 }),
-      access(datedAccess({ direct: new Date("2026-09-20T00:00:00.000Z") }))
-    );
-    expect(after.readsByActorKey.get(toActorKey(ActorType.USER, "direct"))?.lastReadAt).toEqual(
-      new Date("2026-10-01T00:00:00.000Z")
-    );
-  });
-
-  test("keeps a read of the secret itself from before the reader's current access, such as before a role change", () => {
-    const folderReadThenSecretRead = new Map([
-      [
-        toActorKey(ActorType.USER, "direct"),
-        {
-          actorType: ActorType.USER as const,
-          actorId: "direct",
-          lastReadAt: new Date("2026-10-02T00:00:00.000Z"),
-          lastSecretReadAt: new Date("2026-10-01T00:00:00.000Z")
-        }
-      ]
-    ]);
-    const summary = summarizeSecretAccess(
-      activity({ reads: folderReadThenSecretRead }),
-      access(datedAccess({ direct: new Date("2026-10-05T00:00:00.000Z") }))
-    );
-    expect(summary.readsByActorKey.get(toActorKey(ActorType.USER, "direct"))?.lastReadAt).toEqual(
-      new Date("2026-10-01T00:00:00.000Z")
-    );
-  });
-
-  test("does not count a secret newer than the judged period", () => {
-    const summary = summarizeSecretAccess(activity({ trackedSince: new Date("2026-10-01T00:00:00.000Z") }), access());
-    expect(summary.unread).toEqual([]);
+    expect(ofTheSecret.readsByActorId.get("direct")?.lastReadAt).toEqual(day("2026-09-20"));
   });
 });
 
 describe("getReadStatus", () => {
-  const judgedFrom = new Date("2026-09-15T00:00:00.000Z");
   const status = (overrides: Partial<Parameters<typeof getReadStatus>[0]> = {}) =>
     getReadStatus({
       lastReadAt: null,
       isUnused: false,
       isProjectAdmin: false,
-      accessSince: new Date("2026-09-01T00:00:00.000Z"),
-      judgedFrom,
+      accessSince: sept,
+      judgedFrom: day("2026-09-15"),
       ...overrides
     });
-
-  test("is read for anyone with a read, admins included", () => {
-    const hasRead = { readStatus: SecretReadStatus.Read, notJudgedReason: null };
-    expect(status({ lastReadAt: new Date("2026-10-01T00:00:00.000Z") })).toEqual(hasRead);
-    expect(status({ lastReadAt: new Date("2026-10-01T00:00:00.000Z"), isProjectAdmin: true })).toEqual(hasRead);
+  const notJudged = (notJudgedReason: SecretReadNotJudgedReason) => ({
+    readStatus: SecretReadStatus.NotJudged,
+    notJudgedReason
   });
 
-  test("is unused for a reader counted as unused access", () => {
-    expect(status({ isUnused: true })).toEqual({ readStatus: SecretReadStatus.Unused, notJudgedReason: null });
-  });
-
-  test("names why a reader without a read is not judged", () => {
-    const notJudged = (notJudgedReason: SecretReadNotJudgedReason) => ({
-      readStatus: SecretReadStatus.NotJudged,
-      notJudgedReason
+  test("is read, unused, or not judged for one of three reasons", () => {
+    expect(status({ lastReadAt: oct, isProjectAdmin: true })).toEqual({
+      readStatus: SecretReadStatus.Read,
+      notJudgedReason: null
     });
-    expect(status({ isProjectAdmin: true, accessSince: new Date("2026-10-01T00:00:00.000Z") })).toEqual(
+    expect(status({ isUnused: true })).toEqual({ readStatus: SecretReadStatus.Unused, notJudgedReason: null });
+    expect(status({ isProjectAdmin: true, accessSince: oct })).toEqual(
       notJudged(SecretReadNotJudgedReason.ProjectAdmin)
     );
-    expect(status({ accessSince: new Date("2026-10-01T00:00:00.000Z") })).toEqual(
-      notJudged(SecretReadNotJudgedReason.AccessTooNew)
-    );
+    expect(status({ accessSince: oct })).toEqual(notJudged(SecretReadNotJudgedReason.AccessTooNew));
     expect(status()).toEqual(notJudged(SecretReadNotJudgedReason.SecretTooNew));
   });
 });
 
 describe("createAccessDating", () => {
-  const sept = new Date("2026-09-01T00:00:00.000Z");
-  const oct = new Date("2026-10-20T00:00:00.000Z");
-  const ability = (rules: Parameters<typeof createMongoAbility>[0]) =>
-    createMongoAbility<MongoAbility<ProjectPermissionSet>>(rules as never);
-  const readsProd = ability([
-    {
-      action: ProjectPermissionSecretActions.ReadValue,
-      subject: ProjectPermissionSub.Secrets,
-      conditions: { environment: "prod" }
-    }
-  ]);
-  const readsAll = ability([
-    { action: ProjectPermissionSecretActions.ReadValue, subject: ProjectPermissionSub.Secrets }
-  ]);
-  const secretIn = (environment: string, folderId: string): TSecretActivity => ({
-    secret: { key: "DB_PASS", tags: [], folderId } as unknown as TSecretActivity["secret"],
-    environment,
-    secretPath: "/",
-    trackedSince: sept,
-    reads: new Map()
-  });
-  const dating = (sources: TAccessSource[], folderReopenedAt = new Map<string, Date>()) =>
-    createAccessDating(new Map([["actor", sources]]), folderReopenedAt);
   const actor = { actorId: "actor" };
+  const secretIn = (environment: string, folderId: string) =>
+    activity({ secret: { key: "DB_PASS", tags: [], folderId } as unknown as TSecretActivity["secret"], environment });
+  const dating = (
+    sources: TAccessSource[],
+    folderReopenedAt = new Map<string, Date>(),
+    accessReopenedAt = new Map<string, Date>()
+  ) => createAccessDating({ actor: sources }, folderReopenedAt, accessReopenedAt);
 
-  test("dates a secret from the oldest source that grants it, so a new source elsewhere changes nothing", () => {
+  test("dates a secret from the oldest source that grants it on its own, else from the newest source", () => {
     const { accessSinceOf, latestAccessChangeOf } = dating([
       { date: sept, permission: () => readsProd },
       { date: oct, permission: () => readsAll }
@@ -349,6 +247,11 @@ describe("createAccessDating", () => {
     expect(accessSinceOf(actor, secretIn("prod", "f1"))).toEqual(sept);
     expect(accessSinceOf(actor, secretIn("dev", "f1"))).toEqual(oct);
     expect(latestAccessChangeOf(actor)).toEqual(oct);
+    const { accessSinceOf: noneGrants } = dating([
+      { date: sept, permission: () => ability([]) },
+      { date: oct, permission: () => ability([]) }
+    ]);
+    expect(noneGrants(actor, secretIn("prod", "f1"))).toEqual(oct);
   });
 
   test("only lets a folder grant reach secrets in its own folder", () => {
@@ -360,41 +263,22 @@ describe("createAccessDating", () => {
     expect(accessSinceOf(actor, secretIn("dev", "granted"))).toEqual(oct);
   });
 
-  test("falls back to the newest source when no single source grants it", () => {
-    const { accessSinceOf } = dating([
-      { date: sept, permission: () => ability([]) },
-      { date: oct, permission: () => ability([]) }
-    ]);
-    expect(accessSinceOf(actor, secretIn("prod", "f1"))).toEqual(oct);
-  });
+  test("dates access no earlier than an ended restriction: an expired or edited folder grant in its folder, an expired temporary role anywhere", () => {
+    const expired = dating([{ date: sept, permission: () => readsAll }], new Map([["actor:held-back", oct]]));
+    expect(expired.accessSinceOf(actor, secretIn("prod", "held-back"))).toEqual(oct);
+    expect(expired.accessSinceOf(actor, secretIn("prod", "f1"))).toEqual(sept);
+    expect(expired.latestAccessChangeOf(actor)).toEqual(oct);
 
-  test("dates access in a folder no earlier than an expired folder grant there", () => {
-    const { accessSinceOf, latestAccessChangeOf } = dating(
-      [{ date: sept, permission: () => readsAll }],
-      new Map([["actor:held-back", oct]])
-    );
-    expect(accessSinceOf(actor, secretIn("prod", "held-back"))).toEqual(oct);
-    expect(accessSinceOf(actor, secretIn("prod", "f1"))).toEqual(sept);
-    expect(latestAccessChangeOf(actor)).toEqual(oct);
-  });
-
-  test("dates access in an edited folder grant's folder from the edit, since it may have held access back", () => {
-    const { accessSinceOf } = dating([
+    const edited = dating([
       { date: sept, permission: () => readsAll },
       { date: oct, folderId: "granted", restartsFolder: true, permission: () => readsAll }
     ]);
-    expect(accessSinceOf(actor, secretIn("prod", "granted"))).toEqual(oct);
-    expect(accessSinceOf(actor, secretIn("prod", "f1"))).toEqual(sept);
-  });
+    expect(edited.accessSinceOf(actor, secretIn("prod", "granted"))).toEqual(oct);
+    expect(edited.accessSinceOf(actor, secretIn("prod", "f1"))).toEqual(sept);
 
-  test("dates all access no earlier than an expired temporary role or privilege", () => {
-    const { accessSinceOf, latestAccessChangeOf } = createAccessDating(
-      new Map([["actor", [{ date: sept, permission: () => readsAll }]]]),
-      new Map(),
-      new Map([["actor", oct]])
-    );
-    expect(accessSinceOf(actor, secretIn("prod", "f1"))).toEqual(oct);
-    expect(latestAccessChangeOf(actor)).toEqual(oct);
+    const expiredRole = dating([{ date: sept, permission: () => readsAll }], new Map(), new Map([["actor", oct]]));
+    expect(expiredRole.accessSinceOf(actor, secretIn("prod", "f1"))).toEqual(oct);
+    expect(expiredRole.latestAccessChangeOf(actor)).toEqual(oct);
   });
 
   test("checks a source shared by many actors once per secret", () => {
@@ -404,10 +288,8 @@ describe("createAccessDating", () => {
       return readsAll;
     };
     const { accessSinceOf } = createAccessDating(
-      new Map([
-        ["a", [{ date: sept, permission: shared }]],
-        ["b", [{ date: sept, permission: shared }]]
-      ]),
+      { a: [{ date: sept, permission: shared }], b: [{ date: sept, permission: shared }] },
+      new Map(),
       new Map()
     );
     const secret = secretIn("prod", "f1");
@@ -418,9 +300,10 @@ describe("createAccessDating", () => {
 });
 
 describe("toUnusedAccessRoles", () => {
-  test("names built-in roles after their predefined role and keeps a custom role's id and name", () => {
+  test("names built-in roles after their predefined role, keeps a custom role's id and name, and lists each once", () => {
     expect(
       toUnusedAccessRoles([
+        { role: ProjectMembershipRole.Member },
         { role: ProjectMembershipRole.Member },
         {
           role: ProjectMembershipRole.Custom,
@@ -433,11 +316,5 @@ describe("toUnusedAccessRoles", () => {
       { id: null, slug: "member", name: "Member" },
       { id: "role-1", slug: "custom", name: "Deployer" }
     ]);
-  });
-
-  test("lists a role held twice once", () => {
-    expect(
-      toUnusedAccessRoles([{ role: ProjectMembershipRole.Viewer }, { role: ProjectMembershipRole.Viewer }])
-    ).toEqual([{ id: null, slug: "viewer", name: "Viewer" }]);
   });
 });

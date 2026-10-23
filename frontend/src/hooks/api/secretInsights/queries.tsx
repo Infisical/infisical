@@ -194,9 +194,17 @@ export const useGetUnusedAccessActor = (
 
 export const useGetSecretReadActivity = (
   params: TGetSecretReadActivityDTO,
-  options?: { enabled?: boolean }
-) =>
-  useQuery({
+  options?: Omit<
+    UseQueryOptions<
+      TSecretReadActivity,
+      unknown,
+      TSecretReadActivity,
+      ReturnType<typeof secretInsightsKeys.secretReadActivity>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
     queryKey: secretInsightsKeys.secretReadActivity(params),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ readActivity: TSecretReadActivity }>(
@@ -205,8 +213,9 @@ export const useGetSecretReadActivity = (
       );
       return data.readActivity;
     },
-    enabled: Boolean(params.secretKey) && (options?.enabled ?? true)
+    ...options
   });
+};
 
 export const useGetAuthMethodDistribution = (
   params: TGetAuthMethodDistributionDTO,
