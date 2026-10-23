@@ -1,6 +1,8 @@
-import { describe, expect, test } from "vitest";
+import { Client } from "ssh2";
+import { describe, expect, test, vi } from "vitest";
 
 import {
+  changeManagedPassword,
   runManagedPasswordChange,
   runSelfPasswordChange,
   runSuLoginVerification,
@@ -18,18 +20,18 @@ type TFakeStream = {
   writes: string[];
   feed: (text: string) => void;
   feedBytes: (chunk: Buffer) => void;
-  close: () => void;
+  close: (code?: number) => void;
 };
 
 const createFakeStream = (): TFakeStream => {
   const writes: string[] = [];
   const dataListeners: ((chunk: Buffer) => void)[] = [];
-  const closeListeners: (() => void)[] = [];
+  const closeListeners: ((code?: number) => void)[] = [];
 
   const stream = {
     on: (event: string, listener: unknown) => {
       if (event === "data") dataListeners.push(listener as (chunk: Buffer) => void);
-      if (event === "close") closeListeners.push(listener as () => void);
+      if (event === "close") closeListeners.push(listener as (code?: number) => void);
     },
     write: (data: string) => {
       writes.push(data);
@@ -44,7 +46,7 @@ const createFakeStream = (): TFakeStream => {
     writes,
     feed: (text: string) => feedBytes(Buffer.from(text, "utf8")),
     feedBytes,
-    close: () => closeListeners.forEach((listener) => listener())
+    close: (code = 0) => closeListeners.forEach((listener) => listener(code))
   };
 };
 
@@ -89,6 +91,258 @@ const MANAGED_TRANSCRIPTS: [string, string, string[]][] = [
   ["AIX 7.2 passwd", AIX_MANAGED_TRANSCRIPT, [`${ROTATED_SENTINEL}\n`, `${ROTATED_SENTINEL}\n`]],
   ["sudo passwd", SUDO_MANAGED_TRANSCRIPT, [`${SUDO_SENTINEL}\n`, `${ROTATED_SENTINEL}\n`, `${ROTATED_SENTINEL}\n`]]
 ];
+
+type TCommandResponse = { chunks: string[]; code?: number; error?: Error };
+
+const createCommandClient = (responses: TCommandResponse[]) => {
+  const streams: TFakeStream[] = [];
+  const exec = vi.fn(
+    (_command: string, _options: unknown, callback: (error: Error | null, stream: TInteractiveShellStream) => void) => {
+      const response = responses[streams.length];
+      if (!response) throw new Error("Unexpected SSH command");
+      const fake = createFakeStream();
+      streams.push(fake);
+      queueMicrotask(() => {
+        callback(response.error ?? null, fake.stream);
+        queueMicrotask(() => {
+          response.chunks.forEach((chunk) => fake.feed(chunk));
+          fake.close(response.code ?? 0);
+        });
+      });
+    }
+  );
+  return { client: { exec } as unknown as Client, exec, streams };
+};
+
+describe("changeManagedPassword", () => {
+  test.each(["Linux", "Darwin", "SunOS", "AIX-like"])(
+    "leaves %s rotation unchanged apart from OS detection",
+    async (os) => {
+      const { client, exec } = createCommandClient([{ chunks: [`${os}\r\n`] }, { chunks: [LINUX_MANAGED_TRANSCRIPT] }]);
+
+      await changeManagedPassword(client, "testuser", ROTATED_SENTINEL);
+
+      expect(exec.mock.calls.map(([command]) => command)).toEqual(["uname -s", "LC_ALL=C passwd testuser"]);
+    }
+  );
+
+  test.each([
+    ["", "-c", "-c"],
+    ["ADMCHG", "-f ADMCHG", "-c"],
+    ["ADMIN,ADMCHG", "-f ADMIN,ADMCHG", "-f ADMIN"],
+    ["ADMCHG,NOCHECK", "-f ADMCHG,NOCHECK", "-f NOCHECK"],
+    ["ADMIN, ADMCHG, NOCHECK", "-f ADMIN,ADMCHG,NOCHECK", "-f ADMIN,NOCHECK"],
+    ["ADMIN", "-f ADMIN", "-f ADMIN"],
+    ["NOCHECK", "-f NOCHECK", "-f NOCHECK"],
+    ["ADMIN,NOCHECK", "-f ADMIN,NOCHECK", "-f ADMIN,NOCHECK"]
+  ])(
+    "checks permissions and removes ADMCHG after resetting an account with flags '%s'",
+    async (flags, preflight, option) => {
+      const { client, exec } = createCommandClient([
+        { chunks: ["AIX\r\n"] },
+        { chunks: [`testuser:\r\n        lastupdate=123\r\n        flags=${flags}\r\n`] },
+        { chunks: [] },
+        { chunks: [AIX_MANAGED_TRANSCRIPT] },
+        { chunks: [] }
+      ]);
+
+      await changeManagedPassword(client, "testuser", ROTATED_SENTINEL);
+
+      expect(exec.mock.calls.map(([command]) => command)).toEqual([
+        "uname -s",
+        "LC_ALL=C pwdadm -q 'testuser'",
+        `LC_ALL=C pwdadm ${preflight} 'testuser'`,
+        "LC_ALL=C passwd testuser",
+        `LC_ALL=C pwdadm ${option} 'testuser'`
+      ]);
+    }
+  );
+
+  test("uses sudo for pwdadm commands and answers split sudo prompts", async () => {
+    const { client, exec, streams } = createCommandClient([
+      { chunks: ["AIX\r\n"] },
+      { chunks: ["[su", "do] password for svc: \r\ntestuser:\r\n        flags=ADMCHG\r\n"] },
+      { chunks: ["[sudo] password for svc: "] },
+      { chunks: [SUDO_MANAGED_TRANSCRIPT] },
+      { chunks: ["[sudo] password for svc: "] }
+    ]);
+
+    await changeManagedPassword(client, "testuser", ROTATED_SENTINEL, true, SUDO_SENTINEL);
+
+    expect(exec.mock.calls.map(([command]) => command)).toEqual([
+      "uname -s",
+      "LC_ALL=C sudo pwdadm -q 'testuser'",
+      "LC_ALL=C sudo pwdadm -f ADMCHG 'testuser'",
+      "LC_ALL=C sudo passwd testuser",
+      "LC_ALL=C sudo pwdadm -c 'testuser'"
+    ]);
+    expect(streams[1].writes).toEqual([`${SUDO_SENTINEL}\n`]);
+    expect(streams[2].writes).toEqual([`${SUDO_SENTINEL}\n`]);
+    expect(streams[4].writes).toEqual([`${SUDO_SENTINEL}\n`]);
+  });
+
+  test.each(["ADMIN", "ADMCHG", "NOCHECK"])("parses flags when the sudo password is '%s'", async (password) => {
+    const { client, exec } = createCommandClient([
+      { chunks: ["AIX\r\n"] },
+      { chunks: [`[sudo] password for svc: ${password}\r\ntestuser:\r\n flags=ADMIN,ADMCHG,NOCHECK\r\n`] },
+      { chunks: [] },
+      { chunks: [SUDO_MANAGED_TRANSCRIPT] },
+      { chunks: [] }
+    ]);
+
+    await changeManagedPassword(client, "testuser", ROTATED_SENTINEL, true, password);
+
+    expect(exec.mock.calls[4][0]).toBe("LC_ALL=C sudo pwdadm -f ADMIN,NOCHECK 'testuser'");
+  });
+
+  test.each(["testuser:\r\n lastupdate=123\r\n", "testuser:\r\n flags=ADMCHG,UNKNOWN\r\n"])(
+    "rejects unreadable or unknown flags instead of clearing them",
+    async (status) => {
+      const { client, exec } = createCommandClient([{ chunks: ["AIX\r\n"] }, { chunks: [status] }]);
+
+      await expect(changeManagedPassword(client, "testuser", ROTATED_SENTINEL)).rejects.toThrow("AIX password flags");
+      expect(exec).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  test("does not change the password if OS detection fails", async () => {
+    const { client, exec } = createCommandClient([{ chunks: ["uname: not found"], code: 127 }]);
+
+    await expect(changeManagedPassword(client, "testuser", ROTATED_SENTINEL)).rejects.toThrow("uname -s");
+    expect(exec).toHaveBeenCalledTimes(1);
+  });
+
+  test("does not run post-reset cleanup when the password reset fails", async () => {
+    const { client, exec } = createCommandClient([
+      { chunks: ["AIX\r\n"] },
+      { chunks: ["testuser:\r\n flags=\r\n"] },
+      { chunks: [] },
+      { chunks: ["passwd: unknown user\r\n"] }
+    ]);
+
+    await expect(changeManagedPassword(client, "testuser", ROTATED_SENTINEL)).rejects.toThrow("Password change failed");
+    expect(exec).toHaveBeenCalledTimes(4);
+  });
+
+  test.each([1, 2])(
+    "rejects a pwdadm preflight failure at command index %s before changing the password and redacts the sudo password",
+    async (failedCommand) => {
+      const responses: TCommandResponse[] = [
+        { chunks: ["AIX\r\n"] },
+        { chunks: ["testuser:\r\n flags=ADMCHG\r\n"] },
+        { chunks: [] }
+      ];
+      responses[failedCommand] = { chunks: [`${SUDO_SENTINEL}\r\nPermission denied\r\n`], code: 1 };
+      const { client, exec } = createCommandClient(responses);
+
+      const error = await changeManagedPassword(client, "testuser", ROTATED_SENTINEL, true, SUDO_SENTINEL).catch(
+        (err: unknown) => err
+      );
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain("permissions");
+      expect((error as Error).message).not.toContain(SUDO_SENTINEL);
+      expect(exec).toHaveBeenCalledTimes(failedCommand + 1);
+    }
+  );
+
+  test("rejects a sudo password prompt for an SSH-key connection", async () => {
+    const { client } = createCommandClient([{ chunks: ["AIX\r\n"] }, { chunks: ["[sudo] password for svc: "] }]);
+
+    await expect(changeManagedPassword(client, "testuser", ROTATED_SENTINEL, true)).rejects.toThrow(
+      "NOPASSWD for pwdadm"
+    );
+  });
+
+  test("supports NOPASSWD sudo for an SSH-key connection", async () => {
+    const { client, exec } = createCommandClient([
+      { chunks: ["AIX\r\n"] },
+      { chunks: ["testuser:\r\n flags=\r\n"] },
+      { chunks: [] },
+      { chunks: [AIX_MANAGED_TRANSCRIPT] },
+      { chunks: [] }
+    ]);
+
+    await changeManagedPassword(client, "testuser", ROTATED_SENTINEL, true);
+
+    expect(exec.mock.calls[4][0]).toBe("LC_ALL=C sudo pwdadm -c 'testuser'");
+  });
+
+  test("propagates SSH exec failures", async () => {
+    const { client } = createCommandClient([{ chunks: [], error: new Error("channel unavailable") }]);
+
+    await expect(changeManagedPassword(client, "testuser", ROTATED_SENTINEL)).rejects.toThrow("channel unavailable");
+  });
+
+  test.each([false, true])(
+    "restores the previous password and original flags if cleanup fails (sudo=%s)",
+    async (sudo) => {
+      const { client, exec, streams } = createCommandClient([
+        { chunks: ["AIX\r\n"] },
+        { chunks: ["testuser:\r\n flags=ADMIN,ADMCHG,NOCHECK\r\n"] },
+        { chunks: [] },
+        { chunks: [sudo ? SUDO_MANAGED_TRANSCRIPT : AIX_MANAGED_TRANSCRIPT] },
+        { chunks: ["Permission denied"], code: 1 },
+        { chunks: [sudo ? SUDO_MANAGED_TRANSCRIPT : AIX_MANAGED_TRANSCRIPT] },
+        { chunks: [] }
+      ]);
+
+      await expect(
+        changeManagedPassword(client, "testuser", ROTATED_SENTINEL, sudo, SUDO_SENTINEL, CURRENT_SENTINEL)
+      ).rejects.toThrow("previous password and flags were restored");
+
+      const sudoWrites = sudo ? [`${SUDO_SENTINEL}\n`] : [];
+      expect(streams[3].writes).toEqual([...sudoWrites, `${ROTATED_SENTINEL}\n`, `${ROTATED_SENTINEL}\n`]);
+      expect(streams[5].writes).toEqual([...sudoWrites, `${CURRENT_SENTINEL}\n`, `${CURRENT_SENTINEL}\n`]);
+      expect(exec.mock.calls[6][0]).toBe(`LC_ALL=C ${sudo ? "sudo " : ""}pwdadm -f ADMIN,ADMCHG,NOCHECK 'testuser'`);
+    }
+  );
+
+  test.each([5, 6])(
+    "reports failed recovery at command index %s without exposing credentials",
+    async (failedCommand) => {
+      const responses: TCommandResponse[] = [
+        { chunks: ["AIX\r\n"] },
+        { chunks: ["testuser:\r\n flags=\r\n"] },
+        { chunks: [] },
+        { chunks: [AIX_MANAGED_TRANSCRIPT] },
+        { chunks: ["Permission denied"], code: 1 },
+        { chunks: [AIX_MANAGED_TRANSCRIPT] },
+        { chunks: [] }
+      ];
+      responses[failedCommand] = { chunks: ["passwd: password unchanged"], code: 1 };
+      const { client, exec } = createCommandClient(responses);
+
+      const error = await changeManagedPassword(
+        client,
+        "testuser",
+        ROTATED_SENTINEL,
+        false,
+        undefined,
+        CURRENT_SENTINEL
+      ).catch((err: unknown) => err);
+
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain("previous password and flags could not be restored");
+      expect((error as Error).message).not.toContain(CURRENT_SENTINEL);
+      expect((error as Error).message).not.toContain(ROTATED_SENTINEL);
+      expect(exec).toHaveBeenCalledTimes(failedCommand + 1);
+    }
+  );
+
+  test("reports post-reset cleanup failure when there is no previous managed password", async () => {
+    const { client, exec } = createCommandClient([
+      { chunks: ["AIX\r\n"] },
+      { chunks: ["testuser:\r\n flags=\r\n"] },
+      { chunks: [] },
+      { chunks: [AIX_MANAGED_TRANSCRIPT] },
+      { chunks: ["Permission denied"], code: 1 }
+    ]);
+
+    await expect(changeManagedPassword(client, "testuser", ROTATED_SENTINEL)).rejects.toThrow("retry or reconcile");
+    expect(exec).toHaveBeenCalledTimes(5);
+  });
+});
 
 describe("runManagedPasswordChange", () => {
   test.each(MANAGED_TRANSCRIPTS)(
