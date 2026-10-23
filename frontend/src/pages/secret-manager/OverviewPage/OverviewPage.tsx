@@ -189,7 +189,11 @@ import {
 } from "@app/hooks/api";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { dashboardKeys, useGetProjectSecretsOverview } from "@app/hooks/api/dashboard/queries";
+import {
+  dashboardKeys,
+  fetchDashboardProjectSecretsByKeys,
+  useGetProjectSecretsOverview
+} from "@app/hooks/api/dashboard/queries";
 import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/api/dashboard/types";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
@@ -339,6 +343,8 @@ const DEFAULT_FILTER_STATE = {
 
 const OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
 const OVERVIEW_REVEAL_ALL_KEY = "overview-reveal-all-values";
+// Keys travel in the query string, so batch them to stay under proxy request-line limits.
+const SECRET_VALUE_PREFETCH_BATCH_SIZE = 50;
 
 // Every overview row type is rendered into the same TableBody, so their React keys share one
 // namespace. Resource names are arbitrary user input, so a string prefix cannot separate them: a
@@ -521,8 +527,12 @@ const OverviewPageContent = () => {
   // Maps a revealed secret key to the identity of the secrets that were revealed, so the reveal
   // is dropped when the underlying secrets are swapped out. See secretRowIdentities below.
   const [visibleSecretRows, setVisibleSecretRows] = useState<Map<string, string>>(() => new Map());
+  // Bumped whenever reveal state changes, so a bulk reveal that is still loading its values
+  // cannot re-reveal rows the user has hidden or navigated away from in the meantime.
+  const revealGenerationRef = useRef(0);
 
   const resetSecretRowStates = useCallback(() => {
+    revealGenerationRef.current += 1;
     setExpandedSecretRows(new Set());
     setVisibleSecretRows(new Map());
   }, []);
@@ -1290,6 +1300,73 @@ const OverviewPageContent = () => {
     [isRevealAll, expandedSecretRows, getSecretRowIdentity]
   );
 
+  // Each visible cell fetches its own value, so revealing a full page at once would send one
+  // request per cell and run into the rate limit. Load the values with one secrets-by-keys
+  // request per environment instead, and seed the cache the cells read before revealing them.
+  const revealSecretRows = async (keys: string[]) => {
+    const generation = revealGenerationRef.current;
+    const identities = keys.map((key) => [key, getSecretRowIdentity(key)] as const);
+
+    const keySet = new Set(keys);
+    const keysByEnv = new Map<string, string[]>();
+    secrets?.forEach((secret) => {
+      // secrets-by-keys rejects the whole request if any key lacks read-value permission
+      if (!keySet.has(secret.key) || secret.secretValueHidden) return;
+      const envKeys = keysByEnv.get(secret.env);
+      if (envKeys) envKeys.push(secret.key);
+      else keysByEnv.set(secret.env, [secret.key]);
+    });
+
+    const batches = [...keysByEnv].flatMap(([environment, envKeys]) =>
+      Array.from(
+        { length: Math.ceil(envKeys.length / SECRET_VALUE_PREFETCH_BATCH_SIZE) },
+        (_, i) => ({
+          environment,
+          keys: envKeys.slice(
+            i * SECRET_VALUE_PREFETCH_BATCH_SIZE,
+            (i + 1) * SECRET_VALUE_PREFETCH_BATCH_SIZE
+          )
+        })
+      )
+    );
+
+    // A failed batch only loses the head start: its cells fetch their own values once revealed.
+    await Promise.allSettled(
+      batches.map(async ({ environment, keys: batchKeys }) => {
+        const { secrets: fetchedSecrets } = await fetchDashboardProjectSecretsByKeys({
+          projectId,
+          environment,
+          secretPath,
+          keys: batchKeys,
+          viewSecretValue: true
+        });
+        fetchedSecrets.forEach(({ secretKey, secretValue, secretValueHidden, type }) => {
+          if (secretValueHidden || secretValue === undefined) return;
+          const isOverride = type === SecretType.Personal;
+          queryClient.setQueryData(
+            dashboardKeys.getSecretValue({
+              projectId,
+              environment,
+              secretPath,
+              secretKey,
+              // shared value cells omit isOverride, so it must be undefined rather than false
+              // for the keys to match
+              isOverride: isOverride || undefined
+            }),
+            isOverride ? { valueOverride: secretValue } : { value: secretValue }
+          );
+        });
+      })
+    );
+
+    if (generation !== revealGenerationRef.current) return;
+    setVisibleSecretRows((prev) => {
+      const visible = new Map(prev);
+      identities.forEach(([key, identity]) => visible.set(key, identity));
+      return visible;
+    });
+  };
+
   const toggleRevealAll = () => {
     const next = !isRevealAll;
     overviewTelemetry.interaction({
@@ -1297,13 +1374,10 @@ const OverviewPageContent = () => {
       source: "header",
       resourceType: "secret"
     });
+    revealGenerationRef.current += 1;
     if (next) {
       localStorage.setItem(OVERVIEW_REVEAL_ALL_KEY, "true");
-      setVisibleSecretRows((prev) => {
-        const visible = new Map(prev);
-        expandedSecretRows.forEach((key) => visible.set(key, getSecretRowIdentity(key)));
-        return visible;
-      });
+      revealSecretRows([...expandedSecretRows]);
     } else {
       localStorage.removeItem(OVERVIEW_REVEAL_ALL_KEY);
       setVisibleSecretRows(new Map());
@@ -2468,12 +2542,7 @@ const OverviewPageContent = () => {
       return;
     }
     setExpandedSecretRows((prev) => new Set([...prev, ...mergedSecKeys]));
-    if (isRevealAll)
-      setVisibleSecretRows((prev) => {
-        const visible = new Map(prev);
-        mergedSecKeys.forEach((key) => visible.set(key, getSecretRowIdentity(key)));
-        return visible;
-      });
+    if (isRevealAll) revealSecretRows(mergedSecKeys);
   };
 
   const getSecretByKeyWithPending = useCallback(
@@ -3698,8 +3767,8 @@ const OverviewPageContent = () => {
                   </TooltipTrigger>
                   <TooltipContent>
                     {isRevealAll
-                      ? "Values of open secrets are shown. Select to hide them."
-                      : "Show the values of every open secret."}
+                      ? "Values of every secret you open are shown. Select to hide them."
+                      : "Show values of open secrets and any you open later. Remembered in this browser."}
                   </TooltipContent>
                 </Tooltip>
               </>
