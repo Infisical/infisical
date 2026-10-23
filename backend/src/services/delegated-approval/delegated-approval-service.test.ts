@@ -29,23 +29,25 @@ const pendingApprovalRequest = {
 
 // emit has to receive the caller's tx untouched; a second connection is how the pool deadlocks.
 const TX = { sentinel: true } as never;
+const PRIMARY = { primary: true } as never;
 
 const createService = ({
   delegatedRequest = failedRequest as unknown,
   delegatedPolicy = serviceNowPolicy as unknown
 } = {}) => {
   const emit = vi.fn().mockResolvedValue(undefined);
+  const findOne = vi.fn().mockResolvedValue(delegatedRequest);
   const create = vi.fn().mockImplementation(async (row: { requestId: string; status: string }) => ({
     id: "delegated-1",
     updatedAt: UPDATED_AT,
     ...row
   }));
   const service = delegatedApprovalServiceFactory({
-    delegatedApprovalRequestDAL: { findOne: vi.fn().mockResolvedValue(delegatedRequest), create },
+    delegatedApprovalRequestDAL: { findOne, create, primaryNode: () => PRIMARY },
     delegatedApprovalPolicyDAL: { findOne: vi.fn().mockResolvedValue(delegatedPolicy) },
     eventEmitter: { emit }
   } as never);
-  return { service, emit, create };
+  return { service, emit, create, findOne };
 };
 
 const dispatchRequestedEvent = {
@@ -72,12 +74,13 @@ describe("delegatedApprovalService.createRequest", () => {
 
 describe("delegatedApprovalService.retryDispatch", () => {
   test("asks for a new dispatch of a pending request that failed to reach the delegated system", async () => {
-    const { service, emit } = createService();
+    const { service, emit, findOne } = createService();
 
     await expect(service.retryDispatch({ approvalRequest: pendingApprovalRequest })).resolves.toEqual({
       delegatedRequest: failedRequest,
       delegatedPolicy: serviceNowPolicy
     });
+    expect(findOne).toHaveBeenCalledWith({ requestId: "req-1" }, PRIMARY);
     expect(emit).toHaveBeenCalledWith(dispatchRequestedEvent, undefined);
   });
 
