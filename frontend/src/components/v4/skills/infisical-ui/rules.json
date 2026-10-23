@@ -979,6 +979,18 @@
       "category": "Interaction"
     },
     {
+      "id": "selection-floating-action-bar",
+      "title": "Bulk selection uses the floating action bar",
+      "instruction": "When rows are selected, show the count, Clear and the bulk actions in the FloatingActionBar overlay, never in an inline bar above or below the list. Selecting or clearing rows must not move any content.",
+      "good": "Selecting three secrets raises the floating action bar over the bottom of the view with the count, Clear and the bulk actions, and the table stays where it was.",
+      "avoid": "An inline '3 selected, Clear selection, Bulk actions' row that pushes the table down when the first row is selected.",
+      "detect": {
+        "by": "review",
+        "how": "Select a row and check that nothing above or below the list moves, and that the actions appear in the floating action bar."
+      },
+      "category": "Interaction"
+    },
+    {
       "id": "translucent-hover",
       "title": "Hover and press overlays are translucent",
       "instruction": "Hover, highlight and press on part of an element that already has content behind it (chart bars and cursors, rows on tinted surfaces, list and menu items) use ink at opacity-hover or opacity-press (6% and 10% in light, 12% and 18% in dark), so what is behind shows through. Never paint an opaque fill over it.",
