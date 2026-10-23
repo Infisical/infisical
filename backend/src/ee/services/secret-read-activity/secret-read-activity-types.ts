@@ -145,6 +145,9 @@ export type TSecretAccessSummary = {
   entitled: TProjectReader[];
   nonAdmins: TProjectReader[];
   unread: TProjectReader[];
+  // The latest read of each entitled reader, keyed by actor, leaving out a read from before they had access to the
+  // secret: a folder read then could not have returned it.
+  readsByActorKey: Map<string, TSecretReadResult>;
 };
 
 export enum SecretReadStatus {

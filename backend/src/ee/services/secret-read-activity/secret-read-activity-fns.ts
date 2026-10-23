@@ -223,12 +223,26 @@ export const summarizeSecretAccess = (
     const latest = latestAccessChangeOf(reader);
     return latest && latest > judgedFrom ? accessSinceOf(reader, activity) : latest;
   };
+  // A read is credited by folder, so one from before the reader had access to this secret did not return it. A read
+  // after their newest source change is after their access to every secret, so only an earlier one is checked.
+  const readsByActorKey = new Map<string, TSecretReadResult>();
+  entitled.forEach((reader) => {
+    const key = toActorKey(reader.actorType, reader.actorId);
+    const read = reads.get(key);
+    if (!read) return;
+    const latest = latestAccessChangeOf(reader);
+    if (latest && read.lastReadAt < latest) {
+      const since = accessSinceOf(reader, activity);
+      if (since && read.lastReadAt < since) return;
+    }
+    readsByActorKey.set(key, read);
+  });
   const unread = nonAdmins.filter(
     (reader) =>
-      !reads.has(toActorKey(reader.actorType, reader.actorId)) &&
+      !readsByActorKey.has(toActorKey(reader.actorType, reader.actorId)) &&
       coversWholeWindow(trackedSince, accessSince(reader), judgedFrom)
   );
-  return { entitled, nonAdmins, unread };
+  return { entitled, nonAdmins, unread, readsByActorKey };
 };
 
 // A reader without a read who is not unused access was left out for one of three reasons, checked in this order.

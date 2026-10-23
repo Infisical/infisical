@@ -215,6 +215,22 @@ describe("summarizeSecretAccess", () => {
     expect(ids(summary.unread)).toEqual(["direct", "via-group"]);
   });
 
+  test("drops a read from before the reader had access to the secret, and keeps one after", () => {
+    const readOnOct1 = readBy("direct");
+    const before = summarizeSecretAccess(
+      activity({ reads: readOnOct1 }),
+      access(datedAccess({ direct: new Date("2026-10-05T00:00:00.000Z") }))
+    );
+    expect(before.readsByActorKey.has(toActorKey(ActorType.USER, "direct"))).toBe(false);
+    const after = summarizeSecretAccess(
+      activity({ reads: readOnOct1 }),
+      access(datedAccess({ direct: new Date("2026-09-20T00:00:00.000Z") }))
+    );
+    expect(after.readsByActorKey.get(toActorKey(ActorType.USER, "direct"))?.lastReadAt).toEqual(
+      new Date("2026-10-01T00:00:00.000Z")
+    );
+  });
+
   test("does not count a secret newer than the judged period", () => {
     const summary = summarizeSecretAccess(activity({ trackedSince: new Date("2026-10-01T00:00:00.000Z") }), access());
     expect(summary.unread).toEqual([]);

@@ -452,13 +452,13 @@ export const secretReadActivityServiceFactory = ({
         message: `Secret with name '${secretName}' not found at path '${secretPath}' in environment '${environment}'`
       });
     }
-    const { entitled, unread } = summarizeSecretAccess(activity, access);
+    const { entitled, unread, readsByActorKey } = summarizeSecretAccess(activity, access);
     const unusedKeys = new Set(unread.map((reader) => toActorKey(reader.actorType, reader.actorId)));
     const names = await $findActorNames(entitled, access.directMembers);
 
     const actors = entitled.map((reader): TSecretReadActivityActor => {
       const key = toActorKey(reader.actorType, reader.actorId);
-      const lastReadAt = activity.reads.get(key)?.lastReadAt ?? null;
+      const lastReadAt = readsByActorKey.get(key)?.lastReadAt ?? null;
       const isProjectAdmin = access.adminActorIds.has(reader.actorId);
       // Every reader has at least one dated source; without one, access is as old as the secret's tracked period.
       const accessSince = access.accessSinceOf(reader, activity) ?? activity.trackedSince;
