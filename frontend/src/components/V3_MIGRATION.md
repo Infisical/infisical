@@ -6,7 +6,7 @@ The migration is complete only when the legacy UI implementations, exports, impo
 
 The `components/v2` tree and its `@app/components/v2` root barrel are deleted. The last census before deletion, at `e434f2fdfdd608f97cd4041af84062991d2645cf`, found 24 families, 50 files, and one external consumer: the root `TooltipProvider` in `pages/root.tsx`, which now uses the V3 `TooltipProvider` with the same 700 ms delay and 300 ms skip delay. Every other V2 import was between V2 families.
 
-`audit-v2-ui.mjs` reports zero V2 files and zero legacy module edges. `--assert-zero` still fails while `legacy.css` remains on the known outside-path list. The family coverage and product-surface tables below are the 2026-10-04 baseline record; keep using them for replacement guidance, not as current consumer counts.
+`legacy.css` is also deleted, so `audit-v2-ui.mjs --assert-zero` passes: zero V2 files, zero legacy module edges, zero known outside paths, and zero computed imports. The family coverage and product-surface tables below are the 2026-10-04 baseline record; keep using them for replacement guidance, not as current consumer counts.
 
 ## Baseline and measurement
 
