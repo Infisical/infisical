@@ -2214,9 +2214,9 @@ const OverviewPageContent = () => {
           { projectId, environment: env, secretPath }
         );
         if (newSecretName && newSecretName !== key)
-          setRecentQuickAddKeys((prev) =>
-            prev.map((recentKey) => (recentKey === key ? newSecretName : recentKey))
-          );
+          setRecentQuickAddKeys((prev) => [
+            ...new Set(prev.map((recentKey) => (recentKey === key ? newSecretName : recentKey)))
+          ]);
         overviewTelemetry.flow({
           action: "update",
           resourceType: "secret",
