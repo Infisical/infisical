@@ -57,7 +57,6 @@ import {
   TReachSecret,
   TReadActivityScope,
   TSecretActivity,
-  TSecretReach,
   TSecretReachGraph,
   TSecretReadActivityActor,
   TSecretReaderType,
@@ -234,27 +233,33 @@ export const secretReadActivityServiceFactory = ({
         )
         .map((secret) => ({ secret, ...location }));
     });
+    // Holding every secret's reach at once grows with the square of the secrets referencing each other, so the scan
+    // looks up the reads of every secret and folder it loaded, which hold any reach, and drops each reach once its
+    // reads are matched. A request for one secret looks up its own reach alone.
+    const requestedReaches = requestedSecret
+      ? targets.map(({ secret }) => computeSecretReach(secret, graph))
+      : undefined;
+    const objectIds = requestedReaches
+      ? requestedReaches.flatMap((reach) => [...reach.folderIds, ...reach.secretIds])
+      : [
+          ...folders.map((folder) => folder.id),
+          ...loadedSecrets.map((secret) => secret.id),
+          ...references.map((reference) => reference.secretId)
+        ];
+    const reads = indexSecretReads(await secretReadActivityDAL.findLastReads([...new Set(objectIds)], windowStart));
+
+    // Reads are matched by folder and secret ids, so renames do not matter. A move creates new ids, so the
+    // window starts no earlier than the secret and its folder were created, nor before tracking began.
+    const trackingStart = (await $getTrackingStartedAt())?.getTime() ?? 0;
     // Each reach is synchronous work, so the loop yields to the event loop between batches to keep a large project
     // from blocking other requests.
-    const reaches: TSecretReach[] = [];
+    const activities: TSecretActivity[] = [];
     for (let index = 0; index < targets.length; index += 1) {
       if (index > 0 && index % REACH_YIELD_INTERVAL === 0) {
         // eslint-disable-next-line no-await-in-loop
         await setImmediate();
       }
-      reaches.push(computeSecretReach(targets[index].secret, graph));
-    }
-    const reads = indexSecretReads(
-      await secretReadActivityDAL.findLastReads(
-        [...new Set(reaches.flatMap((reach) => [...reach.folderIds, ...reach.secretIds]))],
-        windowStart
-      )
-    );
-
-    // Reads are matched by folder and secret ids, so renames do not matter. A move creates new ids, so the
-    // window starts no earlier than the secret and its folder were created, nor before tracking began.
-    const trackingStart = (await $getTrackingStartedAt())?.getTime() ?? 0;
-    return targets.map(({ secret, environment, secretPath }, index) => {
+      const { secret, environment, secretPath } = targets[index];
       const trackedSince = new Date(
         Math.max(
           windowStart.getTime(),
@@ -263,14 +268,16 @@ export const secretReadActivityServiceFactory = ({
           folderById[secret.folderId].createdAt.getTime()
         )
       );
-      return {
+      const reach = requestedReaches?.[index] ?? computeSecretReach(secret, graph);
+      activities.push({
         secret,
         environment,
         secretPath,
         trackedSince,
-        reads: classifySecretReads(reads, reaches[index], trackedSince)
-      };
-    });
+        reads: classifySecretReads(reads, reach, trackedSince)
+      });
+    }
+    return activities;
   };
 
   // Reads are known from the later of when tracking began on the instance and when the project was created.
