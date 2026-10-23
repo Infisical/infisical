@@ -2,6 +2,12 @@
 
 The migration is complete only when the legacy UI implementations, exports, imports, aliases, and private dependencies are removed from the latest `main`. Migrating a consumer in an open PR does not mean its legacy family is removed on `main`. Moving an implementation into V3, renaming it, or wrapping it does not establish parity or removal.
 
+## Status on main
+
+The `components/v2` tree and its `@app/components/v2` root barrel are deleted. The last census before deletion, at `e434f2fdfdd608f97cd4041af84062991d2645cf`, found 24 families, 50 files, and one external consumer: the root `TooltipProvider` in `pages/root.tsx`, which now uses the V3 `TooltipProvider` with the same 700 ms delay and 300 ms skip delay. Every other V2 import was between V2 families.
+
+`audit-v2-ui.mjs` reports zero V2 files and zero legacy module edges. `--assert-zero` still fails while `legacy.css` remains on the known outside-path list. The family coverage and product-surface tables below are the 2026-10-04 baseline record; keep using them for replacement guidance, not as current consumer counts.
+
 ## Baseline and measurement
 
 Baseline: `infisical/infisical` `origin/main` **70e06365043ae3b6f49ef6c95a8b9997b20f4a34**, fetched **2026-10-04**. The September 24 design audit is historical context, not current acceptance evidence.
