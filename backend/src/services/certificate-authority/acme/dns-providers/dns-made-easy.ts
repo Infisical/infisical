@@ -4,10 +4,28 @@ import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import {
   getDNSMadeEasyUrl,
+  getDNSMadeEasyZone,
   listDNSMadeEasyRecords,
   makeDNSMadeEasyAuthHeaders
 } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-fns";
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
+
+// DNS Made Easy expects record names relative to the zone, e.g. "_acme-challenge.mail"
+// for "_acme-challenge.mail.example.com" in the zone "example.com".
+export const getDNSMadeEasyRelativeRecordName = (zoneName: string, recordName: string): string => {
+  const normalizedZoneName = zoneName.replace(/\.$/, "").toLowerCase();
+  const normalizedRecordName = recordName.replace(/\.$/, "");
+
+  if (!normalizedZoneName) {
+    throw new Error("DNS Made Easy zone name is empty");
+  }
+
+  if (normalizedRecordName.toLowerCase().endsWith(`.${normalizedZoneName}`)) {
+    return normalizedRecordName.slice(0, -(normalizedZoneName.length + 1));
+  }
+
+  throw new Error("DNS Made Easy challenge record is outside the hosted zone");
+};
 
 export const dnsMadeEasyInsertTxtRecord = async (
   connection: TDNSMadeEasyConnection,
@@ -19,13 +37,16 @@ export const dnsMadeEasyInsertTxtRecord = async (
     credentials: { apiKey, secretKey }
   } = connection;
 
-  logger.info({ hostedZoneId, domain, value }, "Inserting TXT record for DNS Made Easy");
+  const zone = await getDNSMadeEasyZone(connection, hostedZoneId);
+  const relativeRecordName = getDNSMadeEasyRelativeRecordName(zone.name, domain);
+
+  logger.info({ hostedZoneId, domain, relativeRecordName, value }, "Inserting TXT record for DNS Made Easy");
   try {
     await request.post(
       getDNSMadeEasyUrl(`/V2.0/dns/managed/${encodeURIComponent(hostedZoneId)}/records`),
       {
         type: "TXT",
-        name: domain,
+        name: relativeRecordName,
         value,
         ttl: 60
       },
@@ -66,14 +87,21 @@ export const dnsMadeEasyDeleteTxtRecord = async (
     credentials: { apiKey, secretKey }
   } = connection;
 
-  logger.info({ hostedZoneId, domain, value }, "Deleting TXT record for DNS Made Easy");
+  const zone = await getDNSMadeEasyZone(connection, hostedZoneId);
+  const relativeRecordName = getDNSMadeEasyRelativeRecordName(zone.name, domain);
+
+  logger.info({ hostedZoneId, domain, relativeRecordName, value }, "Deleting TXT record for DNS Made Easy");
   try {
-    const dnsRecords = await listDNSMadeEasyRecords(connection, { zoneId: hostedZoneId, type: "TXT", name: domain });
+    const dnsRecords = await listDNSMadeEasyRecords(connection, {
+      zoneId: hostedZoneId,
+      type: "TXT",
+      name: relativeRecordName
+    });
 
     let foundRecord = false;
     if (dnsRecords.length > 0) {
       const recordToDelete = dnsRecords.find(
-        (record) => record.type === "TXT" && record.name === domain && record.value === value
+        (record) => record.type === "TXT" && record.name === relativeRecordName && record.value === value
       );
 
       if (recordToDelete) {
