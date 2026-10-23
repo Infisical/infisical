@@ -341,10 +341,14 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
       return project.statistics?.repositorySize;
     });
 
-    const validatedHostname = new URL(instanceUrl).host;
+    const parsedInstanceUrl = new URL(instanceUrl);
+    const pathnamePrefix = parsedInstanceUrl.pathname.replace(/\/+$/, "");
+    const cleanResource = resourceName.replace(/^\/+/, "");
+    const clonePath = `${pathnamePrefix}/${cleanResource}.git`.replace(/^\/+/, "");
+    const cloneUrl = `${parsedInstanceUrl.protocol}//${encodeURIComponent(user.username)}:${encodeURIComponent(connection.credentials.accessToken)}@${parsedInstanceUrl.host}/${clonePath}`;
 
     await cloneRepository({
-      cloneUrl: `https://${user.username}:${connection.credentials.accessToken}@${validatedHostname}/${resourceName}.git`,
+      cloneUrl,
       repoPath
     });
 
@@ -386,6 +390,9 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
 
     const client = await getGitLabConnectionClient(connection, appConnectionDAL, kmsService);
 
+    const instanceUrl = await getGitLabInstanceUrl(connection.credentials.instanceUrl);
+    const cleanResourceName = resourceName.replace(/^\/+/, "").replace(/\/+$/, "");
+
     const { commits, project } = payload;
 
     const allFindings: SecretMatch[] = [];
@@ -403,6 +410,8 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
           replaceNonChangesWithNewlines(`\n${commitDiff.diff}`),
           configPath
         );
+
+        const cleanFilePath = commitDiff.newPath.replace(/^\/+/, "");
 
         const adjustedFindings = findings.map((finding) => {
           const startLine = convertPatchLineToFileLineNumber(commitDiff.diff, finding.StartLine);
@@ -429,8 +438,8 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
             Fingerprint: `${commit.id}:${commitDiff.newPath}:${finding.RuleID}:${startLine}:${startColumn}`,
             Date: commit.timestamp,
             Attributes: {
-              ...finding.Attributes,
-              url: `https://gitlab.com/${resourceName}/blob/${commit.id}/${commitDiff.newPath}#L${startLine}`
+              ...(finding.Attributes || {}),
+              url: `${instanceUrl}/${cleanResourceName}/blob/${commit.id}/${cleanFilePath}#L${startLine}`
             }
           };
         });
@@ -469,3 +478,4 @@ export const GitLabSecretScanningFactory = ({ appConnectionDAL, kmsService }: TS
     validateConfigUpdate
   };
 };
+export default GitLabSecretScanningFactory;

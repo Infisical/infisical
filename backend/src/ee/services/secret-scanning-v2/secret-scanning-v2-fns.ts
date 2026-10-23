@@ -1,4 +1,4 @@
-import { AxiosError } from "axios";
+import { isAxiosError } from "axios";
 import { join } from "path";
 import picomatch from "picomatch";
 import RE2 from "re2";
@@ -8,6 +8,7 @@ import {
   getGitThreadLimitArgs,
   getScannerProcessEnv,
   GIT_PROCESS_ENV,
+  redactUrlCredentials,
   SecretScanningExecError,
   SecretScanningExecFailure,
   SecretScanningExecPhase
@@ -515,13 +516,42 @@ export const parseScanErrorMessage = (err: unknown): string => {
     errorMessage = parseExecErrorMessage(err);
   } else if (err instanceof SecretScanningSizeLimitError) {
     errorMessage = err.message;
-  } else if (err instanceof AxiosError) {
-    errorMessage = err?.response?.data
-      ? JSON.stringify(err?.response?.data)
-      : (err?.message ?? "An unknown error occurred.");
+  } else if (isAxiosError(err)) {
+    const status = err.response?.status;
+    const responseData: unknown = err.response?.data;
+    let detail: string | undefined;
+
+    if (typeof responseData === "string") {
+      detail = responseData;
+    } else if (responseData && typeof responseData === "object") {
+      const dataObj = responseData as Record<string, unknown>;
+      if (typeof dataObj.message === "string") {
+        detail = dataObj.message;
+      } else if (typeof dataObj.error === "string") {
+        detail = dataObj.error;
+      } else if (typeof dataObj.error_description === "string") {
+        detail = dataObj.error_description;
+      }
+    }
+
+    if (detail && status) {
+      errorMessage = `Request failed with status code ${status}: ${detail}`;
+    } else if (detail) {
+      errorMessage = detail;
+    } else if (status) {
+      errorMessage = `Request failed with status code ${status}`;
+    } else {
+      errorMessage = err.message || "An unknown network error occurred.";
+    }
+  } else if (err instanceof Error) {
+    errorMessage = err.message || "An unknown error occurred.";
+  } else if (typeof err === "string" && err.trim().length > 0) {
+    errorMessage = err;
   } else {
-    errorMessage = (err as Error)?.message || "An unknown error occurred.";
+    errorMessage = "An unknown error occurred.";
   }
+
+  errorMessage = redactUrlCredentials(errorMessage);
 
   return errorMessage.length <= MAX_MESSAGE_LENGTH
     ? errorMessage
