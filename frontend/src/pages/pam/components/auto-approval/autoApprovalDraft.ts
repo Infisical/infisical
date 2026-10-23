@@ -178,12 +178,24 @@ export const getSubjectsMissingCheck = (
   });
 };
 
-// A new rule starts single use and bound to the requester for every record the folder asks for
+// A rule checks one connection per kind of record, so its conditions on the same field kind share a connection
+export const getRecordKind = (
+  catalog: TAutoApprovalCatalogConnection[] | undefined,
+  connectionId: string,
+  subjectId: string
+) => `${findSubject(catalog, connectionId, subjectId).connection?.app}:${subjectId}`;
+
+// A new rule starts single use and bound to the requester for each kind of record the folder asks for
 export const getDefaultRuleConditions = (
   inputs: TAutoApprovalDraft["inputs"],
   catalog: TAutoApprovalCatalogConnection[] | undefined
-): TDraftCondition[] =>
-  inputs.flatMap(({ connectionId, subject: subjectId }) => {
+): TDraftCondition[] => {
+  const seenKinds = new Set<string>();
+  return inputs.flatMap(({ connectionId, subject: subjectId }) => {
+    const kind = getRecordKind(catalog, connectionId, subjectId);
+    if (seenKinds.has(kind)) return [];
+    seenKinds.add(kind);
+
     const { subject } = findSubject(catalog, connectionId, subjectId);
     return [UNUSED_CONSTRAINT, ASSIGNED_TO_REQUESTER_CONSTRAINT]
       .filter((constraintId) =>
@@ -197,3 +209,4 @@ export const getDefaultRuleConditions = (
         values: []
       }));
   });
+};

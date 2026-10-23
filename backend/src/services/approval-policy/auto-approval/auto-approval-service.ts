@@ -164,6 +164,7 @@ export const autoApprovalServiceFactory = ({
 
     const rules = config.rules.map((rule) => {
       const name = rule.name.trim();
+      const connectionIdByKind = new Map<string, string>();
 
       const conditions = rule.conditions.map((condition) => {
         const isRequester = condition.subject === AUTO_APPROVAL_REQUESTER_SUBJECT;
@@ -180,6 +181,15 @@ export const autoApprovalServiceFactory = ({
             message: `Rule '${name}' checks the ${subject.label} from '${connectionName}'. Add it to the request form fields first.`
           });
         }
+
+        const kind = `${connection?.app}:${condition.subject}`;
+        const otherConnectionId = connectionIdByKind.get(kind);
+        if (otherConnectionId && otherConnectionId !== condition.connectionId) {
+          throw new BadRequestError({
+            message: `Rule '${name}' checks the ${subject.label} from both '${appByConnectionId.get(otherConnectionId)?.name ?? otherConnectionId}' and '${connectionName}'. A rule can only check the ${subject.label} from one connection.`
+          });
+        }
+        connectionIdByKind.set(kind, condition.connectionId);
 
         const constraint = getConstraintDefinition(subject, condition.constraint);
         if (!constraint) {

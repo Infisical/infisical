@@ -29,6 +29,7 @@ import {
   AUTO_APPROVAL_LIMITS,
   findSubject,
   getConditionError,
+  getRecordKind,
   getRuleError,
   getSubjectDisplayLabel,
   getSubjectsMissingCheck,
@@ -222,8 +223,21 @@ export const AutoApprovalRuleCard = ({
     }))
   ];
 
-  // Each check appears once per rule, so the menu only offers the ones not added yet
+  const connectionIdByKind = new Map(
+    rule.conditions.map((condition) => [
+      getRecordKind(catalog, condition.connectionId, condition.subject),
+      condition.connectionId
+    ])
+  );
+
+  // Each check appears once per rule, and a field kind comes from one connection, so the menu skips both
   const menuGroups = choices
+    .filter((choice) => {
+      const usedConnectionId = connectionIdByKind.get(
+        getRecordKind(catalog, choice.connectionId, choice.subject)
+      );
+      return !usedConnectionId || usedConnectionId === choice.connectionId;
+    })
     .map((choice) => ({
       choice,
       constraints:
