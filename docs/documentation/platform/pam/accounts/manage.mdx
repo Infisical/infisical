@@ -103,6 +103,10 @@ When you delete an account, Infisical does the following:
 
 Infisical keeps the account's past sessions and recordings, but only product admins can view them.
 
+<Warning>
+  If the account's recordings are stored in an [S3 bucket](/documentation/platform/pam/sessions/external-storage), you can't play them back in Infisical after you delete the account. This includes every Windows and Windows AD recording.
+</Warning>
+
 You can't delete an account in these cases:
 
 - The account is the rotation account of another account (set a different rotation account on the other account first)
