@@ -1,14 +1,13 @@
 import { UnrecoverableError } from "bullmq";
-import pLimit from "p-limit";
 
 import { ProjectType } from "@app/db/schemas";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
-import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { TDelegatedApprovalCallbackServiceFactory } from "@app/services/delegated-approval-callback/delegated-approval-callback-service";
+import { parseEventPayload, runEventsConcurrentlyByKey } from "@app/services/event-outbox/event-outbox-fns";
 import {
   EventResultStatus,
   IEventConsumer,
@@ -19,16 +18,25 @@ import {
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "../delegated-approval-enums";
+import { DelegatedApprovalRequestStatus } from "../delegated-approval-enums";
 import {
   DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
   DelegatedApprovalDispatchRequestedPayloadSchema,
   TDelegatedApprovalDispatchRequestedPayload
 } from "../delegated-approval-events";
-import { DELEGATED_APPROVAL_CONNECTION_MAP } from "../delegated-approval-maps";
+import {
+  DelegatedApprovalRequestBlocker,
+  getDelegatedApprovalRequestBlocker,
+  requireDelegatedApprovalConnection
+} from "../delegated-approval-guards";
 import { TDelegatedApprovalPolicyDALFactory } from "../delegated-approval-policy-dal";
 import { TDelegatedApprovalRequestDALFactory } from "../delegated-approval-request-dal";
-import { DELEGATED_APPROVAL_STATUS_REASON_MAX_CHARS } from "./delegated-approval-dispatch-constants";
+import {
+  loadDelegatedApprovalContext,
+  toDelegatedApprovalFailure,
+  toDelegatedApprovalStatusReason
+} from "../delegated-approval-request-fns";
+import { DELEGATED_APPROVAL_DISPATCH_RETRY_HINT } from "./delegated-approval-dispatch-constants";
 import {
   getDelegatedApprovalDispatchDetailsBuilder,
   getDelegatedApprovalProvider
@@ -39,10 +47,20 @@ export const DELEGATED_APPROVAL_DISPATCH_CONSUMER = "delegated-approval-dispatch
 
 const DELEGATED_APPROVAL_DISPATCH_CONCURRENCY = 10;
 
+const BLOCKER_MESSAGES: Record<DelegatedApprovalRequestBlocker, string> = {
+  [DelegatedApprovalRequestBlocker.Missing]: "The approval request no longer exists.",
+  [DelegatedApprovalRequestBlocker.NotPending]:
+    "The approval request is no longer pending, so it was not sent to the delegated approval system.",
+  [DelegatedApprovalRequestBlocker.Expired]:
+    "The approval request expired before it could be sent to the delegated approval system. Create the request again.",
+  [DelegatedApprovalRequestBlocker.PolicyRemoved]:
+    "The policy's delegated approver was removed before the request could be sent. Configure a delegated approver on the policy and create the request again."
+};
+
 type TDelegatedApprovalDispatchConsumerDep = {
   delegatedApprovalRequestDAL: Pick<
     TDelegatedApprovalRequestDALFactory,
-    "findById" | "primaryNode" | "transaction" | "update" | "updateById"
+    "findById" | "primaryNode" | "transaction" | "updateWithDetails"
   >;
   delegatedApprovalPolicyDAL: Pick<TDelegatedApprovalPolicyDALFactory, "findOne">;
   delegatedApprovalCallbackService: Pick<
@@ -68,11 +86,11 @@ export const delegatedApprovalDispatchConsumerFactory = ({
 }: TDelegatedApprovalDispatchConsumerDep): IEventConsumer<TDelegatedApprovalDispatchRequestedPayload> => {
   const $markDispatchFailed = async (delegatedRequestId: string, statusReason: string) => {
     try {
-      await delegatedApprovalRequestDAL.update(
+      await delegatedApprovalRequestDAL.updateWithDetails(
         { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.PendingDispatch },
         {
           status: DelegatedApprovalRequestStatus.FailedDispatch,
-          statusReason: statusReason.slice(0, DELEGATED_APPROVAL_STATUS_REASON_MAX_CHARS)
+          details: { statusReason: toDelegatedApprovalStatusReason(statusReason) }
         }
       );
     } catch (error) {
@@ -94,11 +112,11 @@ export const delegatedApprovalDispatchConsumerFactory = ({
   }) => {
     try {
       await delegatedApprovalRequestDAL.transaction(async (tx) => {
-        await delegatedApprovalRequestDAL.update(
+        await delegatedApprovalRequestDAL.updateWithDetails(
           { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.PendingDispatch },
           {
             status: DelegatedApprovalRequestStatus.Failed,
-            statusReason: statusReason.slice(0, DELEGATED_APPROVAL_STATUS_REASON_MAX_CHARS)
+            details: { statusReason: toDelegatedApprovalStatusReason(statusReason) }
           },
           tx
         );
@@ -116,39 +134,29 @@ export const delegatedApprovalDispatchConsumerFactory = ({
     }
   };
 
-  // Both rows were committed together with the event, so they are read from the primary.
-  const $loadRequests = async (delegatedRequestId: string) => {
-    const primary = delegatedApprovalRequestDAL.primaryNode();
-
-    const delegatedRequest = await delegatedApprovalRequestDAL.findById(delegatedRequestId, primary);
-    if (!delegatedRequest) return null;
-
-    const approvalRequest = await approvalRequestDAL.findById(delegatedRequest.requestId, primary);
-    const delegatedPolicy = approvalRequest?.policyId
-      ? await delegatedApprovalPolicyDAL.findOne({ policyId: approvalRequest.policyId }, primary)
-      : null;
-
-    return { delegatedRequest, approvalRequest, delegatedPolicy };
-  };
-
   const $dispatch = async (
     delegatedRequestId: string,
     isFinalAttempt: boolean
   ): Promise<Omit<TEventConsumerResult, "id">> => {
-    const requests = await $loadRequests(delegatedRequestId);
-    if (!requests) {
+    const context = await loadDelegatedApprovalContext(delegatedRequestId, {
+      delegatedApprovalRequestDAL,
+      approvalRequestDAL,
+      delegatedApprovalPolicyDAL
+    });
+    if (!context) {
       logger.warn(
         `Delegated approval request no longer exists, skipping dispatch [delegatedRequestId=${delegatedRequestId}]`
       );
       return { status: EventResultStatus.Delivered };
     }
 
-    const { delegatedRequest, approvalRequest, delegatedPolicy } = requests;
+    const { delegatedRequest, approvalRequest, delegatedPolicy } = context;
 
-    if (
-      delegatedRequest.status !== DelegatedApprovalRequestStatus.PendingDispatch &&
-      delegatedRequest.status !== DelegatedApprovalRequestStatus.FailedDispatch
-    ) {
+    const canDispatch =
+      delegatedRequest.status === DelegatedApprovalRequestStatus.PendingDispatch ||
+      delegatedRequest.status === DelegatedApprovalRequestStatus.FailedDispatch;
+
+    if (!canDispatch) {
       logger.info(
         `Delegated approval request is not awaiting dispatch, skipping [delegatedRequestId=${delegatedRequestId}] [status=${delegatedRequest.status}]`
       );
@@ -163,30 +171,16 @@ export const delegatedApprovalDispatchConsumerFactory = ({
     }
 
     if (delegatedRequest.status === DelegatedApprovalRequestStatus.FailedDispatch) {
-      await delegatedApprovalRequestDAL.update(
+      await delegatedApprovalRequestDAL.updateWithDetails(
         { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.FailedDispatch },
-        { status: DelegatedApprovalRequestStatus.PendingDispatch, statusReason: null }
+        { status: DelegatedApprovalRequestStatus.PendingDispatch, details: { statusReason: null } }
       );
     }
 
     try {
-      if (!approvalRequest) {
-        throw new UnrecoverableError("The approval request no longer exists.");
-      }
-      if (approvalRequest.status !== ApprovalRequestStatus.Pending) {
-        throw new UnrecoverableError(
-          "The approval request is no longer pending, so it was not sent to the delegated approval system."
-        );
-      }
-      if (approvalRequest.expiresAt && new Date(approvalRequest.expiresAt) < new Date()) {
-        throw new UnrecoverableError(
-          "The approval request expired before it could be sent to the delegated approval system. Create the request again."
-        );
-      }
-      if (!delegatedPolicy) {
-        throw new UnrecoverableError(
-          "The policy's delegated approver was removed before the request could be sent. Configure a delegated approver on the policy and create the request again."
-        );
+      const blocker = getDelegatedApprovalRequestBlocker(approvalRequest, delegatedPolicy);
+      if (blocker || !approvalRequest || !delegatedPolicy) {
+        throw new UnrecoverableError(BLOCKER_MESSAGES[blocker ?? DelegatedApprovalRequestBlocker.Missing]);
       }
 
       const provider = getDelegatedApprovalProvider(delegatedPolicy.type);
@@ -208,14 +202,15 @@ export const delegatedApprovalDispatchConsumerFactory = ({
       if (!project) {
         throw new UnrecoverableError("The project of the approval request no longer exists.");
       }
-      if (!rawConnection || rawConnection.orgId !== approvalRequest.organizationId) {
-        const connectionApp = DELEGATED_APPROVAL_CONNECTION_MAP[delegatedPolicy.type as DelegatedApprovalPolicyType];
-        throw new UnrecoverableError(
-          `App Connection with ID '${delegatedPolicy.connectionId}' was not found. Select a ${APP_CONNECTION_NAME_MAP[connectionApp]} Connection on the policy and create the request again.`
-        );
-      }
 
-      const connection = await decryptAppConnection(rawConnection, kmsService);
+      const connection = await decryptAppConnection(
+        requireDelegatedApprovalConnection({
+          rawConnection,
+          delegatedPolicy,
+          organizationId: approvalRequest.organizationId
+        }),
+        kmsService
+      );
 
       const callbackToken = await delegatedApprovalCallbackService.getOrIssueCallbackToken({ delegatedRequest });
       if (!callbackToken) {
@@ -236,29 +231,35 @@ export const delegatedApprovalDispatchConsumerFactory = ({
         details
       };
 
-      const { providerRequestId } = await provider.dispatch(input, connection);
+      const { providerRequestId, providerDetails } = await provider.dispatch(input, connection);
+      const providerPatch = providerDetails ? { provider: providerDetails } : {};
 
-      const [waitingRequest] = await delegatedApprovalRequestDAL.update(
+      const [waitingRequest] = await delegatedApprovalRequestDAL.updateWithDetails(
         { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.PendingDispatch },
-        { status: DelegatedApprovalRequestStatus.WaitingApproval, statusReason: null, providerRequestId }
+        {
+          status: DelegatedApprovalRequestStatus.WaitingApproval,
+          providerRequestId,
+          details: { statusReason: null, ...providerPatch }
+        }
       );
       if (!waitingRequest) {
-        await delegatedApprovalRequestDAL.updateById(delegatedRequestId, { providerRequestId });
+        await delegatedApprovalRequestDAL.updateWithDetails(
+          { id: delegatedRequestId },
+          { providerRequestId, details: providerPatch }
+        );
         logger.warn(
           `Delegated approval request left pending dispatch while it was being delivered [delegatedRequestId=${delegatedRequestId}] [providerRequestId=${providerRequestId}]`
         );
       }
 
       logger.info(
-        `Delegated approval request delivered [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequest.id}] [provider=${delegatedPolicy.type}] [providerRequestId=${providerRequestId}]`
+        `Delegated approval request delivered [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequest.id}] [provider=${delegatedPolicy.type}] [providerRequestId=${providerRequestId}] [recordNumber=${providerDetails?.recordNumber ?? "none"}]`
       );
       return { status: EventResultStatus.Delivered };
     } catch (error) {
-      const isTerminal = error instanceof UnrecoverableError;
-      const message = error instanceof Error ? error.message : String(error);
-      const logContext = { err: { name: (error as Error)?.name, message } };
+      const { terminal, message, logContext } = toDelegatedApprovalFailure(error);
 
-      if (!isTerminal && isFinalAttempt && approvalRequest) {
+      if (!terminal && isFinalAttempt && approvalRequest) {
         await $closeAfterExhaustedAttempts({
           delegatedRequestId,
           approvalRequestId: approvalRequest.id,
@@ -275,13 +276,11 @@ export const delegatedApprovalDispatchConsumerFactory = ({
       // outbox is still retrying.
       await $markDispatchFailed(
         delegatedRequestId,
-        isTerminal
-          ? message
-          : `${message} Infisical will retry automatically. If it keeps failing, send the request again.`
+        terminal ? message : `${message} ${DELEGATED_APPROVAL_DISPATCH_RETRY_HINT}`
       );
 
-      const logMessage = `Delegated approval dispatch failed [delegatedRequestId=${delegatedRequestId}] [terminal=${isTerminal}]`;
-      if (isTerminal) {
+      const logMessage = `Delegated approval dispatch failed [delegatedRequestId=${delegatedRequestId}] [terminal=${terminal}]`;
+      if (terminal) {
         logger.error(logContext, logMessage);
         return { status: EventResultStatus.Failed, error: message };
       }
@@ -291,70 +290,24 @@ export const delegatedApprovalDispatchConsumerFactory = ({
   };
 
   const $handleEvent = async (event: TEvent): Promise<TEventConsumerResult> => {
-    const id = String(event.id);
-
-    const payload = DelegatedApprovalDispatchRequestedPayloadSchema.safeParse(event.payload);
-    if (!payload.success) {
-      return {
-        id,
-        status: EventResultStatus.Failed,
-        error: `Unreadable delegated approval dispatch payload: ${payload.error.issues.map((issue) => issue.message).join(", ")}`
-      };
-    }
-
-    return { id, ...(await $dispatch(payload.data.delegatedRequestId, event.isFinalAttempt)) };
-  };
-
-  const $runEvent = async (event: TEvent): Promise<TEventConsumerResult> => {
-    try {
-      return await $handleEvent(event);
-    } catch (error) {
-      return {
-        id: String(event.id),
-        status: EventResultStatus.Retry,
-        error: error instanceof Error ? error.message : "Unknown error"
-      };
-    }
-  };
-
-  // Unreadable payloads have no request id, so each one is its own group and cannot block another request.
-  const $groupByRequest = (events: TEvent[]): TEvent[][] => {
-    const groups: TEvent[][] = [];
-    const indexByRequest = new Map<string, number>();
-
-    events.forEach((event) => {
-      const payload = DelegatedApprovalDispatchRequestedPayloadSchema.safeParse(event.payload);
-      const key = payload.success ? payload.data.delegatedRequestId : `event:${String(event.id)}`;
-      const existing = indexByRequest.get(key);
-      if (existing === undefined) {
-        indexByRequest.set(key, groups.length);
-        groups.push([event]);
-      } else {
-        groups[existing].push(event);
-      }
-    });
-
-    return groups;
-  };
-
-  const handle = async (events: TEvent[]): Promise<TEventConsumerResult[]> => {
-    const limit = pLimit(DELEGATED_APPROVAL_DISPATCH_CONCURRENCY);
-
-    const groupResults = await Promise.all(
-      $groupByRequest(events).map((group) =>
-        limit(async () => {
-          const results: TEventConsumerResult[] = [];
-          for (const event of group) {
-            // eslint-disable-next-line no-await-in-loop -- two events for one request must not both pass the providerRequestId check
-            results.push(await $runEvent(event));
-          }
-          return results;
-        })
-      )
+    const { data, failure } = parseEventPayload(
+      event,
+      DelegatedApprovalDispatchRequestedPayloadSchema,
+      "delegated approval dispatch"
     );
+    if (failure) return failure;
 
-    return groupResults.flat();
+    return { id: String(event.id), ...(await $dispatch(data.delegatedRequestId, event.isFinalAttempt)) };
   };
+
+  // Events for one request run serially, so two of them cannot both pass the providerRequestId check.
+  const handle = (events: TEvent[]): Promise<TEventConsumerResult[]> =>
+    runEventsConcurrentlyByKey(events, {
+      keyOf: (event) =>
+        DelegatedApprovalDispatchRequestedPayloadSchema.safeParse(event.payload).data?.delegatedRequestId,
+      concurrency: DELEGATED_APPROVAL_DISPATCH_CONCURRENCY,
+      handleEvent: $handleEvent
+    });
 
   return {
     name: DELEGATED_APPROVAL_DISPATCH_CONSUMER,

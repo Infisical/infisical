@@ -34,6 +34,7 @@ output-options:
     - verifyEmailSignupV3
     - completeAccountSignupV3
     - inviteProjectMembers
+    - removeProjectMembers
     - createMachineIdentity
     - createProjectMachineIdentity
     - createProjectIdentityMembership
@@ -87,6 +88,8 @@ output-options:
     - updateAccessApprovalPolicy
     - getAccessApprovalPolicy
     - createAccessApprovalRequest
+    - listAccessApprovalRequests
+    - handleDelegatedApprovalCallback
     - createGroup
     - addUserToGroup
     - removeUserFromGroup
@@ -107,6 +110,7 @@ output-options:
     - getOrgMembership
     - updateOrgMembership
     - getCurrentUser
+    - deleteUser
     - createScimToken
     - listScimTokens
     - deleteScimToken

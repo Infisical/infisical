@@ -432,7 +432,7 @@ describe("composeSecretAccessRequestRows", () => {
           {
             requestId: "req-1",
             status: DelegatedApprovalRequestStatus.FailedDispatch,
-            statusReason: "ServiceNow could not be reached."
+            details: { statusReason: "ServiceNow could not be reached." }
           }
         ]
       })
@@ -440,10 +440,28 @@ describe("composeSecretAccessRequestRows", () => {
 
     expect(rows[0].delegatedApproval).toEqual({
       status: DelegatedApprovalRequestStatus.FailedDispatch,
-      statusReason: "ServiceNow could not be reached."
+      statusReason: "ServiceNow could not be reached.",
+      provider: null
     });
     expect(rows[1].delegatedApproval).toBeNull();
     expect(rows[0].policy?.delegatedApproval).toEqual({ type: DelegatedApprovalPolicyType.ServiceNow });
+  });
+
+  test("reports how the delegated approval system identifies the request", () => {
+    const provider = { type: DelegatedApprovalPolicyType.ServiceNow, recordNumber: "INFAR1000000" };
+    const [row] = composeSecretAccessRequestRows(
+      listInput({
+        delegatedRequests: [
+          { requestId: "req-1", status: DelegatedApprovalRequestStatus.WaitingApproval, details: { provider } }
+        ]
+      })
+    );
+
+    expect(row.delegatedApproval).toEqual({
+      status: DelegatedApprovalRequestStatus.WaitingApproval,
+      statusReason: null,
+      provider
+    });
   });
 
   test("a policy reviewed in Infisical reports no delegated approval", () => {
@@ -501,14 +519,15 @@ describe("toSecretAccessRequestListItem", () => {
     const item = toItem({
       requests: [request({ policyId: null, status: ApprovalRequestStatus.Cancelled })],
       delegatedRequests: [
-        { requestId: "req-1", status: DelegatedApprovalRequestStatus.WaitingApproval, statusReason: null }
+        { requestId: "req-1", status: DelegatedApprovalRequestStatus.WaitingApproval, details: { statusReason: null } }
       ]
     });
 
     expect(item?.policy.delegatedApproval).toBeNull();
     expect(item?.delegatedApproval).toEqual({
       status: DelegatedApprovalRequestStatus.WaitingApproval,
-      statusReason: null
+      statusReason: null,
+      provider: null
     });
   });
 

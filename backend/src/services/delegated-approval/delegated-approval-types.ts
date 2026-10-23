@@ -1,7 +1,17 @@
-import { TApprovalRequests, TDelegatedApprovalPolicies, TDelegatedApprovalRequests } from "@app/db/schemas";
+import {
+  TAppConnections,
+  TApprovalRequests,
+  TDelegatedApprovalPolicies,
+  TDelegatedApprovalRequests
+} from "@app/db/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
+import { TApprovalRequestDALFactory } from "@app/services/approval-policy/approval-request-dal";
 
 import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "./delegated-approval-enums";
+import { TDelegatedApprovalPolicyDALFactory } from "./delegated-approval-policy-dal";
+import { TDelegatedApprovalRequestDALFactory } from "./delegated-approval-request-dal";
+import { TDelegatedApprovalProviderDetails, TDelegatedApprovalRequestDetails } from "./delegated-approval-schemas";
 
 export type TDelegatedApprovalListItem = {
   name: string;
@@ -13,8 +23,11 @@ export type TDelegatedApprovalPolicy = Omit<TDelegatedApprovalPolicies, "type"> 
   type: DelegatedApprovalPolicyType;
 };
 
-export type TDelegatedApprovalRequest = Omit<TDelegatedApprovalRequests, "status"> & {
+export type { TDelegatedApprovalProviderDetails, TDelegatedApprovalRequestDetails };
+
+export type TDelegatedApprovalRequest = Omit<TDelegatedApprovalRequests, "status" | "details"> & {
   status: DelegatedApprovalRequestStatus;
+  details: TDelegatedApprovalRequestDetails;
 };
 
 export type TValidateDelegatedApprovalConnectionDTO = {
@@ -46,8 +59,28 @@ export type TRetryDelegatedApprovalRequestDispatchDTO = {
   approvalRequest: Pick<TApprovalRequests, "id" | "policyId" | "status" | "expiresAt">;
 };
 
-export type TUpdateDelegatedApprovalRequestDTO = {
+export type TApprovalRequestExpiry = { expiresAt?: Date | string | null };
+
+export type TLoadDelegatedApprovalContextDeps = {
+  delegatedApprovalRequestDAL: Pick<TDelegatedApprovalRequestDALFactory, "findById" | "primaryNode">;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById">;
+  delegatedApprovalPolicyDAL: Pick<TDelegatedApprovalPolicyDALFactory, "findOne">;
+};
+
+export type TRequireDelegatedApprovalConnectionDTO<T extends Pick<TAppConnections, "orgId">> = {
+  rawConnection: T | null | undefined;
+  delegatedPolicy: Pick<TDelegatedApprovalPolicies, "type" | "connectionId">;
+  organizationId: string;
+};
+
+export type TFailDelegatedApprovalRequestDeps = {
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "transaction" | "findByIdForUpdate" | "updateById">;
+  delegatedApprovalRequestDAL: Pick<TDelegatedApprovalRequestDALFactory, "updateWithDetails">;
+};
+
+export type TFailDelegatedApprovalRequestDTO = {
+  id: string;
   requestId: string;
-  status?: DelegatedApprovalRequestStatus;
-  statusReason?: string | null;
+  reason: string;
+  closeAs?: ApprovalRequestStatus.Cancelled | ApprovalRequestStatus.Expired;
 };

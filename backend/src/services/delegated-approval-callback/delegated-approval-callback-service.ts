@@ -1,11 +1,22 @@
 import { getConfig } from "@app/lib/config/env";
+import { logger } from "@app/lib/logger";
+import { DelegatedApprovalRequestStatus } from "@app/services/delegated-approval/delegated-approval-enums";
+import { failDelegatedApprovalRequest } from "@app/services/delegated-approval/delegated-approval-request-fns";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { DELEGATED_APPROVAL_CALLBACK_PATH } from "./delegated-approval-callback-constants";
-import { generateDelegatedApprovalCallbackToken } from "./delegated-approval-callback-fns";
+import {
+  DELEGATED_APPROVAL_CALLBACK_ATTEMPTS_EXHAUSTED_REASON,
+  DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS,
+  DELEGATED_APPROVAL_CALLBACK_PATH,
+  DELEGATED_APPROVAL_CALLBACK_TOKEN_PREFIX,
+  DELEGATED_APPROVAL_DECISION_READ_CLAIM_TTL_MS
+} from "./delegated-approval-callback-constants";
+import { TDelegatedApprovalCallbackEventPayload } from "./delegated-approval-callback-events";
+import { generateCallbackToken, isTokenMatch, rejectApprovalCallback } from "./delegated-approval-callback-fns";
 import {
   TDelegatedApprovalCallbackServiceFactoryDep,
-  TGetOrIssueCallbackTokenDTO
+  TGetOrIssueCallbackTokenDTO,
+  THandleDelegatedApprovalCallbackDTO
 } from "./delegated-approval-callback-types";
 
 export type TDelegatedApprovalCallbackServiceFactory = ReturnType<typeof delegatedApprovalCallbackServiceFactory>;
@@ -13,7 +24,8 @@ export type TDelegatedApprovalCallbackServiceFactory = ReturnType<typeof delegat
 export const delegatedApprovalCallbackServiceFactory = ({
   delegatedApprovalRequestDAL,
   approvalRequestDAL,
-  kmsService
+  kmsService,
+  eventEmitter
 }: TDelegatedApprovalCallbackServiceFactoryDep) => {
   const getCallbackUrl = () => {
     const { SITE_URL } = getConfig();
@@ -34,10 +46,11 @@ export const delegatedApprovalCallbackServiceFactory = ({
       return decryptor({ cipherTextBlob: delegatedRequest.encryptedCallbackToken }).toString();
     }
 
-    const token = generateDelegatedApprovalCallbackToken();
+    const token = generateCallbackToken();
+    const encryptedCallbackToken = encryptor({ plainText: Buffer.from(token) }).cipherTextBlob;
     const [issued] = await delegatedApprovalRequestDAL.update(
       { id: delegatedRequest.id, encryptedCallbackToken: null },
-      { encryptedCallbackToken: encryptor({ plainText: Buffer.from(token) }).cipherTextBlob }
+      { encryptedCallbackToken }
     );
     if (issued) return token;
 
@@ -47,5 +60,93 @@ export const delegatedApprovalCallbackServiceFactory = ({
     return decryptor({ cipherTextBlob: current.encryptedCallbackToken }).toString();
   };
 
-  return { getCallbackUrl, getOrIssueCallbackToken };
+  const handleCallback = async ({ token, event, externalId }: THandleDelegatedApprovalCallbackDTO) => {
+    const delegatedRequest = await delegatedApprovalRequestDAL.findByProviderRequestId(externalId);
+    if (!delegatedRequest) {
+      throw rejectApprovalCallback("no request matches the external ID", { externalId });
+    }
+
+    const logContext = { delegatedRequestId: delegatedRequest.id, externalId };
+
+    if (!token || !token.startsWith(DELEGATED_APPROVAL_CALLBACK_TOKEN_PREFIX)) {
+      throw rejectApprovalCallback("missing or malformed token", logContext);
+    }
+    if (!delegatedRequest.encryptedCallbackToken) {
+      throw rejectApprovalCallback("request has no callback token", logContext);
+    }
+
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: delegatedRequest.approvalRequestProjectId
+    });
+    const storedToken = decryptor({ cipherTextBlob: delegatedRequest.encryptedCallbackToken }).toString();
+    if (!isTokenMatch(token, storedToken)) {
+      throw rejectApprovalCallback("token mismatch", logContext);
+    }
+
+    // Counted only after the token matches: the limit closes the request, so a refused callback must
+    // not count toward it, or anyone who knows the external ID could cancel the request. The token is
+    // 256 random bits, so refusals need no counter of their own to stop it being guessed.
+    const [counted] = await delegatedApprovalRequestDAL.update(
+      { id: delegatedRequest.id },
+      { $incr: { callbackAttempts: 1 } }
+    );
+    const attempts = counted?.callbackAttempts ?? delegatedRequest.callbackAttempts + 1;
+    if (attempts > DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS) {
+      await failDelegatedApprovalRequest(
+        {
+          id: delegatedRequest.id,
+          requestId: delegatedRequest.requestId,
+          reason: DELEGATED_APPROVAL_CALLBACK_ATTEMPTS_EXHAUSTED_REASON
+        },
+        { approvalRequestDAL, delegatedApprovalRequestDAL }
+      );
+      throw rejectApprovalCallback("callback attempts exhausted", {
+        ...logContext,
+        attempts: String(attempts)
+      });
+    }
+
+    if (delegatedRequest.status !== DelegatedApprovalRequestStatus.WaitingApproval) {
+      throw rejectApprovalCallback("request is not awaiting a decision", {
+        ...logContext,
+        status: delegatedRequest.status
+      });
+    }
+
+    const payload: TDelegatedApprovalCallbackEventPayload = {
+      delegatedRequestId: delegatedRequest.id,
+      approvalRequestId: delegatedRequest.requestId,
+      orgId: delegatedRequest.approvalRequestOrganizationId,
+      event,
+      externalId
+    };
+    // A read-back already in flight will see the decision this callback announces, so a repeat only
+    // starts another once that one has had time to finish.
+    const outcome = await delegatedApprovalRequestDAL.transaction(async (tx) => {
+      const claimed = await delegatedApprovalRequestDAL.claimDecisionRead(
+        { id: delegatedRequest.id, staleBefore: new Date(Date.now() - DELEGATED_APPROVAL_DECISION_READ_CLAIM_TTL_MS) },
+        tx
+      );
+      if (!claimed) {
+        const current = await delegatedApprovalRequestDAL.findById(delegatedRequest.id, tx);
+        return current?.status === DelegatedApprovalRequestStatus.WaitingApproval ? "deduplicated" : "closed";
+      }
+
+      await eventEmitter.emit({ eventType: event, idempotencyKey: `${delegatedRequest.id}:${attempts}`, payload }, tx);
+      return "accepted";
+    });
+
+    if (outcome === "closed") {
+      throw rejectApprovalCallback("request is not awaiting a decision", logContext);
+    }
+
+    logger.info(
+      `Delegated approval callback ${outcome} [delegatedRequestId=${delegatedRequest.id}] [approvalRequestId=${delegatedRequest.requestId}] [event=${event}] [attempt=${attempts}]`
+    );
+
+    return { delegatedRequestId: delegatedRequest.id };
+  };
+
+  return { getCallbackUrl, getOrIssueCallbackToken, handleCallback };
 };

@@ -1,8 +1,12 @@
 package servicenow
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 )
@@ -14,6 +18,9 @@ import (
 // through fakenet's DNS and CA, never by pointing the connection at fakenet itself.
 var Service = service{host: "harness.service-now.com"}
 
+// accessRequestPath is the Scripted REST API the Infisical Approvals application serves.
+const accessRequestPath = "/api/x_infis_approvals/v1/infisical/access_request"
+
 type service struct{ host string }
 
 func (s service) Host() string { return s.host }
@@ -24,8 +31,12 @@ func (service) Scope(r *http.Request) (string, bool) {
 	return user, ok
 }
 
-func (service) New(fakenet.Emitter) fakenet.Fake {
-	in := &Instance{UserSysID: "6816f79cc0a8016401c5a33be04be441"}
+func (service) New(events fakenet.Emitter) fakenet.Fake {
+	in := &Instance{
+		UserSysID:      "6816f79cc0a8016401c5a33be04be441",
+		AccessRequests: map[string]*AccessRequest{},
+		events:         events,
+	}
 	in.mux = in.routes()
 	return in
 }
@@ -39,6 +50,9 @@ func (in *Instance) routes() *http.ServeMux {
 	// so the fake answers it by existing rather than because a test registered anything.
 	mux.HandleFunc("GET /api/now/ui/user/current_user", in.currentUser)
 
+	mux.HandleFunc("POST "+accessRequestPath, in.createAccessRequest)
+	mux.HandleFunc("GET "+accessRequestPath+"/{sysID}", in.readAccessRequest)
+
 	return mux
 }
 
@@ -51,13 +65,88 @@ func (in *Instance) currentUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (in *Instance) createAccessRequest(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		RequestID      string   `json:"request_id"`
+		CallbackURL    string   `json:"callback_url"`
+		CallbackToken  string   `json:"callback_token"`
+		Environment    string   `json:"environment"`
+		SecretPath     string   `json:"secret_path"`
+		RequestorEmail string   `json:"requestor_email"`
+		Permissions    []string `json:"permissions"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Request body is not valid JSON")
+		return
+	}
+	if body.RequestID == "" || body.CallbackURL == "" || body.CallbackToken == "" {
+		writeError(w, http.StatusBadRequest, "request_id, callback_url and callback_token are required")
+		return
+	}
+
+	in.mu.Lock()
+	defer in.mu.Unlock()
+
+	// The application keeps one record per request_id, so a resend after a lost
+	// response gets back the record it already made instead of a second one.
+	for _, rec := range in.AccessRequests {
+		if rec.RequestID == body.RequestID {
+			writeJSON(w, http.StatusConflict, map[string]any{"result": map[string]any{"sys_id": rec.SysID}})
+			return
+		}
+	}
+
+	rec := &AccessRequest{
+		SysID:          newSysID(),
+		RequestID:      body.RequestID,
+		CallbackURL:    body.CallbackURL,
+		CallbackToken:  body.CallbackToken,
+		Environment:    body.Environment,
+		SecretPath:     body.SecretPath,
+		RequestorEmail: body.RequestorEmail,
+		Permissions:    body.Permissions,
+	}
+	in.AccessRequests[rec.SysID] = rec
+	in.events.Publish(AccessRequestCreated{rec.detail()})
+	writeJSON(w, http.StatusCreated, map[string]any{"result": map[string]any{"sys_id": rec.SysID}})
+}
+
+func (in *Instance) readAccessRequest(w http.ResponseWriter, r *http.Request) {
+	in.mu.Lock()
+	defer in.mu.Unlock()
+
+	rec, ok := in.AccessRequests[r.PathValue("sysID")]
+	if !ok {
+		writeError(w, http.StatusNotFound, "No Record found")
+		return
+	}
+
+	state := "awaiting_approval"
+	if rec.Decision != "" {
+		state = "callback_pending"
+	}
+	in.events.Publish(AccessRequestRead{rec.detail()})
+	writeJSON(w, http.StatusOK, map[string]any{"result": map[string]any{
+		"success": true,
+		"data": map[string]any{
+			"sys_id":         rec.SysID,
+			"request_id":     rec.RequestID,
+			"permissions":    strings.Join(rec.Permissions, "\n"),
+			"state":          state,
+			"decision":       nullable(rec.Decision),
+			"decision_notes": nullable(rec.DecisionNotes),
+		},
+	}})
+}
+
 func (in *Instance) Snapshot() ([]byte, error) {
 	in.mu.Lock()
 	defer in.mu.Unlock()
 	return json.Marshal(in)
 }
 
-// Seed merges a partial instance in, so a test names only what it cares about.
+// Seed merges a partial instance in, so a test names only what it cares about. A
+// record is only ever decided here, never created: Infisical is what creates them.
 func (in *Instance) Seed(raw []byte) error {
 	var seed Instance
 	if err := json.Unmarshal(raw, &seed); err != nil {
@@ -69,11 +158,37 @@ func (in *Instance) Seed(raw []byte) error {
 	if seed.UserSysID != "" {
 		in.UserSysID = seed.UserSysID
 	}
+	for sysID, decided := range seed.AccessRequests {
+		rec, ok := in.AccessRequests[sysID]
+		if !ok {
+			return fmt.Errorf("servicenow fake: no access request %q to decide", sysID)
+		}
+		rec.Decision, rec.DecisionNotes = decided.Decision, decided.DecisionNotes
+	}
 	return nil
+}
+
+// newSysID is shaped like ServiceNow's: 32 lowercase hex characters.
+func newSysID() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+// nullable reports an empty field as null, which is how ServiceNow sends one.
+func nullable(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(body)
+}
+
+func writeError(w http.ResponseWriter, status int, msg string) {
+	writeJSON(w, status, map[string]any{"error": map[string]string{"message": msg}, "status": "failure"})
 }

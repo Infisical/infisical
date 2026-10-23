@@ -50,6 +50,7 @@ Enterprise features live in `backend/src/ee/` (services and routes), registered 
 ### Self-Hosted Deployment
 
 Infisical supports self-hosted deployment via Docker. Key considerations:
+
 - **`Dockerfile.standalone-infisical`** — single-container image with both frontend and backend; used for simple deployments.
 - **`Dockerfile.fips.standalone-infisical`** — FIPS 140-2 compliant variant for regulated environments. Be strict about not introducing dependencies that break FIPS compliance.
 - **`docker-compose.prod.yml`** — production compose with backend, PostgreSQL, and Redis.
@@ -79,7 +80,7 @@ That list describes what the guide currently covers; it is **not** a test for wh
 
 ### Code Comments
 
-**Default to no comments.** One earns its place only by explaining *why*: a non-obvious constraint, a workaround, an ordering dependency, or logic that looks wrong until you know the reason.
+**Default to no comments.** One earns its place only by explaining _why_: a non-obvious constraint, a workaround, an ordering dependency, or logic that looks wrong until you know the reason.
 
 Never write: narration restating the next line; section headers inside a function (`// --- validation ---`); change history (`// Added retry logic`, `// NEW`); references to plans, tickets, PRs, or reviewers; docstrings restating the signature; commented-out code.
 
@@ -118,6 +119,7 @@ Secret Scanning has one active project per organization (the newest). Like Certi
 ### Service Factory + Manual DI (Backend)
 
 No IoC container in either backend. Every service is a factory function with explicit dependencies.
+
 - **Node.js**: Wired in `backend/src/server/routes/index.ts` — see `backend/CLAUDE.md`.
 - **Go**: Wired in `backend-go/internal/server/api/api.go` via `NewRegistry()` — see `backend-go/CLAUDE.md`.
 
@@ -145,7 +147,7 @@ which every type now uses for policy CRUD, requests, approve, reject and grant r
 endpoint**: `access-approval-*` and `secret-approval-*` predate this module and are what we are
 converging away from. A product-facing service on top of it (PAM's `pam-access-request-service.ts`) is
 for product vocabulary only: resolving the resource a request names, notifications, and read models.
-Any rule about what is *allowed* belongs in the resource, or the product's own API and the shared API
+Any rule about what is _allowed_ belongs in the resource, or the product's own API and the shared API
 stop agreeing.
 
 A policy on the global approval system can hand its requests to a delegated approval system (ServiceNow)
@@ -182,18 +184,54 @@ no Infisical approvers, so `POST /api/v1/access-approvals/requests/:requestId/ca
 one from Infisical: the requester, or anyone who can edit the policy, sets it `cancelled`, which is also how a
 policy blocked by pending requests is freed for editing. Every provider implements `TDelegatedApprovalProvider` against the same
 `TDelegatedApprovalDispatchInput` and registers in `DELEGATED_APPROVAL_PROVIDER_MAP`
-(`dispatch/providers/<name>/`); a new policy type adds an arm to `TDelegatedApprovalDispatchDetails` and a
+(`delegated-approval/providers/<name>/`); a new policy type adds an arm to `TDelegatedApprovalDispatchDetails` and a
 builder in `DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP` rather than branching in a provider. The consumer
 reads from the primary, never checks the license, and treats bullmq's `UnrecoverableError` as the terminal failure
 signal, returning `Failed` for it and `Retry` for anything else until the last attempt. The callback contract (token issuance now, the inbound route and approve / reject later) is its own
 module, `backend/src/services/delegated-approval-callback/`, so the delegated approval module never grows a
-callback branch. A request gets exactly one callback token for its whole life: it is random, issued on the first
-dispatch attempt, and stored in `encryptedCallbackToken` under the SecretManager KMS key of the request's project
-(`getOrIssueCallbackToken` resolves the project from the delegated request itself, since the inbound route knows
-only that row) so every retry resends the same value; the inbound side finds the row by the provider's record id
-and compares the decrypted token with the presented one. Never send a provider a token that differs from the one
-stored for the request; the provider keeps the first token it was given and cannot be told another, so a mismatch
-is unrecoverable.
+callback branch. A request gets exactly one callback token for its whole life: it is random, prefixed `inf_ext_`,
+issued on the first dispatch attempt, and stored in `encryptedCallbackToken` under the SecretManager KMS key of
+the request's project (`getOrIssueCallbackToken` resolves the project from the delegated request itself, since
+the inbound route knows only that row) so every retry resends the same value. Never send a provider a token that
+differs from the one stored for the request; the provider keeps the first token it was given and cannot be told
+another, so a mismatch is unrecoverable. The provider calls `POST /api/v1/delegated-approvals/callback` (unauthenticated, IP rate limited)
+with the token in the `Infisical-Approval-Token` header and a body naming the event and the provider's record id;
+the body carries no decision, which a later worker reads back from the provider. The route finds the row by
+`providerRequestId`, checks the token, and only then counts the callback in `callbackAttempts`; on
+the sixth callback with a valid token it sets the row `failed` with a readable `statusReason` and cancels the
+attached approval request in the same transaction, so the policy is freed and the UI stops offering Cancel. A
+refused callback is never counted: the limit closes the request, so counting it would let anyone who knows the
+record id cancel the request, and the token is 256 random bits, so there is nothing to brute force. Every other
+refusal (no row for the record id, bad or missing token, request not `waiting_approval`)
+gets one neutral 403 while the reason goes to the log. An accepted callback only emits an outbox event, and
+only when it wins `claimDecisionRead`: a conditional update of `decisionReadRequestedAt`, in the emit's
+transaction, that one of any number of concurrent callbacks wins. A repeat while a read-back is still in
+flight gets the same 200 and emits nothing; a claim older than `DELEGATED_APPROVAL_DECISION_READ_CLAIM_TTL_MS`
+(70 minutes, past the outbox's last retry) has expired, so a fresh notification after an earlier read-back
+ran out of retries still starts one. `eventType` is the
+body's event and `idempotencyKey` is the delegated request id plus the attempt count. The
+`delegated-approval-decision` consumer (`backend/src/services/delegated-approval-decision/`, a thin outbox
+adapter over `delegatedApprovalDecisionService.applyDecision` that, like dispatch, reads up to 10 different
+requests at once and one request's events serially) then reads the decision back through the
+policy's app connection: `TDelegatedApprovalProvider.fetchDecision` returns `pending` or a decision with
+the permissions the provider holds, and the consumer answers `Retry` for `pending` (on the last attempt, `Failed`
+with the request left open and a `statusReason` saying Infisical stopped checking and the callback has to be
+sent again, which the claim TTL lets start a new read-back), compares the approved
+permissions with the ones it dispatched after both go through `normalizeDelegatedApprovalPermissions` (set
+comparison: padding, order, duplicates and case never count as a change), and finalizes in one transaction
+that locks the approval request, moves the delegated row `waiting_approval` → `approved` / `rejected`, and
+runs the policy type's `postApprovalTxRoutine` from `approvalResources`. A mismatch, a record for another
+request, or any other `UnrecoverableError` goes through `failDelegatedApprovalRequest`: the delegated row
+becomes `failed` with a readable `statusReason`, the approval request is cancelled, and nothing can retry
+it. A request whose requester was deleted (`requesterId` is set null) or is no longer a member of the
+project, directly or through a group (`membershipDAL.isUserProjectMember`), takes the same path before the
+decision is read back. The secret access `postApprovalTxRoutine` refuses a non-member too, on both approval
+paths: removing a member reaps only the privileges that already exist, so one written afterwards would take
+effect if the user were ever added back. Every outcome is audited as
+`ACCESS_APPROVAL_REQUEST_DELEGATED_DECISION` with the `PLATFORM` actor, and
+product notifications (the access request webhook) go through `decisionNotifiers`, never through the
+consumer itself. ServiceNow stamps an immutable `decision` on its record before it posts the callback, so
+the provider reads that field alone and ignores `state`.
 
 ### Object Storage
 

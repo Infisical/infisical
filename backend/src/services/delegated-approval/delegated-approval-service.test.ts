@@ -12,6 +12,7 @@ const failedRequest = {
   id: "delegated-1",
   requestId: "req-1",
   status: DelegatedApprovalRequestStatus.FailedDispatch,
+  details: { statusReason: "ServiceNow could not be reached." },
   updatedAt: UPDATED_AT
 };
 const serviceNowPolicy = {
@@ -37,7 +38,7 @@ const createService = ({
 } = {}) => {
   const emit = vi.fn().mockResolvedValue(undefined);
   const findOne = vi.fn().mockResolvedValue(delegatedRequest);
-  const create = vi.fn().mockImplementation(async (row: { requestId: string; status: string }) => ({
+  const create = vi.fn().mockImplementation(async (row: { requestId: string; status: string; details: object }) => ({
     id: "delegated-1",
     updatedAt: UPDATED_AT,
     ...row
@@ -64,7 +65,7 @@ describe("delegatedApprovalService.createRequest", () => {
 
     expect(request).toMatchObject({ id: "delegated-1", status: DelegatedApprovalRequestStatus.PendingDispatch });
     expect(create).toHaveBeenCalledWith(
-      { requestId: "req-1", status: DelegatedApprovalRequestStatus.PendingDispatch },
+      { requestId: "req-1", status: DelegatedApprovalRequestStatus.PendingDispatch, details: {} },
       TX
     );
     expect(emit).toHaveBeenCalledTimes(1);

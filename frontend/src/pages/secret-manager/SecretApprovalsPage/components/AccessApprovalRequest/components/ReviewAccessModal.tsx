@@ -32,6 +32,7 @@ import {
   Badge,
   Button,
   Checkbox,
+  CopyButton,
   Detail,
   DetailLabel,
   DetailValue,
@@ -182,43 +183,20 @@ const formatConditions = (conditions: Record<string, unknown>): FormattedConditi
     }));
   });
 
-const DELEGATED_STATUS_PRESENTATION: Record<
+const DELEGATED_STATUS_MESSAGES: Record<
   DelegatedApprovalRequestStatus,
-  {
-    variant: "warning" | "danger" | "success";
-    getMessage: (delegatedApprovalName: string) => string;
-  }
+  (delegatedApprovalName: string) => string
 > = {
-  [DelegatedApprovalRequestStatus.PendingDispatch]: {
-    variant: "warning",
-    getMessage: (name) => `Sending this request to ${name}.`
-  },
-  [DelegatedApprovalRequestStatus.WaitingApproval]: {
-    variant: "warning",
-    getMessage: (name) => `Awaiting review in ${name}.`
-  },
-  [DelegatedApprovalRequestStatus.FailedDispatch]: {
-    variant: "danger",
-    getMessage: (name) => `This request did not reach ${name}.`
-  },
-  [DelegatedApprovalRequestStatus.Approved]: {
-    variant: "success",
-    getMessage: (name) => `Approved in ${name}.`
-  },
-  [DelegatedApprovalRequestStatus.Rejected]: {
-    variant: "danger",
-    getMessage: (name) => `Rejected in ${name}.`
-  },
-  [DelegatedApprovalRequestStatus.Failed]: {
-    variant: "danger",
-    getMessage: (name) => `This request could not be completed in ${name}.`
-  }
+  [DelegatedApprovalRequestStatus.PendingDispatch]: (name) => `Sending this request to ${name}.`,
+  [DelegatedApprovalRequestStatus.WaitingApproval]: (name) => `Awaiting review in ${name}.`,
+  [DelegatedApprovalRequestStatus.FailedDispatch]: (name) => `This request did not reach ${name}.`,
+  [DelegatedApprovalRequestStatus.Approved]: (name) => `Approved in ${name}.`,
+  [DelegatedApprovalRequestStatus.Rejected]: (name) => `Rejected in ${name}.`,
+  [DelegatedApprovalRequestStatus.Failed]: (name) =>
+    `This request could not be completed in ${name}.`
 };
 
-const RETRYING_DELEGATED_STATUS = {
-  variant: "warning" as const,
-  getMessage: (name: string) => `Retrying the submission to ${name}.`
-};
+const getRetryingDelegatedStatusMessage = (name: string) => `Retrying the submission to ${name}.`;
 
 export const ReviewAccessRequestModal = ({
   isOpen,
@@ -265,16 +243,11 @@ export const ReviewAccessRequestModal = ({
       (option) => option.type === request.policy.delegatedApproval?.type
     )?.name ?? "the external approval system";
   const isRetryingDelegatedDispatch = useIsDelegatedDispatchRetrying(request.id);
-  let delegatedStatus:
-    | {
-        variant: "warning" | "danger" | "success";
-        getMessage: (delegatedApprovalName: string) => string;
-      }
-    | undefined;
+  let delegatedStatusMessage: ((delegatedApprovalName: string) => string) | undefined;
   if (isRetryingDelegatedDispatch) {
-    delegatedStatus = RETRYING_DELEGATED_STATUS;
+    delegatedStatusMessage = getRetryingDelegatedStatusMessage;
   } else if (request.delegatedApproval) {
-    delegatedStatus = DELEGATED_STATUS_PRESENTATION[request.delegatedApproval.status];
+    delegatedStatusMessage = DELEGATED_STATUS_MESSAGES[request.delegatedApproval.status];
   }
 
   const assignPrivilegesConditions = useMemo(
@@ -1055,25 +1028,28 @@ export const ReviewAccessRequestModal = ({
                     </Alert>
                   </section>
                 )}
-                {delegatedStatus && (
+                {delegatedStatusMessage && (
                   <section className="flex flex-col gap-3">
                     <h3 className="text-sm font-normal text-foreground">Status</h3>
                     <Item variant="outline">
-                      <ItemMedia variant="icon">
-                        {delegatedStatus.variant === "danger" && (
-                          <TriangleAlertIcon className="text-danger" />
-                        )}
-                        {delegatedStatus.variant === "success" && (
-                          <CheckIcon className="text-success" />
-                        )}
-                        {delegatedStatus.variant === "warning" && (
-                          <HourglassIcon className="text-warning" />
-                        )}
-                      </ItemMedia>
                       <ItemContent>
                         <span className="text-sm text-foreground">
-                          {delegatedStatus.getMessage(delegatedApprovalName)}
+                          {delegatedStatusMessage(delegatedApprovalName)}
                         </span>
+                        {request.delegatedApproval?.provider?.recordNumber && (
+                          <span className="flex items-center gap-1 text-xs text-muted">
+                            {delegatedApprovalName} request{" "}
+                            <span className="font-mono text-foreground">
+                              {request.delegatedApproval.provider.recordNumber}
+                            </span>
+                            <CopyButton
+                              value={request.delegatedApproval.provider.recordNumber}
+                              ariaLabel={`Copy ${delegatedApprovalName} request number`}
+                              variant="ghost-muted"
+                              size="xs"
+                            />
+                          </span>
+                        )}
                         {!isRetryingDelegatedDispatch &&
                           request.delegatedApproval?.statusReason && (
                             <span className="text-xs break-words text-muted">

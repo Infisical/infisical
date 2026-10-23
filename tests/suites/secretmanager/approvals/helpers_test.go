@@ -201,7 +201,7 @@ func newProtectedProject(t *testing.T, configs ...policyConfig) protectedProject
 func approve(t *testing.T, reviewer *harness.Principal, id uuid.UUID) {
 	t.Helper()
 	res, err := reviewer.API.ReviewSecretApprovalRequestWithResponse(t.Context(), id,
-		api.ReviewSecretApprovalRequestJSONRequestBody{Status: api.Approved})
+		api.ReviewSecretApprovalRequestJSONRequestBody{Status: api.ReviewSecretApprovalRequestJSONBodyStatusApproved})
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "approving %s returned %s", id, apierr.Body(res.Body))
 }

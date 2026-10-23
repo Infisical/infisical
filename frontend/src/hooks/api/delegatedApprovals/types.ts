@@ -16,7 +16,13 @@ export type TDelegatedApprovalPolicyInput = {
   connectionId: string;
 };
 
+export type TDelegatedApprovalRequestProvider = {
+  type: DelegatedApprovalPolicyType;
+  recordNumber: string;
+};
+
 export type TDelegatedApprovalRequest = {
   status: DelegatedApprovalRequestStatus;
   statusReason?: string | null;
+  provider?: TDelegatedApprovalRequestProvider | null;
 };

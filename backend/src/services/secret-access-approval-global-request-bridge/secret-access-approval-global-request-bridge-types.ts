@@ -107,3 +107,7 @@ export type TRevokeSecretAccessApprovalGlobalRequestDTO = TRevokeAccessRequestDT
 
 export type TRetrySecretAccessApprovalGlobalRequestDispatchDTO = TRetryDelegatedApprovalDispatchDTO;
 export type TCancelSecretAccessApprovalGlobalRequestDTO = TCancelAccessRequestDTO;
+
+export type TNotifyDelegatedDecisionDTO = {
+  requestId: string;
+};
