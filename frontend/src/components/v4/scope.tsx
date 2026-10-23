@@ -24,10 +24,16 @@ function inheritedTheme(node: HTMLElement, fallback: Theme | undefined): Theme {
   return fallback ?? "light";
 }
 
-export const V4Scope = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<"div"> & { theme?: Theme; corners?: V4Corners }
->(({ children, className, theme, corners: cornersProp, ...props }, forwardedRef) => {
+export function V4Scope({
+  children,
+  className,
+  theme,
+  corners: cornersProp,
+  ref: forwardedRef,
+  ...props
+}: React.ComponentPropsWithoutRef<"div"> & { theme?: Theme; corners?: V4Corners } & {
+  ref?: React.Ref<HTMLDivElement>;
+}) {
   const parentTheme = useV4Theme();
   const parentCorners = React.useContext(CornersContext);
   const corners = cornersProp ?? parentCorners ?? "square";
@@ -62,9 +68,9 @@ export const V4Scope = React.forwardRef<
 
   return (
     <MotionConfig reducedMotion="user">
-      <ThemeContext.Provider value={resolvedTheme}>
-        <CornersContext.Provider value={corners}>
-          <PortalContainerContext.Provider value={container}>
+      <ThemeContext value={resolvedTheme}>
+        <CornersContext value={corners}>
+          <PortalContainerContext value={container}>
             <div
               {...props}
               ref={assignWrapper}
@@ -83,10 +89,10 @@ export const V4Scope = React.forwardRef<
               />,
               document.body
             )}
-          </PortalContainerContext.Provider>
-        </CornersContext.Provider>
-      </ThemeContext.Provider>
+          </PortalContainerContext>
+        </CornersContext>
+      </ThemeContext>
     </MotionConfig>
   );
-});
+}
 V4Scope.displayName = "V4Scope";

@@ -7,12 +7,17 @@ import { Icon } from "./icon";
 
 import controlStyles from "./controls.module.css";
 
-const InputOTP = React.forwardRef<
-  React.ComponentRef<typeof OTPInput>,
-  React.ComponentPropsWithoutRef<typeof OTPInput> & {
-    containerClassName?: string;
-  }
->(({ className, containerClassName, value, defaultValue, onChange, ...props }, ref) => {
+function InputOTP({
+  className,
+  containerClassName,
+  value,
+  defaultValue,
+  onChange,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof OTPInput> & {
+  containerClassName?: string;
+} & { ref?: React.Ref<React.ComponentRef<typeof OTPInput>> }) {
   const [current, setCurrent] = useControllableState({
     value,
     defaultValue: typeof defaultValue === "string" ? defaultValue : "",
@@ -30,13 +35,10 @@ const InputOTP = React.forwardRef<
       {...props}
     />
   );
-});
+}
 InputOTP.displayName = "InputOTP";
 
-const InputOTPGroup = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function InputOTPGroup({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={ref}
@@ -45,15 +47,17 @@ const InputOTPGroup = React.forwardRef<
       {...props}
     />
   );
-});
+}
 InputOTPGroup.displayName = "InputOTPGroup";
 
-const InputOTPSlot = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div"> & {
-    index: number;
-  }
->(({ index, className, ...props }, ref) => {
+function InputOTPSlot({
+  index,
+  className,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"div"> & {
+  index: number;
+} & { ref?: React.Ref<React.ComponentRef<"div">> }) {
   const inputOTPContext = React.useContext(OTPInputContext);
   const { char, hasFakeCaret, isActive } = inputOTPContext?.slots[index] ?? {};
 
@@ -73,13 +77,10 @@ const InputOTPSlot = React.forwardRef<
       )}
     </div>
   );
-});
+}
 InputOTPSlot.displayName = "InputOTPSlot";
 
-const InputOTPSeparator = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ ...props }, ref) => {
+function InputOTPSeparator({ ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={ref}
@@ -92,7 +93,7 @@ const InputOTPSeparator = React.forwardRef<
       <Icon name="minus" size={16} />
     </div>
   );
-});
+}
 InputOTPSeparator.displayName = "InputOTPSeparator";
 
 export { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot };

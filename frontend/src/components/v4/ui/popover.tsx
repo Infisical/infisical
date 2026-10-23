@@ -14,61 +14,55 @@ function Popover({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Root
   return <PopoverPrimitive.Root data-slot="popover" {...props} />;
 }
 
-const PopoverTrigger = React.forwardRef<
-  React.ElementRef<typeof PopoverPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Trigger>
->(({ ...props }, ref) => {
+function PopoverTrigger({ ref, ...props }: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
   return <PopoverPrimitive.Trigger ref={ref} data-slot="popover-trigger" {...props} />;
-});
+}
 PopoverTrigger.displayName = "PopoverTrigger";
 
-const PopoverContent = React.forwardRef<
-  React.ComponentRef<typeof PopoverPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> & { surface?: "card" | "menu" }
->(
-  (
-    {
-      className,
-      collisionPadding = 8,
-      align = "center",
-      sideOffset = 4,
-      surface = "card",
-      onEscapeKeyDown,
-      ...props
-    },
-    ref
-  ) => {
-    const escape = useOwnedEscape(ref, onEscapeKeyDown);
-    return (
-      <PopoverPrimitive.Portal container={useV4PortalContainer()}>
-        <PopoverPrimitive.Content
-          ref={escape.ref}
-          data-slot="popover-content"
-          collisionPadding={collisionPadding}
-          align={align}
-          sideOffset={sideOffset}
-          data-surface={surface}
-          data-scroll-fade="y"
-          className={cn(
-            "z-50",
-            menu.surface,
-            surface === "menu" ? menu.panel : menu.card,
-            menu.motion,
-            className
-          )}
-          {...props}
-          onEscapeKeyDown={escape.onEscapeKeyDown}
-        />
-      </PopoverPrimitive.Portal>
-    );
-  }
-);
+function PopoverContent({
+  className,
+  collisionPadding = 8,
+  align = "center",
+  sideOffset = 4,
+  surface = "card",
+  onEscapeKeyDown,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> & {
+  surface?: "card" | "menu";
+} & { ref?: React.Ref<React.ComponentRef<typeof PopoverPrimitive.Content>> }) {
+  const escape = useOwnedEscape(ref, onEscapeKeyDown);
+  return (
+    <PopoverPrimitive.Portal container={useV4PortalContainer()}>
+      <PopoverPrimitive.Content
+        ref={escape.ref}
+        data-slot="popover-content"
+        collisionPadding={collisionPadding}
+        align={align}
+        sideOffset={sideOffset}
+        data-surface={surface}
+        data-scroll-fade="y"
+        className={cn(
+          "z-50",
+          menu.surface,
+          surface === "menu" ? menu.panel : menu.card,
+          menu.motion,
+          className
+        )}
+        {...props}
+        onEscapeKeyDown={escape.onEscapeKeyDown}
+      />
+    </PopoverPrimitive.Portal>
+  );
+}
 PopoverContent.displayName = "PopoverContent";
 
-const PopoverAnchor = React.forwardRef<
-  React.ElementRef<typeof PopoverPrimitive.Anchor>,
-  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Anchor>
->(({ asChild, virtualRef, ...props }, ref) => {
+function PopoverAnchor({
+  asChild,
+  virtualRef,
+  ref,
+  ...props
+}: React.ComponentProps<typeof PopoverPrimitive.Anchor>) {
   const node = React.useRef<HTMLDivElement | null>(null);
   const attach = React.useCallback(
     (element: HTMLDivElement | null) => {
@@ -100,13 +94,10 @@ const PopoverAnchor = React.forwardRef<
       <PopoverPrimitive.Anchor virtualRef={node} hidden />
     </>
   );
-});
+}
 PopoverAnchor.displayName = "PopoverAnchor";
 
-const PopoverHeader = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function PopoverHeader({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={ref}
@@ -115,22 +106,24 @@ const PopoverHeader = React.forwardRef<
       {...props}
     />
   );
-});
+}
 PopoverHeader.displayName = "PopoverHeader";
 
-const PopoverTitle = React.forwardRef<HTMLHeadingElement, React.ComponentPropsWithoutRef<"h2">>(
-  ({ className, children, ...props }, ref) => (
+function PopoverTitle({
+  className,
+  children,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"h2"> & { ref?: React.Ref<HTMLHeadingElement> }) {
+  return (
     <h2 ref={ref} data-slot="popover-title" className={cn("", className)} {...props}>
       {children}
     </h2>
-  )
-);
+  );
+}
 PopoverTitle.displayName = "PopoverTitle";
 
-const PopoverDescription = React.forwardRef<
-  React.ComponentRef<"p">,
-  React.ComponentPropsWithoutRef<"p">
->(({ className, ...props }, ref) => {
+function PopoverDescription({ className, ref, ...props }: React.ComponentProps<"p">) {
   return (
     <p
       ref={ref}
@@ -139,7 +132,7 @@ const PopoverDescription = React.forwardRef<
       {...props}
     />
   );
-});
+}
 PopoverDescription.displayName = "PopoverDescription";
 
 export {

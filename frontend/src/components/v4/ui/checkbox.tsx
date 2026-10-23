@@ -10,15 +10,21 @@ import { Icon } from "./icon";
 
 import controlStyles from "./controls.module.css";
 
-const Checkbox = React.forwardRef<
-  React.ElementRef<typeof CheckboxPrimitive.Root>,
-  Omit<React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>, "onChange"> & {
-    label?: string;
-    description?: string;
-    indeterminate?: boolean;
-    onChange?: (checked: boolean) => void;
-  }
->(({ className, label, description, indeterminate, onChange, onCheckedChange, ...props }, ref) => {
+function Checkbox({
+  className,
+  label,
+  description,
+  indeterminate,
+  onChange,
+  onCheckedChange,
+  ref,
+  ...props
+}: Omit<React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>, "onChange"> & {
+  label?: string;
+  description?: string;
+  indeterminate?: boolean;
+  onChange?: (checked: boolean) => void;
+} & { ref?: React.Ref<React.ComponentRef<typeof CheckboxPrimitive.Root>> }) {
   const generated = React.useId();
   const titleId = `${generated}-title`;
   const descriptionId = `${generated}-description`;
@@ -97,7 +103,7 @@ const Checkbox = React.forwardRef<
   ) : (
     control
   );
-});
+}
 Checkbox.displayName = "Checkbox";
 
 export { Checkbox };

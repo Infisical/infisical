@@ -18,24 +18,22 @@ export type PageHeaderProps = Omit<React.ComponentPropsWithoutRef<"header">, "ti
   media?: React.ReactNode;
 };
 
-export const PageHeader = React.forwardRef<HTMLElement, PageHeaderProps>(
-  (
-    {
-      title,
-      size = "lg",
-      mono = false,
-      breadcrumb,
-      maxItems,
-      badges,
-      description,
-      actions,
-      tabs,
-      media,
-      className,
-      ...props
-    },
-    ref
-  ) => (
+export function PageHeader({
+  title,
+  size = "lg",
+  mono = false,
+  breadcrumb,
+  maxItems,
+  badges,
+  description,
+  actions,
+  tabs,
+  media,
+  className,
+  ref,
+  ...props
+}: PageHeaderProps & { ref?: React.Ref<HTMLElement> }) {
+  return (
     <header
       ref={ref}
       data-slot="page-header"
@@ -65,6 +63,6 @@ export const PageHeader = React.forwardRef<HTMLElement, PageHeaderProps>(
       </div>
       {tabs && <div className={styles.tabs}>{tabs}</div>}
     </header>
-  )
-);
+  );
+}
 PageHeader.displayName = "PageHeader";

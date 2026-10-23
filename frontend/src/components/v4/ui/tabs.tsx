@@ -28,70 +28,66 @@ export type TabsProps = Omit<
   onChange?: (value: string) => void;
 };
 
-const Tabs = React.forwardRef<React.ComponentRef<typeof TabsPrimitive.Root>, TabsProps>(
-  (
-    {
-      className,
-      orientation = "horizontal",
-      tabs,
-      label,
-      variant = "underline",
-      onChange,
-      onValueChange,
-      value,
-      defaultValue,
-      children,
-      ...props
-    },
-    ref
-  ) => {
-    const [selected, setSelected] = useControllableState({
-      value,
-      defaultValue: defaultValue ?? tabs?.find((tab) => !tab.disabled)?.value ?? "",
-      onChange: (next) => {
-        onValueChange?.(next);
-        onChange?.(next);
-      }
-    });
-    return (
-      <TabsPrimitive.Root
-        ref={ref}
-        data-slot="tabs"
-        data-variant={variant}
-        orientation={orientation}
-        value={selected}
-        onValueChange={setSelected}
-        className={cn(styles.tabs, className)}
-        {...props}
-      >
-        {tabs ? (
-          <>
-            <TabsList aria-label={label} variant={variant}>
-              {tabs.map((tab) => (
-                <TabsTrigger key={tab.value} value={tab.value} disabled={tab.disabled}>
-                  {tab.label}
-                  {tab.count !== undefined && (
-                    <Count tone="neutral" className={styles.tabCount}>
-                      {tab.count}
-                    </Count>
-                  )}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            {tabs.some((tab) => tab.content != null) &&
-              tabs.map((tab) => (
-                <TabsContent key={tab.value} value={tab.value}>
-                  {tab.content}
-                </TabsContent>
-              ))}
-          </>
-        ) : (
-          children
-        )}
-      </TabsPrimitive.Root>
-    );
-  }
-);
+function Tabs({
+  className,
+  orientation = "horizontal",
+  tabs,
+  label,
+  variant = "underline",
+  onChange,
+  onValueChange,
+  value,
+  defaultValue,
+  children,
+  ref,
+  ...props
+}: TabsProps & { ref?: React.Ref<React.ComponentRef<typeof TabsPrimitive.Root>> }) {
+  const [selected, setSelected] = useControllableState({
+    value,
+    defaultValue: defaultValue ?? tabs?.find((tab) => !tab.disabled)?.value ?? "",
+    onChange: (next) => {
+      onValueChange?.(next);
+      onChange?.(next);
+    }
+  });
+  return (
+    <TabsPrimitive.Root
+      ref={ref}
+      data-slot="tabs"
+      data-variant={variant}
+      orientation={orientation}
+      value={selected}
+      onValueChange={setSelected}
+      className={cn(styles.tabs, className)}
+      {...props}
+    >
+      {tabs ? (
+        <>
+          <TabsList aria-label={label} variant={variant}>
+            {tabs.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value} disabled={tab.disabled}>
+                {tab.label}
+                {tab.count !== undefined && (
+                  <Count tone="neutral" className={styles.tabCount}>
+                    {tab.count}
+                  </Count>
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+          {tabs.some((tab) => tab.content != null) &&
+            tabs.map((tab) => (
+              <TabsContent key={tab.value} value={tab.value}>
+                {tab.content}
+              </TabsContent>
+            ))}
+        </>
+      ) : (
+        children
+      )}
+    </TabsPrimitive.Root>
+  );
+}
 Tabs.displayName = "Tabs";
 
 const tabsListVariants = cva(styles.tabsList, {
@@ -106,134 +102,139 @@ const tabsListVariants = cva(styles.tabsList, {
   }
 });
 
-const TabsList = React.forwardRef<
-  React.ComponentRef<typeof TabsPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> & VariantProps<typeof tabsListVariants>
->(
-  (
-    { className, variant = "underline", children, onScroll, onWheel, onWheelCapture, ...props },
-    ref
-  ) => {
-    const list = React.useRef<HTMLDivElement | null>(null);
-    const [edge, setEdge] = React.useState({ before: false, after: false });
-    const wheelCancelled = React.useRef(false);
-    const attach = React.useCallback(
-      (node: HTMLDivElement | null) => {
-        list.current = node;
-        if (typeof ref === "function") ref(node);
-        else if (ref) ref.current = node;
-      },
-      [ref]
-    );
-    const rect = React.useCallback((active: HTMLElement, node: HTMLElement) => {
+function TabsList({
+  className,
+  variant = "underline",
+  children,
+  onScroll,
+  onWheel,
+  onWheelCapture,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> &
+  VariantProps<typeof tabsListVariants> & {
+    ref?: React.Ref<React.ComponentRef<typeof TabsPrimitive.List>>;
+  }) {
+  const list = React.useRef<HTMLDivElement | null>(null);
+  const [edge, setEdge] = React.useState({ before: false, after: false });
+  const wheelCancelled = React.useRef(false);
+  const attach = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      list.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) ref.current = node;
+    },
+    [ref]
+  );
+  const rect = React.useCallback((active: HTMLElement, node: HTMLElement) => {
+    const vertical = node.getAttribute("data-orientation") === "vertical";
+    const line = node.dataset.variant === "underline";
+    return {
+      x: active.offsetLeft,
+      y: active.offsetTop,
+      width: line && vertical ? node.clientWidth - active.offsetLeft : active.offsetWidth,
+      height: line && !vertical ? node.clientHeight - active.offsetTop : active.offsetHeight
+    };
+  }, []);
+  const onMeasure = React.useCallback(
+    (node: HTMLElement, active: HTMLElement | null, { reveal, instant }: MeasureContext) => {
       const vertical = node.getAttribute("data-orientation") === "vertical";
-      const line = node.dataset.variant === "underline";
-      return {
-        x: active.offsetLeft,
-        y: active.offsetTop,
-        width: line && vertical ? node.clientWidth - active.offsetLeft : active.offsetWidth,
-        height: line && !vertical ? node.clientHeight - active.offsetTop : active.offsetHeight
-      };
-    }, []);
-    const onMeasure = React.useCallback(
-      (node: HTMLElement, active: HTMLElement | null, { reveal, instant }: MeasureContext) => {
-        const vertical = node.getAttribute("data-orientation") === "vertical";
-        const start = vertical ? node.scrollTop : node.scrollLeft;
-        const size = vertical ? node.clientHeight : node.clientWidth;
-        const length = vertical ? node.scrollHeight : node.scrollWidth;
-        setEdge({ before: start > 1, after: start + size < length - 1 });
-        if (!active || !reveal) return;
-        const offset = vertical ? active.offsetTop : active.offsetLeft;
-        const extent = vertical ? active.offsetHeight : active.offsetWidth;
-        const padding = 32;
-        const target =
-          offset < start + padding
-            ? offset - padding
-            : offset + extent > start + size - padding
-              ? offset + extent - size + padding
-              : start;
-        const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-        node.scrollTo?.({
-          [vertical ? "top" : "left"]: Math.max(0, target),
-          behavior: instant || reduced ? "instant" : "smooth"
-        });
-      },
-      []
-    );
-    const { state: indicator, measure } = useMeasuredIndicator({
-      listRef: list,
-      activeSelector: '[role="tab"][data-state="active"]',
-      itemSelector: '[role="tab"]',
-      rect,
-      onMeasure,
-      watch: children
-    });
-    React.useLayoutEffect(() => {
-      const node = list.current;
-      if (!node) return undefined;
-      const wheel = (event: WheelEvent) => {
-        const cancelled = wheelCancelled.current || event.defaultPrevented;
-        wheelCancelled.current = false;
-        if (cancelled) {
-          event.preventDefault();
-          return;
-        }
-        if (
-          node.dataset.orientation === "vertical" ||
-          Math.abs(event.deltaX) > Math.abs(event.deltaY)
-        )
-          return;
-        const next = Math.max(
-          0,
-          Math.min(node.scrollWidth - node.clientWidth, node.scrollLeft + event.deltaY)
-        );
-        if (next !== node.scrollLeft) {
-          event.preventDefault();
-          node.scrollLeft = next;
-        }
-      };
-      node.addEventListener("wheel", wheel, { passive: false });
-      return () => node.removeEventListener("wheel", wheel);
-    }, []);
-    return (
-      <div className={styles.tabsTrack} data-variant={variant}>
-        <TabsPrimitive.List
-          ref={attach}
-          data-slot="tabs-list"
-          data-variant={variant}
-          data-moving
-          data-before={edge.before || undefined}
-          data-after={edge.after || undefined}
-          data-scroll-fade="x"
-          className={cn(tabsListVariants({ variant }), className)}
-          onScroll={(event) => {
-            measure();
-            onScroll?.(event);
-          }}
-          onFocusCapture={() => measure(true)}
-          onWheelCapture={(event) => {
-            onWheelCapture?.(event);
-            onWheel?.(event);
-            wheelCancelled.current = event.defaultPrevented;
-          }}
-          {...props}
-        >
-          <SlidingIndicator
-            state={indicator}
-            className={cn(controlStyles.indicator, styles.tabIndicator)}
-          />
-          {children}
-        </TabsPrimitive.List>
-      </div>
-    );
-  }
-);
+      const start = vertical ? node.scrollTop : node.scrollLeft;
+      const size = vertical ? node.clientHeight : node.clientWidth;
+      const length = vertical ? node.scrollHeight : node.scrollWidth;
+      setEdge({ before: start > 1, after: start + size < length - 1 });
+      if (!active || !reveal) return;
+      const offset = vertical ? active.offsetTop : active.offsetLeft;
+      const extent = vertical ? active.offsetHeight : active.offsetWidth;
+      const padding = 32;
+      const target =
+        offset < start + padding
+          ? offset - padding
+          : offset + extent > start + size - padding
+            ? offset + extent - size + padding
+            : start;
+      const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      node.scrollTo?.({
+        [vertical ? "top" : "left"]: Math.max(0, target),
+        behavior: instant || reduced ? "instant" : "smooth"
+      });
+    },
+    []
+  );
+  const { state: indicator, measure } = useMeasuredIndicator({
+    listRef: list,
+    activeSelector: '[role="tab"][data-state="active"]',
+    itemSelector: '[role="tab"]',
+    rect,
+    onMeasure,
+    watch: children
+  });
+  React.useLayoutEffect(() => {
+    const node = list.current;
+    if (!node) return undefined;
+    const wheel = (event: WheelEvent) => {
+      const cancelled = wheelCancelled.current || event.defaultPrevented;
+      wheelCancelled.current = false;
+      if (cancelled) {
+        event.preventDefault();
+        return;
+      }
+      if (
+        node.dataset.orientation === "vertical" ||
+        Math.abs(event.deltaX) > Math.abs(event.deltaY)
+      )
+        return;
+      const next = Math.max(
+        0,
+        Math.min(node.scrollWidth - node.clientWidth, node.scrollLeft + event.deltaY)
+      );
+      if (next !== node.scrollLeft) {
+        event.preventDefault();
+        node.scrollLeft = next;
+      }
+    };
+    node.addEventListener("wheel", wheel, { passive: false });
+    return () => node.removeEventListener("wheel", wheel);
+  }, []);
+  return (
+    <div className={styles.tabsTrack} data-variant={variant}>
+      <TabsPrimitive.List
+        ref={attach}
+        data-slot="tabs-list"
+        data-variant={variant}
+        data-moving
+        data-before={edge.before || undefined}
+        data-after={edge.after || undefined}
+        data-scroll-fade="x"
+        className={cn(tabsListVariants({ variant }), className)}
+        onScroll={(event) => {
+          measure();
+          onScroll?.(event);
+        }}
+        onFocusCapture={() => measure(true)}
+        onWheelCapture={(event) => {
+          onWheelCapture?.(event);
+          onWheel?.(event);
+          wheelCancelled.current = event.defaultPrevented;
+        }}
+        {...props}
+      >
+        <SlidingIndicator
+          state={indicator}
+          className={cn(controlStyles.indicator, styles.tabIndicator)}
+        />
+        {children}
+      </TabsPrimitive.List>
+    </div>
+  );
+}
 TabsList.displayName = "TabsList";
 
-const TabsTrigger = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
->(({ className, ...props }, ref) => {
+function TabsTrigger({
+  className,
+  ref,
+  ...props
+}: React.ComponentProps<typeof TabsPrimitive.Trigger>) {
   return (
     <TabsPrimitive.Trigger
       ref={ref}
@@ -242,13 +243,14 @@ const TabsTrigger = React.forwardRef<
       {...props}
     />
   );
-});
+}
 TabsTrigger.displayName = "TabsTrigger";
 
-const TabsContent = React.forwardRef<
-  React.ComponentRef<typeof TabsPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
->(({ className, ...props }, ref) => {
+function TabsContent({
+  className,
+  ref,
+  ...props
+}: React.ComponentProps<typeof TabsPrimitive.Content>) {
   return (
     <TabsPrimitive.Content
       ref={ref}
@@ -257,7 +259,7 @@ const TabsContent = React.forwardRef<
       {...props}
     />
   );
-});
+}
 TabsContent.displayName = "TabsContent";
 
 export { Tabs, TabsContent, TabsList, tabsListVariants, TabsTrigger };

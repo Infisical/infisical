@@ -13,18 +13,22 @@ function HoverCard({ ...props }: React.ComponentProps<typeof HoverCardPrimitive.
   return <HoverCardPrimitive.Root data-slot="hover-card" {...props} />;
 }
 
-const HoverCardTrigger = React.forwardRef<
-  React.ElementRef<typeof HoverCardPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof HoverCardPrimitive.Trigger>
->(({ ...props }, ref) => {
+function HoverCardTrigger({
+  ref,
+  ...props
+}: React.ComponentProps<typeof HoverCardPrimitive.Trigger>) {
   return <HoverCardPrimitive.Trigger ref={ref} data-slot="hover-card-trigger" {...props} />;
-});
+}
 HoverCardTrigger.displayName = "HoverCardTrigger";
 
-const HoverCardContent = React.forwardRef<
-  React.ComponentRef<typeof HoverCardPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof HoverCardPrimitive.Content>
->(({ className, collisionPadding = 8, align = "center", sideOffset = 4, ...props }, ref) => {
+function HoverCardContent({
+  className,
+  collisionPadding = 8,
+  align = "center",
+  sideOffset = 4,
+  ref,
+  ...props
+}: React.ComponentProps<typeof HoverCardPrimitive.Content>) {
   return (
     <HoverCardPrimitive.Portal container={useV4PortalContainer()} data-slot="hover-card-portal">
       <HoverCardPrimitive.Content
@@ -38,7 +42,7 @@ const HoverCardContent = React.forwardRef<
       />
     </HoverCardPrimitive.Portal>
   );
-});
+}
 HoverCardContent.displayName = "HoverCardContent";
 
 export { HoverCard, HoverCardContent, HoverCardTrigger };

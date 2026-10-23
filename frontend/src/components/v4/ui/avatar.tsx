@@ -6,94 +6,88 @@ import { Icon } from "./icon";
 
 import helperStyles from "./helpers.module.css";
 
-const Avatar = React.forwardRef<
-  React.ComponentRef<typeof AvatarPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root> & {
-    size?: "default" | "sm" | "lg" | number;
-    name?: string;
-    initials?: string;
-    label?: string;
-    status?: "ok" | "warn" | "off";
-    ring?: boolean;
-    kind?: "person" | "machine" | "agent" | "fallback";
-  }
->(
-  (
-    {
-      className,
-      size = "default",
-      name,
-      initials,
-      label,
-      kind = "person",
-      status,
-      ring,
-      children,
-      ...props
-    },
-    ref
-  ) => {
-    if (!["person", "machine", "agent", "fallback"].includes(kind)) return null;
-    const dimension =
-      typeof size === "number" && Number.isFinite(size) && size > 0
-        ? size
-        : size === "sm"
-          ? 24
-          : size === "lg"
-            ? 40
-            : 32;
-    return (
-      <AvatarPrimitive.Root
-        ref={ref}
-        data-slot="avatar"
-        data-kind={kind}
-        data-size={typeof size === "number" ? undefined : size}
-        role={name || label ? "img" : undefined}
-        aria-label={label ?? name}
-        style={{
-          width: dimension,
-          height: dimension,
-          fontSize: dimension <= 24 ? 10 : dimension <= 32 ? 12 : Math.round(dimension * 0.35),
-          ...props.style
-        }}
-        className={cn(
-          "group/avatar relative flex shrink-0 select-none",
-          helperStyles.avatarShape,
-          ring && helperStyles.avatarRing,
-          className
-        )}
-        {...props}
-      >
-        {children ?? (
-          <AvatarFallback>
-            {kind === "machine" || kind === "agent" || kind === "fallback" ? (
-              <Icon name={kind === "machine" ? "machine" : kind === "agent" ? "agent" : "user"} />
-            ) : (
-              (initials ??
-              name
-                ?.trim()
-                .split(/[\s._-]+/)
-                .slice(0, 2)
-                .map((part) => part[0])
-                .join("")
-                .toUpperCase() ??
-              "?")
-            )}
-          </AvatarFallback>
-        )}
-        {status && (
-          <span aria-hidden="true" data-status={status} className={helperStyles.avatarStatus} />
-        )}
-      </AvatarPrimitive.Root>
-    );
-  }
-);
+function Avatar({
+  className,
+  size = "default",
+  name,
+  initials,
+  label,
+  kind = "person",
+  status,
+  ring,
+  children,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root> & {
+  size?: "default" | "sm" | "lg" | number;
+  name?: string;
+  initials?: string;
+  label?: string;
+  status?: "ok" | "warn" | "off";
+  ring?: boolean;
+  kind?: "person" | "machine" | "agent" | "fallback";
+} & { ref?: React.Ref<React.ComponentRef<typeof AvatarPrimitive.Root>> }) {
+  if (!["person", "machine", "agent", "fallback"].includes(kind)) return null;
+  const dimension =
+    typeof size === "number" && Number.isFinite(size) && size > 0
+      ? size
+      : size === "sm"
+        ? 24
+        : size === "lg"
+          ? 40
+          : 32;
+  return (
+    <AvatarPrimitive.Root
+      ref={ref}
+      data-slot="avatar"
+      data-kind={kind}
+      data-size={typeof size === "number" ? undefined : size}
+      role={name || label ? "img" : undefined}
+      aria-label={label ?? name}
+      style={{
+        width: dimension,
+        height: dimension,
+        fontSize: dimension <= 24 ? 10 : dimension <= 32 ? 12 : Math.round(dimension * 0.35),
+        ...props.style
+      }}
+      className={cn(
+        "group/avatar relative flex shrink-0 select-none",
+        helperStyles.avatarShape,
+        ring && helperStyles.avatarRing,
+        className
+      )}
+      {...props}
+    >
+      {children ?? (
+        <AvatarFallback>
+          {kind === "machine" || kind === "agent" || kind === "fallback" ? (
+            <Icon name={kind === "machine" ? "machine" : kind === "agent" ? "agent" : "user"} />
+          ) : (
+            (initials ??
+            name
+              ?.trim()
+              .split(/[\s._-]+/)
+              .slice(0, 2)
+              .map((part) => part[0])
+              .join("")
+              .toUpperCase() ??
+            "?")
+          )}
+        </AvatarFallback>
+      )}
+      {status && (
+        <span aria-hidden="true" data-status={status} className={helperStyles.avatarStatus} />
+      )}
+    </AvatarPrimitive.Root>
+  );
+}
 Avatar.displayName = "Avatar";
 
-const AvatarImage = React.forwardRef<
-  React.ComponentRef<typeof AvatarPrimitive.Image>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Image>
->(({ className, ...props }, ref) => {
+function AvatarImage({
+  className,
+  ref,
+  ...props
+}: React.ComponentProps<typeof AvatarPrimitive.Image>) {
   return (
     <AvatarPrimitive.Image
       ref={ref}
@@ -102,13 +96,14 @@ const AvatarImage = React.forwardRef<
       {...props}
     />
   );
-});
+}
 AvatarImage.displayName = "AvatarImage";
 
-const AvatarFallback = React.forwardRef<
-  React.ComponentRef<typeof AvatarPrimitive.Fallback>,
-  React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Fallback>
->(({ className, ...props }, ref) => {
+function AvatarFallback({
+  className,
+  ref,
+  ...props
+}: React.ComponentProps<typeof AvatarPrimitive.Fallback>) {
   return (
     <AvatarPrimitive.Fallback
       ref={ref}
@@ -121,13 +116,10 @@ const AvatarFallback = React.forwardRef<
       {...props}
     />
   );
-});
+}
 AvatarFallback.displayName = "AvatarFallback";
 
-const AvatarBadge = React.forwardRef<
-  React.ComponentRef<"span">,
-  React.ComponentPropsWithoutRef<"span">
->(({ className, ...props }, ref) => {
+function AvatarBadge({ className, ref, ...props }: React.ComponentProps<"span">) {
   return (
     <span
       ref={ref}
@@ -142,13 +134,20 @@ const AvatarBadge = React.forwardRef<
       {...props}
     />
   );
-});
+}
 AvatarBadge.displayName = "AvatarBadge";
 
-const AvatarGroup = React.forwardRef<
-  HTMLDivElement,
-  React.ComponentPropsWithoutRef<"div"> & { max?: number; size?: number; label?: string }
->(({ className, children, max, size = 32, label, ...props }, ref) => {
+function AvatarGroup({
+  className,
+  children,
+  max,
+  size = 32,
+  label,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"div"> & { max?: number; size?: number; label?: string } & {
+  ref?: React.Ref<HTMLDivElement>;
+}) {
   const all = React.Children.toArray(children);
   const limit = max === undefined ? all.length : Math.max(0, Math.floor(max));
   return (
@@ -179,13 +178,10 @@ const AvatarGroup = React.forwardRef<
       )}
     </div>
   );
-});
+}
 AvatarGroup.displayName = "AvatarGroup";
 
-const AvatarGroupCount = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function AvatarGroupCount({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={ref}
@@ -198,7 +194,7 @@ const AvatarGroupCount = React.forwardRef<
       {...props}
     />
   );
-});
+}
 AvatarGroupCount.displayName = "AvatarGroupCount";
 
 export { Avatar, AvatarBadge, AvatarFallback, AvatarGroup, AvatarGroupCount, AvatarImage };

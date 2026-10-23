@@ -13,10 +13,7 @@ import { Icon } from "./icon";
 
 import helperStyles from "./helpers.module.css";
 
-const FieldSet = React.forwardRef<
-  React.ComponentRef<"fieldset">,
-  React.ComponentPropsWithoutRef<"fieldset">
->(({ className, ...props }, ref) => {
+function FieldSet({ className, ref, ...props }: React.ComponentProps<"fieldset">) {
   return (
     <fieldset
       ref={ref}
@@ -28,13 +25,17 @@ const FieldSet = React.forwardRef<
       {...props}
     />
   );
-});
+}
 FieldSet.displayName = "FieldSet";
 
-const FieldLegend = React.forwardRef<
-  React.ComponentRef<"legend">,
-  React.ComponentPropsWithoutRef<"legend"> & { variant?: "legend" | "label" }
->(({ className, variant = "legend", ...props }, ref) => {
+function FieldLegend({
+  className,
+  variant = "legend",
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"legend"> & { variant?: "legend" | "label" } & {
+  ref?: React.Ref<React.ComponentRef<"legend">>;
+}) {
   return (
     <legend
       ref={ref}
@@ -44,13 +45,10 @@ const FieldLegend = React.forwardRef<
       {...props}
     />
   );
-});
+}
 FieldLegend.displayName = "FieldLegend";
 
-const FieldGroup = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function FieldGroup({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={ref}
@@ -63,7 +61,7 @@ const FieldGroup = React.forwardRef<
       {...props}
     />
   );
-});
+}
 FieldGroup.displayName = "FieldGroup";
 
 const fieldVariants = cva("group/field flex w-full", {
@@ -81,106 +79,96 @@ const fieldVariants = cva("group/field flex w-full", {
   }
 });
 
-const Field = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div"> &
-    VariantProps<typeof fieldVariants> & {
-      label?: string;
-      description?: string;
-      error?: string;
-      optional?: boolean;
-      group?: boolean;
-    }
->(
-  (
-    {
-      className,
-      orientation = "vertical",
-      label,
-      description,
-      error,
-      optional = false,
-      group = false,
-      children,
-      id,
-      ...props
-    },
-    ref
-  ) => {
-    const generated = React.useId();
-    const child = React.isValidElement<{ id?: string }>(children) ? children : null;
-    const controlId = child?.props.id ?? id ?? generated;
-    const noteId = `${controlId}-note`;
-    const labelId = `${controlId}-label`;
-    const attributes = {
-      id: group ? undefined : controlId,
-      "aria-describedby": error || description ? noteId : undefined,
-      "aria-invalid": Boolean(error) || undefined,
-      "aria-labelledby": group ? undefined : labelId
-    };
-    const control =
-      child && typeof child.type === "string"
-        ? React.cloneElement(child, { ...attributes })
-        : children;
-    const note = (error || description) && (
-      <p
-        id={noteId}
-        role={error ? "alert" : undefined}
-        className={error ? helperStyles.fieldError : helperStyles.fieldDescription}
+function Field({
+  className,
+  orientation = "vertical",
+  label,
+  description,
+  error,
+  optional = false,
+  group = false,
+  children,
+  id,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"div"> &
+  VariantProps<typeof fieldVariants> & {
+    label?: string;
+    description?: string;
+    error?: string;
+    optional?: boolean;
+    group?: boolean;
+  } & { ref?: React.Ref<React.ComponentRef<"div">> }) {
+  const generated = React.useId();
+  const child = React.isValidElement<{ id?: string }>(children) ? children : null;
+  const controlId = child?.props.id ?? id ?? generated;
+  const noteId = `${controlId}-note`;
+  const labelId = `${controlId}-label`;
+  const attributes = {
+    id: group ? undefined : controlId,
+    "aria-describedby": error || description ? noteId : undefined,
+    "aria-invalid": Boolean(error) || undefined,
+    "aria-labelledby": group ? undefined : labelId
+  };
+  const control =
+    child && typeof child.type === "string"
+      ? React.cloneElement(child, { ...attributes })
+      : children;
+  const note = (error || description) && (
+    <p
+      id={noteId}
+      role={error ? "alert" : undefined}
+      className={error ? helperStyles.fieldError : helperStyles.fieldDescription}
+    >
+      {error && <Icon name="alert" size={14} />}
+      {error ? <span>{error}</span> : description}
+    </p>
+  );
+  return (
+    <FieldControlContext value={label ? attributes : {}}>
+      <div
+        ref={ref}
+        role={label ? undefined : "group"}
+        data-slot="field"
+        data-orientation={orientation}
+        data-invalid={Boolean(error) || undefined}
+        className={cn(fieldVariants({ orientation }), helperStyles.field, className)}
+        {...props}
       >
-        {error && <Icon name="alert" size={14} />}
-        {error ? <span>{error}</span> : description}
-      </p>
-    );
-    return (
-      <FieldControlContext.Provider value={label ? attributes : {}}>
-        <div
-          ref={ref}
-          role={label ? undefined : "group"}
-          data-slot="field"
-          data-orientation={orientation}
-          data-invalid={Boolean(error) || undefined}
-          className={cn(fieldVariants({ orientation }), helperStyles.field, className)}
-          {...props}
-        >
-          {label ? (
-            group ? (
-              <fieldset className={helperStyles.fieldset}>
-                <legend id={labelId}>
+        {label ? (
+          group ? (
+            <fieldset className={helperStyles.fieldset}>
+              <legend id={labelId}>
+                {label}
+                {optional && " (optional)"}
+              </legend>
+              <div className={helperStyles.fieldControl}>{control}</div>
+              {note}
+            </fieldset>
+          ) : (
+            <>
+              <div className={helperStyles.fieldLabels}>
+                <FieldLabel id={labelId} htmlFor={controlId}>
                   {label}
                   {optional && " (optional)"}
-                </legend>
-                <div className={helperStyles.fieldControl}>{control}</div>
+                </FieldLabel>
+              </div>
+              <div className={helperStyles.fieldControl}>
+                {control}
                 {note}
-              </fieldset>
-            ) : (
-              <>
-                <div className={helperStyles.fieldLabels}>
-                  <FieldLabel id={labelId} htmlFor={controlId}>
-                    {label}
-                    {optional && " (optional)"}
-                  </FieldLabel>
-                </div>
-                <div className={helperStyles.fieldControl}>
-                  {control}
-                  {note}
-                </div>
-              </>
-            )
-          ) : (
-            children
-          )}
-        </div>
-      </FieldControlContext.Provider>
-    );
-  }
-);
+              </div>
+            </>
+          )
+        ) : (
+          children
+        )}
+      </div>
+    </FieldControlContext>
+  );
+}
 Field.displayName = "Field";
 
-const FieldContent = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function FieldContent({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={ref}
@@ -189,13 +177,10 @@ const FieldContent = React.forwardRef<
       {...props}
     />
   );
-});
+}
 FieldContent.displayName = "FieldContent";
 
-const FieldLabel = React.forwardRef<
-  React.ComponentRef<typeof Label>,
-  React.ComponentPropsWithoutRef<typeof Label>
->(({ className, ...props }, ref) => {
+function FieldLabel({ className, ref, ...props }: React.ComponentProps<typeof Label>) {
   return (
     <Label
       ref={ref}
@@ -208,13 +193,10 @@ const FieldLabel = React.forwardRef<
       {...props}
     />
   );
-});
+}
 FieldLabel.displayName = "FieldLabel";
 
-const FieldTitle = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function FieldTitle({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={ref}
@@ -227,13 +209,10 @@ const FieldTitle = React.forwardRef<
       {...props}
     />
   );
-});
+}
 FieldTitle.displayName = "FieldTitle";
 
-const FieldDescription = React.forwardRef<
-  React.ComponentRef<"p">,
-  React.ComponentPropsWithoutRef<"p">
->(({ className, ...props }, ref) => {
+function FieldDescription({ className, ref, ...props }: React.ComponentProps<"p">) {
   return (
     <p
       ref={ref}
@@ -248,15 +227,17 @@ const FieldDescription = React.forwardRef<
       {...props}
     />
   );
-});
+}
 FieldDescription.displayName = "FieldDescription";
 
-const FieldSeparator = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div"> & {
-    children?: React.ReactNode;
-  }
->(({ children, className, ...props }, ref) => {
+function FieldSeparator({
+  children,
+  className,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"div"> & {
+  children?: React.ReactNode;
+} & { ref?: React.Ref<React.ComponentRef<"div">> }) {
   return (
     <div
       ref={ref}
@@ -279,15 +260,18 @@ const FieldSeparator = React.forwardRef<
       )}
     </div>
   );
-});
+}
 FieldSeparator.displayName = "FieldSeparator";
 
-const FieldError = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div"> & {
-    errors?: Array<{ message?: string } | undefined>;
-  }
->(({ className, children, errors, ...props }, ref) => {
+function FieldError({
+  className,
+  children,
+  errors,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"div"> & {
+  errors?: Array<{ message?: string } | undefined>;
+} & { ref?: React.Ref<React.ComponentRef<"div">> }) {
   const content = useMemo(() => {
     if (children) {
       return children;
@@ -322,7 +306,7 @@ const FieldError = React.forwardRef<
       <span>{content}</span>
     </div>
   );
-});
+}
 FieldError.displayName = "FieldError";
 
 export {

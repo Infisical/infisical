@@ -6,10 +6,7 @@ import { cn } from "../lib/utils";
 
 import styles from "./data.module.css";
 
-const Table = React.forwardRef<
-  React.ComponentRef<"table">,
-  React.ComponentPropsWithoutRef<"table">
->(({ className, ...props }, ref) => {
+function Table({ className, ref, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
@@ -24,13 +21,10 @@ const Table = React.forwardRef<
       />
     </div>
   );
-});
+}
 Table.displayName = "Table";
 
-const TableHeader = React.forwardRef<
-  React.ComponentRef<"thead">,
-  React.ComponentPropsWithoutRef<"thead">
->(({ className, ...props }, ref) => {
+function TableHeader({ className, ref, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       ref={ref}
@@ -42,13 +36,10 @@ const TableHeader = React.forwardRef<
       {...props}
     />
   );
-});
+}
 TableHeader.displayName = "TableHeader";
 
-const TableBody = React.forwardRef<
-  React.ComponentRef<"tbody">,
-  React.ComponentPropsWithoutRef<"tbody">
->(({ className, ...props }, ref) => {
+function TableBody({ className, ref, ...props }: React.ComponentProps<"tbody">) {
   return (
     <tbody
       ref={ref}
@@ -57,13 +48,10 @@ const TableBody = React.forwardRef<
       {...props}
     />
   );
-});
+}
 TableBody.displayName = "TableBody";
 
-const TableFooter = React.forwardRef<
-  React.ComponentRef<"tfoot">,
-  React.ComponentPropsWithoutRef<"tfoot">
->(({ className, ...props }, ref) => {
+function TableFooter({ className, ref, ...props }: React.ComponentProps<"tfoot">) {
   return (
     <tfoot
       ref={ref}
@@ -75,59 +63,50 @@ const TableFooter = React.forwardRef<
       {...props}
     />
   );
-});
+}
 TableFooter.displayName = "TableFooter";
 
-const TableRow = React.forwardRef<React.ComponentRef<"tr">, React.ComponentPropsWithoutRef<"tr">>(
-  ({ className, ...props }, ref) => {
-    return (
-      <tr
-        ref={ref}
-        data-slot="table-row"
-        className={cn(
-          "border-b border-[color:var(--v4-line-soft)] transition-colors duration-(--v4-duration-fast) data-[state=selected]:bg-[color:var(--v4-selected-surface)]",
-          styles.nativeTableRow,
-          className
-        )}
-        {...props}
-      />
-    );
-  }
-);
+function TableRow({ className, ref, ...props }: React.ComponentProps<"tr">) {
+  return (
+    <tr
+      ref={ref}
+      data-slot="table-row"
+      className={cn(
+        "border-b border-[color:var(--v4-line-soft)] transition-colors duration-(--v4-duration-fast) data-[state=selected]:bg-[color:var(--v4-selected-surface)]",
+        styles.nativeTableRow,
+        className
+      )}
+      {...props}
+    />
+  );
+}
 TableRow.displayName = "TableRow";
 
-const TableHead = React.forwardRef<React.ComponentRef<"th">, React.ComponentPropsWithoutRef<"th">>(
-  ({ className, ...props }, ref) => {
-    return (
-      <th
-        ref={ref}
-        data-slot="table-head"
-        className={cn(styles.nativeTableHead, className)}
-        {...props}
-      />
-    );
-  }
-);
+function TableHead({ className, ref, ...props }: React.ComponentProps<"th">) {
+  return (
+    <th
+      ref={ref}
+      data-slot="table-head"
+      className={cn(styles.nativeTableHead, className)}
+      {...props}
+    />
+  );
+}
 TableHead.displayName = "TableHead";
 
-const TableCell = React.forwardRef<React.ComponentRef<"td">, React.ComponentPropsWithoutRef<"td">>(
-  ({ className, ...props }, ref) => {
-    return (
-      <td
-        ref={ref}
-        data-slot="table-cell"
-        className={cn(styles.nativeTableCell, className)}
-        {...props}
-      />
-    );
-  }
-);
+function TableCell({ className, ref, ...props }: React.ComponentProps<"td">) {
+  return (
+    <td
+      ref={ref}
+      data-slot="table-cell"
+      className={cn(styles.nativeTableCell, className)}
+      {...props}
+    />
+  );
+}
 TableCell.displayName = "TableCell";
 
-const TableCaption = React.forwardRef<
-  React.ComponentRef<"caption">,
-  React.ComponentPropsWithoutRef<"caption">
->(({ className, ...props }, ref) => {
+function TableCaption({ className, ref, ...props }: React.ComponentProps<"caption">) {
   return (
     <caption
       ref={ref}
@@ -136,7 +115,7 @@ const TableCaption = React.forwardRef<
       {...props}
     />
   );
-});
+}
 TableCaption.displayName = "TableCaption";
 
 export { Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow };

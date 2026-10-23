@@ -251,7 +251,7 @@ export function List({
     }
   };
   return (
-    <ListContext.Provider
+    <ListContext
       value={{ selected, multiple: selection === "multiple", toggle, size, actionsPlacement }}
     >
       <div
@@ -348,7 +348,7 @@ export function List({
               : ""}
         </span>
       </div>
-    </ListContext.Provider>
+    </ListContext>
   );
 }
 export function ListSection({

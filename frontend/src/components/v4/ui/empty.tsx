@@ -8,10 +8,14 @@ import styles from "./empty.module.css";
 
 type EmptySize = "default" | "sm";
 
-const Empty = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div"> & { size?: EmptySize }
->(({ className, size = "default", ...props }, ref) => {
+function Empty({
+  className,
+  size = "default",
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"div"> & { size?: EmptySize } & {
+  ref?: React.Ref<React.ComponentRef<"div">>;
+}) {
   return (
     <div
       ref={ref}
@@ -21,25 +25,26 @@ const Empty = React.forwardRef<
       {...props}
     />
   );
-});
+}
 Empty.displayName = "Empty";
 
-const EmptyHeader = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function EmptyHeader({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div ref={ref} data-slot="empty-header" className={cn(styles.header, className)} {...props} />
   );
-});
+}
 EmptyHeader.displayName = "EmptyHeader";
 
 export type EmptyMediaVariant = "tile" | "bare";
 
-const EmptyMedia = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div"> & { variant?: EmptyMediaVariant }
->(({ className, variant = "tile", ...props }, ref) => {
+function EmptyMedia({
+  className,
+  variant = "tile",
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"div"> & { variant?: EmptyMediaVariant } & {
+  ref?: React.Ref<React.ComponentRef<"div">>;
+}) {
   return (
     <div
       ref={ref}
@@ -49,13 +54,10 @@ const EmptyMedia = React.forwardRef<
       {...props}
     />
   );
-});
+}
 EmptyMedia.displayName = "EmptyMedia";
 
-const EmptyTitle = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function EmptyTitle({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       ref={ref}
@@ -64,7 +66,7 @@ const EmptyTitle = React.forwardRef<
       {...props}
     />
   );
-});
+}
 EmptyTitle.displayName = "EmptyTitle";
 
 function EmptyDescription({ className, ...props }: React.ComponentProps<"p">) {
@@ -77,14 +79,11 @@ function EmptyDescription({ className, ...props }: React.ComponentProps<"p">) {
   );
 }
 
-const EmptyContent = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div">
->(({ className, ...props }, ref) => {
+function EmptyContent({ className, ref, ...props }: React.ComponentProps<"div">) {
   return (
     <div ref={ref} data-slot="empty-content" className={cn(styles.content, className)} {...props} />
   );
-});
+}
 EmptyContent.displayName = "EmptyContent";
 
 export { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle };

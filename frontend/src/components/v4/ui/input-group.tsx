@@ -11,15 +11,18 @@ import { cn } from "../lib/utils";
 import geometry from "./button-geometry.module.css";
 import controlStyles from "./controls.module.css";
 
-const InputGroup = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div"> & { size?: "sm" | "md" | "lg"; invalid?: boolean }
->(({ className, size = "sm", invalid, ...props }, ref) => {
+function InputGroup({
+  className,
+  size = "sm",
+  invalid,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"div"> & { size?: "sm" | "md" | "lg"; invalid?: boolean } & {
+  ref?: React.Ref<React.ComponentRef<"div">>;
+}) {
   const field = React.useContext(FieldControlContext);
   return (
-    <FieldControlContext.Provider
-      value={{ ...field, "aria-invalid": invalid || field["aria-invalid"] }}
-    >
+    <FieldControlContext value={{ ...field, "aria-invalid": invalid || field["aria-invalid"] }}>
       <div
         ref={ref}
         data-slot="input-group"
@@ -35,9 +38,9 @@ const InputGroup = React.forwardRef<
         )}
         {...props}
       />
-    </FieldControlContext.Provider>
+    </FieldControlContext>
   );
-});
+}
 InputGroup.displayName = "InputGroup";
 
 const inputGroupAddonVariants = cva(
@@ -59,10 +62,13 @@ const inputGroupAddonVariants = cva(
   }
 );
 
-const InputGroupAddon = React.forwardRef<
-  React.ComponentRef<"div">,
-  React.ComponentPropsWithoutRef<"div"> & VariantProps<typeof inputGroupAddonVariants>
->(({ className, align = "inline-start", ...props }, ref) => {
+function InputGroupAddon({
+  className,
+  align = "inline-start",
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"div"> &
+  VariantProps<typeof inputGroupAddonVariants> & { ref?: React.Ref<React.ComponentRef<"div">> }) {
   return (
     <div
       ref={ref}
@@ -85,15 +91,19 @@ const InputGroupAddon = React.forwardRef<
       }}
     />
   );
-});
+}
 InputGroupAddon.displayName = "InputGroupAddon";
 
-const InputGroupButton = React.forwardRef<
-  React.ElementRef<typeof Button>,
-  Omit<React.ComponentPropsWithoutRef<typeof Button>, "size"> & {
-    size?: "xs" | "sm" | "icon-xs" | "icon-sm" | null;
-  }
->(({ className, type = "button", variant = "ghost", size = "xs", ...props }, ref) => {
+function InputGroupButton({
+  className,
+  type = "button",
+  variant = "ghost",
+  size = "xs",
+  ref,
+  ...props
+}: Omit<React.ComponentPropsWithoutRef<typeof Button>, "size"> & {
+  size?: "xs" | "sm" | "icon-xs" | "icon-sm" | null;
+} & { ref?: React.Ref<React.ComponentRef<typeof Button>> }) {
   return (
     <Button
       ref={ref}
@@ -105,13 +115,10 @@ const InputGroupButton = React.forwardRef<
       {...props}
     />
   );
-});
+}
 InputGroupButton.displayName = "InputGroupButton";
 
-const InputGroupText = React.forwardRef<
-  React.ComponentRef<"span">,
-  React.ComponentPropsWithoutRef<"span">
->(({ className, ...props }, ref) => {
+function InputGroupText({ className, ref, ...props }: React.ComponentProps<"span">) {
   return (
     <span
       ref={ref}
@@ -122,13 +129,10 @@ const InputGroupText = React.forwardRef<
       {...props}
     />
   );
-});
+}
 InputGroupText.displayName = "InputGroupText";
 
-const InputGroupInput = React.forwardRef<
-  React.ElementRef<"input">,
-  React.ComponentPropsWithoutRef<"input">
->(({ className, ...props }, ref) => {
+function InputGroupInput({ className, ref, ...props }: React.ComponentProps<"input">) {
   const field = useFieldControlAttributes(props);
   return (
     <input
@@ -140,13 +144,10 @@ const InputGroupInput = React.forwardRef<
       {...field}
     />
   );
-});
+}
 InputGroupInput.displayName = "InputGroupInput";
 
-const InputGroupTextarea = React.forwardRef<
-  React.ElementRef<"textarea">,
-  React.ComponentPropsWithoutRef<"textarea">
->(({ className, ...props }, ref) => {
+function InputGroupTextarea({ className, ref, ...props }: React.ComponentProps<"textarea">) {
   const field = useFieldControlAttributes(props);
   return (
     <textarea
@@ -158,7 +159,7 @@ const InputGroupTextarea = React.forwardRef<
       {...field}
     />
   );
-});
+}
 InputGroupTextarea.displayName = "InputGroupTextarea";
 
 export {

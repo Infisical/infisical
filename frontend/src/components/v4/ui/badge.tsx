@@ -24,84 +24,83 @@ const legacyTone: Record<LegacyBadgeVariant, BadgeTone> = {
   link: "outline"
 };
 
-const Badge = React.forwardRef<
-  React.ComponentRef<"span">,
-  React.ComponentPropsWithoutRef<"span"> & {
-    asChild?: boolean;
-    tone?: BadgeTone;
-    /** @deprecated Use tone. Each value maps to a tone: default solid, secondary soft, destructive bad, the rest outline. */
-    variant?: LegacyBadgeVariant;
-    dot?: boolean;
-    size?: "sm" | "md";
-    mono?: boolean;
-  }
->(
-  (
-    {
-      className,
-      variant,
-      tone,
-      dot = false,
-      size = "md",
-      mono = false,
-      children,
-      asChild = false,
-      ...props
-    },
-    ref
-  ) => {
-    const Comp = asChild ? Slot.Root : "span";
-    const dotNode = dot ? <span aria-hidden="true" className={helperStyles.badgeDot} /> : null;
-    const body =
-      asChild && React.isValidElement<{ children?: React.ReactNode }>(children) ? (
-        React.cloneElement(
-          children,
-          undefined,
-          <>
-            {dotNode}
-            {children.props.children}
-          </>
-        )
-      ) : (
+function Badge({
+  className,
+  variant,
+  tone,
+  dot = false,
+  size = "md",
+  mono = false,
+  children,
+  asChild = false,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"span"> & {
+  asChild?: boolean;
+  tone?: BadgeTone;
+  /** @deprecated Use tone. Each value maps to a tone: default solid, secondary soft, destructive bad, the rest outline. */
+  variant?: LegacyBadgeVariant;
+  dot?: boolean;
+  size?: "sm" | "md";
+  mono?: boolean;
+} & { ref?: React.Ref<React.ComponentRef<"span">> }) {
+  const Comp = asChild ? Slot.Root : "span";
+  const dotNode = dot ? <span aria-hidden="true" className={helperStyles.badgeDot} /> : null;
+  const body =
+    asChild && React.isValidElement<{ children?: React.ReactNode }>(children) ? (
+      React.cloneElement(
+        children,
+        undefined,
         <>
           {dotNode}
-          {children}
+          {children.props.children}
         </>
-      );
-
-    return (
-      <Comp
-        ref={ref}
-        data-slot="badge"
-        data-tone={tone ?? (variant ? legacyTone[variant] : "outline")}
-        data-size={size}
-        className={cn(badgeVariants(), mono && helperStyles.mono, className)}
-        {...props}
-      >
-        {body}
-      </Comp>
+      )
+    ) : (
+      <>
+        {dotNode}
+        {children}
+      </>
     );
-  }
-);
+
+  return (
+    <Comp
+      ref={ref}
+      data-slot="badge"
+      data-tone={tone ?? (variant ? legacyTone[variant] : "outline")}
+      data-size={size}
+      className={cn(badgeVariants(), mono && helperStyles.mono, className)}
+      {...props}
+    >
+      {body}
+    </Comp>
+  );
+}
 Badge.displayName = "Badge";
 
 export { Badge, badgeVariants };
 
-export const Count = React.forwardRef<
-  HTMLSpanElement,
-  React.ComponentPropsWithoutRef<"span"> & { tone?: "accent" | "ink" | "neutral" }
->(({ tone = "accent", className, ...props }, ref) => (
-  <span
-    ref={ref}
-    data-slot="count"
-    data-tone={tone}
-    className={cn(
-      helperStyles.count,
-      tone === "ink" && helperStyles.countInk,
-      tone === "neutral" && helperStyles.countNeutral,
-      className
-    )}
-    {...props}
-  />
-));
+export function Count({
+  tone = "accent",
+  className,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<"span"> & { tone?: "accent" | "ink" | "neutral" } & {
+  ref?: React.Ref<HTMLSpanElement>;
+}) {
+  return (
+    <span
+      ref={ref}
+      data-slot="count"
+      data-tone={tone}
+      className={cn(
+        helperStyles.count,
+        tone === "ink" && helperStyles.countInk,
+        tone === "neutral" && helperStyles.countNeutral,
+        className
+      )}
+      {...props}
+    />
+  );
+}
 Count.displayName = "Count";

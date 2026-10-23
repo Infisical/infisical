@@ -208,7 +208,7 @@ export const AccentPanelProvider = ({ children }: { children: ReactNode }) => {
   const custom = normalizeHex(draft);
   const value = useMemo(() => ({ open: () => setOpen(true), choice }), [choice]);
   return (
-    <AccentPanelContext.Provider value={value}>
+    <AccentPanelContext value={value}>
       {css && <style data-accent-override>{css}</style>}
       {children}
       <Sheet open={open} onOpenChange={setOpen}>
@@ -303,6 +303,6 @@ export const AccentPanelProvider = ({ children }: { children: ReactNode }) => {
           </div>
         </SheetContent>
       </Sheet>
-    </AccentPanelContext.Provider>
+    </AccentPanelContext>
   );
 };

@@ -14,8 +14,14 @@ export type CoverProps = Omit<React.ComponentPropsWithoutRef<"div">, "title"> & 
   tagline?: React.ReactNode;
 };
 
-export const Cover = React.forwardRef<HTMLDivElement, CoverProps>(
-  ({ title, tagline, className, ...props }, ref) => (
+export function Cover({
+  title,
+  tagline,
+  className,
+  ref,
+  ...props
+}: CoverProps & { ref?: React.Ref<HTMLDivElement> }) {
+  return (
     <div ref={ref} data-slot="cover" className={cn(styles.cover, className)} {...props}>
       <svg className={styles.art} viewBox="480 0 480 288" aria-hidden="true" focusable="false">
         <rect className={cn(styles.slab, styles.block)} x="624" y="-8" width="344" height="216" />
@@ -37,6 +43,6 @@ export const Cover = React.forwardRef<HTMLDivElement, CoverProps>(
         {tagline && <p className={styles.tagline}>{tagline}</p>}
       </div>
     </div>
-  )
-);
+  );
+}
 Cover.displayName = "Cover";

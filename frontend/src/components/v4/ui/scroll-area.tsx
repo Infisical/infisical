@@ -5,14 +5,18 @@ import { ScrollArea as ScrollAreaPrimitive } from "radix-ui";
 
 import { cn } from "../lib/utils";
 
-const ScrollArea = React.forwardRef<
-  React.ComponentRef<typeof ScrollAreaPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & {
-    /** What marks an edge with more content past it: a fade (default), a hairline or nothing. */
-    edgeBehavior?: "fade" | "border" | "none";
-    orientation?: "vertical" | "horizontal" | "both";
-  }
->(({ className, children, edgeBehavior = "fade", orientation = "vertical", ...props }, ref) => {
+function ScrollArea({
+  className,
+  children,
+  edgeBehavior = "fade",
+  orientation = "vertical",
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & {
+  /** What marks an edge with more content past it: a fade (default), a hairline or nothing. */
+  edgeBehavior?: "fade" | "border" | "none";
+  orientation?: "vertical" | "horizontal" | "both";
+} & { ref?: React.Ref<React.ComponentRef<typeof ScrollAreaPrimitive.Root>> }) {
   return (
     <ScrollAreaPrimitive.Root
       ref={ref}
@@ -38,13 +42,15 @@ const ScrollArea = React.forwardRef<
       <ScrollAreaPrimitive.Corner />
     </ScrollAreaPrimitive.Root>
   );
-});
+}
 ScrollArea.displayName = "ScrollArea";
 
-const ScrollBar = React.forwardRef<
-  React.ComponentRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>,
-  React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>
->(({ className, orientation = "vertical", ...props }, ref) => {
+function ScrollBar({
+  className,
+  orientation = "vertical",
+  ref,
+  ...props
+}: React.ComponentProps<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>) {
   return (
     <ScrollAreaPrimitive.ScrollAreaScrollbar
       ref={ref}
@@ -63,7 +69,7 @@ const ScrollBar = React.forwardRef<
       />
     </ScrollAreaPrimitive.ScrollAreaScrollbar>
   );
-});
+}
 ScrollBar.displayName = "ScrollBar";
 
 export { ScrollArea, ScrollBar };

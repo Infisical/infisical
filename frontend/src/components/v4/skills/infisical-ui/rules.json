@@ -612,7 +612,7 @@
       "title": "State support before the first example",
       "category": "Agent docs",
       "instruction": "On agent component pages, put the actual import, runtime compatibility, support status and known limits before long examples, so an agent does not treat a planned component as usable.",
-      "good": "Planned; requires React 19; unavailable in this React 18 foundation.",
+      "good": "Planned; not yet available in this React 19 foundation.",
       "avoid": "A working-looking import for the same item.",
       "detect": {
         "by": "review"
