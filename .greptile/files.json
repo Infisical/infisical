@@ -11,6 +11,10 @@
     {
       "path": "backend/CODE_QUALITY.md",
       "description": "Backend code quality floor: error messages users can understand and no pointless 500s, explicit validation on every API input (length bounds, allowed characters), correct pagination when calling third-party APIs (app connections, secret syncs), avoiding deadlock conditions on a small connection pool (thread the transaction handle through every query inside a transaction, keep transactions short and free of network calls), and REST-aligned API interface design. A deliberately non-exhaustive minimum, not a complete standard. Reference for all backend/ changes."
+    },
+    {
+      "path": "BREAKING_CHANGES.md",
+      "description": "What counts as a breaking change for self-hosted Infisical, grouped by category with real examples from past releases (removed or moved endpoints, response shape changes, stricter validation, changed defaults, tightened permissions, dropped columns, rolling-deploy incompatibility, env vars, audit log fields), the compatible alternative for each, and what a PR must include when a break is deliberate. Reference for all backend/ and backend-go/ changes."
     }
   ]
 }

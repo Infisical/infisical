@@ -12,6 +12,10 @@ Treat that list as a summary of the guide's current contents, not as a condition
 
 Some of it needs judgment rather than a mechanical check. The deadlock rules cannot be caught by testing one request at a time. And a design that breaks REST should be raised with the author, with the conforming alternative proposed, rather than implemented silently or quietly "fixed" (some deviations are deliberate).
 
+## Breaking Changes
+
+**Read [BREAKING_CHANGES.md](BREAKING_CHANGES.md) before changing an API route, request or response schema, validation or TLS check, default, permission check, migration, env var, or audit log event.** Self-hosted operators upgrade across many versions at once, and most of the breaks we have shipped came from these changes rather than from deleting code. Make the change backward compatible; if the break is deliberate, describe it in the PR as the guide says, because that description becomes the release's upgrade notes.
+
 ## Documentation
 
 **Use the `docs-style` skill for any work under `docs/`** (`.agents/skills/docs-style/`). It carries the procedure for the [Documentation Style Guide](docs/STYLE_GUIDE.md), including the sentence-level review pass Vale cannot check.
