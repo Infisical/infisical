@@ -19,7 +19,11 @@ import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee
 import { reapDeletedGroupFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
+import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
+import {
+  terminatePamSessionsForUsers,
+  terminatePamSessionsLosingGroupAccess
+} from "@app/ee/services/pam-session/pam-session-access-fns";
 import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { TScimDALFactory } from "@app/ee/services/scim/scim-dal";
 import { PgSqlLock } from "@app/keystore/keystore";
@@ -44,6 +48,7 @@ import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
@@ -135,6 +140,7 @@ type TScimServiceFactoryDep = {
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "create">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "filterProjectsByIdentityMembership">;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
   membershipRoleDAL: TMembershipRoleDALFactory;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
@@ -155,7 +161,8 @@ type TScimServiceFactoryDep = {
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients" | "deleteByPrincipals">;
-  pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "findLiveByOrgAndUserIds" | "update">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   scimEventsDAL: Pick<TScimEventsDALFactory, "create" | "findEventsByOrgId">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
@@ -180,6 +187,7 @@ export const scimServiceFactory = ({
   membershipGroupDAL,
   identityGroupMembershipDAL,
   membershipUserDAL,
+  membershipDAL,
   membershipRoleDAL,
   additionalPrivilegeDAL,
   approvalPolicyDAL,
@@ -189,8 +197,11 @@ export const scimServiceFactory = ({
   telemetryService,
   usageMeteringService,
   pamSessionDAL,
+  pamAccountDAL,
   gatewayV2Service
 }: TScimServiceFactoryDep): TScimServiceFactory => {
+  const pamSessionDeps = { membershipDAL, membershipRoleDAL, pamAccountDAL, pamSessionDAL, userDAL, gatewayV2Service };
+
   const createScimToken: TScimServiceFactory["createScimToken"] = async ({
     actor,
     actorId,
@@ -1479,6 +1490,8 @@ export const scimServiceFactory = ({
       tx: outerTx
     }: { displayName: string; members: { value: string }[]; shouldFailOnMissingMembers?: boolean; tx?: Knex }
   ) => {
+    let sendPamCancellations = () => {};
+
     const processReplacement = async (tx: Knex) => {
       let group = isUuidV4(groupId)
         ? await groupDAL.findOne(
@@ -1593,19 +1606,19 @@ export const scimServiceFactory = ({
       }
 
       if (toRemoveUserIds.length) {
-        await removeUsersFromGroupByUserIds({
+        ({ sendPamCancellations } = await removeUsersFromGroupByUserIds({
           usageMeteringService,
           group,
           userIds: toRemoveUserIds,
-          userDAL,
           userGroupMembershipDAL,
           membershipGroupDAL,
           projectKeyDAL,
           additionalPrivilegeDAL,
           alertChannelRecipientDAL,
+          ...pamSessionDeps,
           tx,
           shouldFailOnMissingMembers
-        });
+        }));
       }
 
       return group;
@@ -1623,7 +1636,7 @@ export const scimServiceFactory = ({
       });
     }
 
-    return updatedGroup;
+    return { group: updatedGroup, sendPamCancellations };
   };
 
   const replaceScimGroup: TScimServiceFactory["replaceScimGroup"] = async ({
@@ -1652,19 +1665,21 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const { updatedGroup, appliedMembers } = await groupDAL.transaction(async (tx) => {
+    const { updatedGroup, appliedMembers, sendPamCancellations } = await groupDAL.transaction(async (tx) => {
       // Acquire advisory lock to serialize concurrent SCIM PUT requests for the same group
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.ScimGroupUpdate(groupId)]);
 
-      const group = await $replaceGroupDAL(groupId, orgId, {
+      const { group, sendPamCancellations: sendCancellations } = await $replaceGroupDAL(groupId, orgId, {
         displayName,
         members,
         shouldFailOnMissingMembers: false,
         tx
       });
       const groupMembers = await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(group.id, orgId, tx);
-      return { updatedGroup: group, appliedMembers: groupMembers };
+      return { updatedGroup: group, appliedMembers: groupMembers, sendPamCancellations: sendCancellations };
     });
+
+    sendPamCancellations();
 
     await scimEventsDAL.create({
       orgId,
@@ -1711,7 +1726,7 @@ export const scimServiceFactory = ({
         status: 403
       });
 
-    const { scimGroup, updatedScimMembers } = await groupDAL.transaction(async (tx) => {
+    const { scimGroup, updatedScimMembers, sendPamCancellations } = await groupDAL.transaction(async (tx) => {
       // Acquire advisory lock to serialize concurrent SCIM PATCH requests for the same group
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.ScimGroupUpdate(groupId)]);
 
@@ -1745,7 +1760,7 @@ export const scimServiceFactory = ({
       applyScimPatch(patchedScimGroup, operations);
 
       // Apply the patched state with idempotent operations
-      await $replaceGroupDAL(groupId, orgId, {
+      const { sendPamCancellations: sendCancellations } = await $replaceGroupDAL(groupId, orgId, {
         displayName: patchedScimGroup.displayName,
         members: patchedScimGroup.members,
         shouldFailOnMissingMembers: false,
@@ -1754,8 +1769,10 @@ export const scimServiceFactory = ({
 
       const finalMembers = await userGroupMembershipDAL.findGroupMembershipsByGroupIdInOrg(group.id, orgId, tx);
 
-      return { scimGroup: patchedScimGroup, updatedScimMembers: finalMembers };
+      return { scimGroup: patchedScimGroup, updatedScimMembers: finalMembers, sendPamCancellations: sendCancellations };
     });
+
+    sendPamCancellations();
 
     await scimEventsDAL.create({
       orgId,
@@ -1790,6 +1807,8 @@ export const scimServiceFactory = ({
         status: 403
       });
 
+    let sendPamCancellations = () => {};
+
     const [group] = await groupDAL.transaction(async (tx) => {
       if (!isUuidV4(groupId)) return [];
 
@@ -1798,6 +1817,11 @@ export const scimServiceFactory = ({
         groupId,
         tx
       );
+
+      const [groupUsers, groupIdentities] = await Promise.all([
+        userGroupMembershipDAL.find({ groupId }, { tx }),
+        identityGroupMembershipDAL.find({ groupId }, { tx })
+      ]);
 
       await reapDeletedGroupFolderGrants(
         { userGroupMembershipDAL, identityGroupMembershipDAL, membershipGroupDAL, additionalPrivilegeDAL },
@@ -1810,8 +1834,17 @@ export const scimServiceFactory = ({
 
       await finalizeAlertRecipients();
 
+      sendPamCancellations = await terminatePamSessionsLosingGroupAccess({
+        userIds: groupUsers.map((m) => m.userId),
+        identityIds: groupIdentities.map((m) => m.identityId),
+        ...pamSessionDeps,
+        tx
+      });
+
       return deleted;
     });
+
+    sendPamCancellations();
 
     if (!group) {
       await scimEventsDAL.create({

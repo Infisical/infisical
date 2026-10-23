@@ -21,6 +21,7 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -32,7 +33,7 @@ import {
   PamSessionEndReason,
   PamSessionStatus
 } from "../pam/pam-enums";
-import { checkAccountAccess } from "../pam/pam-permission";
+import { checkAccountAccess, getLaunchAccessRemainingMs } from "../pam/pam-permission";
 import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import {
@@ -78,7 +79,8 @@ type TPamWebAccessServiceFactoryDep = {
     | "updateById"
     | "transaction"
   >;
-  membershipDAL: Pick<TMembershipDALFactory, "lockOrgMembershipForUser">;
+  membershipDAL: Pick<TMembershipDALFactory, "lockOrgMembershipForUser" | "findResourceMembershipsForActor">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId" | "runWithPoolFailover">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -126,6 +128,7 @@ export const pamWebAccessServiceFactory = ({
   mfaSessionService,
   orgDAL,
   membershipDAL,
+  membershipRoleDAL,
   telemetryService
 }: TPamWebAccessServiceFactoryDep) => {
   const decrypt = async (projectId: string, blob: Buffer): Promise<Record<string, unknown>> => {
@@ -232,6 +235,20 @@ export const pamWebAccessServiceFactory = ({
       }
     }
 
+    const launchAccessRemainingMs = await getLaunchAccessRemainingMs(
+      membershipDAL,
+      membershipRoleDAL,
+      projectId,
+      account,
+      {
+        actor: actor.type,
+        actorId: actor.id
+      }
+    );
+    if (launchAccessRemainingMs !== null && launchAccessRemainingMs <= 0) {
+      throw new ForbiddenRequestError({ message: "Your access to this account is no longer active" });
+    }
+
     enforceRecordingConfig(account);
 
     const connectionDetails = await decrypt(projectId, account.encryptedConnectionDetails);
@@ -271,6 +288,9 @@ export const pamWebAccessServiceFactory = ({
       : DEFAULT_WEB_SESSION_DURATION_MS;
     if (grantRemainingMs !== null) {
       maxSessionDurationMs = Math.min(maxSessionDurationMs, grantRemainingMs);
+    }
+    if (launchAccessRemainingMs !== null) {
+      maxSessionDurationMs = Math.min(maxSessionDurationMs, launchAccessRemainingMs);
     }
 
     await pamSessionDAL.endExpiredWebSessions(actor.id, projectId);
@@ -490,6 +510,28 @@ export const pamWebAccessServiceFactory = ({
           }
           sessionDurationCapMs = Math.min(sessionDurationCapMs, grantRemainingMs);
         }
+      }
+
+      const launchAccessRemainingMs = await getLaunchAccessRemainingMs(
+        membershipDAL,
+        membershipRoleDAL,
+        projectId,
+        account,
+        {
+          actor: ActorType.USER,
+          actorId: userId
+        }
+      );
+      if (launchAccessRemainingMs !== null) {
+        if (launchAccessRemainingMs <= 0) {
+          sendMessage(socket, {
+            type: TerminalServerMessageType.Output,
+            data: `${SessionEndReason.AccessRevoked}\n`
+          });
+          sendSessionEndAndClose(socket, SessionEndReason.AccessRevoked);
+          return;
+        }
+        sessionDurationCapMs = Math.min(sessionDurationCapMs, launchAccessRemainingMs);
       }
 
       const effectiveGatewayId = await gatewayPoolService.resolveEffectiveGatewayId({

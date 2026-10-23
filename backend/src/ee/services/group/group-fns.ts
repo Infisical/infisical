@@ -7,6 +7,7 @@ import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 
+import { terminatePamSessionsLosingGroupAccess } from "../pam-session/pam-session-access-fns";
 import {
   TAddIdentitiesToGroup,
   TAddUsersToGroup,
@@ -392,12 +393,14 @@ export const addIdentitiesToGroup = async ({
  * Remove users with user ids [userIds] from group [group].
  * - Users may be part of the group (non-pending + pending);
  * this function will handle both cases.
+ * - Fire the returned sendPamCancellations once the transaction holding the removal commits.
  * @param {group} group - group to remove user(s) from
  * @param {string[]} userIds - id(s) of user(s) to remove from group
  */
 export const removeUsersFromGroupByUserIds = async ({
   group,
   userIds,
+  actorId,
   userDAL,
   userGroupMembershipDAL,
   projectKeyDAL,
@@ -406,11 +409,16 @@ export const removeUsersFromGroupByUserIds = async ({
   membershipGroupDAL,
   shouldFailOnMissingMembers = true,
   usageMeteringService,
-  alertChannelRecipientDAL
+  alertChannelRecipientDAL,
+  membershipDAL,
+  membershipRoleDAL,
+  pamAccountDAL,
+  pamSessionDAL,
+  gatewayV2Service
 }: TRemoveUsersFromGroupByUserIds) => {
   const processRemoval = async (tx: Knex) => {
     if (userIds.length === 0) {
-      return [];
+      return { users: [], sendPamCancellations: () => {} };
     }
 
     const foundMembers = await userDAL.find(
@@ -457,7 +465,7 @@ export const removeUsersFromGroupByUserIds = async ({
       // filter out users not in group for idempotent operation
       const filteredFoundMembers = foundMembers.filter((m) => existingUserGroupMembershipsUserIdsSet.has(m.id));
       if (filteredFoundMembers.length === 0) {
-        return [];
+        return { users: [], sendPamCancellations: () => {} };
       }
       // continue with filtered list
       foundMembers.length = 0;
@@ -580,11 +588,23 @@ export const removeUsersFromGroupByUserIds = async ({
 
     await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: foundMembers.map((m) => m.id) }, tx);
 
+    const sendPamCancellations = await terminatePamSessionsLosingGroupAccess({
+      userIds: foundMembers.map((m) => m.id),
+      actorId,
+      membershipDAL,
+      membershipRoleDAL,
+      pamAccountDAL,
+      pamSessionDAL,
+      userDAL,
+      gatewayV2Service,
+      tx
+    });
+
     // These users may have left a secret-manager or PAM project they only reached through this group.
     usageMeteringService?.emit(group.orgId, SecretIdentities.key);
     usageMeteringService?.emit(group.orgId, PamIdentities.key);
     usageMeteringService?.emit(group.orgId, AgentVaultIdentities.key);
-    return membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending);
+    return { users: membersToRemoveFromGroupNonPending.concat(membersToRemoveFromGroupPending), sendPamCancellations };
   };
 
   if (outerTx) {

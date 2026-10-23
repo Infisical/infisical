@@ -1395,7 +1395,10 @@ export const registerRoutes = async (
     membershipRoleDAL,
     usageMeteringService,
     identityAccessTokenService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    pamAccountDAL,
+    pamSessionDAL,
+    gatewayV2Service: deferredGatewayV2Service
   });
   const groupProjectService = groupProjectServiceFactory({
     groupDAL,
@@ -1473,6 +1476,7 @@ export const registerRoutes = async (
     externalGroupOrgRoleMappingDAL,
     groupDAL,
     membershipGroupDAL,
+    membershipDAL,
     membershipRoleDAL,
     membershipUserDAL,
     additionalPrivilegeDAL,
@@ -1482,6 +1486,7 @@ export const registerRoutes = async (
     telemetryService,
     usageMeteringService,
     pamSessionDAL,
+    pamAccountDAL,
     gatewayV2Service: deferredGatewayV2Service
   });
 
@@ -1600,13 +1605,17 @@ export const registerRoutes = async (
     tokenService,
     smtpService,
     kmsService,
+    membershipDAL,
     membershipRoleDAL,
     membershipGroupDAL,
     loginService,
     emailDomainDAL,
     telemetryService,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    pamAccountDAL,
+    pamSessionDAL,
+    gatewayV2Service: deferredGatewayV2Service
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -1628,12 +1637,16 @@ export const registerRoutes = async (
     smtpService,
     kmsService,
     membershipGroupDAL,
+    membershipDAL,
     membershipRoleDAL,
     loginService,
     emailDomainDAL,
     telemetryService,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    pamAccountDAL,
+    pamSessionDAL,
+    gatewayV2Service: deferredGatewayV2Service
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -3222,12 +3235,16 @@ export const registerRoutes = async (
     groupDAL,
     auditLogService,
     membershipGroupDAL,
+    membershipDAL,
     membershipRoleDAL,
     loginService,
     emailDomainDAL,
     telemetryService,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    pamAccountDAL,
+    pamSessionDAL,
+    gatewayV2Service
   });
 
   const userActivationService = userActivationServiceFactory({
@@ -4119,6 +4136,7 @@ export const registerRoutes = async (
     mfaSessionService,
     orgDAL,
     membershipDAL,
+    membershipRoleDAL,
     telemetryService
   });
 

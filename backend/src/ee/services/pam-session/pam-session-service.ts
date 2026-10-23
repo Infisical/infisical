@@ -32,6 +32,7 @@ import { resolveAccountByPath as resolveAccountByPathFn } from "../pam/pam-fns";
 import { enforceMfa } from "../pam/pam-mfa";
 import {
   checkAccountAccess,
+  getLaunchAccessRemainingMs,
   getResourceIdsWithActions,
   TActorContext,
   verifyProductMembership
@@ -525,6 +526,20 @@ export const pamSessionServiceFactory = ({
         throw new BadRequestError({ message: "Invalid duration format" });
       }
       sessionDurationMs = Math.min(parsed, maxDurationMs);
+    }
+
+    const launchAccessRemainingMs = await getLaunchAccessRemainingMs(
+      membershipDAL,
+      membershipRoleDAL,
+      projectId,
+      account,
+      actor
+    );
+    if (launchAccessRemainingMs !== null) {
+      if (launchAccessRemainingMs <= 0) {
+        throw new ForbiddenRequestError({ message: "Your access to this account is no longer active" });
+      }
+      sessionDurationMs = Math.min(sessionDurationMs, launchAccessRemainingMs);
     }
 
     // The approval gate comes before the launch-reason check: a user without a grant should be
