@@ -559,7 +559,11 @@ export const orgDALFactory = (db: TDbClient) => {
   };
 
   // Users with no direct org row never show up in findAllOrgMembers, so this is the only place they come
-  // from. Expired temporary roles are skipped to match isActiveRole.
+  // from. Expired temporary roles are skipped to match isActiveRole. Roles come back permanent first so
+  // the one a client shows when it has room for only one is never the one about to expire. The group id
+  // breaks name ties: a sub-org can hold a local group and a linked parent group with the same name, and
+  // sqlNestRelationships nests each role under the group it last appended, so a group's rows must stay
+  // contiguous.
   const findAllOrgGroupUserAccess = async (orgId: string) => {
     try {
       const rows = await db
@@ -591,7 +595,13 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("role").withSchema(TableName.MembershipRole),
           db.ref("customRoleId").withSchema(TableName.MembershipRole).as("roleId")
         )
-        .orderBy(`${TableName.Groups}.name`);
+        .orderBy([
+          { column: `${TableName.Groups}.name` },
+          { column: `${TableName.Groups}.id` },
+          { column: `${TableName.MembershipRole}.isTemporary` },
+          { column: `${TableName.MembershipRole}.temporaryAccessEndTime` },
+          { column: `${TableName.MembershipRole}.role` }
+        ]);
 
       return sqlNestRelationships({
         data: rows,

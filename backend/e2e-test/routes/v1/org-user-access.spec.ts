@@ -21,6 +21,8 @@ describe("Organization user access listing", () => {
   let groupOnlyUser: { userId: string; username: string };
   let adminGroupId: string;
   let memberGroupId: string;
+  let linkedGroupId: string;
+  let cleanupParentOrg: () => Promise<void>;
 
   const listUserAccess = async () => {
     const res = await testServer.inject({
@@ -34,6 +36,8 @@ describe("Organization user access listing", () => {
 
   beforeAll(async () => {
     ({ orgId, authToken, cleanup } = await createIsolatedOrgAndProject("user-access"));
+    const parentOrg = await createIsolatedOrgAndProject("user-access-parent");
+    cleanupParentOrg = parentOrg.cleanup;
 
     directUser = await createUser("direct");
     directAndGroupUser = await createUser("direct-and-group");
@@ -55,14 +59,26 @@ describe("Organization user access listing", () => {
       temporaryRole: { role: OrgMembershipRole.Admin, endsAt: new Date(Date.now() + HOUR_MS) }
     });
 
+    // Same name and the same role pair as qa-team, so its rows interleave with that group's unless the
+    // query keeps each group's rows together.
+    linkedGroupId = await createOrgGroup({
+      orgId,
+      ownerOrgId: parentOrg.orgId,
+      name: "qa-team",
+      role: OrgMembershipRole.Member,
+      temporaryRole: { role: OrgMembershipRole.Admin, endsAt: new Date(Date.now() + HOUR_MS) }
+    });
+
     await addUsersToGroup(adminGroupId, [directAndGroupUser.userId, groupOnlyUser.userId]);
     await addUsersToGroup(memberGroupId, [groupOnlyUser.userId]);
+    await addUsersToGroup(linkedGroupId, [groupOnlyUser.userId]);
   });
 
-  // Deleting the org cascades the groups.
+  // Deleting the orgs cascades the groups.
   afterAll(async () => {
     await deleteUsers([directUser.userId, directAndGroupUser.userId, groupOnlyUser.userId]);
     await cleanup();
+    await cleanupParentOrg();
   });
 
   test("lists direct members with their groups and users who reach the org only through a group", async () => {
@@ -84,20 +100,30 @@ describe("Organization user access listing", () => {
     const groupOnly = byUserId.get(groupOnlyUser.userId);
     expect(groupOnly?.user.username).toBe(groupOnlyUser.username);
     expect(groupOnly?.membership).toBeNull();
-    expect(groupOnly?.groups.map((group) => group.id).sort()).toEqual([adminGroupId, memberGroupId].sort());
+    expect(groupOnly?.groups.map((group) => group.id).sort()).toEqual(
+      [adminGroupId, memberGroupId, linkedGroupId].sort()
+    );
   });
 
-  test("lists every active role of a group and leaves expired temporary roles out", async () => {
+  test("lists every active role of a group, permanent first, and leaves expired temporary roles out", async () => {
     const users = await listUserAccess();
     const groupOnly = users.find((row) => row.user.id === groupOnlyUser.userId);
     const roleSlugs = (groupId: string) =>
-      groupOnly?.groups
-        .find((group) => group.id === groupId)
-        ?.roles.map((role) => role.role)
-        .sort();
+      groupOnly?.groups.find((group) => group.id === groupId)?.roles.map((role) => role.role);
 
     expect(roleSlugs(adminGroupId)).toEqual([OrgMembershipRole.Admin]);
-    expect(roleSlugs(memberGroupId)).toEqual([OrgMembershipRole.Admin, OrgMembershipRole.Member]);
+    expect(roleSlugs(memberGroupId)).toEqual([OrgMembershipRole.Member, OrgMembershipRole.Admin]);
+  });
+
+  test("keeps the roles of two groups with the same name apart", async () => {
+    const users = await listUserAccess();
+    const groupOnly = users.find((row) => row.user.id === groupOnlyUser.userId);
+    const sameName = groupOnly?.groups.filter((group) => group.name === "qa-team");
+
+    expect(sameName).toHaveLength(2);
+    sameName?.forEach((group) => {
+      expect(group.roles.map((role) => role.role)).toEqual([OrgMembershipRole.Member, OrgMembershipRole.Admin]);
+    });
   });
 
   test("leaves the direct membership list unchanged", async () => {

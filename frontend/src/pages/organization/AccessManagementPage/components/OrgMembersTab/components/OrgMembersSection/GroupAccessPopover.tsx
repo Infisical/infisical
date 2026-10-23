@@ -8,7 +8,10 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Separator
+  Separator,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { TOrgUserAccessGroup, TOrgUserAccessGroupRole } from "@app/hooks/api/users/types";
 
@@ -17,6 +20,58 @@ type Props = {
   groups: TOrgUserAccessGroup[];
   hasDirectAccess: boolean;
   getRoleName: (role: TOrgUserAccessGroupRole) => string;
+};
+
+const MAX_VISIBLE_ROLES = 1;
+
+const RoleBadge = ({ name }: { name: string }) => (
+  <Badge variant="neutral" isTruncatable className="max-w-[8rem]">
+    {name}
+  </Badge>
+);
+
+const GroupRoleBadges = ({
+  roles,
+  getRoleName
+}: {
+  roles: TOrgUserAccessGroupRole[];
+  getRoleName: (role: TOrgUserAccessGroupRole) => string;
+}) => {
+  const visible = roles.slice(0, MAX_VISIBLE_ROLES);
+  const overflow = roles.slice(MAX_VISIBLE_ROLES);
+
+  return (
+    <div className="flex shrink-0 items-center gap-1.5">
+      {visible.map((role) => (
+        <RoleBadge key={role.roleId ?? role.role} name={getRoleName(role)} />
+      ))}
+      {overflow.length > 0 && (
+        <Popover>
+          <Tooltip>
+            <TooltipTrigger className="flex h-4 items-center">
+              <PopoverTrigger asChild>
+                <Badge variant="neutral" asChild>
+                  <button type="button" onClick={(e) => e.stopPropagation()}>
+                    +{overflow.length}
+                  </button>
+                </Badge>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Click to view additional roles</TooltipContent>
+          </Tooltip>
+          <PopoverContent
+            side="right"
+            className="flex w-auto max-w-sm flex-wrap gap-1.5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {overflow.map((role) => (
+              <RoleBadge key={role.roleId ?? role.role} name={getRoleName(role)} />
+            ))}
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
+  );
 };
 
 export const GroupAccessPopover = ({ orgId, groups, hasDirectAccess, getRoleName }: Props) => {
@@ -64,18 +119,7 @@ export const GroupAccessPopover = ({ orgId, groups, hasDirectAccess, getRoleName
                   {group.name}
                 </span>
               </Link>
-              <div className="flex shrink-0 items-center gap-1.5">
-                {group.roles.map((role) => (
-                  <Badge
-                    key={role.roleId ?? role.role}
-                    variant="neutral"
-                    isTruncatable
-                    className="max-w-[8rem]"
-                  >
-                    {getRoleName(role)}
-                  </Badge>
-                ))}
-              </div>
+              <GroupRoleBadges roles={group.roles} getRoleName={getRoleName} />
             </li>
           ))}
         </ul>

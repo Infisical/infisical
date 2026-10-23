@@ -883,7 +883,7 @@ export const ORGANIZATIONS = {
     membership:
       "The user's direct organization membership, or null when they only reach the organization through groups.",
     groups: "The groups holding an organization membership that the user belongs to.",
-    groupRoles: "The group's active organization roles. Expired temporary roles are left out.",
+    groupRoles: "The group's active organization roles, permanent roles first. Expired temporary roles are left out.",
     groupRole: "The role slug, or 'custom' when it is a custom role.",
     groupRoleId: "The ID of the custom role, or null for a built-in role."
   },
