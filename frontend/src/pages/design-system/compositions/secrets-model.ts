@@ -117,9 +117,28 @@ export const resourceKey = (resource: Resource) => `${resource.kind}:${resource.
 export const readableValue = (secret: Secret) =>
   secret.value.status === "present" ? secret.value.value : undefined;
 
+export const commitCounts: Record<string, number> = {
+  "payments-api:dev:/": 12,
+  "payments-api:staging:/": 9,
+  "payments-api:prod:/": 11,
+  "payments-api:dev:/api": 7
+};
+
+type SecretSeed = {
+  name: string;
+  envs: string[];
+  empty?: string[];
+  comment?: string;
+  tags?: string[];
+  override?: string;
+  managedBy?: string;
+  honeyToken?: boolean;
+};
+
 export function createResources(scenario: Scenario): Resource[] {
   if (scenario === "empty" || scenario === "no-environments" || scenario === "legacy") return [];
   const resources: Resource[] = [];
+  const all = environments.map((environment) => environment.value);
   const add = (scope: Scope, name: string, detail: ResourceDetails) => {
     resources.push({
       ...scope,
@@ -130,168 +149,175 @@ export function createResources(scenario: Scenario): Resource[] {
       ...detail
     } as Resource);
   };
-  projects.forEach((project) => {
-    environments.forEach((environment) => {
-      const scope = { project: project.value, environment: environment.value, path: "/" };
-      const values: Record<string, string> =
-        project.value === "payments-api"
-          ? {
-              API_BASE_URL: "https://api.demo.invalid",
-              DATABASE_URL: `postgres://demo.invalid/payments-${environment.value}`,
-              DATABASE_REFERENCE: `${"$"}{DATABASE_URL}`,
-              EMPTY_VALUE: "",
-              TLS_CERTIFICATE: "FAKE CERTIFICATE\nLOCAL DEMONSTRATION ONLY\nNOT VALID FOR TLS",
-              SERVICE_CONFIG: '{\n  "service": "payments",\n  "demo": true\n}',
-              LOG_LEVEL: "info",
-              PAYMENT_PROVIDER_KEY: "fake-provider-value",
-              RESTRICTED_VALUE: "fake-restricted-demo"
-            }
-          : {
-              DASHBOARD_URL: "https://dashboard.demo.invalid",
-              THEME: "system",
-              PUBLIC_API: "https://web.demo.invalid"
-            };
-      if (scenario === "large")
-        for (let i = 1; i <= 32; i += 1)
-          values[`DEMO_SETTING_${String(i).padStart(2, "0")}`] = `fake-value-${i}`;
-      Object.entries(values).forEach(([name, value]) => {
-        if (
-          (name === "DATABASE_URL" && environment.value === "prod") ||
-          (name === "EMPTY_VALUE" && environment.value === "staging")
-        )
-          return;
-        const tags = [];
-        if (name.includes("DATABASE")) tags.push("database");
-        if (name === "PAYMENT_PROVIDER_KEY") tags.push("billing");
-        add(scope, name, {
+  const at = (environment: string, path = "/", project = "payments-api") => ({
+    project,
+    environment,
+    path
+  });
+  const secrets = (path: string, seeds: SecretSeed[], project = "payments-api") =>
+    seeds.forEach((seed) =>
+      seed.envs.forEach((environment) =>
+        add(at(environment, path, project), seed.name, {
           kind: "secret",
           value:
-            name === "RESTRICTED_VALUE" ? { status: "unreadable" } : { status: "present", value },
-          comment:
-            name === "PAYMENT_PROVIDER_KEY"
-              ? "Fake provider configuration for the checkout service."
-              : "",
-          tags,
-          metadata:
-            name === "PAYMENT_PROVIDER_KEY"
-              ? [
-                  { key: "owner", value: "payments", encrypted: false },
-                  { key: "note", value: "fake-private-note", encrypted: true }
-                ]
-              : [],
+            scenario === "permissions" && seed.name === "STRIPE_SECRET_KEY"
+              ? { status: "unreadable" }
+              : {
+                  status: "present",
+                  value: seed.empty?.includes(environment)
+                    ? ""
+                    : `fake-${seed.name.toLowerCase().replace(/_/g, "-")}-${environment}`
+                },
+          comment: seed.comment ?? "",
+          tags: seed.tags ?? [],
+          metadata: [],
           version: 1,
-          ...(name === "PAYMENT_PROVIDER_KEY" ? { reminder: true } : {}),
-          ...(name === "TLS_CERTIFICATE" ? { skipMultilineEncoding: true } : {}),
-          ...(name === "LOG_LEVEL" && environment.value === "dev" ? { override: "debug" } : {})
-        });
-      });
-      if (project.value !== "payments-api") return;
-      add(scope, "billing", { kind: "folder", description: "Billing integrations" });
-      add(scope, "shared", { kind: "folder", description: "Shared configuration" });
-      add({ ...scope, path: "/billing" }, "webhooks", {
-        kind: "folder",
-        description: "Webhook receivers"
-      });
-      add({ ...scope, path: "/billing" }, "WEBHOOK_URL", {
-        kind: "secret",
-        value: { status: "present", value: "https://hooks.demo.invalid" },
-        comment: "",
-        tags: ["billing"],
-        metadata: [],
-        version: 1
-      });
-      add(scope, "shared-config", {
+          ...(seed.override && environment === "dev" ? { override: seed.override } : {}),
+          ...(seed.managedBy ? { managedBy: seed.managedBy } : {}),
+          ...(seed.honeyToken ? { honeyToken: true } : {})
+        })
+      )
+    );
+  const imports = (path: string, source: Scope, envs: string[]) =>
+    envs.forEach((environment) =>
+      add(at(environment, path), `${source.environment}:${source.path}`, {
         kind: "import",
-        source: { ...scope, path: "/shared" },
+        source,
         revoked: false,
-        replicated: environment.value === "staging",
-        ...(environment.value === "staging"
-          ? { replicationStatus: "failed", lastReplicated: "2026-10-21T08:30:00Z" }
-          : {})
-      });
-      add(scope, "web-dashboard-root", {
-        kind: "import",
-        source: { ...scope, project: "web-dashboard" },
-        revoked: true,
         replicated: false
-      });
-      Object.entries({ REGION: "demo-west", LOG_LEVEL: "warn" }).forEach(([name, value]) => {
-        add({ ...scope, path: "/shared" }, name, {
-          kind: "secret",
-          value: { status: "present", value },
-          comment: "",
-          tags: [],
-          metadata: [],
-          version: 1
-        });
-      });
-      ["DB_USERNAME", "DB_PASSWORD"].forEach((name) => {
-        add(scope, name, {
-          kind: "secret",
-          value: { status: "present", value: `fake-${name.toLowerCase()}` },
-          comment: "",
-          tags: ["database"],
-          metadata: [],
-          version: 1,
-          managedBy: "billing-db-rotation"
-        });
-      });
-      ["CANARY_ACCESS_KEY_ID", "CANARY_SECRET_ACCESS_KEY"].forEach((name) => {
-        add(scope, name, {
-          kind: "secret",
-          value: { status: "present", value: `fake-${name.toLowerCase()}` },
-          comment: "",
-          tags: [],
-          metadata: [],
-          version: 1,
-          honeyToken: true
-        });
-      });
-      add(scope, "orders-readonly", {
+      })
+    );
+
+  imports("/", at("dev", "/workers"), ["dev"]);
+  imports("/", at("staging", "/api"), ["dev"]);
+  imports("/", at("staging", "/workers"), ["staging"]);
+  ["api", "workers"].forEach((name) =>
+    (name === "api" ? all : ["dev", "staging"]).forEach((environment) =>
+      add(at(environment), name, { kind: "folder", description: "" })
+    )
+  );
+  ["dev", "staging"].forEach((environment) =>
+    add(at(environment), "payments-db-readonly", {
+      kind: "dynamic",
+      provider: "SQL Database",
+      defaultTTL: "1h",
+      maxTTL: "24h"
+    })
+  );
+  add(at("dev"), "payments-db-reporting", {
+    kind: "dynamic",
+    provider: "SQL Database",
+    defaultTTL: "1h",
+    maxTTL: "24h"
+  });
+  add(at("dev"), "payments-app-db-creds", {
+    kind: "rotation",
+    provider: "PostgreSQL credentials",
+    connection: "payments-postgres",
+    status: "success",
+    autoRotation: true,
+    lastRotatedAt: "2026-10-20T00:00:00Z",
+    nextRotationAt: "2026-11-24T00:00:00Z",
+    managedKeys: ["APP_DB_USERNAME", "APP_DB_PASSWORD"]
+  });
+  add(at("prod"), "decoy-aws-keys", {
+    kind: "honey",
+    provider: "AWS",
+    status: "active",
+    description: "",
+    mappedKeys: ["AWS_ACCESS_KEY_ID_LEGACY", "AWS_SECRET_ACCESS_KEY_LEGACY"]
+  });
+  add(at("prod"), "sentry-ingest", { kind: "proxy", host: "*.ingest.sentry.io", enabled: false });
+  ["dev", "prod"].forEach((environment) =>
+    add(at(environment), "stripe-api", { kind: "proxy", host: "api.stripe.com", enabled: true })
+  );
+  secrets("/", [
+    { name: "API_BASE_URL", envs: all },
+    { name: "APP_DB_PASSWORD", envs: ["dev"], managedBy: "payments-app-db-creds" },
+    { name: "APP_DB_USERNAME", envs: ["dev"], managedBy: "payments-app-db-creds" },
+    { name: "AWS_ACCESS_KEY_ID_LEGACY", envs: ["prod"], honeyToken: true },
+    { name: "AWS_SECRET_ACCESS_KEY_LEGACY", envs: ["prod"], honeyToken: true },
+    { name: "CURRENCY_ALLOWLIST", envs: all, empty: ["dev"] },
+    { name: "DATABASE_URL", envs: all },
+    { name: "FEATURE_FLAGS", envs: all, tags: ["config"] },
+    { name: "JWT_SIGNING_KEY", envs: all, override: "fake-personal-jwt-key" },
+    { name: "LOG_LEVEL", envs: all, comment: "Raise to debug only while investigating." },
+    { name: "REDIS_URL", envs: ["dev", "staging"] },
+    { name: "SENTRY_DSN", envs: ["prod"] },
+    { name: "STRIPE_SECRET_KEY", envs: ["dev", "prod"] },
+    { name: "STRIPE_WEBHOOK_SECRET", envs: all, empty: ["staging"] },
+    ...(scenario === "large"
+      ? Array.from({ length: 32 }, (_, index) => ({
+          name: `DEMO_SETTING_${String(index + 1).padStart(2, "0")}`,
+          envs: all
+        }))
+      : [])
+  ]);
+
+  imports("/api", at("dev", "/workers"), ["dev"]);
+  imports("/api", at("staging", "/api/v1"), ["prod"]);
+  ["v1", "webhooks"].forEach((name) =>
+    all.forEach((environment) =>
+      add(at(environment, "/api"), name, { kind: "folder", description: "" })
+    )
+  );
+  ["ledger-db-readonly", "refunds-db-writer"].forEach((name) =>
+    ["dev", "staging"].forEach((environment) =>
+      add(at(environment, "/api"), name, {
         kind: "dynamic",
         provider: "SQL Database",
         defaultTTL: "1h",
         maxTTL: "24h"
-      });
-      if (environment.value !== "prod")
-        add(scope, "deploy-bastion", {
-          kind: "dynamic",
-          provider: "SSH",
-          defaultTTL: "30m",
-          maxTTL: "8h",
-          ...(environment.value === "staging" ? { status: "failed-deletion" } : {})
-        });
-      add(scope, "billing-db-rotation", {
-        kind: "rotation",
-        provider: "PostgreSQL credentials",
-        connection: "payments-postgres",
-        status: environment.value === "staging" ? "failed" : "success",
-        autoRotation: environment.value !== "dev",
-        description: "Rotates the billing database user pair",
-        lastRotatedAt: "2026-10-01T00:00:00Z",
-        nextRotationAt: "2026-10-31T00:00:00Z",
-        managedKeys: ["DB_USERNAME", "DB_PASSWORD"]
-      });
-      add(scope, "audit-canary", {
-        kind: "honey",
-        provider: "AWS",
-        status: environment.value === "dev" ? "triggered" : "active",
-        description: "Decoy AWS keys for audit detection",
-        mappedKeys: ["CANARY_ACCESS_KEY_ID", "CANARY_SECRET_ACCESS_KEY"]
-      });
-      add(scope, "billing-api-proxy", {
-        kind: "proxy",
-        host: "*.billing.demo.invalid",
-        enabled: true,
-        lastUsedAt: "2026-10-22T16:40:00Z"
-      });
-      if (environment.value !== "prod")
-        add(scope, "stripe-api", {
-          kind: "proxy",
-          host: "api.stripe.com",
-          enabled: environment.value === "dev"
-        });
-    });
+      })
+    )
+  );
+  add(at("prod", "/api"), "ledger-app-db-creds", {
+    kind: "rotation",
+    provider: "PostgreSQL credentials",
+    connection: "ledger-postgres",
+    status: "success",
+    autoRotation: true,
+    lastRotatedAt: "2026-10-20T00:00:00Z",
+    nextRotationAt: "2026-11-24T00:00:00Z",
+    managedKeys: ["LEDGER_DB_USERNAME", "LEDGER_DB_PASSWORD"]
   });
+  add(at("dev", "/api"), "decoy-billing-keys", {
+    kind: "honey",
+    provider: "AWS",
+    status: "active",
+    description: "",
+    mappedKeys: ["BILLING_ACCESS_KEY_ID"]
+  });
+  all.forEach((environment) =>
+    add(at(environment, "/api"), "ledger-api", {
+      kind: "proxy",
+      host: "ledger.internal.example.test",
+      enabled: true
+    })
+  );
+  secrets("/api", [
+    { name: "BILLING_ACCESS_KEY_ID", envs: ["dev"], honeyToken: true },
+    { name: "CORS_ORIGINS", envs: all },
+    { name: "IDEMPOTENCY_TTL_SECONDS", envs: all, empty: ["dev"] },
+    { name: "LEDGER_API_KEY", envs: all, override: "fake-personal-ledger-key" },
+    { name: "LEDGER_DB_PASSWORD", envs: ["prod"], managedBy: "ledger-app-db-creds" },
+    { name: "LEDGER_DB_USERNAME", envs: ["prod"], managedBy: "ledger-app-db-creds" },
+    { name: "PAYPAL_CLIENT_ID", envs: all },
+    { name: "PAYPAL_CLIENT_SECRET", envs: all, empty: ["staging"] },
+    { name: "RATE_LIMIT_PER_MINUTE", envs: all },
+    { name: "REFUNDS_QUEUE_URL", envs: ["dev", "staging"] },
+    { name: "WEBHOOK_SIGNING_SECRET", envs: all, tags: ["webhooks"] }
+  ]);
+  secrets("/workers", [{ name: "QUEUE_CONCURRENCY", envs: ["dev", "staging"] }]);
+  secrets("/api/v1", [{ name: "V1_SUNSET_DATE", envs: ["staging"] }]);
+  secrets(
+    "/",
+    [
+      { name: "DASHBOARD_URL", envs: all },
+      { name: "PUBLIC_API", envs: all },
+      { name: "THEME", envs: all }
+    ],
+    "web-dashboard"
+  );
   return resources;
 }

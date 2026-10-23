@@ -43,8 +43,17 @@ const kindGlyphs: Record<ResourceKind, Glyph> = {
   honey: { icon: HexagonIcon },
   proxy: { icon: ChevronsLeftRightEllipsisIcon }
 };
-export function KindIcon({ kind }: { kind: ResourceKind }) {
-  return <Icon {...kindGlyphs[kind]} />;
+export type KindOverlay = "rotation" | "honey";
+export function KindIcon({ kind, overlay }: { kind: ResourceKind; overlay?: KindOverlay }) {
+  if (!overlay) return <Icon {...kindGlyphs[kind]} />;
+  return (
+    <span className={styles.overlayIcon}>
+      <Icon {...kindGlyphs[kind]} />
+      <span className={styles.overlayMark} data-overlay={overlay}>
+        <Icon {...kindGlyphs[overlay]} size={10} />
+      </span>
+    </span>
+  );
 }
 
 const statusMeta: Record<EnvironmentStatus, Glyph & { label: string }> = {
@@ -124,7 +133,9 @@ export function SelectCell({
   label,
   ctx,
   selectable,
-  alternate
+  alternate,
+  overlay,
+  pinned
 }: {
   kind: ResourceKind;
   rowKey: string;
@@ -132,13 +143,15 @@ export function SelectCell({
   ctx: RowContext;
   selectable: boolean;
   alternate?: ReactNode;
+  overlay?: KindOverlay;
+  pinned?: boolean;
 }) {
   const isSelected = ctx.selected.includes(rowKey);
   return (
     <TableCell className={styles.iconCell}>
-      <span className={styles.iconSlot} data-selected={isSelected || undefined}>
+      <span className={styles.iconSlot} data-selected={isSelected || pinned || undefined}>
         <span className={styles.kindGlyph}>
-          <KindIcon kind={kind} />
+          <KindIcon kind={kind} overlay={overlay} />
         </span>
         {alternate && <span className={styles.rowCheck}>{alternate}</span>}
         {selectable && !alternate && (

@@ -239,10 +239,12 @@ export function AddNewMenu({
 
 export function FolderBreadcrumbBar({
   path,
+  single,
   onNavigate,
   report
 }: {
   path: string;
+  single: boolean;
   onNavigate: (path: string) => void;
   report: (message: string) => void;
 }) {
@@ -260,6 +262,7 @@ export function FolderBreadcrumbBar({
         >
           Root folder
         </Button>
+        {!segments.length && <span className={styles.crumbSlash}>/</span>}
         {segments.map((segment, index) => (
           <span key={`${segment}-${index + 1}`} className={styles.crumb}>
             <span className={styles.crumbSlash}>/</span>
@@ -298,13 +301,15 @@ export function FolderBreadcrumbBar({
           </span>
         ))}
       </nav>
-      <Tooltip content={NEXT_PHASE}>
-        <span className={styles.actionSlot}>
-          <Button variant="ghost" size="xs" icon="user" disabled>
-            Manage access
-          </Button>
-        </span>
-      </Tooltip>
+      {single && (
+        <Tooltip content={NEXT_PHASE}>
+          <span className={styles.actionSlot}>
+            <Button variant="ghost" size="xs" icon="user" disabled>
+              Manage access
+            </Button>
+          </span>
+        </Tooltip>
+      )}
     </div>
   );
 }
@@ -419,7 +424,15 @@ export function QuickAddRow({
 }
 
 export function ResourceCount({ counts }: { counts: Partial<Record<ResourceKind, number>> }) {
-  const order: ResourceKind[] = ["import", "folder", "dynamic", "rotation", "proxy", "secret"];
+  const order: ResourceKind[] = [
+    "import",
+    "folder",
+    "dynamic",
+    "rotation",
+    "honey",
+    "proxy",
+    "secret"
+  ];
   return (
     <span className={styles.resourceCount}>
       {order

@@ -45,6 +45,8 @@ import {
   ActionBar,
   ActionButton,
   type EnvironmentStatus,
+  ExpandToggle,
+  type KindOverlay,
   NEXT_PHASE,
   type RowContext,
   SelectCell,
@@ -54,6 +56,11 @@ import {
 import styles from "./overview.module.css";
 
 const mask = "••••••••••••••••";
+const overlayOf = (secret: Secret): KindOverlay | undefined => {
+  if (secret.managedBy) return "rotation";
+  if (secret.honeyToken) return "honey";
+  return undefined;
+};
 export type SecretRowHandlers = {
   onEdit: (secret: Secret) => void;
   onCreateIn: (environment: string, key: string) => void;
@@ -86,7 +93,8 @@ function SecretValue({ secret, visible }: { secret?: Secret; visible: boolean })
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
     >
-      {visible || focused ? value || " " : mask}
+      {value === "" && <span className={styles.emptyValue}>Empty</span>}
+      {value !== "" && (visible || focused ? value : mask)}
     </span>
   );
 }
@@ -266,26 +274,22 @@ export function SecretRow({
     return (
       <>
         <TableRow className={styles.row}>
-          <SelectCell kind="secret" rowKey={rowKey} label={name} ctx={ctx} selectable />
-          <TableCell className={styles.nameCell}>
+          <SelectCell
+            kind="secret"
+            rowKey={rowKey}
+            label={name}
+            ctx={ctx}
+            selectable
+            overlay={overlayOf(first)}
+          />
+          <TableCell
+            className={styles.nameCell}
+            data-override-rule={first.override !== undefined || undefined}
+          >
             <div className={styles.nameLine}>
               <span className={styles.truncate} title={name}>
                 {name}
               </span>
-              {first.managedBy && (
-                <Tooltip content="Rotated secret">
-                  <span className={styles.hint}>
-                    <Icon name="sync" size={12} label="Rotated secret" />
-                  </span>
-                </Tooltip>
-              )}
-              {first.honeyToken && (
-                <Tooltip content="Honey token secret">
-                  <span className={styles.hint}>
-                    <Icon icon={HexagonIcon} size={12} label="Honey token secret" />
-                  </span>
-                </Tooltip>
-              )}
               {first.comment && (
                 <Tooltip content={first.comment}>
                   <span className={styles.hint}>
@@ -312,15 +316,27 @@ export function SecretRow({
                 <Icon icon={GitBranchIcon} label="Personal override" />
               </span>
             </TableCell>
-            <TableCell className={styles.nameCell}>
+            <TableCell className={styles.nameCell} data-override-rule>
               <span className={styles.truncate}>{name}</span>
             </TableCell>
             <TableCell className={styles.valueCell}>
               <div className={styles.nameLine}>
                 <code className={styles.value}>{revealAll ? first.override || " " : mask}</code>
-                <ActionBar>
+                <span className={styles.persistentActions}>
+                  <ActionButton
+                    label="Copy override"
+                    name="copy"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(first.override ?? "");
+                        ctx.report("Personal override copied to clipboard.");
+                      } catch {
+                        ctx.report("Could not copy the override. Check clipboard permissions.");
+                      }
+                    }}
+                  />
                   <ActionButton label="Delete override" name="trash" disabledReason={NEXT_PHASE} />
-                </ActionBar>
+                </span>
               </div>
             </TableCell>
           </TableRow>
@@ -341,7 +357,19 @@ export function SecretRow({
         data-expanded={expanded || undefined}
         onClick={() => setExpanded(!expanded)}
       >
-        <SelectCell kind="secret" rowKey={rowKey} label={name} ctx={ctx} selectable />
+        <SelectCell
+          kind="secret"
+          rowKey={rowKey}
+          label={name}
+          ctx={ctx}
+          selectable
+          pinned={expanded}
+          alternate={
+            expanded ? (
+              <ExpandToggle expanded label={name} onToggle={() => setExpanded(false)} />
+            ) : undefined
+          }
+        />
         <TableCell className={styles.nameCell}>
           <div className={styles.nameLine}>
             <span className={styles.truncate} title={name}>

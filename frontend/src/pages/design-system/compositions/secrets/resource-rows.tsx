@@ -2,6 +2,7 @@ import { type ReactNode, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import {
   ActivityIcon,
+  BanIcon,
   EditIcon,
   FileKeyIcon,
   FolderInputIcon,
@@ -32,7 +33,13 @@ import {
 } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
-import { readableValue, type Resource, type ResourceKind, type Secret } from "../secrets-model";
+import {
+  environments,
+  readableValue,
+  type Resource,
+  type ResourceKind,
+  type Secret
+} from "../secrets-model";
 import {
   ActionBar,
   ActionButton,
@@ -239,7 +246,7 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
           <span className={styles.push}>
             {!item.enabled && (
               <Badge tone="soft">
-                <Icon icon={XIcon} />
+                <Icon icon={BanIcon} />
                 Disabled
               </Badge>
             )}
@@ -356,6 +363,7 @@ export function KindRow({
           label={first.name}
           ctx={ctx}
           selectable={false}
+          pinned={expanded}
           alternate={
             <ExpandToggle
               expanded={expanded}
@@ -460,7 +468,8 @@ export function ImportRow({
       {first.source.project !== projectName && <Badge tone="warn">{first.source.project}</Badge>}
       <Badge tone="soft">
         <Icon icon={LayersIcon} />
-        {first.source.environment}
+        {environments.find((environment) => environment.value === first.source.environment)
+          ?.label ?? first.source.environment}
       </Badge>
       <Icon name="folder" size={14} />
       <span className={styles.truncate}>{first.source.path}</span>
@@ -511,6 +520,7 @@ export function ImportRow({
           label={first.name}
           ctx={ctx}
           selectable={false}
+          pinned={expanded}
           alternate={toggle}
         />
         <TableCell colSpan={ctx.single ? 2 : undefined} className={styles.nameCell}>
@@ -533,17 +543,17 @@ export function ImportRow({
             expanded ? (
               <TableCell key={environment.value} />
             ) : (
-              <StatusCell
-                key={environment.value}
-                status={
-                  entries.some((entry) => entry.environment === environment.value)
-                    ? "imported"
-                    : "missing"
-                }
-              />
+              <StatusCell key={environment.value} status={presenceOf(entries, environment.value)} />
             )
           )}
       </TableRow>
+      {ctx.single && expanded && !first.revoked && (
+        <TableRow className={styles.nestedHead}>
+          <TableCell className={styles.iconCell} />
+          <TableCell className={styles.nameCell}>Name</TableCell>
+          <TableCell className={styles.valueCell}>Value</TableCell>
+        </TableRow>
+      )}
       {ctx.single &&
         keys.map((secret) => (
           <TableRow key={secret.id} className={styles.importedRow}>
@@ -567,16 +577,59 @@ export function ImportRow({
         </TableRow>
       )}
       {!ctx.single && expanded && (
-        <EnvironmentTable
-          ctx={ctx}
-          entries={entries}
-          render={(entry) => (
-            <div className={styles.nameLine}>
-              {replication(entry as Of<"import">)}
-              {actions(entry as Of<"import">)}
+        <TableRow className={styles.nestedRow}>
+          <TableCell colSpan={ctx.environments.length + 2} className={styles.nestedCell}>
+            <div className={styles.importedIn}>
+              <span className={styles.subtle}>Imported in:</span>
+              {entries.map((entry) => (
+                <Badge key={entry.id} tone="soft">
+                  <Icon icon={LayersIcon} />
+                  {environments.find((environment) => environment.value === entry.environment)
+                    ?.label ?? entry.environment}
+                </Badge>
+              ))}
+              <span className={styles.push}>
+                <span className={styles.hint} data-tone="info">
+                  <Icon name="info" size={12} />
+                </span>
+                <span className={styles.subtle}>Select a single environment to manage imports</span>
+              </span>
             </div>
-          )}
-        />
+            <Table className={styles.nestedTable}>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className={styles.iconCell} />
+                  <TableHead className={styles.envName}>Name</TableHead>
+                  <TableHead>Value</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {first.revoked ? (
+                  <TableRow>
+                    <TableCell className={styles.iconCell} />
+                    <TableCell colSpan={2} className={styles.subtle}>
+                      Access to this source was revoked, so its secrets are not shown.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sourceSecrets(first).map((secret) => (
+                    <TableRow key={secret.id} className={styles.row}>
+                      <TableCell className={styles.iconCell} />
+                      <TableCell className={styles.envName}>
+                        <span className={styles.truncate}>{secret.name}</span>
+                      </TableCell>
+                      <TableCell className={styles.valueCell}>
+                        <code className={styles.value}>
+                          {readableValue(secret) === undefined ? "No access" : mask}
+                        </code>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableCell>
+        </TableRow>
       )}
     </>
   );

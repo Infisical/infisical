@@ -2,7 +2,6 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { GitCommitIcon, GroupIcon } from "lucide-react";
 
 import { Banner } from "@app/components/v4/ui/alert";
-import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
@@ -70,6 +69,7 @@ import {
   ResourceFilterMenu
 } from "./secrets/toolbar";
 import {
+  commitCounts,
   createResources,
   environments,
   projects,
@@ -464,6 +464,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
     (option) => option.field === sort.field && option.direction === sort.direction
   )?.label;
   const colSpan = visibleEnvironments.length + 2;
+  const commitCount = single ? commitCounts[`${project}:${activeEnvironment}:${path}`] : undefined;
   const canQuickAdd = !writeBlock && isLastPage && totalCount > 0;
   const gate = (reason: string | undefined, node: ReactNode) =>
     reason ? (
@@ -613,7 +614,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
       <Tooltip content={`Sort: ${sortLabel ?? "Name (A to Z)"}`}>
         <span className={styles.actionSlot}>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-xs" icon="chev-ud" iconOnly>
+            <Button variant="ghost" size="icon-xs" icon="chev-down" iconOnly>
               Sort resources
             </Button>
           </DropdownMenuTrigger>
@@ -790,7 +791,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
                 size="md"
                 title={currentProject.label}
                 mono
-                description={currentProject.description}
+                breadcrumb={[{ label: "All projects" }]}
               />
               {readOnly && (
                 <Banner
@@ -804,81 +805,8 @@ function Overview({ scenario }: { scenario: Scenario }) {
                   You do not have permission to create, edit, or delete secrets in this folder
                 </Banner>
               )}
-              <div className={styles.toolbar}>
-                <div className={styles.envPicker}>
-                  <MultiSelect
-                    label="Environments"
-                    options={scenario === "no-environments" ? [] : environments}
-                    value={scenario === "no-environments" ? [] : environmentIds}
-                    onChange={(value) => {
-                      setEnvironmentIds(value);
-                      setSort({ field: "name", direction: "asc" });
-                      resetView();
-                    }}
-                    placeholder="All environments"
-                    allLabel="All environments"
-                    searchable
-                    disabled={unavailable}
-                  />
-                </div>
-                <div className={styles.search}>
-                  <Input
-                    ref={search}
-                    aria-label="Search resources"
-                    icon="search"
-                    placeholder={
-                      single
-                        ? "Search by secret, folder, tag or metadata..."
-                        : "Search by secret or folder name..."
-                    }
-                    kbd="/"
-                    value={query}
-                    disabled={unavailable}
-                    onChange={(event) => {
-                      setQuery(event.target.value);
-                      setPage(1);
-                      setSelected([]);
-                    }}
-                  />
-                </div>
-                <ResourceFilterMenu
-                  types={types}
-                  onToggleType={(kind) => {
-                    setTypes(
-                      types.includes(kind)
-                        ? types.filter((entry) => entry !== kind)
-                        : [...types, kind]
-                    );
-                    resetView();
-                  }}
-                  tags={tagOptions}
-                  selectedTags={tags}
-                  onToggleTag={(tag) => {
-                    setTags(
-                      tags.includes(tag) ? tags.filter((entry) => entry !== tag) : [...tags, tag]
-                    );
-                    resetView();
-                  }}
-                  onClearTags={() => {
-                    setTags([]);
-                    resetView();
-                  }}
-                />
-                <ExportMenu
-                  disabledReason={unavailable ? writeBlock : exportBlock}
-                  secretCount={single ? envFile(activeEnvironment).length : 0}
-                  onExport={(action) => exportEnv(activeEnvironment, action)}
-                />
-                <AddNewMenu
-                  writeBlock={writeBlock}
-                  single={single}
-                  onNewSecret={() => openDraft("secret")}
-                  onNewFolder={() => openDraft("folder")}
-                />
-              </div>
               <Card
                 variant="framed"
-                flush
                 footer={
                   <div className={styles.footer}>
                     {notice ? (
@@ -910,178 +838,260 @@ function Overview({ scenario }: { scenario: Scenario }) {
                   </div>
                 }
               >
-                <FolderBreadcrumbBar path={path} onNavigate={navigate} report={report} />
-                {unavailableState ?? (
-                  <Table className={styles.table} aria-label={`Resources in ${project} at ${path}`}>
-                    <colgroup>
-                      <col className={styles.colIcon} />
-                      <col className={single ? styles.colName : undefined} />
-                      {single ? (
-                        <col />
-                      ) : (
-                        visibleEnvironments.map((environment) => (
-                          <col key={environment.value} className={styles.colEnv} />
-                        ))
-                      )}
-                    </colgroup>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className={styles.iconCell}>
-                          <Checkbox
-                            aria-label="Select all resources on this page"
-                            checked={allOnPage}
-                            indeterminate={someOnPage && !allOnPage}
-                            disabled={!selectableOnPage.length}
-                            onCheckedChange={() =>
-                              setSelected(
-                                allOnPage
-                                  ? selected.filter((key) => !selectableOnPage.includes(key))
-                                  : [...new Set([...selected, ...selectableOnPage])]
+                <div className={styles.toolbar}>
+                  <div className={styles.envPicker}>
+                    <MultiSelect
+                      label="Environments"
+                      options={scenario === "no-environments" ? [] : environments}
+                      value={scenario === "no-environments" ? [] : environmentIds}
+                      onChange={(value) => {
+                        setEnvironmentIds(value);
+                        setSort({ field: "name", direction: "asc" });
+                        resetView();
+                      }}
+                      placeholder="All environments"
+                      allLabel="All environments"
+                      searchable
+                      disabled={unavailable}
+                    />
+                  </div>
+                  <div className={styles.search}>
+                    <Input
+                      ref={search}
+                      aria-label="Search resources"
+                      icon="search"
+                      placeholder="Search by secret or folder name..."
+                      kbd="/"
+                      value={query}
+                      disabled={unavailable}
+                      onChange={(event) => {
+                        setQuery(event.target.value);
+                        setPage(1);
+                        setSelected([]);
+                      }}
+                    />
+                  </div>
+                  <ResourceFilterMenu
+                    types={types}
+                    onToggleType={(kind) => {
+                      setTypes(
+                        types.includes(kind)
+                          ? types.filter((entry) => entry !== kind)
+                          : [...types, kind]
+                      );
+                      resetView();
+                    }}
+                    tags={tagOptions}
+                    selectedTags={tags}
+                    onToggleTag={(tag) => {
+                      setTags(
+                        tags.includes(tag) ? tags.filter((entry) => entry !== tag) : [...tags, tag]
+                      );
+                      resetView();
+                    }}
+                    onClearTags={() => {
+                      setTags([]);
+                      resetView();
+                    }}
+                  />
+                  <ExportMenu
+                    disabledReason={unavailable ? writeBlock : exportBlock}
+                    secretCount={single ? envFile(activeEnvironment).length : 0}
+                    onExport={(action) => exportEnv(activeEnvironment, action)}
+                  />
+                  <AddNewMenu
+                    writeBlock={writeBlock}
+                    single={single}
+                    onNewSecret={() => openDraft("secret")}
+                    onNewFolder={() => openDraft("folder")}
+                  />
+                </div>
+                <div className={styles.tableFrame}>
+                  <FolderBreadcrumbBar
+                    path={path}
+                    single={single}
+                    onNavigate={navigate}
+                    report={report}
+                  />
+                  {unavailableState ?? (
+                    <Table
+                      className={styles.table}
+                      data-mode={single ? "single" : "multi"}
+                      aria-label={`Resources in ${project} at ${path}`}
+                    >
+                      <colgroup>
+                        <col className={styles.colIcon} />
+                        <col className={single ? styles.colName : styles.colNameMulti} />
+                        {single ? (
+                          <col />
+                        ) : (
+                          visibleEnvironments.map((environment) => <col key={environment.value} />)
+                        )}
+                      </colgroup>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className={styles.iconCell}>
+                            <Checkbox
+                              aria-label="Select all resources on this page"
+                              checked={allOnPage}
+                              indeterminate={someOnPage && !allOnPage}
+                              disabled={!selectableOnPage.length}
+                              onCheckedChange={() =>
+                                setSelected(
+                                  allOnPage
+                                    ? selected.filter((key) => !selectableOnPage.includes(key))
+                                    : [...new Set([...selected, ...selectableOnPage])]
+                                )
+                              }
+                            />
+                          </TableHead>
+                          <TableHead>
+                            <div className={styles.headLine}>
+                              Name
+                              <span className={styles.push}>{sortMenu}</span>
+                            </div>
+                          </TableHead>
+                          {single ? (
+                            <TableHead>
+                              <div className={`${styles.headLine} ${styles.valueHead}`}>
+                                Value
+                                <span className={styles.push}>
+                                  <Button
+                                    variant="ghost"
+                                    size="xs"
+                                    icon="eye"
+                                    onClick={() => setRevealAll(!revealAll)}
+                                  >
+                                    {revealAll ? "Hide values" : "Reveal all"}
+                                  </Button>
+                                  {gate(
+                                    NEXT_PHASE,
+                                    <Button variant="ghost" size="xs" icon="git" disabled>
+                                      <span className={styles.headLabel}>
+                                        {commitCount === undefined
+                                          ? "Commit history"
+                                          : `${commitCount} commits`}
+                                      </span>
+                                    </Button>
+                                  )}
+                                  {gate(
+                                    NEXT_PHASE,
+                                    <Button variant="ghost" size="xs" disabled>
+                                      <Icon icon={GroupIcon} />
+                                      <span className={styles.headLabel}>Batch edit</span>
+                                    </Button>
+                                  )}
+                                </span>
+                              </div>
+                            </TableHead>
+                          ) : (
+                            visibleEnvironments.map((environment) => (
+                              <TableHead key={environment.value} className={styles.envHead}>
+                                <div className={styles.headLine}>
+                                  {environmentMenu(environment)}
+                                </div>
+                              </TableHead>
+                            ))
+                          )}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {scenario === "loading" &&
+                          Array.from({ length: 8 }, (_, index) => (
+                            <TableRow key={`skeleton-${index + 1}`}>
+                              <TableCell className={styles.iconCell}>
+                                <Skeleton
+                                  width="var(--v4-size-icon)"
+                                  height="var(--v4-size-icon)"
+                                />
+                              </TableCell>
+                              <TableCell colSpan={colSpan - 1}>
+                                <Skeleton
+                                  width="var(--v4-size-text-min)"
+                                  height="var(--v4-size-icon)"
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        {scenario !== "loading" && totalCount === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={colSpan} className={styles.emptyCell}>
+                              {emptyState}
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {scenario !== "loading" &&
+                          windowRows.map(([key, entries]) => {
+                            const first = entries[0];
+                            if (first.kind === "import")
+                              return (
+                                <ImportRow
+                                  key={key}
+                                  rowKey={key}
+                                  entries={entries as Of<"import">[]}
+                                  ctx={ctx}
+                                  sourceSecrets={sourceSecrets}
+                                  projectName={project}
+                                />
+                              );
+                            if (first.kind === "folder")
+                              return (
+                                <FolderRow
+                                  key={key}
+                                  rowKey={key}
+                                  entries={entries as Of<"folder">[]}
+                                  ctx={ctx}
+                                  onOpen={() =>
+                                    navigate(`${path === "/" ? "" : path}/${first.name}`)
+                                  }
+                                  onEdit={(folder) =>
+                                    openDraft("folder", folder, [folder.environment])
+                                  }
+                                  onDelete={(folder) => setDeleting([folder])}
+                                />
+                              );
+                            if (first.kind === "secret")
+                              return (
+                                <SecretRow
+                                  key={key}
+                                  rowKey={key}
+                                  entries={entries as Secret[]}
+                                  ctx={ctx}
+                                  revealAll={revealAll}
+                                  handlers={handlers}
+                                />
+                              );
+                            return (
+                              <KindRow
+                                key={key}
+                                rowKey={key}
+                                kind={first.kind}
+                                entries={entries}
+                                ctx={ctx}
+                              />
+                            );
+                          })}
+                        {canQuickAdd && (
+                          <QuickAddRow
+                            multiple={!single}
+                            colSpan={single ? 1 : visibleEnvironments.length}
+                            existing={ordered
+                              .filter(([, entries]) => entries[0].kind === "secret")
+                              .map(([, entries]) => entries[0].name)}
+                            onCreate={(key, value) =>
+                              create(
+                                "secret",
+                                key,
+                                value,
+                                visibleEnvironments.map((environment) => environment.value)
                               )
                             }
                           />
-                        </TableHead>
-                        <TableHead>
-                          <div className={styles.headLine}>
-                            Name
-                            {sortMenu}
-                          </div>
-                        </TableHead>
-                        {single ? (
-                          <TableHead>
-                            <div className={styles.headLine}>
-                              Value
-                              <Button
-                                variant="ghost"
-                                size="xs"
-                                icon="eye"
-                                onClick={() => setRevealAll(!revealAll)}
-                              >
-                                {revealAll ? "Hide values" : "Reveal all"}
-                              </Button>
-                              {activeEnvironment === "prod" && (
-                                <Badge tone="soft">
-                                  <Icon name="lock" />
-                                  Protected
-                                </Badge>
-                              )}
-                              <span className={styles.push}>
-                                {gate(
-                                  NEXT_PHASE,
-                                  <Button variant="ghost" size="xs" icon="history" disabled>
-                                    Commit history
-                                  </Button>
-                                )}
-                                {gate(
-                                  NEXT_PHASE,
-                                  <Button variant="ghost" size="xs" disabled>
-                                    <Icon icon={GroupIcon} />
-                                    Batch edit
-                                  </Button>
-                                )}
-                              </span>
-                            </div>
-                          </TableHead>
-                        ) : (
-                          visibleEnvironments.map((environment) => (
-                            <TableHead key={environment.value} className={styles.envHead}>
-                              <div className={styles.headLine}>{environmentMenu(environment)}</div>
-                            </TableHead>
-                          ))
                         )}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {scenario === "loading" &&
-                        Array.from({ length: 8 }, (_, index) => (
-                          <TableRow key={`skeleton-${index + 1}`}>
-                            <TableCell className={styles.iconCell}>
-                              <Skeleton width="var(--v4-size-icon)" height="var(--v4-size-icon)" />
-                            </TableCell>
-                            <TableCell colSpan={colSpan - 1}>
-                              <Skeleton
-                                width="var(--v4-size-text-min)"
-                                height="var(--v4-size-icon)"
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      {scenario !== "loading" && totalCount === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={colSpan} className={styles.emptyCell}>
-                            {emptyState}
-                          </TableCell>
-                        </TableRow>
-                      )}
-                      {scenario !== "loading" &&
-                        windowRows.map(([key, entries]) => {
-                          const first = entries[0];
-                          if (first.kind === "import")
-                            return (
-                              <ImportRow
-                                key={key}
-                                rowKey={key}
-                                entries={entries as Of<"import">[]}
-                                ctx={ctx}
-                                sourceSecrets={sourceSecrets}
-                                projectName={project}
-                              />
-                            );
-                          if (first.kind === "folder")
-                            return (
-                              <FolderRow
-                                key={key}
-                                rowKey={key}
-                                entries={entries as Of<"folder">[]}
-                                ctx={ctx}
-                                onOpen={() => navigate(`${path === "/" ? "" : path}/${first.name}`)}
-                                onEdit={(folder) =>
-                                  openDraft("folder", folder, [folder.environment])
-                                }
-                                onDelete={(folder) => setDeleting([folder])}
-                              />
-                            );
-                          if (first.kind === "secret")
-                            return (
-                              <SecretRow
-                                key={key}
-                                rowKey={key}
-                                entries={entries as Secret[]}
-                                ctx={ctx}
-                                revealAll={revealAll}
-                                handlers={handlers}
-                              />
-                            );
-                          return (
-                            <KindRow
-                              key={key}
-                              rowKey={key}
-                              kind={first.kind}
-                              entries={entries}
-                              ctx={ctx}
-                            />
-                          );
-                        })}
-                      {canQuickAdd && (
-                        <QuickAddRow
-                          multiple={!single}
-                          colSpan={single ? 1 : visibleEnvironments.length}
-                          existing={ordered
-                            .filter(([, entries]) => entries[0].kind === "secret")
-                            .map(([, entries]) => entries[0].name)}
-                          onCreate={(key, value) =>
-                            create(
-                              "secret",
-                              key,
-                              value,
-                              visibleEnvironments.map((environment) => environment.value)
-                            )
-                          }
-                        />
-                      )}
-                    </TableBody>
-                  </Table>
-                )}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
               </Card>
             </div>
           </PageGutter>
