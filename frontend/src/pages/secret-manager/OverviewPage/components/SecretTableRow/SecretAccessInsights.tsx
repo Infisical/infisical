@@ -933,16 +933,12 @@ export function SecretAccessInsights({
               </Empty>
             ) : (
               <Table containerClassName="overflow-auto">
-                <TableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
+                <TableHeader sticky>
                   <TableRow>
-                    <TableHead className="w-48 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
-                      Type
-                    </TableHead>
-                    <TableHead className="border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
-                      Name
-                    </TableHead>
+                    <TableHead className="w-48">Type</TableHead>
+                    <TableHead>Name</TableHead>
                     {canReadInsights && (
-                      <TableHead className="w-40 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
+                      <TableHead className="w-40">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span className="inline-flex items-center gap-1">
@@ -955,10 +951,7 @@ export function SecretAccessInsights({
                       </TableHead>
                     )}
                     {visibleColumns.map((col) => (
-                      <TableHead
-                        key={col.action}
-                        className="w-[100px] border-b-0 text-center shadow-[inset_0_-1px_0_var(--color-border)]"
-                      >
+                      <TableHead key={col.action} className="w-[100px] text-center">
                         {col.isLegacy ? (
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -977,7 +970,7 @@ export function SecretAccessInsights({
                         )}
                       </TableHead>
                     ))}
-                    <TableHead className="w-10 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]" />
+                    <TableHead className="w-10" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>

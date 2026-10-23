@@ -76,7 +76,7 @@ const ActorSecrets = ({ data }: SecretsProps) => {
         return (
           <div key={environment} className="flex flex-col gap-2">
             <div className="flex items-baseline gap-2">
-              <h3 className="text-sm font-medium">
+              <h3 className="font-alliance text-sm">
                 {environmentNames.get(environment) ?? environment}
               </h3>
               <span className="text-xs text-muted">{secrets.length} unused</span>
