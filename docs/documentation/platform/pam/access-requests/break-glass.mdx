@@ -1,0 +1,95 @@
+---
+title: "Break-glass access"
+sidebarTitle: "Break-glass access"
+description: "Let named responders grant themselves access in an emergency."
+---
+
+Break-glass access lets a named responder approve their own [access request](/documentation/platform/pam/access-requests/overview) when no approver is available, such as during an incident. Infisical notifies every approver that the responder skipped.
+
+Break-glass access doesn't give anyone permanent access. The responder still files a request with a reason, and still gets access only for the duration they requested. The only difference is that no approver approves the request.
+
+## Set up break-glass access
+
+A responder can only use break-glass access if two settings are turned on, and a different admin owns each one:
+
+- **On the account template:** A Product Admin turns on **Allow Break-Glass**, which decides which accounts allow break-glass access
+- **On the folder:** An Admin of the folder adds responders under **Break-Glass Users**, which decides who can use break-glass access
+
+If either setting is off, nobody can use break-glass access on the account.
+
+Before you start, [set up approval](/documentation/platform/pam/access-requests/overview#set-up-approval) on the account. The template must have **Require Approval** turned on, and the folder must have at least one approver.
+
+<Steps>
+  <Step>
+    As a [Product Admin](/documentation/platform/pam/concepts/access-control#product-membership), go to **Privileged Access Management** > **Account Templates**, open the template, and turn on **Allow Break-Glass**.
+  </Step>
+  <Step>
+    As an Admin of the folder, open the folder's **Approvals** tab and add users or groups under **Break-Glass Users**.
+  </Step>
+  <Step>
+    Select **Save Changes**.
+  </Step>
+</Steps>
+
+Break-glass users must already be members of the folder. Only users and groups can be break-glass users, so a machine identity or an [AI agent](/documentation/platform/pam/ai-agents/overview) can't use break-glass access.
+
+<Tip>
+  Add only your on-call responders as break-glass users, not everyone who uses the folder's accounts.
+</Tip>
+
+## Use break-glass access
+
+Break-glass access needs a reason of at least 10 characters that explains why the request can't wait for an approver. Infisical sends the reason to the approvers you skip and records it in the audit log.
+
+You can use break-glass access when you file a request, or later while the request is pending.
+
+<Tabs>
+  <Tab title="When you file the request">
+    <Steps>
+      <Step>
+        On the **Accounts** page, select the key icon on the account's row.
+      </Step>
+      <Step>
+        Turn on **Break glass**, then enter the **Reason** and the duration.
+      </Step>
+      <Step>
+        Select **Break glass**.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="While the request is pending">
+    <Steps>
+      <Step>
+        On the **Accounts** page, select the clock icon on the account's row.
+      </Step>
+      <Step>
+        Under **Break glass**, enter the **Reason** and select **Break glass**.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+You get the access that the request asked for. If you used break-glass access on a session request, you can launch sessions, and if you used it on a credential request, you can view the credential. The access expires at the end of the requested duration, an Admin of the folder can [revoke it](/documentation/platform/pam/access-requests/overview#revoke-access), and Infisical records your sessions like any other session.
+
+## What Infisical records
+
+Each time someone uses break-glass access, Infisical does the following:
+
+- Emails each approver who was skipped, with the reason
+- Notifies the skipped approvers in Infisical
+- Sends the folder's **Break-Glass Used** [alert](/documentation/platform/pam/access-requests/overview#alerts), if the folder has one
+- Adds a **PAM Access Policy Bypassed** event to the [audit log](/documentation/platform/pam/auditing) with the reason, the account, the folder, and the number of approvers skipped
+- Shows a **Break-glass** badge on the request in the folder's **Access Requests** list
+
+To review every use of break-glass access, filter the audit log for **PAM Access Policy Bypassed**.
+
+## Frequently asked questions
+
+<AccordionGroup>
+  <Accordion title="Can I use break-glass access on someone else's request?">
+    No. Break-glass access only approves your own pending request.
+  </Accordion>
+  <Accordion title="What happens if I'm removed from the folder while my request is pending?">
+    If you're removed from the folder or from its **Break-Glass Users**, you can't use break-glass access on the request.
+  </Accordion>
+</AccordionGroup>

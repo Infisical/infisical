@@ -1,90 +1,67 @@
 ---
 title: "PAM account templates"
 sidebarTitle: "Account templates"
-description: "Define the rules that apply when someone connects to an account."
+description: "Set the rules for connecting to the accounts that use a template."
 ---
 
-Templates define how [accounts](/documentation/platform/pam/accounts/overview) behave when someone connects — session duration limits, MFA requirements, which [Gateway](/documentation/platform/gateways/overview) to use, where to store [session recordings](/documentation/platform/pam/sessions/session-recording), and more.
+An account template sets the rules for connecting to the [accounts](/documentation/platform/pam/accounts/overview) that use it, such as the maximum session length and whether access needs approval. It also sets which [gateway](/documentation/platform/gateways/overview) the accounts connect through and where Infisical stores their [session recordings](/documentation/platform/pam/sessions/session-recording).
 
-**Every account requires a template.** When you create an account, you select a template, and the account inherits everything from it. Change the template later, and every account using it updates automatically.
-
-Infisical provides **default templates** for each account type with sensible defaults, so you can start adding accounts right away. Create custom templates when you need different rules — for example, stricter session limits for production or a specific Gateway for a network segment.
+Every account uses one template, and the template's account type must match the account's type. When you change a template, the change applies to every account that uses it.
 
 ## Default templates
 
-When you first use PAM, default templates are available for each account type. Each has sensible defaults like 1-hour session duration.
+Infisical creates a template for each account type when your organization first opens PAM. The default templates have no policies turned on, so sessions on their accounts last up to one hour, and Infisical stores the recordings in its internal database.
 
-If the defaults work for you, you can skip straight to [adding accounts](/documentation/platform/pam/accounts/overview).
+Windows and Windows AD accounts need recordings stored in AWS S3, so before anyone can launch sessions on them, change the default Windows templates to use [external storage](/documentation/platform/pam/sessions/external-storage).
 
-## Creating a custom template
+If an account type has no template, such as a type added after your organization started using PAM, the **Account Templates** page shows a message. Select **Add default templates** in the message to create the missing templates.
 
-If you need different rules — say, 4-hour sessions with MFA for production — create a custom template.
+## Create a template
+
+Create your own template when some accounts need different rules, such as production databases that need approval before anyone connects.
 
 <Steps>
-  <Step title="Navigate to Account Templates">
-    Go to **Privileged Access Management → Account Templates** and select **Create Template**.
+  <Step>
+    Go to **Privileged Access Management** > **Account Templates** and select **Create Template**.
   </Step>
-  <Step title="Set the basics">
-    | Field | Description |
-    |-------|-------------|
-    | **Name** | A descriptive name (e.g., `prod-postgres`) |
-    | **Type** | The account type (PostgreSQL, MySQL, SSH, etc.) |
-    | **Description** | Optional context about when to use this template |
+  <Step>
+    Enter a **Name**, choose the account **Type**, and optionally enter a **Description**, then select **Create Template**.
   </Step>
-  <Step title="Configure policies">
-    | Option | What it does |
-    |--------|--------------|
-    | **Require Approval** | Users must request and receive approval before launching a session or [viewing credentials](/documentation/platform/pam/accounts/overview#viewing-credentials) |
-    | **Allow Break-Glass** | Named responders can clear their own request without an approver, for emergencies |
-    | **Require MFA** | Users must re-authenticate with MFA before connecting |
-    | **Require Reason** | A reason must be provided before connecting |
-    | **Max Session Duration** | How long someone can stay connected (in seconds) |
-    | **Command Blocking** | Regex patterns for commands to reject (one per line). Currently SSH only. |
-
-    <Note>
-      **Require Approval** gates sessions and credential reveals with one switch, but they are approved separately: a session request never reveals the credential, and a credential request never launches a session. A member who needs both files both.
-    </Note>
-
-    <Note>
-      **Allow Break-Glass** needs **Require Approval** on the same template, and it stays off until a Folder Admin names the responders on the folder's **Approvals** tab. Break-glass clears whichever request it is used on, so a session request grants a session and a credential request grants a reveal. See [break-glass access](/documentation/platform/pam/access-requests/overview#break-glass-access).
-    </Note>
-
-    <Note>
-      **Require MFA** puts an account out of reach of [AI agents](/documentation/platform/pam/ai-agents/overview), which cannot complete the challenge yet, and of [machine identities](/documentation/platform/identities/machine-identities), which never can. For accounts an agent needs, use a template without it and gate access with [approvals](/documentation/platform/pam/access-requests/overview) instead.
-    </Note>
+  <Step>
+    On the template's **General** tab, set the [policies](#policies) and [system settings](#system-settings) that the accounts need.
   </Step>
-  <Step title="Configure system settings">
-    | Option | What it does |
-    |--------|--------------|
-    | **Gateway** | Default Gateway for connections (can be overridden per account) |
-    | **Storage Backend** | Where to store session recordings (internal or your S3 bucket) |
-    | **Session Log Masking** | Regex patterns for content to mask in recordings (one per line) |
-  </Step>
-  <Step title="Save">
-    Select **Create**. The template is now available when adding accounts.
+  <Step>
+    Select **Save Changes**.
   </Step>
 </Steps>
 
-## How templates work with accounts
+To use the template, choose it when you [add an account](/documentation/platform/pam/accounts/overview).
 
-Every account references a template. The account inherits everything from that template — session limits, MFA requirements, Gateway, recording storage, and so on.
+## Policies
 
-This means you can:
-- Apply the same rules to many accounts by having them use the same template
-- Change rules for all those accounts at once by editing the template
-- Have different accounts in the same folder use different templates (if they need different rules)
+| Policy | What it does |
+| --- | --- |
+| **Require Approval** | Users must request access, and an approver must approve the request, before they can launch a session or view the account's credentials (see [Access requests](/documentation/platform/pam/access-requests/overview)) |
+| **Allow Break-Glass** | Named responders can approve their own access requests in an emergency (see [Break-glass access](/documentation/platform/pam/access-requests/break-glass)) |
+| **Require MFA** | Users must complete an MFA challenge before they connect |
+| **Require Reason** | Users must give a reason before they connect |
+| **Max Session Duration** | Infisical ends the session after this many seconds (60 to 86,400, or 900 to 3,600 for AWS IAM) |
+| **Command Blocking** | Infisical rejects commands or SQL statements that match one of these regular expressions (SSH, Snowflake, and ClickHouse only) |
 
-Some options like Gateway can be overridden at the account level when needed.
+**Allow Break-Glass** only works together with **Require Approval**. If you turn off **Require Approval**, Infisical also turns off **Allow Break-Glass**.
 
-## Next steps
+Machine identities and [AI agents](/documentation/platform/pam/ai-agents/overview) can't complete an MFA challenge, so they can't connect to accounts whose template has **Require MFA** on. If an agent needs an account, use **Require Approval** instead.
 
-With templates set up, you're ready to add accounts to your [folders](/documentation/platform/pam/folders/overview).
+## System settings
 
-<CardGroup cols={2}>
-  <Card title="PostgreSQL Accounts" icon="database" href="/documentation/platform/pam/accounts/postgresql">
-    Add PostgreSQL database accounts.
-  </Card>
-  <Card title="SSH Accounts" icon="terminal" href="/documentation/platform/pam/accounts/ssh">
-    Add SSH server accounts.
-  </Card>
-</CardGroup>
+| Setting | What it does |
+| --- | --- |
+| **Gateway** | The gateway that the accounts connect through |
+| **Storage backend** | Where Infisical stores session recordings: **Internal Database** or **S3 Bucket** (see [External storage](/documentation/platform/pam/sessions/external-storage)) |
+| **Session Log Masking** | Hides text that matches these patterns in session recordings |
+
+<Note>
+You can [override the gateway](/documentation/platform/pam/accounts/manage#override-the-templates-settings) for one account on the account's **Advanced** tab. For Windows and Windows AD accounts, you can also override the recording bucket there.
+</Note>
+
+The **General** tab also has settings for [credential rotation](/documentation/platform/pam/credential-rotation/overview) and [credential health](/documentation/platform/pam/credential-health/overview) checks, for account types that support them.

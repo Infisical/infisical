@@ -1,70 +1,43 @@
 ---
 title: "Auditing"
 sidebarTitle: "Auditing"
-description: "Track all activity across your PAM environment."
+description: "Track who accessed and changed what across PAM."
 ---
 
-PAM logs every action — who accessed what, who changed what, and when. This audit trail is essential for compliance reviews and incident investigation.
+Infisical adds an event to the audit log each time someone connects to an account, views a credential, or changes PAM's configuration. Use the audit log for access reviews and to trace what happened before and after an incident.
+
+The audit log records that something happened, such as a user starting a session on an account. To view what the user did during that session, use the [session recording](/documentation/platform/pam/sessions/session-recording).
+
+## Who can view the audit log
+
+What you can view depends on your [roles](/documentation/platform/pam/concepts/access-control):
+
+- With the **Admin** or **Auditor** role on a folder or account, you can view the events for that folder or account, including the events for every account in the folder
+- With the **Product Admin** role, you can view the events that don't belong to a folder or account, such as changes to templates and product members
+
+## View the audit log
+
+Go to **Privileged Access Management** > **Audit Logs**. The audit log shows the newest events first.
+
+Each event names the actor, the action, and the folder or account it affected, along with when it happened. If the actor was a [machine identity](/documentation/platform/identities/machine-identities), the event shows **Machine Identity** in place of an email address. When an [AI agent](/documentation/platform/pam/ai-agents/overview) connects to an account, Infisical records the event under the user or machine identity that started the agent.
+
+To filter events by date, event type, or actor, check out [Filtering audit logs](/documentation/platform/audit-logs#filtering-audit-logs). For filters that answer common PAM questions, such as who accessed an account, check out [Common filters](/documentation/platform/audit-logs#privileged-access-manager).
 
 ## What gets logged
 
 | Category | Events |
-|----------|--------|
-| **Sessions** | Session started, session ended, session terminated |
-| **Accounts** | Account created, updated, deleted |
-| **Folders** | Folder created, updated, deleted, [joined as Admin by an organization Admin](/documentation/platform/pam/folders/overview#managing-access) |
-| **Templates** | Template created, updated, deleted |
-| **Memberships** | Membership added, updated, removed |
-| **Product Access** | Product member added, removed, role changed |
-| **[Access requests](/documentation/platform/pam/access-requests/overview)** | Request filed, reviewed, revoked, approval policy bypassed |
+| --- | --- |
+| Sessions | Start PAM Session, End PAM Session, Terminate PAM Session, Access PAM Account |
+| Credentials | View PAM Account Credentials, Rotate PAM Account Credentials, Set PAM Account Rotation Account |
+| Accounts | Create PAM Account, Update PAM Account, Delete PAM Account, Create PAM Account SSH CA |
+| Folders | Create PAM Folder, Update PAM Folder, Delete PAM Folder, Org admin accessed PAM folder |
+| Templates | Create PAM Account Template, Update PAM Account Template, Delete PAM Account Template |
+| Memberships | Add, Update, and Remove PAM Product Member, PAM Folder Member, and PAM Account Member |
+| [Access requests](/documentation/platform/pam/access-requests/overview) | Create PAM Access Request, Review PAM Access Request, Revoke PAM Access Grant, Update PAM Approval Configuration, PAM Access Policy Bypassed |
+| [Discovery](/documentation/platform/pam/discovery/overview) | Create, Update, and Delete PAM Discovery Source, Run PAM Discovery Scan, Import PAM Discovered Account |
 
-Each event includes:
-- **Timestamp** — when it happened
-- **Actor** — who did it: a user (name, email, IP address) or a [machine identity](/documentation/platform/identities/machine-identities), named as it's named in your organization
-- **Action** — what was done
-- **Target** — what was affected
-- **Details** — relevant context (e.g., what changed)
-
-An identity has no email address, so its events show **Machine Identity** where a person's email would be. Everything an [AI agent](/documentation/platform/pam/ai-agents/overview) does is logged the same way a person's activity is.
-
-## Viewing audit logs
-
-1. Go to **Privileged Access Management → Audit Logs**
-2. Browse the log (newest first) or use filters
-
-## Audit logs vs session recordings
-
-These are complementary:
-
-**Audit logs** track metadata — who accessed what [account](/documentation/platform/pam/accounts/overview), when, from where. They tell you *that* something happened.
-
-**[Session recordings](/documentation/platform/pam/sessions/session-recording)** capture content — the actual queries and commands. They tell you *what* was done during the session.
-
-For a complete picture, you need both. The audit log tells you Alice accessed the orders-db at 2pm; the session recording shows you exactly what queries she ran.
+To review every use of [break-glass access](/documentation/platform/pam/access-requests/break-glass), filter for **PAM Access Policy Bypassed**. Each of these events records the reason the user gave, the account and folder, and how many approvers were skipped.
 
 ## Retention
 
-Audit logs are retained according to your organization's policy. Events are immutable — they can't be modified or deleted.
-
-## Common use cases
-
-**Access reviews** — Filter by date range to see who accessed what during a specific period.
-
-**Incident investigation** — Search for a specific account or user to trace actions before or after an incident.
-
-**Change tracking** — Filter by event type to see configuration changes (template updates, membership changes).
-
-**Activity reports** — Filter by actor to see everything a specific user or machine identity did.
-
-**Break-glass review**: Filter for **PAM Access Policy Bypassed** to see every grant that skipped an approver, with the reason given. Each entry names the account, the folder, and how many approvers were skipped.
-
-## Next steps
-
-<CardGroup cols={2}>
-  <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
-    View session recordings for detailed activity.
-  </Card>
-  <Card title="Architecture" icon="network" href="/documentation/platform/pam/architecture">
-    Understand how PAM works under the hood.
-  </Card>
-</CardGroup>
+How long Infisical keeps audit log events depends on your [plan](https://infisical.com/pricing). To keep events for longer, send them to your own logging system with an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams).
