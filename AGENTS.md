@@ -36,6 +36,12 @@ Pickers for entities a user may need to create first (app connections, gateways,
 - When creating a pull request, use and fully complete the repository's
   `.github/pull_request_template.md` template.
 
+## Cursor Cloud specific instructions
+
+Host Node for this environment is 26.11.1 at `/usr/local/bin`. Put that directory first on `PATH`. `/exec-daemon/node` is Node 22, and the backend requires Node 26.
+
+The dev app is the Docker Compose stack from `docker-compose.dev.yml`: Postgres, Redis, Mailhog, the backend, the Vite frontend, and nginx. Use http://localhost:8080. If `.env` is missing, copy `.env.dev.example`. `make test-api-e2e` drops the schema of whichever database `.env.test` points at, so use the throwaway stack from `make up-test-suite-containers`.
+
 ## Workflow Guardrails
 
 - Do not reformat existing code as incidental cleanup. Preserve the repository's current formatting unless a review agent, CI check, or user explicitly asks for a formatting change.
