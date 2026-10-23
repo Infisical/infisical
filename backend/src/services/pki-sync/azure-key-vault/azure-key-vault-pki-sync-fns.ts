@@ -353,14 +353,10 @@ export const azureKeyVaultPkiSyncFactory = ({
 
     const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
     const syncRecordsByCertId = new Map<string, TCertificateSyncs>();
-    const syncRecordsByExternalId = new Map<string, TCertificateSyncs>();
 
     existingSyncRecords.forEach((record: TCertificateSyncs) => {
       if (record.certificateId) {
         syncRecordsByCertId.set(record.certificateId, record);
-      }
-      if (record.externalIdentifier) {
-        syncRecordsByExternalId.set(record.externalIdentifier, record);
       }
     });
 
