@@ -230,6 +230,15 @@ export const agentVaultPersonalValueServiceFactory = ({
       };
     });
 
+    // Read off the stored text, the way resolve reads it, never off the request.
+    const referencedByField = new Map<string, string[]>(
+      sealed.map(({ field, stored }) => [
+        field,
+        [...new Set(findStoredVariableIds(stored))].filter((variableId) => variableIds.has(variableId))
+      ])
+    );
+    const referenced = [...new Set([...referencedByField.values()].flat())];
+
     const write = () =>
       agentVaultPersonalValueDAL.transaction(async (tx) => {
         const current = await agentVaultServiceDAL.lockForPersonalValues(service.id, tx);
@@ -253,6 +262,15 @@ export const agentVaultPersonalValueServiceFactory = ({
             : [];
         if (!grants.length && !adminRoles.length) {
           throw new NotFoundError({ message: `Service with ID '${dto.serviceId}' not found` });
+        }
+
+        // Before the values: a variable delete locks the variable and then deletes values.
+        const present = await agentVaultVariableDAL.lockForReference(
+          { projectId: dto.projectId, owner, variableIds: referenced },
+          tx
+        );
+        if (present.length !== referenced.length) {
+          throw new BadRequestError({ message: VARIABLE_DELETED_DURING_SAVE_MESSAGE });
         }
 
         // A field left out keeps its saved value, so a member adds a newly required field without retyping the rest.
@@ -280,24 +298,13 @@ export const agentVaultPersonalValueServiceFactory = ({
           tx
         );
 
-        // Read off the stored text, the way resolve reads it, never off the request.
-        const referenceRows: TAgentVaultPersonalValueReferencesInsert[] = sealed.flatMap(({ field, stored }) => {
-          const personalValueId = saved.find((row) => row.field === field)!.id;
-          return [...new Set(findStoredVariableIds(stored))]
-            .filter((variableId) => variableIds.has(variableId))
-            .map((variableId) => ({ personalValueId, variableId }));
-        });
-        if (referenceRows.length) {
-          const referenced = [...new Set(referenceRows.map((row) => row.variableId))];
-          const present = await agentVaultVariableDAL.lockForReference(
-            { projectId: dto.projectId, owner, variableIds: referenced },
-            tx
-          );
-          if (present.length !== referenced.length) {
-            throw new BadRequestError({ message: VARIABLE_DELETED_DURING_SAVE_MESSAGE });
-          }
-          await agentVaultPersonalValueReferenceDAL.insertMany(referenceRows, tx);
-        }
+        const referenceRows: TAgentVaultPersonalValueReferencesInsert[] = saved.flatMap((row) =>
+          (referencedByField.get(row.field) ?? []).map((variableId) => ({
+            personalValueId: row.id,
+            variableId
+          }))
+        );
+        if (referenceRows.length) await agentVaultPersonalValueReferenceDAL.insertMany(referenceRows, tx);
 
         const [projected] = await loadServices(
           { projectId: dto.projectId, owner, accessBundleIds: [service.accessBundleId], serviceId: service.id },

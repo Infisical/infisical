@@ -2543,6 +2543,54 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("deleting a personal variable while its owner saves values that use it doesn't deadlock", async () => {
+      const bundle = await createAccessBundle("mp-variable-vs-save");
+      const service = await createService(bundle.id, {
+        name: "sentry",
+        hostPattern: "sentry-deadlock.example.com",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+
+      const member = await createMemberIdentity(`mp-variable-vs-save-${Date.now()}`);
+      try {
+        expect((await inject("POST", membersUrl(bundle.id), { machineIdentityIds: [member.id] })).statusCode).toBe(200);
+        const created = await member.as("POST", variablesUrl, { scope: "personal", key: "SENTRY_DSN", value: "s" });
+        expect(created.statusCode).toBe(200);
+        const variableId = (JSON.parse(created.payload) as { variable: { id: string } }).variable.id;
+        expect(
+          (await setValues(member.as, bundle.id, service.id, { "credential-value": "{{SENTRY_DSN}}" })).statusCode
+        ).toBe(200);
+
+        // What a delete does once it finds the service out of the owner's reach: lock the variable, delete their
+        // values there, then the variable. Meanwhile the save replaces the value that holds the reference.
+        const trx = await testDb.transaction();
+        let save: ReturnType<typeof inject> | undefined;
+        try {
+          const { rows } = await trx.raw("select pg_backend_pid() as pid");
+          await trx("agent_vault_variables").where({ id: variableId }).forUpdate().first();
+
+          save = setValues(member.as, bundle.id, service.id, { "credential-value": "token {{SENTRY_DSN}}" });
+          await waitUntilBlockedBy(rows[0].pid);
+          await trx("agent_vault_personal_values").where({ identityId: member.id, serviceId: service.id }).delete();
+          await trx("agent_vault_variables").where({ id: variableId }).delete();
+          await trx.commit();
+
+          const res = await save;
+          expect(res.statusCode).toBe(400);
+          expect(JSON.parse(res.payload).message).toBe(
+            "A variable one of your values uses was deleted while it was being saved. Check its variable references and save again."
+          );
+        } catch (err) {
+          if (!trx.isCompleted()) await trx.rollback();
+          await save?.catch(() => undefined);
+          throw err;
+        }
+        expect(await testDb("agent_vault_personal_values").where({ identityId: member.id })).toHaveLength(0);
+      } finally {
+        await member.cleanup();
+      }
+    });
+
     test("until a member sets up their half, resolve sends no credential, not the admin's half", async () => {
       const bundle = await createAccessBundle("mp-half");
       await createService(bundle.id, {

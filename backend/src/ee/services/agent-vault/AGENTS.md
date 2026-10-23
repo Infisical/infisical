@@ -305,8 +305,10 @@ reference.
   bundles the owner still reaches.
 - Personal variables follow the global variables' reference rules: sealed text names them by id, a reference row
   per personal value (`agent_vault_personal_value_references`, a deferred foreign key), the delete takes the variable
-  row `FOR UPDATE` and a personal values save takes the rows it references `FOR SHARE`. Used By on a variable reads
-  both reference tables; any one variable only ever appears in one of them.
+  row `FOR UPDATE` and a personal values save takes the rows it references `FOR SHARE`. The save takes them before
+  its own value rows, because a delete on a bundle the owner no longer reaches goes on to delete values, so the
+  other order deadlocks. Used By on a variable reads both reference tables; any one variable only ever appears in
+  one of them.
 - **The API calls them personal values**, the UI's word: a sub-resource of the service
   (`PATCH`/`DELETE .../services/:serviceId/personal-values`), always the caller's own, with no collection route.
   Reads ride along: the bundle read puts the caller's status on each service (`personalValues`, null when nothing
