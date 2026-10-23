@@ -293,6 +293,8 @@ export const orgServiceFactory = ({
 
   // Everyone who reaches the org: direct members with the groups they also belong to, then users whose only
   // path in is a group. Group access is read for direct members too, so the list can say how each user got in.
+  // Group names and roles are group metadata, so they are only returned to callers who can read groups; the
+  // member list itself only needs member read.
   const listOrgUserAccess = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TFindAllOrgMembersDTO) => {
     const { permission } = await permissionService.getOrgPermission({
       actor,
@@ -304,6 +306,7 @@ export const orgServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
+    const canReadGroups = permission.can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
 
     const [members, groupAccess] = await Promise.all([
       orgDAL.findAllOrgMembers(orgId),
@@ -319,17 +322,18 @@ export const orgServiceFactory = ({
       groupsByUserId.set(user.id, groups);
       if (!directUserIds.has(user.id)) groupOnlyUsers.set(user.id, user);
     });
+    const groupsFor = (userId: string) => (canReadGroups ? (groupsByUserId.get(userId) ?? []) : []);
 
     return [
       ...members.map(({ user, ...membership }) => ({
         user,
         membership,
-        groups: groupsByUserId.get(user.id) ?? []
+        groups: groupsFor(user.id)
       })),
       ...[...groupOnlyUsers.values()].map((user) => ({
         user,
         membership: null,
-        groups: groupsByUserId.get(user.id) ?? []
+        groups: groupsFor(user.id)
       }))
     ];
   };
