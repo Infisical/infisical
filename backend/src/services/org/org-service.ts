@@ -291,10 +291,7 @@ export const orgServiceFactory = ({
     return members;
   };
 
-  // Everyone who reaches the org: direct members with the groups they also belong to, then users whose only
-  // path in is a group. Group access is read for direct members too, so the list can say how each user got in.
-  // Group names and roles are group metadata, so they are only returned to callers who can read groups; the
-  // member list itself only needs member read.
+  // Group names and roles only go to callers who can read groups; the list itself just needs member read.
   const listOrgUserAccess = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TFindAllOrgMembersDTO) => {
     const { permission } = await permissionService.getOrgPermission({
       actor,
@@ -313,34 +310,19 @@ export const orgServiceFactory = ({
       orgDAL.findAllOrgGroupUserAccess(orgId)
     ]);
 
-    type TGroupAccess = { id: string; name: string; slug: string; roles: { role: string; roleId: string | null }[] };
-    const groupsByUserId = new Map<string, TGroupAccess[]>();
-    const groupOnlyUsers = new Map<string, (typeof groupAccess)[number]["user"]>();
-    const directUserIds = new Set(members.map((member) => member.user.id));
-    groupAccess.forEach(({ user, group }) => {
-      const groups = groupsByUserId.get(user.id) ?? [];
-      let entry = groups.find((el) => el.id === group.id);
-      if (!entry) {
-        entry = { id: group.id, name: group.name, slug: group.slug, roles: [] };
-        groups.push(entry);
-      }
-      entry.roles.push({ role: group.role, roleId: group.roleId ?? null });
-      groupsByUserId.set(user.id, groups);
-      if (!directUserIds.has(user.id)) groupOnlyUsers.set(user.id, user);
-    });
+    const groupsByUserId = new Map(groupAccess.map(({ user, groups }) => [user.id, groups]));
     const groupsFor = (userId: string) => (canReadGroups ? (groupsByUserId.get(userId) ?? []) : []);
+    const directUserIds = new Set(members.map((member) => member.user.id));
 
     return [
       ...members.map(({ user, ...membership }) => ({
         user,
-        membership,
+        membership: { ...membership, status: membership.status || OrgMembershipStatus.Accepted },
         groups: groupsFor(user.id)
       })),
-      ...[...groupOnlyUsers.values()].map((user) => ({
-        user,
-        membership: null,
-        groups: groupsFor(user.id)
-      }))
+      ...groupAccess
+        .filter(({ user }) => !directUserIds.has(user.id))
+        .map(({ user }) => ({ user, membership: null, groups: groupsFor(user.id) }))
     ];
   };
 

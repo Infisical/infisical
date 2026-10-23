@@ -119,6 +119,8 @@ export const OrgMembersSection = () => {
   };
 
   const { data: members = [] } = useGetOrgUserAccess(orgId);
+  const membersToRemove = (popUp.removeMembers.data?.selectedOrgMemberships ??
+    []) as TOrgUserAccess[];
 
   const handleRemoveMembers = async (selectedMembers: TOrgUserAccess[]) => {
     await deleteBatchMutateAsync({
@@ -252,50 +254,46 @@ export const OrgMembersSection = () => {
         description="This action is irreversible."
         onOpenChange={(isOpen) => handlePopUpToggle("removeMembers", isOpen)}
         confirmKey="confirm"
-        onConfirm={() =>
-          handleRemoveMembers(popUp.removeMembers.data.selectedOrgMemberships as TOrgUserAccess[])
-        }
+        onConfirm={() => handleRemoveMembers(membersToRemove)}
         confirmLabel="Remove"
       >
         <div className="text-sm text-muted">
           The following members will be removed:
           <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-border-control bg-danger/10 p-4 pl-8 text-sm text-danger">
             <ul className="list-disc">
-              {(popUp.removeMembers.data?.selectedOrgMemberships as TOrgUserAccess[])?.map(
-                (member) => {
-                  const email =
-                    member.user.email ?? member.user.username ?? member.membership?.inviteEmail;
-                  return (
-                    <li key={member.user.id}>
-                      <div className="flex items-center">
-                        <p className={userId === member.user.id ? "line-through" : ""}>
-                          {member.user.firstName || member.user.lastName ? (
-                            <>
-                              {`${`${member.user.firstName ?? ""} ${member.user.lastName ?? ""}`.trim()} `}
-                              (<span className="break-all">{email}</span>)
-                            </>
-                          ) : (
-                            <span className="break-all">{email}</span>
-                          )}{" "}
-                        </p>
-                        {userId === member.user.id && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge variant="danger" className="ml-2">
-                                <BanIcon />
-                                Ignored
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              You cannot remove yourself from this organization
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                    </li>
-                  );
-                }
-              )}
+              {membersToRemove.map((member) => {
+                const email =
+                  member.user.email ?? member.user.username ?? member.membership?.inviteEmail;
+                return (
+                  <li key={member.user.id}>
+                    <div className="flex items-center">
+                      <p className={userId === member.user.id ? "line-through" : ""}>
+                        {member.user.firstName || member.user.lastName ? (
+                          <>
+                            {`${`${member.user.firstName ?? ""} ${member.user.lastName ?? ""}`.trim()} `}
+                            (<span className="break-all">{email}</span>)
+                          </>
+                        ) : (
+                          <span className="break-all">{email}</span>
+                        )}{" "}
+                      </p>
+                      {userId === member.user.id && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="danger" className="ml-2">
+                              <BanIcon />
+                              Ignored
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            You cannot remove yourself from this organization
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </div>

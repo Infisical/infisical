@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { UsersIcon, XIcon } from "lucide-react";
 
@@ -16,27 +17,17 @@ type Props = {
   groups: TOrgUserAccessGroup[];
   hasDirectAccess: boolean;
   getRoleName: (role: TOrgUserAccessGroupRole) => string;
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-  keepFocusOnClose: boolean;
 };
 
-// Open state lives in the table so opening one row's popover closes any other.
-export const GroupAccessPopover = ({
-  orgId,
-  groups,
-  hasDirectAccess,
-  getRoleName,
-  isOpen,
-  onOpenChange,
-  keepFocusOnClose
-}: Props) => {
+export const GroupAccessPopover = ({ orgId, groups, hasDirectAccess, getRoleName }: Props) => {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <Popover open={isOpen} onOpenChange={onOpenChange}>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label={`Show the ${groups.length} ${groups.length === 1 ? "group" : "groups"} granting access`}
+          aria-label="Show groups granting access"
           className="-mx-1.5 flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-foreground transition-colors hover:bg-foreground/10 data-[state=open]:bg-foreground/10"
           onClick={(e) => e.stopPropagation()}
         >
@@ -48,9 +39,6 @@ export const GroupAccessPopover = ({
         align="start"
         className="flex w-80 flex-col gap-3"
         onClick={(e) => e.stopPropagation()}
-        onCloseAutoFocus={(e) => {
-          if (keepFocusOnClose) e.preventDefault();
-        }}
       >
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium">Access Details</p>
@@ -58,7 +46,7 @@ export const GroupAccessPopover = ({
             variant="ghost-muted"
             size="2xs"
             aria-label="Close"
-            onClick={() => onOpenChange(false)}
+            onClick={() => setIsOpen(false)}
           >
             <XIcon />
           </IconButton>
@@ -79,7 +67,7 @@ export const GroupAccessPopover = ({
               <div className="flex shrink-0 items-center gap-1.5">
                 {group.roles.map((role) => (
                   <Badge
-                    key={`${group.id}-${role.roleId ?? role.role}`}
+                    key={role.roleId ?? role.role}
                     variant="neutral"
                     isTruncatable
                     className="max-w-[8rem]"

@@ -134,7 +134,6 @@ export const OrgMembersTable = ({
   const { mutateAsync: updateOrgMembership } = useUpdateOrgMembership();
   const { mutateAsync: addUsersToOrg, isPending: isInviteDirectMemberPending } = useAddUsersToOrg();
   const [resendInviteId, setResendInviteId] = useState<string | null>(null);
-  const [openGroupPopoverUserId, setOpenGroupPopoverUserId] = useState<string | null>(null);
 
   const onRoleChange = async (membershipId: string, role: string) => {
     if (!currentOrg?.id) return;
@@ -186,9 +185,7 @@ export const OrgMembersTable = ({
   const onInviteAsDirectMember = async (username: string) => {
     if (!currentOrg?.id) return;
 
-    const defaultRole = roles
-      ? findOrgMembershipRole(roles, currentOrg.defaultMembershipRole)
-      : undefined;
+    const defaultRole = findOrgMembershipRole(roles ?? [], currentOrg.defaultMembershipRole);
 
     const { data } = await addUsersToOrg({
       organizationId: currentOrg.id,
@@ -222,18 +219,21 @@ export const OrgMembersTable = ({
     [roles]
   );
 
-  const getRoleSlug = useCallback(
+  const findRole = useCallback(
     ({ role, roleId }: { role: string; roleId?: string | null }) =>
-      role === "custom" ? findRoleFromId(roleId ?? "")?.slug : role,
-    [findRoleFromId]
+      role === "custom" ? findRoleFromId(roleId ?? "") : (roles || []).find((r) => r.slug === role),
+    [roles, findRoleFromId]
+  );
+
+  const getRoleSlug = useCallback(
+    (roleRef: { role: string; roleId?: string | null }) =>
+      roleRef.role === "custom" ? findRole(roleRef)?.slug : roleRef.role,
+    [findRole]
   );
 
   const getRoleName = useCallback(
-    (roleRef: { role: string; roleId?: string | null }) => {
-      const slug = getRoleSlug(roleRef);
-      return (roles || []).find((role) => role.slug === slug)?.name ?? slug ?? roleRef.role;
-    },
-    [roles, getRoleSlug]
+    (roleRef: { role: string; roleId?: string | null }) => findRole(roleRef)?.name ?? roleRef.role,
+    [findRole]
   );
 
   const {
@@ -267,10 +267,11 @@ export const OrgMembersTable = ({
       members
         ?.filter(({ user: u, membership, groups }) => {
           if (filter.roles.length) {
-            const roleSlugs = [membership, ...groups.flatMap((group) => group.roles)].flatMap(
-              (roleRef) => (roleRef ? [getRoleSlug(roleRef)] : [])
-            );
-            if (!roleSlugs.some((slug) => slug && filter.roles.includes(slug))) {
+            const roleRefs = [
+              ...(membership ? [membership] : []),
+              ...groups.flatMap((g) => g.roles)
+            ];
+            if (!roleRefs.some((roleRef) => filter.roles.includes(getRoleSlug(roleRef) ?? ""))) {
               return false;
             }
           }
@@ -346,7 +347,7 @@ export const OrgMembersTable = ({
 
   const filteredMembersPage = filteredMembers.slice(offset, perPage * page);
 
-  // Only direct memberships can be acted on in bulk, so group-only rows never take part in selection.
+  // Bulk actions only work on direct memberships, so group-only rows can't be selected.
   const selectableMembershipIds = filteredMembersPage.flatMap(({ membership }) =>
     membership ? [membership.id] : []
   );
@@ -614,16 +615,6 @@ export const OrgMembersTable = ({
                             groups={groups}
                             hasDirectAccess={Boolean(membership)}
                             getRoleName={getRoleName}
-                            isOpen={openGroupPopoverUserId === u.id}
-                            keepFocusOnClose={
-                              openGroupPopoverUserId !== null && openGroupPopoverUserId !== u.id
-                            }
-                            onOpenChange={(isOpen) =>
-                              setOpenGroupPopoverUserId((current) => {
-                                if (isOpen) return u.id;
-                                return current === u.id ? null : current;
-                              })
-                            }
                           />
                         ) : (
                           <span className="text-muted">—</span>

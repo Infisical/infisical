@@ -1,5 +1,4 @@
 import { OrgMembershipRole } from "@app/db/schemas";
-import { alphaNumericNanoId } from "@app/lib/nanoid";
 
 import { createIsolatedOrgAndProject } from "../../testUtils/fixtures";
 import { addUsersToGroup, createOrgGroup } from "../../testUtils/groups";
@@ -35,7 +34,6 @@ describe("Organization user access listing", () => {
 
   beforeAll(async () => {
     ({ orgId, authToken, cleanup } = await createIsolatedOrgAndProject("user-access"));
-    const suffix = alphaNumericNanoId(8).toLowerCase();
 
     directUser = await createUser("direct");
     directAndGroupUser = await createUser("direct-and-group");
@@ -46,13 +44,13 @@ describe("Organization user access listing", () => {
 
     adminGroupId = await createOrgGroup({
       orgId,
-      name: `engineering-${suffix}`,
+      name: "engineering",
       role: OrgMembershipRole.Admin,
       temporaryRole: { role: OrgMembershipRole.Member, endsAt: new Date(Date.now() - HOUR_MS) }
     });
     memberGroupId = await createOrgGroup({
       orgId,
-      name: `qa-team-${suffix}`,
+      name: "qa-team",
       role: OrgMembershipRole.Member,
       temporaryRole: { role: OrgMembershipRole.Admin, endsAt: new Date(Date.now() + HOUR_MS) }
     });
@@ -61,7 +59,7 @@ describe("Organization user access listing", () => {
     await addUsersToGroup(memberGroupId, [groupOnlyUser.userId]);
   });
 
-  // Deleting the org cascades the groups and their membership rows.
+  // Deleting the org cascades the groups.
   afterAll(async () => {
     await deleteUsers([directUser.userId, directAndGroupUser.userId, groupOnlyUser.userId]);
     await cleanup();

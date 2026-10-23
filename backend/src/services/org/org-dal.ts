@@ -558,9 +558,8 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Every user that reaches the org through a group holding an org row, one row per (user, group, role).
-  // Covers users with no direct org row at all, which findAllOrgMembers never sees. Expired temporary
-  // roles are left out, matching isActiveRole, and a group always keeps at least one permanent role.
+  // Users with no direct org row never show up in findAllOrgMembers, so this is the only place they come
+  // from. Expired temporary roles are skipped to match isActiveRole.
   const findAllOrgGroupUserAccess = async (orgId: string) => {
     try {
       const rows = await db
@@ -581,7 +580,6 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(
           db.ref("id").withSchema(TableName.Users).as("userId"),
           db.ref("email").withSchema(TableName.Users),
-          db.ref("isEmailVerified").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
           db.ref("firstName").withSchema(TableName.Users),
           db.ref("lastName").withSchema(TableName.Users),
@@ -589,21 +587,33 @@ export const orgDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.Groups).as("groupId"),
           db.ref("name").withSchema(TableName.Groups).as("groupName"),
           db.ref("slug").withSchema(TableName.Groups).as("groupSlug"),
+          db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
           db.ref("role").withSchema(TableName.MembershipRole),
           db.ref("customRoleId").withSchema(TableName.MembershipRole).as("roleId")
         )
         .orderBy(`${TableName.Groups}.name`);
 
-      return rows.map(({ userId, email, isEmailVerified, username, firstName, lastName, superAdmin, ...group }) => ({
-        user: { id: userId, email, isEmailVerified, username, firstName, lastName, superAdmin },
-        group: {
-          id: group.groupId,
-          name: group.groupName,
-          slug: group.groupSlug,
-          role: group.role,
-          roleId: group.roleId
-        }
-      }));
+      return sqlNestRelationships({
+        data: rows,
+        key: "userId",
+        parentMapper: ({ userId, email, username, firstName, lastName, superAdmin }) => ({
+          user: { id: userId, email, username, firstName, lastName, superAdmin }
+        }),
+        childrenMapper: [
+          {
+            key: "groupId",
+            label: "groups" as const,
+            mapper: ({ groupId, groupName, groupSlug }) => ({ id: groupId, name: groupName, slug: groupSlug }),
+            childrenMapper: [
+              {
+                key: "membershipRoleId",
+                label: "roles" as const,
+                mapper: ({ role, roleId }) => ({ role, roleId: roleId ?? null })
+              }
+            ]
+          }
+        ]
+      });
     } catch (error) {
       throw new DatabaseError({ error, name: "Find all org group user access" });
     }

@@ -30,6 +30,24 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 import { integrationAuthPubSchema, SanitizedUserSchema } from "../sanitizedSchemas";
 
+const OrgMemberUserSchema = SanitizedUserSchema.pick({
+  username: true,
+  email: true,
+  firstName: true,
+  lastName: true,
+  id: true
+}).merge(z.object({ publicKey: z.string().nullable().optional(), superAdmin: z.boolean().nullish() }));
+
+const OrgUserAccessGroupSchema = GroupsSchema.pick({ id: true, name: true, slug: true }).extend({
+  roles: z
+    .object({
+      role: z.string().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupRole),
+      roleId: z.string().uuid().nullable().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupRoleId)
+    })
+    .array()
+    .describe(ORGANIZATIONS.LIST_USER_ACCESS.groupRoles)
+});
+
 const commaSeparatedEnumList = <T extends z.EnumLike>(enumObj: T) => {
   const values = Object.values(enumObj);
   return z
@@ -425,13 +443,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           users: OrgMembershipsSchema.merge(
             z.object({
-              user: SanitizedUserSchema.pick({
-                username: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                id: true
-              }).merge(z.object({ publicKey: z.string().nullable().optional(), superAdmin: z.boolean().nullish() }))
+              user: OrgMemberUserSchema
             })
           )
             .omit({ createdAt: true, updatedAt: true })
@@ -469,15 +481,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         200: z.object({
           users: z
             .object({
-              user: SanitizedUserSchema.pick({
-                username: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                id: true
-              })
-                .merge(z.object({ publicKey: z.string().nullable().optional(), superAdmin: z.boolean().nullish() }))
-                .describe(ORGANIZATIONS.LIST_USER_ACCESS.user),
+              user: OrgMemberUserSchema.describe(ORGANIZATIONS.LIST_USER_ACCESS.user),
               membership: OrgMembershipsSchema.pick({
                 id: true,
                 role: true,
@@ -490,21 +494,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
               })
                 .nullable()
                 .describe(ORGANIZATIONS.LIST_USER_ACCESS.membership),
-              groups: z
-                .object({
-                  id: z.string().uuid().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupId),
-                  name: z.string().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupName),
-                  slug: z.string().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupSlug),
-                  roles: z
-                    .object({
-                      role: z.string().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupRole),
-                      roleId: z.string().uuid().nullable().describe(ORGANIZATIONS.LIST_USER_ACCESS.groupRoleId)
-                    })
-                    .array()
-                    .describe(ORGANIZATIONS.LIST_USER_ACCESS.groupRoles)
-                })
-                .array()
-                .describe(ORGANIZATIONS.LIST_USER_ACCESS.groups)
+              groups: OrgUserAccessGroupSchema.array().describe(ORGANIZATIONS.LIST_USER_ACCESS.groups)
             })
             .array()
         })
@@ -519,16 +509,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
-
-      return {
-        users: users.map((el) => ({
-          ...el,
-          membership: el.membership && {
-            ...el.membership,
-            status: el.membership.status || OrgMembershipStatus.Accepted
-          }
-        }))
-      };
+      return { users };
     }
   });
 
