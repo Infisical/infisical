@@ -2411,9 +2411,12 @@ const OverviewPageContent = () => {
   const quickAddReservedKeys = useMemo(
     () => [
       ...mergedSecKeys,
-      ...pendingChanges.secrets.flatMap((change) =>
-        change.type === PendingAction.Update && change.newSecretName ? [change.newSecretName] : []
-      )
+      ...pendingChanges.secrets.flatMap((change) => {
+        if (change.type === PendingAction.Create) return [change.secretKey];
+        return change.type === PendingAction.Update && change.newSecretName
+          ? [change.newSecretName]
+          : [];
+      })
     ],
     [mergedSecKeys, pendingChanges.secrets]
   );
