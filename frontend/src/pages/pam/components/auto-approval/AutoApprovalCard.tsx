@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Dispatch, Fragment, SetStateAction, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link2, Plus, TriangleAlert, X } from "lucide-react";
 
@@ -46,7 +46,7 @@ type Props = {
   scope: ApprovalPolicyScope;
   scopeId: string;
   draft: TAutoApprovalDraft;
-  onChange: (draft: TAutoApprovalDraft) => void;
+  onChange: Dispatch<SetStateAction<TAutoApprovalDraft>>;
   showErrors: boolean;
   hasApprovers: boolean;
 };
@@ -125,11 +125,19 @@ export const AutoApprovalCard = ({
     const { data } = await refetch();
     const created = data?.connections.find((candidate) => candidate.id === connection.id);
     const subject = created?.subjects.find((candidate) => candidate.input);
-    if (!created || !subject || draft.inputs.length >= AUTO_APPROVAL_LIMITS.inputs) return;
-    onChange({
-      ...draft,
-      inputs: [...draft.inputs, { connectionId: created.id, subject: subject.id }]
-    });
+    if (!created || !subject) return;
+    // The draft may have changed during the refetch, so the field joins the latest one
+    onChange((latest) =>
+      latest.inputs.length >= AUTO_APPROVAL_LIMITS.inputs ||
+      latest.inputs.some(
+        (input) => input.connectionId === created.id && input.subject === subject.id
+      )
+        ? latest
+        : {
+            ...latest,
+            inputs: [...latest.inputs, { connectionId: created.id, subject: subject.id }]
+          }
+    );
   };
 
   let addInputBlocker: string | undefined;
