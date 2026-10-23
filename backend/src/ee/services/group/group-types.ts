@@ -1,12 +1,16 @@
 import { Knex } from "knex";
 
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { OrderByDirection, TGenericPermission } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -142,7 +146,9 @@ export type TAddIdentitiesToGroup = {
 export type TRemoveUsersFromGroupByUserIds = {
   group: { id: string; name: string; slug: string; orgId: string };
   userIds: string[];
-  userDAL: Pick<TUserDALFactory, "find" | "transaction">;
+  // The admin removing them, if any; SCIM and IdP group sync have none.
+  actorId?: string;
+  userDAL: Pick<TUserDALFactory, "find" | "findById" | "transaction">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "filterProjectsByUserMembership" | "delete">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "delete">;
@@ -151,6 +157,11 @@ export type TRemoveUsersFromGroupByUserIds = {
   shouldFailOnMissingMembers?: boolean;
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 };
 
 export type TRemoveIdentitiesFromGroup = {

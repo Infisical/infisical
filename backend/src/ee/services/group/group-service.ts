@@ -7,10 +7,15 @@ import {
   OrganizationActionScope,
   OrgMembershipRole,
   OrgMembershipStatus,
+  RESOURCE_SCOPE,
   TGroups,
   TRoles
 } from "@app/db/schemas";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
+import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
+import { terminatePamSessionsLosingGroupAccess } from "@app/ee/services/pam-session/pam-session-access-fns";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import {
   BadRequestError,
@@ -79,7 +84,7 @@ import { TIdentityGroupMembershipDALFactory } from "./identity-group-membership-
 import { TUserGroupMembershipDALFactory } from "./user-group-membership-dal";
 
 type TGroupServiceFactoryDep = {
-  userDAL: Pick<TUserDALFactory, "find" | "findOne" | "findUserEncKeyByUserIdsBatch" | "transaction">;
+  userDAL: Pick<TUserDALFactory, "find" | "findOne" | "findById" | "findUserEncKeyByUserIdsBatch" | "transaction">;
   identityDAL: Pick<TIdentityDALFactory, "findOne" | "find" | "transaction">;
   identityGroupMembershipDAL: Pick<
     TIdentityGroupMembershipDALFactory,
@@ -104,8 +109,8 @@ type TGroupServiceFactoryDep = {
     TMembershipGroupDALFactory,
     "find" | "findOne" | "create" | "getGroupById" | "deleteById" | "delete" | "findEffectiveInOrg"
   >;
-  membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
+  membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne" | "findResourceMembershipsForActors">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete" | "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership" | "countAllOrgMembers" | "findById">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
@@ -121,6 +126,9 @@ type TGroupServiceFactoryDep = {
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals" | "pruneOutOfScopeRecipients">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 };
 
 export type TGroupServiceFactory = ReturnType<typeof groupServiceFactory>;
@@ -144,8 +152,13 @@ export const groupServiceFactory = ({
   membershipRoleDAL,
   usageMeteringService,
   identityAccessTokenService,
-  alertChannelRecipientDAL
+  alertChannelRecipientDAL,
+  pamAccountDAL,
+  pamSessionDAL,
+  gatewayV2Service
 }: TGroupServiceFactoryDep) => {
+  const pamSessionDeps = { membershipDAL, membershipRoleDAL, pamAccountDAL, pamSessionDAL, userDAL, gatewayV2Service };
+
   const createGroup = async ({ name, slug, role, actor, actorId, actorAuthMethod, actorOrgId }: TCreateGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
@@ -517,13 +530,17 @@ export const groupServiceFactory = ({
   const unlinkGroupFromSubOrg = async ({
     groupId,
     groupMembershipId,
+    actorId,
     actorOrgId
   }: {
     groupId: string;
     groupMembershipId: string;
+    actorId: string;
     actorOrgId: string;
   }) => {
     const group = await groupDAL.findById(groupId);
+
+    let sendPamCancellations = () => {};
 
     await groupDAL.transaction(async (tx) => {
       // Fetch all group members (users and identities) in parallel
@@ -537,7 +554,16 @@ export const groupServiceFactory = ({
         { actorGroupId: groupId, scopeOrgId: actorOrgId, scope: AccessScope.Project },
         { tx }
       );
-      const membershipIdsToDelete = [...groupProjectMemberships.map((pm) => pm.id), groupMembershipId];
+      // Resource memberships (PAM folders and accounts, applications) keep granting access unless removed with them.
+      const groupResourceMemberships = await membershipGroupDAL.find(
+        { actorGroupId: groupId, scopeOrgId: actorOrgId, scope: RESOURCE_SCOPE },
+        { tx }
+      );
+      const membershipIdsToDelete = [
+        ...groupProjectMemberships.map((pm) => pm.id),
+        ...groupResourceMemberships.map((rm) => rm.id),
+        groupMembershipId
+      ];
 
       // Remaining linked groups in this sub-org (excluding the one we're unlinking)
       const remainingOrgGroupMemberships = await membershipGroupDAL.find(
@@ -647,7 +673,17 @@ export const groupServiceFactory = ({
       );
 
       await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ groupIds: [groupId] }, tx);
+
+      sendPamCancellations = await terminatePamSessionsLosingGroupAccess({
+        userIds: groupUserIds,
+        identityIds: groupIdentityIds,
+        actorId,
+        ...pamSessionDeps,
+        tx
+      });
     });
+
+    sendPamCancellations();
 
     return group;
   };
@@ -656,7 +692,15 @@ export const groupServiceFactory = ({
    * Delete a group owned by the current organization.
    * Ensures the group is not linked by any sub-organizations before deleting.
    */
-  const deleteOwnedGroup = async ({ groupId, actorOrgId }: { groupId: string; actorOrgId: string }) => {
+  const deleteOwnedGroup = async ({
+    groupId,
+    actorId,
+    actorOrgId
+  }: {
+    groupId: string;
+    actorId: string;
+    actorOrgId: string;
+  }) => {
     const referencingSubOrgs = await groupDAL.getGroupsReferencingGroup(groupId);
     if (referencingSubOrgs.length > 0) {
       const orgList = referencingSubOrgs.map((o) => `"${o.orgName}"`).join(", ");
@@ -665,12 +709,19 @@ export const groupServiceFactory = ({
       });
     }
 
-    return groupDAL.transaction(async (tx) => {
+    let sendPamCancellations = () => {};
+
+    const deletedGroup = await groupDAL.transaction(async (tx) => {
       const finalizeAlertRecipients = await prepareDeletedGroupAlertRecipientCleanup(
         { userGroupMembershipDAL, alertChannelRecipientDAL },
         groupId,
         tx
       );
+
+      const [groupUsers, groupIdentities] = await Promise.all([
+        userGroupMembershipDAL.find({ groupId }, { tx }),
+        identityGroupMembershipDAL.find({ groupId }, { tx })
+      ]);
 
       // must precede the delete: it cascades away the memberships the reap reads
       await reapDeletedGroupFolderGrants(
@@ -679,7 +730,7 @@ export const groupServiceFactory = ({
         tx
       );
 
-      const [deletedGroup] = await groupDAL.delete(
+      const [deleted] = await groupDAL.delete(
         {
           id: groupId,
           orgId: actorOrgId
@@ -689,8 +740,20 @@ export const groupServiceFactory = ({
 
       await finalizeAlertRecipients();
 
-      return deletedGroup;
+      sendPamCancellations = await terminatePamSessionsLosingGroupAccess({
+        userIds: groupUsers.map((m) => m.userId),
+        identityIds: groupIdentities.map((m) => m.identityId),
+        actorId,
+        ...pamSessionDeps,
+        tx
+      });
+
+      return deleted;
     });
+
+    sendPamCancellations();
+
+    return deletedGroup;
   };
 
   const deleteGroup = async ({ id, actor, actorId, actorAuthMethod, actorOrgId }: TDeleteGroupDTO) => {
@@ -745,6 +808,7 @@ export const groupServiceFactory = ({
       const unlinkedGroup = await unlinkGroupFromSubOrg({
         groupId: id,
         groupMembershipId: groupMembership.id,
+        actorId,
         actorOrgId
       });
       // Removing the group drops its members from any project it was on.
@@ -754,7 +818,7 @@ export const groupServiceFactory = ({
       return { group: unlinkedGroup, isUnlinked: true };
     }
 
-    const deletedGroup = await deleteOwnedGroup({ groupId: id, actorOrgId });
+    const deletedGroup = await deleteOwnedGroup({ groupId: id, actorId, actorOrgId });
     // Deleting the group drops its members from any project it was on.
     usageMeteringService.emit(actorOrgId, SecretIdentities.key);
     usageMeteringService.emit(actorOrgId, PamIdentities.key);
@@ -1289,16 +1353,18 @@ export const groupServiceFactory = ({
     const user = await userDAL.findOne({ username });
     if (!user) throw new NotFoundError({ message: `Failed to find user with username ${username}` });
 
-    const users = await removeUsersFromGroupByUserIds({
+    const { users, sendPamCancellations } = await removeUsersFromGroupByUserIds({
       group: groupMembership.group,
       userIds: [user.id],
-      userDAL,
+      actorId,
       userGroupMembershipDAL,
       membershipGroupDAL,
       projectKeyDAL,
       additionalPrivilegeDAL,
-      alertChannelRecipientDAL
+      alertChannelRecipientDAL,
+      ...pamSessionDeps
     });
+    sendPamCancellations();
 
     await cleanUpSubOrgProjectMemberships({
       groupId: id,
@@ -1387,6 +1453,11 @@ export const groupServiceFactory = ({
       identityGroupMembershipDAL,
       additionalPrivilegeDAL
     });
+
+    const sendPamCancellations = await groupDAL.transaction((tx) =>
+      terminatePamSessionsLosingGroupAccess({ userIds: [], identityIds: [identityId], actorId, ...pamSessionDeps, tx })
+    );
+    sendPamCancellations();
 
     await cleanUpSubOrgProjectMemberships({
       groupId: id,

@@ -16,6 +16,8 @@ import { removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns"
 import { reapDeletedGroupFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
 import { identityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
+import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { getConfig, initEnvConfig } from "@app/lib/config/env";
 import { initLogger, logger } from "@app/lib/logger";
@@ -24,6 +26,8 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { alertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
+import { membershipDALFactory } from "@app/services/membership/membership-dal";
+import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { projectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { userDALFactory } from "@app/services/user/user-dal";
@@ -1104,7 +1108,12 @@ describe("User folder access CRUD", () => {
         membershipGroupDAL: membershipGroupDALFactory(testDb),
         projectKeyDAL: projectKeyDALFactory(testDb),
         additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
-        alertChannelRecipientDAL: alertChannelRecipientDALFactory(testDb)
+        alertChannelRecipientDAL: alertChannelRecipientDALFactory(testDb),
+        membershipDAL: membershipDALFactory(testDb),
+        membershipRoleDAL: membershipRoleDALFactory(testDb),
+        pamAccountDAL: pamAccountDALFactory(testDb),
+        pamSessionDAL: pamSessionDALFactory(testDb),
+        gatewayV2Service: { getPAMConnectionDetails: () => Promise.reject(new Error("unexpected gateway call")) }
       };
 
       const username = `folder-reap-${alphaNumericNanoId(8)}@example.com`;

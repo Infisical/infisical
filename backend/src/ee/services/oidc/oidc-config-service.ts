@@ -6,11 +6,14 @@ import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { getEnforcedIdentityLimit, throwOnPlanSeatLimitReached } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TPamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
@@ -44,6 +47,7 @@ import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -97,7 +101,8 @@ type TOidcConfigServiceFactoryDep = {
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "find" | "updateById"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
@@ -124,6 +129,9 @@ type TOidcConfigServiceFactoryDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 };
 
 export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFactory>;
@@ -141,6 +149,7 @@ export const oidcConfigServiceFactory = ({
   userGroupMembershipDAL,
   groupDAL,
   membershipGroupDAL,
+  membershipDAL,
   membershipRoleDAL,
   projectKeyDAL,
   alertChannelRecipientDAL,
@@ -151,7 +160,10 @@ export const oidcConfigServiceFactory = ({
   loginService,
   emailDomainDAL,
   telemetryService,
-  usageMeteringService
+  usageMeteringService,
+  pamAccountDAL,
+  pamSessionDAL,
+  gatewayV2Service
 }: TOidcConfigServiceFactoryDep) => {
   const getOidc = async (dto: TGetOidcCfgDTO) => {
     const oidcCfg = await oidcConfigDAL.findOne({
@@ -495,7 +507,7 @@ export const oidcConfigServiceFactory = ({
       }
 
       for await (const group of groupsToRemoveUserFrom) {
-        await removeUsersFromGroupByUserIds({
+        const { sendPamCancellations } = await removeUsersFromGroupByUserIds({
           userIds: [user.id],
           group,
           userDAL,
@@ -504,8 +516,14 @@ export const oidcConfigServiceFactory = ({
           projectKeyDAL,
           additionalPrivilegeDAL,
           usageMeteringService,
-          alertChannelRecipientDAL
+          alertChannelRecipientDAL,
+          membershipDAL,
+          membershipRoleDAL,
+          pamAccountDAL,
+          pamSessionDAL,
+          gatewayV2Service
         });
+        sendPamCancellations();
       }
 
       if (groupsToRemoveUserFrom.length) {

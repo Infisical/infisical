@@ -31,6 +31,7 @@ import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-met
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -50,10 +51,13 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import { findOrgIdByVerifiedDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
+import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "../group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "../group/group-fns";
 import { TUserGroupMembershipDALFactory } from "../group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TSamlConfigDALFactory } from "./saml-config-dal";
@@ -82,7 +86,8 @@ type TSamlConfigServiceFactoryDep = {
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
   >;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
-  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActors">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "getOrgSeatUsage" | "updateSubscriptionOrgMemberCount">;
@@ -103,6 +108,9 @@ type TSamlConfigServiceFactoryDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
 };
 
 export const samlConfigServiceFactory = ({
@@ -124,12 +132,16 @@ export const samlConfigServiceFactory = ({
   smtpService,
   identityMetadataDAL,
   kmsService,
+  membershipDAL,
   membershipRoleDAL,
   membershipGroupDAL,
   loginService,
   emailDomainDAL,
   telemetryService,
-  usageMeteringService
+  usageMeteringService,
+  pamAccountDAL,
+  pamSessionDAL,
+  gatewayV2Service
 }: TSamlConfigServiceFactoryDep): TSamlConfigServiceFactory => {
   const parseSamlGroups = (groupsValue: string): string[] => {
     let samlGroups: string[] = [];
@@ -167,6 +179,8 @@ export const samlConfigServiceFactory = ({
     samlGroups: string[];
     tx?: Knex;
   }) => {
+    const pamCancellations: (() => void)[] = [];
+
     const processGroupSync = async (transaction: Knex) => {
       const currentGroupMemberships = await userGroupMembershipDAL.find(
         {
@@ -255,7 +269,7 @@ export const samlConfigServiceFactory = ({
           const group = orgGroupsMap.get(groupName);
           if (group) {
             try {
-              await removeUsersFromGroupByUserIds({
+              const { sendPamCancellations } = await removeUsersFromGroupByUserIds({
                 userIds: [userId],
                 group,
                 userDAL,
@@ -265,8 +279,14 @@ export const samlConfigServiceFactory = ({
                 additionalPrivilegeDAL,
                 usageMeteringService,
                 alertChannelRecipientDAL,
+                membershipDAL,
+                membershipRoleDAL,
+                pamAccountDAL,
+                pamSessionDAL,
+                gatewayV2Service,
                 tx: transaction
               });
+              pamCancellations.push(sendPamCancellations);
             } catch (error) {
               // Continue if user not in group
             }
@@ -280,6 +300,8 @@ export const samlConfigServiceFactory = ({
     } else {
       await userDAL.transaction(processGroupSync);
     }
+
+    return () => pamCancellations.forEach((send) => send());
   };
 
   const createSamlCfg: TSamlConfigServiceFactory["createSamlCfg"] = async ({
@@ -580,6 +602,7 @@ export const samlConfigServiceFactory = ({
     const identityLimit = getEnforcedIdentityLimit(plan);
 
     let user: TUsers;
+    let sendPamCancellations = () => {};
     if (userAlias) {
       const foundUser = await userDAL.findById(userAlias.userId);
       // Verify the existing user's stored email domain + cross-org check
@@ -651,7 +674,7 @@ export const samlConfigServiceFactory = ({
         if (shouldSyncGroups && metadata && foundUser.id) {
           const samlGroups = groupsMetadata?.value ? parseSamlGroups(groupsMetadata.value) : [];
 
-          await syncUserGroupMemberships({
+          sendPamCancellations = await syncUserGroupMemberships({
             userId: foundUser.id,
             orgId,
             samlGroups,
@@ -758,7 +781,7 @@ export const samlConfigServiceFactory = ({
         if (shouldSyncGroups && metadata && newUser.id) {
           const samlGroups = groupsMetadata?.value ? parseSamlGroups(groupsMetadata.value) : [];
 
-          await syncUserGroupMemberships({
+          sendPamCancellations = await syncUserGroupMemberships({
             userId: newUser.id,
             orgId,
             samlGroups,
@@ -782,6 +805,8 @@ export const samlConfigServiceFactory = ({
         });
       }
     }
+    sendPamCancellations();
+
     await licenseService.updateSubscriptionOrgMemberCount(organization.id);
 
     await samlConfigDAL.update({ orgId }, { lastUsed: new Date() });
