@@ -66,7 +66,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.PaloAltoNetworks]: "Palo Alto Networks",
   [AppConnection.KempLoadMaster]: "Kemp LoadMaster",
   [AppConnection.Anthropic]: "Anthropic",
-  [AppConnection.OVH]: "OVH",
+  [AppConnection.OVH]: "OVHcloud",
   [AppConnection.Devin]: "Devin",
   [AppConnection.Ona]: "Ona",
   [AppConnection.DigiCert]: "DigiCert",

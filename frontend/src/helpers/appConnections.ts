@@ -567,7 +567,7 @@ export const APP_CONNECTION_MAP: Record<
     description: "GraphQL API and data access for Hasura Cloud."
   },
   [AppConnection.OVH]: {
-    name: "OVH Cloud",
+    name: "OVHcloud",
     image: "OVH.png",
     category: "CLOUD",
     description: "Account and service access for OVHcloud."
@@ -899,6 +899,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "API Key", icon: KeyRoundIcon };
     case OVHConnectionMethod.Certificate:
       return { name: "Certificate", icon: FileBadgeIcon };
+    case OVHConnectionMethod.Token:
+      return { name: "Token", icon: KeyRoundIcon };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }
