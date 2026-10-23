@@ -45,8 +45,9 @@ export const secretInsightsKeys = {
     [...secretInsightsKeys.all(), "unused-access", params] as const,
   unusedAccessActor: (params: TGetUnusedAccessActorDTO) =>
     [...secretInsightsKeys.all(), "unused-access-actor", params] as const,
+  allSecretReadActivity: () => [...secretInsightsKeys.all(), "secret-read-activity"] as const,
   secretReadActivity: (params: TGetSecretReadActivityDTO) =>
-    [...secretInsightsKeys.all(), "secret-read-activity", params] as const,
+    [...secretInsightsKeys.allSecretReadActivity(), params] as const,
   // accessLocations: (params: TGetSecretAccessLocationsDTO) =>
   //   [...secretInsightsKeys.all(), "access-locations", params] as const,
   authMethodDistribution: (params: TGetAuthMethodDistributionDTO) =>
