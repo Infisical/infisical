@@ -2413,6 +2413,51 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("a revoke of an admin's last grant waits for a demotion's cleanup, then clears their values", async () => {
+      const bundle = await createAccessBundle("mp-demote-revoke");
+      const service = await createService(bundle.id, {
+        name: "sentry",
+        hostPattern: "sentry-race.example.com",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+
+      const admin = await createMemberIdentity(`mp-demote-revoke-${Date.now()}`);
+      try {
+        expect(
+          (await inject("PATCH", "/api/v1/agent-vault/members", { machineIdentityIds: [admin.id], role: "admin" }))
+            .statusCode
+        ).toBe(200);
+        expect((await inject("POST", membersUrl(bundle.id), { machineIdentityIds: [admin.id] })).statusCode).toBe(200);
+        expect((await setValues(admin.as, bundle.id, service.id, { "credential-value": "mine" })).statusCode).toBe(200);
+        const membership = await testDb("memberships").where({ scope: "project", actorIdentityId: admin.id }).first();
+        const projectId = membership.scopeProjectId as string;
+
+        // A demotion, written and holding the cleanup lock: its own cleanup already ran and skipped, because the
+        // grant was still there. The revoke's cleanup has to wait for it, then see the admin role gone.
+        const trx = await testDb.transaction();
+        let pending: ReturnType<typeof inject> | undefined;
+        try {
+          const { rows } = await trx.raw("select pg_backend_pid() as pid");
+          await trx("membership_roles").where({ membershipId: membership.id }).delete();
+          await trx("membership_roles").insert({ membershipId: membership.id, role: "member" });
+          await trx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.ClearAgentVaultPersonalValues(projectId)]);
+
+          pending = inject("DELETE", membersUrl(bundle.id), { machineIdentityIds: [admin.id] });
+          await waitUntilBlockedBy(rows[0].pid);
+          await trx.commit();
+
+          expect((await pending).statusCode).toBe(200);
+        } catch (err) {
+          if (!trx.isCompleted()) await trx.rollback();
+          await pending?.catch(() => undefined);
+          throw err;
+        }
+        expect(await testDb("agent_vault_personal_values").where({ identityId: admin.id })).toHaveLength(0);
+      } finally {
+        await admin.cleanup();
+      }
+    });
+
     test("an admin is asked for values only on the bundles granted to them", async () => {
       const ungranted = await createAccessBundle("mp-mine-ungranted");
       const service = await createService(ungranted.id, {
