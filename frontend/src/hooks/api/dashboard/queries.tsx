@@ -717,10 +717,12 @@ const fetchSecretValueGroup = async (requests: TPendingSecretValue[]) => {
       environment,
       secretPath,
       keys: [...new Set(requests.map(({ params }) => params.secretKey))],
-      viewSecretValue: true
+      viewSecretValue: true,
+      hideUnreadableValues: true
     }));
   } catch (error) {
-    // one value the user cannot read fails the whole request, so each value is fetched on its own
+    // unreadable values come back masked, so a refusal here is about the request as a whole; each
+    // value is fetched on its own so every row still gets its own result
     if (error instanceof AxiosError && error.status === 403) {
       fetchSecretValuesIndividually(requests);
     } else {
