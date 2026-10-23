@@ -1,4 +1,9 @@
-import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+import {
+  HoneyTokenConfigStatus,
+  HoneyTokenHosting,
+  HoneyTokenManagedUnavailableReason,
+  HoneyTokenType
+} from "@app/hooks/api/honeyTokens/enums";
 
 import {
   TAwsHoneyToken,
@@ -26,6 +31,7 @@ export type THoneyTokenCredentialsResponseMap = {
 export type TCreateHoneyTokenDTO = {
   projectId: string;
   type: HoneyTokenType;
+  hosting: HoneyTokenHosting;
   name: string;
   description?: string | null;
   secretsMapping: Record<string, string>;
@@ -38,6 +44,16 @@ export type TCreateHoneyTokenResponse = {
   stackDeployment?: {
     deployed: boolean;
     status: string | null;
+  };
+};
+
+export type THoneyTokenHostingOptions = {
+  infisicalManaged: {
+    isAvailable: boolean;
+    unavailableReason: HoneyTokenManagedUnavailableReason | null;
+  };
+  customerAccount: {
+    configStatus: HoneyTokenConfigStatus | null;
   };
 };
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -8,8 +8,16 @@ import { Button, SheetFooter, Stepper, StepperList, StepperStep } from "@app/com
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { HONEY_TOKEN_DEFAULT_SECRET_NAMES, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
-import { useCreateHoneyToken, useUpdateHoneyToken } from "@app/hooks/api/honeyTokens";
-import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+import {
+  useCreateHoneyToken,
+  useGetHoneyTokenHostingOptions,
+  useUpdateHoneyToken
+} from "@app/hooks/api/honeyTokens";
+import {
+  HoneyTokenConfigStatus,
+  HoneyTokenHosting,
+  HoneyTokenType
+} from "@app/hooks/api/honeyTokens/enums";
 import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
@@ -42,10 +50,11 @@ const FORM_TABS: FormTab[] = [
   {
     name: "Configuration",
     key: "configuration",
-    shortDescription: "Environment",
+    shortDescription: "AWS account and environment",
     title: "Choose where to plant it",
-    subtitle: "Select the environment where Infisical should store the decoy credentials.",
-    fields: ["environment"]
+    subtitle:
+      "Choose the AWS account that holds the decoy credentials and the environment where Infisical stores them.",
+    fields: ["hosting", "environment"]
   },
   {
     name: "Mapping",
@@ -81,6 +90,11 @@ export const HoneyTokenForm = ({
   const { name: tokenTypeName } = HONEY_TOKEN_MAP[type];
 
   const isUpdate = Boolean(honeyToken);
+  const { data: hostingOptions } = useGetHoneyTokenHostingOptions({
+    projectId: currentProject.id,
+    type,
+    enabled: !isUpdate
+  });
   const formTabs = isUpdate ? FORM_TABS.filter((tab) => tab.key !== "configuration") : FORM_TABS;
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
@@ -97,12 +111,27 @@ export const HoneyTokenForm = ({
         }
       : {
           type,
+          hosting: HoneyTokenHosting.InfisicalManaged,
           environment: currentProject?.environments.find((env) => env.slug === envSlug),
           secretPath,
           secretsMapping: HONEY_TOKEN_DEFAULT_SECRET_NAMES[type]
         },
     reValidateMode: "onChange"
   });
+
+  useEffect(() => {
+    if (!hostingOptions || formMethods.getFieldState("hosting").isDirty) return;
+
+    // An org that connected its own account most likely wants its tokens there.
+    const preferCustomerAccount =
+      !hostingOptions.infisicalManaged.isAvailable ||
+      hostingOptions.customerAccount.configStatus === HoneyTokenConfigStatus.Complete;
+
+    formMethods.setValue(
+      "hosting",
+      preferCustomerAccount ? HoneyTokenHosting.CustomerAccount : HoneyTokenHosting.InfisicalManaged
+    );
+  }, [hostingOptions]);
 
   const onSubmit = async ({ environment, ...formData }: THoneyTokenForm) => {
     if (honeyToken) {
@@ -168,7 +197,22 @@ export const HoneyTokenForm = ({
     formState: { isSubmitting }
   } = formMethods;
 
-  const isStepValid = async (index: number) => trigger(formTabs[index].fields);
+  const isStepValid = async (index: number) => {
+    const isValid = await trigger(formTabs[index].fields);
+    if (!isValid || formTabs[index].key !== "configuration") return isValid;
+
+    if (
+      formMethods.getValues("hosting") === HoneyTokenHosting.CustomerAccount &&
+      hostingOptions?.customerAccount.configStatus !== HoneyTokenConfigStatus.Complete
+    ) {
+      formMethods.setError("hosting", {
+        message: "Finish connecting your AWS account, or choose Infisical-managed."
+      });
+      return false;
+    }
+
+    return true;
+  };
 
   const isFinalStep = selectedTabIndex === formTabs.length - 1;
 
@@ -260,7 +304,10 @@ export const HoneyTokenForm = ({
   const formFields = (
     <>
       {currentStep.key === "configuration" && (
-        <HoneyTokenConfigurationFields environments={environments} />
+        <HoneyTokenConfigurationFields
+          environments={environments}
+          hostingOptions={hostingOptions}
+        />
       )}
       {currentStep.key === "mapping" && <HoneyTokenMappingFields />}
       {currentStep.key === "details" && <HoneyTokenDetailsFields isUpdate={isUpdate} />}

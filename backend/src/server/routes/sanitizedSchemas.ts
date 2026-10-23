@@ -292,6 +292,7 @@ export const SanitizedHoneyTokenSchema = HoneyTokensSchema.pick({
   name: true,
   description: true,
   type: true,
+  hosting: true,
   status: true,
   projectId: true,
   folderId: true,
