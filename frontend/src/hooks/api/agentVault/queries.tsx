@@ -203,11 +203,15 @@ export const useListAgentVaultAccessBundleMembers = (
   });
 };
 
-export const useListAgentVaultAccessBundles = (params: TListAgentVaultAccessBundlesDTO = {}) => {
+export const useListAgentVaultAccessBundles = (
+  params: TListAgentVaultAccessBundlesDTO = {},
+  enabled = true
+) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
     queryKey: agentVaultKeys.accessBundleList(currentOrg.id, params),
+    enabled,
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         accessBundles: TAgentVaultAccessBundleListItem[];
@@ -242,11 +246,12 @@ export const useGetAgentVaultAccessBundle = (accessBundleId: string) => {
   });
 };
 
-export const useListAgentVaultSessions = (params?: TListAgentVaultSessionsDTO) => {
+export const useListAgentVaultSessions = (params?: TListAgentVaultSessionsDTO, enabled = true) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
     queryKey: agentVaultKeys.sessionList(currentOrg.id, params),
+    enabled,
     queryFn: async () => {
       const { statuses, ...rest } = params ?? {};
       const { data } = await apiRequest.get<{
@@ -262,11 +267,15 @@ export const useListAgentVaultSessions = (params?: TListAgentVaultSessionsDTO) =
   });
 };
 
-export const useListAgentVaultProxies = (params: TListAgentVaultProxiesDTO = {}) => {
+export const useListAgentVaultProxies = (
+  params: TListAgentVaultProxiesDTO = {},
+  enabled = true
+) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
     queryKey: agentVaultKeys.proxyList(currentOrg.id, params),
+    enabled,
     queryFn: async () => {
       const { data } = await apiRequest.get<{ proxies: TAgentVaultProxy[]; totalCount: number }>(
         "/api/v1/agent-vault/proxies",
