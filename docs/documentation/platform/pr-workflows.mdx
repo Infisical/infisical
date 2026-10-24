@@ -60,6 +60,16 @@ This guide shows you how to create approval policies that require changes to sec
     ![Review a change request](../../images/platform/pr-workflows/secret-update-pr.png)
 
     After a change request is merged, the updated secrets are automatically synced to connected applications (for example, through the [Infisical Kubernetes Operator](https://infisical.com/docs/integrations/platforms/kubernetes)).
+
+    #### Review several change requests at once
+
+    To approve or reject several change requests in one pass, open the **Open** tab under **Change Requests** and select the checkbox next to each request. You can select up to 25 requests at a time. Then select **Review & Merge**.
+
+    The review panel groups the selected requests by environment and folder and shows each request's changes and approval count. Select **Approve** or **Reject** for every request. You can add an optional comment, which Infisical adds to each review.
+
+    If two selected requests change the same secret, the panel marks both with an **Overlaps on** warning. Requests merge in the order they were created, oldest first.
+
+    Select **Submit & Merge** to submit your reviews. If you rejected every request, the button reads **Submit Reviews**. Infisical then merges each approved request that has met its policy's minimum approvals. A bulk merge never bypasses a policy, even if you're allowed to bypass it. A request that still needs approvals from other reviewers stays open. Requests that failed or weren't merged stay selected, so you can open them individually.
   </Step>
 </Steps>
 
