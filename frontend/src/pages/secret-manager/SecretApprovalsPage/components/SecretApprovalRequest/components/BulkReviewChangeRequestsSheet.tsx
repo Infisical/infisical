@@ -107,9 +107,10 @@ const BulkReviewChangeRequestsSheetContent = ({
   const detailQueries = useGetSecretApprovalRequestDetailsList({
     ids: requests.map(({ id }) => id)
   });
+  const detailDataUpdatedAtKey = detailQueries.map((query) => query.dataUpdatedAt).join(",");
   const detailsById = useMemo(
     () => Object.fromEntries(requests.map(({ id }, index) => [id, detailQueries[index]?.data])),
-    [requests, detailQueries]
+    [requests, detailDataUpdatedAtKey]
   );
   const hasAllDetails = detailQueries.every(({ data }) => Boolean(data));
 
