@@ -66,6 +66,8 @@ On the **Accounts** page, an account that requires approval shows a key icon ins
   </Step>
 </Steps>
 
+If the account can be [auto-approved](/documentation/platform/pam/access-requests/auto-approval), the form also has optional fields for linking records, such as a Jira ticket. A request whose records pass one of the folder's rules is approved as soon as you submit it.
+
 While the request waits for an approver, the account shows a clock icon. After an approver approves the request, the account shows the launch icon until the access expires.
 
 You can't change the reason or the duration after you submit the request. To change either one, ask an approver to deny the request, then file a new one.
@@ -93,7 +95,7 @@ One approval from any of the folder's approvers is enough. You can't approve a r
 | Status | Meaning |
 |--------|---------|
 | **Pending Review** | The request is waiting for an approver |
-| **Approved** | An approver approved the request, and the access is active |
+| **Approved** | An approver or an [auto-approval rule](/documentation/platform/pam/access-requests/auto-approval) approved the request, and the access is active |
 | **Rejected** | An approver denied the request |
 | **Expired** | The requested duration ended |
 | **Revoked** | An Admin of the folder ended the access before the duration ended |
@@ -115,7 +117,7 @@ An alert notifies your team about access requests in a folder through email, Sla
 | Event | When the alert fires |
 |-------|----------------------|
 | **Access Requested** | A member requests access to an account in the folder |
-| **Request Approved** | An approver approves a request |
+| **Request Approved** | An approver or an auto-approval rule approves a request |
 | **Request Denied** | An approver denies a request |
 | **Break-Glass Used** | A member uses [break-glass access](/documentation/platform/pam/access-requests/break-glass) to skip the approvers |
 

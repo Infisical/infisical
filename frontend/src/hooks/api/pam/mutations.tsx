@@ -15,6 +15,7 @@ import {
   TAddPamProductIdentityMemberDTO,
   TAddPamProductUserMemberDTO,
   TBreakGlassPamAccessRequestDTO,
+  TCancelPamAccessRequestDTO,
   TCreatePamAccessRequestDTO,
   TCreatePamAccountDTO,
   TCreatePamAccountTemplateDTO,
@@ -27,6 +28,7 @@ import {
   TGetPamAccountCredentialsDTO,
   TImportPamDiscoveredAccountResult,
   TImportPamDiscoveredAccountsDTO,
+  TPamAccessRequest,
   TPamAccessResponse,
   TPamAccountCredentials,
   TPamAccountTemplate,
@@ -793,7 +795,10 @@ export const useCreatePamAccessRequest = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (params: TCreatePamAccessRequestDTO) => {
-      const { data } = await apiRequest.post("/api/v1/pam/access-requests", params);
+      const { data } = await apiRequest.post<{ request: TPamAccessRequest }>(
+        "/api/v1/pam/access-requests",
+        params
+      );
       return data;
     },
     onSuccess: () => {
@@ -901,6 +906,22 @@ export const useBreakGlassPamAccessRequest = () => {
   });
 };
 
+export const useCancelPamAccessRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId }: TCancelPamAccessRequestDTO) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/approval-policies/pam-access/requests/${requestId}/cancel`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.accessRequest() });
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
+    }
+  });
+};
+
 export const useSetPamApprovalConfig = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -908,11 +929,12 @@ export const useSetPamApprovalConfig = () => {
       folderId,
       steps,
       notificationConfigs,
-      breakGlassUsers
+      breakGlassUsers,
+      autoApproval
     }: TSetPamApprovalConfigDTO) => {
       const { data } = await apiRequest.put(
         `/api/v1/pam/folders/${folderId}/approval-configuration`,
-        { steps, notificationConfigs, breakGlassUsers }
+        { steps, notificationConfigs, breakGlassUsers, autoApproval }
       );
       return data;
     },

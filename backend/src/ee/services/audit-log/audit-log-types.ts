@@ -849,12 +849,14 @@ export enum EventType {
   APPROVAL_REQUEST_LIST = "approval-request-list",
   APPROVAL_REQUEST_CREATE = "approval-request-create",
   APPROVAL_REQUEST_APPROVE = "approval-request-approve",
+  APPROVAL_REQUEST_AUTO_APPROVE = "approval-request-auto-approve",
   APPROVAL_REQUEST_REJECT = "approval-request-reject",
   APPROVAL_REQUEST_CANCEL = "approval-request-cancel",
   APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
   APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
   APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke",
   PAM_ACCESS_POLICY_BYPASSED = "pam-access-policy-bypassed",
+  PAM_ACCESS_REQUEST_AUTO_APPROVED = "pam-access-request-auto-approved",
   ACCESS_APPROVAL_REQUEST_CREATE = "access-approval-request-create",
   ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
   ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
@@ -6948,6 +6950,7 @@ interface PamApprovalConfigUpdateEvent {
     stepCount: number;
     notificationConfigCount?: number;
     breakGlassUserCount?: number;
+    autoApprovalRuleCount?: number;
   };
 }
 
@@ -7151,6 +7154,25 @@ interface ApprovalRequestApproveEvent {
   } & TApprovalRequestSubjectMetadata;
 }
 
+// The rule that approved the request and what it checked, so an admin can see why access was granted
+type TAutoApprovalAuditMetadata = {
+  ruleId: string | null;
+  ruleName?: string;
+  linkedRecords: { label: string; value: string }[];
+  conditions: string[];
+};
+
+interface ApprovalRequestAutoApproveEvent {
+  type: EventType.APPROVAL_REQUEST_AUTO_APPROVE;
+  metadata: {
+    policyType: string;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
+  } & TAutoApprovalAuditMetadata &
+    TApprovalRequestSubjectMetadata;
+}
+
 interface ApprovalRequestRejectEvent {
   type: EventType.APPROVAL_REQUEST_REJECT;
   metadata: {
@@ -7218,6 +7240,22 @@ interface PamAccessPolicyBypassedEvent {
     bypassReason: string;
     approverCount: number;
   };
+}
+
+interface PamAccessRequestAutoApprovedEvent {
+  type: EventType.PAM_ACCESS_REQUEST_AUTO_APPROVED;
+  metadata: {
+    approvalRequestId: string;
+    grantId?: string;
+    accountId?: string;
+    accountName?: string;
+    folderId?: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
+    duration?: string;
+    accessType: string;
+  } & TAutoApprovalAuditMetadata;
 }
 
 interface AccessApprovalRequestCreateEvent {
@@ -8730,12 +8768,14 @@ export type Event =
   | ApprovalRequestListEvent
   | ApprovalRequestCreateEvent
   | ApprovalRequestApproveEvent
+  | ApprovalRequestAutoApproveEvent
   | ApprovalRequestRejectEvent
   | ApprovalRequestCancelEvent
   | ApprovalRequestGrantListEvent
   | ApprovalRequestGrantGetEvent
   | ApprovalRequestGrantRevokeEvent
   | PamAccessPolicyBypassedEvent
+  | PamAccessRequestAutoApprovedEvent
   | AccessApprovalRequestCreateEvent
   | AccessApprovalRequestReviewEvent
   | AccessApprovalRequestRevokeEvent

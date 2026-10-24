@@ -83,6 +83,15 @@ import {
   TApprovalPolicies,
   TApprovalPoliciesInsert,
   TApprovalPoliciesUpdate,
+  TApprovalPolicyAutoApprovalConditions,
+  TApprovalPolicyAutoApprovalConditionsInsert,
+  TApprovalPolicyAutoApprovalConditionsUpdate,
+  TApprovalPolicyAutoApprovalInputs,
+  TApprovalPolicyAutoApprovalInputsInsert,
+  TApprovalPolicyAutoApprovalInputsUpdate,
+  TApprovalPolicyAutoApprovalRules,
+  TApprovalPolicyAutoApprovalRulesInsert,
+  TApprovalPolicyAutoApprovalRulesUpdate,
   TApprovalPolicyBypassers,
   TApprovalPolicyBypassersInsert,
   TApprovalPolicyBypassersUpdate,
@@ -1954,6 +1963,21 @@ declare module "knex/types/tables" {
       TApprovalPolicyBypassers,
       TApprovalPolicyBypassersInsert,
       TApprovalPolicyBypassersUpdate
+    >;
+    [TableName.ApprovalPolicyAutoApprovalInputs]: KnexOriginal.CompositeTableType<
+      TApprovalPolicyAutoApprovalInputs,
+      TApprovalPolicyAutoApprovalInputsInsert,
+      TApprovalPolicyAutoApprovalInputsUpdate
+    >;
+    [TableName.ApprovalPolicyAutoApprovalRules]: KnexOriginal.CompositeTableType<
+      TApprovalPolicyAutoApprovalRules,
+      TApprovalPolicyAutoApprovalRulesInsert,
+      TApprovalPolicyAutoApprovalRulesUpdate
+    >;
+    [TableName.ApprovalPolicyAutoApprovalConditions]: KnexOriginal.CompositeTableType<
+      TApprovalPolicyAutoApprovalConditions,
+      TApprovalPolicyAutoApprovalConditionsInsert,
+      TApprovalPolicyAutoApprovalConditionsUpdate
     >;
     [TableName.ApprovalPolicySecretEnvironment]: KnexOriginal.CompositeTableType<
       TApprovalPolicySecretEnvironments,

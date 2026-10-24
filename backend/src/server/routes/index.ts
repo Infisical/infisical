@@ -300,6 +300,8 @@ import {
   approvalRequestStepEligibleApproversDALFactory,
   approvalRequestStepsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
+import { approvalPolicyAutoApprovalDALFactory } from "@app/services/approval-policy/auto-approval/auto-approval-dal";
+import { autoApprovalServiceFactory } from "@app/services/approval-policy/auto-approval/auto-approval-service";
 import { certRequestApprovalResourceFactory } from "@app/services/approval-policy/cert-request/cert-request-policy-factory";
 import { codeSigningApprovalResourceFactory } from "@app/services/approval-policy/code-signing/code-signing-policy-factory";
 import { secretAccessApprovalGlobalResourceFactory } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
@@ -864,6 +866,7 @@ export const registerRoutes = async (
   const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
   const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
   const approvalPolicyBypassersDAL = approvalPolicyBypassersDALFactory(db);
+  const approvalPolicyAutoApprovalDAL = approvalPolicyAutoApprovalDALFactory(db);
   const approvalPolicySecretEnvironmentDAL = approvalPolicySecretEnvironmentDALFactory(db);
   const approvalRequestDAL = approvalRequestDALFactory(db);
   const secretChangeGlobalPolicyBridgeDAL = secretChangeGlobalPolicyBridgeDALFactory(db);
@@ -3974,6 +3977,15 @@ export const registerRoutes = async (
     }) as TApprovalResourceRegistry[ApprovalPolicyType]
   };
 
+  const autoApprovalService = autoApprovalServiceFactory({
+    approvalPolicyAutoApprovalDAL,
+    appConnectionDAL,
+    appConnectionService,
+    kmsService,
+    gatewayV2Service,
+    gatewayPoolService
+  });
+
   const approvalPolicyService = approvalPolicyServiceFactory({
     approvalPolicyDAL,
     approvalPolicyStepsDAL,
@@ -3997,6 +4009,7 @@ export const registerRoutes = async (
     slackIntegrationDAL,
     kmsService,
     eventEmitter: eventOutboxService,
+    autoApprovalService,
     resources: approvalResources
   });
 

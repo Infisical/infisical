@@ -632,6 +632,7 @@
                   "documentation/platform/pam/folders/overview",
                   "documentation/platform/pam/templates/overview",
                   "documentation/platform/pam/access-requests/overview",
+                  "documentation/platform/pam/access-requests/auto-approval",
                   "documentation/platform/pam/access-requests/break-glass"
                 ]
               },
@@ -1077,6 +1078,7 @@
                   "integrations/app-connections/heroku",
                   "integrations/app-connections/hpe-ilo",
                   "integrations/app-connections/humanitec",
+                  "integrations/app-connections/jira",
                   "integrations/app-connections/keeper",
                   "integrations/app-connections/kemp-loadmaster",
                   "integrations/app-connections/external-infisical",
@@ -2116,6 +2118,18 @@
                           "api-reference/endpoints/app-connections/external-infisical/create",
                           "api-reference/endpoints/app-connections/external-infisical/update",
                           "api-reference/endpoints/app-connections/external-infisical/delete"
+                        ]
+                      },
+                      {
+                        "group": "Jira",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/jira/list",
+                          "api-reference/endpoints/app-connections/jira/available",
+                          "api-reference/endpoints/app-connections/jira/get-by-id",
+                          "api-reference/endpoints/app-connections/jira/get-by-name",
+                          "api-reference/endpoints/app-connections/jira/create",
+                          "api-reference/endpoints/app-connections/jira/update",
+                          "api-reference/endpoints/app-connections/jira/delete"
                         ]
                       },
                       {

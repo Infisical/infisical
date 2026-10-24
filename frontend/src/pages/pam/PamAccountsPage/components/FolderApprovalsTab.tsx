@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Ban,
   FilterIcon,
   ShieldAlert,
   Trash2,
   User as UserIcon,
-  Users as UsersIcon
+  Users as UsersIcon,
+  Zap
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -47,6 +49,11 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { AlertChannelType, AlertResourceType } from "@app/hooks/api/alerts";
+import {
+  approvalPolicyQuery,
+  ApprovalPolicyScope,
+  ApprovalPolicyType
+} from "@app/hooks/api/approvalPolicies";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
   PamAccessRequestStatus,
@@ -67,6 +74,15 @@ import { AlertAction } from "@app/views/Alerts";
 import { AccessTypeBadge } from "../../components/AccessTypeBadge";
 import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
+import { AutoApprovalCard } from "../../components/auto-approval/AutoApprovalCard";
+import {
+  EMPTY_AUTO_APPROVAL_DRAFT,
+  isRuleComplete,
+  serializeAutoApprovalDraft,
+  TAutoApprovalDraft,
+  toAutoApprovalConfig,
+  toAutoApprovalDraft
+} from "../../components/auto-approval/autoApprovalDraft";
 import { getRequesterSubtitle } from "../../components/requesterDisplay";
 import { FolderNotificationsSection } from "./FolderNotificationsSection";
 
@@ -147,6 +163,19 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const [breakGlassUsers, setBreakGlassApprovers] = useState<ApproverEntry[]>([]);
   const [isDirty, setIsDirty] = useState(false);
   const [notificationConfigs, setNotificationConfigs] = useState<TPamNotificationConfig[]>([]);
+  const [autoApprovalDraft, setAutoApprovalDraft] =
+    useState<TAutoApprovalDraft>(EMPTY_AUTO_APPROVAL_DRAFT);
+  const [showAutoApprovalErrors, setShowAutoApprovalErrors] = useState(false);
+
+  const autoApprovalScope = {
+    policyType: ApprovalPolicyType.PamAccess,
+    scope: ApprovalPolicyScope.PamFolder,
+    scopeId: folderId
+  };
+  const { data: autoApprovalCatalogData } = useQuery(
+    approvalPolicyQuery.autoApprovalCatalog(autoApprovalScope)
+  );
+  const autoApprovalCatalog = autoApprovalCatalogData?.connections;
 
   const savedApprovers = useMemo(() => {
     if (!config?.steps?.[0]) return [];
@@ -167,6 +196,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       })),
     [config]
   );
+
+  const savedAutoApprovalDraft = useMemo(() => toAutoApprovalDraft(config?.autoApproval), [config]);
 
   const integrationSlugById = useMemo(
     () =>
@@ -189,6 +220,11 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     setNotificationConfigs(savedNotificationConfigs);
   }, [savedNotificationConfigs]);
 
+  useEffect(() => {
+    setAutoApprovalDraft(savedAutoApprovalDraft);
+    setShowAutoApprovalErrors(false);
+  }, [savedAutoApprovalDraft]);
+
   const isNotifDirty = useMemo(
     () => JSON.stringify(notificationConfigs) !== JSON.stringify(savedNotificationConfigs),
     [notificationConfigs, savedNotificationConfigs]
@@ -197,7 +233,13 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     () => JSON.stringify(breakGlassUsers) !== JSON.stringify(savedBreakGlassUsers),
     [breakGlassUsers, savedBreakGlassUsers]
   );
-  const isAnyDirty = isDirty || isNotifDirty || isBreakGlassDirty;
+  const isAutoApprovalDirty = useMemo(
+    () =>
+      serializeAutoApprovalDraft(autoApprovalDraft) !==
+      serializeAutoApprovalDraft(savedAutoApprovalDraft),
+    [autoApprovalDraft, savedAutoApprovalDraft]
+  );
+  const isAnyDirty = isDirty || isNotifDirty || isBreakGlassDirty || isAutoApprovalDirty;
 
   useEffect(() => {
     onDirtyChange?.(isAnyDirty);
@@ -313,11 +355,21 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   };
 
   const handleSave = () => {
-    if (breakGlassUsers.length > 0 && approvers.length === 0) {
+    if (
+      breakGlassUsers.length > 0 &&
+      approvers.length === 0 &&
+      autoApprovalDraft.rules.length === 0
+    ) {
       createNotification({
         type: "error",
-        text: "Break-glass users need at least one approver to skip"
+        text: "Break-glass users need approvers or auto-approval rules to skip"
       });
+      return;
+    }
+
+    if (autoApprovalDraft.rules.some((rule) => !isRuleComplete(rule, autoApprovalCatalog))) {
+      setShowAutoApprovalErrors(true);
+      createNotification({ type: "error", text: "Finish the auto-approval rules before saving" });
       return;
     }
 
@@ -327,7 +379,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         steps: [{ approvers }],
         breakGlassUsers,
         // Legacy Slack configs can only be removed, so they're sent only when one was.
-        notificationConfigs: isNotifDirty ? notificationConfigs : undefined
+        notificationConfigs: isNotifDirty ? notificationConfigs : undefined,
+        autoApproval: isAutoApprovalDirty ? toAutoApprovalConfig(autoApprovalDraft) : undefined
       },
       {
         onSuccess: () => {
@@ -345,6 +398,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     setApprovers(savedApprovers);
     setBreakGlassApprovers(savedBreakGlassUsers);
     setNotificationConfigs(savedNotificationConfigs);
+    setAutoApprovalDraft(savedAutoApprovalDraft);
+    setShowAutoApprovalErrors(false);
     setIsDirty(false);
   };
 
@@ -359,6 +414,14 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4">
+      <AutoApprovalCard
+        {...autoApprovalScope}
+        draft={autoApprovalDraft}
+        onChange={setAutoApprovalDraft}
+        showErrors={showAutoApprovalErrors}
+        hasApprovers={approvers.length > 0}
+      />
+
       <Card>
         <CardHeader className="border-b">
           <CardTitle className="text-base">
@@ -656,7 +719,25 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">
-                            <Badge variant={status.variant}>{status.label}</Badge>
+                            {status.isAutoApproved ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant={status.variant}>
+                                    <Zap className="mr-1 size-3" />
+                                    {status.label}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {`Approved by the rule "${
+                                    request.autoApproval?.rules.find(
+                                      (rule) => rule.id === request.autoApproval?.approvedByRuleId
+                                    )?.name ?? "auto-approval"
+                                  }"`}
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <Badge variant={status.variant}>{status.label}</Badge>
+                            )}
                             {request.isBreakGlass && (
                               <Tooltip>
                                 <TooltipTrigger asChild>

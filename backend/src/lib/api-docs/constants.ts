@@ -3154,6 +3154,16 @@ export const AppConnections = {
         "Whether or not to reject untrusted SSL certificates (true/false). Set to false for iLO interfaces using self-signed certificates.",
       sslCertificate: "The CA certificate (PEM format) used to verify the iLO interface's TLS certificate."
     },
+    JIRA: {
+      instanceUrl:
+        "The URL of your Jira site (e.g., 'https://your-domain.atlassian.net' for Jira Cloud or 'https://jira.example.com' for Jira Data Center).",
+      email: "The email address of the Atlassian account that owns the API token.",
+      apiToken: "The Atlassian API token used to authenticate with Jira Cloud.",
+      personalAccessToken: "The personal access token used to authenticate with Jira Data Center.",
+      sslRejectUnauthorized:
+        "Whether or not to reject untrusted SSL certificates (true/false). Set to false for Jira Data Center sites using self-signed certificates.",
+      sslCertificate: "The CA certificate (PEM format) used to verify the Jira Data Center site's TLS certificate."
+    },
     DBT: {
       apiToken: "The API token used to authenticate with DBT.",
       accountId: "The account ID of your DBT account.",
@@ -4776,4 +4786,36 @@ export const PKI_SYNC_FILTERS = {
   previewApplicationId: "Preview the filters against this Application, for a PKI Sync that does not exist yet.",
   previewOffset: "The offset to start from. If you enter 10, it will start from the 10th matching certificate.",
   previewLimit: "The number of matching certificates to return."
+};
+
+export const APPROVAL_POLICY_AUTO_APPROVAL = {
+  autoApproval:
+    "Rules that approve a request instantly when another system already vouches for it. Sending this replaces the policy's inputs and rules; omit it to leave them unchanged.",
+  inputs:
+    "Request form fields: records requesters can link when they submit, such as a Jira ticket. Each one adds an optional field to the request form.",
+  inputConnectionId: "The ID of the App Connection the record is read through.",
+  inputSubject:
+    "What the requester links, from the connection's subjects in the auto-approval catalog (e.g. 'submitted-ticket').",
+  rules: "The rules a request is checked against on submission. Any passing rule approves it; a rule never rejects.",
+  ruleName: "A name that tells approvers why the rule approved a request.",
+  conditions: "Every condition in a rule must pass for the rule to approve.",
+  conditionConnectionId:
+    "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'.",
+  conditionSubject:
+    "What the condition checks: one of the inputs' subjects, or 'requester' for the requester's own account.",
+  constraint: "Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status').",
+  values: "The values the check accepts. Several values mean any of them; checks that take no value use an empty list.",
+  requestInputs:
+    "Values for the policy's request form fields, such as a Jira ticket key or link. Malformed values are rejected.",
+  requestInputValue: "The value the requester entered, such as 'PAY-123' or a link to the ticket.",
+  outcome:
+    "How the policy's auto-approval rules evaluated this request at submission. Null when the policy had no rules or the resource does not allow auto-approval.",
+  catalogScope: "The scope of the policy the rules are for.",
+  catalogScopeId: "The ID of the scope.",
+  optionsConnectionId: "The ID of the App Connection to list values from.",
+  optionsSubject: "The subject the condition checks.",
+  optionsConstraint: "The check to list values for.",
+  optionsSearch: "Filters the values by this text.",
+  optionsSiblings:
+    "A JSON object of the values already picked in the rule's other conditions, keyed by constraint, which narrows the values listed (e.g. statuses for the picked projects)."
 };
