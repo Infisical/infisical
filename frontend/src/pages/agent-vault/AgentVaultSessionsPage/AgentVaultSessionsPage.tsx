@@ -179,7 +179,7 @@ export const AgentVaultSessionsPage = () => {
   // An admin sees the sample only while the org has no session at all. A member can't list the org's
   // sessions, so they see it while they have none of their own.
   const isSampleShown =
-    !isFiltered && (!isAdmin || (setupProgress.isLoaded && !setupProgress.hasSession));
+    !isFiltered && (!isAdmin || (setupProgress.isSessionCountLoaded && !setupProgress.hasSession));
   const startSetup = () => {
     setupProgress.restore();
     setIsSampleOpen(false);
