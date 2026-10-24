@@ -15,9 +15,11 @@ import { CreateProfileForm } from "./CreateProfileModal";
 type ProfileOption = { value: string; label: string };
 
 export const useProfileCreation = <TOption = ProfileOption,>(
-  onCreated: (profile: TCertificateProfile) => void | Promise<void>
+  onCreated: (profile: TCertificateProfile) => void | Promise<void>,
+  { mode = "create-and-attach" }: { mode?: "create-only" | "create-and-attach" } = {}
 ): ComboboxSheetCreationConfig<TOption> | undefined => {
   const { permission } = useProjectPermission();
+  const requiresAttachment = mode === "create-and-attach";
   const [isDirty, setIsDirty] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const cancelRef = useRef(() => {});
@@ -44,10 +46,11 @@ export const useProfileCreation = <TOption = ProfileOption,>(
       ProjectPermissionCertificateProfileActions.Create,
       ProjectPermissionSub.CertificateProfiles
     ) ||
-    !permission.can(
-      ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
-      ProjectPermissionSub.CertificateProfiles
-    )
+    (requiresAttachment &&
+      !permission.can(
+        ProjectPermissionCertificateProfileActions.ManageApplicationAttachments,
+        ProjectPermissionSub.CertificateProfiles
+      ))
   )
     return undefined;
 
@@ -65,7 +68,7 @@ export const useProfileCreation = <TOption = ProfileOption,>(
           onClose={complete}
           onCancel={() => requestCancel(cancel)}
           onComplete={(profile) => {
-            if (!canAttachProfile(profile.slug)) {
+            if (requiresAttachment && !canAttachProfile(profile.slug)) {
               throw new Error(
                 "The profile was created, but you no longer have permission to attach it to an application."
               );
@@ -77,9 +80,10 @@ export const useProfileCreation = <TOption = ProfileOption,>(
             permission.can(
               ProjectPermissionCertificateProfileActions.Create,
               subject(ProjectPermissionSub.CertificateProfiles, { slug })
-            ) && canAttachProfile(slug)
+            ) &&
+            (!requiresAttachment || canAttachProfile(slug))
               ? undefined
-              : "You don't have permission to create and attach a profile with this name. Choose an allowed name."
+              : `You don't have permission to ${requiresAttachment ? "create and attach" : "create"} a profile with this name. Choose an allowed name.`
           }
           onDirtyChange={setIsDirty}
           onPendingChange={setIsPending}

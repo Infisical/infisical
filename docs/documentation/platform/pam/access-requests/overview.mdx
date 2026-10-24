@@ -4,243 +4,157 @@ sidebarTitle: "Access requests"
 description: "Require approval before a member can use a sensitive account."
 ---
 
-Some [accounts](/documentation/platform/pam/accounts/overview) are sensitive enough that simply having access to them shouldn't be enough to use them. A production database or a domain admin account should be reachable only by people who are already trusted, but even for them, each individual use should clear an extra checkpoint. Access requests add that checkpoint: before a member can [launch a session](/documentation/platform/pam/sessions/overview) on a gated account, their access has to be approved.
+Access requests add an approval step to sensitive [accounts](/documentation/platform/pam/accounts/overview), such as a production database or a domain admin account. If an account requires approval, a member who already has access to it must request access and wait for an approver each time they need the account.
 
-The template's **Require Approval** policy gates two things, and each is requested separately: launching a session, and [viewing the account's credentials](/documentation/platform/pam/accounts/overview#viewing-credentials). Everything below applies to both. An approved session request never reveals the credential, and an approved credential request never launches a session, so a member who needs both files both.
+The same rule applies to [AI agents](/documentation/platform/pam/ai-agents/overview). An agent requests access as whoever started it, a person or a [machine identity](/documentation/platform/identities/machine-identities), and waits for an approver.
 
-The same checkpoint applies to [AI agents](/documentation/platform/pam/ai-agents/overview). An agent requests access as whoever started it, a person or a [machine identity](/documentation/platform/identities/machine-identities), and waits for an approver either way.
+## How approval works
 
-## How it works
+Approval adds to the access that a member already has. To use an account that requires approval, a member needs both of the following:
 
-Approval sits on top of the access a member already holds. Two layers apply to a gated account:
+- **A role on the account:** The Admin, Operator, or Connector [role](/documentation/platform/pam/concepts/access-control) on the account or its [folder](/documentation/platform/pam/folders/overview), which decides who can use the account at all
+- **An approved request:** A request that an approver has approved, which gives the member access for the duration they asked for
 
-- **Membership** grants use access, the right to launch a session and connect to the account. This comes from the [Admin, Operator, or Connector role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) or account, and it's the record of who can ever get in. Credential access needs the Operator or Admin role specifically.
-- **Approval** decides whether a member is cleared to use that access right now.
+A member can only request access to an account they already have a role on. When the duration ends, the member loses access until they file another request.
 
-A gated account needs both. A member requests access on an account they can already use, an approver signs off, and the member's access opens for the duration they asked for. When the duration runs out, the access closes again.
+### Session and credential requests
 
-<Note>
-  A member can only request access on an account where they already hold use access. If they can't already launch a session on the account, there is nothing for them to request.
-</Note>
+Members request two kinds of access separately:
 
-## How an account becomes gated
+- **Session access:** Launch [sessions](/documentation/platform/pam/sessions/overview) on the account
+- **Credential access:** [View the account's credentials](/documentation/platform/pam/accounts/view-credentials), which needs the Operator or Admin role
 
-Whether an account is gated comes down to the [template](/documentation/platform/pam/templates/overview) it uses.
+An approved session request doesn't reveal the credential, and an approved credential request doesn't let the member launch a session. A member who needs both files two requests.
 
-- The **[Product Admin](/documentation/platform/pam/concepts/access-control#product-membership)** builds the templates and turns on **Require Approval** for the ones meant to be secure.
-- The **[Folder Admin](/documentation/platform/pam/concepts/access-control#folder-and-account-memberships)** gates an account by onboarding it with one of those templates. The account inherits the requirement from its template.
-- The **Folder Admin** then seats the approvers on the folder's **Approvals** tab, since the template says approval is required but not who gives it.
+## Set up approval
 
-```mermaid
-graph TD
-    P["Product Admin<br/>builds a template with<br/>Require Approval enabled"]
-    O["Folder Admin<br/>onboards the account<br/>with that template"]
-    S["Folder Admin<br/>seats approvers on the<br/>folder's Approvals tab"]
-    G["Gated account"]
-
-    P --> O --> G
-    S --> G
-```
-
-## Setting up an access gate
+An account requires approval when its [account template](/documentation/platform/pam/templates/overview) has **Require Approval** turned on. The approvers are set on the account's folder, so a Product Admin and an Admin of the folder each do part of the setup.
 
 <Steps>
-  <Step title="Prepare a secure template (Product Admin)">
-    Go to **Privileged Access Management → Account Templates**, open (or create) a template for the account type, and turn on **Require Approval**.
-
-    See [Account Templates](/documentation/platform/pam/templates/overview) for the full list of template settings.
+  <Step>
+    As a [Product Admin](/documentation/platform/pam/concepts/access-control#product-membership), go to **Privileged Access Management** > **Account Templates**, open the template for the account type, and turn on **Require Approval**.
   </Step>
-  <Step title="Onboard the account with that template (Folder Admin)">
-    When you add the account to your folder, choose the template that requires approval. The account is now gated.
+  <Step>
+    As an Admin of the folder, add the account to the folder with that template. If the account already exists, a Product Admin must [change its template](/documentation/platform/pam/accounts/manage#change-the-template) instead.
   </Step>
-  <Step title="Seat approvers in the folder (Folder Admin)">
-    Open the folder and go to its **Approvals** tab. Add the users or groups who can approve requests for the folder's gated accounts.
-
-    Approvers must be members of the folder, so the picker only offers people who already belong to it. An approver does not need use access to the account: approving is a governance action, not an access action.
-
-    Only users and groups can be seated. Approving is a human sign-off, so a machine identity is never an approver, even one with Admin on the folder.
+  <Step>
+    Open the folder's **Approvals** tab, add the users or groups who can approve requests under **Approvers**, and select **Save Changes**.
   </Step>
 </Steps>
+
+Approvers must already be members of the folder, which you add on the folder's **Permissions** tab. An approver doesn't need a role that lets them use the account.
+
+Only users and groups can be approvers. A machine identity can't approve a request, even if it has the Admin role on the folder.
 
 <Warning>
-  A gated account with no approvers seated has no one who can clear its requests, so it stays locked until a Folder Admin adds approvers on the folder's **Approvals** tab.
+  Members can't request access to an account that requires approval until its folder has at least one approver.
 </Warning>
 
-## Requesting and granting access
+## Request access
 
-### Filing a request
-
-From the **Accounts** page, a member sees every account they can reach. Gated accounts show a **key icon** instead of the rocket (launch) button — select the key or select **Request Access** from the menu to start a request.
-
-To request, the member provides a **reason** and a **duration**, both fixed at submission. The account then shows **Pending Approval** until it clears.
-
-Once approved, the key icon switches to the rocket icon and the member can launch sessions until the grant expires.
-
-### Reviewing a request
-
-Approvers are notified by email and in the app when a request needs them. From **Approval Requests**, an approver sees the requests waiting on them, each showing the requester, account, folder, reason, and duration. A credential request carries a **Credentials** badge, so an approver can tell at a glance that approving hands over the raw password rather than opening a recorded session.
-
-They **approve** or **reject** the request. A single approval from any one of the folder's seated approvers clears it; it doesn't have to come from a specific person.
-
-### The request lifecycle
-
-Every request carries the reason and duration set by the requester and moves through a small set of states.
-
-| State | What it means |
-|-------|---------------|
-| **Pending Approval** | Filed and waiting on an approver. |
-| **Approved** | An approver signed off. The access it asked for is now active and the member can launch sessions. |
-| **Expired** | The requested duration ran out and the access closed on its own. |
-| **Rejected** | An approver declined the request. No access was granted. |
-| **Revoked** | Active access was ended early by a Folder Admin before its duration ran out. |
-
-```mermaid
-graph LR
-    P["Pending Review"] -->|approved| A["Approved / Active"]
-    P -->|declined| R["Rejected"]
-    A -->|duration ends| E["Expired"]
-    A -->|ended early| V["Revoked"]
-```
-
-Rejected, expired, and revoked requests stay in the list so the audit trail stays complete.
-
-## Break-glass access
-
-Break-glass access lets a named responder clear their own pending request without an approver. Every approver who was skipped is notified immediately.
-
-It grants no standing access. The responder still files a request, still gives a reason, and still gets a time-boxed grant. The only thing that changes is who signs it off.
-
-### The two switches
-
-Break-glass needs two switches on, and a different person owns each one:
-
-- The **Product Admin** turns on **Allow Break-Glass** on the [template](/documentation/platform/pam/templates/overview). This sets which accounts can ever be broken into.
-- The **Folder Admin** names the break-glass users on the folder's **Approvals** tab. This sets who can do it.
-
-An empty break-glass list means nobody, not everybody, so the template policy on its own changes nothing until a Folder Admin names someone.
-
-<Note>
-  **Allow Break-Glass** does nothing without **Require Approval** on the same template. Break-glass skips an approval, so an account that never needed one has nothing to skip.
-</Note>
-
-```mermaid
-graph TD
-    T["Product Admin<br/>turns on Allow Break-Glass<br/>on the template"]
-    F["Folder Admin<br/>names break-glass users<br/>on the Approvals tab"]
-    B["Responder can break glass"]
-
-    T --> B
-    F --> B
-```
-
-### Setting it up
+On the **Accounts** page, an account that requires approval shows a key icon instead of the launch icon.
 
 <Steps>
-  <Step title="Turn on the template policy (Product Admin)">
-    Go to **Privileged Access Management → Account Templates**, open the template, and turn on **Allow Break-Glass** alongside **Require Approval**.
+  <Step>
+    Select the key icon on the account's row. To request the credential instead of a session, open the account's menu and select **Request Credentials**.
   </Step>
-  <Step title="Name the responders (Folder Admin)">
-    Open the folder, go to its **Approvals** tab, and add users or groups under **Break-Glass Users**.
-
-    Break-glass users must be members of the folder, same as ordinary approvers, so the picker only offers people who already belong to it. Keep the list to your on-call responders rather than everyone who might need the account.
+  <Step>
+    Enter a **Reason**, which approvers see and the audit log records. The reason is required if the template has **Require Reason** turned on.
+  </Step>
+  <Step>
+    Choose how long you need access, from 15 minutes to 1 week, and select **Request session access** or **Request credentials**.
   </Step>
 </Steps>
 
-### Breaking glass
+While the request waits for an approver, the account shows a clock icon. After an approver approves the request, the account shows the launch icon until the access expires.
 
-There are two ways in, and both need a reason of at least 10 characters explaining why this can't wait for an approver. The reason is recorded in the audit log and sent to the approvers who were skipped.
+You can't change the reason or the duration after you submit the request. To change either one, ask an approver to deny the request, then file a new one.
 
-If you already know nobody is available to approve, turn on **Break glass** in the request form before you submit. The request is raised and granted in one step, and the reason you gave doubles as the bypass reason.
+## Review a request
 
-If you filed a request and then decided not to wait, reopen the account from the **Accounts** page while the request is pending. The sheet offers **Break glass** below the approval workflow.
+When a member requests access, Infisical notifies the folder's approvers by email and in Infisical.
 
-Either way, the grant is the one the request asked for. It expires on the same clock, a Folder Admin can revoke it the same way, and sessions on it are recorded like any other. Breaking glass on a credential request grants a credential reveal, not a session.
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Approval Requests** and select the request.
+  </Step>
+  <Step>
+    Check the requester, the account, the reason, and the duration. If the request is for credential access, approving it lets the requester read the password or key outside a recorded session.
+  </Step>
+  <Step>
+    Optionally, enter an **Approval comment** for the requester, then select **Approve** or **Deny**.
+  </Step>
+</Steps>
 
-### What happens next
+One approval from any of the folder's approvers is enough. You can't approve a request that you filed yourself.
 
-Every use of break-glass:
+## Request statuses
 
-- Emails every approver who was skipped, with the reason given
-- Notifies them in the app
-- Notifies the channels on the folder's **Break-Glass Used** [alert](#alerts), if the folder has one
-- Writes a **PAM Access Policy Bypassed** entry to the [audit log](/documentation/platform/pam/auditing) with the reason, the account, the folder, and how many approvers were skipped
-- Marks the request with a **Break-glass** badge in the folder's request history
+| Status | Meaning |
+|--------|---------|
+| **Pending Review** | The request is waiting for an approver |
+| **Approved** | An approver approved the request, and the access is active |
+| **Rejected** | An approver denied the request |
+| **Expired** | The requested duration ended |
+| **Revoked** | An Admin of the folder ended the access before the duration ended |
 
-The badge and the audit entry are permanent.
+The duration starts when an approver approves the request, not when the member files it, so the member always gets the full duration they asked for.
+
+To see every request for a folder's accounts, open the folder's **Approvals** tab and go to **Access Requests**.
+
+## Revoke access
+
+An Admin of the folder can end an approved request before its duration ends. On the folder's **Approvals** tab, go to **Access Requests** and select **Revoke access** on the request's row.
+
+If you revoke a session request, Infisical ends the member's active sessions on the account immediately. If you revoke a credential request, the member can't reveal the credential again, but a credential they already copied stays valid until you [rotate](/documentation/platform/pam/credential-rotation/overview) the account.
 
 ## Alerts
 
-An alert notifies your team about access requests in a folder through email, Slack, a webhook, or PagerDuty. Each alert watches one event:
+An alert notifies your team about access requests in a folder through email, Slack, a webhook, or PagerDuty. Each alert watches one of the following events:
 
-| Event | When it fires |
-|-------|---------------|
-| **Access Requested** | Someone requests access to an account in the folder |
+| Event | When the alert fires |
+|-------|----------------------|
+| **Access Requested** | A member requests access to an account in the folder |
 | **Request Approved** | An approver approves a request |
-| **Request Denied** | An approver rejects a request |
-| **Break-Glass Used** | Someone uses [break-glass](#break-glass-access) to get access without an approver |
+| **Request Denied** | An approver denies a request |
+| **Break-Glass Used** | A member uses [break-glass access](/documentation/platform/pam/access-requests/break-glass) to skip the approvers |
 
-A Folder Admin adds and manages alerts by selecting **Alerts** on the folder's **Approvals** tab. A folder can have one alert per event, and Slack, webhook, and PagerDuty channels need an Enterprise plan.
+To add an alert, open the folder's **Approvals** tab, select **Alerts**, and select **Add Alert**. A folder can have one alert for each event.
+
+<Note>
+  Slack, webhook, and PagerDuty channels need the Enterprise plan. Email channels are available on every plan.
+</Note>
 
 ## Requests from AI agents
 
-An agent requests access on the same terms as a person, but from the [CLI](/cli/reference#pam-agentic-access) instead of the dashboard. A request from an agent running as a machine identity shows the identity's name in place of a requester's email; one from an agent you started yourself is filed under your own name.
+An AI agent requests access through the [CLI](/cli/reference#pam-agentic-access). If the agent runs as you, the request is filed under your name. If the agent runs as a machine identity, the request shows the identity's name.
 
-When an agent reaches for a gated account, the request is filed for it automatically, and the account starts working on the agent's next attempt after you approve.
+The first time an agent connects to an account that requires approval, the CLI files a request for the agent. After an approver approves the request, the agent's next connection to the account works.
 
 <Warning>
-  Approving a request from an agent's identity means approving whatever that agent does with the access for the duration you grant. Keep those identities scoped to the accounts they need, and review the [session recordings](/documentation/platform/pam/sessions/session-recording).
+  When you approve a request from an agent, you approve everything the agent does with the access for the duration you grant. Give an agent's machine identity a role on only the accounts it needs, and review its [session recordings](/documentation/platform/pam/sessions/session-recording).
 </Warning>
 
 ## Frequently asked questions
 
 <AccordionGroup>
-  <Accordion title="When does the duration clock start, at filing or at approval?">
-    At approval. The countdown begins the moment access becomes active, not when the request was filed, so the requester gets the full duration they asked for regardless of how long approval took. A four-hour request that sits pending for three hours still grants four hours of access once it clears. Time spent waiting on approvers never eats into the granted duration.
-  </Accordion>
-  <Accordion title="Can an approver approve their own request?">
-    No. An approver who files a request can't approve it. That separation of duties stops any one person from clearing their own access.
-  </Accordion>
-  <Accordion title="Can an approver change the requested reason or duration?">
-    No. The reason and duration are fixed by the requester when they file, and an approver can only approve or reject. If the duration looks wrong, the approver rejects the request and the requester files a new one. What gets approved is always exactly what was requested.
-  </Accordion>
-  <Accordion title="Does an approver need use access to the account?">
-    No. An approver has to be a member of the folder, but approving is a governance action rather than an access action, so they don't need to be able to use the gated account themselves.
-  </Accordion>
-  <Accordion title="Who can revoke access once it is granted?">
-    A Folder Admin. Revoking ends an active request right away and cuts off access before its duration runs out. Any active session using that access is terminated immediately.
+  <Accordion title="What happens if the account moves while a request is pending?">
+    If the account is deleted, Infisical cancels the request.
 
-    Revoking a credential request is weaker: it stops further reveals, but a credential already copied is outside Infisical and stays valid until the account is rotated. It also leaves live sessions alone, since those are authorized by their own grant.
+    If the account moves to another folder, Infisical won't approve the request, and the member can't file a new one while it's pending. An approver of the old folder must deny the old request first. The member can then file a new request, which goes to the approvers of the account's current folder.
   </Accordion>
-  <Accordion title="Can a machine identity or an AI agent break glass?">
-    No. Only a person can break glass, whether they're named directly or belong to a group that is, the same rule that keeps a machine identity from being an ordinary approver.
-  </Accordion>
-  <Accordion title="Can someone break glass on another person's request?">
-    No. Break-glass clears your own pending request and nothing else.
-  </Accordion>
-  <Accordion title="Does break-glass give longer or wider access than an approval?">
-    No. The grant is the one the request asked for: same duration, same account, same expiry. A Folder Admin can revoke it early, and sessions on it are recorded like any other. The only difference is that no approver signed it off.
-  </Accordion>
-  <Accordion title="What happens if the account moves or the folder's policy changes mid-request?">
-    Infisical runs the same checks it runs for an approval, and refuses rather than granting access under a folder's old rules. That covers an account that moved to another folder or was removed, and a folder whose approvers were cleared. You'll also lose the ability to break glass if you're dropped from the folder, or from its break-glass list, while your request is pending.
-  </Accordion>
-  <Accordion title="Do changes to a folder's approvers apply to requests already in flight?">
-    Removing an approver takes effect right away: someone dropped from the folder's approvers can no longer act on a request that is still pending. Adding an approver doesn't reach back into requests already in flight, so a pending request can only be cleared by the approvers it had when it was created. An approved request is already granted and keeps its access until it expires or is revoked, whatever changes afterward.
+  <Accordion title="Do changes to a folder's approvers apply to pending requests?">
+    If you remove an approver, they can't act on pending requests from that point on. If you add an approver, they can only act on requests filed after you added them. An approved request keeps its access until it expires or an Admin of the folder revokes it.
   </Accordion>
 </AccordionGroup>
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Account Templates" icon="layers" href="/documentation/platform/pam/templates/overview">
-    Turn on Require Approval for sensitive account types.
+  <Card title="Break-glass access" icon="shield-alert" href="/documentation/platform/pam/access-requests/break-glass">
+    Let named responders grant themselves access in an emergency.
   </Card>
-  <Card title="Folders" icon="folder-tree" href="/documentation/platform/pam/folders/overview">
-    Seat approvers on the folder's Approvals tab.
-  </Card>
-  <Card title="Access Control" icon="shield-half" href="/documentation/platform/pam/concepts/access-control">
-    Understand the roles that grant use access in the first place.
-  </Card>
-  <Card title="Accounts" icon="user-lock" href="/documentation/platform/pam/accounts/overview">
-    Add the databases and servers you want to gate.
+  <Card title="Account templates" icon="layers" href="/documentation/platform/pam/templates/overview">
+    Set the rules for connecting to the accounts that use a template.
   </Card>
 </CardGroup>

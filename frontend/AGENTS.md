@@ -1,0 +1,120 @@
+# AGENTS.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+This is the **frontend** package of the Infisical monorepo — a React 19 SPA built with Vite 8, TanStack Router, React Query, and Tailwind CSS v4.
+
+## Essential Commands
+
+All commands run from the `frontend/` directory:
+
+- `npm run dev` — start dev server on port 3000
+- `npm run build` — TypeScript check + Vite production build
+- `npm run lint:fix` — ESLint autofix (double quotes, simple-import-sort with 7 groups)
+- `npm run type:check` — TypeScript type check only (`tsconfig.app.json`)
+- `make reviewable-ui` (from repo root) — runs `lint:fix` + `type:check` (run before PRs)
+- `npm run storybook` — Storybook on port 6006
+
+Path alias: `@app/*` maps to `./src/*`.
+
+## Architecture Overview
+
+### Routing (TanStack Router v1)
+
+Virtual file routes defined in `src/routes.ts` using a functional DSL (`route()`, `index()`, `layout()`, `middleware()`). The generated route tree is in `src/routeTree.gen.ts` (do not edit manually — regenerated on dev server start or when `src/routes.ts` changes).
+
+Each page directory has a `route.tsx` that defines its route:
+```tsx
+createFileRoute(path)({ component, validateSearch: zodValidator(schema), beforeLoad })
+```
+
+Route middleware chain: root → `authenticate` → `inject-org-details` → org-layout → product-specific layouts (secret-manager-layout, cert-manager-layout, kms-layout, etc.).
+
+Middleware pages in `src/pages/middlewares/`: `authenticate.tsx` (auth guard + redirect), `inject-org-details.tsx` (org context), `restrict-login-signup.tsx` (prevents auth pages when logged in).
+
+### Pages / Views / Components Hierarchy
+
+- **`src/pages/`** — Route-level components organized by product feature (secret-manager, cert-manager, kms, pam, secret-scanning, organization, project, admin, auth). Each has `route.tsx` + page component + local `components/`.
+- **`src/views/`** — Reusable page-level UI composed into multiple pages. Pages import views with configuration props.
+- **`src/components/v3/`** — Latest shared UI component library (preferred). Contains `generic/` (Accordion, Alert, Button, Dialog, Select, Table, etc.) and `platform/` (domain-specific components such as `PageHeader`, scope icons, `ProjectPermissionSubjects`, and `SecretManagerResources`). **Always use v3 components.** The v2 library has been removed. Policy group tiles look up `getProjectPermissionSubjectPresentation`. Secret Manager overview resources (name/slug/icon/color) come from `SecretManagerResources`, which points at that subject catalog.
+
+### API Layer (React Query + Axios)
+
+Each API domain in `src/hooks/api/` (100+ domain folders) follows this structure:
+- **`queries.tsx`** — Query key factory pattern: keys return `[{ params }, "domain-label"]`. Export named query hooks (`useGetSecrets`, etc.) and raw fetch functions.
+- **`mutations.tsx`** — `useMutation` hooks that invalidate relevant query keys on success via `queryClient.invalidateQueries()`.
+- **`types.tsx`** — Request/response DTOs.
+
+HTTP client in `src/config/request.ts`: Axios instance with automatic token injection and 401/403 interceptors.
+
+#### React Query Global Defaults (`src/hooks/api/reactQuery.tsx`)
+
+The `QueryClient` sets these global defaults for all queries:
+- **`staleTime: 60_000`** (60 seconds) — data fetched within the last 60s is considered fresh and won't be refetched on component mount/remount. This prevents redundant API calls during normal page navigation. Queries that need real-time data (e.g., identity auth configs, dynamic secret leases) override this with `staleTime: 0`.
+- **`refetchOnWindowFocus: false`** — queries do not refetch when the browser tab regains focus.
+- **`retry: 1`** — failed queries retry once.
+
+Mutation failures are reported globally by `MutationCache.onError` using the server error message. Do not add another error `createNotification` in a mutation `catch` or `onError`, because it produces duplicate toasts. Local error handling may still restore optimistic state, keep a dialog open, or perform other control flow without displaying a second notification.
+
+When adding new queries, consider whether the default 60s staleTime is appropriate:
+- For data that changes only on explicit user action (secrets, folders, org metadata): the 60s default is fine or could be longer.
+- For data that must always be fresh (auth configs, lease TTLs): override with `staleTime: 0, gcTime: 0`.
+- For rarely-changing data (server config, user profile): use `staleTime: Infinity` as the context providers do.
+
+Organization switching resets the query cache centrally in `pages/middlewares/inject-org-details.tsx`, after authentication succeeds and before tenant data loads. `hooks/api/organization/cache.ts` tracks the active organization per `QueryClient` and removes all queries except the exact auth-token, user-profile, server-config, and session-announcement keys. Removing queries also cancels pending query results, including queries whose keys omit the organization. Same-organization navigation keeps the cache, and the organization layout remounts on organization changes to reset local UI state. Keep tenant cache cleanup at this boundary rather than adding feature-specific removal lists to individual organization selectors. Logout paths must use `clearSession` to remove user-specific cache entries while preserving public server configuration for the login page.
+
+Organization switchers use `helpers/organizationSwitch.ts` to retain safe sections and tabs while dropping resource IDs, action parameters, and legacy suborganization search state. Pass the current location through `navigateUserToOrg` only for organization switches; initial login keeps its Projects landing page. Explicit destinations take precedence, and MFA route handoffs retain the requested destination through `redirect_to`.
+
+### Product Analytics
+
+Use `@app/lib/analytics` for new frontend product analytics. Define the event and its typed properties in the shared catalog, then capture it through the method matching its scope so required grouping is applied automatically. Do not call the legacy `Telemetry` wrapper directly from new code or define event names as local strings.
+
+Read [`../ANALYTICS.md`](../ANALYTICS.md) before adding or changing an event. It defines naming, ownership between frontend and backend producers, property cardinality and privacy rules, and lifecycle semantics. Frontend events describe UI exposure and intent; decisive product outcomes belong to backend telemetry so web activity is not double-counted against CLI, machine identity, or other clients.
+
+#### PostHog feature flags and A/B tests
+
+- Put each experiment in `src/components/analytics/experiments/<experiment>/`, with its flag key, typed variants, assignment hook, and focused Vitest coverage kept together. Shared lifecycle code belongs in `src/lib/analytics/experiments/`.
+- Resolve PostHog flags through `resolveFeatureFlagVariant`. It performs a fresh lookup after flags load and owns timeout, error fallback, late-callback suppression, unsubscribe, and unmount cancellation. Set exposure-event behavior deliberately, and persist only values that the experiment resolver recognizes as real assignments.
+- Define the eligible population before initializing PostHog. Excluded flows must not request the flag or emit the experiment conversion. An eligible user who completes after assignment fails can be attributed as `unassigned`; an ineligible user must not be counted.
+- Keep an assignment sticky for the full conversion path, including redirects or region changes. Register dedicated conversion events and typed properties in `@app/lib/analytics`; do not reuse a broader event with different semantics or default unenrolled users into the control cohort.
+- Allow forced variants only in local development or pull-request previews. Production cloud domains must use PostHog assignment, and self-hosted instances must not initialize cloud experiments.
+- Create the PostHog flag and experiment as inactive drafts. Validate variant keys, exposure, conversion events, and metrics against a preview deployment before anyone launches the experiment separately from the code rollout.
+
+### State Management
+
+- **Server state**: TanStack React Query (query key factories in each API domain)
+- **Global app state**: React Context providers in `src/context/` — User, Organization, Project, OrgPermission, ProjectPermission, ServerConfig, Subscription
+- **Local component state**: Zustand stores
+
+### Permissions
+
+CASL-based (`@casl/ability`). Contexts: `OrgPermissionContext` and `ProjectPermissionContext` in `src/context/`. Access via `useOrgPermission()` / `useProjectPermission()` hooks. HOC gates: `src/hoc/withPermission/` and `withProjectPermission/`.
+
+### Styling
+
+Tailwind CSS v4 with PostCSS. Dark theme configured via CSS custom properties in `src/index.css` (`@theme` directive). Custom breakpoint `dashboard: 1100px`. Typography roles: IBM Plex Sans is the default product UI face (`font-sans`); Alliance No. 2 Regular is for headings (`font-alliance`); JetBrains Mono is the functional mono (`font-mono`) for code, values, identifiers, and technical microcopy. See the root `DESIGN.md` for typography roles. Colors use semantic roles from `src/index.css`, including surfaces, content, structure, status, scope, and product/resource accents.
+
+### Layouts
+
+9 layout components in `src/layouts/` — `AdminLayout`, `OrganizationLayout`, `SecretManagerLayout`, `PkiManagerLayout`, `KmsLayout`, `PamLayout`, etc. Layouts handle sidebar navigation and page chrome for their product area.
+
+### Org-scoped products
+
+PAM and Agent Vault live at `/organizations/$orgId/<slug>` over a single implicit project, so their URLs carry no `$projectId`. Their layout's `beforeLoad` publishes `implicitProjectId` and `implicitProductType` into route context, and `useImplicitProjectId()` / `useImplicitProduct()` read them back off the matched routes. **Anything that decides whether a `useProject()` caller renders must use `useImplicitProduct()`, never the pathname.** The router changes location before it swaps matches, so a pathname gate mounts a frame early on the way in and unmounts a frame late on the way out, leaving the component asking for a project the router no longer resolves — which throws into `ErrorPage`. Reading the matches keeps these products in step with `useParams`, which is match-derived and is what every other product's gate already uses. The gates that matter today are `OrgSidebar`'s `isInsideProject`, the `ProjectSelect` wrapper, and `OrganizationCommandMenu` in `RootCommandMenu.tsx`, which had exactly this bug when it arrived from main with a pathname check; `getOrgScopedProductFromPath` remains correct for the cosmetic uses behind no `useProject` (navbar scope, `useScopeVariant`, `TypeSelect`).
+
+A new org-scoped product therefore needs: a `<product>ProjectId` on the `Organization` type, an entry in `ORG_SCOPED_PRODUCT_TYPES` and `getOrgScopedProductFromPath` (`helpers/project.ts`), and a layout `beforeLoad` that bootstraps the id, patches it into the cached org, and returns both `implicitProjectId` and `implicitProductType` (see `pages/agent-vault/layout.tsx`). Use `isOrgScopedProduct(type)` rather than adding another pathname check; the sidebar, navbar, project switcher and nav links all key off it.
+
+Certificate Manager is org-scoped too (`/organizations/$orgId/cert-manager/...`), but legacy orgs can hold several instances, so its layout resolves the project from instance state instead of an org field, through `resolveCertManagerProjectId` (`helpers/certManagerActiveProject.ts`): the `infisical-cm-active-project-<orgId>` cookie while the user is a member of that instance, else the active instance. The product switcher and the 403 page use the same helper. The layout writes the resolved id back to the cookie, because `inject-cert-manager-project-id.ts` resolves requests that name no project from it, and reloads the page when the resolved instance changes within one page load, since several cert-manager queries are not keyed by project. Consequences: anything that sends someone into a *specific* instance (the instance picker, a project-scoped identity row, a gateway's discovery row) sets that cookie first, since the URL can't say which; old `/projects/cert-manager/$projectId/...` URLs (emails and alerts sent before the move, bookmarks; the backend now links to `/cert-manager/...`, except legacy PKI Alerts V2 and the legacy-deprecation email) go through `redirects/cert-manager-project-url-redirect.tsx`, which pins the named instance and strips the id. In multi-instance orgs each tab also tags its Certificate Manager API requests with the instance it shows (`setTabCertManagerProjectId`, read by the `apiRequest` interceptor), because the cookie is shared across tabs; single-instance orgs send no project id. Shared views that pick project vs org scope from the URL use `useRouteProjectId()`, which also returns Certificate Manager's implicit project.
+
+### Single-project products
+
+Secret Scanning has one active project per org (see the root `AGENTS.md`). Members are sent straight into it, and UI for orgs with older projects is gated on `isMultiInstance` from `useGetSecretScanningInstanceState`.
+
+## Conventions
+
+- ESLint flat config (ESLint 9+) with airbnb-typescript + prettier. Double quotes enforced.
+- Import ordering via `simple-import-sort`: node builtins → react/external packages → `@app/` → internal → relative → styles.
+- Forms use `react-hook-form` with `@hookform/resolvers` (Zod schemas).
+- Search params validated with `zodValidator()` from `@tanstack/zod-adapter`.
+- Toasts: call `createNotification({ title?, text, type, callToAction?, copyActions? })` from `@app/components/notifications`. Backed by **sonner** (the v3 `Toaster` in `components/v3/generic/Toast`), mounted once via `NotificationContainer` in `pages/root.tsx`. `react-toastify` has been removed, so do not reintroduce it.
+- Unsaved changes: use `useDiscardChangesGuard` with `DiscardChangesAlertDialog` when dismissing an overlay editor would remove unsaved form changes. Wire dismiss/close to `requestDiscard`. Do not use `window.confirm`. Do not use `useNavigationBlocker` — that hook is secrets batch-mode only.

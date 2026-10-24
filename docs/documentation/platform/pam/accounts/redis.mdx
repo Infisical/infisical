@@ -1,84 +1,84 @@
 ---
 title: "Redis accounts"
 sidebarTitle: "Redis"
-description: "Add and connect to Redis databases."
+description: "Give people and agents access to a Redis database without sharing its credentials."
 ---
 
-Redis accounts let you manage access to your Redis databases. Users connect through Web Access (a browser-based interface) or CLI (a local proxy), and every [session](/documentation/platform/pam/sessions/overview) is recorded.
+A Redis [account](/documentation/platform/pam/accounts/overview) stores the credentials for one Redis user. Members connect to the database in the browser or through the Infisical CLI, and Infisical records every command they run.
 
-## Creating an account
+## Prerequisites
+
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
+- A [gateway](/documentation/platform/gateways/overview) that can reach the database
+- A Redis [account template](/documentation/platform/pam/templates/overview)
+
+## Create the account
 
 <Steps>
-  <Step title="Start adding an account">
-    Go to **Privileged Access Management → Accounts** and select **Add Account**.
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
   </Step>
-  <Step title="Select a folder and template">
-    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a Redis [template](/documentation/platform/pam/templates/overview).
+  <Step>
+    Select the **Folder** and a Redis **Account Template**, then select **Next**.
   </Step>
-  <Step title="Enter connection details">
+  <Step>
+    Enter a **Name** and the connection details:
+
     | Field | Description |
-    |-------|-------------|
-    | **Name** | A descriptive name (e.g., `cache-primary`) |
-    | **Host** | Redis host |
-    | **Port** | Redis port (default: 6379) |
-    | **SSL Enabled** | Enable SSL/TLS for the connection |
-    | **Reject Unauthorized** | Reject connections with invalid certificates (only if SSL enabled) |
-    | **SSL Certificate** | Custom CA certificate (only if SSL enabled) |
+    | --- | --- |
+    | **Host** | The database's hostname or IP address |
+    | **Port** | The database's port (defaults to `6379`) |
+    | **SSL Enabled** | Whether to connect over TLS |
+    | **Reject Unauthorized** | Whether to reject a server certificate that can't be verified (shown when **SSL Enabled** is on) |
+    | **SSL Certificate** | The CA certificate that signed the server's certificate (shown when **SSL Enabled** is on) |
   </Step>
-  <Step title="Enter credentials">
+  <Step>
+    Enter the credentials:
+
     | Field | Description |
-    |-------|-------------|
-    | **Username** | Redis ACL username. Use `default` for the default user (also works with a legacy `requirepass` password on Redis 6+) |
-    | **Password** | Redis password. Optional, leave blank for an unauthenticated Redis server |
+    | --- | --- |
+    | **Username** | The Redis ACL user (defaults to `default`, which also works with a `requirepass` password on Redis 6 and later) |
+    | **Password** | The user's password (leave it empty if the server doesn't require authentication) |
   </Step>
-  <Step title="Save">
+  <Step>
     Select **Create**.
   </Step>
 </Steps>
 
-## Connecting
+## Connect
+
+To open a session, follow [Connect to an account](/documentation/platform/pam/accounts/connect).
 
 <Tabs>
-  <Tab title="Web Access">
-    Web Access provides a browser-based Redis console where you type commands the same way you would in `redis-cli`.
+  <Tab title="Browser">
+    The browser session is a console where you type Redis commands, the same way you would in `redis-cli`. To end the session, type `quit` or `exit`.
 
-    To connect:
-    1. Go to **Privileged Access Management → Accounts**
-    2. Find the account and click the rocket icon (or select **Launch Session** from the menu)
-    3. Click **Connect in Browser**
-
-    Type `quit` or `exit` to end the session.
-
-    Web Access is built for interactive use. Very long replies are shortened, and commands that stream results, such as `SUBSCRIBE` and `MONITOR`, are only available through the CLI.
-
+    The console shortens very long replies, and doesn't support commands that stream results, such as `SUBSCRIBE` and `MONITOR`. To run those commands, use the CLI.
   </Tab>
   <Tab title="CLI">
-    The CLI starts a local proxy that you connect to with your preferred Redis client.
+    Start the local proxy:
 
     ```bash
-    infisical pam access my-folder/cache-primary
+    infisical pam access backend-team/cache-primary
     ```
 
-    The command outputs the local port to connect to. Then use `redis-cli` or any Redis client:
+    The proxy keeps running in that terminal and prints its port. In a second terminal, connect your Redis client to that port:
+
     ```bash
     redis-cli -h 127.0.0.1 -p <port>
     ```
 
-    No password needed since the proxy handles authentication.
-
-    **Flags:**
-    - `--port <port>` — use a specific local port (otherwise one is assigned automatically)
-    - `--reason <reason>` — provide an access reason (if required by template)
+    The proxy signs in for you, so the client doesn't need a password.
   </Tab>
 </Tabs>
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="MongoDB Accounts" icon="database" href="/documentation/platform/pam/accounts/mongodb">
-    Add MongoDB database accounts.
-  </Card>
   <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
-    View and manage sessions.
+    Review and end the connections that people and agents make to your accounts.
+  </Card>
+  <Card title="Access requests" icon="hand" href="/documentation/platform/pam/access-requests/overview">
+    Require approval before a member can use a sensitive account.
   </Card>
 </CardGroup>

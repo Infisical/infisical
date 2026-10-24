@@ -2,6 +2,12 @@
 
 The migration is complete only when the legacy UI implementations, exports, imports, aliases, and private dependencies are removed from the latest `main`. Migrating a consumer in an open PR does not mean its legacy family is removed on `main`. Moving an implementation into V3, renaming it, or wrapping it does not establish parity or removal.
 
+## Status on main
+
+The `components/v2` tree and its `@app/components/v2` root barrel are deleted. The last census before deletion, at `e434f2fdfdd608f97cd4041af84062991d2645cf`, found 24 families, 50 files, and one external consumer: the root `TooltipProvider` in `pages/root.tsx`, which now uses the V3 `TooltipProvider` with the same 700 ms delay and 300 ms skip delay. Every other V2 import was between V2 families.
+
+`legacy.css` is also deleted, so `audit-v2-ui.mjs --assert-zero` passes: zero V2 files, zero legacy module edges, zero known outside paths, and zero computed imports. The family coverage and product-surface tables below are the 2026-10-04 baseline record; keep using them for replacement guidance, not as current consumer counts.
+
 ## Baseline and measurement
 
 Baseline: `infisical/infisical` `origin/main` **70e06365043ae3b6f49ef6c95a8b9997b20f4a34**, fetched **2026-10-04**. The September 24 design audit is historical context, not current acceptance evidence.
@@ -117,7 +123,7 @@ All source anchors in this surface table are relative to `frontend/src/`. Refres
 - `components/basic/InputField.tsx` is an unversioned legacy input, and `components/basic/Error.tsx` is a legacy error presentation used by `components/auth/Mfa.tsx`. Remove unused source or migrate the live caller; neither may be hidden by a rename.
 - `components/integrations/NoEnvironmentsBanner.tsx`, `components/navigation/SecretDashboardPathBreadcrumb.tsx`, and `components/tags/CreateTagModal/CreateTagModal.tsx` are V2-dependent feature wrappers with no consuming module/symbol references at the baseline. Reverify and delete their unused implementation/export closure in a separate focused unit. The known outside-path completion gate includes these files.
 - `pages/secret-manager/OverviewPage/components/SecretSearchInput/SecretSearchInput.tsx` and its barrel are an old Headless UI search control. Its sibling quick-search components are also consumed by the newer `ResourceSearchInput`; preserve those workflows while removing or replacing the old control.
-- `legacy.css`, imported by `index.css`, is the legacy palette. Migrate all remaining utility consumers before deleting it; deleting V2 React files alone is not a token cleanup proof.
+- `legacy.css`, the legacy palette, is deleted. At `e434f2fdfdd608f97cd4041af84062991d2645cf` none of its color tokens had a literal utility, `--color-*` variable, `@apply` or `theme()` user in frontend sources, CSS, or config, so its default-palette overrides (`red`, `green`, `blue`, `yellow`) had no consumers either.
 - V3 `ReactSelect` is an independently implemented, token-based compatibility family, not a wrapper importing V2. Its deprecated status does not make every current consumer a V2 import. Do not use it as a cosmetic shortcut to avoid verifying Combobox behavior. Record custom option/group/creation/portal contracts and any replacement work before retiring `react-select`.
 - V3 `SecretInput`, `InfisicalSecretInput`, `SecretPathInput`, and `PasswordGenerator` have their own implementations. Compare security-sensitive behavior, not names. Removing unused V2 Editor/PasswordGenerator does not certify every active V3 editor flow.
 - API/data versions such as `hooks/api/secretRotationsV2`, `BillingV2Page`, `PkiAlertsV2Page`, backend secret-v2 services and migration files are not automatically legacy UI. Their actual UI imports and implementations remain in scope; their legitimate API versions are not renamed.

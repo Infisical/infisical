@@ -2497,13 +2497,14 @@ export type TAgentVaultServiceDeletedEvent = {
 
 export type TAgentVaultVariableCreatedEvent = {
   event: PostHogEventTypes.AgentVaultVariableCreated;
-  properties: TAgentVaultEventBase & { variableId: string };
+  properties: TAgentVaultEventBase & { variableId: string; scope: string };
 };
 
 export type TAgentVaultVariableUpdatedEvent = {
   event: PostHogEventTypes.AgentVaultVariableUpdated;
   properties: TAgentVaultEventBase & {
     variableId: string;
+    scope: string;
     keyChanged: boolean;
     valueReplaced: boolean;
     usedByServiceCount: number;
@@ -2512,7 +2513,7 @@ export type TAgentVaultVariableUpdatedEvent = {
 
 export type TAgentVaultVariableDeletedEvent = {
   event: PostHogEventTypes.AgentVaultVariableDeleted;
-  properties: TAgentVaultEventBase & { variableId: string };
+  properties: TAgentVaultEventBase & { variableId: string; scope: string };
 };
 
 export type TAgentVaultAccessBundleMemberAddedEvent = {

@@ -2258,6 +2258,7 @@ export const SecretEditTableRow = ({
         </SheetContent>
       </Sheet>
       <AlertDialog
+        isPending={isEditing}
         open={popUp.editSecret.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("editSecret", isOpen)}
         confirmationValue="confirm"
@@ -2282,14 +2283,13 @@ export const SecretEditTableRow = ({
           )}
           <AlertDialogConfirmationField />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isEditing}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="project"
               onClick={(e) => {
                 e.preventDefault();
                 handleEditSecret(popUp?.editSecret?.data);
               }}
-              isPending={isEditing}
             >
               Save Changes
             </AlertDialogAction>

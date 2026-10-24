@@ -1,32 +1,22 @@
 # Shared component lifecycle ledger
 
-This ledger records lifecycle decisions that aren't obvious from component source or Storybook. Use the V2 and V3 barrel exports to find the current component catalog, and use V3 stories as the API and usage reference. A component not listed here has no special lifecycle decision recorded.
+This ledger records lifecycle decisions that aren't obvious from component source or Storybook. Use the V3 barrel exports to find the current component catalog, and use V3 stories as the API and usage reference. A component not listed here has no special lifecycle decision recorded.
 
 The [V3 migration ledger](V3_MIGRATION.md) tracks source removal, coverage, and validation. A blocked replacement is work to complete, not a permanent exemption. Keep supported behavior until its replacement is verified; completion requires deleting the legacy implementation and export surface.
 
 ## V2
 
-| Components                                                                                                                             | Status                        | Direction                                                                                                     |
-| -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `FilterableSelect`                                                                                                                     | Deprecated                    | Use V3 `Combobox` where its contract fits.                                                                    |
-| `Button`, `Card`, `Checkbox`, `EmptyState`, `IconButton`, `Input`, `Pagination`, `Select`, `TextArea`, `Tooltip`             | Ready for focused deprecation | Supported V3 replacements exist. Check representative consumers before adding component-specific guidance.    |
-| `Accordion`, `Alert`, `CopyButton`, `Dropdown`, `Skeleton`, `Spinner`, `Table`, `Tabs` | Blocked                       | Composition, interaction, or state parity still needs verification.                                           |
-| `ConfirmActionModal`, `DeleteActionModal`, `HoverCardv2`, `SecretInput`, `Switch` | Removed | Deleted the unused implementations, family indexes, and root exports. No external or internal consumers remained at `becbf4813816bb3686111b2537009201b0a90c81`. Use V3 `ConfirmationAlertDialog`, `HoverCard`, `SecretInput`, and `Toggle` for new work. |
-| `Modal` | Ready for focused deprecation | Follow the overlay recipe in the [V3 migration ledger](V3_MIGRATION.md#overlay-migration-recipe). |
-| `ContentLoader`, `FormControl`, `GenericFieldLabel`, `Tag`                                                    | Blocked                       | The V3 replacements require consumer-specific composition or accessibility changes.                           |
-| `SecretPathInput` | Removed in candidate | Deleted the unused V2 implementation and family index. No incoming module or declaration references remained at `13f5e7fe562a803a9b6de1d512cb27f67868ea6d`. The independent V3 implementation and its consumers are unchanged; this does not certify workflow parity or removal on merged main. |
-| `NoticeBannerV2` | Removed | Deleted the unused implementation, empty family index, and stale root export. No external or internal consumers remained at `e05f750eb36506dac9a599709055ffb33d5b58ab`. |
+| Components | Status | Direction |
+| --- | --- | --- |
+| All V2 families and the `@app/components/v2` root barrel | Removed | Deleted the remaining `Accordion`, `Alert`, `Button`, `Card`, `Checkbox`, `ContentLoader`, `CopyButton`, `Dropdown`, `EmptyState`, `FilterableSelect`, `FormControl`, `GenericFieldLabel`, `IconButton`, `Input`, `Modal`, `Pagination`, `Select`, `Skeleton`, `Spinner`, `Table`, `Tabs`, `Tag`, `TextArea`, and `Tooltip` implementations with the `components/v2` folder. At `e434f2fdfdd608f97cd4041af84062991d2645cf` their only external consumer was the root `TooltipProvider`, which now uses the V3 provider. Use the V3 replacements in the [V3 migration ledger](V3_MIGRATION.md#family-coverage); don't reintroduce V2 sources or imports. |
 
-### Removed unused V2 families
-
-The 2026-10-04 source audit found no external consumers of `Blur`, `CreatableSelect`, `DatePicker`, `Divider`, `Drawer`, `Editor`, `FontAwesomeSymbol`, `HeaderResizer`, `HighlightText`, `HoverCard`, `NoticeBanner`, `PasswordGenerator`, `Popover`, `RadioGroup`, or `Stepper`. `Popoverv2` was used only by the unused `DatePicker`; `Slider` was used only by the unused `PasswordGenerator`. Their implementations, private helpers, and exports have been deleted. The canonical shared `utilities/HighlightText` remains; only its unused V2 re-export was removed. No active date-input or specialist editor contract was replaced in this cleanup.
+Earlier removals: `ConfirmActionModal`, `DeleteActionModal`, `HoverCardv2`, `SecretInput`, and `Switch` (no consumers at `becbf4813816bb3686111b2537009201b0a90c81`), `SecretPathInput`, `NoticeBannerV2`, and the 2026-10-04 first wave (`Blur`, `CreatableSelect`, `DatePicker`, `Divider`, `Drawer`, `Editor`, `FontAwesomeSymbol`, `HeaderResizer`, `HighlightText` re-export, `HoverCard`, `NoticeBanner`, `PasswordGenerator`, `Popover`, `Popoverv2`, `RadioGroup`, `Slider`, `Stepper`). The canonical shared `utilities/HighlightText` remains.
 
 ## V3
 
 | Components                     | Status     | Direction                                                             |
 | ------------------------------ | ---------- | --------------------------------------------------------------------- |
 | `PageHeader` | Supported | Owns the normal 40px bottom boundary (`mb-10`). Remove header-boundary parent gaps and redundant caller margins when adopting it; preserve independent body/card spacing in body containers. `className` supports intentional compact/responsive boundaries. See its spacing stories. |
-| `DeleteConfirmDialog` | Deprecated | Renamed to `ConfirmationAlertDialog`, which also covers non-delete confirms. The alias stays only so in-flight branches compile; remove it once no import remains. |
 | `ReactSelect/FilterableSelect` | Deprecated | Use `Combobox`; keep compatibility available while consumers migrate. |
 | `ReactSelect/CreatableSelect`  | Deprecated | Use `Combobox` with inline `creation` for values needing no metadata, or dialog `creation` for caller-owned forms and persistence. Keep compatibility for react-select-specific component overrides; migrate consumers separately. |
 

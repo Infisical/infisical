@@ -8,13 +8,18 @@ import {
   PackageIcon,
   PencilIcon,
   TrashIcon,
+  TriangleAlertIcon,
   UsersIcon
 } from "lucide-react";
 
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
+import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
 import {
+  Alert,
+  AlertAction,
+  AlertDescription,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +54,10 @@ export const AgentVaultAccessBundleDetailPage = () => {
   });
 
   const { data: accessBundle, isPending } = useGetAgentVaultAccessBundle(accessBundleId);
+  const [serviceToSetUp, setServiceToSetUp] = useState<TAgentVaultService | null>(null);
+  const needsSetup = (accessBundle?.services ?? []).filter(
+    (service) => service.personalValues && !service.personalValues.isConfigured
+  );
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isManageAccessOpen, setIsManageAccessOpen] = useState(false);
@@ -125,8 +134,29 @@ export const AgentVaultAccessBundleDetailPage = () => {
         )}
       </PageHeader>
 
+      {needsSetup.length > 0 && (
+        <Alert variant="warning" className="mb-6">
+          <TriangleAlertIcon />
+          <AlertDescription>
+            <p>
+              {needsSetup.length === 1
+                ? `${needsSetup[0].name} requires your personal values.`
+                : `${needsSetup.length} services require your personal values.`}{" "}
+              Sessions from this bundle can&apos;t reach {needsSetup.length === 1 ? "it" : "them"}{" "}
+              until you set {needsSetup.length === 1 ? "it" : "them"} up.
+            </p>
+            <AlertAction>
+              <Button variant="outline" size="sm" onClick={() => setServiceToSetUp(needsSetup[0])}>
+                Set Up {needsSetup[0].name}
+              </Button>
+            </AlertAction>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <ServicesCard
         accessBundleId={accessBundle.id}
+        onSetUp={setServiceToSetUp}
         services={accessBundle.services}
         canManage={isAdmin}
         onAdd={() => {
@@ -136,6 +166,15 @@ export const AgentVaultAccessBundleDetailPage = () => {
         onEdit={(service) => {
           setServiceToEdit(service);
           setIsServiceSheetOpen(true);
+        }}
+      />
+
+      <PersonalValuesDialog
+        target={
+          serviceToSetUp ? { service: serviceToSetUp, accessBundleName: accessBundle.name } : null
+        }
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setServiceToSetUp(null);
         }}
       />
 

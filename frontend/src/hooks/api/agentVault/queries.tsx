@@ -6,7 +6,7 @@ import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 import { VARIABLE_KEY_MAX_LENGTH, VARIABLE_KEY_RE } from "@app/helpers/agentVaultVariables";
 
-import { AgentVaultMemberType } from "./enums";
+import { AgentVaultMemberType, AgentVaultVariableScope } from "./enums";
 import {
   createSessionLogChunkCache,
   decryptSessionLogPage,
@@ -93,8 +93,8 @@ export const agentVaultKeys = {
   variables: (orgId: string) => [...agentVaultKeys.all(orgId), "variables"] as const,
   variableList: (orgId: string, params: TListAgentVaultVariablesDTO) =>
     [...agentVaultKeys.variables(orgId), "list", params] as const,
-  variableKeyStatus: (orgId: string, keys: string[]) =>
-    [...agentVaultKeys.variables(orgId), "key-status", keys] as const,
+  variableKeyStatus: (orgId: string, scope: AgentVaultVariableScope, keys: string[]) =>
+    [...agentVaultKeys.variables(orgId), "key-status", scope, keys] as const,
   members: (orgId: string) => [...agentVaultKeys.all(orgId), "members"] as const,
   memberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
     [...agentVaultKeys.members(orgId), params] as const,
@@ -218,6 +218,14 @@ export const useListAgentVaultAccessBundles = (params: TListAgentVaultAccessBund
     placeholderData: (prev) => prev
   });
 };
+
+// One page holds them all in practice: it is only the bundles the caller reaches that still require their values.
+export const useListAgentVaultAccessBundlesRequiringSetup = () =>
+  useListAgentVaultAccessBundles({ requiresSetup: true, limit: 100 });
+
+// Only the count is read, so one row is enough.
+export const useListGrantedAgentVaultAccessBundlesRequiringSetup = () =>
+  useListAgentVaultAccessBundles({ requiresSetup: true, granted: true, limit: 1 });
 
 export const useGetAgentVaultAccessBundle = (accessBundleId: string) => {
   const { currentOrg } = useOrganization();
@@ -569,18 +577,23 @@ const isPossibleVariableKey = (key: string) =>
 // already covered doesn't flicker while the next set loads.
 export const useAgentVaultVariableKeyStatus = (
   keys: readonly string[],
-  { enabled = true, isCached = true }: { enabled?: boolean; isCached?: boolean } = {}
+  {
+    enabled = true,
+    isCached = true,
+    scope = AgentVaultVariableScope.Global
+  }: { enabled?: boolean; isCached?: boolean; scope?: AgentVaultVariableScope } = {}
 ) => {
   const { currentOrg } = useOrganization();
   const possibleKeys = [...new Set(keys.filter(isPossibleVariableKey))].sort();
 
   const { data } = useQuery({
-    queryKey: agentVaultKeys.variableKeyStatus(currentOrg.id, possibleKeys),
+    queryKey: agentVaultKeys.variableKeyStatus(currentOrg.id, scope, possibleKeys),
     queryFn: async () => {
       const found: string[] = [];
       for (let i = 0; i < possibleKeys.length; i += KEY_LOOKUP_BATCH_SIZE) {
         // eslint-disable-next-line no-await-in-loop
         const page = await fetchAgentVaultVariables({
+          scope,
           keys: possibleKeys.slice(i, i + KEY_LOOKUP_BATCH_SIZE)
         });
         found.push(...page.variables.map((variable) => variable.key));
