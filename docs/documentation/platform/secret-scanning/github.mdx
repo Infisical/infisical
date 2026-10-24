@@ -23,17 +23,20 @@ To scan your GitHub repositories for leaked secrets, create a GitHub [data sourc
     ![Select GitHub Option](/images/platform/secret-scanning/github/github-data-source-step-2.png)
   </Step>
   <Step>
-    Select the connection to use and the repositories to scan, then select **Next**.
+    Select the connection to use, then select **Continue**.
     ![Data Source Configuration](/images/platform/secret-scanning/github/github-data-source-step-3.png)
 
-    - **GitHub Radar Connection**: The connection that can access the repositories you want to scan
-    - **Scan Repositories**: Which repositories Infisical scans
-        - **All Repositories**: Every repository the connection can access
-        - **Select Repositories**: Only the repositories you select in **Include Repositories**
-    - **Auto-Scan Enabled**: Whether Infisical scans each new push to the repositories
+    - **GitHub Radar Connection**: The connection that can access the repositories you want to scan. Each connection can be used by only one data source, so create a separate connection for each data source. You can't change it after you create the data source.
   </Step>
   <Step>
-    Enter a name and, optionally, a description for the data source, then select **Next**.
+    Choose when Infisical scans the data source's repositories, then select **Continue**.
+
+    - **Trigger Historical Scan**: Whether Infisical scans the full history of each repository you add to the data source
+    - **Scan New Commits**: Whether Infisical scans each new push to the data source's repositories
+    - **Discover New Repositories**: Whether Infisical adds every repository the connection can access when you create the data source, and adds repositories created in GitHub later
+  </Step>
+  <Step>
+    Enter a name and, optionally, a description for the data source, then select **Continue**.
     ![Data Source Details](/images/platform/secret-scanning/github/github-data-source-step-4.png)
 
     - **Name**: A name that contains only lowercase letters, numbers, and hyphens
@@ -44,7 +47,7 @@ To scan your GitHub repositories for leaked secrets, create a GitHub [data sourc
     ![Data Source Review](/images/platform/secret-scanning/github/github-data-source-step-5.png)
   </Step>
   <Step>
-    The data source appears in **Data Sources**. If auto-scan is enabled, Infisical starts a [historical scan](/documentation/platform/secret-scanning/scan-repositories#scans) of every repository.
+    The data source appears in **Data Sources**. If **Discover New Repositories** is on, Infisical adds every repository the connection can access, and starts a [historical scan](/documentation/platform/secret-scanning/scan-repositories#scans) of each one if **Trigger Historical Scan** is on. Otherwise, [add the repositories](/documentation/platform/secret-scanning/scan-repositories#resources) you want to scan.
     ![Data Source Created](/images/platform/secret-scanning/github/github-data-source-step-6.png)
   </Step>
   <Step>

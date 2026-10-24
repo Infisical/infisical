@@ -16,14 +16,14 @@ Infisical records every secret it finds as a [finding](/documentation/platform/s
 
 ## Data sources
 
-To scan repositories, connect them to Infisical with a data source. A data source covers the repositories in a GitHub organization, a GitLab project or group, or a Bitbucket workspace, and reaches them through an [app connection](/integrations/app-connections/overview). To create one, follow the guide for your provider:
+To scan repositories, connect them to Infisical with a data source. A data source covers the repositories in a GitHub organization, the GitLab projects a connection can read or a GitLab group, or a Bitbucket workspace. It reaches them through an [app connection](/integrations/app-connections/overview), and each app connection can back only one data source. To create one, follow the guide for your provider:
 
 <CardGroup cols={3}>
   <Card title="GitHub" icon="/images/platform/secret-scanning/icons/github.svg" href="/documentation/platform/secret-scanning/github">
     Scan the repositories a GitHub Radar connection can access.
   </Card>
   <Card title="GitLab" icon="/images/platform/secret-scanning/icons/gitlab.svg" href="/documentation/platform/secret-scanning/gitlab">
-    Scan one GitLab project, or the projects in a group.
+    Scan the GitLab projects a connection can read, or the projects in a group.
   </Card>
   <Card title="Bitbucket" icon="/images/platform/secret-scanning/icons/bitbucket.svg" href="/documentation/platform/secret-scanning/bitbucket">
     Scan the repositories in a Bitbucket workspace.
@@ -36,7 +36,16 @@ To see your data sources, go to **Secret Scanning** > **Data Sources**.
 
 ### Resources
 
-A resource is one repository that a data source scans, such as a GitHub repository or a GitLab project. Infisical adds resources to a data source when it scans the data source, so a new repository that the data source covers appears after the next scan.
+A resource is one repository that a data source scans, such as a GitHub repository or a GitLab project. A data source scans only the resources added to it.
+
+If **Discover New Repositories** (or **Discover New Projects** for GitLab) is on, Infisical adds every resource the connection can access when you create the data source, and adds resources created in the provider later.
+
+To add resources yourself, select the data source, open its **Repositories** or **Projects** tab, and select **Add Repository** or **Add Project**. Then choose one of these options:
+
+- **Add Repository** or **Add Project**: Add one resource
+- **Add All Repositories** or **Add All Projects**: Add every resource the connection can access. This option isn't available for a GitLab data source without a group.
+
+To stop scanning a resource, select the options menu on the resource's row, then select **Remove Repository** or **Remove Project**. Infisical permanently deletes the resource's scans and findings.
 
 To see a data source's resources and its **Scan History**, select the data source.
 
@@ -49,15 +58,18 @@ Infisical runs two types of scan:
 - **Historical scan**: Scans every commit in a repository, from the first to the latest
 - **Realtime scan**: Scans only the commits in a new push
 
-If **Auto-Scan** is enabled on a data source, Infisical runs a historical scan of every resource when you create the data source, and a realtime scan of every new push.
+Two options on each data source control when Infisical scans automatically:
 
-To turn **Auto-Scan** on or off, select the options menu on the data source's row, then select **Enable Auto-Scan** or **Disable Auto-Scan**.
+- **Trigger Historical Scan**: Infisical runs a historical scan of each resource when it's added to the data source
+- **Scan New Commits**: Infisical runs a realtime scan of every new push to the data source's resources
+
+To turn these options on or off, select the data source, open its **Settings** tab, and use the toggles in **Scanning**. You can also change them by selecting **Edit Data Source** in the options menu on the data source's row.
 
 ### Run a historical scan
 
 You can run a historical scan at any time:
 
-- **Every resource in a data source**: Select the options menu on the data source's row, then select **Trigger Scan**
+- **Every resource in a data source**: Select the data source, select **Options**, then select **Scan All Repositories** or **Scan All Projects**
 - **One resource**: Select the data source, then select the options menu on the resource's row and select **Trigger Scan**
 
 ### Scan history

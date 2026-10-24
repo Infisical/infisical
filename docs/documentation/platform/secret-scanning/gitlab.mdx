@@ -2,7 +2,7 @@
 title: "GitLab secret scanning"
 sidebarTitle: "GitLab"
 icon: "/images/platform/secret-scanning/icons/gitlab.svg"
-description: "Scan one GitLab project, or the projects in a group."
+description: "Scan the GitLab projects a connection can read, or the projects in a group."
 ---
 
 To scan your GitLab projects for leaked secrets, create a GitLab [data source](/documentation/platform/secret-scanning/scan-repositories) in Infisical.
@@ -23,20 +23,23 @@ To scan your GitLab projects for leaked secrets, create a GitLab [data source](/
     ![Select GitLab](/images/platform/secret-scanning/gitlab/step-2.png)
   </Step>
   <Step>
-    Select the connection to use and the GitLab project or group to scan, then select **Next**.
+    Select the connection to use and, optionally, a GitLab group, then select **Continue**.
     ![Data Source Configuration](/images/platform/secret-scanning/gitlab/step-3.png)
 
     - **GitLab Connection**: The connection that can access the projects you want to scan
-    - **Scope**: Whether Infisical scans one GitLab project or the projects in a GitLab group
-        - **Project**: Scan the project you select in **Project**
-        - **Group**: Scan projects in the group you select in **Group**
-    - **Scan Projects**: If **Scope** is **Group**, which of the group's projects Infisical scans
-        - **All Projects**: Every project in the group
-        - **Select Projects**: Only the projects you select in **Include Projects**
-    - **Auto-Scan Enabled**: Whether Infisical scans each new push to the projects
+    - **Group** (optional): The GitLab group whose projects the data source covers. If you leave it empty, the data source covers every project the connection can read, including your own.
+
+    You can't change the connection or the group after you create the data source. Each connection can be used by only one data source, so to scan two GitLab groups, create a separate GitLab connection for each.
   </Step>
   <Step>
-    Enter a name and, optionally, a description for the data source, then select **Next**.
+    Choose when Infisical scans the data source's projects, then select **Continue**.
+
+    - **Trigger Historical Scan**: Whether Infisical scans the full history of each project you add to the data source
+    - **Scan New Commits**: Whether Infisical scans each new push to the data source's projects
+    - **Discover New Projects**: Whether Infisical adds every project in the group when you create the data source, and adds projects created in the group later. This option requires a group, because GitLab only reports new projects through group webhooks.
+  </Step>
+  <Step>
+    Enter a name and, optionally, a description for the data source, then select **Continue**.
     ![Data Source Details](/images/platform/secret-scanning/gitlab/step-4.png)
 
     - **Name**: A name that contains only lowercase letters, numbers, and hyphens
@@ -47,7 +50,7 @@ To scan your GitLab projects for leaked secrets, create a GitLab [data source](/
     ![Data Source Review](/images/platform/secret-scanning/gitlab/step-5.png)
   </Step>
   <Step>
-    The data source appears in **Data Sources**. If auto-scan is enabled, Infisical starts a [historical scan](/documentation/platform/secret-scanning/scan-repositories#scans) of every project.
+    The data source appears in **Data Sources**. If **Discover New Projects** is on, Infisical adds every project in the group, and starts a [historical scan](/documentation/platform/secret-scanning/scan-repositories#scans) of each one if **Trigger Historical Scan** is on. Otherwise, [add the projects](/documentation/platform/secret-scanning/scan-repositories#resources) you want to scan. If you didn't select a group, add each project individually.
     ![Data Source Created](/images/platform/secret-scanning/gitlab/step-6.png)
   </Step>
   <Step>
