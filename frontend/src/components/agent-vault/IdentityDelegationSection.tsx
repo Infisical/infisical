@@ -25,6 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
@@ -69,8 +70,13 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
-  const { data, isPending } = useGetAgentVaultDelegation(machineIdentityId, isAdmin);
+  const { data, isPending, isError, isFetching, refetch } = useGetAgentVaultDelegation(
+    machineIdentityId,
+    isAdmin
+  );
   const delegation = data ?? null;
+  // A save sends the whole list, so without a successful read it would replace what's there.
+  const isLoadError = isError && data === undefined;
   const setDelegation = useSetAgentVaultDelegation();
   const deleteDelegation = useDeleteAgentVaultDelegation();
 
@@ -168,6 +174,28 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
 
   const renderList = () => {
     if (isPending) return <Skeleton className="h-16 w-full" />;
+    if (isLoadError) {
+      return (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyTitle>Couldn&apos;t load the delegation</EmptyTitle>
+            <EmptyDescription>
+              Reload to see its users and groups before you add or remove any.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button
+              variant="outline"
+              size="sm"
+              isPending={isFetching}
+              onClick={() => refetch().catch(() => {})}
+            >
+              Reload
+            </Button>
+          </EmptyContent>
+        </Empty>
+      );
+    }
     if (!delegation) {
       return (
         <Empty className="border">
@@ -259,7 +287,7 @@ export const IdentityDelegationSection = ({ machineIdentityId, machineIdentityNa
           Lets this machine identity start sessions on behalf of these users and groups, using each
           user&apos;s personal values. It can still start its own sessions.
         </CardDescription>
-        {!isPending && (
+        {!isPending && !isLoadError && (
           <CardAction>
             <Button variant="av" onClick={() => setIsAddOpen(true)}>
               <UserPlusIcon />

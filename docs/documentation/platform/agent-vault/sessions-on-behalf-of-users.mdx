@@ -110,14 +110,20 @@ A session created on behalf of a user can use an access bundle only if both the 
 - The machine identity can use the access bundles granted to it, directly or through a group (if the machine identity is an Agent Vault admin, every bundle)
 - The proxy refuses the session's requests to a service until the user [sets up their personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values) for it
 
-If a user or group in the delegation can use an access bundle that isn't granted to the machine identity, their row in the machine identity's **Delegation** section shows the number of excluded bundles, and hovering over the number lists them. Through the API, [the endpoint that reads a delegation](/api-reference/endpoints/agent-vault-delegations/get) returns the same bundles in `missingAccessBundles`. To let the machine identity create sessions over one of them, [grant the bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) to the machine identity.
+If a user or group in the delegation can use an access bundle that isn't granted to the machine identity, Infisical shows the bundle in two places:
+
+- In the machine identity's **Delegation** section, the row for the user or group shows the number of excluded bundles, and hovering over the number lists them
+- [The endpoint that reads a delegation](/api-reference/endpoints/agent-vault-delegations/get) returns the bundles in `missingAccessBundles` (always empty if a machine identity that isn't an Agent Vault admin reads its own delegation)
+
+To let the machine identity create sessions over one of them, [grant the bundle](/documentation/platform/agent-vault/access-bundles#manage-access-to-access-bundles) to the machine identity.
 
 ## When the session stops working
 
 Infisical checks the delegation again each time the proxy polls, once every [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default). The proxy refuses every request on the session if any of these happen:
 
 - An admin removes the delegation, or edits it so it no longer covers the user
-- The delegation covered the user only through a group, and the user leaves that group
+- The delegation covered the user only through a group, and either the user leaves that group or an admin removes the group from Agent Vault
+- An admin removes the user from Agent Vault, which also takes the user out of the delegation
 - An admin removes the machine identity from Agent Vault, which also deletes its delegation
 - Someone deletes the machine identity (the session then shows as **Revoked**)
 

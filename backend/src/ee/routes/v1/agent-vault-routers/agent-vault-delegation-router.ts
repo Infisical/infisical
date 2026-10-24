@@ -41,8 +41,8 @@ const DelegationSchema = z.object({
   scope: DelegationScopeSchema,
   users: DelegationUserSchema.array().describe(AGENT_VAULT.DELEGATION.users),
   groups: DelegationGroupSchema.array().describe(AGENT_VAULT.DELEGATION.groups),
-  createdAt: z.date(),
-  updatedAt: z.date()
+  createdAt: z.date().describe(AGENT_VAULT.DELEGATION.createdAt),
+  updatedAt: z.date().describe(AGENT_VAULT.DELEGATION.updatedAt)
 });
 
 const missingAccessBundlesSchema = (description: string) =>
@@ -104,7 +104,10 @@ export const registerAgentVaultDelegationRouter = async (server: FastifyZodProvi
         offset: z.coerce.number().int().min(0).max(10000).default(0).describe(AGENT_VAULT.DELEGATION.offset)
       }),
       response: {
-        200: z.object({ delegations: DelegationSchema.array(), totalCount: z.number() })
+        200: z.object({
+          delegations: DelegationSchema.array(),
+          totalCount: z.number().describe(AGENT_VAULT.DELEGATION.totalCount)
+        })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),

@@ -25,7 +25,7 @@ type TSessionOwnerColumns = {
 // keeps its acting identity's name once that identity is deleted. Resolve refuses either; the status says the same,
 // or the list would show it Active when nothing can use it.
 export const isOrphanedSession = (session: TSessionOwnerColumns) =>
-  (!session.userId && !session.identityId) || (Boolean(session.actingIdentityName) && !session.actingIdentityId);
+  (!session.userId && !session.identityId) || (session.actingIdentityName != null && !session.actingIdentityId);
 
 // The machine identity that started a session on a user's behalf holds it alongside the user.
 export const isSessionOwnedBy = (ctx: { actor: ActorType; actorId: string }, session: TSessionOwnerColumns) =>

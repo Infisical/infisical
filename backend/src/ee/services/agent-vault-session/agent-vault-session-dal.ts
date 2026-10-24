@@ -326,9 +326,10 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
             actingIdentityId: row.actingIdentityId,
             actingIdentityName: row.actingIdentityName,
             actor: toSessionActor(row),
-            actingIdentity: row.actingIdentityName
-              ? { id: row.actingIdentityId, name: row.actingIdentityLiveName ?? row.actingIdentityName }
-              : null,
+            actingIdentity:
+              row.actingIdentityName !== null
+                ? { id: row.actingIdentityId, name: row.actingIdentityLiveName ?? row.actingIdentityName }
+                : null,
             expiresAt: row.expiresAt,
             revokedAt: row.revokedAt,
             createdAt: row.createdAt,

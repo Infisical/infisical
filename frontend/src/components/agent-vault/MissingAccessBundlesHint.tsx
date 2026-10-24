@@ -30,26 +30,28 @@ export const MissingAccessBundlesHint = ({ bundles, machineIdentityName, onBehal
           <span className="underline decoration-dotted underline-offset-2">{label}</span>
         </button>
       </HoverCardTrigger>
-      <HoverCardContent align="end" className="flex w-80 flex-col gap-2.5">
-        <p className="text-xs text-muted">
-          {`Sessions on behalf of ${onBehalfOf} can't use these access bundles, because "${machineIdentityName}" isn't granted them.`}
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {bundles.map((bundle) => (
-            <Badge key={bundle.id} variant="neutral" iconPosition="left" asChild>
-              <Link
-                to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
-                params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
-              >
-                <PackageIcon />
-                {bundle.name}
-              </Link>
-            </Badge>
-          ))}
+      <HoverCardContent align="end">
+        <div className="flex flex-col gap-2.5">
+          <p className="text-xs text-muted">
+            {`Sessions on behalf of ${onBehalfOf} can't use these access bundles, because "${machineIdentityName}" isn't granted them.`}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {bundles.map((bundle) => (
+              <Badge key={bundle.id} variant="neutral" iconPosition="left" asChild>
+                <Link
+                  to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
+                  params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
+                >
+                  <PackageIcon />
+                  {bundle.name}
+                </Link>
+              </Badge>
+            ))}
+          </div>
+          <p className="text-xs text-muted">
+            {`To include one, grant it to "${machineIdentityName}" from the bundle's Manage Access.`}
+          </p>
         </div>
-        <p className="text-xs text-muted">
-          {`To include one, grant it to "${machineIdentityName}" from the bundle's Manage Access.`}
-        </p>
       </HoverCardContent>
     </HoverCard>
   );

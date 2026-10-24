@@ -20,6 +20,13 @@ describe("agent vault session status", () => {
     expect(deriveSessionStatus(session)).toBe(AgentVaultSessionStatus.Revoked);
   });
 
+  // An identity can be named "", so a session is on someone's behalf when the name is set, not when it's truthy.
+  test("an empty acting identity name still marks an on-behalf-of session", () => {
+    const session = { ...live, userId: "user-1", actingIdentityId: null, actingIdentityName: "" };
+    expect(isOrphanedSession(session)).toBe(true);
+    expect(deriveSessionStatus(session)).toBe(AgentVaultSessionStatus.Revoked);
+  });
+
   test("an on-behalf-of session with both its user and its acting identity is active", () => {
     const session = { ...live, userId: "user-1", actingIdentityId: "identity-1", actingIdentityName: "slack-bot" };
     expect(isOrphanedSession(session)).toBe(false);

@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TAgentVaultDelegations } from "@app/db/schemas";
+import { AccessScope, TableName, TAgentVaultDelegations, TMemberships } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
@@ -190,7 +190,83 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
     return delegation ? coversUser({ delegation, userId }, tx) : false;
   };
 
-  return { ...orm, upsertScope, findViews, coversUser, identityCoversUser };
+  /**
+   * The Agent Vault memberships of the identity and of the users and groups a save names, taken FOR SHARE. Removing a
+   * member deletes its row in a transaction of its own, so a save waits for a removal in flight and then sees the row
+   * gone, and a removal that starts later waits for the save and then clears what it wrote.
+   */
+  const lockMemberships = async (
+    {
+      projectId,
+      identityId,
+      userIds,
+      groupIds
+    }: { projectId: string; identityId: string; userIds: string[]; groupIds: string[] },
+    tx: Knex
+  ) => {
+    try {
+      return (await tx(TableName.Membership)
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeProjectId`, projectId)
+        .where((actor) => {
+          void actor.where(`${TableName.Membership}.actorIdentityId`, identityId);
+          if (userIds.length) void actor.orWhereIn(`${TableName.Membership}.actorUserId`, userIds);
+          if (groupIds.length) void actor.orWhereIn(`${TableName.Membership}.actorGroupId`, groupIds);
+        })
+        .forShare()
+        .select(
+          db.ref("actorIdentityId").withSchema(TableName.Membership),
+          db.ref("actorUserId").withSchema(TableName.Membership),
+          db.ref("actorGroupId").withSchema(TableName.Membership)
+        )) as Pick<TMemberships, "actorIdentityId" | "actorUserId" | "actorGroupId">[];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock Agent Vault memberships for a delegation" });
+    }
+  };
+
+  /**
+   * Takes users and groups leaving Agent Vault out of the project's delegations, and deletes a selected delegation
+   * left naming no one. The delegations that name them are locked first, so a save to one waits instead of changing
+   * it between these statements.
+   */
+  const removeSubjects = async (
+    { projectId, userIds, groupIds }: { projectId: string; userIds: string[]; groupIds: string[] },
+    tx: Knex
+  ) => {
+    if (!userIds.length && !groupIds.length) return;
+    const subjects = TableName.AgentVaultDelegationSubject;
+    const ofDelegation = () =>
+      tx(subjects)
+        .whereRaw(`??.?? = ??.??`, [subjects, "delegationId", TableName.AgentVaultDelegation, "id"])
+        .select(tx.raw("1"));
+    const namingThem = (query: Knex.QueryBuilder) =>
+      query.where((subject) => {
+        if (userIds.length) void subject.orWhereIn(`${subjects}.userId`, userIds);
+        if (groupIds.length) void subject.orWhereIn(`${subjects}.groupId`, groupIds);
+      });
+
+    try {
+      const delegationIds = (
+        (await tx(TableName.AgentVaultDelegation)
+          .where(`${TableName.AgentVaultDelegation}.projectId`, projectId)
+          .whereExists(namingThem(ofDelegation()))
+          .forUpdate()
+          .select(db.ref("id").withSchema(TableName.AgentVaultDelegation))) as { id: string }[]
+      ).map((row) => row.id);
+      if (!delegationIds.length) return;
+
+      await namingThem(tx(subjects).whereIn(`${subjects}.delegationId`, delegationIds)).delete();
+      await tx(TableName.AgentVaultDelegation)
+        .whereIn(`${TableName.AgentVaultDelegation}.id`, delegationIds)
+        .where(`${TableName.AgentVaultDelegation}.scope`, AgentVaultDelegationScope.Selected)
+        .whereNotExists(ofDelegation())
+        .delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Remove users and groups from Agent Vault delegations" });
+    }
+  };
+
+  return { ...orm, upsertScope, findViews, coversUser, identityCoversUser, lockMemberships, removeSubjects };
 };
 
 export const agentVaultDelegationSubjectDALFactory = (db: TDbClient) =>

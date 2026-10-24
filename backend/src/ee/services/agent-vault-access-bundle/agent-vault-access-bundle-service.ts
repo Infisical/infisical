@@ -605,7 +605,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
   };
 
   // What a session on the user's behalf could use: the bundles both the user and the caller reach, counted against
-  // the user's personal values. It runs the same checks as minting that session, so it reveals no more about the org.
+  // the user's personal values. Like minting that session, it checks the delegation and then the caller's own bundles
+  // before it looks the user up, so a caller granted no bundle learns nothing about who is in the org.
   const $onBehalfOfListScope = async ({
     projectId,
     ctx,
@@ -618,6 +619,10 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     callerAccessBundleIds: string[] | null;
   }) => {
     const delegation = await findCallerDelegation({ agentVaultDelegationDAL }, { projectId, ctx });
+    if (callerAccessBundleIds?.length === 0) {
+      return { scopeIds: [] as string[], excludeIds: [] as string[], owner: null };
+    }
+
     const { user, accessBundleIds: userAccessBundleIds } = await resolveOnBehalfOfUser(
       { agentVaultDelegationDAL, userDAL, orgDAL, permissionService, membershipDAL },
       { projectId, ctx, onBehalfOf, delegation }

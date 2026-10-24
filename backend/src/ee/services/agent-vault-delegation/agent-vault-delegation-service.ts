@@ -1,7 +1,11 @@
-import { AccessScope, ProjectMembershipRole, RESOURCE_SCOPE, ResourceType } from "@app/db/schemas";
+import { ForbiddenError, subject } from "@casl/ability";
+import { Knex } from "knex";
+
+import { AccessScope, ProjectMembershipRole, RESOURCE_SCOPE, ResourceType, TMemberships } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { isActiveRole } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TGenericPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -26,11 +30,11 @@ import {
 type TAgentVaultDelegationServiceFactoryDep = {
   agentVaultDelegationDAL: Pick<
     TAgentVaultDelegationDALFactory,
-    "upsertScope" | "findViews" | "delete" | "transaction"
+    "upsertScope" | "findViews" | "delete" | "transaction" | "lockMemberships"
   >;
   agentVaultDelegationSubjectDAL: Pick<TAgentVaultDelegationSubjectDALFactory, "find" | "delete" | "insertMany">;
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
-  membershipDAL: Pick<TMembershipDALFactory, "find" | "findOne" | "findResourceMembershipsForActor">;
+  membershipDAL: Pick<TMembershipDALFactory, "find" | "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -43,6 +47,13 @@ type TMissingAccessBundle = { id: string; name: string };
 // The row id stays internal: a delegation is named by its machine identity, the one id a client sends back.
 const toDelegation = ({ id, ...delegation }: TAgentVaultDelegationView) => delegation;
 
+const withNoMissingAccessBundles = (delegation: TAgentVaultDelegationView) => ({
+  ...toDelegation(delegation),
+  users: delegation.users.map((user) => ({ ...user, missingAccessBundles: [] as TMissingAccessBundle[] })),
+  groups: delegation.groups.map((group) => ({ ...group, missingAccessBundles: [] as TMissingAccessBundle[] })),
+  missingAccessBundles: [] as TMissingAccessBundle[]
+});
+
 const quoted = (ids: string[]) => ids.map((id) => `'${id}'`).join(", ");
 
 export const agentVaultDelegationServiceFactory = ({
@@ -54,13 +65,19 @@ export const agentVaultDelegationServiceFactory = ({
   userGroupMembershipDAL,
   permissionService
 }: TAgentVaultDelegationServiceFactoryDep) => {
-  const checkAdmin = async (projectId: string, ctx: TGenericPermission) => {
-    const { isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
-    if (!isAdmin) {
-      throw new ForbiddenRequestError({
-        message: "Only Agent Vault admins can manage which users a machine identity acts on behalf of"
-      });
-    }
+  // A delegation says whom an identity can act as, so managing one is managing the identity, which in Agent Vault only
+  // the admin role can do.
+  const checkIdentityPermission = async (
+    { projectId, ctx, machineIdentityId }: { projectId: string; ctx: TGenericPermission; machineIdentityId?: string },
+    action: ProjectPermissionIdentityActions
+  ) => {
+    const { permission } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    ForbiddenError.from(permission).throwUnlessCan(
+      action,
+      machineIdentityId
+        ? subject(ProjectPermissionSub.Identity, { identityId: machineIdentityId })
+        : ProjectPermissionSub.Identity
+    );
   };
 
   const notFound = (machineIdentityId: string) =>
@@ -68,26 +85,23 @@ export const agentVaultDelegationServiceFactory = ({
       message: `Machine identity with ID '${machineIdentityId}' has no delegation, so it can't act on behalf of users`
     });
 
-  // The same rule as granting an access bundle: a subject is named by its own Agent Vault membership.
-  const assertSubjectsInAgentVault = async ({
-    projectId,
-    userIds,
-    groupIds
-  }: {
-    projectId: string;
-    userIds: string[];
-    groupIds: string[];
-  }) => {
-    const projectScoped = (column: "actorUserId" | "actorGroupId", ids: string[]) =>
-      ids.length
-        ? membershipDAL.find({ scope: AccessScope.Project, scopeProjectId: projectId, $in: { [column]: ids } })
-        : [];
-    const [userRows, groupRows] = await Promise.all([
-      projectScoped("actorUserId", userIds),
-      projectScoped("actorGroupId", groupIds)
-    ]);
-
-    const memberGroups = new Set(groupRows.map((row) => row.actorGroupId));
+  // The same rule as granting an access bundle: a subject is named by its own Agent Vault membership. The memberships
+  // are the rows the save holds locked, so no removal can land between this check and the write.
+  const assertSubjectsInAgentVault = async (
+    {
+      projectId,
+      userIds,
+      groupIds,
+      memberships
+    }: {
+      projectId: string;
+      userIds: string[];
+      groupIds: string[];
+      memberships: Pick<TMemberships, "actorUserId" | "actorGroupId">[];
+    },
+    tx: Knex
+  ) => {
+    const memberGroups = new Set(memberships.map((row) => row.actorGroupId));
     const missingGroups = groupIds.filter((id) => !memberGroups.has(id));
     if (missingGroups.length) {
       throw new BadRequestError({
@@ -95,17 +109,20 @@ export const agentVaultDelegationServiceFactory = ({
       });
     }
 
-    const memberUsers = new Set(userRows.map((row) => row.actorUserId));
+    const memberUsers = new Set(memberships.map((row) => row.actorUserId));
     const missingUsers = userIds.filter((id) => !memberUsers.has(id));
     if (!missingUsers.length) return;
 
-    const groupMemberships = await userGroupMembershipDAL.find({ $in: { userId: missingUsers } });
+    const groupMemberships = await userGroupMembershipDAL.find({ $in: { userId: missingUsers } }, { tx });
     const groupsInAgentVault = groupMemberships.length
-      ? await membershipDAL.find({
-          scope: AccessScope.Project,
-          scopeProjectId: projectId,
-          $in: { actorGroupId: [...new Set(groupMemberships.map((row) => row.groupId))] }
-        })
+      ? await membershipDAL.find(
+          {
+            scope: AccessScope.Project,
+            scopeProjectId: projectId,
+            $in: { actorGroupId: [...new Set(groupMemberships.map((row) => row.groupId))] }
+          },
+          { tx }
+        )
       : [];
     const memberGroupIds = new Set(groupsInAgentVault.map((row) => row.actorGroupId));
     const throughGroup = new Set(
@@ -249,7 +266,7 @@ export const agentVaultDelegationServiceFactory = ({
   };
 
   const listDelegations = async ({ projectId, ctx, machineIdentityIds, limit, offset }: TListDelegationsDTO) => {
-    await checkAdmin(projectId, ctx);
+    await checkIdentityPermission({ projectId, ctx }, ProjectPermissionIdentityActions.Read);
     const { delegations, totalCount } = await agentVaultDelegationDAL.findViews({
       projectId,
       identityIds: machineIdentityIds,
@@ -261,61 +278,67 @@ export const agentVaultDelegationServiceFactory = ({
 
   // An identity may read its own, so an orchestrator can check what it was allowed before it acts.
   const getDelegation = async ({ projectId, ctx, machineIdentityId }: TGetDelegationDTO) => {
-    const { isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
     const isSelf = ctx.actor === ActorType.IDENTITY && ctx.actorId === machineIdentityId;
-    if (!isAdmin && !isSelf) {
-      throw new ForbiddenRequestError({
-        message: "Only Agent Vault admins, and the machine identity itself, can read a machine identity's delegation"
-      });
+    if (!isSelf) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionIdentityActions.Read,
+        subject(ProjectPermissionSub.Identity, { identityId: machineIdentityId })
+      );
     }
 
     const {
       delegations: [delegation]
     } = await agentVaultDelegationDAL.findViews({ projectId, identityIds: [machineIdentityId] });
     if (!delegation) throw notFound(machineIdentityId);
+    // The missing bundles were never granted to the identity, so reading its own delegation can't reveal them.
+    if (!isAdmin) return { delegation: withNoMissingAccessBundles(delegation) };
     return { delegation: await withMissingAccessBundles({ projectId, ctx, delegation }) };
   };
 
   const setDelegation = async ({ projectId, ctx, machineIdentityId, scope, userIds, groupIds }: TSetDelegationDTO) => {
-    await checkAdmin(projectId, ctx);
+    await checkIdentityPermission({ projectId, ctx, machineIdentityId }, ProjectPermissionIdentityActions.Edit);
 
-    // Project-scoped, so an identity from another org is a 404 like one that doesn't exist.
-    const identityMembership = await membershipDAL.findOne({
-      scope: AccessScope.Project,
-      scopeProjectId: projectId,
-      actorIdentityId: machineIdentityId
-    });
-    if (!identityMembership) {
-      throw new NotFoundError({
-        message: `Machine identity with ID '${machineIdentityId}' is not a member of Agent Vault. Add it under Access Control first.`
-      });
-    }
-
-    if (scope === AgentVaultDelegationScope.Selected) {
-      await assertSubjectsInAgentVault({ projectId, userIds, groupIds });
-    }
+    // A write replaces the whole list, so a subject left out is no longer covered.
+    const wantedUserIds = scope === AgentVaultDelegationScope.Selected ? userIds : [];
+    const wantedGroupIds = scope === AgentVaultDelegationScope.Selected ? groupIds : [];
 
     const delegation = await agentVaultDelegationDAL.transaction(async (tx) => {
+      // Before the delegation row, the order a removal from Agent Vault takes them in, so a save and a removal can't
+      // each hold a lock the other waits for.
+      const memberships = await agentVaultDelegationDAL.lockMemberships(
+        { projectId, identityId: machineIdentityId, userIds: wantedUserIds, groupIds: wantedGroupIds },
+        tx
+      );
+      // Project-scoped, so an identity from another org is a 404 like one that doesn't exist.
+      if (!memberships.some((row) => row.actorIdentityId === machineIdentityId)) {
+        throw new NotFoundError({
+          message: `Machine identity with ID '${machineIdentityId}' is not a member of Agent Vault. Add it under Access Control first.`
+        });
+      }
+
       const row = await agentVaultDelegationDAL.upsertScope({ projectId, identityId: machineIdentityId, scope }, tx);
 
-      // A write replaces the whole list, so a subject left out is no longer covered. Rows that stay are kept rather
-      // than rewritten, so each one's addedAt still says when it was added.
-      const wantedUserIds = new Set(scope === AgentVaultDelegationScope.Selected ? userIds : []);
-      const wantedGroupIds = new Set(scope === AgentVaultDelegationScope.Selected ? groupIds : []);
+      // Rows that stay are kept rather than rewritten, so each one's addedAt still says when it was added.
       const existing = await agentVaultDelegationSubjectDAL.find({ delegationId: row.id }, { tx });
-      const stale = existing.filter((subject) =>
-        subject.userId ? !wantedUserIds.has(subject.userId) : !wantedGroupIds.has(subject.groupId!)
+      const keptUserIds = new Set(existing.map((named) => named.userId).filter(Boolean));
+      const keptGroupIds = new Set(existing.map((named) => named.groupId).filter(Boolean));
+      const addedUserIds = wantedUserIds.filter((id) => !keptUserIds.has(id));
+      const addedGroupIds = wantedGroupIds.filter((id) => !keptGroupIds.has(id));
+
+      // Only the subjects being added, so one that has left Agent Vault some other way, such as by leaving the
+      // organization, can still be kept or taken out.
+      await assertSubjectsInAgentVault({ projectId, userIds: addedUserIds, groupIds: addedGroupIds, memberships }, tx);
+
+      const stale = existing.filter((named) =>
+        named.userId ? !wantedUserIds.includes(named.userId) : !wantedGroupIds.includes(named.groupId!)
       );
       if (stale.length) {
-        await agentVaultDelegationSubjectDAL.delete({ $in: { id: stale.map((subject) => subject.id) } }, tx);
+        await agentVaultDelegationSubjectDAL.delete({ $in: { id: stale.map((named) => named.id) } }, tx);
       }
-      const keptUserIds = new Set(existing.map((subject) => subject.userId).filter(Boolean));
-      const keptGroupIds = new Set(existing.map((subject) => subject.groupId).filter(Boolean));
       const added = [
-        ...[...wantedUserIds].filter((id) => !keptUserIds.has(id)).map((userId) => ({ delegationId: row.id, userId })),
-        ...[...wantedGroupIds]
-          .filter((id) => !keptGroupIds.has(id))
-          .map((groupId) => ({ delegationId: row.id, groupId }))
+        ...addedUserIds.map((userId) => ({ delegationId: row.id, userId })),
+        ...addedGroupIds.map((groupId) => ({ delegationId: row.id, groupId }))
       ];
       if (added.length) await agentVaultDelegationSubjectDAL.insertMany(added, tx);
 
@@ -330,7 +353,7 @@ export const agentVaultDelegationServiceFactory = ({
   };
 
   const deleteDelegation = async ({ projectId, ctx, machineIdentityId }: TDeleteDelegationDTO) => {
-    await checkAdmin(projectId, ctx);
+    await checkIdentityPermission({ projectId, ctx, machineIdentityId }, ProjectPermissionIdentityActions.Edit);
 
     const deleted = await agentVaultDelegationDAL.transaction(async (tx) => {
       const {

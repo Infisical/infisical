@@ -107,7 +107,10 @@ const buildService = ({
     agentVaultPersonalValueDAL: { deleteForActorsWithoutGrant: vi.fn().mockResolvedValue(0) },
     userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
     identityGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
-    agentVaultDelegationDAL: { delete: vi.fn().mockResolvedValue([]) }
+    agentVaultDelegationDAL: {
+      delete: vi.fn().mockResolvedValue([]),
+      removeSubjects: vi.fn().mockResolvedValue(undefined)
+    }
   };
 
   const service = agentVaultMembershipServiceFactory(

@@ -717,17 +717,18 @@ export const agentVaultProxyServiceFactory = ({
     if (!session.userId && !session.identityId) {
       throw new UnauthorizedError({ message: "The identity this session belonged to has been deleted" });
     }
-    // The name marks an on-behalf-of session even after deleting the identity nulls its id.
-    const actingIdentity = session.actingIdentityName
-      ? {
-          reach: await $getActingIdentityReach({
-            projectId: session.projectId,
-            orgId,
-            userId: session.userId ?? null,
-            actingIdentityId: session.actingIdentityId ?? null
-          })
-        }
-      : null;
+    // The name marks an on-behalf-of session, even an empty one, and even after deleting the identity nulls its id.
+    const actingIdentity =
+      session.actingIdentityName != null
+        ? {
+            reach: await $getActingIdentityReach({
+              projectId: session.projectId,
+              orgId,
+              userId: session.userId ?? null,
+              actingIdentityId: session.actingIdentityId ?? null
+            })
+          }
+        : null;
 
     const actor = session.userId
       ? { type: ActorType.USER as const, id: session.userId }

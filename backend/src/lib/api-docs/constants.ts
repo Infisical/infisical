@@ -4783,15 +4783,18 @@ export const AGENT_VAULT = {
     groupName: "The name of the group.",
     addedAt: "When the user or group was added to the delegation.",
     missingAccessBundles:
-      "The access bundles that users the delegation covers can use and the machine identity can't. A session on behalf of a user can use only an access bundle that both can use, so the machine identity can't start sessions over these. With all-members, this is every access bundle the machine identity can't use, since Agent Vault admins can use every bundle.",
+      "The access bundles that users the delegation covers can use and the machine identity can't. A session on behalf of a user can use only an access bundle that both can use, so the machine identity can't start sessions over these. With all-members, this is every access bundle the machine identity can't use, since Agent Vault admins can use every bundle. Always empty when the machine identity reads its own delegation, unless it's an Agent Vault admin.",
     userMissingAccessBundles:
-      "The access bundles this user can use and the machine identity can't, so the machine identity can't start sessions over them on the user's behalf. For an Agent Vault admin, this is every access bundle the machine identity can't use.",
+      "The access bundles this user can use and the machine identity can't, so the machine identity can't start sessions over them on the user's behalf. For an Agent Vault admin, this is every access bundle the machine identity can't use. Always empty when the machine identity reads its own delegation, unless it's an Agent Vault admin.",
     groupMissingAccessBundles:
-      "The access bundles granted to this group, or every bundle if the group has the Admin role, that the machine identity can't use.",
+      "The access bundles granted to this group, or every bundle if the group has the Admin role, that the machine identity can't use. Always empty when the machine identity reads its own delegation, unless it's an Agent Vault admin.",
     accessBundleId: "The ID of the access bundle.",
     accessBundleName: "The name of the access bundle.",
+    createdAt: "When the delegation was set up.",
+    updatedAt: "When the delegation was last saved.",
     limit: "The maximum number of delegations to return.",
-    offset: "How many delegations to skip."
+    offset: "How many delegations to skip.",
+    totalCount: "How many delegations match, across every page."
   }
 };
 
