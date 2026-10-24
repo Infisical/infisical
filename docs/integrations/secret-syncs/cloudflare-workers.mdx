@@ -45,6 +45,7 @@ description: "Learn how to configure a Cloudflare Workers Sync for Infisical."
         - **Secret**: Encrypted, so you can't read the value in the Cloudflare dashboard
         - **Text**: Plain text that you can read in the Cloudflare dashboard
         - **JSON**: A JSON value that your Worker receives already parsed (each secret value must be valid JSON)
+      - **Sync plaintext and JSON variables**: Only shown if **Variable type** is **Secret**. If enabled, Infisical updates existing plaintext and JSON variables on the Worker as they are. If **Disable Secret Deletion** is also off, Infisical removes plaintext and JSON variables that aren't in Infisical.
 
     If a secret already exists on the Worker as a different type, the sync fails with an error that names it, and nothing on the Worker changes. To sync it, delete the variable in Cloudflare or change the sync's variable type. With **Sync plaintext and JSON variables** turned on, a Secret sync updates existing text and JSON variables as they are instead. Syncs created before the variable type option existed skip those secrets rather than failing.
 
@@ -62,7 +63,7 @@ description: "Learn how to configure a Cloudflare Workers Sync for Infisical."
 
   </Tab>
   <Tab title="API">
-    To create a **Cloudflare Workers Sync**, make an API request to the [Create Cloudflare Workers Sync](/api-reference/endpoints/secret-syncs/cloudflare-workers/create) API endpoint.
+    To create a **Cloudflare Workers Sync**, make an API request to the [Create Cloudflare Workers Sync](/api-reference/endpoints/secret-syncs/cloudflare-workers/create) API endpoint. Set `destinationConfig.variableType` to `secret_text`, `plain_text`, or `json`. If you omit `variableType`, Infisical uses `secret_text`.
 
     ### Sample request
 
@@ -82,7 +83,8 @@ description: "Learn how to configure a Cloudflare Workers Sync for Infisical."
           "initialSyncBehavior": "overwrite-destination"
         },
         "destinationConfig": {
-          "scriptId": "my-workers-script"
+          "scriptId": "my-workers-script",
+          "variableType": "secret_text"
         }
       }'
     ```
@@ -125,7 +127,8 @@ description: "Learn how to configure a Cloudflare Workers Sync for Infisical."
         },
         "destination": "cloudflare-workers",
         "destinationConfig": {
-          "scriptId": "my-workers-script"
+          "scriptId": "my-workers-script",
+          "variableType": "secret_text"
         }
       }
     }
