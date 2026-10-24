@@ -705,7 +705,7 @@ export const recordSecretWriteMetric = (params: { operation: "create" | "update"
 // -- Secret sync outcome (InfisicalCore meter) ----------------------------------------------------
 export const secretSyncOutcomeCounter = infisicalCoreMeter.createCounter("infisical.secret_sync.outcome.count", {
   description:
-    "Secret sync attempts by destination, operation, and outcome. Alert on failure ratio > 50% over 15m with >= 10 attempts, grouped by destination.",
+    "Secret sync attempts by destination, operation, and outcome. A failure with attempts.exhausted=false is an intermediate retry; a finished sync is a success or a failure with attempts.exhausted=true.",
   unit: "{attempt}"
 });
 
@@ -724,21 +724,60 @@ export const recordSecretSyncOutcomeMetric = (params: {
   });
 };
 
+export const secretSyncStatusChangeCounter = infisicalCoreMeter.createCounter(
+  "infisical.secret_sync.status_change.count",
+  {
+    description:
+      "Secret syncs whose finished result flipped between healthy and failed, by destination. Counts distinct configs breaking without a per-config label.",
+    unit: "{change}"
+  }
+);
+
+export const recordSecretSyncStatusChangeMetric = (params: { destination: string; to: "failed" | "healthy" }) => {
+  if (!isTelemetryEnabled()) return;
+  secretSyncStatusChangeCounter.add(1, {
+    destination: params.destination,
+    to: params.to
+  });
+};
+
 // -- Secret rotation outcome (InfisicalCore meter) --------------------------------------------------
 export const secretRotationOutcomeCounter = infisicalCoreMeter.createCounter(
   "infisical.secret_rotation.outcome.count",
   {
     description:
-      "Secret rotation attempts by type and outcome. Alert on failure ratio > 50% per type with >= 5 total rotations.",
+      "Secret rotation attempts by type and outcome. A failure with attempts.exhausted=false is an intermediate retry; a finished rotation is a success or a failure with attempts.exhausted=true.",
     unit: "{attempt}"
   }
 );
 
-export const recordSecretRotationOutcomeMetric = (params: { type: string; outcome: "success" | "failure" }) => {
+export const recordSecretRotationOutcomeMetric = (params: {
+  type: string;
+  outcome: "success" | "failure";
+  attemptsExhausted: boolean;
+}) => {
   if (!isTelemetryEnabled()) return;
   secretRotationOutcomeCounter.add(1, {
     type: params.type,
-    outcome: params.outcome
+    outcome: params.outcome,
+    "attempts.exhausted": String(params.attemptsExhausted)
+  });
+};
+
+export const secretRotationStatusChangeCounter = infisicalCoreMeter.createCounter(
+  "infisical.secret_rotation.status_change.count",
+  {
+    description:
+      "Secret rotations whose finished result flipped between healthy and failed, by type. Counts distinct configs breaking without a per-config label.",
+    unit: "{change}"
+  }
+);
+
+export const recordSecretRotationStatusChangeMetric = (params: { type: string; to: "failed" | "healthy" }) => {
+  if (!isTelemetryEnabled()) return;
+  secretRotationStatusChangeCounter.add(1, {
+    type: params.type,
+    to: params.to
   });
 };
 
@@ -746,14 +785,72 @@ export const recordSecretRotationOutcomeMetric = (params: { type: string; outcom
 export const dynamicSecretOrphanedLeaseCounter = infisicalCoreMeter.createCounter(
   "infisical.dynamic_secret.orphaned_lease.count",
   {
-    description: "Dynamic secret lease revocation failures by provider. Alert on any value > 0 sustained 60m.",
+    description:
+      "Dynamic secret leases left unrevoked after every automatic revocation attempt failed, by provider. Each is a live credential that needs manual cleanup.",
     unit: "{failure}"
   }
 );
 
-export const recordDynamicSecretOrphanedLeaseMetric = (params: { provider: string }) => {
+export const recordDynamicSecretOrphanedLeaseMetric = (params: { provider: string; count?: number }) => {
   if (!isTelemetryEnabled()) return;
-  dynamicSecretOrphanedLeaseCounter.add(1, {
+  dynamicSecretOrphanedLeaseCounter.add(params.count ?? 1, {
+    provider: params.provider
+  });
+};
+
+export const dynamicSecretRevocationOutcomeCounter = infisicalCoreMeter.createCounter(
+  "infisical.dynamic_secret.revocation.outcome.count",
+  {
+    description:
+      "Dynamic secret lease revocations by provider, phase, and outcome. The scheduled phase records exactly one outcome per expired lease; retry records every attempt, with attempts.exhausted=true on the last.",
+    unit: "{revocation}"
+  }
+);
+
+export const recordDynamicSecretRevocationOutcomeMetric = (params: {
+  provider: string;
+  phase: "scheduled" | "retry" | "manual" | "pruning";
+  outcome: "success" | "failure";
+  attemptsExhausted: boolean;
+}) => {
+  if (!isTelemetryEnabled()) return;
+  dynamicSecretRevocationOutcomeCounter.add(1, {
+    provider: params.provider,
+    phase: params.phase,
+    outcome: params.outcome,
+    "attempts.exhausted": String(params.attemptsExhausted)
+  });
+};
+
+export const dynamicSecretStatusChangeCounter = infisicalCoreMeter.createCounter(
+  "infisical.dynamic_secret.status_change.count",
+  {
+    description:
+      "Dynamic secret configs whose scheduled lease revocations flipped between healthy and failed, by provider. Counts distinct configs breaking without a per-config label.",
+    unit: "{change}"
+  }
+);
+
+export const recordDynamicSecretStatusChangeMetric = (params: { provider: string; to: "failed" | "healthy" }) => {
+  if (!isTelemetryEnabled()) return;
+  dynamicSecretStatusChangeCounter.add(1, {
+    provider: params.provider,
+    to: params.to
+  });
+};
+
+export const dynamicSecretUnrecordedCredentialCounter = infisicalCoreMeter.createCounter(
+  "infisical.dynamic_secret.unrecorded_credential.count",
+  {
+    description:
+      "Dynamic secret credentials created upstream whose lease failed to persist and whose cleanup revocation also failed, by provider. Each is a live credential with no lease to revoke it.",
+    unit: "{credential}"
+  }
+);
+
+export const recordDynamicSecretUnrecordedCredentialMetric = (params: { provider: string }) => {
+  if (!isTelemetryEnabled()) return;
+  dynamicSecretUnrecordedCredentialCounter.add(1, {
     provider: params.provider
   });
 };
