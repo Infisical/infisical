@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { ArrowRightIcon, BotIcon, PackageIcon, SparklesIcon } from "lucide-react";
 
 import {
@@ -25,10 +24,8 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission } from "@app/context";
 import { AgentVaultSessionLogDecision, AgentVaultSessionStatus } from "@app/hooks/api/agentVault";
 import { TAgentVaultSessionLogRecord } from "@app/hooks/api/agentVault/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { LiveStateBadge } from "./LiveStatusRow";
 import { SessionLogRow } from "./SessionLogRow";
@@ -166,14 +163,10 @@ const HeaderPanel = ({
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onSetUp?: () => void;
 };
 
-export const SampleSessionSheet = ({ isOpen, onOpenChange }: Props) => {
-  const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
-  const { hasProjectRole } = useProjectPermission();
-  const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
-
+export const SampleSessionSheet = ({ isOpen, onOpenChange, onSetUp }: Props) => {
   const [openedAt, setOpenedAt] = useState(() => Date.now());
   const [visibleCount, setVisibleCount] = useState(0);
   const records = useMemo(() => buildSampleRecords(openedAt), [openedAt]);
@@ -322,17 +315,8 @@ export const SampleSessionSheet = ({ isOpen, onOpenChange }: Props) => {
             The proxy attached a credential to each brokered request. Blocked requests were not
             forwarded.
           </span>
-          {isAdmin && (
-            <Button
-              variant="av"
-              onClick={() => {
-                onOpenChange(false);
-                navigate({
-                  to: "/organizations/$orgId/agent-vault",
-                  params: { orgId: currentOrg.id }
-                });
-              }}
-            >
+          {onSetUp && (
+            <Button variant="av" onClick={onSetUp}>
               Set Up Your Own
             </Button>
           )}

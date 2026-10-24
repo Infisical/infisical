@@ -1,89 +1,64 @@
-import { useLocation, useNavigate } from "@tanstack/react-router";
 import { CheckIcon, XIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
-import { useOrganization } from "@app/context";
 
-import { useAgentVaultSetupProgress } from "./useAgentVaultSetupProgress";
+import { AgentVaultSetupStep, TAgentVaultSetupProgress } from "./useAgentVaultSetupProgress";
+import { useOpenAgentVaultSetupStep } from "./useOpenAgentVaultSetupStep";
 
 type Step = {
+  step: AgentVaultSetupStep;
   title: string;
   description: string;
   isComplete: boolean;
   isBlocked?: boolean;
-  pathSuffix: string;
-  opensCreate?: boolean;
 };
 
 type Props = {
-  progress: ReturnType<typeof useAgentVaultSetupProgress>;
+  progress: TAgentVaultSetupProgress;
 };
 
 // Each step takes the admin to the page that owns the action and opens it there, so the page behind the
 // dialog is always the one they are setting up.
 export const SetupChecklist = ({ progress }: Props) => {
-  const navigate = useNavigate();
-  const { pathname } = useLocation();
-  const { currentOrg } = useOrganization();
+  const openStep = useOpenAgentVaultSetupStep(progress);
 
   const { hasProxy, hasConnectedProxy, newestBundle, hasService, hasSession, completedCount } =
     progress;
 
-  const basePath = `/organizations/${currentOrg.id}/agent-vault`;
-  const isOn = (pathSuffix: string) => pathname === `${basePath}/${pathSuffix}`;
-
   const steps: Step[] = [
     {
+      step: AgentVaultSetupStep.Proxy,
       title: "Set Up a Proxy",
       description:
         hasProxy && !hasConnectedProxy
           ? "Waiting for your proxy to connect. Start it with its proxy token where agent traffic leaves your network."
           : "Agents send requests through a proxy, which attaches the credentials.",
-      isComplete: hasConnectedProxy,
-      pathSuffix: "proxies",
-      opensCreate: !hasProxy
+      isComplete: hasConnectedProxy
     },
     {
+      step: AgentVaultSetupStep.AccessBundle,
       title: "Create an Access Bundle",
       description: "A bundle groups the services an agent can reach.",
-      isComplete: Boolean(newestBundle),
-      pathSuffix: "access-bundles",
-      opensCreate: true
+      isComplete: Boolean(newestBundle)
     },
     {
+      step: AgentVaultSetupStep.Service,
       title: "Add a Service",
       description: "Name an API the agent can call and the credential to attach.",
       isComplete: hasService,
-      isBlocked: !newestBundle,
-      pathSuffix: newestBundle ? `access-bundles/${newestBundle.id}` : "access-bundles",
-      opensCreate: true
+      isBlocked: !newestBundle
     },
     {
+      step: AgentVaultSetupStep.Session,
       title: "Create a Session",
       description: "Get a token an agent runs with.",
       isComplete: hasSession,
-      isBlocked: !newestBundle,
-      pathSuffix: "sessions",
-      opensCreate: true
+      isBlocked: !newestBundle
     }
   ];
 
-  // Replacing rather than pushing when already there, since the same URL again would duplicate the
-  // history entry.
-  const goTo = (step: Step) => {
-    const isHere = isOn(step.pathSuffix);
-    if (isHere && !step.opensCreate) return;
-    navigate({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      to: `${basePath}/${step.pathSuffix}` as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      search: (step.opensCreate ? { create: true } : {}) as any,
-      replace: isHere
-    });
-  };
-
-  const nextIndex = steps.findIndex((step) => !step.isComplete && !step.isBlocked);
+  const nextIndex = steps.findIndex((step) => step.step === progress.nextStep);
 
   if (!progress.isVisible) return null;
 
@@ -130,7 +105,7 @@ export const SetupChecklist = ({ progress }: Props) => {
               <button
                 type="button"
                 disabled={step.isComplete || step.isBlocked}
-                onClick={() => goTo(step)}
+                onClick={() => openStep(step.step)}
                 className="flex w-full cursor-pointer items-start gap-2 rounded-sm px-1.5 py-1.5 text-left outline-none hover:bg-container-hover focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:hover:bg-transparent"
               >
                 <span

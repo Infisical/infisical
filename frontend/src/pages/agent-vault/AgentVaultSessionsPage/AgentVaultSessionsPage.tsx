@@ -21,6 +21,11 @@ import {
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
 import {
+  AgentVaultSetupStep,
+  useAgentVaultSetupProgress,
+  useOpenAgentVaultSetupStep
+} from "@app/components/agent-vault/SetupChecklist";
+import {
   Alert,
   AlertAction,
   AlertDescription,
@@ -169,6 +174,18 @@ export const AgentVaultSessionsPage = () => {
   const hasReachableBundles = (accessBundles?.totalCount ?? 0) > 0;
   useAgentVaultCreateIntent(() => setIsCreateDialogOpen(true), hasReachableBundles);
 
+  const setupProgress = useAgentVaultSetupProgress();
+  const openSetupStep = useOpenAgentVaultSetupStep(setupProgress);
+  // An admin sees the sample only while the org has no session at all. A member can't list the org's
+  // sessions, so they see it while they have none of their own.
+  const isSampleShown =
+    !isFiltered && (!isAdmin || (setupProgress.isLoaded && !setupProgress.hasSession));
+  const startSetup = () => {
+    setupProgress.restore();
+    setIsSampleOpen(false);
+    openSetupStep(setupProgress.nextStep ?? AgentVaultSetupStep.Session);
+  };
+
   let emptyTitle: string;
   let emptyDescription: string;
   if (isFiltered) {
@@ -184,8 +201,7 @@ export const AgentVaultSessionsPage = () => {
     emptyDescription = "Create a session to get a token an agent can run with.";
   }
 
-  // Until there is anything to list, a sample session shows what one records.
-  const emptyState = isFiltered ? (
+  const emptyState = !isSampleShown ? (
     <CardContent>
       <Empty className="border">
         <EmptyHeader>
@@ -573,7 +589,11 @@ export const AgentVaultSessionsPage = () => {
         }}
       />
 
-      <SampleSessionSheet isOpen={isSampleOpen} onOpenChange={setIsSampleOpen} />
+      <SampleSessionSheet
+        isOpen={isSampleOpen}
+        onOpenChange={setIsSampleOpen}
+        onSetUp={isAdmin ? startSetup : undefined}
+      />
 
       <SessionDetailSheet
         session={openSession}

@@ -64,10 +64,11 @@ export const AgentVaultAccessBundleDetailPage = () => {
   const needsSetup = (accessBundle?.services ?? []).filter(
     (service) => service.personalValues && !service.personalValues.isConfigured
   );
-  const { data: sessions } = useListAgentVaultSessions({
-    scope: AgentVaultSessionScope.All,
-    limit: 1
-  });
+  // Listing every session is admin-only, and only admins see the note that reads this.
+  const { data: sessions } = useListAgentVaultSessions(
+    { scope: AgentVaultSessionScope.All, limit: 1 },
+    isAdmin
+  );
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isManageAccessOpen, setIsManageAccessOpen] = useState(false);

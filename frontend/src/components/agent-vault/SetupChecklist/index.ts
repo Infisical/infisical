@@ -1,2 +1,8 @@
 export { SetupChecklist } from "./SetupChecklist";
-export { useAgentVaultSetupProgress } from "./useAgentVaultSetupProgress";
+export {
+  AgentVaultSetupStep,
+  getAgentVaultSetupStepPath,
+  type TAgentVaultSetupProgress,
+  useAgentVaultSetupProgress
+} from "./useAgentVaultSetupProgress";
+export { useOpenAgentVaultSetupStep } from "./useOpenAgentVaultSetupStep";
