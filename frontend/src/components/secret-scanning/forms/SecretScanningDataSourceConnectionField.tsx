@@ -21,6 +21,7 @@ import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/helpers/secretScanningV2";
 import { usePopUp } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 import { SecretScanningDataSourcePopupContext } from "../SecretScanningDataSourcePopupContext";
@@ -47,7 +48,8 @@ export const SecretScanningDataSourceConnectionField = ({
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
 
   const dataSourceType = watch("type");
-  const app = SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSourceType];
+  // only rendered for data sources that use an App Connection
+  const app = SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[dataSourceType] as AppConnection;
 
   const { currentProject } = useProject();
 

@@ -9,6 +9,8 @@ interface SecretScanningSecretsDetectedTemplateProps
   extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   numberOfSecrets: number;
   isDiffScan: boolean;
+  // the secrets were found in a Claude Code prompt, which the plugin blocked until they are reviewed
+  isPromptScan?: boolean;
   authorName?: string;
   authorEmail?: string;
   resourceName: string;
@@ -21,9 +23,48 @@ export const SecretScanningSecretsDetectedTemplate = ({
   authorName,
   authorEmail,
   isDiffScan,
+  isPromptScan,
   resourceName,
   url
 }: SecretScanningSecretsDetectedTemplateProps) => {
+  if (isPromptScan) {
+    return (
+      <BaseEmailWrapper
+        title="Incident Alert: Secret(s) Leaked"
+        preview="Infisical blocked a Claude Code prompt that contained secrets."
+        siteUrl={siteUrl}
+      >
+        <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
+          Infisical has uncovered <strong>{numberOfSecrets}</strong> secret(s) in a Claude Code prompt from{" "}
+          <strong>{resourceName}</strong>
+        </Heading>
+        <Section className="px-[24px] mb-[28px] mt-[36px] pt-[8px] pb-[8px] text-[14px] border border-solid border-gray-200 rounded-md bg-gray-50">
+          <Text className="text-[14px]">
+            You are receiving this notification because one or more secrets were detected in a Claude Code prompt
+            submitted by <strong>{authorName ?? resourceName}</strong>
+            {authorEmail && (
+              <>
+                {" "}
+                (<BaseLink href={`mailto:${authorEmail}`}>{authorEmail}</BaseLink>)
+              </>
+            )}
+            . The prompt was blocked and was not sent to Claude.
+          </Text>
+          <Text className="text-[14px]">
+            Prompts with these secrets stay blocked until the findings are marked as resolved, false positive, or
+            ignored.
+          </Text>
+          <Text className="text-[14px]">
+            Review the findings in the <BaseLink href={url}>Infisical Dashboard</BaseLink>.
+          </Text>
+        </Section>
+        <Section className="text-center">
+          <BaseButton href={url}>View Leaked Secrets</BaseButton>
+        </Section>
+      </BaseEmailWrapper>
+    );
+  }
+
   return (
     <BaseEmailWrapper
       title="Incident Alert: Secret(s) Leaked"

@@ -36,6 +36,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import {
   canAddSecretScanningResources,
+  doesDataSourceRequireConnection,
   RESOURCE_DESCRIPTION_HELPER
 } from "@app/helpers/secretScanningV2";
 import {
@@ -59,8 +60,10 @@ export const SecretScanningResourceRow = ({ resource, dataSource, onViewFindings
   const [isRemoveOpen, setIsRemoveOpen] = useState(false);
 
   const resourceDetails = RESOURCE_DESCRIPTION_HELPER[dataSource.type];
-  // a project-scoped GitLab data source scans exactly one project, so removing it would leave nothing
+  // a project-scoped GitLab data source scans exactly one project, so removing it would leave nothing,
+  // and data sources without an App Connection create their resources themselves
   const canRemove = canAddSecretScanningResources(dataSource);
+  const canTriggerScan = doesDataSourceRequireConnection(dataSource.type);
 
   const triggerDataSourceScan = useTriggerSecretScanningDataSource();
   const removeResource = useRemoveSecretScanningResource();
@@ -158,20 +161,22 @@ export const SecretScanningResourceRow = ({ resource, dataSource, onViewFindings
               <CopyIcon />
               Copy {resourceDetails.singularTitle} ID
             </DropdownMenuItem>
-            <ProjectPermissionCan
-              I={ProjectPermissionSecretScanningDataSourceActions.TriggerScans}
-              a={ProjectPermissionSub.SecretScanningDataSources}
-            >
-              {(isAllowed: boolean) => (
-                <DropdownMenuItem
-                  isDisabled={!isAllowed || dataSource.isDisconnected}
-                  onClick={handleTriggerScan}
-                >
-                  <ScanSearchIcon />
-                  Trigger Scan
-                </DropdownMenuItem>
-              )}
-            </ProjectPermissionCan>
+            {canTriggerScan && (
+              <ProjectPermissionCan
+                I={ProjectPermissionSecretScanningDataSourceActions.TriggerScans}
+                a={ProjectPermissionSub.SecretScanningDataSources}
+              >
+                {(isAllowed: boolean) => (
+                  <DropdownMenuItem
+                    isDisabled={!isAllowed || dataSource.isDisconnected}
+                    onClick={handleTriggerScan}
+                  >
+                    <ScanSearchIcon />
+                    Trigger Scan
+                  </DropdownMenuItem>
+                )}
+              </ProjectPermissionCan>
+            )}
             {canRemove && (
               <ProjectPermissionCan
                 I={ProjectPermissionSecretScanningDataSourceActions.Edit}
