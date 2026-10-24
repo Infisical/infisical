@@ -22,7 +22,9 @@ export const AgentVaultSessionsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   encryptedSessionLogKey: zodBuffer.nullable().optional(),
-  actorType: z.string().nullable().optional()
+  actorType: z.string().nullable().optional(),
+  actingIdentityId: z.string().uuid().nullable().optional(),
+  actingIdentityName: z.string().nullable().optional()
 });
 
 export type TAgentVaultSessions = z.infer<typeof AgentVaultSessionsSchema>;

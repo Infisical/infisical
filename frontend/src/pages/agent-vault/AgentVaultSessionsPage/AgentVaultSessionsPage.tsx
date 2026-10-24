@@ -407,12 +407,19 @@ export const AgentVaultSessionsPage = () => {
                                 <UserIcon className="size-4 text-muted" />
                               )}
                               {memberDisplayName(session.actor)}
+                              {session.actingIdentity && (
+                                <span className="text-muted">
+                                  via {session.actingIdentity.name}
+                                </span>
+                              )}
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>
                             {session.actor.type === AgentVaultMemberType.MachineIdentity
                               ? `${session.actor.id ?? "Deleted"} (machine identity)`
                               : memberSubtitle(session.actor)}
+                            {session.actingIdentity &&
+                              `, started by the machine identity "${session.actingIdentity.name}"`}
                           </TooltipContent>
                         </Tooltip>
                       </TableCell>

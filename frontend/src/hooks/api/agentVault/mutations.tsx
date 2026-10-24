@@ -12,6 +12,8 @@ import {
   TAgentVaultAccessBundle,
   TAgentVaultActorIdsDTO,
   TAgentVaultActorRef,
+  TAgentVaultDelegation,
+  TAgentVaultDelegationDetail,
   TAgentVaultGrantedMember,
   TAgentVaultMemberWriteResult,
   TAgentVaultMintedSession,
@@ -28,6 +30,7 @@ import {
   TCreateAgentVaultSessionDTO,
   TCreateAgentVaultVariableDTO,
   TDeleteAgentVaultPersonalValuesDTO,
+  TSetAgentVaultDelegationDTO,
   TSetAgentVaultPersonalValuesDTO,
   TUpdateAgentVaultAccessBundleDTO,
   TUpdateAgentVaultMemberRolesDTO,
@@ -35,6 +38,39 @@ import {
   TUpdateAgentVaultSessionLogSettingsDTO,
   TUpdateAgentVaultVariableDTO
 } from "./types";
+
+export const useSetAgentVaultDelegation = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ machineIdentityId, ...body }: TSetAgentVaultDelegationDTO) => {
+      const { data } = await apiRequest.put<{ delegation: TAgentVaultDelegationDetail }>(
+        `/api/v1/agent-vault/delegations/${machineIdentityId}`,
+        body
+      );
+      return data.delegation;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.delegations(currentOrg.id) });
+    }
+  });
+};
+
+export const useDeleteAgentVaultDelegation = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ machineIdentityId }: { machineIdentityId: string }) => {
+      const { data } = await apiRequest.delete<{ delegation: TAgentVaultDelegation }>(
+        `/api/v1/agent-vault/delegations/${machineIdentityId}`
+      );
+      return data.delegation;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.delegations(currentOrg.id) });
+    }
+  });
+};
 
 export const useCreateAgentVaultAccessBundle = () => {
   const { currentOrg } = useOrganization();

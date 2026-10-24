@@ -6,6 +6,7 @@ import {
   AgentVaultSubstitutionSurface,
   AgentVaultVariableReferenceField
 } from "../agent-vault/agent-vault-enums";
+import { TOnBehalfOfUser } from "../agent-vault-session/agent-vault-session-types";
 import { TAgentVaultAccessBundleOrderBy } from "./agent-vault-access-bundle-dal";
 
 export type TAgentVaultBearerMemberField = AgentVaultVariableReferenceField.CredentialValue;
@@ -53,6 +54,7 @@ export type TAgentVaultProjectScoped = { projectId: string; ctx: TGenericPermiss
 export type TListAccessBundlesDTO = TAgentVaultProjectScoped & {
   requiresSetup?: boolean;
   granted?: boolean;
+  onBehalfOf?: TOnBehalfOfUser;
   search?: string;
   orderBy: TAgentVaultAccessBundleOrderBy;
   orderDirection: "asc" | "desc";

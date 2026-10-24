@@ -99,6 +99,23 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke }: Pro
                       )}
                     </DetailValue>
                   </Detail>
+                  {session.actingIdentity && (
+                    <Detail className="min-w-0">
+                      <DetailLabel>Started By</DetailLabel>
+                      <DetailValue
+                        className={twMerge(
+                          "flex items-center gap-2",
+                          !session.actingIdentity.id && "text-muted"
+                        )}
+                      >
+                        <BotIcon className="size-4 shrink-0 text-muted" />
+                        <span className="truncate">
+                          {session.actingIdentity.name}
+                          {!session.actingIdentity.id && " (deleted)"}
+                        </span>
+                      </DetailValue>
+                    </Detail>
+                  )}
                   <Detail className="min-w-0">
                     <DetailLabel>
                       {session.accessBundles.length === 1 ? "Access Bundle" : "Access Bundles"}
