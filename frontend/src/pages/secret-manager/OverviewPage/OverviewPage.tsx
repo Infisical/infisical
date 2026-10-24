@@ -2738,8 +2738,13 @@ const OverviewPageContent = () => {
         }
         attempt.flow({ phase: isApprovalRequested ? "approval-requested" : "response-received" });
 
+        const isUpdateValueOmitted =
+          isSingleChange &&
+          secretChange?.type === PendingAction.Update &&
+          secretChange.secretValue === undefined;
         appliedSecrets.forEach((secret) => {
-          if (secret.secretValueHidden || secret.secretValue === undefined) return;
+          if (isUpdateValueOmitted || secret.secretValueHidden || secret.secretValue === undefined)
+            return;
           queryClient.setQueryData(
             dashboardKeys.getSecretValue({
               projectId,
@@ -2836,7 +2841,6 @@ const OverviewPageContent = () => {
       if (
         pendingSecret.type === PendingAction.Update &&
         savedKey &&
-        savedKey !== pendingSecret.secretKey &&
         draft?.type === PendingAction.Update
       ) {
         removePendingChange(draft.id, "secret", context);
