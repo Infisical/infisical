@@ -51,7 +51,6 @@ tables:
       - userId
       - groupId
       - createdAt
-      - updatedAt
 
   - name: agent_vault_delegations
     source: public.agent_vault_delegations
