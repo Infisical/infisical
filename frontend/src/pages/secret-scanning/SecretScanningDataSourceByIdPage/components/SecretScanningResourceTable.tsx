@@ -1,4 +1,4 @@
-import { ChevronDownIcon, FolderGitIcon, LockIcon, SearchIcon } from "lucide-react";
+import { ChevronDownIcon, FolderGitIcon, LockIcon, SearchIcon, UsersIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
@@ -36,12 +37,14 @@ import {
 import { useDebounce, usePagination, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
+  SecretScanningDataSource,
   SecretScanningResourceOrderBy,
   TSecretScanningDataSource,
   useListSecretScanningResources
 } from "@app/hooks/api/secretScanningV2";
 
 import { AddSecretScanningResourcesButton } from "./AddSecretScanningResourcesButton";
+import { ClaudeCodeDataSourceSetup } from "./ClaudeCodeDataSourceSetup";
 import { SecretScanningResourceRow } from "./SecretScanningResourceRow";
 
 const SKELETON_ROWS = ["first", "second", "third"];
@@ -178,6 +181,26 @@ export const SecretScanningResourcesTable = ({ dataSource, onViewFindings }: Pro
             <EmptyTitle>No {resourceDetails.pluralNoun} match your search</EmptyTitle>
             <EmptyDescription>Try a different search term.</EmptyDescription>
           </EmptyHeader>
+        </Empty>
+      );
+    }
+
+    if (dataSource.type === SecretScanningDataSource.ClaudeCode) {
+      return (
+        <Empty className="border">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <UsersIcon />
+            </EmptyMedia>
+            <EmptyTitle>No developers yet</EmptyTitle>
+            <EmptyDescription>
+              Developers appear here when the Claude Code plugin finds a secret in one of their
+              prompts.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent className="max-w-xl">
+            <ClaudeCodeDataSourceSetup dataSourceName={dataSource.name} />
+          </EmptyContent>
         </Empty>
       );
     }

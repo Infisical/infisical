@@ -10,7 +10,10 @@ import {
   DetailValue
 } from "@app/components/v3";
 import {
+  CLAUDE_CODE_SECRET_DETECTED_ACTION_MAP,
+  doesDataSourceRequireConnection,
   doesDataSourceSupportDiscovery,
+  getClaudeCodeSecretDetectedAction,
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
@@ -59,6 +62,8 @@ const getConnectionDetails = (
               : "None (all accessible projects)"
         }
       ];
+    case SecretScanningDataSource.ClaudeCode:
+      return [];
     default:
       throw new Error("Unhandled data source type");
   }
@@ -70,6 +75,31 @@ export const SecretScanningDataSourceReviewFields = () => {
 
   const { name: platform } = SECRET_SCANNING_DATA_SOURCE_MAP[form.type];
   const connection = getConnectionDetails(form);
+
+  if (!doesDataSourceRequireConnection(form.type)) {
+    return (
+      <div className="flex flex-col gap-8">
+        <ReviewGroup title="Platform">
+          <ReviewDetail label="Platform">{platform}</ReviewDetail>
+        </ReviewGroup>
+        {form.type === SecretScanningDataSource.ClaudeCode && (
+          <ReviewGroup title="Scan Options">
+            <ReviewDetail label="When a Secret Is Detected">
+              {
+                CLAUDE_CODE_SECRET_DETECTED_ACTION_MAP[
+                  getClaudeCodeSecretDetectedAction(form.config)
+                ].name
+              }
+            </ReviewDetail>
+          </ReviewGroup>
+        )}
+        <ReviewGroup title="Details">
+          <ReviewDetail label="Name">{form.name}</ReviewDetail>
+          <ReviewDetail label="Description">{form.description}</ReviewDetail>
+        </ReviewGroup>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8">

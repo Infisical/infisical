@@ -14,6 +14,14 @@ import {
   TQueueBitbucketResourceDiffScan
 } from "@app/ee/services/secret-scanning-v2/bitbucket";
 import {
+  TClaudeCodeDataSource,
+  TClaudeCodeDataSourceInput,
+  TClaudeCodeDataSourceListItem,
+  TClaudeCodeDataSourceWithConnection,
+  TClaudeCodeFinding,
+  TQueueClaudeCodeResourceDiffScan
+} from "@app/ee/services/secret-scanning-v2/claude-code";
+import {
   TGitHubDataSource,
   TGitHubDataSourceInput,
   TGitHubDataSourceListItem,
@@ -39,7 +47,11 @@ import {
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
-export type TSecretScanningDataSource = TGitHubDataSource | TBitbucketDataSource | TGitLabDataSource;
+export type TSecretScanningDataSource =
+  | TGitHubDataSource
+  | TBitbucketDataSource
+  | TGitLabDataSource
+  | TClaudeCodeDataSource;
 
 export type TSecretScanningDataSourceWithDetails = TSecretScanningDataSource & {
   lastScannedAt?: Date | null;
@@ -65,24 +77,27 @@ export type TSecretScanningScanWithDetails = TSecretScanningScans & {
 export type TSecretScanningDataSourceWithConnection =
   | TGitHubDataSourceWithConnection
   | TBitbucketDataSourceWithConnection
-  | TGitLabDataSourceWithConnection;
+  | TGitLabDataSourceWithConnection
+  | TClaudeCodeDataSourceWithConnection;
 
 export type TSecretScanningDataSourceInput =
   | TGitHubDataSourceInput
   | TBitbucketDataSourceInput
-  | TGitLabDataSourceInput;
+  | TGitLabDataSourceInput
+  | TClaudeCodeDataSourceInput;
 
 export type TSecretScanningDataSourceListItem =
   | TGitHubDataSourceListItem
   | TBitbucketDataSourceListItem
-  | TGitLabDataSourceListItem;
+  | TGitLabDataSourceListItem
+  | TClaudeCodeDataSourceListItem;
 
 export type TSecretScanningDataSourceCredentials =
   | TBitbucketDataSourceCredentials
   | TGitLabDataSourceCredentials
   | undefined;
 
-export type TSecretScanningFinding = TGitHubFinding | TBitbucketFinding | TGitLabFinding;
+export type TSecretScanningFinding = TGitHubFinding | TBitbucketFinding | TGitLabFinding | TClaudeCodeFinding;
 
 export type TListSecretScanningDataSourcesByProjectId = {
   projectId: string;
@@ -157,7 +172,8 @@ export type TQueueSecretScanningDataSourceFullScan = {
 export type TQueueSecretScanningResourceDiffScan =
   | TQueueGitHubResourceDiffScan
   | TQueueBitbucketResourceDiffScan
-  | TQueueGitLabResourceDiffScan;
+  | TQueueGitLabResourceDiffScan
+  | TQueueClaudeCodeResourceDiffScan;
 
 export type TQueueSecretScanningResourceDiffScanPayload = {
   payload: TQueueSecretScanningResourceDiffScan["payload"];

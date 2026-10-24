@@ -1,7 +1,10 @@
 import { CircleCheckIcon, PauseIcon, UnplugIcon } from "lucide-react";
 
 import { Badge, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
-import { RESOURCE_DESCRIPTION_HELPER } from "@app/helpers/secretScanningV2";
+import {
+  doesDataSourceRequireConnection,
+  RESOURCE_DESCRIPTION_HELPER
+} from "@app/helpers/secretScanningV2";
 import { TSecretScanningDataSource } from "@app/hooks/api/secretScanningV2";
 
 type Props = {
@@ -31,7 +34,8 @@ export const DataSourceStatusBadge = ({ dataSource }: Props) => {
     );
   }
 
-  if (!dataSource.isScanNewCommitsEnabled) {
+  // data sources without an App Connection have no scan settings, so they can't be paused
+  if (!dataSource.isScanNewCommitsEnabled && doesDataSourceRequireConnection(dataSource.type)) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>

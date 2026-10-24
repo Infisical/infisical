@@ -53,6 +53,7 @@ import {
 } from "@app/helpers/secretScanningV2";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
+  SecretScanningDataSource,
   SecretScanningFindingOrderBy,
   SecretScanningFindingStatus,
   TSecretScanningDataSource,
@@ -77,6 +78,12 @@ const DEFAULT_SORT: TSort = {
 };
 
 const ALL_OPTION = "all";
+
+// Claude Code findings come from a prompt, so they have no file to point to
+const getFindingLocation = (finding: TSecretScanningFinding) =>
+  finding.dataSourceType === SecretScanningDataSource.ClaudeCode
+    ? (finding.details.cwd ?? `Prompt line ${finding.details.startLine}`)
+    : `${finding.details.file}:${finding.details.startLine}`;
 
 type ResourceFilterProps = {
   dataSource: Pick<TSecretScanningDataSource, "id" | "type">;
@@ -509,11 +516,13 @@ export const SecretScanningFindingsTable = ({
                             {finding.resourceName}
                           </p>
                           <p className="truncate text-xs text-muted">
-                            {finding.details.file}:{finding.details.startLine}
+                            {getFindingLocation(finding)}
                           </p>
                         </TableCell>
                         <TableCell isTruncatable>{finding.rule}</TableCell>
-                        <TableCell isTruncatable>{finding.details.author}</TableCell>
+                        <TableCell isTruncatable>
+                          {finding.details.author || finding.details.email}
+                        </TableCell>
                         <TableCell>
                           {formatDistanceToNowStrict(new Date(finding.createdAt), {
                             addSuffix: true

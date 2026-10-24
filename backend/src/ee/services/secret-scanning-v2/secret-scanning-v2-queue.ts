@@ -990,6 +990,11 @@ export const secretScanningV2QueueServiceFactory = ({
       });
 
       const timestamp = new Date().toISOString();
+      const isPromptScan = dataSource.type === SecretScanningDataSource.ClaudeCode;
+      let detectedIn = " in";
+      if (isPromptScan) detectedIn = " in a Claude Code prompt from";
+      else if (payload.status === SecretScanningScanStatus.Completed && payload.isDiffScan)
+        detectedIn = " from a recent commit to";
 
       const subjectLine =
         payload.status === SecretScanningScanStatus.Completed
@@ -1007,7 +1012,7 @@ export const secretScanningV2QueueServiceFactory = ({
           title: subjectLine,
           body:
             payload.status === SecretScanningScanStatus.Completed
-              ? `Uncovered **${payload.numberOfSecrets}** secret(s) ${payload.isDiffScan ? " from a recent commit to" : " in"} **${resourceName}**.`
+              ? `Uncovered **${payload.numberOfSecrets}** secret(s) ${detectedIn} **${resourceName}**.`
               : `Encountered an error while attempting to scan the resource **${resourceName}**: ${payload.errorMessage}`,
           link:
             payload.status === SecretScanningScanStatus.Completed
@@ -1031,6 +1036,7 @@ export const secretScanningV2QueueServiceFactory = ({
                 resourceName,
                 numberOfSecrets: payload.numberOfSecrets,
                 isDiffScan: payload.isDiffScan,
+                isPromptScan,
                 url: encodeURI(
                   `${appCfg.SITE_URL}/organizations/${project.orgId}/projects/secret-scanning/${projectId}/findings?search=scanId:${payload.scanId}`
                 ),

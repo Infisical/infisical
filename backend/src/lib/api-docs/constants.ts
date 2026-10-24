@@ -3970,13 +3970,14 @@ export const SecretScanningDataSources = {
   CREATE: (type: SecretScanningDataSource) => {
     const sourceType = SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type];
     const autoScanDescription = AUTO_SYNC_DESCRIPTION_HELPER[type];
+    const connectionApp = SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type];
     return {
       name: `The name of the ${sourceType} Data Source to create. Must be slug-friendly.`,
       description: `An optional description for the ${sourceType} Data Source.`,
       projectId: `The ID of the project to create the ${sourceType} Data Source in. Defaults to the organization's active Secret Scanning project.`,
-      connectionId: `The ID of the ${
-        APP_CONNECTION_NAME_MAP[SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP[type]]
-      } Connection to use for this Data Source.`,
+      connectionId: connectionApp
+        ? `The ID of the ${APP_CONNECTION_NAME_MAP[connectionApp]} Connection to use for this Data Source.`
+        : `${sourceType} Data Sources do not use an App Connection.`,
       isAutoScanEnabled: `Deprecated: use isHistoricalScanEnabled and isScanNewCommitsEnabled. Sets both when they are not provided.`,
       isHistoricalScanEnabled: `Whether a full scan of existing history runs for ${autoScanDescription.noun} when this Data Source is created, and for ${autoScanDescription.noun} added to its configuration later. Defaults to true.`,
       isScanNewCommitsEnabled: `Whether a scan runs when a ${autoScanDescription.verb} occurs to ${autoScanDescription.noun} associated with this Data Source. Defaults to true.`,
@@ -4037,6 +4038,19 @@ export const SecretScanningDataSources = {
     },
     BITBUCKET: {
       workspaceSlug: "The workspace to scan."
+    },
+    CLAUDE_CODE: {
+      onSecretDetected:
+        "What happens to a prompt that contains a secret nobody has reviewed yet: block (the default) holds the prompt back until the finding is resolved, marked as a false positive, or ignored; report lets the prompt through and only records the finding."
+    }
+  },
+  CLAUDE_CODE: {
+    SUBMIT_PROMPT: {
+      dataSourceId: "The ID of the Claude Code Data Source to submit the prompt to.",
+      prompt: "The full prompt that the Claude Code plugin's local scan flagged.",
+      fingerprints: "The fingerprint of each secret the local scan found: the hex SHA-256 digest of the secret.",
+      sessionId: "The ID of the Claude Code session the prompt was submitted in.",
+      cwd: "The working directory Claude Code was running in."
     }
   }
 };
