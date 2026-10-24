@@ -4,6 +4,8 @@ import { apiRequest } from "@app/config/request";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import {
   PendingChanges,
+  PendingSecretCreate,
+  PendingSecretDelete,
   PendingSecretUpdate
 } from "@app/pages/secret-manager/SecretDashboardPage/SecretMainPage.store";
 
@@ -12,6 +14,7 @@ import { secretApprovalRequestKeys } from "../secretApprovalRequest/queries";
 import { PendingAction } from "../secretFolders/types";
 import { secretKeys } from "./queries";
 import {
+  TCreateCommitResponse,
   TCreateSecretBatchDTO,
   TCreateSecretsV3DTO,
   TDeleteSecretBatchDTO,
@@ -523,7 +526,7 @@ export const createSecret = async (dto: TCreateSecretsV3DTO) => {
 export const useCreateCommit = () => {
   const queryClient = useQueryClient();
   return useMutation<
-    object,
+    TCreateCommitResponse,
     object,
     {
       projectId: string;
@@ -534,64 +537,63 @@ export const useCreateCommit = () => {
     }
   >({
     mutationFn: async ({ projectId, environment, secretPath, pendingChanges, message }) => {
-      const { data } = await apiRequest.post("/api/v1/pit/batch/commit", {
+      const secretCreates: PendingSecretCreate[] = [];
+      const secretUpdates: PendingSecretUpdate[] = [];
+      const secretDeletes: PendingSecretDelete[] = [];
+      pendingChanges.secrets.forEach((change) => {
+        if (change.type === PendingAction.Create) secretCreates.push(change);
+        else if (change.type === PendingAction.Update) secretUpdates.push(change);
+        else secretDeletes.push(change);
+      });
+
+      const { data } = await apiRequest.post<TCreateCommitResponse>("/api/v1/pit/batch/commit", {
         projectId,
         environment,
         secretPath,
+        message: message || undefined,
         changes: {
           secrets: {
-            create:
-              pendingChanges.secrets
-                .filter((change) => change.type === PendingAction.Create)
-                .map((change) => ({
-                  secretKey: change.secretKey,
-                  secretValue: change.secretValue,
-                  secretComment: change.secretComment,
-                  skipMultilineEncoding: change.skipMultilineEncoding,
-                  tagIds: change.tags?.map((tag) => tag.id),
-                  secretMetadata: change.secretMetadata
-                })) || [],
-            update:
-              pendingChanges.secrets
-                .filter((change) => change.type === PendingAction.Update)
-                .map((change: PendingSecretUpdate) => ({
-                  secretKey: change.secretKey,
-                  newSecretName: change.newSecretName,
-                  secretValue:
-                    change.secretValue === ""
-                      ? ""
-                      : change.secretValue || change.existingSecret.value,
-                  secretComment:
-                    change.secretComment === ""
-                      ? ""
-                      : change.secretComment || change.existingSecret.comment,
-                  skipMultilineEncoding:
-                    change.skipMultilineEncoding !== undefined
-                      ? change.skipMultilineEncoding
-                      : change.existingSecret.skipMultilineEncoding,
-                  tagIds:
-                    change.tags?.map((tag) => tag.id) ||
-                    change.existingSecret.tags?.map((tag) => tag.id),
-                  secretMetadata: change.secretMetadata || change.existingSecret.secretMetadata
-                })) || [],
-            delete:
-              pendingChanges.secrets.filter((change) => change.type === PendingAction.Delete) || []
+            create: secretCreates.map((change) => ({
+              secretKey: change.secretKey,
+              secretValue: change.secretValue,
+              secretComment: change.secretComment,
+              skipMultilineEncoding: change.skipMultilineEncoding ?? undefined,
+              tagIds: change.tags?.map((tag) => tag.id),
+              secretMetadata: change.secretMetadata
+            })),
+            update: secretUpdates.map((change) => ({
+              secretKey: change.secretKey,
+              newSecretName:
+                change.newSecretName && change.newSecretName !== change.secretKey
+                  ? change.newSecretName
+                  : undefined,
+              secretValue: change.secretValue,
+              secretComment: change.secretComment ?? change.originalComment,
+              skipMultilineEncoding: change.skipMultilineEncoding ?? undefined,
+              tagIds: (change.tags ?? change.originalTags)?.map((tag) => tag.id),
+              secretMetadata: change.secretMetadata
+            })),
+            delete: secretDeletes.map((change) => ({ secretKey: change.secretKey }))
           },
           folders: {
-            create:
-              pendingChanges.folders.filter((change) => change.type === PendingAction.Create) || [],
-            update:
-              pendingChanges.folders
-                .filter((change) => change.type === PendingAction.Update)
-                .map((change) => ({
-                  ...change,
-                  description: change.description || null
-                })) || [],
-            delete:
-              pendingChanges.folders.filter((change) => change.type === PendingAction.Delete) || []
+            create: pendingChanges.folders
+              .filter((change) => change.type === PendingAction.Create)
+              .map((change) => ({
+                folderName: change.folderName,
+                description: change.description || undefined
+              })),
+            update: pendingChanges.folders
+              .filter((change) => change.type === PendingAction.Update)
+              .map((change) => ({
+                id: change.id,
+                folderName: change.folderName,
+                description: change.description === "" ? null : change.description
+              })),
+            delete: pendingChanges.folders
+              .filter((change) => change.type === PendingAction.Delete)
+              .map((change) => ({ id: change.id, folderName: change.folderName }))
           }
-        },
-        message
+        }
       });
       return data;
     },
