@@ -3,7 +3,6 @@ import { GitCommitIcon, GroupIcon } from "lucide-react";
 
 import { Banner } from "@app/components/v4/ui/alert";
 import { Button } from "@app/components/v4/ui/button";
-import { Card } from "@app/components/v4/ui/card";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
 import {
   Dialog,
@@ -810,109 +809,75 @@ function Overview({ scenario }: { scenario: Scenario }) {
                   You do not have permission to create, edit, or delete secrets in this folder
                 </Banner>
               )}
-              <Card
-                variant="framed"
-                footer={
-                  totalCount > 0 || notice ? (
-                    <div className={styles.footer}>
-                      {notice ? (
-                        <p role="status" className={styles.notice}>
-                          {notice}
-                        </p>
-                      ) : (
-                        <ResourceCount counts={totals} />
-                      )}
-                      {!unavailableState && totalCount > 0 && (
-                        <div className={styles.pagination}>
-                          <Pagination
-                            page={currentPage}
-                            total={totalCount}
-                            pageSize={perPage}
-                            pageSizeOptions={[10, 20, 50, 100]}
-                            onPageChange={(value) => {
-                              setPage(value);
-                              setSelected([]);
-                            }}
-                            onPageSizeChange={(value) => {
-                              setPerPage(value);
-                              setPage(1);
-                              setSelected([]);
-                            }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ) : undefined
-                }
-              >
-                <div className={styles.toolbar}>
-                  <div className={styles.envPicker}>
-                    <MultiSelect
-                      label="Environments"
-                      options={scenario === "no-environments" ? [] : environments}
-                      value={scenario === "no-environments" ? [] : environmentIds}
-                      onChange={(value) => {
-                        setEnvironmentIds(value);
-                        setSort({ field: "name", direction: "asc" });
-                        resetView();
-                      }}
-                      placeholder="All environments"
-                      allLabel="All environments"
-                      searchable
-                      disabled={unavailable}
-                    />
-                  </div>
-                  <div className={styles.search}>
-                    <Input
-                      ref={search}
-                      aria-label="Search resources"
-                      icon="search"
-                      placeholder="Search by secret or folder name..."
-                      kbd="/"
-                      value={query}
-                      disabled={unavailable}
-                      onChange={(event) => {
-                        setQuery(event.target.value);
-                        setPage(1);
-                        setSelected([]);
-                      }}
-                    />
-                  </div>
-                  <ResourceFilterMenu
-                    types={types}
-                    onToggleType={(kind) => {
-                      setTypes(
-                        types.includes(kind)
-                          ? types.filter((entry) => entry !== kind)
-                          : [...types, kind]
-                      );
+              <div className={styles.toolbar}>
+                <div className={styles.envPicker}>
+                  <MultiSelect
+                    label="Environments"
+                    options={scenario === "no-environments" ? [] : environments}
+                    value={scenario === "no-environments" ? [] : environmentIds}
+                    onChange={(value) => {
+                      setEnvironmentIds(value);
+                      setSort({ field: "name", direction: "asc" });
                       resetView();
                     }}
-                    tags={tagOptions}
-                    selectedTags={tags}
-                    onToggleTag={(tag) => {
-                      setTags(
-                        tags.includes(tag) ? tags.filter((entry) => entry !== tag) : [...tags, tag]
-                      );
-                      resetView();
-                    }}
-                    onClearTags={() => {
-                      setTags([]);
-                      resetView();
-                    }}
-                  />
-                  <ExportMenu
-                    disabledReason={unavailable ? writeBlock : exportBlock}
-                    secretCount={single ? envFile(activeEnvironment).length : 0}
-                    onExport={(action) => exportEnv(activeEnvironment, action)}
-                  />
-                  <AddNewMenu
-                    writeBlock={writeBlock}
-                    single={single}
-                    onNewSecret={() => openDraft("secret")}
-                    onNewFolder={() => openDraft("folder")}
+                    placeholder="All environments"
+                    allLabel="All environments"
+                    searchable
+                    disabled={unavailable}
                   />
                 </div>
+                <div className={styles.search}>
+                  <Input
+                    ref={search}
+                    aria-label="Search resources"
+                    icon="search"
+                    placeholder="Search by secret or folder name..."
+                    kbd="/"
+                    value={query}
+                    disabled={unavailable}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      setPage(1);
+                      setSelected([]);
+                    }}
+                  />
+                </div>
+                <ResourceFilterMenu
+                  types={types}
+                  onToggleType={(kind) => {
+                    setTypes(
+                      types.includes(kind)
+                        ? types.filter((entry) => entry !== kind)
+                        : [...types, kind]
+                    );
+                    resetView();
+                  }}
+                  tags={tagOptions}
+                  selectedTags={tags}
+                  onToggleTag={(tag) => {
+                    setTags(
+                      tags.includes(tag) ? tags.filter((entry) => entry !== tag) : [...tags, tag]
+                    );
+                    resetView();
+                  }}
+                  onClearTags={() => {
+                    setTags([]);
+                    resetView();
+                  }}
+                />
+                <ExportMenu
+                  disabledReason={unavailable ? writeBlock : exportBlock}
+                  secretCount={single ? envFile(activeEnvironment).length : 0}
+                  onExport={(action) => exportEnv(activeEnvironment, action)}
+                />
+                <AddNewMenu
+                  writeBlock={writeBlock}
+                  single={single}
+                  onNewSecret={() => openDraft("secret")}
+                  onNewFolder={() => openDraft("folder")}
+                />
+              </div>
+              <div className={styles.tableBlock}>
                 <div className={styles.tableFrame}>
                   <FolderBreadcrumbBar
                     path={path}
@@ -1101,7 +1066,37 @@ function Overview({ scenario }: { scenario: Scenario }) {
                     </Table>
                   )}
                 </div>
-              </Card>
+                {(totalCount > 0 || notice) && (
+                  <div className={styles.footer}>
+                    {notice ? (
+                      <p role="status" className={styles.notice}>
+                        {notice}
+                      </p>
+                    ) : (
+                      <ResourceCount counts={totals} />
+                    )}
+                    {!unavailableState && totalCount > 0 && (
+                      <div className={styles.pagination}>
+                        <Pagination
+                          page={currentPage}
+                          total={totalCount}
+                          pageSize={perPage}
+                          pageSizeOptions={[10, 20, 50, 100]}
+                          onPageChange={(value) => {
+                            setPage(value);
+                            setSelected([]);
+                          }}
+                          onPageSizeChange={(value) => {
+                            setPerPage(value);
+                            setPage(1);
+                            setSelected([]);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </PageGutter>
           <div className={styles.fabDock} data-active={selected.length > 0 || undefined}>
