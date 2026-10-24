@@ -11,7 +11,11 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { CronJobName, TCronJobFactory } from "@app/lib/cron/cron-job";
 import { logger } from "@app/lib/logger";
-import { highCardinalityMeter, recordSecretSyncOutcomeMetric } from "@app/lib/telemetry/metrics";
+import {
+  highCardinalityMeter,
+  recordSecretSyncOutcomeMetric,
+  recordSecretSyncStatusChangeMetric
+} from "@app/lib/telemetry/metrics";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
@@ -84,6 +88,20 @@ import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal
 const DEFAULT_SECRET_SYNC_RETRY_CONFIG = {
   attempts: 5,
   backoff: { type: "exponential" as const, delay: 3000 }
+};
+
+const LOCK_FAILURE_MESSAGE =
+  "Failed to run job. This typically happens when a sync is already in progress. Please try again.";
+
+// syncStatus can't tell us how the previous run ended: every attempt overwrites it with Running first. lastSyncedAt
+// is only written on success, and lastSyncMessage is cleared on success and set on a final failure, so together they
+// hold the last finished result across retries. A lock-contention message says nothing about the destination.
+const getLastSyncResult = ({
+  lastSyncedAt,
+  lastSyncMessage
+}: Pick<TSecretSyncRaw, "lastSyncedAt" | "lastSyncMessage">): "succeeded" | "failed" | null => {
+  if (lastSyncMessage && lastSyncMessage !== LOCK_FAILURE_MESSAGE) return "failed";
+  return lastSyncedAt ? "succeeded" : null;
 };
 
 export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
@@ -644,6 +662,14 @@ export const secretSyncQueueFactory = ({
           lastSyncedAt: isSynced ? ranAt : undefined
         });
 
+        const lastSyncResult = getLastSyncResult(secretSync);
+        if (isSynced && lastSyncResult === "failed") {
+          recordSecretSyncStatusChangeMetric({ destination: secretSync.destination, to: "healthy" });
+        } else if (!isSynced && lastSyncResult === "succeeded") {
+          // A sync that has never succeeded is a new misconfiguration, not a breakage, so it is not counted.
+          recordSecretSyncStatusChangeMetric({ destination: secretSync.destination, to: "failed" });
+        }
+
         if (!isSynced) {
           void telemetryService
             .sendPostHogEvents({
@@ -1109,8 +1135,7 @@ export const secretSyncQueueFactory = ({
 
         const secretSync = await secretSyncDAL.updateById(syncId, {
           syncStatus: SecretSyncStatus.Failed,
-          lastSyncMessage:
-            "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
+          lastSyncMessage: LOCK_FAILURE_MESSAGE,
           lastSyncJobId: job.id
         });
 
@@ -1133,8 +1158,7 @@ export const secretSyncQueueFactory = ({
       case QueueJobs.SecretSyncImportSecrets: {
         const secretSync = await secretSyncDAL.updateById(syncId, {
           importStatus: SecretSyncStatus.Failed,
-          lastImportMessage:
-            "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
+          lastImportMessage: LOCK_FAILURE_MESSAGE,
           lastImportJobId: job.id
         });
 
@@ -1156,8 +1180,7 @@ export const secretSyncQueueFactory = ({
       case QueueJobs.SecretSyncRemoveSecrets: {
         const secretSync = await secretSyncDAL.updateById(syncId, {
           removeStatus: SecretSyncStatus.Failed,
-          lastRemoveMessage:
-            "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
+          lastRemoveMessage: LOCK_FAILURE_MESSAGE,
           lastRemoveJobId: job.id
         });
 

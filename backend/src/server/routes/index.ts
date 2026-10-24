@@ -3106,7 +3106,8 @@ export const registerRoutes = async (
     userDAL,
     identityDAL,
     projectMembershipDAL,
-    projectDAL
+    projectDAL,
+    keyStore
   });
   const dynamicSecretService = dynamicSecretServiceFactory({
     orgDAL,

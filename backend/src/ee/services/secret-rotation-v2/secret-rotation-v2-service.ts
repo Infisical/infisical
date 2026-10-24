@@ -70,7 +70,7 @@ import { getConfig } from "@app/lib/config/env";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { takeRowScanWindow } from "@app/lib/fn";
-import { recordSecretRotationOutcomeMetric } from "@app/lib/telemetry/metrics";
+import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -1314,6 +1314,7 @@ export const secretRotationV2ServiceFactory = ({
     } = secretRotation;
 
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
+    const previousRotationStatus = secretRotation.rotationStatus as SecretRotationStatus;
 
     try {
       try {
@@ -1476,13 +1477,16 @@ export const secretRotationV2ServiceFactory = ({
         excludeReplication: true
       });
 
-      recordSecretRotationOutcomeMetric({ type, outcome: "success" });
+      recordSecretRotationOutcomeMetric({ type, outcome: "success", attemptsExhausted: isFinalAttempt });
+      if (previousRotationStatus === SecretRotationStatus.Failed) {
+        recordSecretRotationStatusChangeMetric({ type, to: "healthy" });
+      }
 
       return updatedRotation;
     } catch (error) {
       const errorMessage = parseRotationErrorMessage(error);
 
-      recordSecretRotationOutcomeMetric({ type, outcome: "failure" });
+      recordSecretRotationOutcomeMetric({ type, outcome: "failure", attemptsExhausted: isFinalAttempt });
 
       if (isManualRotation) {
         await triggerFailedWebhook(projectId, environment, error, folder, secretRotation, isManualRotation);
@@ -1505,6 +1509,11 @@ export const secretRotationV2ServiceFactory = ({
           encryptedLastRotationMessage: encryptedMessage,
           nextRotationAt: getNextUtcRotationInterval(secretRotation.rotateAtUtc as TSecretRotationV2["rotateAtUtc"])
         });
+
+        // Without the lock another run of this rotation was in progress, which says nothing about the provider.
+        if (previousRotationStatus === SecretRotationStatus.Success && lock) {
+          recordSecretRotationStatusChangeMetric({ type, to: "failed" });
+        }
 
         if (shouldSendNotification) {
           await $queueSendSecretRotationStatusNotification(updatedRotation);

@@ -195,6 +195,9 @@ export const KeyStorePrefixes = {
 
   // Braces are a Redis Cluster hash tag: the index zset and every member's payload key must land on
   // one slot for the multi-key upsert/delete scripts.
+  DynamicSecretRevocationFailing: (dynamicSecretId: string) =>
+    `dynamic-secret-revocation-failing:${dynamicSecretId}` as const,
+
   WorkerHeartbeatIndex: (workerType: string) => `worker-heartbeat:{${workerType}}` as const,
   WorkerHeartbeat: (workerType: string, instanceId: string) =>
     `worker-heartbeat:{${workerType}}:${instanceId}` as const,
@@ -354,6 +357,11 @@ export type TKeyStoreFactory = {
     value: string | number | Buffer,
     prefix?: string
   ) => Promise<"OK" | null>;
+  setItemWithExpiryReturningPrevious: (
+    key: string,
+    expiryInSeconds: number,
+    value: string | number
+  ) => Promise<string | null>;
   deleteItem: (key: string) => Promise<number>;
   deleteItemsByKeyIn: (keys: string[]) => Promise<number>;
   deleteItems: (arg: TDeleteItems) => Promise<number>;
@@ -491,6 +499,9 @@ export const keyStoreFactory = (
     value: string | number | Buffer,
     prefix?: string
   ) => primaryRedis.set(prefix ? `${prefix}:${key}` : key, value, "EX", expiryInSeconds, "NX");
+
+  const setItemWithExpiryReturningPrevious = async (key: string, expiryInSeconds: number, value: string | number) =>
+    primaryRedis.set(key, value, "EX", expiryInSeconds, "GET");
 
   const deleteItem = async (key: string) => primaryRedis.del(key);
 
@@ -937,6 +948,7 @@ export const keyStoreFactory = (
     ttl,
     setItemWithExpiry,
     setItemWithExpiryNX,
+    setItemWithExpiryReturningPrevious,
     deleteItem,
     deleteItems,
     incrementBy,
