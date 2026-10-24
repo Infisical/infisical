@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
@@ -14,6 +15,7 @@ import {
   TAgentVaultGrantedMember,
   TAgentVaultMemberWriteResult,
   TAgentVaultMintedSession,
+  TAgentVaultPersonalValues,
   TAgentVaultProxy,
   TAgentVaultProxySettingsDTO,
   TAgentVaultProxyWithToken,
@@ -25,6 +27,8 @@ import {
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
   TCreateAgentVaultVariableDTO,
+  TDeleteAgentVaultPersonalValuesDTO,
+  TSetAgentVaultPersonalValuesDTO,
   TUpdateAgentVaultAccessBundleDTO,
   TUpdateAgentVaultMemberRolesDTO,
   TUpdateAgentVaultServiceDTO,
@@ -398,7 +402,8 @@ export const useUpdateAgentVaultSessionLogSettings = () => {
   });
 };
 
-// A rename changes the keys each service's variableReferences reports, so the bundles refresh too.
+// A rename changes the keys each service's variableReferences, and each personal value's, reports, so those refresh
+// too.
 const invalidateVariables = (queryClient: ReturnType<typeof useQueryClient>, orgId: string) =>
   Promise.all([
     queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(orgId) }),
@@ -459,3 +464,56 @@ export const useRevealAgentVaultVariableValue = () =>
       return data.value;
     }
   });
+
+// The status shows on the bundle read and the bundle list, and Used By on personal variables follows the references.
+const invalidatePersonalValues = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  accessBundleId: string
+) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundle(orgId, accessBundleId) }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId) }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(orgId) })
+  ]);
+
+export const useSetAgentVaultPersonalValues = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      accessBundleId,
+      serviceId,
+      ...params
+    }: TSetAgentVaultPersonalValuesDTO) => {
+      const { data } = await apiRequest.patch<{ personalValues: TAgentVaultPersonalValues }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}/personal-values`,
+        params
+      );
+      return data.personalValues;
+    },
+    onSuccess: (_, { accessBundleId }) =>
+      invalidatePersonalValues(queryClient, currentOrg.id, accessBundleId),
+    // The service changed under the dialog, so its copy is stale: reload it before the member saves again.
+    onError: (error, { accessBundleId }) => {
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        invalidatePersonalValues(queryClient, currentOrg.id, accessBundleId).catch(() => undefined);
+      }
+    }
+  });
+};
+
+export const useDeleteAgentVaultPersonalValues = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accessBundleId, serviceId }: TDeleteAgentVaultPersonalValuesDTO) => {
+      const { data } = await apiRequest.delete<{ personalValues: TAgentVaultPersonalValues }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}/personal-values`
+      );
+      return data.personalValues;
+    },
+    onSuccess: (_, { accessBundleId }) =>
+      invalidatePersonalValues(queryClient, currentOrg.id, accessBundleId)
+  });
+};

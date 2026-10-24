@@ -90,9 +90,3 @@ export const ConfirmationAlertDialog = ({
     </AlertDialog>
   );
 };
-
-/**
- * @deprecated Renamed to `ConfirmationAlertDialog`. Kept so in-flight branches keep compiling;
- * import `ConfirmationAlertDialog` instead.
- */
-export const DeleteConfirmDialog = ConfirmationAlertDialog;

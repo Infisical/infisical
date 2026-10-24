@@ -8,7 +8,11 @@ import {
   DetailLabel,
   DetailValue
 } from "@app/components/v3";
-import { AgentVaultCredentialType } from "@app/hooks/api/agentVault";
+import {
+  AgentVaultCredentialType,
+  AgentVaultVariableReferenceField,
+  TAgentVaultMemberProvidedField
+} from "@app/hooks/api/agentVault";
 
 import {
   CREDENTIAL_LABELS,
@@ -24,11 +28,15 @@ const credentialPreview = (form: {
   credentialType: AgentVaultCredentialType;
   headerName?: string;
   headerPrefix?: string;
+  memberProvidedFields: TAgentVaultMemberProvidedField[];
 }): string | null => {
   if (form.credentialType === AgentVaultCredentialType.Passthrough) return null;
   if (form.credentialType === AgentVaultCredentialType.Basic) return `Authorization: Basic ${MASK}`;
   const prefix = form.headerPrefix ? `${form.headerPrefix} ` : "";
-  return `${form.headerName || "Authorization"}: ${prefix}${MASK}`;
+  const value = form.memberProvidedFields.includes(AgentVaultVariableReferenceField.CredentialValue)
+    ? "<member value>"
+    : MASK;
+  return `${form.headerName || "Authorization"}: ${prefix}${value}`;
 };
 
 const alignColumns = (rows: string[][]) => {
@@ -45,9 +53,12 @@ const alignColumns = (rows: string[][]) => {
 
 type Props = {
   isUpdate: boolean;
+  storedType?: AgentVaultCredentialType;
+  /** The fields that were member-provided when the sheet opened, which have no stored value behind them. */
+  storedMemberFields?: TAgentVaultMemberProvidedField[];
 };
 
-export const ReviewFields = ({ isUpdate }: Props) => {
+export const ReviewFields = ({ isUpdate, storedType, storedMemberFields = [] }: Props) => {
   const { watch } = useFormContext<TServiceForm>();
   const form = watch();
 
@@ -69,8 +80,17 @@ export const ReviewFields = ({ isUpdate }: Props) => {
         : ""
     ]);
 
-  const outcome = (value: string | undefined, canClear: boolean) => {
-    if (!isUpdate) return value ? "Set" : "None";
+  const outcome = (
+    value: string | undefined,
+    canClear: boolean,
+    field: TAgentVaultMemberProvidedField
+  ) => {
+    if (form.memberProvidedFields.includes(field)) return "Set by each member";
+    // Nothing of the admin's carries over to a new credential type or a field taken back from members, so there is
+    // no value to replace or clear.
+    if (!isUpdate || form.credentialType !== storedType || storedMemberFields.includes(field)) {
+      return value ? "Set" : "None";
+    }
     if (value === UNCHANGED_SECRET) return "Unchanged";
     if (value) return "Replaced";
     return canClear ? "Cleared" : "Unchanged";
@@ -120,13 +140,17 @@ export const ReviewFields = ({ isUpdate }: Props) => {
           {isBasic && (
             <Detail>
               <DetailLabel>Username</DetailLabel>
-              <DetailValue>{outcome(form.username, true)}</DetailValue>
+              <DetailValue>
+                {outcome(form.username, true, AgentVaultVariableReferenceField.CredentialUsername)}
+              </DetailValue>
             </Detail>
           )}
           {form.credentialType !== AgentVaultCredentialType.Passthrough && (
             <Detail>
               <DetailLabel>{secretLabel}</DetailLabel>
-              <DetailValue>{outcome(form.secret, isBasic)}</DetailValue>
+              <DetailValue>
+                {outcome(form.secret, isBasic, AgentVaultVariableReferenceField.CredentialValue)}
+              </DetailValue>
             </Detail>
           )}
         </div>

@@ -23,11 +23,18 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
-import { AgentVaultCredentialType, AgentVaultTrafficPolicy } from "../agent-vault/agent-vault-enums";
+import {
+  AgentVaultCredentialType,
+  AgentVaultTrafficPolicy,
+  AgentVaultVariableReferenceField,
+  TAgentVaultMemberProvidedField
+} from "../agent-vault/agent-vault-enums";
+import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
 import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/agent-vault-permission";
 import { expandStoredVariableReferences, findStoredVariableIds } from "../agent-vault/agent-vault-variable-fns";
 import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
 import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
@@ -58,7 +65,7 @@ import {
   TResolveSessionDTO,
   TUpdateProxyDTO
 } from "./agent-vault-proxy-types";
-import { TAgentVaultResolveDALFactory } from "./agent-vault-resolve-dal";
+import { TAgentVaultResolveDALFactory, TResolveServiceRow } from "./agent-vault-resolve-dal";
 
 export const AGENT_VAULT_MAX_PROXIES_PER_ORG = 10;
 
@@ -71,6 +78,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   agentVaultServiceCustomHeaderDAL: Pick<TAgentVaultServiceCustomHeaderDALFactory, "findByServiceIds">;
   agentVaultServiceSubstitutionDAL: Pick<TAgentVaultServiceSubstitutionDALFactory, "findByServiceIds">;
   agentVaultVariableDAL: Pick<TAgentVaultVariableDALFactory, "findValuesForResolve">;
+  agentVaultPersonalValueDAL: Pick<TAgentVaultPersonalValueDALFactory, "findForResolve">;
   agentVaultSessionDAL: Pick<TAgentVaultSessionDALFactory, "findByTokenHash">;
   agentVaultSessionLogConfigDAL: Pick<TAgentVaultSessionLogConfigDALFactory, "findOne" | "findByProjectIdFromPrimary">;
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
@@ -83,12 +91,38 @@ type TAgentVaultProxyServiceFactoryDep = {
 
 export type TAgentVaultProxyServiceFactory = ReturnType<typeof agentVaultProxyServiceFactory>;
 
+// Opens each variable at most once per resolve. An id with no row stays as text, and the service that used it is
+// recorded so one log line can name every service affected.
+const createVariableLookup = (
+  rows: { id: string; encryptedValue: Buffer }[],
+  decryptValue: (encryptedValue: Buffer) => string
+) => {
+  const encrypted = new Map(rows.map((row) => [row.id, row.encryptedValue]));
+  const opened = new Map<string, string>();
+  const unresolvedServiceIds = new Set<string>();
+  const valueOfFor = (serviceId: string) => (variableId: string) => {
+    const encryptedValue = encrypted.get(variableId);
+    if (!encryptedValue) {
+      unresolvedServiceIds.add(serviceId);
+      return undefined;
+    }
+    let value = opened.get(variableId);
+    if (value === undefined) {
+      value = decryptValue(encryptedValue);
+      opened.set(variableId, value);
+    }
+    return value;
+  };
+  return { valueOfFor, unresolvedServiceIds };
+};
+
 export const agentVaultProxyServiceFactory = ({
   agentVaultProxyDAL,
   agentVaultResolveDAL,
   agentVaultServiceCustomHeaderDAL,
   agentVaultServiceSubstitutionDAL,
   agentVaultVariableDAL,
+  agentVaultPersonalValueDAL,
   agentVaultSessionDAL,
   agentVaultSessionLogConfigDAL,
   membershipDAL,
@@ -453,31 +487,14 @@ export const agentVaultProxyServiceFactory = ({
     ];
     if (!variableIds.length) return services;
 
-    const variables = new Map(
-      (await agentVaultVariableDAL.findValuesForResolve({ variableIds, projectId })).map((variable) => [
-        variable.id,
-        variable
-      ])
+    // The lookup is scoped to the session's project, so a stored id never reaches another org's variable.
+    const { valueOfFor, unresolvedServiceIds } = createVariableLookup(
+      await agentVaultVariableDAL.findValuesForResolve({ variableIds, projectId, owner: null }),
+      decryptValue
     );
 
-    const opened = new Map<string, string>();
-    const unresolvedServiceIds = new Set<string>();
-
     const expanded = services.map((service) => {
-      const valueOf = (variableId: string) => {
-        // The lookup is scoped to the session's project, so a stored id never reaches another org's variable.
-        const variable = variables.get(variableId);
-        if (!variable) {
-          unresolvedServiceIds.add(service.id);
-          return undefined;
-        }
-        let value = opened.get(variableId);
-        if (value === undefined) {
-          value = decryptValue(variable.encryptedValue);
-          opened.set(variableId, value);
-        }
-        return value;
-      };
+      const valueOf = valueOfFor(service.id);
       const expand = (text: string) => expandStoredVariableReferences(text, valueOf);
 
       let { credential } = service;
@@ -511,6 +528,103 @@ export const agentVaultProxyServiceFactory = ({
       );
     }
     return expanded;
+  };
+
+  /**
+   * A member-provided field comes from what the session's actor saved for the service, expanded against their own
+   * personal variables only, after the admin's fields were expanded against the global ones: a value is never
+   * expanded twice. A service whose actor hasn't set every field the admin leaves to them goes out flagged and
+   * without a credential, so the proxy refuses it instead of sending a half-built one.
+   */
+  const $applyPersonalValues = async ({
+    sessionId,
+    projectId,
+    owner,
+    rows,
+    services,
+    decryptValue,
+    decryptJson
+  }: {
+    sessionId: string;
+    projectId: string;
+    owner: TAgentVaultOwner;
+    rows: TResolveServiceRow[];
+    services: TResolvedService[];
+    decryptValue: (encryptedValue: Buffer) => string;
+    decryptJson: (encrypted: Buffer) => unknown;
+  }): Promise<TResolvedService[]> => {
+    const rowById = new Map(rows.map((row) => [row.id, row]));
+    const memberFieldsOf = (serviceId: string) =>
+      (rowById.get(serviceId)?.memberProvidedFields ?? []) as TAgentVaultMemberProvidedField[];
+
+    const serviceIds = services.filter((service) => memberFieldsOf(service.id).length).map((service) => service.id);
+    if (!serviceIds.length) return services;
+
+    // Stored text per service, then per field, with personal variable references still as ids.
+    const stored = new Map<string, Map<string, string>>();
+    (await agentVaultPersonalValueDAL.findForResolve({ serviceIds, owner })).forEach((row) => {
+      const fields = stored.get(row.serviceId) ?? new Map<string, string>();
+      fields.set(row.field, (decryptJson(row.encryptedValue) as { value: string }).value);
+      stored.set(row.serviceId, fields);
+    });
+
+    const variableIds = [
+      ...new Set([...stored.values()].flatMap((fields) => [...fields.values()].flatMap(findStoredVariableIds)))
+    ];
+    const { valueOfFor, unresolvedServiceIds } = createVariableLookup(
+      await agentVaultVariableDAL.findValuesForResolve({ variableIds, projectId, owner }),
+      decryptValue
+    );
+
+    const resolved = services.map((service): TResolvedService => {
+      const memberFields = memberFieldsOf(service.id);
+      if (!memberFields.length) return service;
+
+      const fields = stored.get(service.id);
+      if (!fields || memberFields.some((field) => !fields.has(field))) {
+        return { ...service, credential: { type: "passthrough" }, personalValuesMissing: true };
+      }
+
+      const valueOf = valueOfFor(service.id);
+      const personalValue = (field: TAgentVaultMemberProvidedField) =>
+        expandStoredVariableReferences(fields.get(field) ?? "", valueOf);
+
+      const row = rowById.get(service.id)!;
+      const config = (row.credentialConfig ?? {}) as Record<string, string>;
+      if (row.credentialType === AgentVaultCredentialType.Bearer) {
+        return {
+          ...service,
+          credential: {
+            type: "bearer",
+            headerName: config.headerName,
+            headerPrefix: config.headerPrefix,
+            value: personalValue(AgentVaultVariableReferenceField.CredentialValue)
+          }
+        };
+      }
+
+      const adminHalves = service.credential.type === "basic" ? service.credential : { username: "", password: "" };
+      return {
+        ...service,
+        credential: {
+          type: "basic",
+          // Trimmed for the same reason as an admin's username a variable fills in.
+          username: memberFields.includes(AgentVaultVariableReferenceField.CredentialUsername)
+            ? personalValue(AgentVaultVariableReferenceField.CredentialUsername).trim()
+            : adminHalves.username,
+          password: memberFields.includes(AgentVaultVariableReferenceField.CredentialValue)
+            ? personalValue(AgentVaultVariableReferenceField.CredentialValue)
+            : adminHalves.password
+        }
+      };
+    });
+
+    if (unresolvedServiceIds.size) {
+      logger.error(
+        `agentVaultResolve: stored personal variable reference with no variable [sessionId=${sessionId}] [serviceIds=${[...unresolvedServiceIds].join(",")}]`
+      );
+    }
+    return resolved;
   };
 
   /** The only endpoint that decrypts a credential. The proxy's JWT authorizes; the session token is a selector. */
@@ -614,7 +728,7 @@ export const agentVaultProxyServiceFactory = ({
     // A bundle of pass-through services has nothing sealed, so deriving the project data key would be
     // a kms_keys read (or an external KMS round trip) per resolve for nothing.
     const hasSealedValue =
-      rows.some((row) => row.encryptedCredential) ||
+      rows.some((row) => row.encryptedCredential || row.memberProvidedFields?.length) ||
       customHeaderRows.length > 0 ||
       substitutionRows.length > 0 ||
       sessionLogKeyNeeded;
@@ -627,10 +741,11 @@ export const agentVaultProxyServiceFactory = ({
         ).decryptor
       : null;
 
-    const $decryptValue = (encryptedValue: Buffer) => {
+    const $decryptJson = (encrypted: Buffer): unknown => {
       if (!decryptor) throw new InternalServerError({ message: "Failed to resolve the session's credentials" });
-      return (JSON.parse(decryptor({ cipherTextBlob: encryptedValue }).toString("utf-8")) as { value: string }).value;
+      return JSON.parse(decryptor({ cipherTextBlob: encrypted }).toString("utf-8"));
     };
+    const $decryptValue = (encryptedValue: Buffer) => ($decryptJson(encryptedValue) as { value: string }).value;
 
     const decryptedServices: TResolvedService[] = rows.map((row) => ({
       id: row.id,
@@ -649,14 +764,23 @@ export const agentVaultProxyServiceFactory = ({
           placeholder: substitution.placeholder,
           surfaces: substitution.surfaces,
           value: $decryptValue(substitution.encryptedValue)
-        }))
+        })),
+      personalValuesMissing: false
     }));
 
-    const services = await $expandVariableReferences({
+    const services = await $applyPersonalValues({
       sessionId: session.id,
       projectId: session.projectId,
-      services: decryptedServices,
-      decryptValue: $decryptValue
+      owner: session.userId ? { userId: session.userId } : { identityId: session.identityId! },
+      rows,
+      services: await $expandVariableReferences({
+        sessionId: session.id,
+        projectId: session.projectId,
+        services: decryptedServices,
+        decryptValue: $decryptValue
+      }),
+      decryptValue: $decryptValue,
+      decryptJson: $decryptJson
     });
 
     // A key that can't be opened turns logs off for this session instead of cutting the agent off from its services.
@@ -681,7 +805,7 @@ export const agentVaultProxyServiceFactory = ({
     const sessionLogs = $sessionLogs();
 
     logger.info(
-      `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [services=${services.length}]`
+      `agentVaultResolve: resolved [sessionId=${session.id}] [proxyId=${proxyId}] [services=${services.length}] [personalValuesMissing=${services.filter((service) => service.personalValuesMissing).length}]`
     );
 
     return {

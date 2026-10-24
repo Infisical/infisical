@@ -278,6 +278,7 @@ export const AlertAction = ({
             unavailableEventTypes={usedEventTypes}
           />
           <AlertDialog
+            isPending={deleteAlert.isPending}
             open={popUp.deleteAlert.isOpen}
             confirmationValue="delete"
             onOpenChange={(open) => handlePopUpToggle("deleteAlert", open)}
@@ -295,10 +296,9 @@ export const AlertAction = ({
                 <AlertDescription>Removing this alert cannot be undone.</AlertDescription>
               </Alert>
               <AlertDialogFooter>
-                <AlertDialogCancel isDisabled={deleteAlert.isPending}>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   variant="danger"
-                  isPending={deleteAlert.isPending}
                   onClick={(event) => {
                     event.preventDefault();
                     handleDeleteAlert();

@@ -148,7 +148,8 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
               customHeaders: z.object({ name: z.string(), prefix: z.string(), value: z.string() }).array(),
               substitutions: z
                 .object({ placeholder: z.string(), surfaces: z.string().array(), value: z.string() })
-                .array()
+                .array(),
+              personalValuesMissing: z.boolean()
             })
             .array(),
           sessionLogs: z.object({

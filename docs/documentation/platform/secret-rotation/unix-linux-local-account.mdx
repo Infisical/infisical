@@ -47,6 +47,9 @@ description: "Learn how to automatically rotate Unix/Linux local account passwor
             - **Login as Root** - Infisical will use the SSH Connection's credentials to log in and rotate the provided user's password.
         - **Username** - The target SSH username whose password will be rotated.
         - **Use Sudo** - If true, uses sudo when executing the password rotation command. Defaults to false.
+            <Note>
+                If the target host runs AIX and **Rotation Method** is **Login as Root**, Infisical also clears the `ADMCHG` flag that AIX sets on every password an administrator changes. Without this, the account is forced to pick a new password at its next login, and non-interactive SSH logins fail. If **Use Sudo** is on, the SSH Connection's user must be allowed to run `passwd`, `lssec`, and `chsec` through sudo.
+            </Note>
         - **Current Password** - The current password of the target user (required when **Rotation Method** is set to **Login as Target**).
         - **Password Requirements** - The constraints to apply when generating new passwords.
 
