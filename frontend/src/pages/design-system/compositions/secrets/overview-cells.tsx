@@ -73,18 +73,20 @@ export function StatusCell({
   const meta = statusMeta[status];
   return (
     <TableCell className={styles.statusCell} data-status={status}>
-      {hasOverride && (
-        <Tooltip content="Has personal override">
-          <span className={styles.overrideMark}>
-            <Icon icon={GitBranchIcon} label="Has personal override" />
+      <span className={styles.statusGroup}>
+        <Tooltip content={meta.label}>
+          <span className={styles.statusMark}>
+            <Icon name={meta.name} icon={meta.icon} label={meta.label} />
           </span>
         </Tooltip>
-      )}
-      <Tooltip content={meta.label}>
-        <span className={styles.statusMark}>
-          <Icon name={meta.name} icon={meta.icon} label={meta.label} />
-        </span>
-      </Tooltip>
+        {hasOverride && (
+          <Tooltip content="Has personal override">
+            <span className={styles.overrideMark}>
+              <Icon icon={GitBranchIcon} label="Has personal override" />
+            </span>
+          </Tooltip>
+        )}
+      </span>
     </TableCell>
   );
 }
