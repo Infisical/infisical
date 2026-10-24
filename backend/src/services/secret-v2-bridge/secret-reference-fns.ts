@@ -247,8 +247,6 @@ export const expandSecretReferencesFactory = ({
     const createSecretId = (env: string, secretPath: string, key: string) => `${env}:${secretPath}:${key}`;
 
     const currentSecretId = createSecretId(dto.environment, dto.secretPath, dto.secretKey);
-    const stack = [{ ...dto, depth: 0, trace: stackTrace, visitedSecrets: new Set<string>([currentSecretId]) }];
-    let expandedValue = dto.value;
 
     // Ensure the secret can actually be read before we expand it
     const currentSecret = await fetchSecret(dto.environment, dto.secretPath, dto.secretKey);
@@ -260,12 +258,24 @@ export const expandSecretReferencesFactory = ({
 
     const crossProjectSecretSharingEnabled = await checkCrossProjectAllowed();
 
-    while (stack.length) {
-      const { value, secretPath, environment, depth, trace, visitedSecrets } = stack.pop()!;
-
-      // eslint-disable-next-line no-continue
-      if (depth > MAX_SECRET_REFERENCE_DEPTH) continue;
-
+    // Each value is expanded in the environment and path of the secret that holds it, so a nested
+    // ${KEY} resolves against its own folder before the result is substituted into the parent.
+    const expandValue = async ({
+      value,
+      secretPath,
+      environment,
+      depth,
+      trace,
+      visitedSecrets
+    }: {
+      value?: string;
+      secretPath: string;
+      environment: string;
+      depth: number;
+      trace?: TSecretReferenceTraceNode | null;
+      visitedSecrets: Set<string>;
+    }): Promise<string> => {
+      const resolvedRefs = new Map<string, string>();
       const matchRegex = new RE2(INTERPOLATION_PATTERN_STRING, "g");
       const refs = [];
       let match;
@@ -474,29 +484,44 @@ export const expandSecretReferencesFactory = ({
 
           // Cross-project secrets are not recursively expanded (no source-project context in this factory)
           const shouldExpandMore =
-            INTERPOLATION_TEST_REGEX.test(referencedSecretValue) && !isCircular && !isCrossProjectRef;
+            INTERPOLATION_TEST_REGEX.test(referencedSecretValue) &&
+            !isCircular &&
+            !isCrossProjectRef &&
+            node.depth <= MAX_SECRET_REFERENCE_DEPTH;
+          let resolvedValue = referencedSecretValue;
           if (dto.shouldStackTrace) {
             const stackTraceNode = { ...node, children: [], key: referencedSecretKey, trace: null };
             trace?.children.push(stackTraceNode);
             // if stack trace this would be child node
             if (shouldExpandMore) {
-              stack.push({ ...node, trace: stackTraceNode, visitedSecrets: newVisitedSecrets });
+              // eslint-disable-next-line no-await-in-loop
+              resolvedValue = await expandValue({ ...node, trace: stackTraceNode, visitedSecrets: newVisitedSecrets });
             }
           } else if (shouldExpandMore) {
-            // if no stack trace is needed we just keep going with root node
-            stack.push({ ...node, visitedSecrets: newVisitedSecrets });
+            // eslint-disable-next-line no-await-in-loop
+            resolvedValue = await expandValue({ ...node, visitedSecrets: newVisitedSecrets });
           }
 
           if (referencedSecretExists) {
-            expandedValue = expandedValue.replaceAll(
-              interpolationSyntax,
-              () => referencedSecretValue // prevents special characters from triggering replacement patterns
-            );
+            resolvedRefs.set(interpolationSyntax, resolvedValue);
           }
           // when the referenced secret does not exist, leave the literal ${REF} untouched
         }
       }
-    }
+
+      // One pass, so text inserted for one reference is never rewritten by a later replacement.
+      return (value || "").replace(
+        new RE2(INTERPOLATION_PATTERN_STRING, "g"),
+        (ref: string) => resolvedRefs.get(ref) ?? ref // a function also stops "$&" in values acting as a pattern
+      );
+    };
+
+    const expandedValue = await expandValue({
+      ...dto,
+      depth: 0,
+      trace: stackTrace,
+      visitedSecrets: new Set<string>([currentSecretId])
+    });
 
     return { expandedValue, stackTrace };
   };
