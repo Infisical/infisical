@@ -21,6 +21,7 @@ import { TAccessApprovalRequestDALFactory } from "../access-approval-request/acc
 import { TAccessApprovalRequestReviewerDALFactory } from "../access-approval-request/access-approval-request-reviewer-dal";
 import { ApprovalStatus } from "../access-approval-request/access-approval-request-types";
 import { TGroupDALFactory } from "../group/group-dal";
+import { TLicenseServiceFactory } from "../license/license-service";
 import {
   TAccessApprovalPolicyApproverDALFactory,
   TAccessApprovalPolicyBypasserDALFactory
@@ -41,6 +42,7 @@ import {
 type TAccessApprovalPolicyServiceFactoryDep = {
   projectDAL: TProjectDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   accessApprovalPolicyDAL: TAccessApprovalPolicyDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find" | "findOne">;
   accessApprovalPolicyApproverDAL: TAccessApprovalPolicyApproverDALFactory;
@@ -73,6 +75,7 @@ export const accessApprovalPolicyServiceFactory = ({
   accessApprovalPolicyEnvironmentDAL,
   groupDAL,
   permissionService,
+  licenseService,
   projectEnvDAL,
   projectDAL,
   userDAL,
@@ -166,6 +169,15 @@ export const accessApprovalPolicyServiceFactory = ({
       ProjectPermissionActions.Create,
       ProjectPermissionSub.SecretApproval
     );
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to create access approval policy due to plan restriction. Upgrade plan to create access approval policy."
+      });
+    }
+
     const mergedEnvs = (environment ? [environment] : environments) || [];
     if (mergedEnvs.length === 0) {
       throw new BadRequestError({ message: "Must provide either environment or environments" });
@@ -462,6 +474,14 @@ export const accessApprovalPolicyServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval);
+
+    const plan = await licenseService.getPlan(actorOrgId);
+    if (!plan.secretApproval) {
+      throw new BadRequestError({
+        message:
+          "Failed to update access approval policy due to plan restriction. Upgrade plan to update access approval policy."
+      });
+    }
 
     let groupBypassers: string[] = [];
     let bypasserUserIds: string[] = [];
