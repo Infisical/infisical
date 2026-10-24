@@ -1,0 +1,83 @@
+.root {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--v4-space-actions-gap);
+  padding: var(--v4-space-32) var(--v4-space-24);
+  text-align: center;
+  text-wrap: balance;
+}
+.root[data-size="sm"] {
+  gap: var(--v4-space-8);
+  padding: var(--v4-space-surface-inset-sm);
+}
+.header {
+  display: flex;
+  max-width: var(--v4-size-measure-field);
+  flex-direction: column;
+  align-items: center;
+  gap: var(--v4-space-4);
+}
+.content {
+  display: flex;
+  width: 100%;
+  max-width: var(--v4-size-measure-field);
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--v4-space-8);
+}
+.media {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--v4-muted);
+}
+.media svg {
+  flex-shrink: 0;
+  width: var(--v4-size-icon-xl);
+  height: var(--v4-size-icon-xl);
+  pointer-events: none;
+}
+.media[data-variant="tile"] {
+  width: var(--v4-size-empty-media);
+  height: var(--v4-size-empty-media);
+  border: var(--v4-size-control-border) solid var(--v4-line);
+  border-radius: 0;
+  background: var(--v4-tint);
+  color: var(--v4-text2);
+}
+.root[data-size="sm"] .media svg {
+  width: var(--v4-size-icon-lg);
+  height: var(--v4-size-icon-lg);
+}
+.root[data-size="sm"] .media[data-variant="tile"] {
+  width: var(--v4-size-empty-media-sm);
+  height: var(--v4-size-empty-media-sm);
+}
+.title {
+  color: var(--v4-ink);
+}
+.root[data-size="sm"] .title {
+  font-family: var(--v4-type-row-title-font-family);
+  font-size: var(--v4-type-row-title-font-size);
+  line-height: var(--v4-type-row-title-line-height);
+  font-weight: var(--v4-type-row-title-font-weight);
+  letter-spacing: var(--v4-type-row-title-letter-spacing);
+}
+.description {
+  color: var(--v4-muted);
+}
+.description > a {
+  text-decoration-line: underline;
+  text-underline-offset: var(--v4-space-3);
+}
+.description > a:hover {
+  color: var(--v4-ink);
+}

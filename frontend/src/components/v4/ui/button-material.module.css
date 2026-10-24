@@ -1,0 +1,228 @@
+.material {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 0;
+  color: var(--v4-on-accent);
+  background-color: var(--v4-accent);
+  background-clip: border-box;
+  background-origin: border-box;
+  background-repeat: no-repeat;
+  background-image: linear-gradient(180deg, var(--v4-button-face-start), var(--v4-button-face-end));
+  box-shadow:
+    inset 0 -1.5px 2px 0 var(--v4-button-bloom),
+    inset 0 0 10px 0 var(--v4-button-glow),
+    inset 0 0 8px 0 var(--v4-button-glow);
+  translate: none;
+  transition: box-shadow var(--v4-duration-moderate) var(--v4-ease-fade);
+}
+@media (hover: hover) {
+  .material:hover:not(:disabled):not([aria-disabled="true"]) {
+    background-image: linear-gradient(
+      180deg,
+      var(--v4-button-hover-start),
+      var(--v4-button-hover-end)
+    );
+    box-shadow:
+      inset 0 -0.5px 1px 0 var(--v4-button-hover-bloom),
+      inset 0 -1px 3px 0 var(--v4-button-hover-bloom),
+      inset 0 -1.5px 5px 0 var(--v4-button-hover-bloom-soft),
+      inset 0 0 12px 0 var(--v4-button-hover-glow),
+      inset 0 0 10px 0 var(--v4-button-hover-glow);
+  }
+}
+.material:active:not(:disabled):not([aria-disabled="true"]) {
+  background-image: linear-gradient(
+    180deg,
+    var(--v4-button-press-start),
+    var(--v4-button-press-end)
+  );
+  box-shadow:
+    inset 0 -1.5px 2px 0 var(--v4-button-bloom),
+    inset 0 0 10px 0 var(--v4-button-glow),
+    inset 0 0 8px 0 var(--v4-button-glow);
+  transition-duration: 0ms;
+}
+.material:focus-visible {
+  outline: 2px solid var(--v4-ink);
+  outline-offset: 2px;
+}
+.material:disabled,
+.material[aria-disabled="true"]:not([aria-busy="true"]) {
+  background-color: var(--v4-tint);
+  background-image: none;
+  box-shadow: none;
+  transition-duration: 0ms;
+  color: var(--v4-muted);
+  opacity: 1;
+}
+.ink {
+  border-radius: 0;
+  background-color: var(--v4-ink);
+  color: var(--v4-on-ink);
+  font-weight: 600;
+}
+@media (hover: hover) {
+  .ink:hover:not(:disabled):not([aria-disabled="true"]) {
+    background-color: var(--v4-text2);
+  }
+}
+.ink:focus-visible {
+  outline: 2px solid var(--v4-ink);
+  outline-offset: 2px;
+}
+.ink.ink:disabled,
+.ink.ink[aria-disabled="true"]:not([aria-busy="true"]) {
+  background-color: var(--v4-line-soft);
+  color: var(--v4-faint);
+  opacity: 1;
+}
+.pending[data-v4-button] {
+  cursor: progress;
+}
+.pendable {
+  position: relative;
+}
+/* Loading morphs the label into the spinner inside the same box: the label group (icons
+   included) fades, shrinks and blurs out while the spinner fades in centered over it, and back.
+   The idle spinner is absolute, so it never takes layout space and the box never resizes. */
+.labelGroup {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+  min-width: 0;
+  transition-property: opacity, scale, filter;
+  transition-duration: var(--v4-duration-moderate);
+  transition-timing-function: var(--v4-ease-standard);
+}
+.pendable > [data-press] {
+  position: relative;
+}
+.progress {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  opacity: 0;
+  scale: 0.6;
+  pointer-events: none;
+  transition-property: opacity, scale;
+  transition-duration: var(--v4-duration-moderate);
+  transition-timing-function: var(--v4-ease-standard);
+}
+[data-v4-button] .progress[data-slot="button-progress"][aria-hidden="true"] {
+  width: var(--v4-space-12);
+  height: var(--v4-space-6);
+}
+.pending .labelGroup {
+  opacity: 0;
+  scale: 0.85;
+  filter: blur(2px);
+}
+.progress[data-active] {
+  opacity: 1;
+  scale: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .labelGroup,
+  .progress {
+    transition-property: opacity;
+    transition-duration: var(--v4-duration-fast);
+  }
+  .pending .labelGroup {
+    scale: none;
+    filter: none;
+  }
+  .progress {
+    scale: none;
+  }
+}
+.progress:not([data-active]) rect {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .material {
+    transition-duration: 0ms;
+  }
+}
+@media (forced-colors: active) {
+  .material:hover:not(:disabled):not([aria-disabled="true"]),
+  .material:active:not(:disabled):not([aria-disabled="true"]),
+  .material {
+    background: ButtonFace;
+    box-shadow: none;
+    transition-duration: 0ms;
+    color: ButtonText;
+    border: 1px solid ButtonText;
+    forced-color-adjust: auto;
+  }
+  .material:disabled,
+  .material[aria-disabled="true"]:not([aria-busy="true"]) {
+    background: ButtonFace;
+    color: GrayText;
+    border-color: GrayText;
+  }
+  .material:focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+.neutralSelection.neutralSelection:is(
+    [aria-pressed="true"],
+    [data-state="on"],
+    [aria-current="page"]
+  ),
+.neutralSelection.neutralSelection:is(
+    [aria-pressed="true"],
+    [data-state="on"],
+    [aria-current="page"]
+  ):hover {
+  background-color: var(--v4-selected-surface);
+  color: var(--v4-selected-ink);
+  border-color: var(--v4-selected-border);
+}
+.paintTransition {
+  transition-property: background-color, color, border-color, text-decoration-color;
+  transition-duration: var(--v4-duration-fast);
+  transition-timing-function: var(--v4-ease-standard);
+}
+.link.link {
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--v4-link);
+  vertical-align: baseline;
+  text-decoration-line: underline;
+  text-decoration-thickness: var(--v4-size-control-border);
+  text-underline-offset: var(--v4-space-3);
+}
+@media (hover: hover) {
+  .link.link:hover:not(:disabled, [aria-disabled="true"]) {
+    color: var(--v4-text2);
+    text-decoration-thickness: var(--v4-space-2);
+  }
+}
+.link.link:active:not(:disabled, [aria-disabled="true"]) {
+  text-decoration-thickness: var(--v4-space-2);
+}
+.danger {
+  border-color: var(--v4-bad);
+  background-color: var(--v4-bad);
+  color: var(--v4-on-bad);
+  font-weight: 600;
+}
+@media (hover: hover) {
+  .danger:hover:not(:disabled, [aria-disabled="true"]) {
+    border-color: var(--v4-bad-hover);
+    background-color: var(--v4-bad-hover);
+  }
+}
+.danger.danger:is(:disabled, [aria-disabled="true"]) {
+  border-color: var(--v4-line-soft);
+  background-color: var(--v4-line-soft);
+  color: var(--v4-faint);
+  opacity: 1;
+}

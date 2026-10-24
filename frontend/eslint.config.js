@@ -163,6 +163,11 @@ export default tseslint.config(
             {
               group: ["**/UpgradePlanModal", "**/UpgradePlanModal/*"],
               message: "Use the shared UpgradeGate with a product or capability intent."
+            },
+            {
+              group: ["@app/components/v4", "@app/components/v4/**"],
+              message:
+                "v4 is incubating. Only src/pages/design-system and src/components/v4 may import it."
             }
           ]
         }
@@ -173,6 +178,43 @@ export default tseslint.config(
     rules: Object.fromEntries(
       Object.keys(stylisticPlugin.configs["all-flat"].rules ?? {}).map((key) => [key, "off"])
     )
+  },
+  {
+    files: ["src/components/v4/**/*.{ts,tsx}", "src/pages/design-system/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["**/UpgradePlanModal", "**/UpgradePlanModal/*"],
+              message: "Use the shared UpgradeGate with a product or capability intent."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    files: ["src/components/v4/ui/**/*.{ts,tsx}", "src/components/v4/hooks/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/naming-convention": "off",
+      "@typescript-eslint/no-shadow": "off",
+      "@typescript-eslint/no-use-before-define": "off",
+      "consistent-return": "off",
+      eqeqeq: "off",
+      "jsx-a11y/anchor-has-content": "off",
+      "jsx-a11y/click-events-have-key-events": "off",
+      "jsx-a11y/no-noninteractive-element-interactions": "off",
+      "no-nested-ternary": "off",
+      "no-param-reassign": "off",
+      "no-underscore-dangle": "off",
+      "react/button-has-type": "off",
+      "react/jsx-no-constructed-context-values": "off",
+      "react/no-array-index-key": "off",
+      "react/no-danger": "off",
+      "react/no-unstable-nested-components": "off"
+    }
   },
   storybook.configs["flat/recommended"]
 );

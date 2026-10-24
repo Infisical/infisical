@@ -1,0 +1,72 @@
+.group,
+.cap {
+  --v4-kbd-size: var(--v4-size-kbd-md);
+  --v4-kbd-pad: var(--v4-space-4);
+}
+.group[data-size="sm"],
+.cap[data-size="sm"] {
+  --v4-kbd-size: var(--v4-size-kbd-sm);
+  --v4-kbd-pad: var(--v4-space-3);
+}
+.group:last-child,
+.cap:last-child:not(.group > .cap) {
+  margin-inline-end: calc(
+    (var(--v4-kbd-host-block) - var(--v4-kbd-size)) / 2 - var(--v4-kbd-host-end)
+  );
+}
+.group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--v4-space-2);
+  white-space: nowrap;
+}
+.cap {
+  font-family: var(--v4-type-mono-sm-font-family);
+  font-size: var(--v4-type-mono-sm-font-size);
+  line-height: var(--v4-type-mono-sm-line-height);
+  font-weight: var(--v4-type-mono-sm-font-weight);
+  letter-spacing: var(--v4-type-mono-sm-letter-spacing);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: var(--v4-kbd-size);
+  height: var(--v4-kbd-size);
+  padding: 0 var(--v4-kbd-pad);
+  line-height: 1;
+  background: var(--v4-tint);
+  color: var(--v4-muted);
+  border: 1px solid var(--v4-line);
+  border-radius: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+}
+.then {
+  font-family: var(--v4-type-small-font-family);
+  font-size: var(--v4-type-small-font-size);
+  line-height: var(--v4-type-small-line-height);
+  font-weight: var(--v4-type-small-font-weight);
+  letter-spacing: var(--v4-type-small-letter-spacing);
+  color: var(--v4-muted);
+  margin: 0 var(--v4-space-2);
+}
+:global([data-slot="tooltip-content"]) .cap {
+  font-family: var(--v4-type-mono-sm-font-family);
+  font-size: var(--v4-type-mono-sm-font-size);
+  line-height: var(--v4-type-mono-sm-line-height);
+  font-weight: var(--v4-type-mono-sm-font-weight);
+  letter-spacing: var(--v4-type-mono-sm-letter-spacing);
+  color: var(--v4-on-ink);
+  background: transparent;
+  border-color: currentColor;
+  --v4-kbd-size: var(--v4-size-kbd-xs);
+  --v4-kbd-pad: var(--v4-space-3);
+}
+.cap[data-glyph="single"] {
+  width: var(--v4-kbd-size);
+  padding: 0;
+}
+.icon {
+  flex: none;
+}
