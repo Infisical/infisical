@@ -107,10 +107,11 @@ const BulkReviewChangeRequestsSheetContent = ({
   const detailQueries = useGetSecretApprovalRequestDetailsList({
     ids: requests.map(({ id }) => id)
   });
-  const detailsById = Object.fromEntries(
-    requests.map(({ id }, index) => [id, detailQueries[index]?.data])
+  const detailDataUpdatedAtKey = detailQueries.map((query) => query.dataUpdatedAt).join(",");
+  const detailsById = useMemo(
+    () => Object.fromEntries(requests.map(({ id }, index) => [id, detailQueries[index]?.data])),
+    [requests, detailDataUpdatedAtKey]
   );
-  const isLoadingDetails = detailQueries.some(({ isPending }) => isPending);
   const hasAllDetails = detailQueries.every(({ data }) => Boolean(data));
 
   const groups = useMemo(() => {
@@ -153,8 +154,7 @@ const BulkReviewChangeRequestsSheetContent = ({
       });
     });
     return result;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requests, isLoadingDetails]);
+  }, [requests, detailsById]);
 
   const decidedCount = requests.filter(({ id }) => decisions[id]).length;
   const approveCount = requests.filter(({ id }) => decisions[id] === "approve").length;
