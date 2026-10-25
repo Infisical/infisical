@@ -203,6 +203,7 @@ import { useImportDopplerSecrets, useImportVaultSecrets } from "@app/hooks/api/m
 import { ExternalMigrationImportStatus } from "@app/hooks/api/migration/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { TDashboardProxiedService } from "@app/hooks/api/proxiedServices/types";
+import { getAuthToken } from "@app/hooks/api/reactQuery";
 import {
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequests
@@ -527,8 +528,8 @@ const OverviewPageContent = () => {
   // Maps a revealed secret key to the identity of the secrets that were revealed, so the reveal
   // is dropped when the underlying secrets are swapped out. See secretRowIdentities below.
   const [visibleSecretRows, setVisibleSecretRows] = useState<Map<string, string>>(() => new Map());
-  // Bumped whenever reveal state changes, so a bulk reveal that is still loading its values
-  // cannot re-reveal rows the user has hidden or navigated away from in the meantime.
+  // Bumped when Reveal All is toggled or row state is reset, so a bulk reveal that is still
+  // loading its values cannot re-reveal rows that were hidden or navigated away from meanwhile.
   const revealGenerationRef = useRef(0);
 
   const resetSecretRowStates = useCallback(() => {
@@ -1305,6 +1306,10 @@ const OverviewPageContent = () => {
   // request per environment instead, and seed the cache the cells read before revealing them.
   const revealSecretRows = async (keys: string[]) => {
     const generation = revealGenerationRef.current;
+    // The value cache keys carry no user, so a batch that lands after logout must not write a
+    // value that the next person to sign in on this tab would read.
+    const authToken = getAuthToken();
+    const visibleAtStart = visibleSecretRows;
     const identities = keys.map((key) => [key, getSecretRowIdentity(key)] as const);
 
     const keySet = new Set(keys);
@@ -1340,6 +1345,7 @@ const OverviewPageContent = () => {
           keys: batchKeys,
           viewSecretValue: true
         });
+        if (getAuthToken() !== authToken) return;
         fetchedSecrets.forEach(({ secretKey, secretValue, secretValueHidden, type }) => {
           if (secretValueHidden || secretValue === undefined) return;
           const isOverride = type === SecretType.Personal;
@@ -1362,7 +1368,10 @@ const OverviewPageContent = () => {
     if (generation !== revealGenerationRef.current) return;
     setVisibleSecretRows((prev) => {
       const visible = new Map(prev);
-      identities.forEach(([key, identity]) => visible.set(key, identity));
+      identities.forEach(([key, identity]) => {
+        // Keep the user's choice for a row they revealed or hid while the values were loading.
+        if (prev.get(key) === visibleAtStart.get(key)) visible.set(key, identity);
+      });
       return visible;
     });
   };
