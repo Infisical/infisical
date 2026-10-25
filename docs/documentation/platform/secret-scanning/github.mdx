@@ -26,14 +26,16 @@ To scan your GitHub repositories for leaked secrets, create a GitHub [data sourc
     Select the connection to use, then select **Continue**.
     ![Data Source Configuration](/images/platform/secret-scanning/github/github-data-source-step-3.png)
 
-    - **GitHub Radar Connection**: The connection that can access the repositories you want to scan. Each connection can be used by only one data source, so create a separate connection for each data source. You can't change it after you create the data source.
+    - **GitHub Radar Connection**: The connection that can access the repositories you want to scan
+
+    Each GitHub App installation can back only one data source, so a second connection to the same installation won't work. You can't change the connection after you create the data source.
   </Step>
   <Step>
     Choose when Infisical scans the data source's repositories, then select **Continue**.
 
     - **Trigger Historical Scan**: Whether Infisical scans the full history of each repository you add to the data source
     - **Scan New Commits**: Whether Infisical scans each new push to the data source's repositories
-    - **Discover New Repositories**: Whether Infisical adds every repository the connection can access when you create the data source, and adds repositories created in GitHub later
+    - **Discover New Repositories**: Whether Infisical adds every repository the connection can access, and later adds each new repository when it receives its first push
   </Step>
   <Step>
     Enter a name and, optionally, a description for the data source, then select **Continue**.

@@ -2,7 +2,7 @@
 title: "GitLab secret scanning"
 sidebarTitle: "GitLab"
 icon: "/images/platform/secret-scanning/icons/gitlab.svg"
-description: "Scan the GitLab projects a connection can read, or the projects in a group."
+description: "Scan the projects in a GitLab group, or the projects a connection's user is a member of."
 ---
 
 To scan your GitLab projects for leaked secrets, create a GitLab [data source](/documentation/platform/secret-scanning/scan-repositories) in Infisical.
@@ -27,16 +27,20 @@ To scan your GitLab projects for leaked secrets, create a GitLab [data source](/
     ![Data Source Configuration](/images/platform/secret-scanning/gitlab/step-3.png)
 
     - **GitLab Connection**: The connection that can access the projects you want to scan
-    - **Group** (optional): The GitLab group whose projects the data source covers. If you leave it empty, the data source covers every project the connection can read, including your own.
+    - **Group** (optional): The GitLab group whose unarchived projects the data source covers
 
-    You can't change the connection or the group after you create the data source. Each connection can be used by only one data source, so to scan two GitLab groups, create a separate GitLab connection for each.
+    If you leave **Group** empty, the data source covers the unarchived projects that the connection's user is a member of. In that case, if **Scan New Commits** is on, the connection needs at least the Maintainer role on each project you add, because Infisical adds a webhook to each project.
+
+    Each connection can be used by only one data source, so to scan two GitLab groups, create a separate GitLab connection for each. You can't change the connection or the group after you create the data source.
   </Step>
   <Step>
     Choose when Infisical scans the data source's projects, then select **Continue**.
 
     - **Trigger Historical Scan**: Whether Infisical scans the full history of each project you add to the data source
     - **Scan New Commits**: Whether Infisical scans each new push to the data source's projects
-    - **Discover New Projects**: Whether Infisical adds every project in the group when you create the data source, and adds projects created in the group later. This option requires a group, because GitLab only reports new projects through group webhooks.
+    - **Discover New Projects**: Whether Infisical adds every project in the group, and later adds each new project in the group when it receives its first push
+
+    **Discover New Projects** requires a group, because GitLab only reports new projects through group webhooks.
   </Step>
   <Step>
     Enter a name and, optionally, a description for the data source, then select **Continue**.

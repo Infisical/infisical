@@ -27,15 +27,17 @@ To scan your Bitbucket repositories for leaked secrets, create a Bitbucket [data
     Select the connection to use and the workspace, then select **Continue**.
     ![Data Source Configuration](/images/platform/secret-scanning/bitbucket/step-3.png)
 
-    - **Bitbucket Connection**: The connection that can access the repositories you want to scan. Each connection can be used by only one data source, so create a separate connection for each data source. You can't change it after you create the data source.
+    - **Bitbucket Connection**: The connection that can access the repositories you want to scan
     - **Workspace**: The Bitbucket workspace that contains the repositories
+
+    Each connection can be used by only one data source, so create a separate connection for each data source. You can't change the connection after you create the data source.
   </Step>
   <Step>
     Choose when Infisical scans the data source's repositories, then select **Continue**.
 
     - **Trigger Historical Scan**: Whether Infisical scans the full history of each repository you add to the data source
     - **Scan New Commits**: Whether Infisical scans each new push to the data source's repositories
-    - **Discover New Repositories**: Whether Infisical adds every repository in the workspace that the connection can access when you create the data source, and adds repositories created in Bitbucket later
+    - **Discover New Repositories**: Whether Infisical adds every repository in the workspace that the connection can access, and later adds each new repository when it receives its first push
   </Step>
   <Step>
     Enter a name and, optionally, a description for the data source, then select **Continue**.
@@ -49,7 +51,7 @@ To scan your Bitbucket repositories for leaked secrets, create a Bitbucket [data
     ![Data Source Review](/images/platform/secret-scanning/bitbucket/step-5.png)
   </Step>
   <Step>
-    The data source appears in **Data Sources**. If **Discover New Repositories** is on, Infisical adds every repository the connection can access, and starts a [historical scan](/documentation/platform/secret-scanning/scan-repositories#scans) of each one if **Trigger Historical Scan** is on. Otherwise, [add the repositories](/documentation/platform/secret-scanning/scan-repositories#resources) you want to scan.
+    The data source appears in **Data Sources**. If **Discover New Repositories** is on, Infisical adds every repository in the workspace that the connection can access, and starts a [historical scan](/documentation/platform/secret-scanning/scan-repositories#scans) of each one if **Trigger Historical Scan** is on. Otherwise, [add the repositories](/documentation/platform/secret-scanning/scan-repositories#resources) you want to scan.
     ![Data Source Created](/images/platform/secret-scanning/bitbucket/step-6.png)
   </Step>
   <Step>
