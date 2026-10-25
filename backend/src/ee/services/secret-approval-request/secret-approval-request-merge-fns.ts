@@ -271,9 +271,11 @@ export const secretApprovalRequestMergeFnsFactory = ({
     const conflicts: TSecretApprovalCommitConflict[] = [];
 
     let creates = commits.filter(({ op }) => op === SecretOperations.Create);
-    const keysCreatedTwice = Object.entries(groupBy(creates, (el) => el.key))
-      .filter(([, group]) => group.length > 1)
-      .map(([key]) => `'${key}'`);
+    const createCountByKey = new Map<string, number>();
+    for (const { key } of creates) {
+      createCountByKey.set(key, (createCountByKey.get(key) ?? 0) + 1);
+    }
+    const keysCreatedTwice = [...createCountByKey].filter(([, count]) => count > 1).map(([key]) => `'${key}'`);
     if (keysCreatedTwice.length) {
       throw new BadRequestError({
         message: `Could not merge this change request because it creates ${keysCreatedTwice.length === 1 ? "secret" : "secrets"} ${keysCreatedTwice.join(", ")} more than once. Close the request, then submit the change again.`
