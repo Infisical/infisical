@@ -1,19 +1,17 @@
-import { FormEvent, ReactNode, useEffect, useId, useRef, useState } from "react";
+import { ReactNode, useRef, useState } from "react";
 
 import {
   AlertDialog,
+  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogConfirmationField,
-  AlertDialogConfirmationLabel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle
 } from "../../generic/AlertDialog";
-import { Button, type ButtonProps } from "../../generic/Button";
-import { Field } from "../../generic/Field";
-import { Input } from "../../generic/Input";
+import { type ButtonProps } from "../../generic/Button";
 
 type Props = {
   isOpen: boolean;
@@ -45,20 +43,11 @@ export const ConfirmationAlertDialog = ({
     confirmVariant = "danger",
     children
   } = isOpen ? contentProps : lastOpenContent.current;
-  const [typedValue, setTypedValue] = useState("");
   const [isConfirming, setIsConfirming] = useState(false);
-  const confirmationInputId = useId();
   const isActionPending = Boolean(isPending || isConfirming);
 
-  useEffect(() => {
-    setTypedValue("");
-  }, [confirmKey, isOpen]);
-
-  const canConfirm = Boolean(confirmKey) && typedValue === confirmKey && !isActionPending;
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!canConfirm) return;
+  const handleConfirm = () => {
+    if (isActionPending) return;
 
     setIsConfirming(true);
     Promise.resolve()
@@ -70,59 +59,34 @@ export const ConfirmationAlertDialog = ({
   return (
     <AlertDialog
       open={isOpen}
-      onOpenChange={(open) => {
-        if (!open && isActionPending) return;
-        onOpenChange(open);
-      }}
+      onOpenChange={onOpenChange}
+      confirmationValue={confirmKey}
+      isPending={isActionPending}
     >
       <AlertDialogContent>
-        <form className="contents" onSubmit={handleSubmit}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{title}</AlertDialogTitle>
-            {description ? (
-              <AlertDialogDescription asChild>
-                <div className="w-full">{description}</div>
-              </AlertDialogDescription>
-            ) : null}
-          </AlertDialogHeader>
-          <AlertDialogConfirmationField>
-            <Field>
-              <AlertDialogConfirmationLabel
-                htmlFor={confirmationInputId}
-                confirmationValue={confirmKey}
-              />
-              <Input
-                id={confirmationInputId}
-                autoComplete="off"
-                disabled={isActionPending}
-                placeholder={confirmKey}
-                spellCheck={false}
-                value={typedValue}
-                onChange={(event) => setTypedValue(event.target.value)}
-              />
-            </Field>
-          </AlertDialogConfirmationField>
-          {children}
-          <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isActionPending}>Cancel</AlertDialogCancel>
-            <Button
-              type="submit"
-              variant={confirmVariant}
-              size="sm"
-              isDisabled={!canConfirm}
-              isPending={isActionPending}
-            >
-              {confirmLabel}
-            </Button>
-          </AlertDialogFooter>
-        </form>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          {description ? (
+            <AlertDialogDescription asChild>
+              <div className="w-full">{description}</div>
+            </AlertDialogDescription>
+          ) : null}
+        </AlertDialogHeader>
+        <AlertDialogConfirmationField onConfirm={handleConfirm} />
+        {children}
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant={confirmVariant}
+            onClick={(event) => {
+              event.preventDefault();
+              handleConfirm();
+            }}
+          >
+            {confirmLabel}
+          </AlertDialogAction>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
 };
-
-/**
- * @deprecated Renamed to `ConfirmationAlertDialog`. Kept so in-flight branches keep compiling;
- * import `ConfirmationAlertDialog` instead.
- */
-export const DeleteConfirmDialog = ConfirmationAlertDialog;

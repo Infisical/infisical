@@ -68,6 +68,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
     handleSubmit,
     reset,
     setValue,
+    getFieldState,
     formState: { isSubmitting }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -148,6 +149,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
                         isError={Boolean(error)}
                         onChange={(e) => {
                           onChange(e);
+                          if (getFieldState("slug").isDirty) return;
                           setValue("slug", slugify(e.target.value, { lowercase: true }), {
                             shouldValidate: true
                           });

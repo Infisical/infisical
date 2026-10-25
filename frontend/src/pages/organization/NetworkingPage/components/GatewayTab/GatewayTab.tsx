@@ -464,6 +464,7 @@ export const GatewayTab = withPermission(
                   />
                 )}
                 <AlertDialog
+                  isPending={deleteGatewayV2ById.isPending}
                   open={popUp.deleteGateway.isOpen}
                   confirmationValue={
                     (popUp.deleteGateway.data as { name?: string })?.name || "gateway"
@@ -487,12 +488,9 @@ export const GatewayTab = withPermission(
                       <AlertDescription>Deleting this gateway cannot be undone.</AlertDescription>
                     </Alert>
                     <AlertDialogFooter>
-                      <AlertDialogCancel isDisabled={deleteGatewayV2ById.isPending}>
-                        Cancel
-                      </AlertDialogCancel>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
                         variant="danger"
-                        isPending={deleteGatewayV2ById.isPending}
                         onClick={(event) => {
                           event.preventDefault();
                           handleDeleteGateway();

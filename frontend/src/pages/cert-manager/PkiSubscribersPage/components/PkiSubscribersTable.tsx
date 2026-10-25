@@ -1,32 +1,26 @@
-import {
-  faBan,
-  faEllipsis,
-  faPencil,
-  faTrash,
-  faUserShield
-} from "@fortawesome/free-solid-svg-icons";
+import { faBan, faEllipsis, faPencil, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
-import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableSkeletonRows
+} from "@app/components/v3";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
@@ -53,137 +47,131 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { data, isPending } = useListWorkspacePkiSubscribers(currentProject?.id || "");
+  if (!isPending && !data?.length) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>No PKI subscribers have been added</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
   return (
     <div>
-      <TableContainer>
-        <Table className="w-full">
-          <THead>
-            <Tr>
-              <Th>Name</Th>
-              <Th>Status</Th>
-              <Th>Common Name</Th>
-              <Th />
-            </Tr>
-          </THead>
-          <TBody>
-            {isPending && <TableSkeleton columns={4} innerKey="pki-subscribers" />}
-            {!isPending &&
-              data &&
-              data.length > 0 &&
-              data.map((subscriber) => {
-                return (
-                  <Tr
-                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-surface-hover"
-                    key={`pki-subscriber-${subscriber.id}`}
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/cert-manager/subscribers/$subscriberName",
-                        params: {
-                          orgId: currentOrg.id,
-                          subscriberName: subscriber.name
-                        }
-                      })
-                    }
-                  >
-                    <Td>{subscriber.name}</Td>
-                    <Td>
-                      <Badge variant={getPkiSubscriberStatusBadgeVariant(subscriber.status)}>
-                        {pkiSubscriberStatusToNameMap[subscriber.status]}
-                      </Badge>
-                    </Td>
-                    <Td>{subscriber.commonName}</Td>
-                    <Td className="text-right align-middle">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild className="rounded-lg">
-                          <div className="hover:text-project data-[state=open]:text-project">
-                            <Tooltip content="More options">
-                              <FontAwesomeIcon size="lg" icon={faEllipsis} />
-                            </Tooltip>
-                          </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="p-1">
-                          <ProjectPermissionCan
-                            I={ProjectPermissionPkiSubscriberActions.Edit}
-                            a={ProjectPermissionSub.PkiSubscribers}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                className={twMerge(
-                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("pkiSubscriber", {
-                                    subscriberName: subscriber.name
-                                  });
-                                }}
-                                disabled={!isAllowed}
-                                icon={<FontAwesomeIcon icon={faPencil} />}
-                              >
-                                Edit Subscriber
-                              </DropdownMenuItem>
-                            )}
-                          </ProjectPermissionCan>
-                          <ProjectPermissionCan
-                            I={ProjectPermissionPkiSubscriberActions.Edit}
-                            a={ProjectPermissionSub.PkiSubscribers}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                className={twMerge(
-                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("pkiSubscriberStatus", {
-                                    subscriberName: subscriber.name,
-                                    status:
-                                      subscriber.status === PkiSubscriberStatus.ACTIVE
-                                        ? PkiSubscriberStatus.DISABLED
-                                        : PkiSubscriberStatus.ACTIVE
-                                  });
-                                }}
-                                disabled={!isAllowed}
-                                icon={<FontAwesomeIcon icon={faBan} />}
-                              >
-                                {`${subscriber.status === PkiSubscriberStatus.ACTIVE ? "Disable" : "Enable"} Subscriber`}
-                              </DropdownMenuItem>
-                            )}
-                          </ProjectPermissionCan>
-                          <ProjectPermissionCan
-                            I={ProjectPermissionPkiSubscriberActions.Delete}
-                            a={ProjectPermissionSub.PkiSubscribers}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                className={twMerge(
-                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("deletePkiSubscriber", {
-                                    subscriberName: subscriber.name
-                                  });
-                                }}
-                                disabled={!isAllowed}
-                                icon={<FontAwesomeIcon icon={faTrash} />}
-                              >
-                                Delete Subscriber
-                              </DropdownMenuItem>
-                            )}
-                          </ProjectPermissionCan>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </Td>
-                  </Tr>
-                );
-              })}
-          </TBody>
-        </Table>
-        {!isPending && data?.length === 0 && (
-          <EmptyState title="No PKI subscribers have been added" icon={faUserShield} />
-        )}
-      </TableContainer>
+      <Table className="w-full">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Common Name</TableHead>
+            <TableHead />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {isPending && <TableSkeletonRows columns={4} />}
+          {!isPending &&
+            data &&
+            data.length > 0 &&
+            data.map((subscriber) => {
+              return (
+                <TableRow
+                  key={`pki-subscriber-${subscriber.id}`}
+                  onClick={() =>
+                    navigate({
+                      to: "/organizations/$orgId/cert-manager/subscribers/$subscriberName",
+                      params: {
+                        orgId: currentOrg.id,
+                        subscriberName: subscriber.name
+                      }
+                    })
+                  }
+                >
+                  <TableCell>{subscriber.name}</TableCell>
+                  <TableCell>
+                    <Badge variant={getPkiSubscriberStatusBadgeVariant(subscriber.status)}>
+                      {pkiSubscriberStatusToNameMap[subscriber.status]}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{subscriber.commonName}</TableCell>
+                  <TableCell className="text-right align-middle">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton variant="ghost" size="xs" aria-label="More options">
+                          <FontAwesomeIcon icon={faEllipsis} />
+                        </IconButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <ProjectPermissionCan
+                          I={ProjectPermissionPkiSubscriberActions.Edit}
+                          a={ProjectPermissionSub.PkiSubscribers}
+                        >
+                          {(isAllowed) => (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePopUpOpen("pkiSubscriber", {
+                                  subscriberName: subscriber.name
+                                });
+                              }}
+                              isDisabled={!isAllowed}
+                            >
+                              <FontAwesomeIcon icon={faPencil} />
+                              Edit Subscriber
+                            </DropdownMenuItem>
+                          )}
+                        </ProjectPermissionCan>
+                        <ProjectPermissionCan
+                          I={ProjectPermissionPkiSubscriberActions.Edit}
+                          a={ProjectPermissionSub.PkiSubscribers}
+                        >
+                          {(isAllowed) => (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePopUpOpen("pkiSubscriberStatus", {
+                                  subscriberName: subscriber.name,
+                                  status:
+                                    subscriber.status === PkiSubscriberStatus.ACTIVE
+                                      ? PkiSubscriberStatus.DISABLED
+                                      : PkiSubscriberStatus.ACTIVE
+                                });
+                              }}
+                              isDisabled={!isAllowed}
+                            >
+                              <FontAwesomeIcon icon={faBan} />
+                              {`${subscriber.status === PkiSubscriberStatus.ACTIVE ? "Disable" : "Enable"} Subscriber`}
+                            </DropdownMenuItem>
+                          )}
+                        </ProjectPermissionCan>
+                        <ProjectPermissionCan
+                          I={ProjectPermissionPkiSubscriberActions.Delete}
+                          a={ProjectPermissionSub.PkiSubscribers}
+                        >
+                          {(isAllowed) => (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePopUpOpen("deletePkiSubscriber", {
+                                  subscriberName: subscriber.name
+                                });
+                              }}
+                              isDisabled={!isAllowed}
+                              variant="danger"
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                              Delete Subscriber
+                            </DropdownMenuItem>
+                          )}
+                        </ProjectPermissionCan>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+        </TableBody>
+      </Table>
     </div>
   );
 };

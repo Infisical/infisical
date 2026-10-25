@@ -4,8 +4,6 @@ import { format } from "date-fns";
 import { ExternalLinkIcon } from "lucide-react";
 
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
-import { Tooltip } from "@app/components/v2";
-import { CopyButton } from "@app/components/v2/CopyButton";
 import {
   Badge,
   Card,
@@ -13,10 +11,14 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CopyButton,
   Detail,
   DetailGroup,
   DetailLabel,
-  DetailValue
+  DetailValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { CertSource, CertStatus, useGetCertificateById } from "@app/hooks/api";
 import { CaType } from "@app/hooks/api/ca/enums";
@@ -111,7 +113,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               <DetailLabel>Certificate ID</DetailLabel>
               <DetailValue className="flex items-center gap-2 font-mono text-xs">
                 {certificate.id}
-                <CopyButton value={certificate.id} size="xs" variant="plain" />
+                <CopyButton value={certificate.id} ariaLabel="Copy certificate ID" />
               </DetailValue>
             </Detail>
             <Detail>
@@ -120,7 +122,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                 {certificate.orderId ? (
                   <>
                     {certificate.orderId}
-                    <CopyButton value={certificate.orderId} size="xs" variant="plain" />
+                    <CopyButton value={certificate.orderId} ariaLabel="Copy order ID" />
                   </>
                 ) : (
                   <span className="text-muted">—</span>
@@ -143,8 +145,7 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
                 {certificate.serialNumber.toUpperCase()}
                 <CopyButton
                   value={certificate.serialNumber.toUpperCase()}
-                  size="xs"
-                  variant="plain"
+                  ariaLabel="Copy serial number"
                 />
               </DetailValue>
             </Detail>
@@ -152,11 +153,13 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               <DetailLabel>Not Before</DetailLabel>
               <DetailValue>
                 {certificate.notBefore ? (
-                  <Tooltip
-                    content={`${formatDateLocal(certificate.notBefore)} (Local)`}
-                    position="right"
-                  >
-                    <span className="cursor-default">{formatDateUTC(certificate.notBefore)}</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="cursor-default">
+                        {formatDateUTC(certificate.notBefore)}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{`${formatDateLocal(certificate.notBefore)} (Local)`}</TooltipContent>
                   </Tooltip>
                 ) : (
                   <span className="text-muted">—</span>
@@ -167,11 +170,13 @@ export const CertificateOverviewSection = ({ certificateId }: Props) => {
               <DetailLabel>Not After</DetailLabel>
               <DetailValue>
                 {certificate.notAfter ? (
-                  <Tooltip
-                    content={`${formatDateLocal(certificate.notAfter)} (Local)`}
-                    position="right"
-                  >
-                    <span className="cursor-default">{formatDateUTC(certificate.notAfter)}</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="cursor-default">
+                        {formatDateUTC(certificate.notAfter)}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{`${formatDateLocal(certificate.notAfter)} (Local)`}</TooltipContent>
                   </Tooltip>
                 ) : (
                   <span className="text-muted">—</span>

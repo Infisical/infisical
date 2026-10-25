@@ -7,12 +7,23 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  GenericFieldLabel,
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
   IconButton,
-  Modal,
-  ModalContent,
-  Tooltip
-} from "@app/components/v2";
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
@@ -103,53 +114,65 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
   );
 
   return pkiSubscriber ? (
-    <div className="rounded-lg border border-border-control bg-surface-base p-4">
-      <div className="flex items-center justify-between border-b border-border-emphasis pb-4">
-        <h3 className="text-lg font-normal text-foreground">PKI Subscriber Details</h3>
-        <ProjectPermissionCan
-          I={ProjectPermissionPkiSubscriberActions.Edit}
-          a={ProjectPermissionSub.PkiSubscribers}
-        >
-          {(isAllowed) => {
-            return (
-              <Tooltip content="Edit PKI Subscriber">
-                <IconButton
-                  isDisabled={!isAllowed}
-                  ariaLabel="edit icon"
-                  variant="plain"
-                  className="group relative"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePopUpOpen("pkiSubscriber", {
-                      subscriberName: pkiSubscriber.name
-                    });
-                  }}
-                >
-                  <FontAwesomeIcon icon={faPencil} />
-                </IconButton>
-              </Tooltip>
-            );
-          }}
-        </ProjectPermissionCan>
-      </div>
-      <div className="pt-4">
+    <Card>
+      <CardHeader>
+        <CardTitle>PKI Subscriber Details</CardTitle>
+        <CardAction>
+          <ProjectPermissionCan
+            I={ProjectPermissionPkiSubscriberActions.Edit}
+            a={ProjectPermissionSub.PkiSubscribers}
+          >
+            {(isAllowed) => {
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <IconButton
+                        isDisabled={!isAllowed}
+                        aria-label="edit icon"
+                        variant="ghost"
+                        className="group relative"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePopUpOpen("pkiSubscriber", {
+                            subscriberName: pkiSubscriber.name
+                          });
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faPencil} />
+                      </IconButton>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit PKI Subscriber</TooltipContent>
+                </Tooltip>
+              );
+            }}
+          </ProjectPermissionCan>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
         <div className="mb-4">
           <p className="text-sm font-medium text-label">PKI Subscriber ID</p>
           <div className="group flex align-top">
             <p className="text-sm text-label">{pkiSubscriber.id}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-              <Tooltip content={copyTextId}>
-                <IconButton
-                  ariaLabel="copy icon"
-                  variant="plain"
-                  className="group relative ml-2"
-                  onClick={() => {
-                    navigator.clipboard.writeText(pkiSubscriber.id);
-                    setCopyTextId("Copied");
-                  }}
-                >
-                  <FontAwesomeIcon icon={isCopyingId ? faCheck : faCopy} />
-                </IconButton>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <IconButton
+                      aria-label="copy icon"
+                      variant="ghost"
+                      className="group relative ml-2"
+                      onClick={() => {
+                        navigator.clipboard.writeText(pkiSubscriber.id);
+                        setCopyTextId("Copied");
+                      }}
+                    >
+                      <FontAwesomeIcon icon={isCopyingId ? faCheck : faCopy} />
+                    </IconButton>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{copyTextId}</TooltipContent>
               </Tooltip>
             </div>
           </div>
@@ -176,32 +199,35 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
         )}
         {pkiSubscriber.lastOperationStatus === SubscriberOperationStatus.FAILED && (
           <div className="mb-4">
-            <GenericFieldLabel labelClassName="text-danger" label="Last Operation Status">
-              <p className="rounded-sm bg-surface-active p-2 text-xs break-words">
-                {pkiSubscriber.lastOperationMessage}
-              </p>
-            </GenericFieldLabel>
+            <div>
+              <p className="text-danger">Last Operation Status</p>
+              <div className="text-sm text-foreground">
+                <p className="rounded-sm bg-surface-active p-2 text-xs break-words">
+                  {pkiSubscriber.lastOperationMessage}
+                </p>
+              </div>
+            </div>
           </div>
         )}
         {canIssuePkiSubscriberCert && (
           <Button
             className="mt-2 w-full"
-            colorSchema="primary"
             type="button"
-            isLoading={isIssuingCert || isOrderingCert}
+            isPending={isIssuingCert || isOrderingCert}
             onClick={() => {
               onIssuePkiSubscriberCert();
             }}
+            variant="project"
           >
             {pkiSubscriber?.supportsImmediateCertIssuance
               ? "Issue Certificate"
               : "Order Certificate"}
           </Button>
         )}
-      </div>
+      </CardContent>
 
-      <Modal
-        isOpen={isModalOpen}
+      <Sheet
+        open={isModalOpen}
         onOpenChange={(isOpen) => {
           setIsModalOpen(isOpen);
           if (!isOpen) {
@@ -209,18 +235,29 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
           }
         }}
       >
-        <ModalContent title="Certificate Details">
-          {certificateDetails && (
-            <CertificateContent
-              serialNumber={certificateDetails.serialNumber}
-              certificate={certificateDetails.certificate}
-              certificateChain={certificateDetails.certificateChain}
-              privateKey={certificateDetails.privateKey}
-            />
-          )}
-        </ModalContent>
-      </Modal>
-    </div>
+        <SheetContent size="form">
+          <SheetHeader>
+            <SheetTitle>Certificate Details</SheetTitle>
+            <SheetDescription>View certificate details.</SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            {certificateDetails && (
+              <CertificateContent
+                serialNumber={certificateDetails.serialNumber}
+                certificate={certificateDetails.certificate}
+                certificateChain={certificateDetails.certificateChain}
+                privateKey={certificateDetails.privateKey}
+              />
+            )}
+          </div>
+          <SheetFooter className="justify-end border-t">
+            <SheetClose asChild>
+              <Button variant="ghost">Close</Button>
+            </SheetClose>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    </Card>
   ) : (
     <div />
   );

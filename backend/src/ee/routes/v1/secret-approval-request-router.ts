@@ -48,7 +48,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       response: {
         200: z.object({
           approvals: SecretApprovalRequestsSchema.extend({
-            // secretPath: z.string(),
+            secretPath: z.string(),
             policyId: z.string().uuid().nullable(),
             policy: z.object({
               id: z.string(),
@@ -150,7 +150,13 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         id: z.string().uuid()
       }),
       body: z.object({
-        bypassReason: z.string().max(1000).optional()
+        bypassReason: z.string().max(1000).optional(),
+        requireApprovals: z
+          .boolean()
+          .optional()
+          .describe(
+            "When true, the merge fails instead of bypassing a soft-enforced policy whose required approvals are not met."
+          )
       }),
       response: {
         200: z.object({
@@ -167,7 +173,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
           approvalId: req.params.id,
-          bypassReason: req.body.bypassReason
+          bypassReason: req.body.bypassReason,
+          requireApprovals: req.body.requireApprovals
         });
 
       await server.services.auditLog.createAuditLog({

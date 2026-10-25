@@ -89,6 +89,12 @@ export default defineConfig({
         find: /^@app\/lib\/aws\/s3$/,
         replacement: path.resolve(__dirname, "./e2e-test/fakes/s3")
       },
+      // Every file under src/ imports this module by exactly this specifier, so one entry swaps it everywhere. A relative
+      // import would bypass the fake.
+      {
+        find: /^@app\/services\/object-storage\/object-storage-default-fns$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/object-storage-default-fns")
+      },
       // Pass-through wrappers that hand a spec the real job, to run on demand. Only
       // server/routes/index.ts imports either specifier.
       {
