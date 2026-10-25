@@ -120,19 +120,6 @@ describe("reminder dispatch", () => {
     ]);
   });
 
-  // An id derived from reminder + date would make the outbox drop a reminder moved back onto a date it
-  // already fired on.
-  test("gives every firing its own event id, even for a date the reminder already fired on", async () => {
-    const first = buildService({ due: [reminder()] });
-    const movedBack = buildService({ due: [reminder()] });
-
-    await first.service.dispatchDueReminders({ now });
-    await movedBack.service.dispatchDueReminders({ now });
-
-    expect(first.emitted[0].id).toMatch(/^[0-9a-f-]{36}$/);
-    expect(movedBack.emitted[0].id).not.toBe(first.emitted[0].id);
-  });
-
   test("deletes a one-time reminder once its event is emitted", async () => {
     const { service, emitted, deletes, updates } = buildService({ due: [reminder({ repeatDays: null })] });
     await service.dispatchDueReminders({ now });

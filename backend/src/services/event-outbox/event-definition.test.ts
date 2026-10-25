@@ -12,12 +12,8 @@ const ExampleEvent = defineEvent({
 });
 
 describe("defineEvent", () => {
-  test("names the event by the ADR convention", () => {
-    expect(ExampleEvent.type).toBe("com.infisical.secrets.secret-import.modified.v2");
-  });
-
   // The outbox validates every emitted event; a definition must never produce one it rejects.
-  test("builds an input the outbox accepts, with a UUID of its own", () => {
+  test("names the event by the ADR convention and builds an input the outbox accepts", () => {
     const input = ExampleEvent.build({ secretImportId: "import-1" });
 
     expect(input).toEqual({

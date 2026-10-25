@@ -154,22 +154,16 @@ describe("event outbox emit", () => {
       expect(rejectedMetrics).toEqual([{ eventType: "approval.workflow.request_opened", reason: "data_too_large" }]);
     });
 
-    test("when the id is not a UUID", async () => {
+    test.each([
+      ["the id is not a UUID", { id: "reminder-1" }, "approval.workflow.request_opened"],
+      ["the type is not a dot-namespaced key", { type: "Not A Key" }, "Not A Key"]
+    ])("when %s", async (_, override, reportedType) => {
       const { service, inserted } = buildService([makeConsumer()]);
 
-      await expect(service.emit([makeEvent({ id: "reminder-1" })], TX)).rejects.toThrow();
+      await expect(service.emit([makeEvent(override)], TX)).rejects.toThrow();
 
       expect(inserted).toHaveLength(0);
-      expect(rejectedMetrics).toEqual([{ eventType: "approval.workflow.request_opened", reason: "invalid_event" }]);
-    });
-
-    test("when the envelope is malformed", async () => {
-      const { service, inserted } = buildService([makeConsumer()]);
-
-      await expect(service.emit([makeEvent({ type: "Not A Key" })], TX)).rejects.toThrow();
-
-      expect(inserted).toHaveLength(0);
-      expect(rejectedMetrics).toEqual([{ eventType: "Not A Key", reason: "invalid_event" }]);
+      expect(rejectedMetrics).toEqual([{ eventType: reportedType, reason: "invalid_event" }]);
     });
 
     test("without writing the well-formed events emitted with it", async () => {
