@@ -140,7 +140,6 @@ export const SecretImportTableRow = ({
       activeImport.importEnv.projectId !== currentProject?.id
   );
 
-  const isAccessRevoked = Boolean(activeImport?.isAccessRevoked);
 
   const {
     ref: sortableRef,
@@ -224,6 +223,18 @@ export const SecretImportTableRow = ({
     if (isSingleEnvView) return [];
     return environments.filter((env) => isSecretImportInEnv(importEnvSlug, importPath, env.slug));
   }, [environments, isSingleEnvView, importEnvSlug, importPath, isSecretImportInEnv]);
+
+  const isAccessRevoked = useMemo(() => {
+    if (isSingleEnvView) {
+      return Boolean(singleEnvImport?.isAccessRevoked);
+    }
+    return (
+      envsWithImport.length > 0 &&
+      envsWithImport.every(
+        (env) => getSecretImportByEnv(importEnvSlug, importPath, env.slug)?.isAccessRevoked
+      )
+    );
+  }, [envsWithImport, getSecretImportByEnv, importEnvSlug, importPath, isSingleEnvView, singleEnvImport]);
 
   const effectiveSelectedEnv = useMemo(() => {
     if (!hasAnyReplicatedImport || envsWithImport.length === 0) return "";
@@ -571,14 +582,14 @@ export const SecretImportTableRow = ({
     return importPath;
   };
 
-  const renderRevokedContent = () => (
+  const renderRevokedContent = (sourceProjectName?: string) => (
     <Empty className="rounded-none bg-transparent shadow-none">
       <EmptyHeader className="gap-1.5">
         <div className="flex items-center gap-2">
           <TriangleAlertIcon className="size-4 shrink-0 text-danger" />
           <EmptyTitle>
-            {activeImport?.sourceProjectName
-              ? `"${activeImport.sourceProjectName}" revoked access to these secrets.`
+            {sourceProjectName || activeImport?.sourceProjectName
+              ? `"${sourceProjectName || activeImport?.sourceProjectName}" revoked access to these secrets.`
               : "Access to these secrets has been revoked."}
           </EmptyTitle>
         </div>
@@ -595,6 +606,14 @@ export const SecretImportTableRow = ({
 
     if (hasAnyReplicatedImport) {
       const selectedImport = selectedEnvImportData?.secretImportRecord;
+      if (selectedImport?.isAccessRevoked) {
+        return (
+          <>
+            {renderReplicationEnvSelector()}
+            {renderRevokedContent(selectedImport?.sourceProjectName)}
+          </>
+        );
+      }
 
       if (selectedEnvSecrets.length === 0) {
         return (
@@ -732,7 +751,12 @@ export const SecretImportTableRow = ({
   };
 
   const renderExpandedSecrets = (envSlug: string) => {
-    if (isAccessRevoked) return renderRevokedContent();
+    const envImport = isSingleEnvView
+      ? singleEnvImport
+      : getSecretImportByEnv(importEnvSlug, importPath, envSlug);
+    if (envImport?.isAccessRevoked) {
+      return renderRevokedContent(envImport?.sourceProjectName);
+    }
 
     if (filteredImportedSecrets.length === 0) {
       return (
@@ -947,9 +971,10 @@ export const SecretImportTableRow = ({
                           key={`import-env-badge-${slug}`}
                           className="group/badge flex items-center gap-1"
                         >
-                          <Badge variant="neutral">
+                          <Badge variant={secImp?.isAccessRevoked ? "danger" : "neutral"}>
                             <LayersIcon />
                             {envName}
+                            {secImp?.isAccessRevoked && <BanIcon className="size-3" />}
                             {secImp?.isReplication && renderReplicationStatus(secImp, slug)}
                           </Badge>
                         </div>
