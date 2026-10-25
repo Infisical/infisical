@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import { ForbiddenError, subject } from "@casl/ability";
+import { Knex } from "knex";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -128,6 +129,13 @@ export const secretImportServiceFactory = ({
 
     return imports.map((imp) => ({ ...imp, isAccessRevoked: revokedIds.has(imp.id) }));
   };
+
+  const $emitImportModified = (
+    secretImportId: string,
+    scope: { projectId: string; environment: string; secretPath: string },
+    modificationType: EventModificationType,
+    tx: Knex
+  ) => SecretImportModifiedEventV1.emit(eventEmitter, { secretImportId, ...scope, modificationType }, tx);
 
   const createImport = async ({
     environment,
@@ -265,15 +273,10 @@ export const secretImportServiceFactory = ({
         );
       }
 
-      await SecretImportModifiedEventV1.emit(
-        eventEmitter,
-        {
-          secretImportId: doc.id,
-          projectId,
-          environment,
-          secretPath: folder.path,
-          modificationType: EventModificationType.Created
-        },
+      await $emitImportModified(
+        doc.id,
+        { projectId, environment, secretPath: folder.path },
+        EventModificationType.Created,
         tx
       );
       return doc;
@@ -465,15 +468,10 @@ export const secretImportServiceFactory = ({
         tx
       );
 
-      await SecretImportModifiedEventV1.emit(
-        eventEmitter,
-        {
-          secretImportId: doc.id,
-          projectId,
-          environment,
-          secretPath: folder.path,
-          modificationType: EventModificationType.Updated
-        },
+      await $emitImportModified(
+        doc.id,
+        { projectId, environment, secretPath: folder.path },
+        EventModificationType.Updated,
         tx
       );
       return doc;
@@ -547,15 +545,10 @@ export const secretImportServiceFactory = ({
         await secretImportDAL.updateAllPosition(folder.id, doc.position, -1, 1, tx);
       }
 
-      await SecretImportModifiedEventV1.emit(
-        eventEmitter,
-        {
-          secretImportId: doc.id,
-          projectId,
-          environment,
-          secretPath: folder.path,
-          modificationType: EventModificationType.Deleted
-        },
+      await $emitImportModified(
+        doc.id,
+        { projectId, environment, secretPath: folder.path },
+        EventModificationType.Deleted,
         tx
       );
 

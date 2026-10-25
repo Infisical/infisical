@@ -804,6 +804,30 @@ function escapeRegex(str: string): string {
   return str.replace(new RE2(/[.*+?^${}()|[\]\\]/g), "\\$&");
 }
 
+const emitSecretsUpdatedByFolder = (
+  eventEmitter: TEventEmitter,
+  projectId: string,
+  folderPaths: ({ id: string; environmentSlug: string; path: string } | undefined)[],
+  updatedSecretsByFolder: ReadonlyMap<string, { secret: { id: string; type: string } }[]>,
+  tx?: Knex
+) =>
+  eventEmitter.emit(
+    folderPaths.flatMap((folder) =>
+      folder
+        ? secretModifiedEvents(
+            {
+              projectId,
+              environment: folder.environmentSlug,
+              secretPath: folder.path,
+              modificationType: EventModificationType.Updated
+            },
+            (updatedSecretsByFolder.get(folder.id) ?? []).map(({ secret }) => secret)
+          )
+        : []
+    ),
+    tx
+  );
+
 type TFnUpdateSecretLinkedReferences = {
   orgId: string;
   projectId: string;
@@ -1014,22 +1038,7 @@ export const fnUpdateSecretLinkedReferences = async ({
   if (updatedFolderIds.length > 0) {
     const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, updatedFolderIds, tx);
 
-    await eventEmitter.emit(
-      folderPaths.flatMap((folder) =>
-        folder
-          ? secretModifiedEvents(
-              {
-                projectId,
-                environment: folder.environmentSlug,
-                secretPath: folder.path,
-                modificationType: EventModificationType.Updated
-              },
-              (updatedSecretsByFolder.get(folder.id) ?? []).map(({ secret }) => secret)
-            )
-          : []
-      ),
-      tx
-    );
+    await emitSecretsUpdatedByFolder(eventEmitter, projectId, folderPaths, updatedSecretsByFolder, tx);
 
     await Promise.all(
       folderPaths.map(async (folder) => {
@@ -1440,22 +1449,7 @@ export const fnUpdateMovedSecretReferences = async ({
   if (updatedFolderIds.length > 0) {
     const folderPaths = await folderDAL.findSecretPathByFolderIds(projectId, updatedFolderIds, tx);
 
-    await eventEmitter.emit(
-      folderPaths.flatMap((folder) =>
-        folder
-          ? secretModifiedEvents(
-              {
-                projectId,
-                environment: folder.environmentSlug,
-                secretPath: folder.path,
-                modificationType: EventModificationType.Updated
-              },
-              (updatedSecretsByFolder.get(folder.id) ?? []).map(({ secret }) => secret)
-            )
-          : []
-      ),
-      tx
-    );
+    await emitSecretsUpdatedByFolder(eventEmitter, projectId, folderPaths, updatedSecretsByFolder, tx);
 
     await Promise.all(
       folderPaths.map(async (folder) => {

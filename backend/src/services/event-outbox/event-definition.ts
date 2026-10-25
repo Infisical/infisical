@@ -53,8 +53,6 @@ export const defineEvent = <TData extends z.AnyZodObject>({
   };
 };
 
-export type TEventDefinition<TData extends z.AnyZodObject> = ReturnType<typeof defineEvent<TData>>;
-
 // Pre-ADR names like `identity.authentication.auth-method-changed` have no domain segment, so the first
 // segment stands in.
 export const eventSource = (type: string): string => {

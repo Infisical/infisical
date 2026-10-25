@@ -56,7 +56,7 @@ import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-d
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TSecretFolderDALFactory } from "./secret-folder-dal";
-import { FolderModifiedEventV1 } from "./secret-folder-events";
+import { emitFoldersModified, FolderModifiedEventV1 } from "./secret-folder-events";
 import {
   TCreateFolderDTO,
   TCreateManyFoldersDTO,
@@ -331,15 +331,10 @@ export const secretFolderServiceFactory = ({
         }
 
         createdFolders.push({ folderId: doc.id, secretPath: folderWithFullPath.path });
-        await eventEmitter.emit(
-          createdFolders.map((createdFolder) =>
-            FolderModifiedEventV1.build({
-              ...createdFolder,
-              projectId,
-              environment,
-              modificationType: EventModificationType.Created
-            })
-          ),
+        await emitFoldersModified(
+          eventEmitter,
+          { projectId, environment, modificationType: EventModificationType.Created },
+          createdFolders,
           tx
         );
 
@@ -1428,15 +1423,10 @@ export const secretFolderServiceFactory = ({
             tx
           );
           createdFolderPaths.push({ folderId: doc.id, secretPath: pathWithFolder });
-          await eventEmitter.emit(
-            createdFolderPaths.map((createdFolder) =>
-              FolderModifiedEventV1.build({
-                ...createdFolder,
-                projectId,
-                environment,
-                modificationType: EventModificationType.Created
-              })
-            ),
+          await emitFoldersModified(
+            eventEmitter,
+            { projectId, environment, modificationType: EventModificationType.Created },
+            createdFolderPaths,
             tx
           );
 
@@ -2065,16 +2055,10 @@ export const secretFolderServiceFactory = ({
         description: entry.description
       }));
       const createdFolders = await folderDAL.insertMany(newFolderRows, tx);
-      await eventEmitter.emit(
-        plan.map((entry) =>
-          FolderModifiedEventV1.build({
-            folderId: entry.newFolderId,
-            projectId,
-            environment: destinationEnvironment,
-            secretPath: entry.destinationAbsPath,
-            modificationType: EventModificationType.Created
-          })
-        ),
+      await emitFoldersModified(
+        eventEmitter,
+        { projectId, environment: destinationEnvironment, modificationType: EventModificationType.Created },
+        plan.map((entry) => ({ folderId: entry.newFolderId, secretPath: entry.destinationAbsPath })),
         tx
       );
 

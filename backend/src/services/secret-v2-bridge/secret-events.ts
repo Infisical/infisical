@@ -36,7 +36,7 @@ export type TSecretEventScope = {
   secretPath: string;
 };
 
-export type TSecretModification = TSecretEventScope & {
+type TSecretModification = TSecretEventScope & {
   modificationType: EventModificationType;
   previous?: TPreviousSecretLocation;
 };

@@ -1,6 +1,8 @@
+import { Knex } from "knex";
 import { z } from "zod";
 
 import { defineEvent, EventModificationType } from "@app/services/event-outbox/event-definition";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 
 // Where an entity was before an update moved it. Only the fields that changed are present.
 export const PreviousSecretLocationSchema = z.object({
@@ -42,3 +44,14 @@ export const FolderModifiedEventV1 = defineEvent({
     previous: PreviousSecretLocationSchema.optional()
   })
 });
+
+export const emitFoldersModified = (
+  eventEmitter: TEventEmitter,
+  modification: { projectId: string; environment: string; modificationType: EventModificationType },
+  folders: { folderId: string; secretPath: string }[],
+  tx?: Knex
+): Promise<void> =>
+  eventEmitter.emit(
+    folders.map((folder) => FolderModifiedEventV1.build({ ...folder, ...modification })),
+    tx
+  );

@@ -433,6 +433,21 @@ export const honeyTokenServiceFactory = ({
     };
   };
 
+  // Includes environments pending deletion so update and revoke keep working during the grace period,
+  // and the permission check gets the real environment and path.
+  const $findHoneyTokenFolder = async (honeyToken: { id: string; projectId: string; folderId: string }) => {
+    const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(
+      honeyToken.projectId,
+      [honeyToken.folderId],
+      undefined,
+      { readFromPrimary: true, includePendingDeletion: true }
+    );
+    if (!folderWithEnv) {
+      throw new NotFoundError({ message: `Folder of honey token with ID "${honeyToken.id}" not found` });
+    }
+    return folderWithEnv;
+  };
+
   const updateHoneyToken = async (
     { honeyTokenId, name, description, secretsMapping }: THoneyTokenUpdateInput,
     actor: OrgServiceActor
@@ -443,15 +458,7 @@ export const honeyTokenServiceFactory = ({
     }
 
     const { projectId } = honeyToken;
-    // Includes environments pending deletion so update and revoke keep working during the grace period,
-    // and the permission check gets the real environment and path.
-    const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId], undefined, {
-      readFromPrimary: true,
-      includePendingDeletion: true
-    });
-    if (!folderWithEnv) {
-      throw new NotFoundError({ message: `Folder of honey token with ID "${honeyTokenId}" not found` });
-    }
+    const folderWithEnv = await $findHoneyTokenFolder(honeyToken);
     const eventScope = { projectId, environment: folderWithEnv.environmentSlug, secretPath: folderWithEnv.path };
     const { permission: updatePermission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -647,15 +654,7 @@ export const honeyTokenServiceFactory = ({
     }
 
     const { projectId } = honeyToken;
-    // Includes environments pending deletion so update and revoke keep working during the grace period,
-    // and the permission check gets the real environment and path.
-    const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId], undefined, {
-      readFromPrimary: true,
-      includePendingDeletion: true
-    });
-    if (!folderWithEnv) {
-      throw new NotFoundError({ message: `Folder of honey token with ID "${honeyTokenId}" not found` });
-    }
+    const folderWithEnv = await $findHoneyTokenFolder(honeyToken);
     const eventScope = { projectId, environment: folderWithEnv.environmentSlug, secretPath: folderWithEnv.path };
     const { permission: revokePermission } = await permissionService.getProjectPermission({
       actor: actor.type,
