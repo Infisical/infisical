@@ -187,13 +187,25 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     control,
     handleSubmit,
     reset,
-    formState: { isSubmitting }
+    trigger,
+    formState: { isSubmitting, errors }
   } = formMethods;
 
   // A new type gives the same fields a different meaning (a password becomes a token), so what was typed goes.
   useEffect(() => {
     if (isOpen) reset({ secret: "", username: "" });
   }, [isOpen, service?.id, service?.credential.type, reset]);
+
+  const errorsRef = useRef(errors);
+  errorsRef.current = errors;
+
+  // Re-validate fields when variableKeys updates if there are active errors, so newly created inline variables clear stale unknown-variable errors.
+  useEffect(() => {
+    if (!isOpen || isSubmitting) return;
+    if (Object.keys(errorsRef.current).length > 0) {
+      trigger();
+    }
+  }, [isOpen, isSubmitting, variableKeys, trigger]);
 
   // One dialog for every field, settled once it has closed, as in the service sheet.
   const [isRemoveOpen, setIsRemoveOpen] = useState(false);
