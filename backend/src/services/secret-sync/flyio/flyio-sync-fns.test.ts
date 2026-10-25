@@ -1,212 +1,246 @@
-import { describe, expect, test, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 
-vi.mock("@app/lib/config/request", async (importOriginal) => {
-  const mod = await importOriginal<typeof import("@app/lib/config/request")>();
-  return {
-    ...mod,
-    createRequestClient: vi.fn(() => ({
-      get: vi.fn(),
-      post: vi.fn(),
-      put: vi.fn(),
-      delete: vi.fn()
-    }))
-  };
-});
-
-vi.mock("@app/ee/services/audit-log/audit-log-dal", () => ({
-  auditLogDAL: { create: vi.fn() }
+const { mockPost, mockGet } = vi.hoisted(() => ({
+  mockPost: vi.fn(),
+  mockGet: vi.fn()
 }));
 
-vi.mock("@app/services/secret/secret-queue", () => ({
-  secretQueueService: { addSyncJob: vi.fn() }
+vi.mock("@app/lib/config/request", () => ({
+  request: { post: mockPost, get: mockGet }
 }));
 
-vi.mock("@app/services/secret-sync/secret-sync-queue", () => ({
-  secretSyncQueue: { addJob: vi.fn() }
+vi.mock("@app/services/secret-sync/secret-sync-fns", () => ({
+  matchesSchema: vi.fn().mockReturnValue(true)
 }));
 
-vi.mock("@app/services/secret-sync/secret-sync-dal", () => ({
-  secretSyncDAL: { findById: vi.fn(), updateById: vi.fn() }
-}));
-
-vi.mock("@app/services/secret/secret-dal", () => ({
-  secretDAL: { find: vi.fn().mockResolvedValue([]) }
-}));
-
-vi.mock("@app/services/secret-v2-bridge/secret-v2-bridge-dal", () => ({
-  secretV2BridgeDAL: { find: vi.fn().mockResolvedValue([]) }
-}));
-
-vi.mock("@app/services/folder/folder-dal", () => ({
-  folderDAL: { findBySecretPath: vi.fn() }
-}));
-
-vi.mock("@app/services/folder-commit/folder-commit-service", () => ({
-  folderCommitService: { commitFolderChanges: vi.fn() }
-}));
-
-vi.mock("@app/services/kms/kms-service", () => ({
-  kmsService: {
-    createCipherPairWithDataKey: vi.fn().mockResolvedValue({
-      encryptor: vi.fn().mockReturnValue({ cipherTextBlob: Buffer.from("encrypted") }),
-      decryptor: vi.fn().mockReturnValue(Buffer.from("decrypted"))
-    })
-  }
-}));
-
-vi.mock("@app/services/project-bot/project-bot-service", () => ({
-  projectBotService: { getBotKey: vi.fn() }
-}));
-
-vi.mock("@app/services/secret/secret-fns", () => ({
-  fnSecretBulkInsert: vi.fn(),
-  fnSecretBulkUpdate: vi.fn(),
-  fnSecretBulkDelete: vi.fn()
+vi.mock("@app/lib/config/env", () => ({
+  getConfig: () => ({})
 }));
 
 import { FlyioSyncFns } from "./flyio-sync-fns";
 
-const mockPost = vi.fn();
-const mockGet = vi.fn();
-vi.mock("@app/lib/config/request", () => ({
-  createRequestClient: vi.fn(() => ({
-    post: (...args: unknown[]) => mockPost(...args),
-    get: (...args: unknown[]) => mockGet(...args)
-  }))
-}));
+const graphqlAppResponse = {
+  data: { data: { app: { name: "test-app" } } }
+};
 
-const baseSync = {
-  id: "sync-1",
-  app: "test-app",
-  appId: "app-id-1",
-  connection: { app: "test-app", credentials: { apiToken: "tok" } },
-  environment: { slug: "dev" },
-  secretPath: "/",
-  projectId: "proj-1"
+const machineListResponse = {
+  data: [
+    {
+      id: "machine-1",
+      state: "started",
+      region: "iad",
+      config: { image: "app:latest" }
+    }
+  ]
+};
+
+// flatten() returns Record<string, { value: string }>
+const basePayload = {
+  flatten: () => ({
+    API_KEY: { value: "sk-123" },
+    DB_URL: { value: "postgres://db" }
+  })
 } as any;
 
-const basePayload = { syncId: "sync-1", projectId: "proj-1" } as any;
+const baseSync = {
+  connection: { credentials: { accessToken: "tok" } },
+  environment: { slug: "dev" },
+  destinationConfig: { appId: "app-id-1" },
+  syncOptions: {
+    disableSecretDeletion: false,
+    autoRedeploy: false,
+    keySchema: ""
+  },
+  destination: "flyio"
+} as any;
 
 describe("FlyioSyncFns", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGet.mockResolvedValue({
-      data: { data: { app: { name: "test-app" } } }
-    });
   });
 
   describe("syncSecrets - version handoff", () => {
-    test("does not send min_secrets_version from GraphQL release", async () => {
-      const machinesResponse = {
-        data: { data: { app: { name: "test-app" } } }
+    it("uses Machines API version for min_secrets_version in deploy", async () => {
+      const sync = {
+        ...baseSync,
+        syncOptions: { ...baseSync.syncOptions, autoRedeploy: true }
       };
 
-      mockPost
-        .mockResolvedValueOnce({
+      // 1. getAppNameByAppId (GraphQL)
+      mockPost.mockResolvedValueOnce(graphqlAppResponse);
+      // 2. putFlyioSecrets (Machines API) returns version 7
+      mockPost.mockResolvedValueOnce({
+        data: { secrets: [{ name: "API_KEY" }], version: 7 }
+      });
+      // 3. listFlyioSecrets (GraphQL)
+      mockPost.mockResolvedValueOnce({
+        data: {
           data: {
-            data: {
-              app: {
-                currentRelease: { version: "3" },
-                name: "test-app"
-              }
-            }
+            app: { secrets: [{ name: "OLD_KEY", createdAt: "2024-01-01" }] }
           }
-        })
-        .mockResolvedValueOnce({ data: { secrets: [], version: 4 } })
-        .mockResolvedValueOnce({ data: { secrets: [], version: 4 } })
-        .mockResolvedValueOnce({ data: {} });
+        }
+      });
+      // 4. deleteFlyioSecrets (Machines API) returns version 8
+      mockPost.mockResolvedValueOnce({
+        data: { secrets: [], version: 8 }
+      });
+      // 5. listAllMachines (GET)
+      mockGet.mockResolvedValueOnce(machineListResponse);
+      // 6. update machine (POST)
+      mockPost.mockResolvedValueOnce({ data: {} });
+      // 7. wait for machine (GET)
+      mockGet.mockResolvedValueOnce({ data: {} });
 
-      await FlyioSyncFns.syncSecrets(baseSync, basePayload);
+      await FlyioSyncFns.syncSecrets(sync, basePayload);
 
-      const deployCall = mockPost.mock.calls[3];
+      // The machine update call should use version 8 (delete overrides put)
+      const deployCall = mockPost.mock.calls[4];
+      expect(deployCall[1]).toHaveProperty("min_secrets_version", 8);
+    });
+
+    it("passes put version to deploy when deletion is disabled", async () => {
+      const sync = {
+        ...baseSync,
+        syncOptions: {
+          disableSecretDeletion: true,
+          autoRedeploy: true,
+          keySchema: ""
+        }
+      };
+
+      // 1. getAppNameByAppId
+      mockPost.mockResolvedValueOnce(graphqlAppResponse);
+      // 2. putFlyioSecrets returns version 5
+      mockPost.mockResolvedValueOnce({
+        data: { secrets: [{ name: "API_KEY" }], version: 5 }
+      });
+      // 3. listAllMachines
+      mockGet.mockResolvedValueOnce(machineListResponse);
+      // 4. update machine
+      mockPost.mockResolvedValueOnce({ data: {} });
+      // 5. wait
+      mockGet.mockResolvedValueOnce({ data: {} });
+
+      await FlyioSyncFns.syncSecrets(sync, basePayload);
+
+      const deployCall = mockPost.mock.calls[2];
+      expect(deployCall[1]).toHaveProperty("min_secrets_version", 5);
+    });
+
+    it("omits min_secrets_version when put returns no version", async () => {
+      const sync = {
+        ...baseSync,
+        syncOptions: {
+          disableSecretDeletion: true,
+          autoRedeploy: true,
+          keySchema: ""
+        }
+      };
+
+      // 1. getAppNameByAppId
+      mockPost.mockResolvedValueOnce(graphqlAppResponse);
+      // 2. putFlyioSecrets returns no version
+      mockPost.mockResolvedValueOnce({
+        data: { secrets: [] }
+      });
+      // 3. listAllMachines
+      mockGet.mockResolvedValueOnce(machineListResponse);
+      // 4. update machine
+      mockPost.mockResolvedValueOnce({ data: {} });
+      // 5. wait
+      mockGet.mockResolvedValueOnce({ data: {} });
+
+      await FlyioSyncFns.syncSecrets(sync, basePayload);
+
+      const deployCall = mockPost.mock.calls[2];
       expect(deployCall[1]).not.toHaveProperty("min_secrets_version");
     });
 
-    test("passes returned secrets version to deploy call", async () => {
-      mockPost
-        .mockResolvedValueOnce({
+    it("does not call deploy when autoRedeploy is false", async () => {
+      // 1. getAppNameByAppId
+      mockPost.mockResolvedValueOnce(graphqlAppResponse);
+      // 2. putFlyioSecrets
+      mockPost.mockResolvedValueOnce({
+        data: { secrets: [{ name: "API_KEY" }], version: 3 }
+      });
+      // 3. listFlyioSecrets
+      mockPost.mockResolvedValueOnce({
+        data: {
           data: {
-            data: {
-              app: {
-                currentRelease: { version: "3" },
-                name: "test-app"
-              }
-            }
+            app: { secrets: [{ name: "OLD_KEY", createdAt: "2024-01-01" }] }
           }
-        })
-        .mockResolvedValueOnce({ data: { secrets: [], version: 7 } })
-        .mockResolvedValueOnce({ data: { secrets: [], version: 7 } })
-        .mockResolvedValueOnce({ data: {} });
+        }
+      });
+      // 4. deleteFlyioSecrets
+      mockPost.mockResolvedValueOnce({
+        data: { secrets: [], version: 4 }
+      });
 
       await FlyioSyncFns.syncSecrets(baseSync, basePayload);
 
-      const deployCall = mockPost.mock.calls[3];
-      expect(deployCall[1]).toHaveProperty("min_secrets_version", 7);
-    });
-
-    test("handles undefined secrets version gracefully", async () => {
-      mockPost
-        .mockResolvedValueOnce({
-          data: {
-            data: {
-              app: {
-                currentRelease: { version: "3" },
-                name: "test-app"
-              }
-            }
-          }
-        })
-        .mockResolvedValueOnce({ data: { secrets: [] } })
-        .mockResolvedValueOnce({ data: { secrets: [] } })
-        .mockResolvedValueOnce({ data: {} });
-
-      await FlyioSyncFns.syncSecrets(baseSync, basePayload);
-
-      const deployCall = mockPost.mock.calls[3];
-      expect(deployCall[1]).toHaveProperty("min_secrets_version", 3);
-    });
-
-    test("handles missing currentRelease version", async () => {
-      mockPost
-        .mockResolvedValueOnce({
-          data: {
-            data: {
-              app: {
-                name: "test-app"
-              }
-            }
-          }
-        })
-        .mockResolvedValueOnce({ data: { secrets: [], version: 5 } })
-        .mockResolvedValueOnce({ data: { secrets: [], version: 5 } })
-        .mockResolvedValueOnce({ data: {} });
-
-      await FlyioSyncFns.syncSecrets(baseSync, basePayload);
-
-      const deployCall = mockPost.mock.calls[3];
-      expect(deployCall[1]).toHaveProperty("min_secrets_version", 5);
+      // No GET calls should have been made (no machine listing)
+      expect(mockGet).not.toHaveBeenCalled();
     });
   });
 
   describe("getAppNameByAppId", () => {
-    beforeEach(() => {
-      vi.clearAllMocks();
-    });
-
-    test("throws SecretSyncError on GraphQL errors", async () => {
+    it("throws SecretSyncError on GraphQL errors", async () => {
       mockPost.mockResolvedValueOnce({
         data: { data: null, errors: [{ message: "App not found" }] }
       });
 
-      await expect(FlyioSyncFns.syncSecrets(baseSync, basePayload)).rejects.toThrow("App not found");
+      await expect(
+        FlyioSyncFns.syncSecrets(baseSync, basePayload)
+      ).rejects.toThrow("App not found");
     });
 
-    test("throws SecretSyncError when app is null", async () => {
+    it("throws SecretSyncError when app is null", async () => {
       mockPost.mockResolvedValueOnce({
         data: { data: { app: null } }
       });
 
-      await expect(FlyioSyncFns.syncSecrets(baseSync, basePayload)).rejects.toThrow("no app for id");
+      await expect(
+        FlyioSyncFns.syncSecrets(baseSync, basePayload)
+      ).rejects.toThrow("no app for id");
+    });
+  });
+
+  describe("putFlyioSecrets - prototype pollution", () => {
+    it("stores __proto__ as an own property in the values map", async () => {
+      // Build a secretMap where __proto__ is a real own property (not the prototype).
+      // This simulates a secret literally named "__proto__" coming from flatten().
+      const secretMap = Object.create(null);
+      secretMap["__proto__"] = { value: "malicious" };
+      secretMap["NORMAL_KEY"] = { value: "value" };
+
+      const payload = { flatten: () => secretMap } as any;
+
+      const sync = {
+        ...baseSync,
+        syncOptions: {
+          disableSecretDeletion: true,
+          autoRedeploy: false,
+          keySchema: ""
+        }
+      };
+
+      // 1. getAppNameByAppId
+      mockPost.mockResolvedValueOnce(graphqlAppResponse);
+      // 2. putFlyioSecrets
+      mockPost.mockResolvedValueOnce({
+        data: { secrets: [], version: 1 }
+      });
+
+      await FlyioSyncFns.syncSecrets(sync, payload);
+
+      // Verify the values map sent to Machines API has __proto__ as own property
+      const putCall = mockPost.mock.calls[1];
+      const valuesMap = putCall[1].values;
+      expect(
+        Object.prototype.hasOwnProperty.call(valuesMap, "__proto__")
+      ).toBe(true);
+      expect(Object.getPrototypeOf(valuesMap)).toBeNull();
+      expect(valuesMap["__proto__"]).toBe("malicious");
     });
   });
 });
