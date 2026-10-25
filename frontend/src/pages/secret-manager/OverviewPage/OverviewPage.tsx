@@ -16,6 +16,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { AxiosError } from "axios";
+import { jwtDecode } from "jwt-decode";
 import {
   ArrowDownZAIcon,
   ArrowUpAZIcon,
@@ -346,6 +347,23 @@ const OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
 const OVERVIEW_REVEAL_ALL_KEY = "overview-reveal-all-values";
 // Keys travel in the query string, so batch them to stay under proxy request-line limits.
 const SECRET_VALUE_PREFETCH_BATCH_SIZE = 50;
+
+// Identifies the signed-in session and organization. Refreshing the access token, here or in
+// another tab, replaces the token but keeps these claims, while logging out clears the token and
+// signing in again starts a new token session.
+const getAuthSessionMarker = () => {
+  try {
+    const { userId, tokenVersionId, organizationId, subOrganizationId } = jwtDecode<{
+      userId?: string;
+      tokenVersionId?: string;
+      organizationId?: string;
+      subOrganizationId?: string;
+    }>(getAuthToken());
+    return JSON.stringify([userId, tokenVersionId, organizationId, subOrganizationId]);
+  } catch {
+    return null;
+  }
+};
 
 // Every overview row type is rendered into the same TableBody, so their React keys share one
 // namespace. Resource names are arbitrary user input, so a string prefix cannot separate them: a
@@ -1308,7 +1326,7 @@ const OverviewPageContent = () => {
     const generation = revealGenerationRef.current;
     // The value cache keys carry no user, so a batch that lands after logout must not write a
     // value that the next person to sign in on this tab would read.
-    const authToken = getAuthToken();
+    const authSession = getAuthSessionMarker();
     const visibleAtStart = visibleSecretRows;
     const identities = keys.map((key) => [key, getSecretRowIdentity(key)] as const);
 
@@ -1345,7 +1363,7 @@ const OverviewPageContent = () => {
           keys: batchKeys,
           viewSecretValue: true
         });
-        if (getAuthToken() !== authToken) return;
+        if (!authSession || getAuthSessionMarker() !== authSession) return;
         fetchedSecrets.forEach(({ secretKey, secretValue, secretValueHidden, type }) => {
           if (secretValueHidden || secretValue === undefined) return;
           const isOverride = type === SecretType.Personal;
