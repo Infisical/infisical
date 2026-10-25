@@ -191,17 +191,29 @@ export const PersonalValuesDialog = ({ target, onOpenChange }: Props) => {
     formState: { isSubmitting, errors }
   } = formMethods;
 
-  // A new type gives the same fields a different meaning (a password becomes a token), so what was typed goes.
-  useEffect(() => {
-    if (isOpen) reset({ secret: "", username: "" });
-  }, [isOpen, service?.id, service?.credential.type, reset]);
-
   const errorsRef = useRef(errors);
   errorsRef.current = errors;
+  const wasOpenRef = useRef(false);
+
+  // A new type gives the same fields a different meaning (a password becomes a token), so what was typed goes.
+  useEffect(() => {
+    if (isOpen) {
+      errorsRef.current = {};
+      reset({ secret: "", username: "" });
+    }
+  }, [isOpen, service?.id, service?.credential.type, reset]);
 
   // Re-validate fields when variableKeys updates if there are active errors, so newly created inline variables clear stale unknown-variable errors.
   useEffect(() => {
-    if (!isOpen || isSubmitting) return;
+    if (!isOpen) {
+      wasOpenRef.current = false;
+      return;
+    }
+    if (!wasOpenRef.current) {
+      wasOpenRef.current = true;
+      return;
+    }
+    if (isSubmitting) return;
     if (Object.keys(errorsRef.current).length > 0) {
       trigger();
     }
