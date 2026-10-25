@@ -349,17 +349,24 @@ const OVERVIEW_REVEAL_ALL_KEY = "overview-reveal-all-values";
 const SECRET_VALUE_PREFETCH_BATCH_SIZE = 50;
 
 // Identifies the signed-in session and organization. Refreshing the access token, here or in
-// another tab, replaces the token but keeps these claims, while logging out clears the token and
-// signing in again starts a new token session.
+// another tab, replaces the token but keeps these claims. Signing in again from the same browser
+// reuses the token session, so accessVersion, which logout increments, is what tells them apart.
 const getAuthSessionMarker = () => {
   try {
-    const { userId, tokenVersionId, organizationId, subOrganizationId } = jwtDecode<{
+    const { userId, tokenVersionId, accessVersion, organizationId, subOrganizationId } = jwtDecode<{
       userId?: string;
       tokenVersionId?: string;
+      accessVersion?: number;
       organizationId?: string;
       subOrganizationId?: string;
     }>(getAuthToken());
-    return JSON.stringify([userId, tokenVersionId, organizationId, subOrganizationId]);
+    return JSON.stringify([
+      userId,
+      tokenVersionId,
+      accessVersion,
+      organizationId,
+      subOrganizationId
+    ]);
   } catch {
     return null;
   }
