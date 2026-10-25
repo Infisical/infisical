@@ -124,9 +124,23 @@ export const SecretImportTableRow = ({
     ? (secretImport ?? getSecretImportByEnv(importEnvSlug, importPath, singleEnvSlug))
     : undefined;
 
-  const isAccessRevoked = isSingleEnvView
-    ? (singleEnvImport?.isAccessRevoked ?? false)
-    : (secretImport?.isAccessRevoked ?? false);
+  const multiEnvImport = useMemo(() => {
+    if (secretImport) return secretImport;
+    for (const env of environments) {
+      const imp = getSecretImportByEnv(importEnvSlug, importPath, env.slug);
+      if (imp) return imp;
+    }
+    return undefined;
+  }, [environments, getSecretImportByEnv, importEnvSlug, importPath, secretImport]);
+
+  const activeImport = isSingleEnvView ? singleEnvImport : multiEnvImport;
+
+  const isCrossProject = Boolean(
+    activeImport?.importEnv?.projectId &&
+      activeImport.importEnv.projectId !== currentProject?.id
+  );
+
+  const isAccessRevoked = Boolean(activeImport?.isAccessRevoked);
 
   const {
     ref: sortableRef,
@@ -563,8 +577,8 @@ export const SecretImportTableRow = ({
         <div className="flex items-center gap-2">
           <TriangleAlertIcon className="size-4 shrink-0 text-danger" />
           <EmptyTitle>
-            {secretImport?.sourceProjectName
-              ? `"${secretImport.sourceProjectName}" revoked access to these secrets.`
+            {activeImport?.sourceProjectName
+              ? `"${activeImport.sourceProjectName}" revoked access to these secrets.`
               : "Access to these secrets has been revoked."}
           </EmptyTitle>
         </div>
@@ -688,12 +702,12 @@ export const SecretImportTableRow = ({
                   key={`import-secret-multi-${secret.key}`}
                   secretKey={secret.key}
                   environment={
-                    secretImport?.importEnv?.projectId !== currentProject?.id
-                      ? environments[0]?.slug || importEnvSlug
+                    isCrossProject
+                      ? envsWithImport[0]?.slug || environments[0]?.slug || importEnvSlug
                       : importEnvSlug
                   }
                   secretPath={
-                    secretImport?.importEnv?.projectId !== currentProject?.id
+                    isCrossProject
                       ? secretPath
                       : importPath
                   }
@@ -807,11 +821,9 @@ export const SecretImportTableRow = ({
         >
           <div className="relative flex w-full items-center">
             <div className="flex items-center gap-2 overflow-hidden">
-              {secretImport?.sourceProjectName &&
-                secretImport.importEnv.projectId &&
-                secretImport.importEnv.projectId !== currentProject?.id && (
-                  <Badge variant="warning">{secretImport.sourceProjectName}</Badge>
-                )}
+              {activeImport?.sourceProjectName && isCrossProject && (
+                <Badge variant="warning">{activeImport.sourceProjectName}</Badge>
+              )}
               <Badge variant="neutral">
                 <LayersIcon />
                 {importEnvName}
