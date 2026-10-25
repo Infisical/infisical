@@ -248,6 +248,9 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
       setSelectedRequests((prev) =>
         Object.fromEntries(Object.entries(prev).filter(([id]) => !pageIds.has(id)))
       );
+      setFailedRequestErrors((prev) =>
+        Object.fromEntries(Object.entries(prev).filter(([id]) => !pageIds.has(id)))
+      );
       return;
     }
     const unselected = secretApprovalRequests.filter(({ id }) => !selectedRequests[id]);
