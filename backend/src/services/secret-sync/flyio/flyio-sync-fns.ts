@@ -15,7 +15,7 @@ import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payloa
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 
 const getAppNameByAppId = async ({ accessToken, appId }: TFlyioListVariables) => {
-  const { data } = await request.post<{ data: { app: { name: string } } }>(
+  const { data } = await request.post<{ data: { app: { name: string } | null }; errors?: Array<{ message: string }> }>(
     IntegrationUrls.FLYIO_API_URL,
     {
       query: "query GetAppName($appId: String!) { app(id: $appId) { name } }",
@@ -30,7 +30,15 @@ const getAppNameByAppId = async ({ accessToken, appId }: TFlyioListVariables) =>
     }
   );
 
-  return data.data.app.name;
+  const body = data as { data?: { app?: { name: string } | null }; errors?: Array<{ message: string }> };
+  if (body.errors?.length) {
+    throw new SecretSyncError({ message: `Fly.io app lookup failed: ${body.errors.map((e) => e.message).join("; ")}` });
+  }
+  const appName = body.data?.app?.name;
+  if (!appName) {
+    throw new SecretSyncError({ message: `Fly.io app lookup returned no app for id "${appId}"` });
+  }
+  return appName;
 };
 
 const FLYIO_MACHINE_WAIT_TIMEOUT_SECONDS = 60;
@@ -143,8 +151,9 @@ type TFlyioMachinesSecretsResponse = {
 // for machine updates. The GraphQL setSecrets mutation returns a release
 // version, which is a different versioning scheme and can cause machines to
 // boot with stale secrets.
+// Object.create(null) prevents __proto__ from being swallowed as a secret name.
 const putFlyioSecrets = async ({ accessToken, appName, secretMap }: TPutFlyioVariable) => {
-  const values: Record<string, string> = {};
+  const values: Record<string, string> = Object.create(null);
   for (const [key, { value }] of Object.entries(secretMap)) {
     values[key] = value;
   }
@@ -169,7 +178,7 @@ const putFlyioSecrets = async ({ accessToken, appName, secretMap }: TPutFlyioVar
 const deleteFlyioSecrets = async ({ accessToken, appName, keys }: TDeleteFlyioVariable) => {
   if (keys.length === 0) return;
 
-  const values: Record<string, null> = {};
+  const values: Record<string, null> = Object.create(null);
   for (const key of keys) {
     values[key] = null;
   }
