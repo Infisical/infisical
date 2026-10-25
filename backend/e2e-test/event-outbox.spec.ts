@@ -55,7 +55,7 @@ describe("event outbox (postgres)", () => {
     expect(await rowsFor(`${CONSUMER}-other`)).toHaveLength(1);
   });
 
-  // A pod on the previous release inserts without an eventId during a rolling deploy.
+  // Old pods still insert without an eventId during a rolling deploy.
   test("claimBatch gives a row written without an eventId one of its own", async () => {
     const { eventId, ...withoutEventId } = makeRow();
     await testDb(TableName.EventOutbox).insert([
@@ -72,7 +72,7 @@ describe("event outbox (postgres)", () => {
     rows.forEach((row) => expect(row.eventId).toMatch(/^[0-9a-f-]{36}$/));
   });
 
-  // A bulk write emits one row per secret, past the 1000-row chunk insertEvents splits on.
+  // A bulk secret write can go past the 1000-row chunk insertEvents splits on.
   test("insertEvents writes a batch larger than one chunk in the caller's transaction", async () => {
     await insert(Array.from({ length: 1001 }, () => makeRow()));
 

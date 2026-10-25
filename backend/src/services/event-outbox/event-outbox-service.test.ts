@@ -118,8 +118,8 @@ describe("event outbox emit", () => {
     expect(inserted[0].tx).toBe(TX);
   });
 
-  // Committing the business write without its event would break the guarantee that consumers hear
-  // about every change, so a bad event fails the caller's transaction.
+  // A bad event fails the caller's transaction: a write that commits without its event is a change
+  // consumers never hear about.
   describe("rejects a malformed event, failing the write it belongs to", () => {
     beforeEach(() => {
       rejectedMetrics.length = 0;

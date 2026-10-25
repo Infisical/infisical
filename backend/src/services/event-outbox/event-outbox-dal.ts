@@ -27,8 +27,8 @@ export type TOutboxInsertRow = {
   occurredAt: Date;
 };
 
-// Postgres caps a statement at 65535 bind parameters, and a row takes five, so a bulk secret write
-// emitting one event per secret would otherwise fail the whole write past ~13k secrets.
+// Postgres caps a statement at 65535 bind parameters and a row takes five, so a bulk write of ~13k+
+// secrets would otherwise fail.
 const INSERT_BATCH_SIZE = 1000;
 
 export const eventOutboxDALFactory = (db: TDbClient) => {
@@ -70,9 +70,9 @@ export const eventOutboxDALFactory = (db: TDbClient) => {
   };
 
   // One statement on purpose so the row locks only live as long as the UPDATE. The fresh lockToken is
-  // how extendClaims and commitResults tell this claim apart from a later one on the same rows. A pod on
-  // the previous release writes rows without an eventId during a rolling deploy, so the claim gives
-  // them one; consumers rely on every event having an id.
+  // how extendClaims and commitResults tell this claim apart from a later one on the same rows. Old pods
+  // write rows without an eventId during a rolling deploy, so the claim fills it in; consumers rely on
+  // every event having one.
   const claimBatch = async (key: TOutboxFlushKey, limit: number): Promise<TOutboxClaim> => {
     const lockToken = crypto.randomUUID();
     try {

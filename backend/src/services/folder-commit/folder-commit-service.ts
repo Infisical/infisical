@@ -1350,7 +1350,7 @@ export const folderCommitServiceFactory = ({
         (change): change is ResourceChange & FolderChange => change.type === ResourceType.FOLDER
       );
 
-      // An update can rename and re-parent, so the old paths are read before any write rather than derived.
+      // An update can rename and re-parent, so read the old paths before any write instead of deriving them.
       const existingFolderIds = folderChanges.filter(({ changeType }) => changeType !== "create").map(({ id }) => id);
       const [parentLocation, ...existingLocations] = folderChanges.length
         ? await folderDAL.findSecretPathByFolderIds(projectId, [folderId, ...existingFolderIds], tx)

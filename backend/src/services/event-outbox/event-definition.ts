@@ -6,22 +6,19 @@ import { z } from "zod";
 
 import { TEventEmitter, TEventInput } from "./event-outbox-types";
 
-// The naming and envelope rules from the Event Standards and Versioning ADR, which adopts CloudEvents
-// 1.0: an event is named com.infisical.<domain>.<entity>.<action>.v<version>, every segment
-// lower-kebab, the entity singular and the action past tense. The version moves only on a breaking
-// change to `data`, so adding an optional field is not a new version.
+// Naming rules from the Event Standards and Versioning ADR (CloudEvents 1.0):
+// com.infisical.<domain>.<entity>.<action>.v<version>, every segment lower-kebab, entity singular, action
+// past tense. Bump the version only on a breaking change to `data`; a new optional field is not one.
 const SEGMENT_PATTERN = new RE2("^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$");
 
-// The ADR groups every state change to an entity into one `modified` event, so its data says which kind
-// of change it was.
+// Create, update and delete share one `modified` event, so the data says which one it was.
 export enum EventModificationType {
   Created = "created",
   Updated = "updated",
   Deleted = "deleted"
 }
 
-// Throws at module load, so a name that breaks the convention fails the process on boot rather than
-// reaching a request.
+// Throws at module load so a bad name fails on boot, not on a request.
 export const defineEvent = <TData extends z.AnyZodObject>({
   domain,
   entity,
@@ -58,8 +55,8 @@ export const defineEvent = <TData extends z.AnyZodObject>({
 
 export type TEventDefinition<TData extends z.AnyZodObject> = ReturnType<typeof defineEvent<TData>>;
 
-// `urn:infisical:<domain>`. Events named before the ADR (eg `identity.authentication.auth-method-changed`)
-// have no domain segment, so their first segment stands in for it.
+// Pre-ADR names like `identity.authentication.auth-method-changed` have no domain segment, so the first
+// segment stands in.
 export const eventSource = (type: string): string => {
   const segments = type.split(".");
   const domain = type.startsWith("com.infisical.") ? segments[2] : segments[0];

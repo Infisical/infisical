@@ -17,8 +17,8 @@ type TRecordedEvent = {
   >;
 };
 
-// No API shows outbox rows, so the events a write emitted are read from the table. The recorder
-// consumer (e2e-test/fakes/event-outbox-registry.ts) is what makes emit write them at all.
+// No API exposes outbox rows, so read them straight from the table. The recorder consumer in
+// fakes/event-outbox-registry.ts is what makes emit write them at all.
 const recordedEvents = async (projectId: string, eventType?: string): Promise<TRecordedEvent[]> => {
   const query = testDb(TableName.EventOutbox)
     .where({ consumer: SECRET_EVENTS_RECORDER })

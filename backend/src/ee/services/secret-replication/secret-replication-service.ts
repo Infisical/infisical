@@ -381,8 +381,7 @@ export const secretReplicationServiceFactory = ({
               isReserved: true
             });
             if (!destinationReplicationFolder) {
-              // One transaction, so a folder never exists without its event: a retry finds the folder and
-              // would not emit again.
+              // Same transaction, otherwise a retry finds the folder already there and never emits.
               destinationReplicationFolder = await folderDAL.transaction(async (tx) => {
                 const createdFolder = await folderDAL.create(
                   {

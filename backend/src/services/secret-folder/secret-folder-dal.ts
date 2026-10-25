@@ -223,8 +223,8 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     }: { readFromPrimary?: boolean; includePendingDeletion?: boolean } = {}
   ) => {
     const conn = tx || (readFromPrimary ? db : db.replicaNode());
-    // An environment pending deletion is hidden from every read, but a caller still acting on a resource
-    // inside it (eg revoking a honey token during the grace period) needs its real location.
+    // Environments pending deletion are hidden from reads, but a caller still acting inside one (eg revoking
+    // a honey token during the grace period) needs the real location.
     const excludePendingDeletion = (qb: Knex.QueryBuilder) => {
       if (!includePendingDeletion) void qb.whereNull(`${TableName.Environment}.deleteAfter`);
     };

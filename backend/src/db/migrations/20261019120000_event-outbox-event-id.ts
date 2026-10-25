@@ -4,11 +4,10 @@ import { TableName } from "../schemas";
 
 const EVENT_ID_INDEX = `${TableName.EventOutbox}_event_id_idx`;
 
-// The CloudEvents `id`, shared by every consumer's row for one event. It replaces `idempotencyKey`. Both
-// stay for one release, because a pod still on the previous release inserts into `idempotencyKey` and names its
-// unique index in ON CONFLICT during a rolling deploy; dropping either would fail that insert along with
-// the write it belongs to. For the same reason `eventId` is nullable with no default: `claimBatch` gives
-// those rows one.
+// The CloudEvents id, shared by every consumer's row for one event. It replaces `idempotencyKey`, but both
+// stay for one release: during a rolling deploy old pods still insert into `idempotencyKey` and name its
+// index in ON CONFLICT, so dropping either would fail those inserts along with the writes they belong to.
+// Same reason `eventId` is nullable with no default; `claimBatch` fills it in.
 export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasColumn(TableName.EventOutbox, "eventId"))) {
     await knex.schema.alterTable(TableName.EventOutbox, (t) => {

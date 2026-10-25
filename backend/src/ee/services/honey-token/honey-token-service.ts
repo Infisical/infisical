@@ -443,8 +443,8 @@ export const honeyTokenServiceFactory = ({
     }
 
     const { projectId } = honeyToken;
-    // From the primary and including an environment pending deletion: update and revoke must still work
-    // during the grace period, and the permission check needs the token's real environment and path.
+    // Includes environments pending deletion so update and revoke keep working during the grace period,
+    // and the permission check gets the real environment and path.
     const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId], undefined, {
       readFromPrimary: true,
       includePendingDeletion: true
@@ -647,8 +647,8 @@ export const honeyTokenServiceFactory = ({
     }
 
     const { projectId } = honeyToken;
-    // From the primary and including an environment pending deletion: update and revoke must still work
-    // during the grace period, and the permission check needs the token's real environment and path.
+    // Includes environments pending deletion so update and revoke keep working during the grace period,
+    // and the permission check gets the real environment and path.
     const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId], undefined, {
       readFromPrimary: true,
       includePendingDeletion: true

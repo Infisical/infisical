@@ -33,9 +33,9 @@ export const emitSecretReminderDue = (
   eventEmitter.emit(
     [
       {
-        // Random, not derived from the reminder and date. The dispatch transaction already stops one run from
-        // firing an occurrence twice, and a derived id would make the outbox drop a reminder the user moved
-        // back onto a date it already fired on.
+        // Random on purpose. The dispatch transaction already stops an occurrence firing twice, and an id
+        // derived from reminder + date would make the outbox drop a reminder moved back onto a date it
+        // already fired on.
         id: crypto.randomUUID(),
         type: SECRET_REMINDER_DUE_EVENT,
         data: {

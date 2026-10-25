@@ -11,8 +11,7 @@ declare const testDb: Knex;
 const folderDAL = secretFolderDALFactory(testDb as never);
 
 describe("secret folder dal (postgres)", () => {
-  // No API puts an environment into its deletion grace period and still reads its folders, so the
-  // environment is soft-deleted directly.
+  // No API can put an environment into its grace period and still read its folders, so soft-delete it directly.
   test("findSecretPathByFolderIds hides an environment pending deletion unless asked to include it", async () => {
     const { projectId, authToken, cleanup } = await createIsolatedOrgAndProject("folder-dal");
     try {

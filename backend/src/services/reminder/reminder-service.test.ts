@@ -120,9 +120,8 @@ describe("reminder dispatch", () => {
     ]);
   });
 
-  // A cron retry after a partial run must be the same event, so the outbox drops it.
-  // The outbox drops an event id a consumer already has, so a reminder moved back onto a date it already
-  // fired on would never send again if its id were derived from the reminder and the date.
+  // An id derived from reminder + date would make the outbox drop a reminder moved back onto a date it
+  // already fired on.
   test("gives every firing its own event id, even for a date the reminder already fired on", async () => {
     const first = buildService({ due: [reminder()] });
     const movedBack = buildService({ due: [reminder()] });

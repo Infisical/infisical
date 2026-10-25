@@ -46,8 +46,7 @@ const keySchema = z
     "Must be lowercase and dot-namespaced, e.g. 'pki.certificate.issued'"
   );
 
-// `id` is the CloudEvents id. It is set when the event is built, so every consumer's row for the event
-// carries the same one.
+// `id` is set when the event is built, so every consumer's row for it shares the same one.
 export const EventInputSchema = z.object({
   id: z.string().uuid(),
   type: keySchema,
@@ -61,8 +60,7 @@ export type TEventEmitter = {
   emit: (events: TEventInput[], tx?: Knex) => Promise<void>;
 };
 
-// What a consumer sees: the CloudEvents 1.0 envelope from the Event Standards and Versioning ADR. Lock,
-// attempt and status columns are the outbox's business.
+// What a consumer sees: the CloudEvents 1.0 envelope. Lock, attempt and status columns stay inside the outbox.
 export type TEvent<TData = unknown> = {
   specversion: "1.0";
   id: string;
@@ -78,7 +76,7 @@ export enum EventResultStatus {
   Failed = "failed"
 }
 
-// `id` is the event's id, which is unique within one consumer's events.
+// `id` is the event id, not the outbox row id.
 export type TEventConsumerResult = {
   id: string;
   status: EventResultStatus;

@@ -12,7 +12,7 @@ export type TPreviousSecretLocation = z.infer<typeof PreviousSecretLocationSchem
 
 type TSecretLocation = { environment: string; secretPath: string };
 
-// Undefined when the update left the location alone, so `previous` only appears on an update that moved.
+// Undefined when nothing changed, so `previous` only shows up on a move.
 export const previousSecretLocation = (
   before: TSecretLocation,
   after: TSecretLocation
@@ -24,11 +24,10 @@ export const previousSecretLocation = (
   return Object.keys(previous).length ? previous : undefined;
 };
 
-// `secretPath` is the folder's own path, after the change for `created` and `updated` and before it for
-// `deleted`. A rename is one `updated` event whose `previous` holds the old path, so a consumer covering
-// either path hears about it. A move to another parent recreates the folder and its subfolders under new
-// ids, so it is `created` at the destination and `deleted` at the source. A deleted folder takes its
-// subfolders with it, and those are not emitted separately: the event covers everything beneath its path.
+// `secretPath` is the folder's own path: the new one for `created` and `updated`, the old one for `deleted`.
+// A rename is one `updated` event with the old path in `previous`. A move to another parent recreates the
+// folder and its subfolders under new ids, so it's `created` at the destination and `deleted` at the source.
+// Deleting a folder emits one event that covers everything beneath it; subfolders are not emitted separately.
 export const FolderModifiedEventV1 = defineEvent({
   domain: "secrets",
   entity: "folder",

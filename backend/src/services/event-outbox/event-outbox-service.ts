@@ -112,9 +112,9 @@ export type TEventOutboxServiceFactoryDep = {
 export type TEventOutboxServiceFactory = ReturnType<typeof eventOutboxServiceFactory>;
 
 export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry }: TEventOutboxServiceFactoryDep) => {
-  // A malformed event is a bug at the emit site. Throwing fails the caller's transaction, and the
-  // business write with it, because committing the write without its event would break the guarantee
-  // that consumers hear about every change. Every check runs before any DB access.
+  // A malformed event is a bug at the emit site. Throwing fails the caller's transaction on purpose: a
+  // write that commits without its event is a change consumers never hear about. All checks run before
+  // any DB access.
   const $reject = (type: string, reason: EventOutboxRejectReason, detail: string, consumer?: string): never => {
     logger.error(
       `event-outbox: rejected event [type=${type}] [reason=${reason}]${consumer ? ` [consumer=${consumer}]` : ""}: ${detail}`
@@ -165,9 +165,8 @@ export const eventOutboxServiceFactory = ({ eventOutboxDAL, eventOutboxRegistry 
     });
   };
 
-  // Pass the caller's `tx` so the rows commit with the business write; omit it only when there is no
-  // business write to be atomic with. A failed insert is not caught: swallowing it would leave the
-  // caller with a poisoned transaction.
+  // Pass the caller's `tx` so the rows commit with the business write. A failed insert is not caught:
+  // swallowing it would hand the caller a poisoned transaction.
   const emit = async (events: TEventInput[], tx?: Knex): Promise<void> => {
     const rows = events.flatMap($buildRows);
     if (rows.length === 0) return;

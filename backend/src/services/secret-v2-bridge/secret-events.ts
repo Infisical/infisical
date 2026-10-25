@@ -9,11 +9,11 @@ import {
   TPreviousSecretLocation
 } from "@app/services/secret-folder/secret-folder-events";
 
-// One event per shared secret per write. A consumer re-reads the secret's current state (or finds it
-// gone) to learn what changed. Moving a secret between folders recreates it under a new id, so it is
-// `deleted` at the source and `created` at the destination; a write that moves it in place (eg a
-// rotation moving its generated secrets) is one `updated` event whose `previous` holds the old location.
-// Personal overrides belong to one user, not the project's shared state, so nothing is emitted for them.
+// One event per shared secret per write; consumers re-read the secret to see what changed. A move between
+// folders recreates the secret under a new id, so it's `deleted` at the source and `created` at the
+// destination. A write that moves it in place (eg rotation moving its generated secrets) is one `updated`
+// event with the old location in `previous`. Personal overrides belong to one user, so nothing is emitted
+// for them.
 export const SecretModifiedEventV1 = defineEvent({
   domain: "secrets",
   entity: "secret",
@@ -29,8 +29,7 @@ export const SecretModifiedEventV1 = defineEvent({
   })
 });
 
-// Where the written secrets live. Every low-level secret write takes one, so a caller cannot write
-// secrets without saying where, and the emit cannot be skipped.
+// Required on every low-level secret write so the emit can't be skipped.
 export type TSecretEventScope = {
   projectId: string;
   environment: string;
