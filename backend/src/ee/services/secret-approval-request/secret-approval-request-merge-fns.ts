@@ -276,7 +276,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
       .map(([key]) => `'${key}'`);
     if (keysCreatedTwice.length) {
       throw new BadRequestError({
-        message: `Could not merge this change request because it creates ${keysCreatedTwice.length === 1 ? "secret" : "secrets"} ${keysCreatedTwice.join(", ")} more than once. Close the request, then submit the change again or resync the replicated import that filed it.`
+        message: `Could not merge this change request because it creates ${keysCreatedTwice.length === 1 ? "secret" : "secrets"} ${keysCreatedTwice.join(", ")} more than once. Close the request, then submit the change again.`
       });
     }
 
