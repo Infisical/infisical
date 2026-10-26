@@ -660,7 +660,7 @@ export const SecretTableRow = ({
                       />
                     </TableHead>
                     <TableHead>Value</TableHead>
-                    <TableHead variant="action" className="w-px">
+                    <TableHead variant="action" className="w-px font-normal">
                       <Button
                         variant="ghost"
                         size="xs"

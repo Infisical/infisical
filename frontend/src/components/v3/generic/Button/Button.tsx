@@ -11,7 +11,7 @@ import { getButtonLoaderVariant } from "./getButtonLoaderVariant";
 const buttonVariants = cva(
   cn(
     "relative inline-flex items-center overflow-visible rounded-md active:scale-[0.99] justify-center border cursor-pointer whitespace-nowrap",
-    " text-sm font-normal transition-all disabled:pointer-events-none disabled:opacity-50 shrink-0",
+    " text-sm transition-all disabled:pointer-events-none disabled:opacity-50 shrink-0",
     "[&>svg]:pointer-events-none  [&>svg]:shrink-0",
     "focus-visible:ring-ring outline-0 focus-visible:ring-2 select-none",
     "has-[[data-slot=button-badge]]:my-1.5 has-[[data-slot=button-badge]]:outline-1 has-[[data-slot=button-badge]]:outline-offset-4 has-[[data-slot=button-badge]]:outline-accent/60 has-[[data-slot=button-badge]]:outline-solid"
