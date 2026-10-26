@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ShieldIcon } from "lucide-react";
@@ -80,9 +79,7 @@ export const AgentVaultAccessControlPage = () => {
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Access Control" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Access Control" })}</title>
       <PageHeader
         scope={ProjectType.AgentVault}
         icon={ShieldIcon}

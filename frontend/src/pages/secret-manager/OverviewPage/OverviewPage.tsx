@@ -7,7 +7,6 @@ import {
   useRef,
   useState
 } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
 import { DragDropProvider, DragEndEvent, DragOverlay } from "@dnd-kit/react";
@@ -1475,6 +1474,7 @@ const OverviewPageContent = () => {
     isSingleEnvView && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0);
 
   const [recentQuickAddKeys, setRecentQuickAddKeys] = useState<string[]>([]);
+  const pendingSecretRowKeys = useRef(new Map<string, string>());
   const hadPendingBatchChangesRef = useRef(hasPendingBatchChanges);
   const isRecentQuickAddClearPendingRef = useRef(false);
   useEffect(() => {
@@ -2368,6 +2368,15 @@ const OverviewPageContent = () => {
         );
         if (!pendingCreate) return;
 
+        if (newSecretName && newSecretName !== key) {
+          pendingSecretRowKeys.current.delete(
+            overviewRowKey("secret", projectId, env, secretPath, key)
+          );
+          pendingSecretRowKeys.current.set(
+            overviewRowKey("secret", projectId, env, secretPath, newSecretName),
+            pendingCreate.id
+          );
+        }
         addPendingChange(
           {
             ...pendingCreate,
@@ -3006,6 +3015,16 @@ const OverviewPageContent = () => {
         "",
         "row"
       );
+      const [createdSecret] = appliedSecrets;
+      if (pendingSecret.type === PendingAction.Create && createdSecret) {
+        pendingSecretRowKeys.current.forEach((rowId, identity) => {
+          if (rowId === pendingSecret.id) pendingSecretRowKeys.current.delete(identity);
+        });
+        pendingSecretRowKeys.current.set(
+          overviewRowKey("secret", projectId, env, secretPath, createdSecret.secretKey),
+          pendingSecret.id
+        );
+      }
       const context = { projectId, environment: env, secretPath };
       const draft = batchStoreApi
         .getState()
@@ -3043,7 +3062,6 @@ const OverviewPageContent = () => {
         return;
       }
 
-      const [createdSecret] = appliedSecrets;
       if (
         pendingSecret.type !== PendingAction.Create ||
         draft?.type !== PendingAction.Create ||
@@ -3639,6 +3657,17 @@ const OverviewPageContent = () => {
     </button>
   );
 
+  const getSecretRowKey = (key: string, rowKey: string) => {
+    if (!singleVisibleEnv) return rowKey;
+
+    const identity = overviewRowKey("secret", projectId, singleVisibleEnv.slug, secretPath, key);
+    const pendingCreate = pendingChanges.secrets.find(
+      (change) => change.type === PendingAction.Create && change.secretKey === key
+    );
+    if (pendingCreate) pendingSecretRowKeys.current.set(identity, pendingCreate.id);
+    return pendingSecretRowKeys.current.get(identity) ?? rowKey;
+  };
+
   const renderSecretRow = (key: string, rowKey: string) => (
     <SecretTableRow
       isSelected={!hasPendingBatchChanges && Boolean(selectedEntries.secret[key])}
@@ -3655,7 +3684,7 @@ const OverviewPageContent = () => {
       onSecretCreate={handleSecretCreate}
       onSecretDelete={handleSecretDelete}
       onSecretUpdate={handleSecretUpdate}
-      key={rowKey}
+      key={getSecretRowKey(key, rowKey)}
       environments={visibleEnvs}
       secretKey={key}
       getSecretByKey={getSecretByKeyWithPending}
@@ -3670,7 +3699,7 @@ const OverviewPageContent = () => {
           intent: SecretAccessInsightsUpgradeIntent
         })
       }
-      activityId={getTableRowActivityId("secret", key)}
+      activityId={getTableRowActivityId("secret", getSecretRowKey(key, rowKey))}
       onActivityChange={handleTableRowActivityChange}
       timestampSortField={isTimestampSort ? orderBy : undefined}
     />
@@ -3867,11 +3896,9 @@ const OverviewPageContent = () => {
   return withOverviewTelemetry(
     overviewTelemetry,
     <div className="mx-auto flex max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("dashboard.title") })}</title>
-        <meta property="og:title" content={String(t("dashboard.og-title"))} />
-        <meta name="og:description" content={String(t("dashboard.og-description"))} />
-      </Helmet>
+      <title>{t("common.head-title", { title: t("dashboard.title") })}</title>
+      <meta property="og:title" content={String(t("dashboard.og-title"))} />
+      <meta name="og:description" content={String(t("dashboard.og-description"))} />
       <PageHeader
         className="mb-6 md:mb-10"
         scope={ProjectType.SecretManager}
@@ -4542,9 +4569,10 @@ const OverviewPageContent = () => {
                               saveLabel={quickAddSaveLabel}
                               onCreateSecret={(environment, key, value, comment, isDirectSave) => {
                                 if (isSingleEnvView)
-                                  setRecentQuickAddKeys((prev) =>
-                                    prev.includes(key) ? prev : [...prev, key]
-                                  );
+                                  setRecentQuickAddKeys((prev) => [
+                                    key,
+                                    ...prev.filter((recentKey) => recentKey !== key)
+                                  ]);
                                 return handleSecretCreate(
                                   environment,
                                   key,

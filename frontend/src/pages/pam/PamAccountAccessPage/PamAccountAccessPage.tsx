@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useParams, useSearch } from "@tanstack/react-router";
 import { TriangleAlert } from "lucide-react";
 
@@ -160,10 +159,8 @@ const PageContent = () => {
 export const PamAccountAccessPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Web Access | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>Web Access | Infisical</title>
+      <link rel="icon" href="/infisical.ico" />
       <PageContent />
     </>
   );

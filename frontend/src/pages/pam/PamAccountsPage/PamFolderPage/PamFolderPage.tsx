@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Filter, FolderOpen, MoreHorizontal, Plus, Search, Settings, Trash2 } from "lucide-react";
@@ -212,9 +211,7 @@ export const PamFolderPage = () => {
 
   return (
     <div className="mx-auto mb-6 w-full max-w-8xl">
-      <Helmet>
-        <title>{t("common.head-title", { title: folder?.name ?? "Folder" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: folder?.name ?? "Folder" })}</title>
 
       <PageHeader
         title="Accounts"

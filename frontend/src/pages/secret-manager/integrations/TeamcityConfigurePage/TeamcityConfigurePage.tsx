@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -114,9 +113,7 @@ export const TeamcityConfigurePage = () => {
     targetBuildConfigs &&
     targetAppId ? (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up TeamCity Integration</title>
-      </Helmet>
+      <title>Set Up TeamCity Integration</title>
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
@@ -251,9 +248,7 @@ export const TeamcityConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up TeamCity Integration</title>
-      </Helmet>
+      <title>Set Up TeamCity Integration</title>
       {isIntegrationAuthLoading || isIntegrationAuthAppsLoading ? (
         <img
           src="/images/loading/loading.gif"

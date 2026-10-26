@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { BracesIcon } from "lucide-react";
@@ -39,9 +38,7 @@ export const AgentVaultVariablesPage = () => {
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Variables" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Variables" })}</title>
 
       <PageHeader
         scope={ProjectType.AgentVault}

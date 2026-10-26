@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Outlet, useMatches } from "@tanstack/react-router";
 
@@ -44,10 +43,8 @@ export const ProjectsPage = () => {
 
   return (
     <div className="mx-auto flex max-w-8xl flex-col justify-start px-0 md:px-6">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
+      <link rel="icon" href="/infisical.ico" />
       <PageHeader
         className="mb-6 md:mb-10"
         scope={isSubOrganization ? "namespace" : "org"}

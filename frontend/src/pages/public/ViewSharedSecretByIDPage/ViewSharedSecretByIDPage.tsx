@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import { addSeconds, formatISO } from "date-fns";
@@ -237,10 +236,8 @@ export const ViewSharedSecretByIDPage = () => {
   if (hasCustomBranding) {
     return (
       <>
-        <Helmet>
-          <title>Securely Share Secrets</title>
-          <meta property="og:image" content="/images/message.png" />
-        </Helmet>
+        <title>Securely Share Secrets</title>
+        <meta property="og:image" content="/images/message.png" />
         <div
           className="flex min-h-screen flex-col items-center justify-center overflow-auto px-4 py-10 scheme-dark"
           style={backgroundStyle}
@@ -269,10 +266,8 @@ export const ViewSharedSecretByIDPage = () => {
   // Default: Infisical auth page layout
   return (
     <>
-      <Helmet>
-        <title>Securely Share Secrets | Infisical</title>
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      <title>Securely Share Secrets | Infisical</title>
+      <meta property="og:image" content="/images/message.png" />
       <AuthPageLayout variant="focused" contentClassName="max-w-xl">
         <div className="flex flex-col items-center">
           <Card className="w-full">
