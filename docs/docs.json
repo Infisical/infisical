@@ -710,7 +710,8 @@
                       "documentation/platform/agent-vault/guides/openclaw-gateway"
                     ]
                   },
-                  "documentation/platform/agent-vault/guides/custom-agent"
+                  "documentation/platform/agent-vault/guides/custom-agent",
+                  "documentation/platform/agent-vault/guides/daytona"
                 ]
               },
               {
