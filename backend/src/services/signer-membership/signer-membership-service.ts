@@ -139,18 +139,26 @@ export const signerMembershipServiceFactory = ({
     else if (actor.identityId) where.actorIdentityId = actor.identityId;
     else if (actor.groupId) where.actorGroupId = actor.groupId;
 
-    const orgMembership = await membershipDAL.find(where);
-    if (!orgMembership.length) {
-      throw new BadRequestError({
-        message: "The actor is not a member of this organization. Invite them to the organization first."
-      });
-    }
-    if (!orgMembership[0].isActive) {
+    const [orgMembership] = await membershipDAL.find(where);
+    if (orgMembership && !orgMembership.isActive) {
       throw new BadRequestError({
         message: "The actor is deactivated in this organization. Reactivate them before granting them access."
       });
     }
-    return orgMembership[0];
+    if (orgMembership) return;
+
+    if (actor.userId || actor.identityId) {
+      const withAccess = await orgDAL.findActorsWithActiveOrgAccess({
+        orgId,
+        userIds: actor.userId ? [actor.userId] : [],
+        identityIds: actor.identityId ? [actor.identityId] : []
+      });
+      if (withAccess.userIds.size || withAccess.identityIds.size) return;
+    }
+
+    throw new BadRequestError({
+      message: "The actor is not a member of this organization. Invite them to the organization first."
+    });
   };
 
   const $loadResourcePermission = (
@@ -203,7 +211,7 @@ export const signerMembershipServiceFactory = ({
       throw new BadRequestError({ message: unknownSignerRoleMessage(role) });
     }
 
-    const orgMembership = await $assertActorPresentInOrg(actorOrgId, { userId, identityId, groupId });
+    await $assertActorPresentInOrg(actorOrgId, { userId, identityId, groupId });
 
     const membership = await membershipDAL.transaction(async (tx) => {
       const existingSignerMembershipFilter: Record<string, unknown> = {
@@ -249,7 +257,7 @@ export const signerMembershipServiceFactory = ({
       const newMembership = await membershipDAL.create(
         {
           scope: RESOURCE_SCOPE,
-          scopeOrgId: orgMembership.scopeOrgId,
+          scopeOrgId: actorOrgId,
           scopeProjectId: projectId,
           actorUserId: userId ?? null,
           actorIdentityId: identityId ?? null,

@@ -6,7 +6,9 @@ import {
   AccessScope,
   OrgMembershipRole,
   ProjectMembershipRole,
+  ProjectType,
   RESOURCE_SCOPE,
+  ResourceMembershipRole,
   ResourceType,
   TableName
 } from "@app/db/schemas";
@@ -371,6 +373,61 @@ describe("Org access reconcile", () => {
     const addRes = await asSubOrg("POST", "/api/v1/agent-vault/members", { userIds: [userId], role: "member" });
     expect(addRes.statusCode, addRes.payload).toBe(200);
     expect(await projectRows(agentVaultProjectId, { actorUserId: userId })).toHaveLength(1);
+  });
+
+  test("Certificate Manager applications and signers take a user and identity that reach the sub-org only through a group", async () => {
+    const groupId = await createLinkedGroup("pki-grp");
+    const { userId, username } = await createUser("pki-user");
+    createdUserIds.push(userId);
+    await addUserMembership({ userId, orgId: rootOrgId, role: OrgMembershipRole.Member });
+    await testDb(TableName.UserGroupMembership).insert({ userId, groupId });
+    const { identityId } = await createIdentityActor({ orgId: rootOrgId, authToken: rootToken });
+    createdIdentityIds.push(identityId);
+    await testDb(TableName.IdentityGroupMembership).insert({ identityId, groupId });
+
+    const projectRes = await asSubOrg("POST", "/api/v1/projects", {
+      projectName: `pki-${randomUUID().slice(0, 8)}`,
+      type: ProjectType.CertificateManager
+    });
+    expect(projectRes.statusCode).toBe(200);
+    const certProjectId = projectRes.json().project.id as string;
+    const [application] = await testDb(TableName.PkiApplication)
+      .insert({ projectId: certProjectId, name: `pki-app-${randomUUID().slice(0, 8)}` })
+      .returning("id");
+    const [signer] = await testDb(TableName.PkiSigners)
+      .insert({ projectId: certProjectId, name: `pki-signer-${randomUUID().slice(0, 8)}` })
+      .returning("id");
+
+    const userRes = await asSubOrg("POST", "/api/v1/cert-manager/access/users", { usernames: [username] });
+    expect(userRes.statusCode).toBe(200);
+    const identityRes = await asSubOrg("POST", `/api/v1/cert-manager/access/identities/${identityId}`, {});
+    expect(identityRes.statusCode).toBe(200);
+
+    const appUserRes = await asSubOrg("POST", `/api/v1/cert-manager/applications/${application.id}/users`, {
+      userIds: [userId]
+    });
+    expect(appUserRes.statusCode).toBe(200);
+    expect(appUserRes.json().unresolved).toEqual([]);
+    const appIdentityRes = await asSubOrg(
+      "POST",
+      `/api/v1/cert-manager/applications/${application.id}/identities/${identityId}`,
+      { role: ResourceMembershipRole.Operator }
+    );
+    expect(appIdentityRes.statusCode).toBe(200);
+
+    const signerUserRes = await asSubOrg("POST", `/api/v1/cert-manager/signers/${signer.id}/users`, {
+      userIds: [userId]
+    });
+    expect(signerUserRes.statusCode).toBe(200);
+    const signerIdentityRes = await asSubOrg("POST", `/api/v1/cert-manager/signers/${signer.id}/identities`, {
+      identityId
+    });
+    expect(signerIdentityRes.statusCode).toBe(200);
+
+    const resourceRows = (actor: { actorUserId?: string; actorIdentityId?: string }) =>
+      testDb(TableName.Membership).where({ scope: RESOURCE_SCOPE, scopeProjectId: certProjectId, ...actor });
+    expect(await resourceRows({ actorUserId: userId })).toHaveLength(2);
+    expect(await resourceRows({ actorIdentityId: identityId })).toHaveLength(2);
   });
 
   test("removing a member from the instance admin panel tears down their access like org member removal", async () => {

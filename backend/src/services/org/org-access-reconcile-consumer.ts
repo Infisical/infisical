@@ -169,7 +169,7 @@ export const orgAccessReconcileConsumerFactory = ({
       try {
         await $reconcileOrg(orgId, scope);
       } catch (error) {
-        logger.error(error, `org-access-reconcile: failed for org ${orgId} (event ${id})`);
+        logger.error(error, `org-access-reconcile: failed [orgId=${orgId}] [eventId=${id}]`);
         errors.push(`org ${orgId}: ${error instanceof Error ? error.message : "Unknown error"}`);
       }
     }
