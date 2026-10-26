@@ -9,7 +9,7 @@ HARD EXCLUSIONS - Automatically exclude findings matching these patterns:
 8. SSRF that only controls the URL path. SSRF matters when the attacker controls the host or protocol.
 9. Including user-controlled content in an AI prompt
 10. Crashes from undefined or null values that have no security impact
-11. Attacks that require raw database or disk access, reading process memory, physical access, or social engineering. These are outside the Infisical threat model.
+11. Attacks that require raw database or disk access, reading process memory, physical access, or social engineering. These are outside the Infisical threat model. This does not cover code that stores secret material without encryption (precedent 21).
 
 SIGNAL QUALITY CRITERIA - For remaining findings, assess:
 1. Does a less privileged principal (org member, project member or viewer, machine identity, service token, or unauthenticated caller), or a principal in a different organization or project, reach data or actions beyond what their role grants?
@@ -38,3 +38,4 @@ PRECEDENTS -
 18. A secret sharing link that anyone can open before it expires, when no organization or email restriction was set, is by design. Valid findings: a guessable link token, a link that ignores its expiry or max views, a restricted link that opens without the required auth, or a value still retrievable after the link is destroyed.
 19. Users in a target project reading a secret from another project through a reference or an import is by design when a project folder grant backs it and the organization's cross-project sharing setting is on. They need no permissions in the source project. Within a single project, a reference that resolves a secret in an environment or folder the caller's role denies is a valid finding. Also valid: reaching a folder that was never granted, a grant honored across organizations, or the organization setting not being enforced.
 20. PAM and Agent Vault run on one implicit project per organization whose roles are admin or member only, and access to individual PAM resources is granted at the resource level. A project member acting on a resource they hold a resource membership for is by design. Acting on a resource they were never granted is a valid finding.
+21. Code that writes a secret value, token, key, or credential to the database or disk without encrypting it through the KMS service is a valid finding, even though reading it back needs database access. The threat model excludes database access because data at rest is encrypted, so code that skips the encryption breaks that assumption. The same applies to a migration that can encrypt, decrypt, or rewrite data with the wrong key, even with no attacker involved.
