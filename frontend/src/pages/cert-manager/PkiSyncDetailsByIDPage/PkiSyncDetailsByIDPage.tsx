@@ -25,6 +25,7 @@ import {
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useGetPkiSync } from "@app/hooks/api/pkiSyncs";
 import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
@@ -117,9 +118,8 @@ const PageContent = () => {
         <div className="mx-auto mb-6 w-full max-w-8xl">
           {applicationName ? (
             <Link
-              to="/organizations/$orgId/cert-manager/applications/$applicationName"
-              params={{ orgId, applicationName }}
-              search={{ selectedTab: ApplicationTab.Syncs }}
+              {...getInstancePinningLink(orgId, currentProject, `applications/${applicationName}`)!}
+              search={{ selectedTab: ApplicationTab.Syncs } as never}
               className={backLinkClassName}
             >
               <ChevronLeftIcon className="size-4" />
@@ -127,9 +127,8 @@ const PageContent = () => {
             </Link>
           ) : (
             <Link
-              to={ROUTE_PATHS.CertManager.IntegrationsListPage.path}
-              params={{ orgId }}
-              search={{ selectedTab: IntegrationsListPageTabs.PkiSyncs }}
+              {...getInstancePinningLink(orgId, currentProject, "integrations")!}
+              search={{ selectedTab: IntegrationsListPageTabs.PkiSyncs } as never}
               className={backLinkClassName}
             >
               <ChevronLeftIcon className="size-4" />

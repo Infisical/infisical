@@ -1,11 +1,16 @@
+import { getInstancePinningLink } from "@app/helpers/project";
+import { Project } from "@app/hooks/api/projects/types";
+
 export type InventoryFilters = Record<string, string | undefined>;
 
-export const getInventoryLink = (orgId: string, filters: InventoryFilters) =>
-  ({
-    to: "/organizations/$orgId/cert-manager/inventory",
-    params: { orgId },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    search: filters as any
-  }) as const;
+export const getInventoryLink = (
+  project: Pick<Project, "id" | "type" | "orgId">,
+  filters: InventoryFilters
+) => {
+  const pinnedLink = getInstancePinningLink(project.orgId, project, "inventory");
+  if (!pinnedLink) throw new Error("The inventory link needs a Certificate Manager project");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return { ...pinnedLink, search: filters as any };
+};
 
 export type InventoryLink = ReturnType<typeof getInventoryLink>;

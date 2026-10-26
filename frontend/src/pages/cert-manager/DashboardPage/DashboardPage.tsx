@@ -41,12 +41,18 @@ export const DashboardPage = () => {
   const { data: trendData } = useGetCertActivityTrend(currentProject?.id || "", trendRange);
   const { data: pqcTrendData } = useGetCertPqcTrend(currentProject?.id || "", pqcTrendRange);
   const getLink = useCallback(
-    (filters: InventoryFilters) => getInventoryLink(currentProject?.orgId || "", filters),
-    [currentProject?.orgId]
+    (filters: InventoryFilters) => getInventoryLink(currentProject, filters),
+    [currentProject]
   );
   const navigateToInventory = useCallback(
-    (filters: InventoryFilters) => navigate(getLink(filters)),
-    [navigate, getLink]
+    (filters: InventoryFilters) =>
+      navigate({
+        to: "/organizations/$orgId/cert-manager/inventory",
+        params: { orgId: currentProject?.orgId || "" },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        search: filters as any
+      }),
+    [navigate, currentProject?.orgId]
   );
   if (!currentProject) {
     return <PageLoader />;
