@@ -42,7 +42,7 @@ import type { AddFlowProps, NewResource } from "./types";
 import styles from "./flows.module.css";
 
 type Metadata = { id: string; key: string; value: string; isEncrypted: boolean };
-type Entry = {
+export type Entry = {
   id: string;
   key: string;
   value: string;
@@ -61,6 +61,262 @@ const blankEntry = (key = ""): Entry => ({
   tags: [],
   metadata: []
 });
+
+export function SecretEntryFields({
+  entry,
+  index,
+  framed,
+  errors,
+  tagOptions,
+  keyRef,
+  editing,
+  onPatch,
+  onClearError,
+  onPaste,
+  onRemove,
+  onCreateTag
+}: {
+  entry: Entry;
+  index: number;
+  framed?: boolean;
+  errors: Record<string, string>;
+  tagOptions: { value: string; label: string }[];
+  keyRef?: (element: HTMLInputElement | null) => void;
+  editing?: { valueCleared: boolean };
+  onPatch: (value: Partial<Entry>) => void;
+  onClearError: (key: string) => void;
+  onPaste?: (event: ClipboardEvent<HTMLInputElement>) => void;
+  onRemove?: () => void;
+  onCreateTag: (query: string) => void;
+}) {
+  const keyError = errors[`${entry.id}.key`];
+  const spaced = entry.key.trim().includes(" ");
+  return (
+    <div className={styles.entry} data-framed={framed || undefined}>
+      <div className={styles.entryHead}>
+        <Field label="Key" error={keyError} className={styles.grow}>
+          <Input
+            ref={keyRef}
+            value={entry.key}
+            readOnly={Boolean(editing)}
+            placeholder="Type your secret name"
+            autoComplete="off"
+            spellCheck={false}
+            invalid={Boolean(keyError)}
+            onPaste={onPaste}
+            onChange={(event) => {
+              onPatch({ key: event.target.value });
+              onClearError(`${entry.id}.key`);
+            }}
+            trailing={
+              <span className={styles.warnSlot}>
+                {spaced && (
+                  <Tooltip
+                    content={`Secret key contains whitespaces. If this is the desired format, you need to provide it as ${encodeURIComponent(entry.key.trim())} when making API requests.`}
+                  >
+                    <span className={styles.warnMark}>
+                      <Icon name="alert" label="Secret key contains whitespaces" />
+                    </span>
+                  </Tooltip>
+                )}
+              </span>
+            }
+          />
+        </Field>
+        {onRemove && (
+          <span className={styles.entryRemove}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              icon="trash"
+              iconOnly
+              onClick={onRemove}
+            >
+              {`Remove secret ${index + 1}`}
+            </Button>
+          </span>
+        )}
+      </div>
+      <div className={styles.valueField}>
+        <div className={styles.labelRow}>
+          <FieldLabel htmlFor={`${entry.id}-value`}>Value</FieldLabel>
+          <Tooltip
+            content={
+              <>
+                You can add references to other secrets using the format{" "}
+                <code className={styles.mono}>${"{secret_name}"}</code>
+              </>
+            }
+          >
+            <span className={styles.hint}>
+              <Icon name="info" size={14} label="About secret references" />
+            </span>
+          </Tooltip>
+          <span className={styles.push}>
+            <Gate reason={NEXT_PHASE}>
+              <Button type="button" variant="ghost" size="xs" disabled>
+                Generate
+              </Button>
+            </Gate>
+          </span>
+        </div>
+        <Textarea
+          id={`${entry.id}-value`}
+          className={styles.mono}
+          value={entry.value}
+          placeholder="Enter secret value..."
+          autoComplete="off"
+          spellCheck={false}
+          autoFocus={Boolean(editing)}
+          onChange={(event) => onPatch({ value: event.target.value })}
+        />
+        {editing?.valueCleared && (
+          <SmallText muted>Saving removes the value, not the secret.</SmallText>
+        )}
+      </div>
+      <Field label="Comment">
+        <Textarea
+          value={entry.comment}
+          placeholder="Add a comment for this secret..."
+          onChange={(event) => onPatch({ comment: event.target.value })}
+        />
+      </Field>
+      <Accordion type="single" collapsible>
+        <AccordionItem value="advanced">
+          <AccordionTrigger>Advanced options</AccordionTrigger>
+          <AccordionContent>
+            <Stack gap={16}>
+              <Field label="Tags">
+                <MultiSelect
+                  label="Tags"
+                  options={tagOptions}
+                  value={entry.tags}
+                  placeholder="Select tags to assign to secret..."
+                  searchable
+                  onChange={(value) => onPatch({ tags: value })}
+                  onCreate={onCreateTag}
+                />
+              </Field>
+              <div className={styles.switchRow}>
+                <span className={styles.labelRow}>
+                  <FieldLabel htmlFor={`${entry.id}-multiline`}>
+                    Enable multiline encoding
+                  </FieldLabel>
+                  <Tooltip content="When enabled, newlines in secret values are escaped as \n for environment variable output.">
+                    <span className={styles.hint}>
+                      <Icon name="info" size={14} label="About multiline encoding" />
+                    </span>
+                  </Tooltip>
+                </span>
+                <Switch
+                  id={`${entry.id}-multiline`}
+                  checked={entry.skipMultilineEncoding}
+                  onCheckedChange={(checked) => onPatch({ skipMultilineEncoding: checked })}
+                />
+              </div>
+              <Field
+                label="Metadata"
+                description="Encrypted Metadata will not be searchable via the UI or API."
+                group
+              >
+                <div className={styles.metadata}>
+                  {entry.metadata.length === 0 && (
+                    <SmallText muted className={styles.emptyNote}>
+                      No metadata entries.
+                    </SmallText>
+                  )}
+                  {entry.metadata.map((item, itemIndex) => {
+                    const itemError = errors[`${entry.id}.metadata.${item.id}`];
+                    const update = (value: Partial<Metadata>) =>
+                      onPatch({
+                        metadata: entry.metadata.map((current) =>
+                          current.id === item.id ? { ...current, ...value } : current
+                        )
+                      });
+                    return (
+                      <div key={item.id} className={styles.metadataRow}>
+                        <div className={styles.grow}>
+                          <Input
+                            aria-label={`Metadata key ${itemIndex + 1}`}
+                            value={item.key}
+                            placeholder="Enter key"
+                            invalid={Boolean(itemError)}
+                            onChange={(event) => {
+                              update({ key: event.target.value });
+                              onClearError(`${entry.id}.metadata.${item.id}`);
+                            }}
+                          />
+                          {itemError && <FieldError>{itemError}</FieldError>}
+                        </div>
+                        <Input
+                          aria-label={`Metadata value ${itemIndex + 1}`}
+                          className={styles.grow}
+                          value={item.value}
+                          placeholder="Enter value"
+                          onChange={(event) => update({ value: event.target.value })}
+                        />
+                        <Tooltip content="Encrypt">
+                          <span className={styles.metadataSwitch}>
+                            <Switch
+                              aria-label={`Encrypt metadata entry ${itemIndex + 1}`}
+                              checked={item.isEncrypted}
+                              onCheckedChange={(checked) => update({ isEncrypted: checked })}
+                            />
+                          </span>
+                        </Tooltip>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          icon="trash"
+                          iconOnly
+                          onClick={() =>
+                            onPatch({
+                              metadata: entry.metadata.filter((current) => current.id !== item.id)
+                            })
+                          }
+                        >
+                          {`Remove metadata entry ${itemIndex + 1}`}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  <span
+                    className={styles.metadataAdd}
+                    data-empty={!entry.metadata.length || undefined}
+                  >
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      icon="plus"
+                      onClick={() =>
+                        onPatch({
+                          metadata: [
+                            ...entry.metadata,
+                            {
+                              id: crypto.randomUUID(),
+                              key: "",
+                              value: "",
+                              isEncrypted: false
+                            }
+                          ]
+                        })
+                      }
+                    >
+                      Add entry
+                    </Button>
+                  </span>
+                </div>
+              </Field>
+            </Stack>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </div>
+  );
+}
 
 export function CreateSecretFlow({
   open,
@@ -282,251 +538,34 @@ export function CreateSecretFlow({
                   }}
                 />
               </Field>
-              {entries.map((entry, index) => {
-                const keyError = errors[`${entry.id}.key`];
-                const spaced = entry.key.trim().includes(" ");
-                return (
-                  <div
-                    key={entry.id}
-                    className={styles.entry}
-                    data-framed={entries.length > 1 || undefined}
-                  >
-                    <div className={styles.entryHead}>
-                      <Field label="Key" error={keyError} className={styles.grow}>
-                        <Input
-                          ref={(element) => {
-                            keyInputs.current[entry.id] = element;
-                          }}
-                          value={entry.key}
-                          placeholder="Type your secret name"
-                          autoComplete="off"
-                          spellCheck={false}
-                          invalid={Boolean(keyError)}
-                          onPaste={(event) => handlePaste(event, entry)}
-                          onChange={(event) => {
-                            patch(entry.id, { key: event.target.value });
-                            clearError(`${entry.id}.key`);
-                          }}
-                          trailing={
-                            <span className={styles.warnSlot}>
-                              {spaced && (
-                                <Tooltip
-                                  content={`Secret key contains whitespaces. If this is the desired format, you need to provide it as ${encodeURIComponent(entry.key.trim())} when making API requests.`}
-                                >
-                                  <span className={styles.warnMark}>
-                                    <Icon name="alert" label="Secret key contains whitespaces" />
-                                  </span>
-                                </Tooltip>
-                              )}
-                            </span>
-                          }
-                        />
-                      </Field>
-                      {entries.length > 1 && (
-                        <span className={styles.entryRemove}>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            icon="trash"
-                            iconOnly
-                            onClick={() =>
-                              setEntries((current) =>
-                                current.filter((item) => item.id !== entry.id)
-                              )
-                            }
-                          >
-                            {`Remove secret ${index + 1}`}
-                          </Button>
-                        </span>
-                      )}
-                    </div>
-                    <div className={styles.valueField}>
-                      <div className={styles.labelRow}>
-                        <FieldLabel htmlFor={`${entry.id}-value`}>Value</FieldLabel>
-                        <Tooltip
-                          content={
-                            <>
-                              You can add references to other secrets using the format{" "}
-                              <code className={styles.mono}>${"{secret_name}"}</code>
-                            </>
-                          }
-                        >
-                          <span className={styles.hint}>
-                            <Icon name="info" size={14} label="About secret references" />
-                          </span>
-                        </Tooltip>
-                        <span className={styles.push}>
-                          <Gate reason={NEXT_PHASE}>
-                            <Button type="button" variant="ghost" size="xs" disabled>
-                              Generate
-                            </Button>
-                          </Gate>
-                        </span>
-                      </div>
-                      <Textarea
-                        id={`${entry.id}-value`}
-                        className={styles.mono}
-                        value={entry.value}
-                        placeholder="Enter secret value..."
-                        autoComplete="off"
-                        spellCheck={false}
-                        onChange={(event) => patch(entry.id, { value: event.target.value })}
-                      />
-                    </div>
-                    <Field label="Comment">
-                      <Textarea
-                        value={entry.comment}
-                        placeholder="Add a comment for this secret..."
-                        onChange={(event) => patch(entry.id, { comment: event.target.value })}
-                      />
-                    </Field>
-                    <Accordion type="single" collapsible>
-                      <AccordionItem value="advanced">
-                        <AccordionTrigger>Advanced options</AccordionTrigger>
-                        <AccordionContent>
-                          <Stack gap={16}>
-                            <Field label="Tags">
-                              <MultiSelect
-                                label="Tags"
-                                options={tagOptions}
-                                value={entry.tags}
-                                placeholder="Select tags to assign to secret..."
-                                searchable
-                                onChange={(value) => patch(entry.id, { tags: value })}
-                                onCreate={(query) => {
-                                  const parsed = slugSchema().safeParse(query.trim());
-                                  if (!parsed.success) return;
-                                  setCreatedTags((current) => [...current, parsed.data]);
-                                  patch(entry.id, { tags: [...entry.tags, parsed.data] });
-                                }}
-                              />
-                            </Field>
-                            <div className={styles.switchRow}>
-                              <span className={styles.labelRow}>
-                                <FieldLabel htmlFor={`${entry.id}-multiline`}>
-                                  Enable multiline encoding
-                                </FieldLabel>
-                                <Tooltip content="When enabled, newlines in secret values are escaped as \n for environment variable output.">
-                                  <span className={styles.hint}>
-                                    <Icon name="info" size={14} label="About multiline encoding" />
-                                  </span>
-                                </Tooltip>
-                              </span>
-                              <Switch
-                                id={`${entry.id}-multiline`}
-                                checked={entry.skipMultilineEncoding}
-                                onCheckedChange={(checked) =>
-                                  patch(entry.id, { skipMultilineEncoding: checked })
-                                }
-                              />
-                            </div>
-                            <Field
-                              label="Metadata"
-                              description="Encrypted Metadata will not be searchable via the UI or API."
-                              group
-                            >
-                              <div className={styles.metadata}>
-                                {entry.metadata.length === 0 && (
-                                  <SmallText muted className={styles.emptyNote}>
-                                    No metadata entries.
-                                  </SmallText>
-                                )}
-                                {entry.metadata.map((item, itemIndex) => {
-                                  const itemError = errors[`${entry.id}.metadata.${item.id}`];
-                                  const update = (value: Partial<Metadata>) =>
-                                    patch(entry.id, {
-                                      metadata: entry.metadata.map((current) =>
-                                        current.id === item.id ? { ...current, ...value } : current
-                                      )
-                                    });
-                                  return (
-                                    <div key={item.id} className={styles.metadataRow}>
-                                      <div className={styles.grow}>
-                                        <Input
-                                          aria-label={`Metadata key ${itemIndex + 1}`}
-                                          value={item.key}
-                                          placeholder="Enter key"
-                                          invalid={Boolean(itemError)}
-                                          onChange={(event) => {
-                                            update({ key: event.target.value });
-                                            clearError(`${entry.id}.metadata.${item.id}`);
-                                          }}
-                                        />
-                                        {itemError && <FieldError>{itemError}</FieldError>}
-                                      </div>
-                                      <Input
-                                        aria-label={`Metadata value ${itemIndex + 1}`}
-                                        className={styles.grow}
-                                        value={item.value}
-                                        placeholder="Enter value"
-                                        onChange={(event) => update({ value: event.target.value })}
-                                      />
-                                      <Tooltip content="Encrypt">
-                                        <span className={styles.metadataSwitch}>
-                                          <Switch
-                                            aria-label={`Encrypt metadata entry ${itemIndex + 1}`}
-                                            checked={item.isEncrypted}
-                                            onCheckedChange={(checked) =>
-                                              update({ isEncrypted: checked })
-                                            }
-                                          />
-                                        </span>
-                                      </Tooltip>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon-sm"
-                                        icon="trash"
-                                        iconOnly
-                                        onClick={() =>
-                                          patch(entry.id, {
-                                            metadata: entry.metadata.filter(
-                                              (current) => current.id !== item.id
-                                            )
-                                          })
-                                        }
-                                      >
-                                        {`Remove metadata entry ${itemIndex + 1}`}
-                                      </Button>
-                                    </div>
-                                  );
-                                })}
-                                <span
-                                  className={styles.metadataAdd}
-                                  data-empty={!entry.metadata.length || undefined}
-                                >
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="xs"
-                                    icon="plus"
-                                    onClick={() =>
-                                      patch(entry.id, {
-                                        metadata: [
-                                          ...entry.metadata,
-                                          {
-                                            id: crypto.randomUUID(),
-                                            key: "",
-                                            value: "",
-                                            isEncrypted: false
-                                          }
-                                        ]
-                                      })
-                                    }
-                                  >
-                                    Add entry
-                                  </Button>
-                                </span>
-                              </div>
-                            </Field>
-                          </Stack>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  </div>
-                );
-              })}
+              {entries.map((entry, index) => (
+                <SecretEntryFields
+                  key={entry.id}
+                  entry={entry}
+                  index={index}
+                  framed={entries.length > 1}
+                  errors={errors}
+                  tagOptions={tagOptions}
+                  keyRef={(element) => {
+                    keyInputs.current[entry.id] = element;
+                  }}
+                  onPatch={(value) => patch(entry.id, value)}
+                  onClearError={clearError}
+                  onPaste={(event) => handlePaste(event, entry)}
+                  onRemove={
+                    entries.length > 1
+                      ? () =>
+                          setEntries((current) => current.filter((item) => item.id !== entry.id))
+                      : undefined
+                  }
+                  onCreateTag={(query) => {
+                    const parsed = slugSchema().safeParse(query.trim());
+                    if (!parsed.success) return;
+                    setCreatedTags((current) => [...current, parsed.data]);
+                    patch(entry.id, { tags: [...entry.tags, parsed.data] });
+                  }}
+                />
+              ))}
               <Button
                 type="button"
                 variant="outline"

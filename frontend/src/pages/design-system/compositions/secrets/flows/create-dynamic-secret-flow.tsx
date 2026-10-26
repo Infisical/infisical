@@ -1,5 +1,3 @@
-import { useRef } from "react";
-
 import { DynamicSecretFlow, type DynamicSecretResource } from "./dynamic-secret-flow";
 import { environmentLabel, LOCAL_ONLY } from "./shared";
 import type { AddFlowProps } from "./types";
@@ -12,10 +10,7 @@ export function CreateDynamicSecretFlow({
   onCreate,
   onError
 }: AddFlowProps) {
-  const pending = useRef<DynamicSecretResource[]>([]);
-  const flush = () => {
-    const batch = pending.current;
-    pending.current = [];
+  const create = (batch: DynamicSecretResource[]) => {
     const taken = (entry: DynamicSecretResource) =>
       resources.some(
         (resource) =>
@@ -38,18 +33,19 @@ export function CreateDynamicSecretFlow({
           description: LOCAL_ONLY
         }
       );
-    if (duplicates.length)
-      onError({
-        title: created.length
-          ? `Created ${created.length} of ${batch.length} dynamic secrets. Review the created secrets before retrying failed items.`
-          : "Dynamic secret was not created",
-        description: duplicates
-          .map(
-            (entry) =>
-              `A dynamic secret named ${entry.name} already exists in ${environmentLabel(entry.environment)} at ${entry.path}.`
-          )
-          .join(" ")
-      });
+    if (!duplicates.length) return true;
+    onError({
+      title: created.length
+        ? `Created ${created.length} of ${batch.length} dynamic secrets. Review the created secrets before retrying failed items.`
+        : "Dynamic secret was not created",
+      description: duplicates
+        .map(
+          (entry) =>
+            `A dynamic secret named ${entry.name} already exists in ${environmentLabel(entry.environment)} at ${entry.path}.`
+        )
+        .join(" ")
+    });
+    return false;
   };
   return (
     <DynamicSecretFlow
@@ -58,10 +54,7 @@ export function CreateDynamicSecretFlow({
       project={scope.project}
       environments={scope.environments}
       secretPath={scope.path}
-      onCreate={(resource) => {
-        if (!pending.current.length) queueMicrotask(flush);
-        pending.current.push(resource);
-      }}
+      onCreate={create}
     />
   );
 }

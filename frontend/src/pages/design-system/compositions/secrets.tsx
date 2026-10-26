@@ -30,19 +30,9 @@ import { Field } from "@app/components/v4/ui/field";
 import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Inline } from "@app/components/v4/ui/layout";
 import { MultiSelect } from "@app/components/v4/ui/multi-select";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Pagination } from "@app/components/v4/ui/pagination";
-import {
-  Sheet,
-  SheetBody,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle
-} from "@app/components/v4/ui/sheet";
 import { Sidebar } from "@app/components/v4/ui/sidebar";
 import { Skeleton } from "@app/components/v4/ui/skeleton";
 import {
@@ -81,7 +71,8 @@ import {
   type ResourceKind,
   type Scenario,
   scopeMatches,
-  type Secret
+  type Secret,
+  versionsOf
 } from "./secrets-model";
 import { useSecretsScenario } from "./secrets-scenarios";
 import { projectSections, user } from "./shared";
@@ -91,8 +82,7 @@ import styles from "./secrets/overview.module.css";
 type Of<K extends ResourceKind> = Extract<Resource, { kind: K }>;
 type Editable = Of<"secret" | "folder">;
 type Draft = {
-  kind: "secret" | "folder";
-  resource?: Editable;
+  resource: Of<"folder">;
   environments: string[];
   name: string;
   value: string;
@@ -312,21 +302,12 @@ function Overview({ scenario }: { scenario: Scenario }) {
         resource.kind === "secret" && scopeMatches(resource, entry.source)
     );
 
-  const openDraft = (
-    kind: Draft["kind"],
-    resource?: Editable,
-    targets = visibleEnvironments.map((environment) => environment.value),
-    name = resource?.name ?? ""
-  ) => {
+  const openDraft = (resource: Of<"folder">) => {
     const next = {
-      kind,
       resource,
-      environments: targets,
-      name,
-      value:
-        resource?.kind === "secret"
-          ? (readableValue(resource) ?? "")
-          : (resource?.description ?? "")
+      environments: [resource.environment],
+      name: resource.name,
+      value: resource.description
     };
     setDraft(next);
     setInitialDraft(JSON.stringify(next));
@@ -386,16 +367,8 @@ function Overview({ scenario }: { scenario: Scenario }) {
   const save = () => {
     if (!draft || writeBlock) return;
     const name = draft.name.trim();
-    if (
-      !name ||
-      (draft.kind === "folder" && (name.includes("/") || name === "." || name === "..")) ||
-      (draft.kind === "secret" && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name))
-    ) {
-      setValidation(
-        draft.kind === "secret"
-          ? "Use a key that starts with a letter or underscore and contains only letters, numbers, or underscores."
-          : "Enter a folder name without slashes, . or .."
-      );
+    if (!name || name.includes("/") || name === "." || name === "..") {
+      setValidation("Enter a folder name without slashes, . or ..");
       return;
     }
     if (
@@ -404,33 +377,23 @@ function Overview({ scenario }: { scenario: Scenario }) {
           resource.project === project &&
           resource.path === path &&
           draft.environments.includes(resource.environment) &&
-          resource.kind === draft.kind &&
+          resource.kind === "folder" &&
           resource.name === name &&
           resource.id !== draft.resource?.id
       )
     ) {
-      setValidation(`A ${draft.kind} with this name already exists in a selected environment.`);
+      setValidation("A folder with this name already exists in a selected environment.");
       return;
     }
     const original = draft.resource;
-    if (!original) return;
     const timestamp = new Date().toISOString();
     const prefix = path === "/" ? "" : path;
     setResources((current) =>
       current.map((resource): Resource => {
         if (resource.id === original.id)
-          return resource.kind === "secret"
-            ? {
-                ...resource,
-                name,
-                value: { status: "present", value: draft.value },
-                version: resource.version + 1,
-                updatedAt: timestamp
-              }
-            : ({ ...original, name, description: draft.value, updatedAt: timestamp } as Resource);
+          return { ...original, name, description: draft.value, updatedAt: timestamp };
         const oldPath = `${prefix}/${original.name}`;
         if (
-          original.kind === "folder" &&
           resource.project === project &&
           resource.environment === original.environment &&
           (resource.path === oldPath || resource.path.startsWith(`${oldPath}/`))
@@ -523,11 +486,40 @@ function Overview({ scenario }: { scenario: Scenario }) {
       node
     );
   const handlers: SecretRowHandlers = {
-    onEdit: (secret) => openDraft("secret", secret, [secret.environment]),
     onCreateIn: (environment, key) =>
       openFlow("secret", { environments: [environment], name: key }),
     onDelete: (secret) => setDeleting([secret]),
-    importedFrom
+    onUpdate: (secret, { value, ...patch }, feedback) => {
+      const timestamp = new Date().toISOString();
+      setResources((current) =>
+        current.map((resource): Resource => {
+          if (resource.id !== secret.id || resource.kind !== "secret") return resource;
+          if (value === undefined) return { ...resource, ...patch };
+          const version = resource.version + 1;
+          return {
+            ...resource,
+            ...patch,
+            value: { status: "present", value },
+            version,
+            updatedAt: timestamp,
+            versions: [
+              { version, value, createdAt: timestamp, actor: user.name, actorType: "user" },
+              ...versionsOf(resource)
+            ]
+          };
+        })
+      );
+      setNotice("");
+      pushToast({ tone: "ok", ...feedback });
+    },
+    onNavigate: (environment, nextPath, key) => {
+      navigate(nextPath);
+      setEnvironmentIds([environment]);
+      setQuery(key);
+    },
+    importedFrom,
+    resources,
+    tagOptions
   };
   const allOnPage =
     selectableOnPage.length > 0 && selectableOnPage.every((key) => selected.includes(key));
@@ -763,14 +755,14 @@ function Overview({ scenario }: { scenario: Scenario }) {
         save();
       }}
     >
-      <Field label={draft.kind === "secret" ? "Key" : "Name"} error={validation || undefined}>
+      <Field label="Name" error={validation || undefined}>
         <Input
           autoFocus
           value={draft.name}
           onChange={(event) => setDraft({ ...draft, name: event.target.value })}
         />
       </Field>
-      <Field label={draft.kind === "secret" ? "Value" : "Description"}>
+      <Field label="Description">
         <Textarea
           value={draft.value}
           onChange={(event) => setDraft({ ...draft, value: event.target.value })}
@@ -784,7 +776,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
       .map((environment) => environment.label)
       .join(", ") || "no environment"
   } ${path === "/" ? "at the root folder" : `in the ${path} folder`}.`;
-  const draftTitle = `Edit ${draft?.kind === "folder" ? "folder" : "secret"}`;
+  const draftTitle = "Edit folder";
 
   return (
     <TooltipProvider>
@@ -1055,9 +1047,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
                                   onOpen={() =>
                                     navigate(`${path === "/" ? "" : path}/${first.name}`)
                                   }
-                                  onEdit={(folder) =>
-                                    openDraft("folder", folder, [folder.environment])
-                                  }
+                                  onEdit={(folder) => openDraft(folder)}
                                   onDelete={(folder) => setDeleting([folder])}
                                 />
                               );
@@ -1180,32 +1170,8 @@ function Overview({ scenario }: { scenario: Scenario }) {
             />
           </div>
         </AppInset>
-        <Sheet
-          open={draft?.kind === "secret"}
-          onOpenChange={(open) => {
-            if (!open) closeDraft();
-          }}
-        >
-          <SheetContent>
-            <SheetHeader>
-              <SheetTitle>{draftTitle}</SheetTitle>
-              <SheetDescription>{draftScope}</SheetDescription>
-            </SheetHeader>
-            <SheetBody>{draft?.kind === "secret" && draftForm}</SheetBody>
-            <SheetFooter>
-              <Inline gap={8} justify="end">
-                <Button variant="outline" onClick={closeDraft}>
-                  Cancel
-                </Button>
-                <Button form="secret-draft" type="submit">
-                  Save
-                </Button>
-              </Inline>
-            </SheetFooter>
-          </SheetContent>
-        </Sheet>
         <Dialog
-          open={draft?.kind === "folder"}
+          open={Boolean(draft)}
           onOpenChange={(open) => {
             if (!open) closeDraft();
           }}
@@ -1215,7 +1181,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
               <DialogTitle>{draftTitle}</DialogTitle>
               <DialogDescription>{draftScope}</DialogDescription>
             </DialogHeader>
-            {draft?.kind === "folder" && draftForm}
+            {draftForm}
             <DialogFooter>
               <Button variant="outline" onClick={closeDraft}>
                 Cancel

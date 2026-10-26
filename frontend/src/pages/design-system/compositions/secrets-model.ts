@@ -11,6 +11,21 @@ export type ValueState =
   | { status: "unreadable" | "loading" }
   | { status: "failed"; message: string };
 export type Scope = { project: string; environment: string; path: string };
+export type SecretReminder = {
+  repeatDays?: number;
+  fromDate?: string;
+  nextReminderDate?: string;
+  message: string;
+  recipients: string[];
+};
+export type SecretVersion = {
+  version: number;
+  value: string;
+  createdAt: string;
+  actor: string;
+  actorType: "user" | "identity" | "platform";
+  redacted?: boolean;
+};
 type ResourceBase = Scope & { id: string; name: string; createdAt: string; updatedAt: string };
 export type Secret = ResourceBase & {
   kind: "secret";
@@ -22,8 +37,9 @@ export type Secret = ResourceBase & {
   override?: string;
   managedBy?: string;
   honeyToken?: boolean;
-  reminder?: boolean;
+  reminder?: SecretReminder;
   skipMultilineEncoding?: boolean;
+  versions?: SecretVersion[];
 };
 export type Resource =
   | Secret
@@ -117,6 +133,16 @@ export const resourceKey = (resource: Pick<Resource, "kind" | "name">) =>
   `${resource.kind}:${resource.name}`;
 export const readableValue = (secret: Secret) =>
   secret.value.status === "present" ? secret.value.value : undefined;
+export const versionsOf = (secret: Secret): SecretVersion[] =>
+  secret.versions ?? [
+    {
+      version: secret.version,
+      value: readableValue(secret) ?? "",
+      createdAt: secret.updatedAt,
+      actor: "Avery Chen",
+      actorType: "user"
+    }
+  ];
 
 export const commitCounts: Record<string, number> = {
   "payments-api:dev:/": 12,
@@ -129,12 +155,20 @@ type SecretSeed = {
   name: string;
   envs: string[];
   empty?: string[];
+  values?: Partial<Record<string, string>>;
+  dev?: Partial<Pick<Secret, "metadata" | "reminder" | "version" | "versions">>;
   comment?: string;
   tags?: string[];
   override?: string;
   managedBy?: string;
   honeyToken?: boolean;
 };
+
+const referencingDatabaseUrl =
+  // eslint-disable-next-line no-template-curly-in-string -- Infisical secret reference syntax, not a JS template
+  "postgres://${APP_DB_USERNAME}:${APP_DB_PASSWORD}@db.dev.example.test:5432/payments";
+// eslint-disable-next-line no-template-curly-in-string -- Infisical secret reference syntax, not a JS template
+const corsOrigins = "https://app.dev.example.test,${dev.API_BASE_URL}";
 
 export function createResources(scenario: Scenario): Resource[] {
   if (scenario === "empty" || scenario === "no-environments" || scenario === "legacy") return [];
@@ -167,7 +201,8 @@ export function createResources(scenario: Scenario): Resource[] {
                   status: "present",
                   value: seed.empty?.includes(environment)
                     ? ""
-                    : `fake-${seed.name.toLowerCase().replace(/_/g, "-")}-${environment}`
+                    : (seed.values?.[environment] ??
+                      `fake-${seed.name.toLowerCase().replace(/_/g, "-")}-${environment}`)
                 },
           comment: seed.comment ?? "",
           tags: seed.tags ?? [],
@@ -175,7 +210,8 @@ export function createResources(scenario: Scenario): Resource[] {
           version: 1,
           ...(seed.override && environment === "dev" ? { override: seed.override } : {}),
           ...(seed.managedBy ? { managedBy: seed.managedBy } : {}),
-          ...(seed.honeyToken ? { honeyToken: true } : {})
+          ...(seed.honeyToken ? { honeyToken: true } : {}),
+          ...(environment === "dev" ? seed.dev : {})
         })
       )
     );
@@ -233,13 +269,55 @@ export function createResources(scenario: Scenario): Resource[] {
     add(at(environment), "stripe-api", { kind: "proxy", host: "api.stripe.com", enabled: true })
   );
   secrets("/", [
-    { name: "API_BASE_URL", envs: all },
+    { name: "API_BASE_URL", envs: all, values: { dev: "https://api.dev.example.test" } },
     { name: "APP_DB_PASSWORD", envs: ["dev"], managedBy: "payments-app-db-creds" },
     { name: "APP_DB_USERNAME", envs: ["dev"], managedBy: "payments-app-db-creds" },
     { name: "AWS_ACCESS_KEY_ID_LEGACY", envs: ["prod"], honeyToken: true },
     { name: "AWS_SECRET_ACCESS_KEY_LEGACY", envs: ["prod"], honeyToken: true },
     { name: "CURRENCY_ALLOWLIST", envs: all, empty: ["dev"] },
-    { name: "DATABASE_URL", envs: all },
+    {
+      name: "DATABASE_URL",
+      envs: all,
+      values: {
+        dev: referencingDatabaseUrl
+      },
+      dev: {
+        version: 3,
+        metadata: [
+          { key: "owner", value: "payments-platform", encrypted: false },
+          { key: "runbook", value: "fake-runbook-reference", encrypted: true }
+        ],
+        reminder: {
+          repeatDays: 90,
+          fromDate: "2026-11-01T00:00:00Z",
+          message: "Rotate the payments database credentials.",
+          recipients: ["All project members"]
+        },
+        versions: [
+          {
+            version: 3,
+            value: referencingDatabaseUrl,
+            createdAt: "2026-10-22T12:06:00Z",
+            actor: "Avery Chen",
+            actorType: "user"
+          },
+          {
+            version: 2,
+            value: "postgres://fake-user:fake-password@db.dev.example.test:5432/payments",
+            createdAt: "2026-10-21T16:40:00Z",
+            actor: "ci-deployer",
+            actorType: "identity"
+          },
+          {
+            version: 1,
+            value: "postgres://fake-user:fake-password@localhost:5432/payments",
+            createdAt: "2026-10-20T09:00:00Z",
+            actor: "Jordan Lee",
+            actorType: "user"
+          }
+        ]
+      }
+    },
     { name: "FEATURE_FLAGS", envs: all, tags: ["config"] },
     { name: "JWT_SIGNING_KEY", envs: all, override: "fake-personal-jwt-key" },
     { name: "LOG_LEVEL", envs: all, comment: "Raise to debug only while investigating." },
@@ -304,7 +382,7 @@ export function createResources(scenario: Scenario): Resource[] {
   secrets("/api", [
     { name: "BILLING_AWS_ACCESS_KEY_ID", envs: ["dev"], honeyToken: true },
     { name: "BILLING_AWS_SECRET_ACCESS_KEY", envs: ["dev"], honeyToken: true },
-    { name: "CORS_ORIGINS", envs: all },
+    { name: "CORS_ORIGINS", envs: all, values: { dev: corsOrigins } },
     { name: "FRAUD_SCORE_THRESHOLD", envs: ["prod"] },
     { name: "IDEMPOTENCY_TTL_SECONDS", envs: all, empty: ["dev"] },
     { name: "LEDGER_API_KEY", envs: ["dev", "staging"], override: "fake-personal-ledger-key" },

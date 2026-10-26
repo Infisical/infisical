@@ -20,12 +20,15 @@ import { Input } from "@app/components/v4/ui/input";
 import { Grid, Inline, Stack } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
 import { Select, type SelectOption } from "@app/components/v4/ui/select";
+import { CopyButton } from "@app/components/v4/ui/sensitive-editor";
 import { Switch } from "@app/components/v4/ui/switch";
 import { Heading, SmallText } from "@app/components/v4/ui/text";
 import { Textarea } from "@app/components/v4/ui/textarea";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { DEFAULT_PASSWORD_REQUIREMENTS } from "./schemas";
+
+import styles from "../flows.module.css";
 
 export type RotationViews = {
   Parameters: () => ReactNode;
@@ -420,7 +423,18 @@ export function CreateUserStatementAlert({ statement }: { statement: string }) {
           Below is an example statement for creating the required users. You may need to modify it
           to suit your needs.
         </p>
-        <CodeBlock code={statement} copyLabel="Copy statement" />
+        <div className={styles.statement}>
+          <CodeBlock
+            code={statement}
+            copyable={false}
+            wrap
+            maxLines={8}
+            style={{ paddingInlineEnd: "var(--v4-space-40)" }}
+          />
+          <span className={styles.statementCopy}>
+            <CopyButton value={statement} label="Copy statement" iconOnly />
+          </span>
+        </div>
       </Stack>
     </Alert>
   );

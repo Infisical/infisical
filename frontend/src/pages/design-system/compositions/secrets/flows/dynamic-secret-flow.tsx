@@ -63,7 +63,7 @@ export type DynamicSecretFlowProps = {
   environments: readonly { value: string; label: string }[];
   environment?: string;
   secretPath: string;
-  onCreate: (resource: DynamicSecretResource) => void;
+  onCreate: (resources: DynamicSecretResource[]) => boolean;
 };
 
 const FORM_ID = "dynamic-secret-flow-form";
@@ -179,8 +179,8 @@ export function DynamicSecretFlow({
     const payload = definition.toPayload(values, context);
     const payloads = Array.isArray(payload) ? payload : [payload];
     const now = new Date().toISOString();
-    payloads.forEach((item) =>
-      onCreate({
+    const created = onCreate(
+      payloads.map((item) => ({
         kind: "dynamic",
         id: `${project}:${item.environmentSlug}:${item.path}:dynamic:${item.name}`,
         project,
@@ -192,8 +192,9 @@ export function DynamicSecretFlow({
         maxTTL: item.maxTTL || undefined,
         createdAt: now,
         updatedAt: now
-      })
+      }))
     );
+    if (!created) return;
     if (definition.provider === DynamicSecretProviders.Ssh) {
       setSshSetupOpen(true);
       return;
