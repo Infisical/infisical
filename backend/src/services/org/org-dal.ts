@@ -54,6 +54,8 @@ type TOrphanedProjectActor = {
   scopeOrgId: string;
 };
 
+export const ORG_ACCESS_LOCK_ESCALATION_THRESHOLD = 500;
+
 export const orgDALFactory = (db: TDbClient) => {
   const orgOrm = ormify(db, TableName.Organization);
 
@@ -1428,14 +1430,25 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Serializes grants with the reconcile consumer per actor. One statement for the whole set, since a SCIM
-  // sync can add thousands at once. unnest keeps array order, so sorted ids lock in sorted order and two
-  // callers can't deadlock.
-  const lockActorsForOrgAccess = async (actorIds: string[], tx: Knex) => {
-    const keys = [...new Set(actorIds)].sort().map((actorId) => PgSqlLock.OrgAccessReconcile(actorId));
-    if (!keys.length) return;
+  // Serializes grants with the reconcile consumer. Two levels, like an engine escalating row locks to a table
+  // lock: a small set takes the tenant shared plus one exclusive key per actor, a set past the threshold takes
+  // the tenant exclusive and nothing per actor. Every key is a slot in Postgres's shared lock table (about
+  // 6,400 on default settings), so a SCIM sync adding thousands would otherwise fill it and fail unrelated
+  // transactions instance-wide; escalated, it only stalls grants in its own tenant. The tenant is the root org
+  // because access never crosses one: a root-org group reaches its sub-orgs, nothing reaches another tenant.
+  // Tenant first, then sorted actors in one statement, so two callers can't deadlock.
+  const lockActorsForOrgAccess = async ({ orgId, actorIds }: { orgId: string; actorIds: string[] }, tx: Knex) => {
+    const actorKeys = [...new Set(actorIds)].sort().map((actorId) => PgSqlLock.OrgAccessReconcile(actorId));
+    if (!actorKeys.length) return;
     try {
-      await tx.raw("SELECT pg_advisory_xact_lock(k) FROM unnest(?::int[]) AS k", [keys]);
+      const org = await tx(TableName.Organization).where({ id: orgId }).select("rootOrgId").first();
+      const scopeKey = PgSqlLock.OrgAccessReconcileScope(org?.rootOrgId ?? orgId);
+      if (actorKeys.length > ORG_ACCESS_LOCK_ESCALATION_THRESHOLD) {
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [scopeKey]);
+        return;
+      }
+      await tx.raw("SELECT pg_advisory_xact_lock_shared(?)", [scopeKey]);
+      await tx.raw("SELECT pg_advisory_xact_lock(k) FROM unnest(?::int[]) AS k", [actorKeys]);
     } catch (error) {
       throw new DatabaseError({ error, name: "LockActorsForOrgAccess" });
     }

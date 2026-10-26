@@ -171,8 +171,8 @@ describe("GitHub org sync and org access reconcile", () => {
     // One add for the new group, one for the existing group, each behind the lock.
     expect(insertMany).toHaveBeenCalledTimes(2);
     expect(lockActorsForOrgAccess).toHaveBeenCalledTimes(2);
-    lockActorsForOrgAccess.mock.calls.forEach(([actorIds, tx]) => {
-      expect(actorIds).toEqual(["user-1"]);
+    lockActorsForOrgAccess.mock.calls.forEach(([scope, tx]) => {
+      expect(scope).toEqual({ orgId: ORG_ID, actorIds: ["user-1"] });
       expect(tx).toBe(TX);
     });
     lockActorsForOrgAccess.mock.invocationCallOrder.forEach((lockOrder, index) => {
@@ -234,7 +234,7 @@ describe("GitHub org sync and org access reconcile", () => {
     );
 
     expect(lockActorsForOrgAccess).toHaveBeenCalledTimes(1);
-    expect(lockActorsForOrgAccess).toHaveBeenCalledWith(["user-3"], TX);
+    expect(lockActorsForOrgAccess).toHaveBeenCalledWith({ orgId: ORG_ID, actorIds: ["user-3"] }, TX);
     expect(lockActorsForOrgAccess.mock.invocationCallOrder[0]).toBeLessThan(insertMany.mock.invocationCallOrder[0]);
   });
 });

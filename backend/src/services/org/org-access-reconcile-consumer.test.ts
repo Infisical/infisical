@@ -207,7 +207,7 @@ describe("org access reconcile consumer", () => {
     const [orgResult] = await consumer.handle([userRemovedFromOrg()]);
 
     expect(orgResult.status).toBe(EventResultStatus.Delivered);
-    expect(deps.orgDAL.lockActorsForOrgAccess).toHaveBeenCalledWith([USER_ID], tx);
+    expect(deps.orgDAL.lockActorsForOrgAccess).toHaveBeenCalledWith({ orgId: ORG_ID, actorIds: [USER_ID] }, tx);
     expect(deps.projectAccessRevokeService.revokeActorsInOrgs).toHaveBeenCalledWith(
       { orgIds: [ORG_ID], userIds: [USER_ID], identityIds: [] },
       tx
@@ -352,10 +352,14 @@ describe("org access reconcile consumer", () => {
     expect(tx.raw).toHaveBeenCalledWith(expect.stringContaining("SET LOCAL statement_timeout"));
     expect(deps.orgDAL.lockActorsForOrgAccess).toHaveBeenNthCalledWith(
       1,
-      userIds.slice(0, ACTORS_PER_RECONCILE_TX),
+      { orgId: ORG_ID, actorIds: userIds.slice(0, ACTORS_PER_RECONCILE_TX) },
       tx
     );
-    expect(deps.orgDAL.lockActorsForOrgAccess).toHaveBeenNthCalledWith(2, userIds.slice(ACTORS_PER_RECONCILE_TX), tx);
+    expect(deps.orgDAL.lockActorsForOrgAccess).toHaveBeenNthCalledWith(
+      2,
+      { orgId: ORG_ID, actorIds: userIds.slice(ACTORS_PER_RECONCILE_TX) },
+      tx
+    );
     expect(deps.auditLogService.createAuditLog).toHaveBeenCalledTimes(userIds.length);
   });
 });

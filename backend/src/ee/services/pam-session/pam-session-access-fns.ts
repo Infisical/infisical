@@ -226,7 +226,7 @@ export const assertUserStillActiveInOrg = async ({
     const membership = await membershipDAL.lockOrgMembershipForUser(id, userId, tx);
     let isActive = Boolean(membership?.isActive);
     if (!membership) {
-      await orgDAL.lockActorsForOrgAccess([userId], tx);
+      await orgDAL.lockActorsForOrgAccess({ orgId: id, actorIds: [userId] }, tx);
       const withAccess = await orgDAL.findActorsWithActiveOrgAccess(
         { orgId: id, userIds: [userId], identityIds: [] },
         tx

@@ -23,7 +23,7 @@ describe("lockAndAssertActiveOrgAccess", () => {
     await lockAndAssertActiveOrgAccess({ orgDAL, orgId: "org", userIds: ["u1"], identityIds: ["i1"] }, tx);
 
     expect(calls).toEqual(["lock", "check"]);
-    expect(orgDAL.lockActorsForOrgAccess).toHaveBeenCalledWith(["u1", "i1"], tx);
+    expect(orgDAL.lockActorsForOrgAccess).toHaveBeenCalledWith({ orgId: "org", actorIds: ["u1", "i1"] }, tx);
     expect(orgDAL.findActorsWithActiveOrgAccess).toHaveBeenCalledWith(
       { orgId: "org", userIds: ["u1"], identityIds: ["i1"] },
       tx

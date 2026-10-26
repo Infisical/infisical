@@ -54,7 +54,7 @@ describe("assertUserStillActiveInOrg", () => {
   test("passes a user who reaches the sub-org only through a group, under the actor lock", async () => {
     const { run, orgDAL } = build({ rows: { "root-org": { isActive: true } }, groupAccessOrgIds: ["sub-org"] });
     await expect(run()).resolves.toBeUndefined();
-    expect(orgDAL.lockActorsForOrgAccess).toHaveBeenCalledWith(["user-1"], tx);
+    expect(orgDAL.lockActorsForOrgAccess).toHaveBeenCalledWith({ orgId: "sub-org", actorIds: ["user-1"] }, tx);
     expect(orgDAL.lockActorsForOrgAccess.mock.invocationCallOrder[0]).toBeLessThan(
       orgDAL.findActorsWithActiveOrgAccess.mock.invocationCallOrder[0]
     );

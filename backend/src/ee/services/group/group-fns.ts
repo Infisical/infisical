@@ -271,10 +271,7 @@ export const addUsersToGroupByUserIds = async ({
         });
     });
 
-    await orgDAL.lockActorsForOrgAccess(
-      foundMembers.map((member) => member.id),
-      tx
-    );
+    await orgDAL.lockActorsForOrgAccess({ orgId: group.orgId, actorIds: foundMembers.map((member) => member.id) }, tx);
 
     const membersToAddToGroupNonPending: TUsers[] = [];
     const membersToAddToGroupPending: TUsers[] = [];
@@ -383,7 +380,7 @@ export const addIdentitiesToGroup = async ({
   }
 
   return identityDAL.transaction(async (tx) => {
-    await orgDAL.lockActorsForOrgAccess(identityIdsArray, tx);
+    await orgDAL.lockActorsForOrgAccess({ orgId: group.orgId, actorIds: identityIdsArray }, tx);
 
     await identityGroupMembershipDAL.insertMany(
       foundIdentitiesMemberships.map((membership) => ({

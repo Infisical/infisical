@@ -104,7 +104,7 @@ export const orgAccessReconcileConsumerFactory = ({
   const $revokeActors = async (orgId: string, candidates: { userIds: string[]; identityIds: string[] }) =>
     orgDAL.transaction(async (tx) => {
       await tx.raw(`SET LOCAL statement_timeout = ${RECONCILE_STATEMENT_TIMEOUT_MS}`);
-      await orgDAL.lockActorsForOrgAccess([...candidates.userIds, ...candidates.identityIds], tx);
+      await orgDAL.lockActorsForOrgAccess({ orgId, actorIds: [...candidates.userIds, ...candidates.identityIds] }, tx);
 
       const withAccess = await orgDAL.findActorsWithOrgAccess({ orgId, ...candidates }, tx);
       const userIds = candidates.userIds.filter((id) => !withAccess.userIds.has(id));

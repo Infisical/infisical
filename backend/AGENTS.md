@@ -936,9 +936,13 @@ itself whether the actor still reaches the org.
   group-derived PAM admin's personal folder row), and the consumer reaps both.
 - **Not on the enforcement path.** Token validation already rejects actors with no effective org membership
   (`assertActiveOrgMembership` and its Go port). The lag only shows in member lists, seat counts and SCIM.
-- **`orgDAL.lockActorsForOrgAccess`** (advisory xact locks, one statement over the sorted ids so callers
-  can't deadlock) serializes everything that grants against the consumer, so access granted between its
-  check and its deletes doesn't get reaped or outlive it. Two kinds of caller take it:
+- **`orgDAL.lockActorsForOrgAccess({ orgId, actorIds }, tx)`** serializes everything that grants against the
+  consumer, so access granted between its check and its deletes doesn't get reaped or outlive it. Advisory
+  xact locks at two levels: the root org (resolved from `orgId`) shared plus one key per actor in one sorted
+  statement, or, past `ORG_ACCESS_LOCK_ESCALATION_THRESHOLD` actors, the root org exclusive and no actor
+  keys. The escalation keeps a bulk SCIM sync from filling Postgres's shared lock table, which would fail
+  unrelated transactions instance-wide; the price is that such a sync stalls other grants in its own tenant
+  until it commits. Root org first, then sorted actors, so callers can't deadlock. Two kinds of caller take it:
   - The add-to-group helpers in `group-fns.ts` (the SSO and SCIM services only pass it through) and GitHub org
     sync, which adds team members itself. Take it in any new path that grants an org path outside them.
   - Every path that writes a project or resource membership for a user or identity, through

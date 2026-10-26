@@ -704,7 +704,7 @@ export const githubOrgSyncServiceFactory = ({
             tx
           );
 
-          await orgDAL.lockActorsForOrgAccess([userId], tx);
+          await orgDAL.lockActorsForOrgAccess({ orgId, actorIds: [userId] }, tx);
           await userGroupMembershipDAL.insertMany(
             insertedGroups.map((el) => ({
               groupId: el.id,
@@ -735,7 +735,7 @@ export const githubOrgSyncServiceFactory = ({
       if (updateTeams.length) {
         const groupsToUpdate = updateTeams.map((teamName) => githubUserTeamOnInfisicalGroupByName[teamName][0]);
         await groupDAL.transaction(async (tx) => {
-          await orgDAL.lockActorsForOrgAccess([userId], tx);
+          await orgDAL.lockActorsForOrgAccess({ orgId, actorIds: [userId] }, tx);
           await userGroupMembershipDAL.insertMany(
             groupsToUpdate.map((group) => ({
               groupId: group.id,
@@ -1141,7 +1141,7 @@ export const githubOrgSyncServiceFactory = ({
           const { usersToAdd, membershipsToRemove } = resolveMembershipChanges(latestMemberships);
 
           if (usersToAdd.length > 0) {
-            await orgDAL.lockActorsForOrgAccess(usersToAdd, tx);
+            await orgDAL.lockActorsForOrgAccess({ orgId: orgPermission.orgId, actorIds: usersToAdd }, tx);
             await userGroupMembershipDAL.insertMany(
               usersToAdd.map((userId) => ({
                 userId,

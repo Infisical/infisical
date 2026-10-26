@@ -49,7 +49,7 @@ export const lockAndAssertActiveOrgAccess = async (
 ) => {
   if (!userIds.length && !identityIds.length) return;
 
-  await orgDAL.lockActorsForOrgAccess([...userIds, ...identityIds], tx);
+  await orgDAL.lockActorsForOrgAccess({ orgId, actorIds: [...userIds, ...identityIds] }, tx);
   const withAccess = await orgDAL.findActorsWithActiveOrgAccess({ orgId, userIds, identityIds }, tx);
   const lost = [
     ...userIds.filter((id) => !withAccess.userIds.has(id)),
