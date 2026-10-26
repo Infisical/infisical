@@ -51,7 +51,11 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { getProjectBaseURL, getProjectDisplayName } from "@app/helpers/project";
+import {
+  getInstancePinningLink,
+  getProjectBaseURL,
+  getProjectDisplayName
+} from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -68,7 +72,6 @@ import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance"
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { IdentityMembershipSearchResult, SearchIdentitiesScope } from "@app/hooks/api/identities";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
 import { IdentityAuthMethodSheet } from "@app/views/IdentityAuthMethods";
@@ -393,38 +396,17 @@ const IdentityRow = ({ membership, onDelete, onManageAuth, onAddAuthMethod }: Id
   const isSubOrgIdentity = currentOrg.id === orgId;
   const isProjectScoped = scope === SearchIdentitiesScope.ProjectScope;
 
-  const getIdentityLink = () => {
-    if (!isProjectScoped || !project) {
-      return {
-        to: "/organizations/$orgId/identities/$identityId",
-        params: { identityId: id, orgId: currentOrg.id }
-      } as const;
-    }
-    // Certificate Manager and Secret Scanning URLs carry no project id, so link through their
-    // legacy project URL, whose redirect pins the instance in whichever tab opens the link.
-    const legacyProjectParams = {
-      orgId: currentOrg.id,
-      projectId: project.id,
-      _splat: `identities/${id}`
-    };
-    if (project.type === ProjectType.CertificateManager) {
-      return {
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/$",
-        params: legacyProjectParams
-      } as const;
-    }
-    if (project.type === ProjectType.SecretScanning) {
-      return {
-        to: "/organizations/$orgId/projects/secret-scanning/$projectId/$",
-        params: legacyProjectParams
-      } as const;
-    }
-    return {
-      to: `${getProjectBaseURL(project.type)}/identities/$identityId`,
-      params: { orgId: currentOrg.id, projectId: project.id, identityId: id }
-    } as const;
-  };
-  const identityLink = getIdentityLink();
+  const identityLink =
+    isProjectScoped && project
+      ? (getInstancePinningLink(currentOrg.id, project, `identities/${id}`) ??
+        ({
+          to: `${getProjectBaseURL(project.type)}/identities/$identityId`,
+          params: { orgId: currentOrg.id, projectId: project.id, identityId: id }
+        } as const))
+      : ({
+          to: "/organizations/$orgId/identities/$identityId",
+          params: { identityId: id, orgId: currentOrg.id }
+        } as const);
 
   return (
     <TableRow className="relative cursor-pointer">

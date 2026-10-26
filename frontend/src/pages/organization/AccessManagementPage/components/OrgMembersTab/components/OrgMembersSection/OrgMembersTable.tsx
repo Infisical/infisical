@@ -1,5 +1,5 @@
 import { Dispatch, SetStateAction, useCallback, useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   FilterIcon,
@@ -117,8 +117,8 @@ export const OrgMembersTable = ({
   selectedMemberIds,
   setSelectedMemberIds
 }: Props) => {
-  const navigate = useNavigate();
   const { subscription } = useSubscription();
+  const navigate = useNavigate();
   const { currentOrg, isSubOrganization } = useOrganization();
   const { user } = useUser();
   const userId = user?.id || "";
@@ -526,24 +526,13 @@ export const OrgMembersTable = ({
                   const isSelected = Boolean(
                     membership && selectedMemberIds.includes(membership.id)
                   );
-                  const openMemberPage = membership
-                    ? () =>
-                        navigate({
-                          to: "/organizations/$orgId/members/$membershipId" as const,
-                          params: {
-                            membershipId: membership.id,
-                            orgId
-                          }
-                        })
-                    : undefined;
 
                   return (
                     <TableRow
                       key={membership ? `org-membership-${membership.id}` : `org-user-${u.id}`}
-                      className={twMerge("group", membership && "cursor-pointer")}
-                      onClick={openMemberPage}
+                      className={twMerge("group relative", membership && "cursor-pointer")}
                     >
-                      <TableCell>
+                      <TableCell className="relative z-10">
                         {membership ? (
                           <Checkbox
                             id={`select-member-${membership.id}`}
@@ -582,7 +571,7 @@ export const OrgMembersTable = ({
                           </p>
                           {u.superAdmin && (
                             <Tooltip>
-                              <TooltipTrigger asChild>
+                              <TooltipTrigger asChild className="relative z-10">
                                 <Badge variant="info">
                                   <UserCogIcon />
                                   <span className="hidden 2xl:inline">Server Admin</span>
@@ -593,7 +582,7 @@ export const OrgMembersTable = ({
                           )}
                           {membership?.lastLoginAuthMethod && membership.lastLoginTime && (
                             <Tooltip>
-                              <TooltipTrigger>
+                              <TooltipTrigger className="relative z-10">
                                 <InfoIcon className="size-3.5 text-muted opacity-0 transition-all group-hover:opacity-100" />
                               </TooltipTrigger>
                               <TooltipContent className="max-w-96 min-w-52 px-3">
@@ -607,7 +596,17 @@ export const OrgMembersTable = ({
                         </div>
                       </TableCell>
                       <TableCell isTruncatable className={twMerge(!isActive && "text-muted")}>
-                        <p className="truncate">{username}</p>
+                        {membership ? (
+                          <Link
+                            to="/organizations/$orgId/members/$membershipId"
+                            params={{ membershipId: membership.id, orgId }}
+                            className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                          >
+                            {username}
+                          </Link>
+                        ) : (
+                          <p className="truncate">{username}</p>
+                        )}
                       </TableCell>
                       <TableCell>
                         {groups.length ? (
@@ -647,7 +646,7 @@ export const OrgMembersTable = ({
                               >
                                 <SelectTrigger
                                   size="sm"
-                                  className="w-full max-w-32 lg:max-w-64"
+                                  className="relative z-10 w-full max-w-32 lg:max-w-64"
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <SelectValue />
@@ -672,7 +671,7 @@ export const OrgMembersTable = ({
                           <span className="text-muted">No direct access</span>
                         )}
                       </TableCell>
-                      <TableCell variant="action">
+                      <TableCell variant="action" className="relative z-10">
                         <div className="flex items-center justify-end gap-6">
                           {membership &&
                             isActive &&
@@ -720,7 +719,10 @@ export const OrgMembersTable = ({
                                       <DropdownMenuItem
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          openMemberPage?.();
+                                          navigate({
+                                            to: "/organizations/$orgId/members/$membershipId",
+                                            params: { membershipId: membership.id, orgId }
+                                          });
                                         }}
                                         isDisabled={!isAllowed}
                                       >
