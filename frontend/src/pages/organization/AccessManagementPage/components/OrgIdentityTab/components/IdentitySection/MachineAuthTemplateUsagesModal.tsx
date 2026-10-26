@@ -1,4 +1,3 @@
-import { useNavigate } from "@tanstack/react-router";
 import { FileKeyIcon } from "lucide-react";
 
 import {
@@ -10,6 +9,7 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -35,7 +35,6 @@ export const MachineAuthTemplateUsagesModal = ({
   templateName
 }: Props) => {
   const { currentOrg } = useOrganization();
-  const navigate = useNavigate();
 
   const organizationId = currentOrg?.id || "";
 
@@ -77,16 +76,15 @@ export const MachineAuthTemplateUsagesModal = ({
                 ))}
               {!isPending &&
                 usages.map((usage) => (
-                  <TableRow
-                    key={`usage-${usage.identityId}`}
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/identities/$identityId",
-                        params: { identityId: usage.identityId, orgId: organizationId }
-                      })
-                    }
-                  >
-                    <TableCell>{usage.identityName}</TableCell>
+                  <TableRow key={`usage-${usage.identityId}`} linked>
+                    <TableCell>
+                      <RowLink
+                        to="/organizations/$orgId/identities/$identityId"
+                        params={{ identityId: usage.identityId, orgId: organizationId }}
+                      >
+                        {usage.identityName}
+                      </RowLink>
+                    </TableCell>
                     <TableCell className="text-muted">{usage.identityId}</TableCell>
                   </TableRow>
                 ))}
