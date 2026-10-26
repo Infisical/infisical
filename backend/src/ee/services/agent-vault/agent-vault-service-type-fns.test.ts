@@ -8,6 +8,7 @@ import {
   assertServiceFieldsSupported,
   buildServiceConfig,
   deriveMcpHostPattern,
+  dropReadBackServiceFields,
   findUnsupportedServiceFields,
   resolveServiceHostPattern
 } from "./agent-vault-service-type-fns";
@@ -140,6 +141,40 @@ describe("fields a type does not take", () => {
 
   test("fields left out are not refused", () => {
     expect(findUnsupportedServiceFields(mcp, { hostPattern: undefined, substitutions: undefined })).toEqual([]);
+  });
+});
+
+describe("fields read back unchanged on an update", () => {
+  test("the other type's empty values and an MCP service's derived host pattern count as not sent", () => {
+    expect(
+      dropReadBackServiceFields(
+        mcp,
+        { hostPattern: "mcp.linear.app", allowedMethods: null, allowedPathPrefixes: null, substitutions: [] },
+        "mcp.linear.app"
+      )
+    ).toEqual({
+      hostPattern: undefined,
+      allowedMethods: undefined,
+      allowedPathPrefixes: undefined,
+      substitutions: undefined
+    });
+    expect(dropReadBackServiceFields(http, { serverUrl: null, transport: null }, "api.example.com")).toEqual({
+      serverUrl: undefined,
+      transport: undefined
+    });
+  });
+
+  test("a real value for a field the type doesn't take is kept, so it is still refused", () => {
+    expect(
+      dropReadBackServiceFields(mcp, { hostPattern: "other.example.com", substitutions: [{}] }, "mcp.linear.app")
+    ).toEqual({ hostPattern: "other.example.com", substitutions: [{}] });
+  });
+
+  test("a field the type does take keeps its empty value, which clears it", () => {
+    expect(dropReadBackServiceFields(http, { allowedMethods: null, substitutions: [] }, "api.example.com")).toEqual({
+      allowedMethods: null,
+      substitutions: []
+    });
   });
 });
 

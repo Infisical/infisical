@@ -20,9 +20,10 @@ export type TAgentVaultOauthCredentialSummary = {
   issuer: string;
   grantedScopes: string[];
   requiredScopes: string[];
-  expiresAt: string | null;
-  authorizedAt: string | null;
-  lastError: string | null;
+  // Left out for Agent Vault members.
+  expiresAt?: string | null;
+  authorizedAt?: string | null;
+  lastError?: string | null;
 };
 
 export type TAgentVaultCredentialSummary =
@@ -317,6 +318,8 @@ export type TCreateAgentVaultServiceDTO =
 export type TUpdateAgentVaultServiceDTO = {
   accessBundleId: string;
   serviceId: string;
+  // Must match the service's type, which never changes.
+  type: AgentVaultServiceType;
   name?: string;
   hostPattern?: string;
   allowedMethods?: AgentVaultHttpMethod[] | null;
@@ -341,6 +344,7 @@ export type TCreateAgentVaultOauthAuthorizationDTO = {
   serviceId?: string;
   clientId?: string;
   clientSecret?: string;
+  registration?: "dynamic";
 };
 
 export type TCreateAgentVaultOauthAuthorizationResponse = {
@@ -348,13 +352,9 @@ export type TCreateAgentVaultOauthAuthorizationResponse = {
   // False when the server answered but advertises no OAuth, which usually means a wrong URL.
   oauthAdvertised: boolean;
   redirectUri: string;
-  // Why the server's registration endpoint refused Infisical; null when it simply has none.
-  registrationError: string | null;
   authorization: {
     id: string;
-    status: AgentVaultOauthAuthorizationStatus;
     authorizeUrl: string;
-    scopes: string[];
   } | null;
 };
 

@@ -106,7 +106,7 @@ const ScopeValues = ({ scopes, className }: { scopes: string[]; className?: stri
           type="button"
           variant="link"
           size="sm"
-          className="ml-1.5 align-baseline text-xs text-muted hover:text-foreground"
+          className="ml-1.5 align-baseline text-xs"
           onClick={() => setIsExpanded(true)}
         >
           +{hidden} more
@@ -142,6 +142,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
     setValue,
     setError,
     clearErrors,
+    getValues,
     formState: { errors }
   } = useFormContext<TServiceForm>();
   const [
@@ -167,7 +168,11 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
   const clientIdInputId = useId();
   const clientSecretInputId = useId();
   const redirectUriInputId = useId();
-  const [isUsingOwnApp, setIsUsingOwnApp] = useState(false);
+  // The client fields keep their values across remounts (Back, or Bearer then OAuth), and the schema checks them.
+  const [isUsingOwnApp, setIsUsingOwnApp] = useState(() =>
+    Boolean(getValues("oauthClientId") || getValues("oauthClientSecret"))
+  );
+  const [isAutomaticSetupChosen, setIsAutomaticSetupChosen] = useState(false);
 
   const trimmedUrl = serverUrl.trim();
   const host = hostOf(trimmedUrl);
@@ -207,6 +212,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
 
   const switchToAutomaticSetup = () => {
     setIsUsingOwnApp(false);
+    setIsAutomaticSetupChosen(true);
     setValue("oauthClientId", "");
     setValue("oauthClientSecret", "");
   };
@@ -235,7 +241,11 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
       accessBundleId,
       serverUrl: trimmedUrl,
       ...(stored && service ? { serviceId: service.id } : {}),
-      ...(wantsOwnApp ? { clientId: clientId.trim(), clientSecret: clientSecret || undefined } : {})
+      ...(wantsOwnApp
+        ? { clientId: clientId.trim(), clientSecret: clientSecret || undefined }
+        : {}),
+      // Without it, reauthorizing a service that uses its own OAuth app signs in with that app again.
+      ...(!wantsOwnApp && isAutomaticSetupChosen ? { registration: "dynamic" as const } : {})
     });
   };
 
@@ -247,7 +257,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
     state.status === "failed" ||
     (stored && stored.status !== AgentVaultOauthStatus.Connected && !isNewlyAuthorized);
 
-  let authorizeLabel = `Authorize with ${host}`;
+  let authorizeLabel = "Authorize";
   if (state.status === "failed") authorizeLabel = "Try Again";
   else if (hasAuthorization) authorizeLabel = "Reauthorize";
 
@@ -404,9 +414,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
                       />
                     </InputGroupAddon>
                   </InputGroup>
-                  <FieldDescription>
-                    Add this as a redirect URI in your OAuth app on {host}.
-                  </FieldDescription>
+                  <FieldDescription>Add this as a redirect URI in your OAuth app.</FieldDescription>
                 </FieldContent>
               </Field>
               <div className="flex flex-col gap-4 md:flex-row md:gap-3">
@@ -449,7 +457,6 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
                 type="button"
                 variant="link"
                 size="sm"
-                className="text-muted hover:text-foreground"
                 onClick={isUsingOwnApp ? switchToAutomaticSetup : () => setIsUsingOwnApp(true)}
               >
                 {isUsingOwnApp ? "Use automatic setup" : "Use your own OAuth app"}
@@ -464,7 +471,6 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
               type="button"
               variant="link"
               size="sm"
-              className="text-muted hover:text-foreground"
               onClick={() => {
                 setValue("oauthAuthorizationRejection", "");
                 clearErrors("oauthAuthorizationId");

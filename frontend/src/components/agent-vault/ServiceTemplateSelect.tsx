@@ -3,11 +3,13 @@ import { GlobeIcon, PlusIcon, SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
-  Button,
   CardTitle,
   InputGroup,
   InputGroupAddon,
-  InputGroupInput
+  InputGroupInput,
+  Tabs,
+  TabsList,
+  TabsTrigger
 } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import {
@@ -30,19 +32,15 @@ const MCP_SECTION_DESCRIPTION =
 const HTTP_SECTION_DESCRIPTION =
   "Web APIs your agent calls directly. The proxy attaches the credential to requests for their hosts.";
 
-// Each count includes the type's Custom card, so it matches the cards the filter shows.
-const TYPE_FILTERS: { value: TypeFilter; label: string; count: number }[] = [
-  {
-    value: TypeFilter.All,
-    label: "All Types",
-    count: AGENT_VAULT_TEMPLATES.length + AGENT_VAULT_MCP_TEMPLATES.length + 2
-  },
-  { value: TypeFilter.Http, label: "HTTP APIs", count: AGENT_VAULT_TEMPLATES.length + 1 },
-  { value: TypeFilter.Mcp, label: "MCP Servers", count: AGENT_VAULT_MCP_TEMPLATES.length + 1 }
+const TYPE_FILTERS: { value: TypeFilter; label: string }[] = [
+  { value: TypeFilter.All, label: "All Types" },
+  { value: TypeFilter.Mcp, label: "MCP Servers" },
+  { value: TypeFilter.Http, label: "HTTP APIs" }
 ];
 
+// MCP cards sit under the "MCP Servers" heading, so a tag would only repeat it.
 const templateTag = (template: AgentVaultTemplate) =>
-  template.serviceType === AgentVaultServiceType.Mcp ? "MCP Server" : template.category;
+  template.serviceType === AgentVaultServiceType.Mcp ? undefined : template.category;
 
 const SelectableCard = ({
   media,
@@ -161,16 +159,15 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
     const term = search.trim().toLowerCase();
     if (!term) return null;
 
-    const candidates: AgentVaultTemplate[] = [
-      ...(showsMcp ? AGENT_VAULT_MCP_TEMPLATES : []),
-      ...(showsHttp ? AGENT_VAULT_TEMPLATES : [])
-    ];
-    return candidates.filter((template) =>
-      [template.name, templateTag(template), template.key, ...(template.aliases ?? [])].some(
+    const matches = (template: AgentVaultTemplate) =>
+      [template.name, template.key, templateTag(template) ?? "", ...(template.aliases ?? [])].some(
         (value) => value.toLowerCase().includes(term)
-      )
-    );
-  }, [search, showsHttp, showsMcp]);
+      );
+    return {
+      mcp: AGENT_VAULT_MCP_TEMPLATES.filter(matches),
+      http: AGENT_VAULT_TEMPLATES.filter(matches)
+    };
+  }, [search]);
 
   const popular = AGENT_VAULT_TEMPLATES.filter((template) =>
     POPULAR_AGENT_VAULT_TEMPLATES.includes(template.key)
@@ -180,7 +177,7 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
 
   const customHttpCard = (
     <CustomCard
-      name="Custom"
+      name="Custom HTTP API"
       description="Configure the hosts yourself."
       onSelect={() => onSelect(null, AgentVaultServiceType.Http)}
     />
@@ -191,6 +188,41 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
       description="Connect any remote MCP server by its URL."
       onSelect={() => onSelect(null, AgentVaultServiceType.Mcp)}
     />
+  );
+
+  // Each section keeps its custom card even when nothing of its type matches, so a custom service is always one
+  // click away.
+  const renderSearch = ({
+    mcp,
+    http
+  }: {
+    mcp: AgentVaultTemplate[];
+    http: AgentVaultTemplate[];
+  }) => (
+    <>
+      {showsMcp && (
+        <div>
+          <SectionHeader title="MCP Servers" description={MCP_SECTION_DESCRIPTION} />
+          <Grid>
+            {customMcpCard}
+            {mcp.map((template) => (
+              <TemplateCard key={template.key} template={template} onSelect={select} />
+            ))}
+          </Grid>
+        </div>
+      )}
+      {showsHttp && (
+        <div>
+          <SectionHeader title="HTTP APIs" description={HTTP_SECTION_DESCRIPTION} />
+          <Grid>
+            {customHttpCard}
+            {http.map((template) => (
+              <TemplateCard key={template.key} template={template} onSelect={select} />
+            ))}
+          </Grid>
+        </div>
+      )}
+    </>
   );
 
   const renderBrowse = () => (
@@ -241,29 +273,21 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
 
   return (
     <div className="flex min-h-0 flex-1">
-      <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
-        <p className="mb-3 text-[11px] font-medium tracking-wider text-muted uppercase">
-          Service Types
-        </p>
-        <div role="group" aria-label="Service types" className="flex flex-col gap-0.5">
-          {TYPE_FILTERS.map((filter) => {
-            const isActive = filter.value === typeFilter;
-            return (
-              <Button
-                key={filter.value}
-                type="button"
-                variant={isActive ? "outline" : "ghost"}
-                isFullWidth
-                aria-pressed={isActive}
-                onClick={() => setTypeFilter(filter.value)}
-                className="justify-between"
-              >
+      <aside className="flex w-54 shrink-0 flex-col border-r border-border px-5 py-6">
+        <SectionLabel>Service Types</SectionLabel>
+        <Tabs
+          orientation="vertical"
+          value={typeFilter}
+          onValueChange={(value) => setTypeFilter(value as TypeFilter)}
+        >
+          <TabsList variant="av" aria-label="Service types">
+            {TYPE_FILTERS.map((filter) => (
+              <TabsTrigger key={filter.value} value={filter.value}>
                 {filter.label}
-                <span className="text-xs text-muted tabular-nums">{filter.count}</span>
-              </Button>
-            );
-          })}
-        </div>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
@@ -279,17 +303,7 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
           />
         </InputGroup>
 
-        {filtered ? (
-          <Grid>
-            {showsMcp && customMcpCard}
-            {showsHttp && customHttpCard}
-            {filtered.map((template) => (
-              <TemplateCard key={template.key} template={template} onSelect={select} />
-            ))}
-          </Grid>
-        ) : (
-          renderBrowse()
-        )}
+        {filtered ? renderSearch(filtered) : renderBrowse()}
       </div>
     </div>
   );

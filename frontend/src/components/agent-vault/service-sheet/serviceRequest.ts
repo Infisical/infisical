@@ -135,12 +135,14 @@ export const buildUpdateServiceRequest = (
     ? {
         accessBundleId,
         serviceId,
+        type: AgentVaultServiceType.Mcp,
         ...buildMcpFields(data),
         ...withCredential(buildMcpCredentialPatch(data))
       }
     : {
         accessBundleId,
         serviceId,
+        type: AgentVaultServiceType.Http,
         ...buildHttpFields(data),
         credential: buildHttpCredentialPatch(data)
       };

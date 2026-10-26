@@ -8,6 +8,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 
 import {
@@ -349,6 +350,10 @@ const oauthConfig = (overrides: Partial<TAgentVaultOauthConfig> = {}): TAgentVau
   ...overrides
 });
 
+// The start response carries only the authorize URL; what was asked for is on the stored record.
+const storedAuthorization = (env: ReturnType<typeof setup>, id: string) =>
+  JSON.parse(env.store.get(`agent-vault-oauth-authorization:${id}`)!) as TAgentVaultOauthAuthorization;
+
 describe("starting an authorization", () => {
   test("discovers, registers a client, and returns an authorize URL with PKCE S256, resource and state", async () => {
     const env = setup();
@@ -363,8 +368,11 @@ describe("starting an authorization", () => {
     expect(url.searchParams.get("resource")).toBe(SERVER_URL);
     expect(url.searchParams.get("redirect_uri")).toBe(REDIRECT_URI);
     expect(url.searchParams.get("state")!.startsWith(`${authorization!.id}.`)).toBe(true);
-    expect(authorization!.scopes).toEqual(["read", "write"]);
-    expect(authorization!.status).toBe(AgentVaultOauthAuthorizationStatus.Pending);
+    expect(url.searchParams.get("scope")).toBe("read write");
+    expect(storedAuthorization(env, authorization!.id)).toMatchObject({
+      requestedScopes: ["read", "write"],
+      status: AgentVaultOauthAuthorizationStatus.Pending
+    });
     expect(env.registrations).toHaveLength(1);
 
     // The PKCE verifier is sealed in Redis, never stored in plaintext.
@@ -373,6 +381,7 @@ describe("starting an authorization", () => {
   });
 
   test("a server without a registration endpoint asks for a client", async () => {
+    vi.mocked(logger.warn).mockClear();
     const env = setup({
       metadata: {
         ...LINEAR_JSON,
@@ -386,12 +395,13 @@ describe("starting an authorization", () => {
       registrationRequired: true,
       oauthAdvertised: true,
       redirectUri: REDIRECT_URI,
-      registrationError: null,
       authorization: null
     });
+    expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining("client registration failed"));
   });
 
-  test("a registration endpoint that refuses asks for a client, with the reason naming the host only", async () => {
+  test("a registration endpoint that refuses asks for a client, and the reason is logged naming the host only", async () => {
+    vi.mocked(logger.warn).mockClear();
     const env = setup();
     env.onRegister(() => json(400, { error: "invalid_redirect_uri", error_description: "Redirect URI not allowed" }));
 
@@ -400,27 +410,25 @@ describe("starting an authorization", () => {
       registrationRequired: true,
       oauthAdvertised: true,
       redirectUri: REDIRECT_URI,
-      registrationError:
-        "Couldn't set up OAuth for 'mcp.linear.app': its registration endpoint refused to register Infisical as a client (Redirect URI not allowed). Enter the client ID and secret of your own OAuth app instead.",
       authorization: null
     });
-    expect(result.registrationError).not.toContain("/mcp");
+    expect(logger.warn).toHaveBeenCalledWith(
+      `agentVaultOauth: client registration failed [projectId=${PROJECT_ID}] [server=mcp.linear.app] [error=its registration endpoint refused to register Infisical as a client (Redirect URI not allowed).]`
+    );
   });
 
-  test("a registration endpoint that can't be reached says so without the error text", async () => {
+  test("a registration endpoint that can't be reached is logged without the error text", async () => {
+    vi.mocked(logger.warn).mockClear();
     const env = setup();
     env.onRegister(() => {
       throw new Error("connect ECONNREFUSED https://mcp.linear.app/register?token=abc");
     });
     const result = await createAuthorization(env);
     expect(result.registrationRequired).toBe(true);
-    expect(result.registrationError).toBe(
-      "Couldn't set up OAuth for 'mcp.linear.app': its registration endpoint couldn't be reached. Enter the client ID and secret of your own OAuth app instead."
+    expect(logger.warn).toHaveBeenCalledWith(
+      `agentVaultOauth: client registration failed [projectId=${PROJECT_ID}] [server=mcp.linear.app] [error=its registration endpoint couldn't be reached.]`
     );
-  });
-
-  test("a successful start has no registration error", async () => {
-    expect((await createAuthorization(setup())).registrationError).toBeNull();
+    expect(vi.mocked(logger.warn).mock.calls.flat().join()).not.toContain("ECONNREFUSED");
   });
 
   test("an admin-entered client is used as is, with no registration", async () => {
@@ -462,6 +470,36 @@ describe("starting an authorization", () => {
     expect(clientIdOf(authorization!.authorizeUrl)).toBe("old-client");
   });
 
+  test("switching back to automatic setup registers a fresh client instead of the one entered by hand", async () => {
+    const env = setup();
+    storeOauthService(env, { registration: AgentVaultOauthRegistration.Manual });
+    const { authorization } = await createAuthorization(env, {
+      serviceId: SERVICE_ID,
+      registration: AgentVaultOauthRegistration.Dynamic
+    });
+    expect(env.registrations).toHaveLength(1);
+    expect(clientIdOf(authorization!.authorizeUrl)).toBe("registered-client");
+    expect(storedAuthorization(env, authorization!.id).requestedScopes).toEqual(["admin"]);
+  });
+
+  test("switching back to automatic setup never falls back to the client entered by hand", async () => {
+    const env = setup();
+    env.onRegister(() => json(400, { error: "invalid_client_metadata" }));
+    storeOauthService(env, { registration: AgentVaultOauthRegistration.Manual });
+    const result = await createAuthorization(env, {
+      serviceId: SERVICE_ID,
+      registration: AgentVaultOauthRegistration.Dynamic
+    });
+    expect(result.registrationRequired).toBe(true);
+    expect(result.authorization).toBeNull();
+  });
+
+  test("a client ID together with registration 'dynamic' is refused", async () => {
+    await expect(
+      createAuthorization(setup(), { clientId: "my-app", registration: AgentVaultOauthRegistration.Dynamic })
+    ).rejects.toThrow(/not both/);
+  });
+
   test("reauthorizing falls back to the stored client when a fresh one can't be registered", async () => {
     const env = setup();
     env.onRegister(() => json(400, { error: "invalid_client_metadata" }));
@@ -489,14 +527,14 @@ describe("starting an authorization", () => {
     expect((await createAuthorization(env, { serviceId: SERVICE_ID })).registrationRequired).toBe(true);
 
     const { authorization } = await createAuthorization(env, { serviceId: SERVICE_ID, clientId: "my-app" });
-    expect(authorization!.scopes).toEqual(["read", "write"]);
+    expect(storedAuthorization(env, authorization!.id).requestedScopes).toEqual(["read", "write"]);
   });
 
   test("reauthorizing at the same issuer asks again for the scopes the service holds and still needs", async () => {
     const env = setup();
     storeOauthService(env, { requiredScopes: ["write"] });
     const { authorization } = await createAuthorization(env, { serviceId: SERVICE_ID });
-    expect(authorization!.scopes).toEqual(["admin", "write"]);
+    expect(storedAuthorization(env, authorization!.id).requestedScopes).toEqual(["admin", "write"]);
   });
 
   test("a client secret without a client ID is refused", async () => {
@@ -1044,6 +1082,7 @@ describe("refreshing a service's token", () => {
     { error: "invalid_client", status: 401, why: "the server dropped the registered client" },
     { error: "unauthorized_client", status: 400, why: "the client may no longer use this grant" },
     { error: "bad_refresh_token", status: 200, why: "GitHub, with a 200" },
+    { error: "incorrect_client_credentials", status: 200, why: "GitHub's invalid_client, with a 200" },
     { error: "invalid_refresh_token", status: 200, why: "Slack, with ok: false" },
     { error: "token_revoked", status: 200, why: "Slack" },
     { error: "token_expired", status: 200, why: "Slack" }

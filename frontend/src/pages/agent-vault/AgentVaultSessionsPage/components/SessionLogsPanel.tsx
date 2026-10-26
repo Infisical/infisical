@@ -350,7 +350,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
     )} and ${format(range.endDate, "MMM d, yyyy HH:mm")}.`;
   } else if (isFiltered) {
     noRecordsTitle = "No requests match these filters";
-    noRecordsDescription = "Try a different search term, type, outcome or time range.";
+    noRecordsDescription = "Try a different search term, outcome or time range.";
   } else if (liveState === "live") {
     noRecordsLiveState = liveState;
     noRecordsTitle = "Waiting for requests";

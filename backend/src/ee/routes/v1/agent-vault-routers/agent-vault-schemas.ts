@@ -103,47 +103,48 @@ export const AgentVaultCredentialInputSchema = credentialInputSchema({ mcp: fals
 export const AgentVaultMcpCredentialInputSchema = credentialInputSchema({ mcp: true });
 
 // Not derived from the create schema: its `.default()`s would turn an omitted field into a reset on a PATCH.
-export const AgentVaultCredentialUpdateSchema = z
-  .discriminatedUnion("type", [
-    z
-      .object({
-        type: z.literal(AgentVaultCredentialType.Bearer),
-        headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
-        headerPrefix: agentVaultHeaderPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.headerPrefix),
-        value: acceptsVariableReferences(
-          z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        )
-          .optional()
-          .describe(AGENT_VAULT.SERVICE.updateValue)
-      })
-      .describe(JSON.stringify({ title: "Bearer" })),
-    z
-      .object({
-        type: z.literal(AgentVaultCredentialType.Basic),
-        username: acceptsVariableReferences(
-          z.string().trim().max(256).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        )
-          .optional()
-          .describe(AGENT_VAULT.SERVICE.updateUsername),
-        password: acceptsVariableReferences(
-          z.string().max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-        )
-          .optional()
-          .describe(AGENT_VAULT.SERVICE.updatePassword)
-      })
-      .describe(JSON.stringify({ title: "Basic Auth" })),
-    z
-      .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
-      .describe(JSON.stringify({ title: "Pass-through" })),
-    z
-      .object({
-        type: z.literal(AgentVaultCredentialType.OAuth),
-        authorizationId: z.string().uuid().describe(AGENT_VAULT.SERVICE.updateAuthorizationId)
-      })
-      // Only a user in the UI can complete an authorization, so the API docs don't offer it.
-      .describe(JSON.stringify({ title: "OAuth", "x-hidden": true }))
-  ])
-  .superRefine(basicHalvesAreNotBothEmpty);
+const credentialUpdateSchema = ({ mcp }: { mcp: boolean }) =>
+  z
+    .discriminatedUnion("type", [
+      z
+        .object({
+          type: z.literal(AgentVaultCredentialType.Bearer),
+          headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
+          headerPrefix: agentVaultHeaderPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.headerPrefix),
+          value: acceptsVariableReferences(
+            z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+          )
+            .optional()
+            .describe(AGENT_VAULT.SERVICE.updateValue)
+        })
+        .describe(docsTitle("Bearer")),
+      z
+        .object({
+          type: z.literal(AgentVaultCredentialType.Basic),
+          username: acceptsVariableReferences(
+            z.string().trim().max(256).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+          )
+            .optional()
+            .describe(AGENT_VAULT.SERVICE.updateUsername),
+          password: acceptsVariableReferences(
+            z.string().max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+          )
+            .optional()
+            .describe(AGENT_VAULT.SERVICE.updatePassword)
+        })
+        .describe(docsTitle("Basic Auth", mcp)),
+      z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) }).describe(docsTitle("Pass-through", mcp)),
+      z
+        .object({
+          type: z.literal(AgentVaultCredentialType.OAuth),
+          authorizationId: z.string().uuid().describe(AGENT_VAULT.SERVICE.updateAuthorizationId)
+        })
+        .describe(docsTitle("OAuth", true))
+    ])
+    .superRefine(basicHalvesAreNotBothEmpty);
+
+export const AgentVaultCredentialUpdateSchema = credentialUpdateSchema({ mcp: false });
+export const AgentVaultMcpCredentialUpdateSchema = credentialUpdateSchema({ mcp: true });
 
 export const AgentVaultCredentialSummarySchema = z.discriminatedUnion("type", [
   z
@@ -164,9 +165,9 @@ export const AgentVaultCredentialSummarySchema = z.discriminatedUnion("type", [
       issuer: z.string().describe(AGENT_VAULT.SERVICE.oauthIssuer),
       grantedScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthGrantedScopes),
       requiredScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthRequiredScopes),
-      expiresAt: z.string().nullable().describe(AGENT_VAULT.SERVICE.oauthExpiresAt),
-      authorizedAt: z.string().nullable().describe(AGENT_VAULT.SERVICE.oauthAuthorizedAt),
-      lastError: z.string().nullable().describe(AGENT_VAULT.SERVICE.oauthLastError)
+      expiresAt: z.string().nullable().optional().describe(AGENT_VAULT.SERVICE.oauthExpiresAt),
+      authorizedAt: z.string().nullable().optional().describe(AGENT_VAULT.SERVICE.oauthAuthorizedAt),
+      lastError: z.string().nullable().optional().describe(AGENT_VAULT.SERVICE.oauthLastError)
     })
     .describe(JSON.stringify({ title: "OAuth" }))
 ]);
@@ -241,6 +242,45 @@ export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
     })
     .describe(JSON.stringify({ title: "MCP service" }))
 ]);
+
+// Every field but `type` is optional, and `type` must match the stored one. Each option also takes the fields
+// GET returns for the other type (null, empty, or an MCP service's derived host pattern), so a client can send back
+// what it read; anything else in them is refused by name, as on create.
+export const AgentVaultUpdateServiceBodySchema = z
+  .discriminatedUnion("type", [
+    z
+      .object({
+        type: z.literal(AgentVaultServiceType.Http).describe(AGENT_VAULT.SERVICE.updateType),
+        name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.SERVICE.name),
+        hostPattern: AgentVaultHostPatternSchema.optional(),
+        allowedMethods: AgentVaultAllowedMethodsSchema.optional(),
+        allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional(),
+        credential: AgentVaultCredentialUpdateSchema.optional(),
+        customHeaders: AgentVaultCustomHeadersUpdateSchema.optional(),
+        substitutions: AgentVaultSubstitutionsUpdateSchema.optional(),
+        serverUrl: AgentVaultServerUrlSchema.nullable().optional().describe(openApiHidden()),
+        transport: AgentVaultMcpTransportSchema.nullable().optional().describe(openApiHidden())
+      })
+      .describe(JSON.stringify({ title: "HTTP service" })),
+    z
+      .object({
+        type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.updateType),
+        name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.SERVICE.name),
+        serverUrl: AgentVaultServerUrlSchema.optional(),
+        transport: AgentVaultMcpTransportSchema.optional(),
+        credential: AgentVaultMcpCredentialUpdateSchema.optional().describe(AGENT_VAULT.SERVICE.mcpCredential),
+        customHeaders: AgentVaultCustomHeadersUpdateSchema.optional(),
+        hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
+        allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
+        allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional().describe(openApiHidden()),
+        substitutions: AgentVaultSubstitutionsUpdateSchema.optional().describe(openApiHidden())
+      })
+      .describe(JSON.stringify({ title: "MCP service" }))
+  ])
+  .refine(
+    ({ type, ...fields }) => Object.values(fields).some((value) => value !== undefined),
+    "Provide at least one field besides 'type' to update"
+  );
 
 const variableReferenceBase = {
   variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),

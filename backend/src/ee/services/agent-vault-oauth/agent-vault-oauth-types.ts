@@ -115,6 +115,7 @@ export type TCreateAuthorizationDTO = {
   serviceId?: string;
   clientId?: string;
   clientSecret?: string;
+  registration?: AgentVaultOauthRegistration.Dynamic;
 };
 
 export type TCompleteAuthorizationDTO = {

@@ -6,6 +6,7 @@ import {
   MAX_CLIENT_SECRET_LENGTH
 } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-client-fns";
 import { OAUTH_VSCHAR_PATTERN } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-token-fns";
+import { AgentVaultOauthRegistration } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -60,20 +61,18 @@ export const registerAgentVaultOauthRouter = async (server: FastifyZodProvider) 
           .pipe(printable(MAX_CLIENT_SECRET_LENGTH))
           .refine(noVariableReference, VARIABLES_NOT_SUPPORTED_MESSAGE)
           .optional()
-          .describe(AGENT_VAULT.OAUTH.clientSecret)
+          .describe(AGENT_VAULT.OAUTH.clientSecret),
+        registration: z.literal(AgentVaultOauthRegistration.Dynamic).optional().describe(AGENT_VAULT.OAUTH.registration)
       }),
       response: {
         200: z.object({
           registrationRequired: z.boolean().describe(AGENT_VAULT.OAUTH.registrationRequired),
           oauthAdvertised: z.boolean().describe(AGENT_VAULT.OAUTH.oauthAdvertised),
           redirectUri: z.string().describe(AGENT_VAULT.OAUTH.redirectUri),
-          registrationError: z.string().nullable().describe(AGENT_VAULT.OAUTH.registrationError),
           authorization: z
             .object({
               id: z.string().uuid().describe(AGENT_VAULT.OAUTH.authorizationId),
-              status: z.nativeEnum(AgentVaultOauthAuthorizationStatus).describe(AGENT_VAULT.OAUTH.status),
-              authorizeUrl: z.string().describe(AGENT_VAULT.OAUTH.authorizeUrl),
-              scopes: z.string().array().describe(AGENT_VAULT.OAUTH.scopes)
+              authorizeUrl: z.string().describe(AGENT_VAULT.OAUTH.authorizeUrl)
             })
             .nullable()
             .describe(AGENT_VAULT.OAUTH.authorization)

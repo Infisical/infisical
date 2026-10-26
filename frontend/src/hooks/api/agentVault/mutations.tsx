@@ -98,7 +98,7 @@ export const useDeleteAgentVaultAccessBundle = () => {
 export const SERVICE_SAVE_HANDLED_ERROR_CODES: string[] = [
   ApiErrorTypes.BadRequestError,
   ApiErrorTypes.ConflictError,
-  "NotFound"
+  ApiErrorTypes.NotFoundError
 ];
 
 export const useCreateAgentVaultService = () => {
@@ -479,7 +479,7 @@ export const useCreateAgentVaultOauthAuthorization = () =>
 export const useCompleteAgentVaultOauthAuthorization = () =>
   useMutation({
     // The callback page shows every outcome itself.
-    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError, "NotFound"] },
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError, ApiErrorTypes.NotFoundError] },
     mutationFn: async ({
       authorizationId,
       ...params

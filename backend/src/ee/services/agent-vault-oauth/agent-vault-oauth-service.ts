@@ -32,12 +32,7 @@ import {
   registerOauthClient,
   TOauthClient
 } from "./agent-vault-oauth-client-fns";
-import {
-  describeServer,
-  discoverOauthServer,
-  oauthSetupError,
-  OFFLINE_ACCESS_SCOPE
-} from "./agent-vault-oauth-discovery-fns";
+import { describeServer, discoverOauthServer, OFFLINE_ACCESS_SCOPE } from "./agent-vault-oauth-discovery-fns";
 import { agentVaultOauthHttpClient, TOauthHttpClient } from "./agent-vault-oauth-http-fns";
 import {
   buildAuthorizeUrl,
@@ -137,7 +132,7 @@ const assertAuthorizationServerUrl = (authorizedServerUrl: string, serviceServer
 };
 
 export const OAUTH_SERVER_URL_NEEDS_AUTHORIZATION_MESSAGE =
-  "Changing an OAuth service's server URL needs a new authorization, since its tokens belong to the old server. Authorize the service for the new URL and send its 'authorizationId'.";
+  "This service uses OAuth, so its server URL can only be changed by reauthorizing it in the Infisical UI.";
 
 const AGENT_VAULT_REAUTHORIZED_DURING_SAVE_MESSAGE =
   "This service was reauthorized by another save while this one was in progress, and that newer connection was kept. Reload the service, then authorize again if you still want to replace it.";
@@ -281,7 +276,8 @@ export const agentVaultOauthServiceFactory = ({
     serverUrl,
     serviceId,
     clientId,
-    clientSecret
+    clientSecret,
+    registration: requestedRegistration
   }: TCreateAuthorizationDTO) => {
     const { permission, accessBundleIds } = await getAgentVaultReachability(
       { permissionService, membershipDAL },
@@ -303,6 +299,11 @@ export const agentVaultOauthServiceFactory = ({
     }
     if (clientSecret && !clientId) {
       throw new BadRequestError({ message: "A client secret needs the client ID it belongs to." });
+    }
+    if (clientId && requestedRegistration === AgentVaultOauthRegistration.Dynamic) {
+      throw new BadRequestError({
+        message: "Send either the client ID of your own OAuth app or registration 'dynamic', not both."
+      });
     }
 
     let stored: { config: TAgentVaultOauthConfig; clientSecret?: string } | null = null;
@@ -326,10 +327,15 @@ export const agentVaultOauthServiceFactory = ({
 
     // A client is only ever used with the issuer it was registered at, and so are the scopes it was granted.
     const sameIssuerStored = stored && stored.config.issuer === discovery.issuer ? stored : null;
+    // Switching a service from its own OAuth app back to automatic setup must not sign in with that app again.
+    const reusableStored =
+      requestedRegistration === AgentVaultOauthRegistration.Dynamic &&
+      sameIssuerStored?.config.registration === AgentVaultOauthRegistration.Manual
+        ? null
+        : sameIssuerStored;
 
     let client: TOauthClient | null = null;
     let registration: AgentVaultOauthRegistration | null = null;
-    let registrationError: string | null = null;
     if (clientId) {
       client = manualOauthClient({
         clientId,
@@ -338,7 +344,7 @@ export const agentVaultOauthServiceFactory = ({
       });
       registration = AgentVaultOauthRegistration.Manual;
     } else if (
-      sameIssuerStored?.config.registration !== AgentVaultOauthRegistration.Manual &&
+      reusableStored?.config.registration !== AgentVaultOauthRegistration.Manual &&
       discovery.registrationEndpoint
     ) {
       // Reauthorizing registers a fresh client rather than reusing the stored one, which the server may have dropped
@@ -360,27 +366,27 @@ export const agentVaultOauthServiceFactory = ({
         if (!(error instanceof OauthRegistrationError)) throw error;
         // A guessed /register that isn't there means the server has no registration, not that it is broken.
         // Either way the fix is the same, an admin-entered client, so the caller is asked for one.
-        registrationError = discovery.endpointsGuessed
-          ? null
-          : oauthSetupError(serverUrl, `${error.message} Enter the client ID and secret of your own OAuth app instead.`)
-              .message;
+        if (!discovery.endpointsGuessed) {
+          logger.warn(
+            `agentVaultOauth: client registration failed [projectId=${projectId}] [server=${describeServer(serverUrl)}] [error=${error.message}]`
+          );
+        }
       }
     }
     // The stored client is still worth trying when no fresh one could be registered.
-    if (!client && sameIssuerStored) {
+    if (!client && reusableStored) {
       client = {
-        clientId: sameIssuerStored.config.clientId,
-        clientSecret: sameIssuerStored.clientSecret,
-        tokenEndpointAuthMethod: sameIssuerStored.config.tokenEndpointAuthMethod
+        clientId: reusableStored.config.clientId,
+        clientSecret: reusableStored.clientSecret,
+        tokenEndpointAuthMethod: reusableStored.config.tokenEndpointAuthMethod
       };
-      registration = sameIssuerStored.config.registration;
+      registration = reusableStored.config.registration;
     }
     if (!client || !registration) {
       return {
         registrationRequired: true,
         oauthAdvertised: discovery.oauthAdvertised,
         redirectUri: callbackUri,
-        registrationError,
         authorization: null
       };
     }
@@ -435,10 +441,8 @@ export const agentVaultOauthServiceFactory = ({
       registrationRequired: false,
       oauthAdvertised: discovery.oauthAdvertised,
       redirectUri: callbackUri,
-      registrationError: null,
       authorization: {
         id,
-        status: record.status,
         authorizeUrl: buildAuthorizeUrl({
           authorizationEndpoint: record.authorizationEndpoint,
           clientId: client.clientId,
@@ -447,8 +451,7 @@ export const agentVaultOauthServiceFactory = ({
           state,
           resource: record.resource,
           scopes: requestedScopes
-        }),
-        scopes: requestedScopes
+        })
       }
     };
   };

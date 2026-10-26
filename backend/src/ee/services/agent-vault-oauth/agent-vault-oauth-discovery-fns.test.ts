@@ -1,5 +1,8 @@
 import { describe, expect, test, vi } from "vitest";
 
+import { BadRequestError } from "@app/lib/errors";
+import { PRIVATE_ADDRESS_REFUSED_MESSAGE } from "@app/lib/validator";
+
 import {
   authorizationServerMetadataUrls,
   checkIssuer,
@@ -505,6 +508,19 @@ describe("discovering an MCP server's authorization server", () => {
     const { http } = stubHttp({ probeThrows: true, getThrows: true, json: {} });
     await expect(discoverOauthServer(http, "https://mcp.typo.example.com/mcp")).rejects.toThrow(
       "Couldn't reach 'mcp.typo.example.com'. Check the server URL and that the server is online."
+    );
+  });
+
+  test("a server on a private network says so, since checking the URL or retrying won't help", async () => {
+    const { http } = stubHttp({ getThrows: true, json: {} });
+    const refused: TOauthHttpClient = {
+      ...http,
+      probe: async () => {
+        throw new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE });
+      }
+    };
+    await expect(discoverOauthServer(refused, "https://mcp.internal.example.com/mcp")).rejects.toThrow(
+      "Infisical can't reach 'mcp.internal.example.com' because it's on a private network. Use a bearer token for this service instead."
     );
   });
 

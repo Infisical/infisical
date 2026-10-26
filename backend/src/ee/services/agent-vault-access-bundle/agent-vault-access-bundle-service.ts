@@ -53,6 +53,7 @@ import {
   assertCredentialTypeSupported,
   assertServiceFieldsSupported,
   buildServiceConfig,
+  dropReadBackServiceFields,
   getAgentVaultServiceType,
   getServiceServerUrl,
   resolveServiceHostPattern,
@@ -468,7 +469,8 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       accessBundleId: service.accessBundleId,
       name: service.name,
       type: service.type as AgentVaultServiceType,
-      // Flat, like the create and update bodies, so a client can send back what it read. Null for an http service.
+      // Flat, like the create and update bodies, so a client can send back what it read (all but the credential, whose
+      // secret is never returned). Null for an http service.
       serverUrl: config.serverUrl ?? null,
       transport: config.transport ?? null,
       hostPattern: service.hostPattern,
@@ -749,7 +751,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       ProjectPermissionSub.AgentVaultAccessBundles
     );
     // Variables are admin only, so a member's services leave variableReferences out. An empty list would claim
-    // they use no variables.
+    // they use no variables. The OAuth sign-in state is the admin's account, so members don't get it either.
     const canReadVariables = permission.can(
       ProjectPermissionAgentVaultAccessBundleActions.Edit,
       ProjectPermissionSub.AgentVaultAccessBundles
@@ -775,7 +777,16 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
           substitutions.filter((substitution) => substitution.serviceId === service.id),
           variableReferences.filter((reference) => reference.serviceId === service.id)
         );
-        return canReadVariables ? projected : { ...projected, variableReferences: undefined };
+        if (canReadVariables) return projected;
+        const { credential } = projected;
+        return {
+          ...projected,
+          variableReferences: undefined,
+          credential:
+            credential.type === AgentVaultCredentialType.OAuth
+              ? { ...credential, expiresAt: undefined, authorizedAt: undefined, lastError: undefined }
+              : credential
+        };
       })
     };
   };
@@ -1088,14 +1099,14 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     serviceId,
     type,
     name,
-    hostPattern: requestedHostPattern,
-    serverUrl,
-    transport,
     credential,
-    allowedMethods,
-    allowedPathPrefixes,
     customHeaders,
-    substitutions,
+    hostPattern: sentHostPattern,
+    serverUrl: sentServerUrl,
+    transport: sentTransport,
+    allowedMethods: sentAllowedMethods,
+    allowedPathPrefixes: sentAllowedPathPrefixes,
+    substitutions: sentSubstitutions,
     ...rest
   }: TUpdateServiceDTO) => {
     const { bundle, permission } = await resolveReachableBundle({ ...rest, accessBundleId });
@@ -1108,12 +1119,27 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
     const service = await agentVaultServiceDAL.findByIdInAccessBundle({ id: serviceId, accessBundleId: bundle.id });
     if (!service) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found` });
 
-    if (type !== undefined) {
+    const serviceType = getAgentVaultServiceType(service.type);
+    if (type !== service.type) {
       throw new BadRequestError({
-        message: "A service's type can't be changed. Leave 'type' out, or create a new service of the other type."
+        message: `The service '${service.name}' is an ${serviceType.label} service, so send 'type': '${service.type}'. A service's type can't be changed; create a new service of the other type instead.`
       });
     }
-    const serviceType = getAgentVaultServiceType(service.type);
+    const sentFields = dropReadBackServiceFields(
+      serviceType,
+      {
+        hostPattern: sentHostPattern,
+        serverUrl: sentServerUrl,
+        transport: sentTransport,
+        allowedMethods: sentAllowedMethods,
+        allowedPathPrefixes: sentAllowedPathPrefixes,
+        substitutions: sentSubstitutions
+      },
+      service.hostPattern
+    );
+    const { hostPattern: requestedHostPattern, allowedMethods, allowedPathPrefixes, substitutions } = sentFields;
+    const serverUrl = sentFields.serverUrl ?? undefined;
+    const transport = sentFields.transport ?? undefined;
     assertServiceFieldsSupported(serviceType, {
       hostPattern: requestedHostPattern,
       allowedMethods,
@@ -1545,7 +1571,15 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
         result.updatedSubstitutions,
         result.variableReferences
       ),
-      accessBundleName: bundle.name
+      accessBundleName: bundle.name,
+      update: {
+        hostPattern: requestedHostPattern,
+        serverUrl,
+        transport,
+        allowedMethods,
+        allowedPathPrefixes,
+        substitutions
+      }
     };
   };
 

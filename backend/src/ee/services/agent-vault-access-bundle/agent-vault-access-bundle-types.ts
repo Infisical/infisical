@@ -29,9 +29,10 @@ export type TAgentVaultOauthCredentialSummary = {
   issuer: string;
   grantedScopes: string[];
   requiredScopes: string[];
-  expiresAt: string | null;
-  authorizedAt: string | null;
-  lastError: string | null;
+  // Left out for members: they describe the admin's sign-in, not the service's setup.
+  expiresAt?: string | null;
+  authorizedAt?: string | null;
+  lastError?: string | null;
 };
 
 export type TAgentVaultCredentialSummary =
@@ -109,12 +110,13 @@ export type TCreateServiceDTO = TAgentVaultProjectScoped & {
 export type TUpdateServiceDTO = TAgentVaultProjectScoped & {
   accessBundleId: string;
   serviceId: string;
-  // Only so the refusal can be a readable 400: a service's type never changes.
-  type?: AgentVaultServiceType;
+  // Must match the stored type, which never changes.
+  type: AgentVaultServiceType;
   name?: string;
   hostPattern?: string;
-  serverUrl?: string;
-  transport?: AgentVaultMcpTransport;
+  // Null only as an HTTP service's read-back value.
+  serverUrl?: string | null;
+  transport?: AgentVaultMcpTransport | null;
   allowedMethods?: AgentVaultHttpMethod[] | null;
   allowedPathPrefixes?: string[] | null;
   credential?: TAgentVaultCredentialUpdate;

@@ -2,6 +2,7 @@ import RE2 from "re2";
 
 import { BadRequestError } from "@app/lib/errors";
 import { logger, sanitizeUrlForLog } from "@app/lib/logger";
+import { PRIVATE_ADDRESS_REFUSED_MESSAGE } from "@app/lib/validator";
 
 import { TOauthHttpClient, TOauthHttpResponse } from "./agent-vault-oauth-http-fns";
 import { AgentVaultOauthCompatibility } from "./agent-vault-oauth-types";
@@ -235,6 +236,7 @@ export const selectScopes = ({
 const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOauthDiscovery> => {
   const compatibility = new Set<AgentVaultOauthCompatibility>();
   let answered = false;
+  let isPrivateAddress = false;
 
   // The probe and the well-known locations are asked at once; the challenge only says where to look first, and its
   // URL is asked as soon as the probe answers rather than after the well-known ones.
@@ -246,7 +248,8 @@ const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOau
       answered = true;
       return parseBearerChallenge(response.wwwAuthenticate);
     },
-    () => {
+    (err: unknown) => {
+      isPrivateAddress = err instanceof BadRequestError && err.message === PRIVATE_ADDRESS_REFUSED_MESSAGE;
       logger.info(`agentVaultOauth: MCP server probe failed [server=${describeServer(serverUrl)}]`);
       return null;
     }
@@ -269,7 +272,9 @@ const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOau
 
   if (!answered) {
     throw new BadRequestError({
-      message: `Couldn't reach '${describeServer(serverUrl)}'. Check the server URL and that the server is online.`
+      message: isPrivateAddress
+        ? `Infisical can't reach '${describeServer(serverUrl)}' because it's on a private network. Use a bearer token for this service instead.`
+        : `Couldn't reach '${describeServer(serverUrl)}'. Check the server URL and that the server is online.`
     });
   }
 

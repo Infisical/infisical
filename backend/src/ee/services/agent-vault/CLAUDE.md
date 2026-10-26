@@ -315,10 +315,18 @@ code exchange and refresh; the proxy only ever receives the access token.
   `expires_in` outside 1 second to 1 year counts as no expiry.
 - **Token requests are never retried by the HTTP client.** Codes are one-use and refresh tokens can rotate. Only
   the explicit `invalid_target` fallback retries them, inside the same request deadline.
+- **Known gap: scopes only grow.** Reauthorizing at the same issuer asks for every granted and required scope, so
+  a scope an agent's call reported (`missing-scopes`) sticks for good. There is no way to drop one requested scope
+  or reset to the server's defaults short of deleting the service; a follow-up should add both.
+- **Known gap: a Bearer token MCP service only gets the 401 rewrite.** The proxy turns its upstream 401 into a
+  502 so the agent doesn't start its own sign-in, but a `403 insufficient_scope` reaches the agent unchanged, as
+  for HTTP services, and an MCP client may start its own OAuth on it (the TypeScript SDK's `onInsufficientScope`
+  defaults to `reauthorize`).
 
 ## Session logs
 
-Metadata only (method, host, path, status, decision), never bodies, headers or the query string. The agent is
+Metadata only (method, host, path, status, decision). Bodies, headers and the query string are never stored;
+for an MCP service the proxy reads only the JSON-RPC method and tool name of each call from the body. The agent is
 hostile input: nothing it sends may erase or hide its own records, so the proxy logs every request it drops.
 
 - **Bytes go proxy to the customer's bucket to the browser, and S3 is the index.** Infisical stores nothing per
@@ -393,3 +401,10 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
 - The browser fetches session logs straight from S3, so `frontend/index.html`'s CSP `connect-src` must list
   every host the SDK presigns: `*.s3.<region>`, the path-style `s3.<region>` used for dotted bucket names, and
   both `s3-fips` forms. A region added to `AWSRegion` needs its hosts there too.
+
+## Follow-ups
+
+- **Docs screenshots predate the MCP UI.** Retake them once the Agent Vault UI redesign lands:
+  `access-bundle-services.png` (columns are now Type and Target, and it should show an MCP row),
+  `service-template-picker.png` (the service type sidebar, the MCP Servers section, **Custom HTTP API**), and
+  `session-logs-view.png` (the Request column, with a tool call and a `tools/list` row).

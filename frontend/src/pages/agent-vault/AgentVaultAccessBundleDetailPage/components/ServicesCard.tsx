@@ -112,7 +112,7 @@ const HostsCell = ({ hostPattern }: { hostPattern: string }) => {
 const TargetCell = ({ service }: { service: TAgentVaultService }) =>
   service.type === AgentVaultServiceType.Mcp ? (
     <span className="block max-w-72 truncate text-sm" title={service.serverUrl}>
-      {service.serverUrl}
+      {service.serverUrl.replace(/^https:\/\//i, "")}
     </span>
   ) : (
     <HostsCell hostPattern={service.hostPattern} />

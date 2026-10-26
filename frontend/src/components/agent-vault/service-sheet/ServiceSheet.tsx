@@ -686,7 +686,7 @@ export const ServiceSheet = ({
     await goNext();
   };
 
-  const customName = isMcp ? "Custom MCP Server" : "Custom";
+  const customName = isMcp ? "Custom MCP Server" : "Custom HTTP API";
 
   const stepDescription = (meta: (typeof SERVICE_STEPS)[number]) => {
     if (meta.step === ServiceStep.Template) return template?.name ?? customName;

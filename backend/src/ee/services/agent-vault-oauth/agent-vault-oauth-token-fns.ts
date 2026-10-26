@@ -10,6 +10,7 @@ import { PRIVATE_ADDRESS_REFUSED_MESSAGE } from "@app/lib/validator";
 import { AgentVaultCredentialType, AgentVaultOauthStatus } from "../agent-vault/agent-vault-enums";
 import {
   describeServer,
+  MAX_OAUTH_SCOPES,
   OFFLINE_ACCESS_SCOPE,
   splitScopes,
   stripTrailingSlash
@@ -165,6 +166,10 @@ export const parseGrantedScopes = (
   }
   return { scopes: splitScopes(scope), commaSeparated: false };
 };
+
+// A reauthorize asks for at most the 100 discovered scopes plus 100 an agent reported, so no real server grants more.
+// Granted scopes go into the pending authorization in Redis and are asked for again on every reauthorize.
+export const MAX_GRANTED_OAUTH_SCOPES = 2 * MAX_OAUTH_SCOPES;
 
 const PROOF_OF_POSSESSION_TOKEN_TYPES = new Set(["dpop", "mac", "pop"]);
 
@@ -361,6 +366,15 @@ export const requestToken = async ({
     // GitHub answers a failed exchange with a 200 and an `error` field.
     if (response.status >= 200 && response.status < 300 && body && body.error === undefined) {
       const tokens = parseTokenResponse(body, requestedScopes);
+      const grantedCount = tokens?.scopes?.length ?? 0;
+      if (grantedCount > MAX_GRANTED_OAUTH_SCOPES) {
+        return {
+          ok: false,
+          errorCode: null,
+          message: `The login server '${host}' granted ${grantedCount} OAuth scopes, more than the ${MAX_GRANTED_OAUTH_SCOPES} Infisical supports.`,
+          resourceDropped: !withResource
+        };
+      }
       if (tokens) return { ok: true, tokens, resourceDropped: !withResource };
       return {
         ok: false,
@@ -372,16 +386,13 @@ export const requestToken = async ({
 
     const errorCode = normalizeProviderText(body?.error, MAX_ERROR_CODE_LENGTH) || null;
     const description = normalizeProviderText(body?.error_description, MAX_ERROR_DESCRIPTION_LENGTH, requestSecrets);
-    const detail =
-      description ||
-      normalizeProviderText(errorCode, MAX_ERROR_CODE_LENGTH, requestSecrets) ||
-      `HTTP ${response.status}`;
-    return {
-      ok: false,
-      errorCode,
-      message: `The login server '${host}' refused the token request: ${detail}`,
-      resourceDropped: !withResource
-    };
+    const detail = description || normalizeProviderText(errorCode, MAX_ERROR_CODE_LENGTH, requestSecrets);
+    // A bare 5xx is an outage, not a refusal, and the refresh keeps retrying it.
+    const message =
+      !detail && response.status >= 500
+        ? `The login server '${host}' is having trouble right now (HTTP ${response.status}).`
+        : `The login server '${host}' refused the token request: ${detail || `HTTP ${response.status}`}`;
+    return { ok: false, errorCode, message, resourceDropped: !withResource };
   };
 
   const result = await send(true);
@@ -392,12 +403,13 @@ export const requestToken = async ({
 };
 
 // Refresh errors that mean the login is gone for good, so retrying on every poll only repeats the refusal. The
-// client codes mean the server dropped the registered client (the MCP SDK starts over on invalid_client too); the
-// rest are providers' own names for a dead refresh token.
+// client codes mean the server dropped the registered client (the MCP SDK starts over on invalid_client too) or no
+// longer accepts its secret; the rest are providers' own names for a dead refresh token.
 const DEAD_LOGIN_ERROR_CODES = new Set([
   "invalid_grant",
   "invalid_client",
   "unauthorized_client",
+  "incorrect_client_credentials", // GitHub's invalid_client, sent with a 200
   "bad_refresh_token", // GitHub
   "invalid_refresh_token", // Slack
   "token_revoked", // Slack

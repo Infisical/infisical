@@ -21,7 +21,7 @@ You add the MCP server to your agent with its real URL and no credentials. When 
     In Agent Vault, go to **Access Bundles**. Select your access bundle, then select **Add Service**.
   </Step>
   <Step>
-    On the **Choose a Template** panel, pick a template under **MCP Servers**, or select **Custom MCP Server** to connect any other remote MCP server.
+    On the **Choose a template** panel, pick a template under **MCP Servers**, or select **Custom MCP Server** to connect any other remote MCP server.
   </Step>
   <Step>
     On the **Details** step, enter a **Name**, and check the [**Transport** and **Server URL**](#server-url-and-transport). A template fills in the transport and server URL for you. Select **Continue**.
@@ -51,17 +51,17 @@ With OAuth, you sign in to the provider once from Infisical. Infisical stores th
 
 <Steps>
   <Step>
-    Under **Credential Type**, select **OAuth**, then select the button that names your server, such as **Authorize with mcp.linear.app**.
+    Under **Credential Type**, select **OAuth**, then select **Authorize**.
 
     <Note>
-      Some servers, such as GitHub's, don't let Infisical register itself as an OAuth client. For these servers, the card asks for an OAuth app of your own instead. Create an OAuth app with the provider, and set its redirect URI to the **Redirect URI** the card shows. Then enter the app's **Client ID** and **Client Secret** (leave **Client Secret** empty for a public client), and authorize again.
+      Some servers, such as GitHub's, don't let Infisical register itself as an OAuth client. For these servers, Infisical asks for an OAuth app of your own instead. Create an OAuth app with the provider, and set its redirect URI to the **Redirect URI** that Infisical shows. Then enter the app's **Client ID** and **Client Secret** (leave **Client Secret** empty for a public client), and authorize again.
     </Note>
   </Step>
   <Step>
     In the pop-up window, sign in to the provider and approve access.
   </Step>
   <Step>
-    When the card shows **Authorized** and the scopes the provider granted, select **Continue**. **Continue** stays disabled until the authorization succeeds.
+    When Infisical shows **Authorized** and the scopes the provider granted, select **Continue**. **Continue** stays disabled until the authorization succeeds.
   </Step>
 </Steps>
 
@@ -108,11 +108,14 @@ Infisical won't save a custom header with the same name as the credential's head
         If the service uses the SSE transport, use `--transport sse` instead.
       </Tab>
       <Tab title="Codex">
-        ```bash
-        codex mcp add linear --url https://mcp.linear.app/mcp
+        In `~/.codex/config.toml`, add the server by its URL:
+
+        ```toml
+        [mcp_servers.linear]
+        url = "https://mcp.linear.app/mcp"
         ```
 
-        Don't run `codex mcp login` for the server.
+        Don't use `codex mcp add`, which starts the server's OAuth sign-in from the agent, and don't run `codex mcp login` for the server.
       </Tab>
       <Tab title="OpenCode">
         In `opencode.json`, add the server as a remote MCP server with OAuth turned off:
@@ -156,15 +159,11 @@ Infisical won't save a custom header with the same name as the credential's head
 
 <AccordionGroup>
   <Accordion title="The agent gets a 502 response from the MCP server">
-    If the server rejects an OAuth service's token, the proxy gets a fresh token from Infisical and sends the request again. If the server rejects the request again, or asks for scopes the authorization lacks, the proxy returns this `502` response to the agent:
+    If the server rejects an OAuth service's token, the proxy gets a fresh token from Infisical and sends the request again. If that doesn't work, or if the server rejects a Bearer token, the proxy returns a `502` response to the agent. Its message says what to do:
 
-    ```json
-    {"error":"upstream_auth_failed","message":"The MCP server rejected the credential Infisical provided. Reauthorize this service in Infisical Agent Vault."}
-    ```
-
-    In the access bundle's **Services** table, the service shows **Missing Scopes** if the server asked for scopes the authorization lacks, and **Needs Reauthorization** if the provider no longer accepts the service's login. If the server rejected the fresh token, the service shows no warning.
-
-    In each case, reauthorize the service. Open the service's menu, select **Edit**, and continue to the **Credential** step. Select **Reauthorize**, sign in to the provider again, then continue and select **Save**. Then try the tool call again.
+    - **The service needs to be reauthorized:** The provider no longer accepts the service's login, or the server asked for scopes the authorization lacks. The access bundle's **Services** table shows **Needs Reauthorization** or **Missing Scopes** for the service. Open the service's menu, select **Edit**, and continue to the **Credential** step. Select **Reauthorize**, sign in to the provider again, then continue and select **Save**.
+    - **Try again in a moment:** The proxy couldn't get a valid token from Infisical this time. Try the tool call again.
+    - **The service's credential was rejected:** The server rejected the service's Bearer token. Edit the service and paste a new token.
   </Accordion>
   <Accordion title="Authorize fails on a self-hosted instance">
     The redirect URI that Infisical gives the provider is your instance's `SITE_URL` followed by `/agent-vault/oauth/callback`. Check that:
@@ -173,10 +172,9 @@ Infisical won't save a custom header with the same name as the credential's head
     - `SITE_URL` uses `https://` (providers such as Linear refuse a redirect URI on plain `http://` unless the host is `localhost`)
   </Accordion>
   <Accordion title="The agent asks you to sign in to the MCP server">
-    The request reached the server without a credential, or with a Bearer token the server rejected. Check that:
+    The request reached the server without a credential. Check that:
 
     - The agent runs through `infisical agent-vault run` with a session for the access bundle
     - The server URL in the agent has the same host as the service's **Server URL**
-    - The service's Bearer token is still valid (if it isn't, edit the service and paste a new one)
   </Accordion>
 </AccordionGroup>

@@ -510,7 +510,7 @@ describe("Agent Vault V1 Router", async () => {
         (await testDb("agent_vault_services").where({ id: service.id }).first()).encryptedCredential;
 
       const before = await sealed();
-      const rotated = await inject("PATCH", url, { credential: { type: "bearer", value: "rotated456" } });
+      const rotated = await inject("PATCH", url, { type: "http", credential: { type: "bearer", value: "rotated456" } });
       expect(rotated.statusCode).toBe(200);
       expect(JSON.parse(rotated.payload).service.credential).toEqual({
         type: "bearer",
@@ -520,7 +520,10 @@ describe("Agent Vault V1 Router", async () => {
       expect((await sealed()).equals(before)).toBe(false);
 
       const afterRotate = await sealed();
-      const renamed = await inject("PATCH", url, { credential: { type: "bearer", headerName: "X-Api-Key" } });
+      const renamed = await inject("PATCH", url, {
+        type: "http",
+        credential: { type: "bearer", headerName: "X-Api-Key" }
+      });
       expect(renamed.statusCode).toBe(200);
       expect(JSON.parse(renamed.payload).service.credential.headerName).toBe("X-Api-Key");
       expect((await sealed()).equals(afterRotate)).toBe(true);
@@ -550,23 +553,29 @@ describe("Agent Vault V1 Router", async () => {
       };
       const before = await sealedPair();
 
-      const emptied = await inject("PATCH", url, { credential: { type: "basic", username: "" } });
+      const emptied = await inject("PATCH", url, { type: "http", credential: { type: "basic", username: "" } });
       expect(emptied.statusCode).toBe(400);
       expect((await sealedPair()).equals(before)).toBe(true);
 
-      const flipped = await inject("PATCH", url, { credential: { type: "basic", username: "", password: "hunter2" } });
+      const flipped = await inject("PATCH", url, {
+        type: "http",
+        credential: { type: "basic", username: "", password: "hunter2" }
+      });
       expect(flipped.statusCode).toBe(200);
       expect((await sealedPair()).equals(before)).toBe(false);
 
-      const named = await inject("PATCH", url, { credential: { type: "basic", username: "sk_live_key" } });
+      const named = await inject("PATCH", url, {
+        type: "http",
+        credential: { type: "basic", username: "sk_live_key" }
+      });
       expect(named.statusCode).toBe(200);
-      const cleared = await inject("PATCH", url, { credential: { type: "basic", password: "" } });
+      const cleared = await inject("PATCH", url, { type: "http", credential: { type: "basic", password: "" } });
       expect(cleared.statusCode).toBe(200);
-      const emptiedAgain = await inject("PATCH", url, { credential: { type: "basic", username: "" } });
+      const emptiedAgain = await inject("PATCH", url, { type: "http", credential: { type: "basic", username: "" } });
       expect(emptiedAgain.statusCode).toBe(400);
 
       const afterClear = await sealedPair();
-      const renamed = await inject("PATCH", url, { name: "stripe-live" });
+      const renamed = await inject("PATCH", url, { type: "http", name: "stripe-live" });
       expect(renamed.statusCode).toBe(200);
       expect((await sealedPair()).equals(afterClear)).toBe(true);
     });
@@ -583,13 +592,13 @@ describe("Agent Vault V1 Router", async () => {
       const { service } = JSON.parse(created.payload) as { service: { id: string } };
       const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${service.id}`;
 
-      const emptyBasic = await inject("PATCH", url, { credential: { type: "basic" } });
+      const emptyBasic = await inject("PATCH", url, { type: "http", credential: { type: "basic" } });
       expect(emptyBasic.statusCode).toBe(400);
 
-      const noSecret = await inject("PATCH", url, { credential: { type: "basic", username: "bot" } });
+      const noSecret = await inject("PATCH", url, { type: "http", credential: { type: "basic", username: "bot" } });
       expect(noSecret.statusCode).toBe(200);
 
-      const bearerNoValue = await inject("PATCH", url, { credential: { type: "bearer" } });
+      const bearerNoValue = await inject("PATCH", url, { type: "http", credential: { type: "bearer" } });
       expect(bearerNoValue.statusCode).toBe(400);
     });
 
@@ -624,16 +633,16 @@ describe("Agent Vault V1 Router", async () => {
 
       const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${service.id}`;
 
-      const renamed = await inject("PATCH", url, { name: "github-read" });
+      const renamed = await inject("PATCH", url, { type: "http", name: "github-read" });
       expect(JSON.parse(renamed.payload).service.allowedMethods).toEqual(["GET", "HEAD"]);
 
-      const cleared = await inject("PATCH", url, { allowedMethods: null, allowedPathPrefixes: null });
+      const cleared = await inject("PATCH", url, { type: "http", allowedMethods: null, allowedPathPrefixes: null });
       expect(cleared.statusCode).toBe(200);
       expect(JSON.parse(cleared.payload).service.allowedMethods).toBeNull();
       expect(JSON.parse(cleared.payload).service.allowedPathPrefixes).toBeNull();
 
-      expect((await inject("PATCH", url, { allowedMethods: [] })).statusCode).toBe(422);
-      expect((await inject("PATCH", url, { allowedPathPrefixes: [] })).statusCode).toBe(422);
+      expect((await inject("PATCH", url, { type: "http", allowedMethods: [] })).statusCode).toBe(422);
+      expect((await inject("PATCH", url, { type: "http", allowedPathPrefixes: [] })).statusCode).toBe(422);
     });
 
     test("a path prefix that would need normalising to judge is rejected", async () => {
@@ -726,6 +735,7 @@ describe("Agent Vault V1 Router", async () => {
       const before = await sealed();
 
       const renamed = await inject("PATCH", url, {
+        type: "http",
         customHeaders: [{ id: customHeaderId, name: "X-Organization-Id" }]
       });
       expect(renamed.statusCode).toBe(200);
@@ -733,18 +743,23 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(renamed.payload).service.customHeaders[0].name).toBe("X-Organization-Id");
       expect((await sealed()).equals(before)).toBe(true);
 
-      const byName = await inject("PATCH", url, { customHeaders: [{ name: "X-Organization-Id", prefix: "Token" }] });
+      const byName = await inject("PATCH", url, {
+        type: "http",
+        customHeaders: [{ name: "X-Organization-Id", prefix: "Token" }]
+      });
       expect(byName.statusCode).toBe(200);
       expect(JSON.parse(byName.payload).service.customHeaders[0].id).toBe(customHeaderId);
       expect(JSON.parse(byName.payload).service.customHeaders[0].prefix).toBe("Token");
       expect((await sealed()).equals(before)).toBe(true);
 
       const newRowNoValue = await inject("PATCH", url, {
+        type: "http",
         customHeaders: [{ name: "X-Organization-Id" }, { name: "X-New" }]
       });
       expect(newRowNoValue.statusCode).toBe(400);
 
       const duplicateId = await inject("PATCH", url, {
+        type: "http",
         customHeaders: [
           { id: customHeaderId, name: "X-A", value: "a" },
           { id: customHeaderId, name: "X-B", value: "b" }
@@ -752,7 +767,7 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(duplicateId.statusCode).toBe(400);
 
-      const emptied = await inject("PATCH", url, { customHeaders: [] });
+      const emptied = await inject("PATCH", url, { type: "http", customHeaders: [] });
       expect(emptied.statusCode).toBe(200);
       expect(JSON.parse(emptied.payload).service.customHeaders).toHaveLength(0);
       expect(await testDb("agent_vault_service_custom_headers").where({ serviceId: service.id })).toHaveLength(0);
@@ -782,16 +797,21 @@ describe("Agent Vault V1 Router", async () => {
       const { service } = JSON.parse(created.payload) as { service: { id: string } };
       const url = `/api/v1/agent-vault/access-bundles/${bundle.id}/services/${service.id}`;
 
-      const headersOnly = await inject("PATCH", url, { customHeaders: [{ name: "X-Api-Key", value: "shadow" }] });
+      const headersOnly = await inject("PATCH", url, {
+        type: "http",
+        customHeaders: [{ name: "X-Api-Key", value: "shadow" }]
+      });
       expect(headersOnly.statusCode).toBe(400);
 
       const credentialOnly = await inject("PATCH", url, {
+        type: "http",
         credential: { type: "bearer", headerName: "X-Org-Id" }
       });
       expect(credentialOnly.statusCode).toBe(400);
       expect(JSON.parse(credentialOnly.payload).message).toContain("X-Org-Id");
 
       const basicClash = await inject("PATCH", url, {
+        type: "http",
         credential: { type: "basic", username: "u", password: "p" },
         customHeaders: [{ name: "Authorization", value: "shadow" }]
       });
@@ -862,6 +882,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(withPort.hostPattern).toBe("mcp.example.com:8443");
 
       const moved = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        type: "mcp",
         serverUrl: "https://mcp.linear.dev/mcp"
       });
       expect(moved.statusCode).toBe(200);
@@ -905,6 +926,7 @@ describe("Agent Vault V1 Router", async () => {
 
       const service = await createMcpService(bundle.id, "linear", "https://mcp.linear.app/mcp");
       const patchedHostPattern = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        type: "mcp",
         hostPattern: "other.example.com"
       });
       expect(patchedHostPattern.statusCode).toBe(400);
@@ -915,12 +937,46 @@ describe("Agent Vault V1 Router", async () => {
       const bundle = await createAccessBundle("mcp-type-change");
       const service = await createMcpService(bundle.id, "linear", "https://mcp.linear.app/mcp");
 
-      const res = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, { type: "http" });
+      const url = `${servicesUrl(bundle.id)}/${service.id}`;
+      const res = await inject("PATCH", url, { type: "http", name: "renamed" });
       expect(res.statusCode).toBe(400);
-      expect(messageOf(res)).toContain("A service's type can't be changed.");
+      expect(messageOf(res)).toContain("The service 'linear' is an MCP service, so send 'type': 'mcp'.");
+
+      expect((await inject("PATCH", url, { name: "renamed" })).statusCode).toBe(422);
+      expect((await inject("PATCH", url, { type: "mcp" })).statusCode).toBe(422);
 
       const stored = await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`);
       expect(stored.payload).toContain('"type":"mcp"');
+      expect(stored.payload).not.toContain("renamed");
+    });
+
+    test("a service read back unchanged, minus its credential, is accepted as an update", async () => {
+      const bundle = await createAccessBundle("read-back");
+      const mcp = await createMcpService(bundle.id, "linear", "https://mcp.linear.app/mcp");
+      const http = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
+        name: "stripe",
+        hostPattern: "api.stripe.com",
+        credential: { type: "passthrough" }
+      });
+      expect(http.statusCode).toBe(200);
+
+      type TReadService = Record<string, unknown> & { id: string; credential: unknown };
+      const read = JSON.parse((await inject("GET", `/api/v1/agent-vault/access-bundles/${bundle.id}`)).payload) as {
+        accessBundle: { services: TReadService[] };
+      };
+      expect(read.accessBundle.services.map((service) => service.id).sort()).toEqual(
+        [mcp.id, (http.json().service as { id: string }).id].sort()
+      );
+
+      await Promise.all(
+        read.accessBundle.services.map(async ({ id, accessBundleId, credential, createdAt, updatedAt, ...fields }) => {
+          const res = await inject("PATCH", `${servicesUrl(bundle.id)}/${id}`, fields);
+          expect(res.statusCode).toBe(200);
+          const { service } = res.json() as { service: TReadService };
+          expect(service).toMatchObject(fields);
+        })
+      );
     });
 
     describe("credential refresh", async () => {
@@ -1025,6 +1081,55 @@ describe("Agent Vault V1 Router", async () => {
 
     const storedConfig = async (id: string) =>
       (await testDb("agent_vault_services").where({ id }).first()).credentialConfig as Record<string, unknown>;
+
+    test("a member reads a service's OAuth setup but not the admin's sign-in state", async () => {
+      const id = await oauthService("oauth-member-read", {
+        issuer: "https://mcp.linear.app",
+        expiresAt: "2030-01-01T00:00:00.000Z",
+        authorizedAt: "2026-01-01T00:00:00.000Z",
+        lastError: "Linear refused the refresh for admin@example.com"
+      });
+      const { accessBundleId } = await testDb("agent_vault_services").where({ id }).first();
+      const member = await createUaIdentity(`av-oauth-member-${Date.now()}`);
+      type TBundleRead = { accessBundle: { services: { credential: Record<string, unknown> }[] } };
+
+      try {
+        expect(
+          (await inject("POST", "/api/v1/agent-vault/members", { machineIdentityIds: [member.id], role: "member" }))
+            .statusCode
+        ).toBe(200);
+        expect(
+          (
+            await inject("POST", `/api/v1/agent-vault/access-bundles/${accessBundleId}/members`, {
+              machineIdentityIds: [member.id]
+            })
+          ).statusCode
+        ).toBe(200);
+
+        const reached = await member.asIdentity("GET", `/api/v1/agent-vault/access-bundles/${accessBundleId}`);
+        expect(reached.statusCode).toBe(200);
+        const { credential } = (JSON.parse(reached.payload) as TBundleRead).accessBundle.services[0];
+        expect(credential).toEqual({
+          type: "oauth",
+          status: "connected",
+          issuer: "https://mcp.linear.app",
+          grantedScopes: ["read"],
+          requiredScopes: []
+        });
+        expect(reached.payload).not.toContain("admin@example.com");
+
+        const asAdmin = JSON.parse(
+          (await inject("GET", `/api/v1/agent-vault/access-bundles/${accessBundleId}`)).payload
+        ) as TBundleRead;
+        expect(asAdmin.accessBundle.services[0].credential).toMatchObject({
+          expiresAt: "2030-01-01T00:00:00.000Z",
+          authorizedAt: "2026-01-01T00:00:00.000Z",
+          lastError: "Linear refused the refresh for admin@example.com"
+        });
+      } finally {
+        await deleteUaIdentity(member.id);
+      }
+    });
 
     test("compareAndSwapCredential writes only over the sealed credential it read, and merges just its keys", async () => {
       const id = await oauthService("cas-write");
@@ -1482,6 +1587,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(refused.payload).message).toContain(`'datadog' (access bundle '${bundle.name}')`);
 
       const detached = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        type: "http",
         credential: { type: "bearer", value: "literal_value" }
       });
       expect(detached.statusCode).toBe(200);
@@ -1846,6 +1952,7 @@ describe("Agent Vault V1 Router", async () => {
 
       // The password and the renamed header were not sent, so both keep what they had.
       const patched = await inject("PATCH", url, {
+        type: "http",
         credential: { type: "basic", username: "plain-user" },
         customHeaders: [{ id: service.customHeaders[0].id, name: "X-Renamed" }]
       });
@@ -1861,14 +1968,14 @@ describe("Agent Vault V1 Router", async () => {
       expect(resolved.credential).toEqual({ type: "basic", username: "plain-user", password: "the-pass" });
       expect(resolved.customHeaders).toEqual([{ name: "X-Renamed", prefix: "", value: "the-header" }]);
 
-      const switched = await inject("PATCH", url, { credential: { type: "bearer", value: "literal" } });
+      const switched = await inject("PATCH", url, { type: "http", credential: { type: "bearer", value: "literal" } });
       expect(switched.statusCode).toBe(200);
       expect(referencesByField(JSON.parse(switched.payload).service.variableReferences)).toEqual([
         "custom-header:HEADER"
       ]);
       await expectReferencesMatchSealedText(bundle.id);
 
-      const dropped = await inject("PATCH", url, { customHeaders: [] });
+      const dropped = await inject("PATCH", url, { type: "http", customHeaders: [] });
       expect(dropped.statusCode).toBe(200);
       expect(JSON.parse(dropped.payload).service.variableReferences).toEqual([]);
       expect(await testDb("agent_vault_service_variable_references").where({ serviceId: service.id })).toHaveLength(0);
@@ -1901,6 +2008,7 @@ describe("Agent Vault V1 Router", async () => {
         });
 
       const patched = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        type: "http",
         credential: { type: "basic", username: "{{USER}}" }
       });
       expect(patched.statusCode).toBe(200);
@@ -1955,7 +2063,7 @@ describe("Agent Vault V1 Router", async () => {
         const { rows } = await trx.raw("select pg_backend_pid() as pid");
         await trx("agent_vault_access_bundles").where({ id: bundle.id }).forUpdate().first();
 
-        const pending = inject("PATCH", url, { credential: { type: "basic", password: "{{PASS}}" } });
+        const pending = inject("PATCH", url, { type: "http", credential: { type: "basic", password: "{{PASS}}" } });
         await waitUntilBlockedBy(rows[0].pid);
 
         await trx("agent_vault_services")
@@ -1980,7 +2088,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(kept.encryptedCredential.equals(otherRow.encryptedCredential)).toBe(true);
       await expectReferencesMatchSealedText(bundle.id);
 
-      const retried = await inject("PATCH", url, { credential: { type: "basic", password: "{{PASS}}" } });
+      const retried = await inject("PATCH", url, { type: "http", credential: { type: "basic", password: "{{PASS}}" } });
       expect(retried.statusCode).toBe(200);
       await expectReferencesMatchSealedText(bundle.id);
 
@@ -2008,6 +2116,7 @@ describe("Agent Vault V1 Router", async () => {
         await trx("agent_vault_access_bundles").where({ id: bundle.id }).forUpdate().first();
 
         const pending = inject("PATCH", url, {
+          type: "http",
           substitutions: [{ placeholder: "__ORG__", surfaces: ["header"], value: "org-42" }]
         });
         await waitUntilBlockedBy(rows[0].pid);

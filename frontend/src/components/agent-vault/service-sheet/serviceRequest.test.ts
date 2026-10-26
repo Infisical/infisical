@@ -174,6 +174,7 @@ describe("buildUpdateServiceRequest", () => {
     ).toEqual({
       accessBundleId: "bundle-1",
       serviceId: "service-1",
+      type: AgentVaultServiceType.Http,
       name: "stripe",
       hostPattern: "api.stripe.com",
       allowedMethods: null,
@@ -218,6 +219,7 @@ describe("buildUpdateServiceRequest", () => {
     expect(buildUpdateServiceRequest("bundle-1", "service-1", mcpForm())).toEqual({
       accessBundleId: "bundle-1",
       serviceId: "service-1",
+      type: AgentVaultServiceType.Mcp,
       name: "linear-mcp",
       serverUrl: SERVER_URL,
       transport: AgentVaultMcpTransport.StreamableHttp,

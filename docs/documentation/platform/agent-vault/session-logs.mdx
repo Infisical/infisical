@@ -259,9 +259,7 @@ If a request matched an MCP service, its row shows an **MCP** badge and the call
 
 The proxy never records a tool's arguments or results.
 
-If the agent sent several calls in one request, the row shows the first call followed by `+N more`, and the tooltip on `+N more` lists the other calls. The proxy records up to 32 calls per request. If a request held more, the row shows `N+ more` instead.
-
-If the proxy can't read the calls, the row shows the request path. This happens if the request body is larger than 1 MB, compressed, or not valid JSON.
+If the agent sent several calls in one request, the row shows the first one. If the proxy can't read the calls, such as from a compressed body, the row shows the request path.
 
 ## Managing session logs
 

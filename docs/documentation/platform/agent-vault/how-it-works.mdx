@@ -117,8 +117,10 @@ Here's a breakdown of each primitive that Agent Vault relies on.
 A service represents one external system that an agent can reach, such as GitHub's REST API or Linear's MCP server. Each service holds:
 
 - **Target**: Where the system is, such as the host `api.github.com` or the server URL `https://mcp.linear.app/mcp`
-- **Credential**: The real token, username and password, or OAuth connection that the proxy attaches to the agent's requests, if the service uses one
-- **Options**: Settings that depend on the service's type, such as the HTTP methods and paths it allows, custom headers, and substitutions
+- **Credential**: The real token, username and password, or OAuth authorization that the proxy attaches to the agent's requests, if the service uses one
+- **Rules** (HTTP APIs): The HTTP methods and paths the service allows
+- **Custom headers**: Extra headers the proxy adds to each request
+- **Substitutions** (HTTP APIs): Placeholders the proxy replaces with real values
 
 Agent Vault supports two types of service: [HTTP APIs](/documentation/platform/agent-vault/http-apis) and [MCP servers](/documentation/platform/agent-vault/mcp-servers).
 

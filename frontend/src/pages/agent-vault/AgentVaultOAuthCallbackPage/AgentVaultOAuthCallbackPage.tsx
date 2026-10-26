@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 import axios from "axios";
 import { CircleAlertIcon } from "lucide-react";
@@ -39,6 +40,7 @@ const failureMessage = (error: unknown) => {
 };
 
 export const AgentVaultOAuthCallbackPage = () => {
+  const { t } = useTranslation();
   const search = useSearch({ from: "/_authenticate/agent-vault/oauth/callback" });
   const completeAuthorization = useCompleteAgentVaultOauthAuthorization();
   const [outcome, setOutcome] = useState<TOutcome>({ status: "working" });
@@ -95,7 +97,7 @@ export const AgentVaultOAuthCallbackPage = () => {
   return (
     <AuthPageLayout variant="focused" showFooter={false}>
       <Helmet>
-        <title>Agent Vault Authorization</title>
+        <title>{t("common.head-title", { title: "Agent Vault Authorization" })}</title>
       </Helmet>
       <AuthPagePanel>
         <CardHeader>

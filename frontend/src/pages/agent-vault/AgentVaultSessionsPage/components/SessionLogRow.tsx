@@ -115,13 +115,11 @@ const PathDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => (
 const McpCallText = ({ call, path }: { call: TAgentVaultSessionLogMcpCall; path: string }) =>
   call.tool ? (
     <Tooltip>
-      <TooltipTrigger className="min-w-0 truncate text-left font-mono text-foreground">
-        {call.tool}
-      </TooltipTrigger>
-      <TooltipContent className="max-w-sm font-mono text-xs break-all">{call.tool}</TooltipContent>
+      <TooltipTrigger className="min-w-0 truncate text-left">{call.tool}</TooltipTrigger>
+      <TooltipContent className="max-w-sm break-all">{call.tool}</TooltipContent>
     </Tooltip>
   ) : (
-    <span className="min-w-0 truncate font-mono text-xs text-muted" title={path}>
+    <span className="min-w-0 truncate" title={path}>
       {call.method}
     </span>
   );
@@ -139,7 +137,7 @@ const McpDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
       {first ? (
         <McpCallText call={first} path={record.path} />
       ) : (
-        <span className="min-w-0 truncate text-muted" title={record.path}>
+        <span className="min-w-0 truncate" title={record.path}>
           {record.path}
         </span>
       )}
@@ -150,7 +148,7 @@ const McpDetail = ({ record }: { record: TAgentVaultSessionLogRecord }) => {
           </TooltipTrigger>
           <TooltipContent className="max-w-sm">
             {rest.length > 0 && (
-              <div className="flex flex-col font-mono text-xs">
+              <div className="flex flex-col text-xs">
                 {groupRepeatedMcpCalls(rest).map(({ label, count }, index) => (
                   // eslint-disable-next-line react/no-array-index-key
                   <span key={index}>

@@ -78,6 +78,7 @@ tables:
       - credentialType
       - allowedMethods
       - allowedPathPrefixes
+      - type
       - createdAt
       - updatedAt
 

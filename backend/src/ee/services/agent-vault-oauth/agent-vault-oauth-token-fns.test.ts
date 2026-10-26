@@ -19,6 +19,7 @@ import {
   hashAccessToken,
   isSameState,
   MAX_EXPIRES_IN_SECONDS,
+  MAX_GRANTED_OAUTH_SCOPES,
   normalizeProviderText,
   parseExpiresIn,
   parseGrantedScopes,
@@ -231,6 +232,23 @@ describe("token requests", () => {
     });
   });
 
+  test("a 5xx with no OAuth error reads as an outage, not a refusal", async () => {
+    const { http } = stubPosts([json(503, {})]);
+    expect(await requestToken({ http, ...tokenArgs })).toMatchObject({
+      ok: false,
+      errorCode: null,
+      message: "The login server 'auth.example.com' is having trouble right now (HTTP 503)."
+    });
+  });
+
+  test("a 5xx that names an OAuth error still quotes it", async () => {
+    const { http } = stubPosts([json(503, { error: "temporarily_unavailable" })]);
+    expect(await requestToken({ http, ...tokenArgs })).toMatchObject({
+      errorCode: "temporarily_unavailable",
+      message: "The login server 'auth.example.com' refused the token request: temporarily_unavailable"
+    });
+  });
+
   test("an access token that can't go into a header is refused, and a bad refresh token is dropped", async () => {
     const refused = stubPosts([json(200, { access_token: "a\r\nX-Evil: 1", token_type: "bearer" })]);
     expect((await requestToken({ http: refused.http, ...tokenArgs })).ok).toBe(false);
@@ -363,6 +381,24 @@ describe("token requests", () => {
       message:
         "The login server 'auth.example.com' refused the token request: The code passed is incorrect or expired.",
       resourceDropped: false
+    });
+  });
+
+  test("a grant of more scopes than a reauthorize can ask for is refused rather than stored", async () => {
+    const scopes = (count: number) => Array.from({ length: count }, (_, i) => `scope-${i}`).join(" ");
+    const { http } = stubPosts([
+      json(200, { access_token: "at-2", token_type: "Bearer", scope: scopes(MAX_GRANTED_OAUTH_SCOPES) }),
+      json(200, { access_token: "at-3", token_type: "Bearer", scope: scopes(MAX_GRANTED_OAUTH_SCOPES + 1) })
+    ]);
+
+    const atLimit = await requestToken({ http, ...tokenArgs });
+    expect(atLimit.ok && atLimit.tokens.scopes).toHaveLength(MAX_GRANTED_OAUTH_SCOPES);
+
+    const overLimit = await requestToken({ http, ...tokenArgs });
+    expect(overLimit).toMatchObject({
+      ok: false,
+      errorCode: null,
+      message: `The login server 'auth.example.com' granted ${MAX_GRANTED_OAUTH_SCOPES + 1} OAuth scopes, more than the ${MAX_GRANTED_OAUTH_SCOPES} Infisical supports.`
     });
   });
 

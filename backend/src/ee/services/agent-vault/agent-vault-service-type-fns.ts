@@ -172,6 +172,26 @@ export const findUnsupportedServiceFields = (
   return Object.keys(supported).filter((field) => !supported[field] && fields[field] !== undefined);
 };
 
+// GET returns the fields a type doesn't use as null or empty, and an MCP service's host pattern derived from its
+// server URL. Sending those back unchanged is not an attempt to set them, so they are dropped before the
+// unsupported-field check refuses anything else.
+export const dropReadBackServiceFields = <T extends TAgentVaultServiceTypedFields>(
+  definition: TAgentVaultServiceTypeDefinition,
+  fields: T,
+  storedHostPattern: string
+): T => {
+  const isReadBack = (field: string) => {
+    const value = fields[field];
+    return (
+      value === null ||
+      (Array.isArray(value) && value.length === 0) ||
+      (field === "hostPattern" && value === storedHostPattern)
+    );
+  };
+  const dropped = findUnsupportedServiceFields(definition, fields).filter(isReadBack);
+  return { ...fields, ...Object.fromEntries(dropped.map((field) => [field, undefined])) };
+};
+
 const quoteList = (fields: string[]) => {
   const quoted = fields.map((field) => `'${field}'`);
   return quoted.length > 1 ? `${quoted.slice(0, -1).join(", ")} or ${quoted[quoted.length - 1]}` : quoted[0];

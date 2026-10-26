@@ -6,13 +6,12 @@ import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
-import { AgentVaultCredentialType, AgentVaultServiceType } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { AgentVaultCredentialType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { openApiHidden } from "@app/server/lib/schemas";
 import { emitAgentVaultTelemetry } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -21,23 +20,17 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { actorContext } from "./agent-vault-router-fns";
 import {
   AgentVaultActorRefSchema,
-  AgentVaultAllowedMethodsSchema,
-  AgentVaultAllowedPathPrefixesSchema,
   AgentVaultCreatedMemberSchema,
   AgentVaultCreateServiceBodySchema,
   AgentVaultCredentialUpdateSchema,
-  AgentVaultCustomHeadersUpdateSchema,
-  AgentVaultHostPatternSchema,
   agentVaultListQuery,
-  AgentVaultMcpTransportSchema,
   AgentVaultMemberIdsSchema,
   AgentVaultMemberRevokeIdsSchema,
   AgentVaultMemberSchema,
   AgentVaultNameSchema,
   AgentVaultProductMemberSchema,
-  AgentVaultServerUrlSchema,
   AgentVaultServiceSchema,
-  AgentVaultSubstitutionsUpdateSchema
+  AgentVaultUpdateServiceBodySchema
 } from "./agent-vault-schemas";
 
 const AccessBundleDescriptionSchema = z
@@ -374,31 +367,14 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
         serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
       }),
-      body: z
-        .object({
-          // Accepted only so the refusal is a readable 400 rather than a silently dropped field.
-          type: z.nativeEnum(AgentVaultServiceType).optional().describe(openApiHidden()),
-          name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.SERVICE.name),
-          hostPattern: AgentVaultHostPatternSchema.optional(),
-          serverUrl: AgentVaultServerUrlSchema.optional(),
-          transport: AgentVaultMcpTransportSchema.optional(),
-          allowedMethods: AgentVaultAllowedMethodsSchema.optional(),
-          allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional(),
-          credential: AgentVaultCredentialUpdateSchema.optional(),
-          customHeaders: AgentVaultCustomHeadersUpdateSchema.optional(),
-          substitutions: AgentVaultSubstitutionsUpdateSchema.optional()
-        })
-        .refine(
-          (body) => Object.values(body).some((value) => value !== undefined),
-          "Provide at least one of 'name', 'hostPattern', 'serverUrl', 'transport', 'allowedMethods', 'allowedPathPrefixes', 'credential', 'customHeaders' or 'substitutions' to update"
-        ),
+      body: AgentVaultUpdateServiceBodySchema,
       response: {
         200: z.object({ service: AgentVaultServiceSchema })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { service, accessBundleName } = await server.services.agentVaultAccessBundle.updateService({
+      const { service, accessBundleName, update } = await server.services.agentVaultAccessBundle.updateService({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -420,10 +396,10 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             serviceId: service.id,
             name: req.body.name,
             serviceType: service.type,
-            serverUrl: req.body.serverUrl,
-            transport: req.body.transport,
+            serverUrl: update.serverUrl,
+            transport: update.transport,
             // Derived from the server URL for an MCP service, so it is reported whenever that changed.
-            hostPattern: req.body.hostPattern ?? (req.body.serverUrl ? service.hostPattern : undefined),
+            hostPattern: update.hostPattern ?? (update.serverUrl ? service.hostPattern : undefined),
             credentialType: req.body.credential?.type,
             headerName:
               req.body.credential?.type === AgentVaultCredentialType.Bearer
@@ -441,21 +417,21 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               isOauthAuthorized && service.credential.type === AgentVaultCredentialType.OAuth
                 ? service.credential.grantedScopes
                 : undefined,
-            allowedMethods: req.body.allowedMethods,
-            allowedPathPrefixes: req.body.allowedPathPrefixes,
+            allowedMethods: update.allowedMethods,
+            allowedPathPrefixes: update.allowedPathPrefixes,
             customHeaderNames: req.body.customHeaders?.map((header) => header.name),
             // A row omitting a value keeps the stored secret, so sending one is what marks a rotation.
             // Without this a rotation and a no-op save write the same row.
             customHeadersReplaced: req.body.customHeaders
               ?.filter((header) => header.value !== undefined)
               .map((header) => header.name),
-            substitutionPlaceholders: req.body.substitutions?.map((substitution) => substitution.placeholder),
-            substitutionsReplaced: req.body.substitutions
+            substitutionPlaceholders: update.substitutions?.map((substitution) => substitution.placeholder),
+            substitutionsReplaced: update.substitutions
               ?.filter((substitution) => substitution.value !== undefined)
               .map((substitution) => substitution.placeholder),
             credentialReplaced: isStoredSecretReplaced(req.body.credential),
             variableKeys:
-              req.body.credential || req.body.customHeaders || req.body.substitutions
+              req.body.credential || req.body.customHeaders || update.substitutions
                 ? variableKeysOf(service)
                 : undefined
           }
