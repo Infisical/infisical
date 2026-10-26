@@ -28,7 +28,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useProject } from "@app/context";
 import {
   getSigningOperationStatusBadgeVariant,
   SIGNER_TABLE_PAGE_SIZE,
@@ -40,6 +40,7 @@ import {
   useListSigningOperations
 } from "@app/hooks/api/signers";
 
+import { getCertManagerLink } from "../../cert-manager-link";
 import { ConnectToSignerDrawer } from "./ConnectToSignerDrawer";
 
 type Props = {
@@ -64,7 +65,7 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(SIGNER_TABLE_PAGE_SIZE);
   const [isConnectOpen, setIsConnectOpen] = useState(false);
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
 
   const { data, isLoading } = useListSigningOperations({
     signerId,
@@ -82,8 +83,7 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
     if (op.actorType === SigningActorType.User && op.actorMembershipId) {
       return (
         <Link
-          to="/organizations/$orgId/cert-manager/members/$membershipId"
-          params={{ orgId: currentOrg.id, membershipId: op.actorId }}
+          {...getCertManagerLink(currentProject, `members/${op.actorMembershipId}`)}
           className={linkClassName}
         >
           {actorName}
@@ -93,8 +93,7 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
     if (op.actorType === SigningActorType.Identity && op.actorName) {
       return (
         <Link
-          to="/organizations/$orgId/cert-manager/identities/$identityId"
-          params={{ orgId: currentOrg.id, identityId: op.actorId }}
+          {...getCertManagerLink(currentProject, `identities/${op.actorId}`)}
           className={linkClassName}
         >
           {actorName}
@@ -150,12 +149,10 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
                     >
                       <TableCell>
                         <RowLink
-                          to="/organizations/$orgId/cert-manager/code-signing/$signerId/operations/$operationId"
-                          params={{
-                            orgId: currentOrg.id,
-                            signerId,
-                            operationId: op.id
-                          }}
+                          {...getCertManagerLink(
+                            currentProject,
+                            `code-signing/${signerId}/operations/${op.id}`
+                          )}
                         >
                           {format(new Date(op.createdAt), "MMM d, yyyy HH:mm:ss")}
                         </RowLink>

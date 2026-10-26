@@ -60,7 +60,6 @@ import {
   ProjectPermissionCertificateActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionSub,
-  useOrganization,
   useProject,
   useProjectPermission,
   useUser
@@ -92,6 +91,7 @@ import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { getCertManagerLink } from "../../cert-manager-link";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { AssignCertificateToApplicationModal } from "./AssignCertificateToApplicationModal";
 import {
@@ -271,7 +271,6 @@ export const CertificatesTable = ({
     return () => clearTimeout(timeoutId);
   }, [search]);
 
-  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission, hasProjectRole } = useProjectPermission();
 
@@ -948,11 +947,11 @@ export const CertificatesTable = ({
                     certificate.id
                   );
 
-                  const detailLink = {
-                    to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
-                    params: { orgId: currentOrg.id, certificateId: certificate.id },
-                    search: applicationName ? { fromApplication: applicationName } : undefined
-                  } as const;
+                  const detailLink = getCertManagerLink(
+                    currentProject,
+                    `certificates/${certificate.id}`,
+                    applicationName ? { fromApplication: applicationName } : undefined
+                  );
 
                   return (
                     <TableRow key={`certificate-${certificate.id}`} linked>
