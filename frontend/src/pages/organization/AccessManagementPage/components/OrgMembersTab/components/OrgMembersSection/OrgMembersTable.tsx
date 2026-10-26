@@ -134,6 +134,7 @@ export const OrgMembersTable = ({
   const { mutateAsync: updateOrgMembership } = useUpdateOrgMembership();
   const { mutateAsync: addUsersToOrg, isPending: isInviteDirectMemberPending } = useAddUsersToOrg();
   const [resendInviteId, setResendInviteId] = useState<string | null>(null);
+  const [openGroupPopoverUserId, setOpenGroupPopoverUserId] = useState<string | null>(null);
 
   const onRoleChange = async (membershipId: string, role: string) => {
     if (!currentOrg?.id) return;
@@ -615,6 +616,16 @@ export const OrgMembersTable = ({
                             groups={groups}
                             hasDirectAccess={Boolean(membership)}
                             getRoleName={getRoleName}
+                            isOpen={openGroupPopoverUserId === u.id}
+                            keepFocusOnClose={
+                              openGroupPopoverUserId !== null && openGroupPopoverUserId !== u.id
+                            }
+                            onOpenChange={(isOpen) =>
+                              setOpenGroupPopoverUserId((current) => {
+                                if (isOpen) return u.id;
+                                return current === u.id ? null : current;
+                              })
+                            }
                           />
                         ) : (
                           <span className="text-muted">—</span>

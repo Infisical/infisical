@@ -1,9 +1,9 @@
-import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { UsersIcon, XIcon } from "lucide-react";
 
 import {
   Badge,
+  Button,
   IconButton,
   Popover,
   PopoverContent,
@@ -20,6 +20,9 @@ type Props = {
   groups: TOrgUserAccessGroup[];
   hasDirectAccess: boolean;
   getRoleName: (role: TOrgUserAccessGroupRole) => string;
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  keepFocusOnClose: boolean;
 };
 
 const MAX_VISIBLE_ROLES = 1;
@@ -74,26 +77,37 @@ const GroupRoleBadges = ({
   );
 };
 
-export const GroupAccessPopover = ({ orgId, groups, hasDirectAccess, getRoleName }: Props) => {
-  const [isOpen, setIsOpen] = useState(false);
-
+// Open state lives in the table so opening one row's popover closes any other.
+export const GroupAccessPopover = ({
+  orgId,
+  groups,
+  hasDirectAccess,
+  getRoleName,
+  isOpen,
+  onOpenChange,
+  keepFocusOnClose
+}: Props) => {
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="xs"
           aria-label="Show groups granting access"
-          className="-mx-1.5 flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-foreground transition-colors hover:bg-foreground/10 data-[state=open]:bg-foreground/10"
+          className="-mx-2 gap-1.5 text-sm"
           onClick={(e) => e.stopPropagation()}
         >
-          <UsersIcon className="size-4 text-muted" />
+          <UsersIcon className="text-muted" />
           <span className="underline decoration-muted underline-offset-2">{groups.length}</span>
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
         className="flex max-h-(--radix-popover-content-available-height) w-80 flex-col gap-3"
         onClick={(e) => e.stopPropagation()}
+        onCloseAutoFocus={(e) => {
+          if (keepFocusOnClose) e.preventDefault();
+        }}
       >
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium">Access Details</p>
@@ -101,7 +115,7 @@ export const GroupAccessPopover = ({ orgId, groups, hasDirectAccess, getRoleName
             variant="ghost-muted"
             size="2xs"
             aria-label="Close"
-            onClick={() => setIsOpen(false)}
+            onClick={() => onOpenChange(false)}
           >
             <XIcon />
           </IconButton>
