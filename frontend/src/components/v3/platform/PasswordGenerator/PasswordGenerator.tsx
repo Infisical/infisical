@@ -300,7 +300,12 @@ export const PasswordGenerator = ({
         {trigger ? (
           cloneElement(trigger, { disabled: isDisabled })
         ) : (
-          <IconButton variant="outline" size="md" isDisabled={isDisabled}>
+          <IconButton
+            aria-label="Generate random value"
+            variant="outline"
+            size="md"
+            isDisabled={isDisabled}
+          >
             <KeyRoundIcon />
           </IconButton>
         )}
@@ -341,10 +346,20 @@ export const PasswordGenerator = ({
             <div className="flex items-center justify-between gap-2">
               <p className="flex-1 font-mono text-sm break-all select-all">{password}</p>
               <div className="flex shrink-0 gap-1">
-                <IconButton variant="ghost" size="xs" onClick={() => setRefresh((prev) => !prev)}>
+                <IconButton
+                  aria-label="Generate another value"
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => setRefresh((prev) => !prev)}
+                >
                   <RefreshCwIcon />
                 </IconButton>
-                <IconButton variant="ghost" size="xs" onClick={copyToClipboard}>
+                <IconButton
+                  aria-label="Copy generated value"
+                  variant="ghost"
+                  size="xs"
+                  onClick={copyToClipboard}
+                >
                   {isCopying ? <CheckIcon /> : <CopyIcon />}
                 </IconButton>
               </div>
