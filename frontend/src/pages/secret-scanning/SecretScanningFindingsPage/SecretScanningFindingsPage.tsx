@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -18,7 +19,7 @@ export const SecretScanningFindingsPage = () => {
 
   return (
     <>
-      <title>{t("common.head-title", { title: "Secret Scanning" })}</title>
+      <PageTitle title={t("page-titles.secret-scanning-findings")} />
       <ProjectPermissionCan
         renderGuardBanner
         I={ProjectPermissionSecretScanningFindingActions.Read}

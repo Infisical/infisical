@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -60,6 +61,7 @@ export const DigitalOceanAppPlatformAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
+      <PageTitle title="Authorize DigitalOcean App Platform Integration" />
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Digital Ocean App Platform Integration</CardTitle>

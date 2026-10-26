@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { OnboardingPageLayout } from "@app/components/auth/OnboardingPageLayout";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   AnimatedCollapse,
   Button,
@@ -584,7 +585,7 @@ export const SetupPage = () => {
         </div>
       }
     >
-      <title>Configure your instance | Infisical</title>
+      <PageTitle title="Configure Your Instance" />
       <link rel="icon" href="/infisical.ico" />
       <AuthPagePanel>
         <form id={setupFormId} onSubmit={onSubmit}>

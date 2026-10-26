@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 import { EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -214,7 +215,7 @@ const Page = () => {
 export const CertAuthDetailsByIDPage = () => {
   return (
     <>
-      <title>Certificate Authority</title>
+      <PageTitle title="Certificate Authority" />
       <link rel="icon" href="/infisical.ico" />
       <Page />
     </>

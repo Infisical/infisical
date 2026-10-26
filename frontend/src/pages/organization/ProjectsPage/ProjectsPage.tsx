@@ -4,6 +4,7 @@ import { Outlet, useMatches } from "@tanstack/react-router";
 
 import { AnnouncementModal } from "@app/components/announcements/AnnouncementModal";
 import { useAnnouncementSeen } from "@app/components/announcements/useAnnouncementSeen";
+import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader } from "@app/components/v3/platform";
 import { useOrganization } from "@app/context";
 import { useGetRecentAnnouncements } from "@app/hooks/api/announcement";
@@ -43,7 +44,7 @@ export const ProjectsPage = () => {
 
   return (
     <div className="mx-auto flex max-w-8xl flex-col justify-start px-0 md:px-6">
-      <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
+      <PageTitle title={t("page-titles.projects")} />
       <link rel="icon" href="/infisical.ico" />
       <PageHeader
         className="mb-6 md:mb-10"

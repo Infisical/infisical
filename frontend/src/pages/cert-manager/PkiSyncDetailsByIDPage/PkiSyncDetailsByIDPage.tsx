@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { BanIcon, ChevronLeftIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   EditPkiSyncModal,
   PkiSyncImportStatusBadge,
@@ -25,6 +26,7 @@ import {
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import { useGetPkiSync } from "@app/hooks/api/pkiSyncs";
 import { ApplicationTab } from "@app/pages/cert-manager/ApplicationDetailsByIDPage/application-tabs";
@@ -83,6 +85,9 @@ const PageContent = () => {
 
   const destinationDetails = PKI_SYNC_MAP[pkiSync.destination];
 
+  const backLinkClassName =
+    "mb-4 flex w-fit cursor-pointer items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80";
+
   const handleBack = () => {
     if (applicationName) {
       navigate({
@@ -112,14 +117,25 @@ const PageContent = () => {
     <>
       <div className="container mx-auto flex flex-col justify-between bg-page font-sans text-foreground-inverse">
         <div className="mx-auto mb-6 w-full max-w-8xl">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="mb-4 flex w-fit cursor-pointer items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
-          >
-            <ChevronLeftIcon className="size-4" />
-            {applicationName ? "Back to Application" : "Certificate Syncs"}
-          </button>
+          {applicationName ? (
+            <Link
+              {...getInstancePinningLink(orgId, currentProject, `applications/${applicationName}`)!}
+              search={{ selectedTab: ApplicationTab.Syncs } as never}
+              className={backLinkClassName}
+            >
+              <ChevronLeftIcon className="size-4" />
+              Back to Application
+            </Link>
+          ) : (
+            <Link
+              {...getInstancePinningLink(orgId, currentProject, "integrations")!}
+              search={{ selectedTab: IntegrationsListPageTabs.PkiSyncs } as never}
+              className={backLinkClassName}
+            >
+              <ChevronLeftIcon className="size-4" />
+              Certificate Syncs
+            </Link>
+          )}
           <div className="mb-6 flex w-full items-center gap-3">
             <ProviderIcon
               alt={`${destinationDetails.name} sync`}
@@ -186,7 +202,7 @@ const PageContent = () => {
 export const PkiSyncDetailsByIDPage = () => {
   return (
     <>
-      <title>PKI Sync | Infisical</title>
+      <PageTitle title="PKI Sync" />
       <link rel="icon" href="/infisical.ico" />
       <PageContent />
     </>

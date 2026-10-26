@@ -16,6 +16,7 @@ import {
 
 import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
 import {
   Alert,
@@ -488,16 +489,10 @@ const Page = () => {
 
 export const IdentityDetailsByIDPage = () => {
   const { t } = useTranslation();
-  const { currentProject } = useProject();
-  const isAgentVault = currentProject?.type === ProjectType.AgentVault;
 
   return (
     <>
-      <title>
-        {t("common.head-title", {
-          title: isAgentVault ? "Machine Identity" : t("settings.members.title")
-        })}
-      </title>
+      <PageTitle title={t("page-titles.machine-identity")} />
       <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         I={ProjectPermissionActions.Read}

@@ -127,7 +127,7 @@ All source anchors in this surface table are relative to `frontend/src/`. Refres
 - The V3 `ReactSelect` compatibility family (`FilterableSelect`, `CreatableSelect`) is deleted. Its consumers moved to `Combobox`, and none remained at `e434f2fdfdd608f97cd4041af84062991d2645cf`. The `react-select` package is also removed. The last importer scan before its removal, at `60067d2ea820ff1fd008f3ac5818c9f86e616cdc`, found only the unused react-select `Option` wrappers `AppConnectionOption`, `RoleOption`, and `RelayOption`, which were deleted with the package. The live `AppConnectionOptionContent` and `RoleOptionContent` renderers remain.
 - V3 `SecretInput`, `InfisicalSecretInput`, `SecretPathInput`, and `PasswordGenerator` have their own implementations. Compare security-sensitive behavior, not names. Removing unused V2 Editor/PasswordGenerator does not certify every active V3 editor flow.
 - API/data versions such as `hooks/api/secretRotationsV2`, `BillingV2Page`, `PkiAlertsV2Page`, backend secret-v2 services and migration files are not automatically legacy UI. Their actual UI imports and implementations remain in scope; their legitimate API versions are not renamed.
-- Third-party Radix, Lexical, Lottie and Font Awesome packages have current non-V2 consumers. A dependency is deleted only after its remaining ownership is proved; no package-name-based purge.
+- Third-party Radix, Lottie and Font Awesome packages have current non-V2 consumers. The Lexical editor packages (`lexical`, `@lexical/react`), whose only consumer was the deleted V2 Editor, and the unused `@dnd-kit/modifiers` are removed. A dependency is deleted only after its remaining ownership is proved; no package-name-based purge.
 
 ## Execution sequence and ownership
 

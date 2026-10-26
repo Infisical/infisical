@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
+import { PageTitle } from "@app/components/PageTitle";
 import { useServerConfig } from "@app/context";
 import { LoginMethod } from "@app/hooks/api/admin/types";
 
@@ -31,7 +32,7 @@ export const LoginPage = ({ isAdmin }: { isAdmin?: boolean }) => {
         ) : undefined
       }
     >
-      <title>{t("common.head-title", { title: t("login.title") })}</title>
+      <PageTitle title={isAdmin ? t("page-titles.admin-login") : t("login.title")} />
       <link rel="icon" href="/infisical.ico" />
       <meta property="og:image" content="/images/message.png" />
       <meta property="og:title" content={t("login.og-title") ?? ""} />

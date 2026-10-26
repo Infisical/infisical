@@ -7,6 +7,7 @@ import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
 import { AuthPageFooter } from "@app/components/auth/AuthPageFooter";
 import { AuthPageHeader } from "@app/components/auth/AuthPageHeader";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Card,
   CardContent,
@@ -166,9 +167,12 @@ export const ViewSecretRequestByIDPage = () => {
 
   if (isPending) {
     return (
-      <div className="h-screen w-screen bg-page">
-        <PageLoader lottieClassName="w-34" />
-      </div>
+      <>
+        <title>Secret Request</title>
+        <div className="h-screen w-screen bg-page">
+          <PageLoader lottieClassName="w-34" />
+        </div>
+      </>
     );
   }
 
@@ -249,7 +253,7 @@ export const ViewSecretRequestByIDPage = () => {
   return (
     <div className="relative flex max-h-screen min-h-screen flex-col overflow-y-auto bg-page px-4 text-foreground scheme-dark">
       <AuthPageBackground />
-      <title>Secret Request | Infisical</title>
+      <PageTitle title="Secret Request" />
       <meta property="og:image" content="/images/message.png" />
       <AuthPageHeader />
       <div className="relative z-10 my-auto flex flex-col items-center py-10">

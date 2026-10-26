@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { LookingForOrgPageLink } from "@app/components/v3";
 import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -82,7 +83,7 @@ export const SettingsPage = () => {
 
   return (
     <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
-      <title>{t("common.head-title", { title: pageTitle })}</title>
+      <PageTitle title={pageTitle} />
       <div className="w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.SecretManager}

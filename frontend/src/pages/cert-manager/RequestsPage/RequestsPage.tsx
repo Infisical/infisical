@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { FilterIcon, SearchIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Card,
@@ -242,7 +243,7 @@ export const RequestsPage = () => {
 
   return (
     <>
-      <title>Requests</title>
+      <PageTitle title="Requests" />
       <div className="h-full bg-page">
         <div className="mx-auto flex flex-col text-foreground-inverse">
           <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">

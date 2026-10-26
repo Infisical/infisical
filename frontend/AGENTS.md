@@ -113,6 +113,7 @@ Secret Scanning has one active project per org (see the root `AGENTS.md`). Membe
 
 ## Conventions
 
+- App browser titles use `PageTitle` from `@app/components/PageTitle`, which applies the localized `common.head-title` format (`Page | Infisical`) without suspending loading/error fallbacks. Pass a page label, not an already branded string. Keep one title mounted per screen, including loading, empty, and denied states; place it outside permission guards when necessary. The static HTML title is handed off before React mounts, preserving a no-JS fallback without duplicates. Custom-branded public sharing keeps its existing native, unbranded title; its loading title must not assume Infisical branding before configuration resolves. Use resource names only, never secret values or tokens.
 - ESLint flat config (ESLint 9+) with airbnb-typescript + prettier. Double quotes enforced.
 - Import ordering via `simple-import-sort`: node builtins → react/external packages → `@app/` → internal → relative → styles.
 - Forms use `react-hook-form` with `@hookform/resolvers` (Zod schemas).
