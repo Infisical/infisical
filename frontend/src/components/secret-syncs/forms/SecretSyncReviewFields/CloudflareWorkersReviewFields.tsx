@@ -26,7 +26,7 @@ export const CloudflareWorkersSyncOptionsReviewFields = () => {
         <Detail>
           <DetailLabel>Sync Plaintext and JSON Variables</DetailLabel>
           <DetailValue>
-            <Badge variant={syncNonSecretBindings ? "success" : "danger"}>
+            <Badge variant={syncNonSecretBindings ? "success" : "neutral"}>
               {syncNonSecretBindings ? "Enabled" : "Disabled"}
             </Badge>
           </DetailValue>
