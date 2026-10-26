@@ -942,9 +942,11 @@ itself whether the actor still reaches the org.
   - Every path that writes a project or resource membership for a user or identity, through
     `lockAndAssertActiveOrgAccess` (`services/org/org-access-fns.ts`), which locks and rechecks
     `findActorsWithActiveOrgAccess` inside the write's own transaction: the generic user and identity
-    `createMembership` at project scope, PAM's `addProductMember`, `addProductUserMembers` and
-    `addResourceMember`, and Agent Vault's `addProductMembers`. A new add path must call it before its write;
-    the pre-checks outside the transaction stay for their error messages but don't close the race.
+    `createMembership` at project scope, the deprecated `addUsersToProject`, the org admin console's
+    `grantProjectAdminAccess`, PKI application and signer `addMember` (their `addUserMembers` go through it),
+    PAM's `addProductMember`, `addProductUserMembers` and `addResourceMember`, and Agent Vault's
+    `addProductMembers`. A new add path must call it before its write; the pre-checks outside the transaction
+    stay for their error messages but don't close the race.
 - **Indirect members can be assigned to projects, PAM and Agent Vault included.** Users and identities that
   reach an org only through a linked group can get a direct project membership; that's the row the consumer
   revokes once the group path goes away. Two helpers on `org-dal.ts`, and picking the wrong one is the bug:

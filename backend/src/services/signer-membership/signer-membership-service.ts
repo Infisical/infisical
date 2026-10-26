@@ -10,6 +10,8 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
@@ -33,6 +35,7 @@ import {
 } from "./signer-membership-types";
 
 type TSignerMembershipServiceFactoryDep = {
+  orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   signerDAL: Pick<TSignerDALFactory, "findById" | "find">;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findById" | "find" | "deleteById" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
@@ -82,7 +85,8 @@ export const signerMembershipServiceFactory = ({
   groupDAL,
   userGroupMembershipDAL,
   identityGroupMembershipDAL,
-  approvalPolicyDAL
+  approvalPolicyDAL,
+  orgDAL
 }: TSignerMembershipServiceFactoryDep) => {
   const $loadSignerOrThrow = async (signerId: string, projectId: string) => {
     const signer = await signerDAL.findById(signerId);
@@ -231,6 +235,11 @@ export const signerMembershipServiceFactory = ({
           message: `This ${subjectLabel} can't be added here yet. Grant them access under Access Control first, then assign them to the signer.`
         });
       }
+
+      await lockAndAssertActiveOrgAccess(
+        { orgDAL, orgId: actorOrgId, userIds: userId ? [userId] : [], identityIds: identityId ? [identityId] : [] },
+        tx
+      );
 
       const newMembership = await membershipDAL.create(
         {

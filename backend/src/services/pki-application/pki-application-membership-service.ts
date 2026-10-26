@@ -12,6 +12,8 @@ import {
   ResourcePermissionSub
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
@@ -32,6 +34,7 @@ import {
 } from "./pki-application-types";
 
 type TPkiApplicationMembershipServiceFactoryDep = {
+  orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById" | "find">;
   membershipDAL: Pick<TMembershipDALFactory, "create" | "findById" | "find" | "deleteById" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "find" | "delete" | "update">;
@@ -69,7 +72,8 @@ export const pkiApplicationMembershipServiceFactory = ({
   groupDAL,
   userGroupMembershipDAL,
   identityGroupMembershipDAL,
-  approvalPolicyDAL
+  approvalPolicyDAL,
+  orgDAL
 }: TPkiApplicationMembershipServiceFactoryDep) => {
   const $projectGroupIds = async (projectId: string, tx?: Knex): Promise<string[]> => {
     const projectMemberships = await membershipDAL.find(
@@ -269,6 +273,11 @@ export const pkiApplicationMembershipServiceFactory = ({
           message: `This ${subjectLabel} can't be added here yet. Grant them access under Access Control first, then assign them to the application.`
         });
       }
+
+      await lockAndAssertActiveOrgAccess(
+        { orgDAL, orgId: actorOrgId, userIds: userId ? [userId] : [], identityIds: identityId ? [identityId] : [] },
+        tx
+      );
 
       const newMembership = await membershipDAL.create(
         {

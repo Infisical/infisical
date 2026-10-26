@@ -1810,6 +1810,7 @@ export const registerRoutes = async (
   const orgAdminService = orgAdminServiceFactory({
     smtpService,
     projectDAL,
+    orgDAL,
     permissionService,
     notificationService,
     membershipRoleDAL,
@@ -1996,6 +1997,7 @@ export const registerRoutes = async (
 
   const pkiApplicationMembershipService = pkiApplicationMembershipServiceFactory({
     pkiApplicationDAL,
+    orgDAL,
     membershipDAL,
     membershipRoleDAL,
     permissionService,
@@ -2009,6 +2011,7 @@ export const registerRoutes = async (
 
   const signerMembershipService = signerMembershipServiceFactory({
     signerDAL,
+    orgDAL,
     membershipDAL,
     membershipRoleDAL,
     permissionService,
