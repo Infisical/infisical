@@ -20,6 +20,7 @@ export const DatabricksConnectionServicePrincipalInputCredentialsSchema = z.obje
     .array()
     .max(Object.values(DatabricksConnectionScope).length)
     .optional()
+    .describe(AppConnections.CREDENTIALS.DATABRICKS.scopes)
 });
 
 const DatabricksConnectionServicePrincipalOutputCredentialsSchema = z
