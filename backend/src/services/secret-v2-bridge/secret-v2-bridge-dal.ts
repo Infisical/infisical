@@ -1124,7 +1124,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(selectAllTableCols(TableName.SecretReferenceV2))
         .select("folderId")
-        .select(db.ref("type").withSchema(TableName.SecretV2));
+        .select(db.ref("userId").withSchema(TableName.SecretV2));
 
       return docs;
     } catch (error) {

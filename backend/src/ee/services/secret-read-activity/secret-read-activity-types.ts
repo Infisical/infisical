@@ -35,9 +35,12 @@ export type TSecretReach = {
   secretId: string;
   secretIds: Set<string>;
   folderIds: Set<string>;
+  // Folders that hand it over only through a personal secret referencing it, with the owners whose reads count there.
+  ownerFolderIds: Map<string, Set<string>>;
 };
 
-export type TReachSecret = { id: string; folderId: string; key?: string };
+// userId is set on a personal secret: its owner's.
+export type TReachSecret = { id: string; folderId: string; key?: string; userId?: string | null };
 
 export type TSecretLocation = { environment: string; secretPath: string };
 

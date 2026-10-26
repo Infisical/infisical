@@ -1145,7 +1145,8 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   starts no earlier than the secret's and its folder's creation (`trackedSince`), nor before the table existed.
 - **Read path.** A read counts when it reaches the secret through its folder, an import of it, a secret
   referencing it, or the source of a replication import (imports and references check the reader's own access
-  to the source, so revoking it would break them). The card computes the whole project once and caches it
+  to the source, so revoking it would break them). A personal secret referencing it counts only for its owner, and
+  nothing referencing the personal secret is followed: a reference resolves to the shared secret without overrides. The card computes the whole project once and caches it
   (`KeyStoreTtls.InsightsUnusedAccessCacheInSeconds`), grouping actors by identical rules so each rule set is checked once
   per secret. The per-secret endpoint checks the caller's access to the secret before building its reach, which
   decrypts every secret that could reference it.

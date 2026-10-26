@@ -156,12 +156,10 @@ export const secretReadActivityServiceFactory = ({
       ? [requestedFolderId]
       : folders.filter((folder) => !folder.isReserved).map((folder) => folder.id);
 
-    // Each reference row is a secret (secretId, folderId) that references a key in another folder. Only shared secrets
-    // are referencers: a personal one is returned only to its owner, by a read with overrides, which records the
-    // secrets its references resolved to. Otherwise a folder read without overrides would credit what it references.
+    // Each reference row is a secret (secretId, folderId) that references a key in another folder.
     const references = (await secretV2BridgeDAL.findSecretReferencesByProjectId(projectId)).flatMap((reference) => {
       const targetFolderId = folderIdByLocation.get(toLocationKey(reference));
-      return targetFolderId && reference.type === SecretType.Shared ? [{ ...reference, targetFolderId }] : [];
+      return targetFolderId ? [{ ...reference, targetFolderId }] : [];
     });
     const referencesByTargetFolderId = groupBy(references, (reference) => reference.targetFolderId);
 
@@ -193,7 +191,11 @@ export const secretReadActivityServiceFactory = ({
     const secretById = new Map(loadedSecrets.map((secret) => [secret.id, secret]));
     const referenceEdges: { target: string; referencer: TReachSecret }[] = references.map((reference) => ({
       target: `${reference.targetFolderId}:${reference.secretKey}`,
-      referencer: secretById.get(reference.secretId) ?? { id: reference.secretId, folderId: reference.folderId }
+      referencer: secretById.get(reference.secretId) ?? {
+        id: reference.secretId,
+        folderId: reference.folderId,
+        userId: reference.userId
+      }
     }));
     for (let index = 0; index < loadedSecrets.length; index += 1) {
       if (index > 0 && index % REACH_YIELD_INTERVAL === 0) {
@@ -201,7 +203,7 @@ export const secretReadActivityServiceFactory = ({
         await setImmediate();
       }
       const secret = loadedSecrets[index];
-      if (secret.type === SecretType.Shared && secret.encryptedValue) {
+      if (secret.encryptedValue) {
         const { localReferences } = getAllSecretReferences(
           decryptor({ cipherTextBlob: secret.encryptedValue }).toString()
         );
@@ -250,7 +252,7 @@ export const secretReadActivityServiceFactory = ({
       ? targets.map(({ secret }) => computeSecretReach(secret, graph))
       : undefined;
     const objectIds = requestedReaches
-      ? requestedReaches.flatMap((reach) => [...reach.folderIds, ...reach.secretIds])
+      ? requestedReaches.flatMap((reach) => [...reach.folderIds, ...reach.ownerFolderIds.keys(), ...reach.secretIds])
       : [
           ...folders.map((folder) => folder.id),
           ...loadedSecrets.map((secret) => secret.id),
