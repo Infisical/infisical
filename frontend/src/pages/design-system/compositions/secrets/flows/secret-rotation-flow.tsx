@@ -200,12 +200,9 @@ function ProviderSelect({ onSelect }: { onSelect: (type: SecretRotation) => void
                 key={type}
                 media={<ProviderLogo type={type} />}
                 title={SECRET_ROTATION_MAP[type].name}
+                description={`Rotate ${SECRET_ROTATION_MAP[type].name} and write the generated values to Infisical secrets.`}
                 onClick={() => onSelect(type)}
               >
-                <SmallText muted>
-                  Rotate {SECRET_ROTATION_MAP[type].name} and write the generated values to
-                  Infisical secrets.
-                </SmallText>
                 <SmallText muted>
                   {getSecretRotationConnectionApps(type).map(appConnectionName).join(" or ")}
                 </SmallText>

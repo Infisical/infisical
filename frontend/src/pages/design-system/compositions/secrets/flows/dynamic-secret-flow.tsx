@@ -393,11 +393,9 @@ export function DynamicSecretFlow({
                           key={item.provider}
                           media={<ProviderLogo provider={item.provider} />}
                           title={item.label}
+                          description={`Generate time-limited ${item.label} credentials on demand.`}
                           onClick={() => selectProvider(item.provider)}
                         >
-                          <Meta mono={false} className="block">
-                            Generate time-limited {item.label} credentials on demand.
-                          </Meta>
                           <Meta mono={false} className="block">
                             {
                               getDynamicSecretProviderRuntimeMetadata(item.provider).presentation

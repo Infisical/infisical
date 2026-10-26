@@ -1543,7 +1543,7 @@ export const baselineContent = [
     ],
     referenceNames: ["Item", "Media", "Tile"],
     behavior: [
-      "Item composes rows with title, media, metadata, actions, error/unread states and actions below the text. ItemGroup keeps the requested semantic wrapper; Tile is a native selected button."
+      "Item composes rows with title, media, metadata, actions, error/unread states and actions below the text. ItemGroup keeps the requested semantic wrapper; Tile is a native selected button. Tile wraps its title (up to two lines), description and meta within the tile, so long text never runs under the trailing chevron or check."
     ],
     accessibility: [
       "Make only actionable rows interactive. Name a selected Tile and preserve aria-pressed instead of adding click handlers to a generic div."

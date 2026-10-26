@@ -57,6 +57,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.tileDescription {
+  display: block;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .error {
   font-family: var(--v4-type-small-font-family);
   font-size: var(--v4-type-small-font-size);

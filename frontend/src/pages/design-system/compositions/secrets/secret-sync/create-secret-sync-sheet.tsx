@@ -162,7 +162,7 @@ function ProviderPicker({ onSelect }: { onSelect: (destination: SecretSync) => v
         <Tile
           media={<ProviderLogo image={image} size={24} />}
           title={name}
-          description={<span className={styles.tileText}>{description}</span>}
+          description={description}
           disabled={!ported}
           onClick={() => onSelect(destination)}
         >

@@ -407,7 +407,11 @@ export function Tile({
             >
               {title}
             </span>
-            {description && <span className={itemStyles.description}>{description}</span>}
+            {description && (
+              <span className={cn(itemStyles.description, itemStyles.tileDescription)}>
+                {description}
+              </span>
+            )}
             {children}
           </>
         ) : (
