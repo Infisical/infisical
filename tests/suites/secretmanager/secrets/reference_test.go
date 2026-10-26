@@ -390,8 +390,8 @@ func TestSecretReference_CrossProject(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		source, target := sharingProjects(t, tn)
-		allowCrossProjectSharing(t, tn, true)
-		grantFolder(t, tn, source, target)
+		secretmanager.AllowCrossProjectSharing(t, tn, true)
+		secretmanager.GrantFolder(t, source, target, secretmanager.Location{Env: "dev", Path: "/"})
 
 		// Action
 		secretmanager.CreateSecret(t, target, "dev", "REF", fmt.Sprintf("${@%s.dev.SHARED}", source.Slug))
@@ -406,7 +406,7 @@ func TestSecretReference_CrossProject(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		source, target := sharingProjects(t, tn)
-		allowCrossProjectSharing(t, tn, true)
+		secretmanager.AllowCrossProjectSharing(t, tn, true)
 		ref := fmt.Sprintf("${@%s.dev.SHARED}", source.Slug)
 
 		// Action
@@ -422,13 +422,13 @@ func TestSecretReference_CrossProject(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		source, target := sharingProjects(t, tn)
-		allowCrossProjectSharing(t, tn, true)
-		grantFolder(t, tn, source, target)
+		secretmanager.AllowCrossProjectSharing(t, tn, true)
+		secretmanager.GrantFolder(t, source, target, secretmanager.Location{Env: "dev", Path: "/"})
 		ref := fmt.Sprintf("${@%s.dev.SHARED}", source.Slug)
 		secretmanager.CreateSecret(t, target, "dev", "REF", ref)
 
 		// Action
-		allowCrossProjectSharing(t, tn, false)
+		secretmanager.AllowCrossProjectSharing(t, tn, false)
 
 		// Assert
 		require.Equal(t, ref, secretmanager.GetSecret(t, target, "dev", "REF").Value)
@@ -442,8 +442,8 @@ func TestSecretReference_CrossProject(t *testing.T) {
 		source, target := sharingProjects(t, tn)
 		secretmanager.CreateSecret(t, source, "dev", "INNER", "inner")
 		secretmanager.CreateSecret(t, source, "dev", "OUTER", "${INNER}")
-		allowCrossProjectSharing(t, tn, true)
-		grantFolder(t, tn, source, target)
+		secretmanager.AllowCrossProjectSharing(t, tn, true)
+		secretmanager.GrantFolder(t, source, target, secretmanager.Location{Env: "dev", Path: "/"})
 
 		// Action
 		secretmanager.CreateSecret(t, target, "dev", "REF", fmt.Sprintf("${@%s.dev.OUTER}", source.Slug))
@@ -458,8 +458,8 @@ func TestSecretReference_CrossProject(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		source, target := sharingProjects(t, tn)
-		allowCrossProjectSharing(t, tn, true)
-		grantFolder(t, tn, source, target)
+		secretmanager.AllowCrossProjectSharing(t, tn, true)
+		secretmanager.GrantFolder(t, source, target, secretmanager.Location{Env: "dev", Path: "/"})
 		secretmanager.CreateSecret(t, target, "dev", "REF", fmt.Sprintf("${@%s.dev.SHARED}", source.Slug))
 
 		// Action
@@ -486,15 +486,8 @@ func readerOfOneFolder(t *testing.T, proj *fixture.Project, folderPath string) *
 	t.Helper()
 	secretmanager.CreateFolder(t, proj, "dev", folderPath)
 	reader := proj.NewMachineIdentity(t, fixture.WithRoles("no-access"))
-	res, err := proj.Tenant().Admin.API.CreateIdentityFolderAccessWithResponse(t.Context(), proj.ID, reader.ID,
-		api.CreateIdentityFolderAccessJSONRequestBody{
-			EnvironmentSlug: "dev",
-			SecretPath:      folderPath,
-			Permission:      api.CreateIdentityFolderAccessJSONBodyPermissionRead,
-		})
-	require.NoError(t, err)
-	require.Truef(t, res.StatusCode() == http.StatusOK, "granting folder access returned %d: %s",
-		res.StatusCode(), apierr.Body(res.Body))
+	secretmanager.GrantFolderAccess(t, proj, reader, secretmanager.Location{Env: "dev", Path: folderPath},
+		secretmanager.FolderRead)
 	return reader
 }
 
@@ -504,25 +497,4 @@ func sharingProjects(t *testing.T, tn *harness.Tenant) (source, target *fixture.
 	target = fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 	secretmanager.CreateSecret(t, source, "dev", "SHARED", "from-source")
 	return source, target
-}
-
-func allowCrossProjectSharing(t *testing.T, tn *harness.Tenant, allowed bool) {
-	t.Helper()
-	res, err := tn.Admin.API.UpdateOrganizationWithResponse(t.Context(), tn.OrgID.String(),
-		api.UpdateOrganizationJSONRequestBody{AllowCrossProjectSecretSharing: &allowed})
-	require.NoError(t, err)
-	require.Truef(t, res.StatusCode() == http.StatusOK, "setting cross-project sharing returned %d: %s",
-		res.StatusCode(), apierr.Body(res.Body))
-}
-
-func grantFolder(t *testing.T, tn *harness.Tenant, source, target *fixture.Project) {
-	t.Helper()
-	res, err := tn.Admin.API.CreateProjectFolderGrantWithResponse(t.Context(), api.CreateProjectFolderGrantJSONRequestBody{
-		SourceProjectId: source.ID,
-		TargetProjectId: target.ID,
-		Environment:     "dev",
-		SecretPath:      "/",
-	})
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "granting the folder returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 }

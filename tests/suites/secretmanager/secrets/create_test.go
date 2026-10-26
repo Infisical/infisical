@@ -173,7 +173,7 @@ func TestSecret_Create(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		tagID := newTag(t, proj, "billing")
+		tagID := secretmanager.CreateTag(t, proj, "billing")
 
 		// Action
 		res, err := tn.Admin.API.CreateSecretV4WithResponse(t.Context(), "STRIPE_KEY",
@@ -209,7 +209,7 @@ func TestSecret_Create(t *testing.T) {
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 		other := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		foreignTagID := newTag(t, other, "foreign")
+		foreignTagID := secretmanager.CreateTag(t, other, "foreign")
 
 		// Action
 		res, err := tn.Admin.API.CreateSecretV4WithResponse(t.Context(), "TAGGED",

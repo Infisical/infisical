@@ -70,6 +70,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getFolderCommitsCount",
       querystring: z.object({
         environment: z.string().trim(),
         path: z.string().trim().default("/").transform(removeTrailingSlash),
@@ -119,6 +120,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listFolderCommits",
       querystring: folderScopeQuerySchema.extend({
         offset: z.coerce.number().min(0).default(0),
         limit: z.coerce.number().min(1).max(100).default(20),
@@ -202,6 +204,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "listFolderCommitAuthors",
       querystring: folderScopeQuerySchema,
       response: {
         200: z.object({
@@ -246,6 +249,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getFolderCommitChanges",
       params: z.object({
         commitId: z.string().trim()
       }),
@@ -291,6 +295,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "compareFolderCommit",
       params: z.object({
         commitId: z.string().trim()
       }),
@@ -351,6 +356,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "rollbackFolderCommit",
       params: z.object({
         commitId: z.string().trim()
       }),
@@ -425,6 +431,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "revertFolderCommit",
       params: z.object({
         commitId: z.string().trim()
       }),
@@ -490,6 +497,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getFolderStateAtCommit",
       params: z.object({
         commitId: z.string().trim()
       }),
@@ -537,6 +545,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
     },
     schema: {
       hide: true,
+      operationId: "createBatchFolderCommit",
       description: "Commit changes",
       security: [
         {

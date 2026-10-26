@@ -19,15 +19,6 @@ type secretMetadataEntry = struct {
 	Value       *string `json:"value,omitempty"`
 }
 
-func newTag(t *testing.T, proj *fixture.Project, slug string) string {
-	t.Helper()
-	res, err := proj.Tenant().Admin.API.CreateSecretTagWithResponse(t.Context(), proj.ID,
-		api.CreateSecretTagJSONRequestBody{Slug: slug, Color: "#2563eb"})
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "creating tag %s returned %d: %s", slug, res.StatusCode(), apierr.Body(res.Body))
-	return res.JSON200.Tag.Id.String()
-}
-
 func readSecretsTagged(slugs ...string) fixture.Permission {
 	return fixture.Permission{
 		Subject:    "secrets",

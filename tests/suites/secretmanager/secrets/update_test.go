@@ -78,7 +78,7 @@ func TestSecret_Update(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		oldTag, newTagID := newTag(t, proj, "old-tag"), newTag(t, proj, "new-tag")
+		oldTag, newTagID := secretmanager.CreateTag(t, proj, "old-tag"), secretmanager.CreateTag(t, proj, "new-tag")
 		_, err := tn.Admin.API.CreateSecretV4WithResponse(t.Context(), "TAGGED",
 			api.CreateSecretV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", SecretValue: "value", TagIds: &[]string{oldTag}})
 		require.NoError(t, err)

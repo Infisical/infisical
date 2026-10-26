@@ -94,6 +94,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: false,
+      operationId: "listProjectMemberships",
       tags: [ApiDocsTags.ProjectUsers],
       description: "Return project user memberships",
       security: [
@@ -242,6 +243,7 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     },
     schema: {
       hide: true,
+      operationId: "getProjectMembershipPermissionAudit",
       params: z.object({
         projectId: z.string().min(1).trim(),
         membershipId: z.string().min(1).trim()

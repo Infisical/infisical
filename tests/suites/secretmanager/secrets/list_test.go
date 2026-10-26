@@ -70,7 +70,7 @@ func TestSecret_List(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		backend, billing, search := newTag(t, proj, "backend"), newTag(t, proj, "billing"), newTag(t, proj, "search")
+		backend, billing, search := secretmanager.CreateTag(t, proj, "backend"), secretmanager.CreateTag(t, proj, "billing"), secretmanager.CreateTag(t, proj, "search")
 		for name, tags := range map[string][]string{
 			"BACKEND_KEY": {backend}, "BILLING_KEY": {billing}, "SEARCH_KEY": {search}, "UNTAGGED": {},
 		} {
