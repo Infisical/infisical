@@ -103,7 +103,7 @@ describe("Vercel errors that retrying can't fix", () => {
     await expect(VercelSyncFns.syncSecrets(sync, payloadOf(["API_KEY"]))).rejects.toMatchObject({
       shouldRetry,
       secretKey: "API_KEY",
-      message: message ? expect.stringContaining(message) : ""
+      message: (message ? expect.stringContaining(message) : expect.any(String)) as string
     });
   });
   it("stops retrying a read that fails with a listed code", async () => {
