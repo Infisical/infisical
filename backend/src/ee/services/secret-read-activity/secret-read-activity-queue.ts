@@ -165,6 +165,14 @@ export const secretReadActivityQueueServiceFactory = ({
           `folder:${projectId}:${environment}:${normalizedPath}:${String(recursive)}:${etag ?? ""}`,
           [{ environment, secretPath: normalizedPath, recursive }]
         );
+        // A folder read credits only what its shared secrets hand over, since most folder reads leave personal values
+        // out. One that returned personal secrets (the v3 list does) records them too, for what their references hold.
+        const personalSecretIds = [...secrets, ...imports.flatMap((secretImport) => secretImport.secrets)]
+          .filter((secret) => secret.type === SecretType.Personal && !secret.secretValueHidden)
+          .map((secret) => secret.id);
+        if (personalSecretIds.length) {
+          await recordRead({ actor, actorId, projectId, secretIds: personalSecretIds, referencesExpanded: true });
+        }
         return;
       }
 

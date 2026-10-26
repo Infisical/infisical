@@ -68,7 +68,7 @@ export type TRecordSecretReadDTO = TSecretReader & {
   referencesExpanded: boolean;
 };
 
-type TReturnedSecret = { id: string; secretValueHidden: boolean };
+type TReturnedSecret = { id: string; type: string; secretValueHidden: boolean };
 
 export type TRecordBulkSecretReadDTO = TSecretReader & {
   environment: string;
