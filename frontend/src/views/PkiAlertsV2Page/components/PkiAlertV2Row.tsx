@@ -2,7 +2,6 @@ import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { EyeIcon, MoreHorizontalIcon, Trash2Icon } from "lucide-react";
 
-import { Td, Tr } from "@app/components/v2";
 import {
   Badge,
   DropdownMenu,
@@ -10,6 +9,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  TableCell,
+  TableRow,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -26,8 +27,8 @@ interface Props {
 
 export const PkiAlertV2Row = ({ alert, onView, onDelete }: Props) => {
   return (
-    <Tr>
-      <Td>
+    <TableRow>
+      <TableCell>
         <div className="flex items-center gap-2">
           <div className="font-medium text-foreground-cool">{alert.name}</div>
           {alert.description && (
@@ -39,23 +40,23 @@ export const PkiAlertV2Row = ({ alert, onView, onDelete }: Props) => {
             </Tooltip>
           )}
         </div>
-      </Td>
-      <Td>
+      </TableCell>
+      <TableCell>
         <span className="text-label-cool">{formatEventType(alert.eventType)}</span>
-      </Td>
-      <Td>
+      </TableCell>
+      <TableCell>
         <Badge variant={alert.enabled ? "success" : "neutral"}>
           {alert.enabled ? "Enabled" : "Disabled"}
         </Badge>
-      </Td>
-      <Td className="text-label-cool">
+      </TableCell>
+      <TableCell className="text-label-cool">
         {alert.eventType === PkiAlertEventTypeV2.EXPIRATION ? (
           formatAlertBefore(alert.alertBefore)
         ) : (
           <span className="text-surface-selected">—</span>
         )}
-      </Td>
-      <Td>
+      </TableCell>
+      <TableCell>
         {alert.lastRun ? (
           <Tooltip hoverable delayDuration={50}>
             <TooltipTrigger asChild>
@@ -82,8 +83,8 @@ export const PkiAlertV2Row = ({ alert, onView, onDelete }: Props) => {
         ) : (
           <span className="text-surface-selected">—</span>
         )}
-      </Td>
-      <Td className="text-right">
+      </TableCell>
+      <TableCell className="text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton size="xs" variant="ghost" aria-label="Alert actions">
@@ -101,7 +102,7 @@ export const PkiAlertV2Row = ({ alert, onView, onDelete }: Props) => {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </Td>
-    </Tr>
+      </TableCell>
+    </TableRow>
   );
 };

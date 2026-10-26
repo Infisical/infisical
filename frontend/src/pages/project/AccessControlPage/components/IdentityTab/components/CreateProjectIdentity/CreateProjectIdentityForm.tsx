@@ -5,14 +5,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
+import { RoleOptionContent } from "@app/components/roles";
 import {
   Button,
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   SheetFooter,
   Skeleton,
@@ -334,10 +334,12 @@ const ProjectIdentityFormContent = ({
                 <Field>
                   <FieldLabel>Machine Identity</FieldLabel>
                   <FieldContent>
-                    <FilterableSelect
+                    <Combobox
                       value={value || null}
-                      onChange={(newValue) => onChange(newValue || undefined)}
+                      isClearable={false}
+                      onValueChange={onChange}
                       placeholder="Select machine identity..."
+                      searchAriaLabel="Search machine identities"
                       options={assignableIdentities}
                       getOptionValue={(option) => option.id}
                       getOptionLabel={(option) => option.name}
@@ -357,14 +359,17 @@ const ProjectIdentityFormContent = ({
               <Field>
                 <FieldLabel>Role</FieldLabel>
                 <FieldContent>
-                  <FilterableSelect
+                  <Combobox
                     value={value}
-                    onChange={onChange}
+                    isClearable={false}
+                    onValueChange={onChange}
                     options={roles}
                     placeholder="Select role..."
+                    searchAriaLabel="Search roles"
                     getOptionValue={(option) => option.slug}
+                    getOptionKeywords={(option) => [option.slug]}
                     getOptionLabel={(option) => option.name}
-                    components={{ Option: RoleOption }}
+                    renderOption={(option) => <RoleOptionContent role={option} />}
                     isError={Boolean(error)}
                   />
                 </FieldContent>

@@ -127,7 +127,7 @@ Revoke the session even if the agent fails, for example in a `finally` block or 
 
 In Agent Vault, go to **Sessions** and select **All Sessions**. The **Identity** column shows the machine identity's name for the session you created. The session's **Status** is **Active** while the agent runs, and **Revoked** after [Step 5](#step-5-revoke-the-session).
 
-If you've [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs), [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made during the session.
+[View the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made during the session.
 
 <Check>
   Your code now creates a session for each agent run, and the agent's credentials stop working when you revoke the session or its `ttl` runs out.

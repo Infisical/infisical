@@ -10,6 +10,7 @@ import { logger } from "@app/lib/logger";
 import {
   AccessApprovalRequestTemplate,
   AccessApprovalRequestUpdatedTemplate,
+  AccessPamRequestAutoApprovedTemplate,
   AccessPamRequestBypassedTemplate,
   AccessPamRequestTemplate,
   AccountDeletionConfirmationTemplate,
@@ -92,6 +93,7 @@ export enum SmtpTemplates {
   AccessApprovalRequestUpdated = "accessApprovalRequestUpdated",
   AccessSecretRequestBypassed = "accessSecretRequestBypassed",
   AccessPamRequestBypassed = "accessPamRequestBypassed",
+  AccessPamRequestAutoApproved = "accessPamRequestAutoApproved",
   AccessPamRequest = "accessPamRequest",
   PkiApprovalRequestNeedsReview = "pkiApprovalRequestNeedsReview",
   SecretApprovalRequestNeedsReview = "secretApprovalRequestNeedsReview",
@@ -167,6 +169,7 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.ExternalImportSuccessful]: ExternalImportSucceededTemplate,
   [SmtpTemplates.AccessSecretRequestBypassed]: SecretApprovalRequestBypassedTemplate,
   [SmtpTemplates.AccessPamRequestBypassed]: AccessPamRequestBypassedTemplate,
+  [SmtpTemplates.AccessPamRequestAutoApproved]: AccessPamRequestAutoApprovedTemplate,
   [SmtpTemplates.AccessPamRequest]: AccessPamRequestTemplate,
   [SmtpTemplates.PkiApprovalRequestNeedsReview]: PkiApprovalRequestNeedsReviewTemplate,
   [SmtpTemplates.IntegrationSyncFailed]: IntegrationSyncFailedTemplate,

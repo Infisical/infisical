@@ -5,6 +5,8 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const AgentVaultProxiesSchema = z.object({
@@ -20,7 +22,9 @@ export const AgentVaultProxiesSchema = z.object({
   allowedHosts: z.string().nullable().optional(),
   pollInterval: z.number().default(60),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  rootCaCertificate: z.string().nullable().optional(),
+  encryptedRootCaPrivateKey: zodBuffer.nullable().optional()
 });
 
 export type TAgentVaultProxies = z.infer<typeof AgentVaultProxiesSchema>;

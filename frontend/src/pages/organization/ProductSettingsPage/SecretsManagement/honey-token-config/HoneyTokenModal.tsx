@@ -15,11 +15,11 @@ import {
   AccordionTrigger,
   Button,
   ButtonGroup,
+  Combobox,
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   IconButton,
   Input,
   Sheet,
@@ -229,23 +229,19 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
 
                   return (
                     <Field>
-                      <FieldLabel>App Connection</FieldLabel>
-                      <FilterableSelect
+                      <FieldLabel htmlFor="honey-token-app-connection">App Connection</FieldLabel>
+                      <Combobox
+                        id="honey-token-app-connection"
                         value={selectedConnection || null}
-                        onChange={(newValue) => {
-                          const singleValue = Array.isArray(newValue) ? newValue[0] : newValue;
-                          if (singleValue && "id" in singleValue) {
-                            field.onChange(singleValue.id);
-                          } else {
-                            field.onChange("");
-                          }
-                        }}
+                        isClearable={false}
+                        onValueChange={(connection) => field.onChange(connection.id)}
                         isError={Boolean(error)}
                         isLoading={isLoadingConnections}
                         options={awsConnections}
                         placeholder="Select an AWS App Connection..."
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id]}
                       />
                       <FieldError errors={[error]} />
                     </Field>

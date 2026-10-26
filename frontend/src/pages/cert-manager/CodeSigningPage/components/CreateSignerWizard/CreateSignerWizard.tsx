@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AxiosError } from "axios";
-import { PenTool } from "lucide-react";
 
 import {
   Button,
+  DiscardChangesAlertDialog,
   DocumentationLinkBadge,
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -33,6 +34,7 @@ import {
   useCreateSigner
 } from "@app/hooks/api/signers";
 import { useGetOrgUsers } from "@app/hooks/api/users";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
 import {
   ExternalOrderMode,
@@ -213,13 +215,8 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
     });
   };
 
-  const handleClose = (open: boolean) => {
-    if (!open && submitting) return;
-    if (!open) reset();
-    onOpenChange(open);
-  };
-
   const onCreate = async () => {
+    if (submitting) return;
     setSubmitting(true);
     try {
       const approvalPolicy =
@@ -312,6 +309,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
   };
 
   const goNext = async () => {
+    if (submitting) return;
     if (step === 0) {
       const ok = await basicsForm.trigger();
       if (!ok) return;
@@ -392,10 +390,22 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
 
   const dirty =
     step > 0 ||
-    state.name !== "" ||
-    state.commonName !== "" ||
-    state.pendingMembers.length > 0 ||
-    state.policySteps.length > 0;
+    basicsForm.formState.isDirty ||
+    certificateForm.formState.isDirty ||
+    JSON.stringify(state) !== JSON.stringify(INITIAL_WIZARD_STATE);
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({
+      isDirty: dirty,
+      onDiscard: () => {
+        reset();
+        onOpenChange(false);
+      }
+    });
+  const handleClose = (open: boolean) => {
+    if (submitting) return;
+    if (open) onOpenChange(true);
+    else requestDiscard();
+  };
 
   const currentStep = STEPS[step];
   const ctaLabel = isLast ? "Create Signer" : "Continue";
@@ -408,159 +418,169 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
   const ctaDisabled = isLast && (hasEmptyPolicyStep || missingConstraints);
 
   return (
-    <Sheet open={isOpen} onOpenChange={handleClose}>
-      <SheetContent size="workspace" className="flex h-full max-h-full flex-col gap-y-0">
-        <SheetHeader className="border-b">
-          <SheetTitle>
-            <div className="flex w-full items-start gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-project/10 text-project">
-                <PenTool className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-x-2 text-label">
-                  Create Signer
-                  <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.create} />
-                </div>
-                <p className="text-sm leading-4 text-muted">
-                  A code-signing certificate with the members and approval policy that govern its
-                  use.
-                </p>
-              </div>
-            </div>
-          </SheetTitle>
-        </SheetHeader>
+    <>
+      <Sheet open={isOpen} onOpenChange={handleClose}>
+        <SheetContent size="workspace" isPending={submitting}>
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              Create Signer
+              <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.create} />
+            </SheetTitle>
+            <SheetDescription>
+              A code-signing certificate with the members and approval policy that govern its use.
+            </SheetDescription>
+          </SheetHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 overflow-hidden">
-            <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
-              <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
-                Setup steps
-              </p>
-              <Stepper
-                activeStep={step}
-                orientation="vertical"
-                onStepChange={(i) => {
-                  if (i < step && !submitting) setStep(i);
-                }}
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
+                <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
+                  Setup steps
+                </p>
+                <Stepper
+                  activeStep={step}
+                  orientation="vertical"
+                  onStepChange={(i) => {
+                    if (i < step && !submitting) setStep(i);
+                  }}
+                >
+                  <StepperList>
+                    {STEPS.map((s, i) => (
+                      <StepperStep
+                        key={s.name}
+                        index={i}
+                        title={s.name}
+                        description={s.shortDescription}
+                      />
+                    ))}
+                  </StepperList>
+                </Stepper>
+              </aside>
+
+              <fieldset
+                disabled={submitting}
+                className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6"
               >
-                <StepperList>
-                  {STEPS.map((s, i) => (
-                    <StepperStep
-                      key={s.name}
-                      index={i}
-                      title={s.name}
-                      description={s.shortDescription}
-                    />
-                  ))}
-                </StepperList>
-              </Stepper>
-            </aside>
+                <div className="mb-6">
+                  <h2 className="text-lg font-normal text-foreground">{currentStep.title}</h2>
+                  <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
+                </div>
 
-            <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
-              <div className="mb-6">
-                <h2 className="text-lg font-normal text-foreground">{currentStep.title}</h2>
-                <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
-              </div>
+                {step === 0 && <BasicsStep form={basicsForm} />}
+                {step === 1 && (
+                  <CertificateStep
+                    form={certificateForm}
+                    caOptions={caOptions}
+                    isCasLoading={cas.isPending}
+                  />
+                )}
+                {step === 2 && (
+                  <SignerKeyStep
+                    control={certificateForm.control}
+                    requiresHsm={caCaps.requiresHsm}
+                    minRsaKeyBits={caCaps.minRsaKeyBits}
+                    hsmConnectorOptions={hsmConnectorOptions}
+                    isHsmConnectorsLoading={isHsmConnectorsLoading}
+                    importCheckError={importCheckError}
+                  />
+                )}
+                {step === 3 && (
+                  <MembersStep
+                    userOptions={userOptions.filter((u) => u.value !== user.id)}
+                    identityOptions={identityOptions}
+                    groupOptions={groupOptions}
+                    state={state}
+                    setState={setState}
+                    isUsersLoading={usersQuery.isPending}
+                    isIdentitiesLoading={identitiesQuery.isPending}
+                    isGroupsLoading={groupsQuery.isPending}
+                    creator={{ id: user.id, label: creatorLabel }}
+                  />
+                )}
+                {step === 4 && (
+                  <ApprovalPolicyStep
+                    state={state}
+                    setState={setState}
+                    approverOptions={[
+                      { value: user.id, label: creatorLabel, kind: "user" as const },
+                      ...state.pendingMembers
+                        .filter((m) => m.role !== SignerMemberRole.Auditor)
+                        .filter((m) => m.kind === "user" || m.kind === "group")
+                        .map((m) => ({
+                          value: m.id,
+                          label: m.label,
+                          kind: m.kind as "user" | "group"
+                        }))
+                    ]}
+                  />
+                )}
+              </fieldset>
 
-              {step === 0 && <BasicsStep form={basicsForm} />}
-              {step === 1 && (
-                <CertificateStep
-                  form={certificateForm}
-                  caOptions={caOptions}
-                  isCasLoading={cas.isPending}
-                />
-              )}
-              {step === 2 && (
-                <SignerKeyStep
-                  control={certificateForm.control}
-                  requiresHsm={caCaps.requiresHsm}
-                  minRsaKeyBits={caCaps.minRsaKeyBits}
-                  hsmConnectorOptions={hsmConnectorOptions}
-                  isHsmConnectorsLoading={isHsmConnectorsLoading}
-                  importCheckError={importCheckError}
-                />
-              )}
-              {step === 3 && (
-                <MembersStep
-                  userOptions={userOptions.filter((u) => u.value !== user.id)}
-                  identityOptions={identityOptions}
-                  groupOptions={groupOptions}
-                  state={state}
-                  setState={setState}
-                  isUsersLoading={usersQuery.isPending}
-                  isIdentitiesLoading={identitiesQuery.isPending}
-                  isGroupsLoading={groupsQuery.isPending}
-                  creator={{ id: user.id, label: creatorLabel }}
-                />
-              )}
-              {step === 4 && (
-                <ApprovalPolicyStep
-                  state={state}
-                  setState={setState}
-                  approverOptions={[
-                    { value: user.id, label: creatorLabel, kind: "user" as const },
-                    ...state.pendingMembers
-                      .filter((m) => m.role !== SignerMemberRole.Auditor)
-                      .filter((m) => m.kind === "user" || m.kind === "group")
-                      .map((m) => ({
-                        value: m.id,
-                        label: m.label,
-                        kind: m.kind as "user" | "group"
-                      }))
-                  ]}
-                />
-              )}
+              <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
+                <div className="mb-auto">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
+                      Step {step + 1} · {currentStep.rightLabel}
+                    </p>
+                    <DocumentationLinkBadge href={currentStep.docsUrl} />
+                  </div>
+                  <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">
+                    {currentStep.rightDescription}
+                  </p>
+                </div>
+              </aside>
             </div>
 
-            <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
-              <div className="mb-auto">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
-                    Step {step + 1} · {currentStep.rightLabel}
-                  </p>
-                  <DocumentationLinkBadge href={currentStep.docsUrl} />
-                </div>
-                <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
-                <p className="mt-2 text-sm leading-relaxed text-muted">
-                  {currentStep.rightDescription}
-                </p>
-              </div>
-            </aside>
-          </div>
-
-          <SheetFooter className="shrink-0 items-center justify-between border-t">
-            <span className="text-xs text-muted">
-              {/* eslint-disable-next-line no-nested-ternary */}
-              {hasEmptyPolicyStep
-                ? `Step ${firstEmptyPolicyStepIndex + 1} needs at least one approver, or remove it.`
-                : // eslint-disable-next-line no-nested-ternary
-                  missingConstraints
-                  ? "Set at least one of 'signatures per approval' or 'signing window'."
-                  : dirty
-                    ? "Unsaved changes"
-                    : ""}
-            </span>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted">
-                Step {step + 1} of {STEPS.length}
-              </span>
+            <SheetFooter className="shrink-0 items-center justify-between border-t">
               {step > 0 && (
-                <Button variant="outline" onClick={goBack} isDisabled={submitting}>
+                <Button
+                  variant="outline"
+                  onClick={goBack}
+                  isDisabled={submitting}
+                  className="mr-auto"
+                >
                   Back
                 </Button>
               )}
-              <Button
-                variant="project"
-                onClick={goNext}
-                isPending={submitting}
-                isDisabled={ctaDisabled}
-              >
-                {ctaLabel}
-              </Button>
-            </div>
-          </SheetFooter>
-        </div>
-      </SheetContent>
-    </Sheet>
+              <span className="text-xs text-muted">
+                {/* eslint-disable-next-line no-nested-ternary */}
+                {hasEmptyPolicyStep
+                  ? `Step ${firstEmptyPolicyStepIndex + 1} needs at least one approver, or remove it.`
+                  : // eslint-disable-next-line no-nested-ternary
+                    missingConstraints
+                    ? "Set at least one of 'signatures per approval' or 'signing window'."
+                    : dirty
+                      ? "Unsaved changes"
+                      : ""}
+              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted">
+                  Step {step + 1} of {STEPS.length}
+                </span>
+                <Button variant="ghost" onClick={() => handleClose(false)} isDisabled={submitting}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="project"
+                  onClick={goNext}
+                  isPending={submitting}
+                  isDisabled={ctaDisabled}
+                >
+                  {ctaLabel}
+                </Button>
+              </div>
+            </SheetFooter>
+          </div>
+        </SheetContent>
+      </Sheet>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your signer setup progress will be lost."
+      />
+    </>
   );
 };

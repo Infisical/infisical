@@ -1,7 +1,6 @@
-import { faBoxesStacked, faEllipsis } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
-import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -9,16 +8,18 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  EmptyState,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  IconButton,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableSkeletonRows
+} from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -45,102 +46,101 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
     projectId
   });
 
+  if (!isPending && !data?.collections?.length) {
+    return (
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>No certificate collections have been created</EmptyTitle>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
   return (
     <div>
-      <TableContainer>
-        <Table>
-          <THead>
-            <Tr>
-              <Th>Name</Th>
-              <Th>Description</Th>
-              <Th className="w-5" />
-            </Tr>
-          </THead>
-          <TBody>
-            {isPending && <TableSkeleton columns={3} innerKey="pki-collections" />}
-            {!isPending &&
-              data?.collections.map((pkiCollection) => {
-                return (
-                  <Tr
-                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-surface-hover"
-                    key={`pki-collection-${pkiCollection.id}`}
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/cert-manager/pki-collections/$collectionId",
-                        params: {
-                          orgId: currentOrg.id,
-                          collectionId: pkiCollection.id
-                        }
-                      })
-                    }
-                  >
-                    <Td>{pkiCollection.name}</Td>
-                    <Td>{pkiCollection.description ? pkiCollection.description : "-"}</Td>
-                    <Td>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild className="rounded-lg">
-                          <div className="hover:text-project data-[state=open]:text-project">
-                            <FontAwesomeIcon size="sm" icon={faEllipsis} />
-                          </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="p-1">
-                          <ProjectPermissionCan
-                            I={ProjectPermissionActions.Edit}
-                            a={ProjectPermissionSub.PkiCollections}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                className={twMerge(
-                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("pkiCollection", {
-                                    collectionId: pkiCollection.id
-                                  });
-                                }}
-                                disabled={!isAllowed}
-                              >
-                                Edit Collection
-                              </DropdownMenuItem>
-                            )}
-                          </ProjectPermissionCan>
-                          <ProjectPermissionCan
-                            I={ProjectPermissionActions.Delete}
-                            a={ProjectPermissionSub.PkiCollections}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                className={twMerge(
-                                  isAllowed
-                                    ? "hover:bg-danger! hover:text-white!"
-                                    : "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("deletePkiCollection", {
-                                    collectionId: pkiCollection.id,
-                                    name: pkiCollection.name
-                                  });
-                                }}
-                                disabled={!isAllowed}
-                              >
-                                Delete Collection
-                              </DropdownMenuItem>
-                            )}
-                          </ProjectPermissionCan>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </Td>
-                  </Tr>
-                );
-              })}
-          </TBody>
-        </Table>
-        {!isPending && !data?.collections?.length && (
-          <EmptyState title="No certificate collections have been created" icon={faBoxesStacked} />
-        )}
-      </TableContainer>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead className="w-5" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {isPending && <TableSkeletonRows columns={3} />}
+          {!isPending &&
+            data?.collections.map((pkiCollection) => {
+              return (
+                <TableRow
+                  key={`pki-collection-${pkiCollection.id}`}
+                  onClick={() =>
+                    navigate({
+                      to: "/organizations/$orgId/cert-manager/pki-collections/$collectionId",
+                      params: {
+                        orgId: currentOrg.id,
+                        collectionId: pkiCollection.id
+                      }
+                    })
+                  }
+                >
+                  <TableCell>{pkiCollection.name}</TableCell>
+                  <TableCell>
+                    {pkiCollection.description ? pkiCollection.description : "-"}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <IconButton variant="ghost" size="xs" aria-label="More options">
+                          <FontAwesomeIcon icon={faEllipsis} />
+                        </IconButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Edit}
+                          a={ProjectPermissionSub.PkiCollections}
+                        >
+                          {(isAllowed) => (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePopUpOpen("pkiCollection", {
+                                  collectionId: pkiCollection.id
+                                });
+                              }}
+                              isDisabled={!isAllowed}
+                            >
+                              Edit Collection
+                            </DropdownMenuItem>
+                          )}
+                        </ProjectPermissionCan>
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Delete}
+                          a={ProjectPermissionSub.PkiCollections}
+                        >
+                          {(isAllowed) => (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePopUpOpen("deletePkiCollection", {
+                                  collectionId: pkiCollection.id,
+                                  name: pkiCollection.name
+                                });
+                              }}
+                              isDisabled={!isAllowed}
+                              variant="danger"
+                            >
+                              Delete Collection
+                            </DropdownMenuItem>
+                          )}
+                        </ProjectPermissionCan>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+        </TableBody>
+      </Table>
     </div>
   );
 };

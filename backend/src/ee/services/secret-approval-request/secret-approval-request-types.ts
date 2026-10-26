@@ -127,6 +127,7 @@ export type TCreateSecretApprovalSideEffectsDTO = {
 export type TMergeSecretApprovalRequestDTO = {
   approvalId: string;
   bypassReason?: string;
+  requireApprovals?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TStatusChangeDTO = {

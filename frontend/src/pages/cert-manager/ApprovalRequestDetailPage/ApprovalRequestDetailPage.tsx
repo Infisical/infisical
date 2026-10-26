@@ -7,8 +7,21 @@ import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
-import { ContentLoader, EmptyState } from "@app/components/v2";
-import { Badge, Button, ConfirmationAlertDialog } from "@app/components/v3";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  ConfirmationAlertDialog,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  PageLoader
+} from "@app/components/v3";
 import { useOrganization, useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
@@ -47,73 +60,85 @@ const CodeSigningDetailsSection = ({
 }) => {
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-lg border border-border-control bg-surface-base p-4">
-        <h2 className="text-lg font-normal text-foreground">
-          Signing access for {requestData.signerName}
-        </h2>
-        <div className="mt-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-hover text-sm font-medium text-foreground-secondary">
-            {(requesterName || "U")
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase()}
-          </div>
-          <div>
-            <p className="text-sm font-medium text-foreground">{requesterName || "Unknown"}</p>
-            {requesterEmail && <p className="text-sm text-muted">{requesterEmail}</p>}
-          </div>
-        </div>
-      </div>
-      <div className="rounded-lg border border-border-control bg-surface-base p-5">
-        <h3 className="mb-4 text-lg font-normal text-foreground">Signing Access Details</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <span className="text-xs text-muted">Signer</span>
-            <p className="text-sm text-foreground">{requestData.signerName}</p>
-          </div>
-          {requestData.requestedWindowDuration && (
+      <Card>
+        <CardHeader>
+          <CardTitle role="heading" aria-level={2}>
+            Signing access for {requestData.signerName}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-hover text-sm font-medium text-foreground-secondary">
+              {(requesterName || "U")
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()}
+            </div>
             <div>
-              <span className="text-xs text-muted">Access Duration</span>
-              <p className="text-sm text-foreground">
-                {requestData.requestedWindowDuration} from approval
+              <p className="text-sm font-medium text-foreground">{requesterName || "Unknown"}</p>
+              {requesterEmail && <p className="text-sm text-muted">{requesterEmail}</p>}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle role="heading" aria-level={3}>
+            Signing Access Details
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-xs text-muted">Signer</span>
+              <p className="text-sm text-foreground">{requestData.signerName}</p>
+            </div>
+            {requestData.requestedWindowDuration && (
+              <div>
+                <span className="text-xs text-muted">Access Duration</span>
+                <p className="text-sm text-foreground">
+                  {requestData.requestedWindowDuration} from approval
+                </p>
+              </div>
+            )}
+            {requestData.requestedSignings && (
+              <div>
+                <span className="text-xs text-muted">Allowed Sign Operations</span>
+                <p className="text-sm text-foreground">{requestData.requestedSignings}</p>
+              </div>
+            )}
+          </div>
+          {requestData.scope && Object.values(requestData.scope).some(Boolean) && (
+            <div className="mt-4 border-t border-border-control pt-4">
+              <h4 className="mb-1 text-sm font-normal text-foreground">Request Scope</h4>
+              <p className="mb-3 text-xs text-muted">
+                Signing is only allowed when every parameter below matches exactly.
               </p>
+              <div className="flex flex-col gap-4">
+                {Object.values(CodeSigningScopeField)
+                  .filter((field) => requestData.scope?.[field])
+                  .map((field) => (
+                    <div key={field}>
+                      <span className="text-xs text-muted">
+                        {codeSigningScopeFieldLabels[field]}
+                      </span>
+                      <p
+                        className={twMerge(
+                          "text-sm break-all text-foreground",
+                          MONOSPACED_SCOPE_FIELDS.includes(field) && "font-mono text-xs"
+                        )}
+                      >
+                        {requestData.scope?.[field]}
+                      </p>
+                    </div>
+                  ))}
+              </div>
             </div>
           )}
-          {requestData.requestedSignings && (
-            <div>
-              <span className="text-xs text-muted">Allowed Sign Operations</span>
-              <p className="text-sm text-foreground">{requestData.requestedSignings}</p>
-            </div>
-          )}
-        </div>
-        {requestData.scope && Object.values(requestData.scope).some(Boolean) && (
-          <div className="mt-4 border-t border-border-control pt-4">
-            <h4 className="mb-1 text-sm font-normal text-foreground">Request Scope</h4>
-            <p className="mb-3 text-xs text-muted">
-              Signing is only allowed when every parameter below matches exactly.
-            </p>
-            <div className="flex flex-col gap-4">
-              {Object.values(CodeSigningScopeField)
-                .filter((field) => requestData.scope?.[field])
-                .map((field) => (
-                  <div key={field}>
-                    <span className="text-xs text-muted">{codeSigningScopeFieldLabels[field]}</span>
-                    <p
-                      className={twMerge(
-                        "text-sm break-all text-foreground",
-                        MONOSPACED_SCOPE_FIELDS.includes(field) && "font-mono text-xs"
-                      )}
-                    >
-                      {requestData.scope?.[field]}
-                    </p>
-                  </div>
-                ))}
-            </div>
-          </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
@@ -202,7 +227,7 @@ const PageContent = () => {
   if (isPending) {
     return (
       <div className="flex h-full w-full items-center justify-center">
-        <ContentLoader />
+        <PageLoader />
       </div>
     );
   }
@@ -210,11 +235,17 @@ const PageContent = () => {
   if (!request) {
     return (
       <div className="flex h-full w-full items-center justify-center px-20">
-        <EmptyState
-          className="max-w-2xl rounded-md text-center"
-          icon={faBan}
-          title={`Could not find approval request with ID ${approvalRequestId}`}
-        />
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <FontAwesomeIcon icon={faBan} />
+            </EmptyMedia>
+            <EmptyTitle>Approval Request Not Found</EmptyTitle>
+            <EmptyDescription>
+              Could not find approval request with ID {approvalRequestId}.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       </div>
     );
   }
@@ -419,6 +450,7 @@ const PageContent = () => {
         title="Do you want to cancel this approval request?"
         onOpenChange={(isOpen) => handlePopUpToggle("cancelRequest", isOpen)}
         onConfirm={handleRequestCancel}
+        isPending={cancelApprovalRequest.isPending}
         confirmLabel="Confirm"
       />
     </div>

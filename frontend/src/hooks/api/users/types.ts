@@ -85,6 +85,37 @@ export type OrgUser = {
   lastLoginTime?: string;
 };
 
+export type TOrgUserAccessGroupRole = {
+  role: string;
+  roleId: string | null;
+};
+
+export type TOrgUserAccessGroup = {
+  id: string;
+  name: string;
+  slug: string;
+  roles: TOrgUserAccessGroupRole[];
+};
+
+export type TOrgUserAccessMembership = Pick<
+  OrgUser,
+  "id" | "role" | "roleId" | "status" | "isActive" | "lastLoginAuthMethod" | "lastLoginTime"
+> & { inviteEmail?: string | null };
+
+export type TOrgUserAccessUser = Pick<
+  OrgUser["user"],
+  "id" | "username" | "email" | "firstName" | "lastName"
+> & {
+  publicKey?: string | null;
+  superAdmin?: boolean | null;
+};
+
+export type TOrgUserAccess = {
+  user: TOrgUserAccessUser;
+  membership: TOrgUserAccessMembership | null;
+  groups: TOrgUserAccessGroup[];
+};
+
 export type TUserMembership = {
   id: string;
   scope: string;

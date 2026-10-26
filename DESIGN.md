@@ -96,10 +96,6 @@ scope and product variants as interchangeable.
 | Muted text        | `--color-muted`           |
 | Label text        | `--color-label`           |
 
-The `mineshaft-*` scale (50–900) is the underlying neutral ramp; see
-`index.css` for the full list. Prefer semantic tokens (`card`, `border`,
-`accent`) over raw mineshaft values.
-
 ### Product-area accents (secret-manager)
 
 Reserved for resource types in the secret management product:
@@ -164,11 +160,10 @@ labels, and dropdown menu items. See §8 for voice rules on copy itself.
 
 ## 4. Component Stylings
 
-Prefer v3 components from [`frontend/src/components/v3/`](frontend/src/components/v3)
-for new UI. The v2 library is legacy; use it for new work only when v3 does not
-cover the required behavior. Existing v2 consumers marked blocked in the
-[lifecycle ledger](frontend/src/components/COMPONENT_LIFECYCLE.md) need
-consumer-specific parity checks before replacement, even on mixed pages.
+Use v3 components from [`frontend/src/components/v3/`](frontend/src/components/v3)
+for all UI. The v2 library has been removed; see the
+[lifecycle ledger](frontend/src/components/COMPONENT_LIFECYCLE.md) for
+deprecated v3 components and their replacements.
 
 For exact tokens, classes, and supported variants, read component source and
 the story when present; stories may not enumerate every implemented variant.
@@ -217,7 +212,6 @@ specialized primitives not listed here (for example `CodeBlock`, `CopyButton`,
 | [`InputGroup`](frontend/src/components/v3/generic/InputGroup/InputGroup.tsx)                                                              | Input with left/right addons — search bars, prefixed values.                                                |
 | [`Select`](frontend/src/components/v3/generic/Select/Select.tsx)                                                                          | Non-searchable single-select with a short, known option list.                                               |
 | [`Combobox`](frontend/src/components/v3/generic/Combobox/Combobox.tsx)                                                                    | Searchable single- or multi-select, including grouped/rich rows and inline or dialog creation when its contract fits. |
-| [`ReactSelect`](frontend/src/components/v3/generic/ReactSelect/index.ts)                                                                  | Deprecated compatibility for consumers needing react-select-specific overrides; see the lifecycle ledger. |
 | [`Toggle`](frontend/src/components/v3/generic/Toggle/Toggle.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx) | Boolean toggle / multi-select boolean.                                                                      |
 | [`Calendar`](frontend/src/components/v3/generic/Calendar/Calendar.tsx)                                                                    | Date / multi-date / range picker primitive.                                                                 |
 | [`DateRangeFilter`](frontend/src/components/v3/platform/DateRangeFilter/DateRangeFilter.tsx)                                               | Platform date-range filter with presets — for filter bars.                                                  |
@@ -340,7 +334,6 @@ remain legible across the control edge.
 - **DO** pair destructive confirmations with the resource name and the
   consequence (see §9).
 - **DO** cite tokens (`bg-card`) over hex (`#xxxxxx`) in new code.
-- **DON'T** replace existing blocked v2 consumers based on matching component names alone; check the lifecycle ledger and interaction parity first.
 - **DON'T** add ad hoc box-shadows as a depth cue — borders and surface tones do
   that work. The shared `Card` already has `shadow-xs`; floating elements
   (Popover, DropdownMenu, Sheet, SelectedActionBar) include stronger shadows.
@@ -476,7 +469,7 @@ Pasteable prompt fragments for AI coding agents producing new UI.
 4. **Adding a variant** — extend the `cva()` block in the component and add
    a story when appropriate. Match the existing variant family rather than
    imposing a tint recipe on neutral, outline, or product variants.
-5. **Prefer v3 for new code** — use v2 only where needed for behavior not covered
-   by v3. Existing blocked v2 consumers migrate after lifecycle parity review.
+5. **Use v3.** The v2 library has been removed. Check the lifecycle ledger
+   before reaching for a deprecated v3 component.
 6. **Before merging** — `make reviewable-ui` (lint + type-check).
 7. **When in doubt** — mirror `OverviewPage`.

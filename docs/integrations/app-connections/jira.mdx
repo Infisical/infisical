@@ -1,0 +1,95 @@
+---
+title: "Jira connection"
+sidebarTitle: "Jira"
+description: "Learn how to configure a Jira connection for Infisical."
+---
+
+import ConnectionFormFields from "/snippets/app-connections/jira/form-fields.mdx";
+
+A Jira connection authenticates Infisical to Jira Cloud with an [API token](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/), or to Jira Data Center with a [personal access token](https://confluence.atlassian.com/enterprise/using-personal-access-tokens-1026032365.html), so Infisical can read your Jira tickets.
+
+Infisical acts as the Jira user who owns the token, so Infisical can only read the tickets that user can see.
+
+## Prerequisites
+
+- A Jira Cloud site, or a Jira Data Center instance that Infisical can reach directly or through a [Gateway](/documentation/platform/gateways/overview)
+- A Jira user for Infisical to act as, and a Jira admin who can change that user's permissions
+
+## Step 1: Create an API token or personal access token
+
+The token's user needs these permissions in Jira:
+
+- **Browse spaces** in Jira Cloud, or **Browse projects** in Jira Data Center, on every project whose tickets you want Infisical to read
+- Permission to view customer requests in your Jira Service Management projects, so Infisical can read a request's approvals
+
+Then create the token as that user:
+
+<Tabs>
+    <Tab title="Jira Cloud">
+        <Steps>
+            <Step>
+                Sign in to Atlassian as the user, then go to **Security** > **API tokens** in your Atlassian account settings.
+            </Step>
+            <Step>
+                Select **Create API token**. Infisical connects to your Jira site's URL, and Atlassian only accepts tokens without scopes there.
+            </Step>
+            <Step>
+                Enter a name, such as `infisical`, choose an expiration date, and select **Create**. Before the token expires, create a new one and enter it with **Edit Credentials** in the connection's menu on the **App Connections** tab.
+            </Step>
+            <Step>
+                Copy the token. Atlassian shows it only once.
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="Jira Data Center">
+        <Steps>
+            <Step>
+                Sign in to Jira as the user, then go to **Profile** > **Personal Access Tokens**.
+            </Step>
+            <Step>
+                Select **Create token**, enter a name, such as `infisical`, and create the token.
+            </Step>
+            <Step>
+                Copy the token. Jira shows it only once.
+            </Step>
+        </Steps>
+    </Tab>
+</Tabs>
+
+## Step 2: Create the app connection
+
+Next, create the app connection in Infisical.
+
+<Tip>
+    To create the connection using the API, use the [Create Jira Connection](/api-reference/endpoints/app-connections/jira/create) endpoint.
+</Tip>
+
+<Steps>
+    <Step>
+        In the sidebar, select **Integrations**, then open the **App Connections** tab.
+    </Step>
+    <Step>
+        Select **Add Connection** and choose **Jira**.
+    </Step>
+    <Step>
+        Fill out the form's fields:
+
+        <ConnectionFormFields />
+
+        Then, select **Connect to Jira**.
+    </Step>
+</Steps>
+
+When you select **Connect to Jira**, Infisical verifies that Jira accepts the token, and doesn't save the connection if Jira rejects it. Infisical doesn't check the permissions from [Step 1](#step-1-create-an-api-token-or-personal-access-token) until it reads a ticket.
+
+<Check>
+    Your Jira app connection is ready to use.
+</Check>
+
+## Step 3: Configure integrations
+
+Now that your Jira app connection is configured, you can use it to set up the following integrations:
+
+<Card title="PAM auto-approval" icon="zap" href="/documentation/platform/pam/access-requests/auto-approval">
+    Approve PAM access requests when a linked Jira ticket passes a folder's rules.
+</Card>

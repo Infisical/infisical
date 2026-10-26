@@ -1148,7 +1148,9 @@ export const secretImportServiceFactory = ({
             }));
         }) || [];
     if (locallyReferenced.length > 0) {
-      const existingEnvIndex = result.findIndex((item) => item.environment.slug === environment);
+      const existingEnvIndex = result.findIndex(
+        (item) => !("project" in item) && item.environment.slug === environment
+      );
 
       if (existingEnvIndex >= 0) {
         const existingFolderIndex = result[existingEnvIndex].folders.findIndex(

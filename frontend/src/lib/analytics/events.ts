@@ -17,7 +17,8 @@ export const AnalyticsEvent = {
   SignupFlowCompleted: "Signup Flow Completed",
   BillingCancellationReasonSubmitted: "Billing Cancellation Reason Submitted",
   OnboardingResourceClicked: "Onboarding Resource Clicked",
-  OnboardingDocumentationClicked: "Onboarding Documentation Clicked"
+  OnboardingDocumentationClicked: "Onboarding Documentation Clicked",
+  SecretScanningOpened: "Secret Scanning Opened"
 } as const;
 
 export type OverviewCountBucket = "0" | "1" | "2-5" | "6-20" | "21-100" | "101+";
@@ -47,8 +48,6 @@ export type OverviewInteractionProperties = {
     | "select-page"
     | "reveal"
     | "hide"
-    | "batch-mode-enabled"
-    | "batch-mode-disabled"
     | "pagination"
     | "sort"
     | "history"
@@ -98,6 +97,7 @@ export type OverviewFlowProperties = {
   folderFailureCountBucket?: OverviewCountBucket;
   provenance?: "committed" | "pending";
   destination?: "clipboard" | "download" | "environment";
+  commitKind?: "single" | "batch";
 };
 
 export type OverviewScopeProperties = {
@@ -105,7 +105,6 @@ export type OverviewScopeProperties = {
   route: "/organizations/$orgId/projects/secret-management/$projectId/overview";
   environmentMode: "none" | "single" | "multiple";
   folderScope: "root" | "nested";
-  editMode: "immediate" | "batch";
 };
 
 export type SecretsActivationProperties = {
@@ -127,6 +126,7 @@ type PaywallProperties = {
   paywallText: string;
   route: string;
   isEnterpriseFeature: boolean;
+  plan: string;
 };
 
 export type FolderAccessSheetSource = "breadcrumb" | "folder_row";
@@ -194,6 +194,11 @@ export type OnboardingResourceClickedProperties = {
   resource: OnboardingResource;
 };
 
+export type SecretScanningOpenedProperties = {
+  hasSecretScanning: boolean;
+  plan: string;
+};
+
 export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.SecretsActivationModalViewed]: SecretsActivationProperties;
   [AnalyticsEvent.SecretsActivationModalMembersInvited]: SecretsActivationProperties & {
@@ -217,6 +222,7 @@ export type OrganizationAnalyticsEventMap = {
   [AnalyticsEvent.SecretsAddResourceActionSelected]: SecretsAddResourceActionSelectedProperties;
   [AnalyticsEvent.BillingCancellationReasonSubmitted]: BillingCancellationReasonSubmittedProperties;
   [AnalyticsEvent.OnboardingResourceClicked]: OnboardingResourceClickedProperties;
+  [AnalyticsEvent.SecretScanningOpened]: SecretScanningOpenedProperties;
 };
 
 export type OrganizationAnalyticsEvent = keyof OrganizationAnalyticsEventMap;
