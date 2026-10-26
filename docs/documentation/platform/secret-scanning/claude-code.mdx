@@ -1,0 +1,328 @@
+---
+title: "Claude Code secret scanning"
+sidebarTitle: "Claude Code"
+icon: "/images/platform/secret-scanning/icons/claude-code.svg"
+description: "Stop secrets in Claude Code prompts before they reach the model."
+---
+
+To stop your developers from sending secrets to Claude Code, create a Claude Code [data source](/documentation/platform/secret-scanning/scan-repositories) in Infisical, and install the Infisical plugin in Claude Code.
+
+The plugin scans each prompt on the developer's machine before Claude Code sends it. If the prompt contains a secret, the plugin records the secret in Infisical as a [finding](/documentation/platform/secret-scanning/findings). By default, the plugin also blocks the prompt. After a reviewer marks the finding as reviewed, the prompt can go through. If you only want to monitor, you can set the data source to report secrets and let the prompts continue.
+
+<Info>
+  Secret Scanning data sources are available under Infisical's [Enterprise](https://infisical.com/pricing) plan. If you're self-hosting Infisical, contact sales@infisical.com to purchase an enterprise license.
+</Info>
+
+## How it works
+
+1. A developer submits a prompt in Claude Code.
+2. The plugin scans the prompt on the developer's machine with `infisical scan --pipe`. If the scan finds no secret, the prompt goes through, and the plugin doesn't call Infisical.
+3. If the scan finds a secret, the plugin calculates a fingerprint for each finding: the SHA-256 hash of the secret. A secret that more than one rule matches has one fingerprint, so one review covers it. It sends the prompt and the fingerprints to Infisical.
+4. Infisical compares the fingerprints with the findings in the project:
+    - **Every secret is reviewed**: Each fingerprint has a finding with the status **Resolved**, **False Positive**, or **Ignore**. Infisical allows the prompt.
+    - **A secret is new**: Infisical encrypts the prompt with the project's key and queues a scan. The scan uses the project's [scanning configuration](/documentation/platform/secret-scanning/configuration) and records each secret it finds as a finding.
+    - **A secret is waiting for review**: A finding for the secret exists, but nobody has reviewed it. Infisical doesn't scan the prompt again.
+5. If a secret is new or waiting for review, the [**When a Secret Is Detected**](#block-or-report-secrets) setting of the data source decides what happens:
+    - **Block the prompt**: Infisical blocks the prompt. Claude Code tells the developer to review the finding in Infisical, and shows a link to the findings page.
+    - **Report only**: Infisical allows the prompt, and Claude Code sends it to the model. Claude Code shows the developer a warning with a link to the findings page. Only the developer sees the warning. Claude doesn't see it.
+6. A reviewer changes the finding's status to **Resolved**, **False Positive**, or **Ignore**. From then on, Infisical allows prompts that contain that secret, for every developer in the project.
+
+## Block or report secrets
+
+The **When a Secret Is Detected** setting of a Claude Code data source controls what the plugin does with a prompt that contains a secret that isn't reviewed:
+
+- **Block the prompt** (default): The plugin blocks the prompt until every secret in it has a finding with the status **Resolved**, **False Positive**, or **Ignore**.
+- **Report only**: The prompt continues to Claude. Infisical still scans new secrets and records them as findings, and the developer sees a warning with a link to the findings.
+
+<Warning>
+  With **Report only**, the prompt and the secret in it reach the model provider of Claude Code. Use **Report only** when you want to monitor which secrets your developers send, for example before you start to block prompts.
+</Warning>
+
+You select this setting when you create the data source. To change it later, edit the data source's settings.
+
+The setting applies only to prompts that contain a secret. If the plugin itself fails, it blocks the prompt with both settings. See [Failure behavior](#failure-behavior).
+
+## Prerequisites
+
+Each developer who uses Claude Code needs:
+
+- The [Infisical CLI](/cli/install) version 0.44.9 or later, logged in with [`infisical login`](/cli/reference#login). The plugin blocks every prompt while the CLI is older.
+- [`jq`](https://jqlang.org/download/) and `curl`
+- A role in the Secret Scanning project with the [permissions](#permissions) to submit prompts
+
+The plugin uses the domain of your active CLI profile. For EU Cloud or a self-hosted instance, log in to that instance, for example with `infisical login --domain=https://eu.infisical.com`.
+
+## Create a Claude Code data source in Infisical
+
+<Steps>
+  <Step>
+    Go to **Secret Scanning** > **Data Sources** and select **Add Data Source**.
+  </Step>
+  <Step>
+    Select **Claude Code**.
+
+    A Claude Code data source doesn't need an app connection or scan settings, because the plugin sends the prompts to Infisical.
+  </Step>
+  <Step>
+    Under **When a Secret Is Detected**, select what the plugin does with a prompt that contains a secret that isn't reviewed:
+
+    - **Block the prompt** (default): Block the prompt until a reviewer reviews each secret in it
+    - **Report only**: Let the prompt continue to Claude, record the secret as a finding, and warn the developer
+
+    For more information, see [Block or report secrets](#block-or-report-secrets).
+  </Step>
+  <Step>
+    Enter a name and, optionally, a description for the data source, then select **Next**.
+
+    - **Name**: A name that contains only lowercase letters, numbers, and hyphens. Developers see this name when they select the data source in the setup command.
+    - **Description** (optional): A description of the data source
+  </Step>
+  <Step>
+    Review the data source, then select **Create Data Source**.
+  </Step>
+  <Step>
+    Select the data source. Next to the data source type label, the data source's page shows the command to install the plugin, with a copy button. Send this command and the name of the data source to each developer.
+  </Step>
+</Steps>
+
+## Set up the plugin in Claude Code
+
+Each developer does these steps on their own machine.
+
+<Steps>
+  <Step title="Log in to Infisical">
+    Log in with the Infisical CLI:
+
+    ```bash
+    infisical login
+    ```
+
+    The plugin gets its access token with `infisical user get token`, so it always acts as the logged-in user.
+  </Step>
+  <Step title="Install the plugin">
+    Add the Infisical plugin marketplace and install the plugin.
+
+    <Tabs>
+      <Tab title="Terminal">
+        ```bash
+        claude plugin marketplace add Infisical/claude-code-plugin
+        claude plugin install infisical-secret-scan@infisical
+        ```
+
+        Then start Claude Code. If Claude Code is already running, restart it.
+      </Tab>
+      <Tab title="Claude Code">
+        ```
+        /plugin marketplace add Infisical/claude-code-plugin
+        /plugin install infisical-secret-scan@infisical
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step title="Run the setup command">
+    In Claude Code, run:
+
+    ```
+    /infisical-secret-scan:setup
+    ```
+
+    The setup command:
+
+    1. Checks that the Infisical CLI, `jq`, and `curl` are installed.
+    2. Checks that the Infisical CLI is logged in. If it isn't, the command tells you to run `infisical login` in a terminal. Log in, then run the setup command again.
+    3. Shows the names of the Claude Code data sources in your organization's Secret Scanning project. Use the arrow keys to select the data source that your administrator gave you. You can select only a data source from the list.
+
+    The plugin saves your selection in its data folder on your machine, so the setup command asks only once. To select a different data source, run the setup command again.
+
+    <Note>
+      Until you run the setup command, the plugin blocks every prompt and tells you to run `/infisical-secret-scan:setup`. The plugin never blocks the setup command.
+    </Note>
+
+    If your administrator [set the data source for you](#set-the-data-source-for-every-developer), the setup command doesn't ask you to select a data source.
+  </Step>
+  <Step title="Test the setup">
+    Send a prompt that contains a test secret. The new finding appears in **Secret Scanning** > **Findings**.
+
+    - With **Block the prompt**, Claude Code blocks the prompt and shows a link to the findings page.
+    - With **Report only**, Claude Code sends the prompt and shows a warning with a link to the findings page.
+  </Step>
+</Steps>
+
+<Tip>
+  To install the plugin for a team, add the marketplace and the plugin to a Claude Code settings file that your team shares, such as the project's `.claude/settings.json` or a managed settings file:
+
+  ```json
+  {
+    "extraKnownMarketplaces": {
+      "infisical": {
+        "source": {
+          "source": "github",
+          "repo": "Infisical/claude-code-plugin"
+        }
+      }
+    },
+    "enabledPlugins": {
+      "infisical-secret-scan@infisical": true
+    }
+  }
+  ```
+
+  Each developer must still install the Infisical CLI, `jq`, and `curl`, log in with `infisical login`, and run `/infisical-secret-scan:setup`. To select the data source for every developer, [set it in a managed settings file](#set-the-data-source-for-every-developer).
+</Tip>
+
+### Set the data source for every developer
+
+An administrator can make the plugin use one data source on every machine. Set `INFISICAL_CLAUDE_CODE_DATA_SOURCE_ID` to the ID of the data source in the `env` object of a [managed settings file](https://code.claude.com/docs/en/settings#settings-files). You can copy the ID from the data source's page.
+
+```json
+{
+  "env": {
+    "INFISICAL_CLAUDE_CODE_DATA_SOURCE_ID": "<data-source-id>"
+  }
+}
+```
+
+When this variable is set:
+
+- The plugin always uses this data source, and ignores the data source that the developer selected with the setup command.
+- The setup command doesn't ask the developer to select a data source.
+
+Developers can't change a managed settings file. This way, a developer can't select a different data source, for example a **Report only** data source instead of one that blocks prompts.
+
+<Note>
+  You can also set the variable in a settings file that your team shares, such as the project's `.claude/settings.json`. But a developer can override that file with their own settings.
+</Note>
+
+## Review findings
+
+When the plugin detects a new secret, the secret appears as a finding in **Secret Scanning** > **Findings**. To review it:
+
+<Steps>
+  <Step>
+    Select the finding, and examine where the secret is in the prompt and who submitted it.
+  </Step>
+  <Step>
+    Select **Update Status**, then select a status:
+
+    - **Resolved**: You've dealt with the leak, for example by revoking the secret
+    - **False Positive**: The value isn't a secret
+    - **Ignore**: The value is a secret, but you've decided it's safe to send to Claude Code, such as a test credential
+  </Step>
+  <Step>
+    Select **Update Status**. With **Block the prompt**, the developer can now submit the prompt again.
+  </Step>
+</Steps>
+
+A review applies to the secret, not to one prompt. After you review a finding, Infisical allows the same secret in prompts from every developer in the project. To learn more about statuses, see [Findings](/documentation/platform/secret-scanning/findings#finding-statuses).
+
+<Note>
+  With **Block the prompt**, if a finding stays **Unresolved**, Infisical blocks every prompt that contains the secret. Changing the prompt doesn't help unless the developer removes the secret.
+
+  With **Report only**, the prompt already reached the model provider when the finding appears. Review the finding to decide if you must revoke the secret.
+</Note>
+
+## Resources and scans
+
+Each developer who submits a prompt with a new secret becomes one resource of the data source. The name of the resource is the developer's email address. To see the resources and the scan history, select the data source.
+
+You can't add resources to a Claude Code data source yourself, and you can't trigger a scan manually. Infisical scans a prompt only when the plugin sends it.
+
+## What Infisical stores
+
+Infisical doesn't store the prompt. The prompt is encrypted with the project's key, and Infisical keeps it only in the queued scan until the scan runs.
+
+For each secret that the scan finds, the finding records:
+
+- The rule that found the secret, and its description
+- Where the secret is in the prompt: the start and end line, and the start and end column
+- The entropy of the secret
+- The name and email address of the developer who submitted the prompt
+- When the developer submitted the prompt
+- The working directory of the Claude Code session
+- The Claude Code session ID
+- The fingerprint of the secret, which is a SHA-256 hash
+
+Infisical doesn't store the value of the secret.
+
+## Scanning configuration
+
+If the project has a custom [scanning configuration](/documentation/platform/secret-scanning/configuration), the plugin downloads it and uses it for the scans on the developer's machine. This way, the plugin and Infisical find the same secrets.
+
+- The plugin downloads the configuration at most once every 24 hours.
+- The download runs in the background, and doesn't delay prompts.
+- On the first prompt after setup, the plugin downloads the configuration before it scans. If the download fails, the prompt is blocked.
+- If the plugin can't download the configuration for 48 hours, it tries again before the next scan. If that download fails, the prompt is blocked.
+- If the project has no custom configuration, the plugin and Infisical both use the default rules of the Infisical CLI.
+
+<Note>
+  A change to the scanning configuration can take up to 24 hours to reach each developer's machine.
+</Note>
+
+## Permissions
+
+Each developer needs these permissions in the Secret Scanning project:
+
+| Permission | Why the plugin needs it |
+| --- | --- |
+| **Secret Scanning Data Sources** > **Trigger Scans** | To send prompts that contain secrets to Infisical |
+| **Secret Scanning Data Sources** > **Read Data Sources** | To show the data sources in the setup command, and to find the project of the data source |
+| **Secret Scanning Config** > **Read Config** | To download the scanning configuration |
+
+Reviewers need **Secret Scanning Findings** > **Update Findings** to change the status of a finding.
+
+The default **Admin** and **Member** roles have all of these permissions. The default **Viewer** role can't trigger scans, so the plugin blocks every prompt with a secret for a viewer, also with **Report only**.
+
+## Failure behavior
+
+The plugin fails closed. If any part of its setup is broken, it blocks every prompt, also prompts without secrets, and shows the cause. This way, a developer can't get around the review. The plugin blocks prompts when:
+
+- The Infisical CLI, `jq`, or `curl` is not installed.
+- The developer hasn't run `/infisical-secret-scan:setup`, and `INFISICAL_CLAUDE_CODE_DATA_SOURCE_ID` is not set.
+- The Infisical CLI is not logged in. The plugin checks this on each prompt.
+- The data source no longer exists, or the plugin can't read it. If the developer selected the data source with the setup command, they must run the setup command again.
+- The plugin must download the scanning configuration and the download fails. For example, the request is denied, or Infisical can't be reached.
+- The local scan fails.
+- A prompt contains a secret, and the request to Infisical fails.
+- The check doesn't finish within 45 seconds.
+
+These failures block prompts with **Block the prompt** and with **Report only**. The plugin never blocks the setup command, so a developer can always run it to fix the setup.
+
+When the setup works and the configuration is up to date, prompts without secrets never call Infisical.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="The Infisical CLI is too old">
+    The plugin needs the Infisical CLI version 0.44.9 or later, and blocks every prompt while the CLI is older. Run `infisical --version` to see your version, then [update the CLI](/cli/install).
+  </Accordion>
+  <Accordion title="The Infisical CLI is not installed">
+    The plugin needs the Infisical CLI to scan prompts. [Install the CLI](/cli/install), make sure that `infisical` is on your `PATH`, then restart Claude Code.
+  </Accordion>
+  <Accordion title="jq or curl is not installed">
+    The plugin needs `jq` to read the prompt and `curl` to call Infisical. [Install jq](https://jqlang.org/download/) or curl, make sure that both are on your `PATH`, then restart Claude Code.
+  </Accordion>
+  <Accordion title="You are not logged in">
+    The plugin checks on each prompt that the Infisical CLI is logged in, and gets an access token with `infisical user get token`. If you aren't logged in, run `infisical login` in a terminal, then submit the prompt again. If the setup command told you to log in, run `/infisical-secret-scan:setup` again after you log in. For EU Cloud or a self-hosted instance, log in to that instance with `--domain`.
+  </Accordion>
+  <Accordion title="Setup has not been run">
+    The plugin blocks every prompt until you select a data source. In Claude Code, run `/infisical-secret-scan:setup` and select the data source that your administrator gave you. If the list is empty, ask your administrator to create a Claude Code data source, or to give you the [permissions](#permissions) to read data sources.
+  </Accordion>
+  <Accordion title="The selected data source was deleted">
+    If the data source that you selected was deleted, or you can't read it anymore, the plugin blocks every prompt. Run `/infisical-secret-scan:setup` again and select a different data source. If your administrator [set the data source for you](#set-the-data-source-for-every-developer), ask them to update `INFISICAL_CLAUDE_CODE_DATA_SOURCE_ID`.
+  </Accordion>
+  <Accordion title="Infisical can't be reached">
+    The plugin calls Infisical when a prompt contains a secret and when it downloads the scanning configuration. Make sure that your machine can reach the Infisical instance that you logged in to with `infisical login`.
+  </Accordion>
+  <Accordion title="The request is denied">
+    Your role doesn't have the [permissions](#permissions) that the plugin needs, or the data source belongs to a project that you aren't a member of. Ask a project admin to give you the permissions, or run `/infisical-secret-scan:setup` again and select a different data source.
+  </Accordion>
+  <Accordion title="The prompt is still blocked after a review">
+    Make sure that every secret in the prompt has a finding with the status **Resolved**, **False Positive**, or **Ignore**. If the prompt contains a different secret, it creates a new finding that needs a review.
+  </Accordion>
+  <Accordion title="Claude Code shows a warning, but doesn't block the prompt">
+    The data source uses **Report only**. Infisical records the secret as a finding, and the prompt continues to Claude. To block prompts that contain secrets, change **When a Secret Is Detected** to **Block the prompt** in the data source's settings.
+  </Accordion>
+  <Accordion title="The plugin and Infisical find different secrets">
+    The plugin downloads the scanning configuration at most once every 24 hours. After a change to the configuration, the plugin can use the earlier configuration for up to 24 hours.
+  </Accordion>
+</AccordionGroup>

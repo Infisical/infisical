@@ -33,6 +33,8 @@ Enter your rules and allowlists in the [scanning configuration](#edit-the-scanni
 
 Infisical uses the new configuration from the next scan onward. To apply it to commits that were already scanned, [trigger a historical scan](/documentation/platform/secret-scanning/scan-repositories#run-a-historical-scan).
 
+The Infisical plugin for [Claude Code](/documentation/platform/secret-scanning/claude-code#scanning-configuration) also uses this configuration to scan prompts on each developer's machine. The plugin downloads the configuration at most once every 24 hours, so a change can take up to 24 hours to reach each machine.
+
 ![config](/images/platform/secret-scanning/secret-scanning-config.png)
 
 ## Configuration format

@@ -1,13 +1,13 @@
 ---
 title: "Secret Scanning"
-description: "Find secrets that were committed to your code, either on your own machine or in your GitHub, GitLab, and Bitbucket repositories."
+description: "Find secrets that were committed to your code, either on your own machine or in your GitHub, GitLab, and Bitbucket repositories, and stop secrets in Claude Code prompts."
 sidebarTitle: "Secret Scanning"
 icon: "radar"
 ---
 
 Infisical Secret Scanning helps you find credentials, such as API keys, database passwords, and tokens, that were committed to source code.
 
-You can scan code on your own machine (or in CI) using the Infisical CLI, or connect your GitHub, GitLab, and Bitbucket repositories so that Infisical scans them and records each secret it finds.
+You can scan code on your own machine (or in CI) using the Infisical CLI, or connect your GitHub, GitLab, and Bitbucket repositories so that Infisical scans them and records each secret it finds. You can also scan the prompts your developers send to Claude Code, and block or report prompts that contain secrets.
 
 <Tip>
 To learn how Infisical scans your secrets, check out the [Concepts](/documentation/platform/secret-scanning/concepts/secret-scanning) page.
@@ -34,7 +34,7 @@ Scan your code with the Infisical CLI before you push it:
 
 ## Scanning repositories
 
-Connect your repositories to Infisical, review the secrets it finds, and configure the rules it scans with:
+Connect your repositories to Infisical so that it scans them for secrets:
 
 <CardGroup cols={3}>
   <Card title="GitHub" icon="/images/platform/secret-scanning/icons/github.svg" href="/documentation/platform/secret-scanning/github">
@@ -48,9 +48,23 @@ Connect your repositories to Infisical, review the secrets it finds, and configu
   </Card>
 </CardGroup>
 
-<CardGroup>
+## Scanning Claude Code prompts
+
+Stop your developers from sending secrets to Claude Code:
+
+<CardGroup cols={2}>
+  <Card title="Claude Code" icon="/images/platform/secret-scanning/icons/claude-code.svg" href="/documentation/platform/secret-scanning/claude-code">
+    Block or report Claude Code prompts that contain secrets, so a reviewer can review each secret.
+  </Card>
+</CardGroup>
+
+## Findings and configuration
+
+Review the secrets Infisical finds, and set the rules it scans with:
+
+<CardGroup cols={2}>
 <Card title="Findings" icon="search" href="/documentation/platform/secret-scanning/findings">
-    Review the secrets Infisical finds in your repositories.
+    Review the secrets Infisical finds in your data sources.
   </Card>
   <Card title="Configuration" icon="settings" href="/documentation/platform/secret-scanning/configuration">
     Add your own detection rules and skip secrets you've decided are safe.
