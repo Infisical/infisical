@@ -45,6 +45,7 @@ import {
   InputGroupInput,
   PageHeader,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -286,20 +287,16 @@ export const AgentVaultAccessBundlesPage = () => {
                 ))}
               {!isPending &&
                 displayedBundles.map((bundle) => (
-                  <TableRow
-                    key={bundle.id}
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
-                        params: { orgId: currentOrg.id, accessBundleId: bundle.id }
-                      })
-                    }
-                  >
+                  <TableRow key={bundle.id} linked>
                     <TableCell isTruncatable className="min-w-64">
                       <div className="flex items-center gap-2.5">
-                        <span className="truncate" title={bundle.name}>
+                        <RowLink
+                          to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
+                          params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
+                          title={bundle.name}
+                        >
                           {bundle.name}
-                        </span>
+                        </RowLink>
                         {bundle.description && (
                           <span
                             className="min-w-0 flex-1 truncate text-sm text-muted"
@@ -348,7 +345,7 @@ export const AgentVaultAccessBundlesPage = () => {
                         {bundle.servicesRequiringSetup.length > 0 && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Badge variant="warning">
+                              <Badge variant="warning" data-row-interactive>
                                 <TriangleAlertIcon />
                                 Requires Setup
                               </Badge>
