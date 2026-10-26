@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -172,10 +171,8 @@ export const PkiCollectionDetailsByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: "PKI Collection" })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>{t("common.head-title", { title: "PKI Collection" })}</title>
+      <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         renderGuardBanner
         passThrough={false}

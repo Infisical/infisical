@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useNavigate } from "@tanstack/react-router";
 
 import {
@@ -58,9 +57,7 @@ export const QoveryAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Authorize Qovery Integration</title>
-      </Helmet>
+      <title>Authorize Qovery Integration</title>
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
@@ -76,9 +75,7 @@ export const RundeckAuthorizePage = () => {
   };
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Authorize Rundeck Integration</title>
-      </Helmet>
+      <title>Authorize Rundeck Integration</title>
       <form onSubmit={handleSubmit(onFormSubmit)} className="w-full max-w-lg">
         <Card>
           <CardHeader>

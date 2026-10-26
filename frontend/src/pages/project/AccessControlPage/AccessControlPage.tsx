@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
@@ -128,10 +127,8 @@ export const AccessControlPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
+      <link rel="icon" href="/infisical.ico" />
       <Page />
     </>
   );

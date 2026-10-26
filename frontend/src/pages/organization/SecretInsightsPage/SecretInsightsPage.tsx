@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import { Helmet } from "react-helmet";
 import { format } from "date-fns";
 import { FileTextIcon } from "lucide-react";
 
@@ -134,10 +133,8 @@ export const SecretInsightsPage = withPermission(
 
     return (
       <>
-        <Helmet>
-          <title>Secret Insights | Infisical</title>
-          <link rel="icon" href="/infisical.ico" />
-        </Helmet>
+        <title>Secret Insights | Infisical</title>
+        <link rel="icon" href="/infisical.ico" />
         <div>
           <div className="mx-auto w-full max-w-8xl bg-page text-foreground-inverse">
             <PageHeader

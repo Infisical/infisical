@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -110,9 +109,7 @@ export const AzureDevopsConfigurePage = () => {
     integrationAuthApps &&
     targetApp ? (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up Azure DevOps Integration</title>
-      </Helmet>
+      <title>Set Up Azure DevOps Integration</title>
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>

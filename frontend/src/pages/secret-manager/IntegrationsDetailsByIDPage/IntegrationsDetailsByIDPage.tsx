@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { MoreVerticalIcon, RefreshCwIcon, TrashIcon } from "lucide-react";
@@ -76,12 +75,10 @@ export const IntegrationDetailsByIDPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Integration Details | Infisical</title>
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content="Manage your .env files in seconds" />
-        <meta name="og:description" content={t("integrations.description") as string} />
-      </Helmet>
+      <title>Integration Details | Infisical</title>
+      <meta property="og:image" content="/images/message.png" />
+      <meta property="og:title" content="Manage your .env files in seconds" />
+      <meta name="og:description" content={t("integrations.description") as string} />
       <div className="mx-auto flex max-w-8xl flex-col justify-between bg-page text-foreground-inverse">
         {integration ? (
           <div className="mx-auto mb-6 w-full max-w-8xl">

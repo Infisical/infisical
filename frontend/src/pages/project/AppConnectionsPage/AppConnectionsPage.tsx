@@ -1,5 +1,3 @@
-import { Helmet } from "react-helmet";
-
 import { PageHeader } from "@app/components/v3/platform";
 import { useProject } from "@app/context";
 import {
@@ -16,11 +14,9 @@ export const AppConnectionsPage = withProjectPermission(
 
     return (
       <div className="bg-page">
-        <Helmet>
-          <title>Infisical | App Connections</title>
-          <link rel="icon" href="/infisical.ico" />
-          <meta property="og:image" content="/images/message.png" />
-        </Helmet>
+        <title>Infisical | App Connections</title>
+        <link rel="icon" href="/infisical.ico" />
+        <meta property="og:image" content="/images/message.png" />
         <div className="flex w-full justify-center bg-page text-foreground-inverse">
           <div className="w-full max-w-8xl">
             <PageHeader

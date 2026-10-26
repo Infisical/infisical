@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { KeyRound } from "lucide-react";
 
 import {
@@ -77,10 +76,8 @@ export const ProductSettingsPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Product Settings | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>Product Settings | Infisical</title>
+      <link rel="icon" href="/infisical.ico" />
       <div>
         <div className="mx-auto w-full max-w-8xl bg-page text-foreground-inverse">
           <PageHeader

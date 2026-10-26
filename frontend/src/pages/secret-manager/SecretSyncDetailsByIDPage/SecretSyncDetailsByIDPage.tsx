@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Link, useParams } from "@tanstack/react-router";
 import { BanIcon, ChevronLeftIcon } from "lucide-react";
 
@@ -148,10 +147,8 @@ const PageContent = () => {
 export const SecretSyncDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Secret Sync | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>Secret Sync | Infisical</title>
+      <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         renderGuardBanner
         passThrough={false}

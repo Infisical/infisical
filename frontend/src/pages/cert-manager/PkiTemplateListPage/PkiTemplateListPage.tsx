@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import {
   faCog,
@@ -122,9 +121,7 @@ export const PkiTemplateListPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: "PKI Templates" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "PKI Templates" })}</title>
       <div className="h-full bg-page">
         <div className="mx-auto flex flex-col justify-between">
           <div className="mx-auto flex w-full max-w-8xl flex-col">

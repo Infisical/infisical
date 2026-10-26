@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import {
@@ -189,9 +188,7 @@ export const ApplicationDetailsByIDPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{application.name}</title>
-      </Helmet>
+      <title>{application.name}</title>
       <div className="h-full bg-page">
         <div className="mx-auto flex flex-col text-foreground-inverse">
           <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">

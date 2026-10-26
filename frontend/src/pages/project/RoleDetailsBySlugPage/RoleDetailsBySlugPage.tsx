@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
@@ -258,12 +257,10 @@ export const RoleDetailsBySlugPage = () => {
   const isCertManager = currentProject.type === ProjectType.CertificateManager;
   return (
     <>
-      <Helmet>
-        <title>
-          {t("common.head-title", { title: isCertManager ? "Role" : "Project Settings" })}
-        </title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>
+        {t("common.head-title", { title: isCertManager ? "Role" : "Project Settings" })}
+      </title>
+      <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         I={ProjectPermissionActions.Read}
         a={ProjectPermissionSub.Role}

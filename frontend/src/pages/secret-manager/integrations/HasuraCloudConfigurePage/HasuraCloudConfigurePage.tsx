@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -103,9 +102,7 @@ export const HasuraCloudConfigurePage = () => {
 
   return integrationAuth && integrationAuthApps ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
-      <Helmet>
-        <title>Set Up {APP_NAME} Integration</title>
-      </Helmet>
+      <title>{`Set Up ${APP_NAME} Integration`}</title>
       <form onSubmit={handleSubmit(onFormSubmit)} className="w-full max-w-lg">
         <Card>
           <CardHeader>
@@ -236,9 +233,7 @@ export const HasuraCloudConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up {APP_NAME} Integration</title>
-      </Helmet>
+      <title>{`Set Up ${APP_NAME} Integration`}</title>
       {isIntegrationAuthLoading || isIntegrationAuthAppsLoading ? (
         <img
           src="/images/loading/loading.gif"
