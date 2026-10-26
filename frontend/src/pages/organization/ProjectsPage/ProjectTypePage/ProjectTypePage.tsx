@@ -54,6 +54,7 @@ import {
   IconButton,
   PageHeader,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -571,7 +572,8 @@ const MyProjectsForType = ({
     return (
       <Card
         key={workspace.id}
-        className={`group relative h-full cursor-pointer transition-all duration-200 ease-out ${tileStyle.cardHoverClassName}`}
+        linked
+        className={`h-full transition-all duration-200 ease-out ${tileStyle.cardHoverClassName}`}
       >
         <CardHeader>
           <div className="flex min-w-0 items-start gap-3">
@@ -583,20 +585,20 @@ const MyProjectsForType = ({
                 {/* The name is the card's link, so the accessible name comes from visible text
                     rather than a duplicated label, and its stretched pseudo-element covers the
                     card. Siblings raised above it (CardAction) stay outside the anchor. */}
-                <Link
+                <RowLink
                   to={getProjectHomePage(workspace.type, workspace.environments)}
                   params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
-                  className="block truncate outline-0 after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                  className="after:rounded-lg"
                 >
                   {workspace.name}
-                </Link>
+                </RowLink>
               </CardTitle>
               <p className="truncate text-sm leading-5 text-muted">
                 {getProjectTitle(workspace.type)}
               </p>
             </div>
           </div>
-          <CardAction className="relative z-10">{renderFavoriteButton(workspace)}</CardAction>
+          <CardAction data-row-interactive>{renderFavoriteButton(workspace)}</CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p className="line-clamp-2 text-sm leading-relaxed text-accent">
@@ -710,20 +712,19 @@ const MyProjectsForType = ({
             {workspacesWithFaveProp.map((workspace) => {
               const WorkspaceIcon = getProjectLucideIcon(workspace.type);
               return (
-                <TableRow key={workspace.id} className="group relative cursor-pointer">
+                <TableRow key={workspace.id} linked>
                   <TableCell className="w-0">
                     <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
                       <WorkspaceIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 group-hover:text-project" />
                     </div>
                   </TableCell>
                   <TableCell isTruncatable>
-                    <Link
+                    <RowLink
                       to={getProjectHomePage(workspace.type, workspace.environments)}
                       params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
-                      className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                     >
                       {workspace.name}
-                    </Link>
+                    </RowLink>
                   </TableCell>
                   <TableCell isTruncatable>
                     {workspace.description || <span className="text-muted">—</span>}
@@ -731,7 +732,7 @@ const MyProjectsForType = ({
                   <TableCell className="w-0 text-xs whitespace-nowrap">
                     {format(new Date(workspace.createdAt), "MMM d, yyyy")}
                   </TableCell>
-                  <TableCell className="relative z-10 w-0 text-right">
+                  <TableCell data-row-interactive className="w-0 text-right">
                     {renderFavoriteButton(workspace)}
                   </TableCell>
                 </TableRow>
@@ -952,29 +953,21 @@ const AllProjectsForType = ({
           {searchedProjects?.projects?.map((workspace) => {
             const WorkspaceIcon = getProjectLucideIcon(workspace.type);
             return (
-              <TableRow
-                key={workspace.id}
-                className={twMerge("group relative", workspace.isMember && "cursor-pointer")}
-              >
+              <TableRow key={workspace.id} linked={workspace.isMember} className="group">
                 <TableCell className="w-0">
                   <div className="inline-flex shrink-0 items-center justify-center rounded-sm border border-border bg-muted/10 p-1 transition-colors group-hover:border-project/20 group-hover:bg-gradient-to-br group-hover:from-project/5 group-hover:to-transparent">
                     <WorkspaceIcon className="h-3.5 w-3.5 shrink-0 text-accent transition-colors duration-200 group-hover:text-project" />
                   </div>
                 </TableCell>
                 <TableCell isTruncatable>
-                  {/* Only members can open the project, so only their rows get the stretched
-                      anchor; everyone else sees plain text with no navigation. */}
-                  {workspace.isMember ? (
-                    <Link
-                      to={getProjectHomePage(workspace.type, workspace.environments)}
-                      params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
-                      className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
-                    >
-                      {workspace.name}
-                    </Link>
-                  ) : (
-                    workspace.name
-                  )}
+                  {/* Only members can open the project, so everyone else sees plain text. */}
+                  <RowLink
+                    to={getProjectHomePage(workspace.type, workspace.environments)}
+                    params={{ orgId: currentOrg?.id || "", projectId: workspace.id }}
+                    disabled={!workspace.isMember}
+                  >
+                    {workspace.name}
+                  </RowLink>
                 </TableCell>
                 <TableCell isTruncatable>
                   {workspace.description || <span className="text-muted">—</span>}
@@ -982,7 +975,7 @@ const AllProjectsForType = ({
                 <TableCell className="w-0 text-xs whitespace-nowrap">
                   {format(new Date(workspace.createdAt), "MMM d, yyyy")}
                 </TableCell>
-                <TableCell className="relative z-10 w-0 pr-3 text-right">
+                <TableCell data-row-interactive className="w-0 pr-3 text-right">
                   {(() => {
                     const joinedBadge = (
                       <DropdownMenu>
