@@ -65,7 +65,11 @@ describe("Org access reconcile", () => {
   };
 
   const createLinkedGroup = async (label: string) => {
-    const { groupId } = await createOrgGroup({ orgId: rootOrgId, label });
+    const groupId = await createOrgGroup({
+      orgId: rootOrgId,
+      name: `${label}-${randomUUID().slice(0, 8)}`,
+      role: OrgMembershipRole.NoAccess
+    });
     createdGroupIds.push(groupId);
     await linkGroupToOrg({ groupId, authToken: subOrgToken });
     return groupId;

@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import { Knex } from "knex";
 
-import { AccessScope, ProjectMembershipRole, SecretFolderRole, TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipRole, ProjectMembershipRole, SecretFolderRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 
@@ -1250,7 +1250,11 @@ describe("SCIM v1 Router", () => {
     test("should leave a group owned by another org, and its members' folder grants, untouched", async () => {
       const db = getDb();
       const otherOrg = await createIsolatedOrgAndProject("scim-foreign-group");
-      const { groupId } = await createOrgGroup({ orgId: otherOrg.orgId, label: "scim-foreign" });
+      const groupId = await createOrgGroup({
+        orgId: otherOrg.orgId,
+        name: `scim-foreign-${crypto.randomUUID().slice(0, 8)}`,
+        role: OrgMembershipRole.NoAccess
+      });
       const { userId } = await createUser("scim-foreign-member");
 
       try {

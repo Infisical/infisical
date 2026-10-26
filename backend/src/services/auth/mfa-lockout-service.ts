@@ -210,6 +210,10 @@ export const mfaLockoutServiceFactory = ({
     );
   };
 
+  const clearRecentMfaAuth = async (userId: string, tokenVersionId: string) => {
+    await keyStore.deleteItem(KeyStorePrefixes.RecentMfaAuth(userId, tokenVersionId));
+  };
+
   const hasRecentMfaAuth = async (
     userId: string,
     tokenVersionId: string,
@@ -226,6 +230,7 @@ export const mfaLockoutServiceFactory = ({
     reserveStepUpMfaAttempt,
     resetStepUpMfaLockStatus,
     recordRecentMfaAuth,
+    clearRecentMfaAuth,
     hasRecentMfaAuth
   };
 };
