@@ -19,10 +19,12 @@ import {
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
+import { getInstancePinningLink } from "@app/helpers/project";
 import {
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   SecretScanningScanStatus,
   TSecretScanningDataSourceWithDetails
@@ -42,6 +44,7 @@ export const SecretScanningDataSourceRow = ({ dataSource, onDelete, onEdit }: Pr
     id,
     name,
     description,
+    projectId,
     type,
     unresolvedFindings,
     resourceCount,
@@ -49,6 +52,16 @@ export const SecretScanningDataSourceRow = ({ dataSource, onDelete, onEdit }: Pr
     lastScanStatus,
     lastScanStatusMessage
   } = dataSource;
+  const dataSourceLink =
+    getInstancePinningLink(
+      currentOrg.id,
+      { id: projectId, type: ProjectType.SecretScanning },
+      `data-sources/${type}/${id}`
+    ) ??
+    ({
+      to: ROUTE_PATHS.SecretScanning.DataSourceByIdPage.path,
+      params: { orgId: currentOrg.id, dataSourceId: id, type }
+    } as const);
   const sourceDetails = SECRET_SCANNING_DATA_SOURCE_MAP[type];
   const resourceDescription = RESOURCE_DESCRIPTION_HELPER[type];
 
@@ -86,12 +99,7 @@ export const SecretScanningDataSourceRow = ({ dataSource, onDelete, onEdit }: Pr
         </div>
       </TableCell>
       <TableCell isTruncatable>
-        <RowLink
-          to={ROUTE_PATHS.SecretScanning.DataSourceByIdPage.path}
-          params={{ orgId: currentOrg.id, dataSourceId: id, type }}
-        >
-          {name}
-        </RowLink>
+        <RowLink {...dataSourceLink}>{name}</RowLink>
         {description && <p className="truncate text-xs text-muted">{description}</p>}
       </TableCell>
       <TableCell>
