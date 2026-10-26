@@ -469,16 +469,14 @@ export const SecretReferenceWizard = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.isComposing) return;
       const count = navigableCountRef.current;
-      if (e.key === "Tab" && count === 0) return;
+      if (count === 0) return;
       if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
         e.preventDefault();
         e.stopPropagation();
-        if (count === 0) return;
         setHighlightedIndex((prev) => (prev + 1) % count);
       } else if (e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) {
         e.preventDefault();
         e.stopPropagation();
-        if (count === 0) return;
         setHighlightedIndex((prev) => (prev - 1 + count) % count);
       } else if (e.key === "Enter") {
         e.preventDefault();
