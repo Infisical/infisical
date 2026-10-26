@@ -942,7 +942,7 @@ export const CertificatesTable = ({
                       !isExpired &&
                       !isExpiringWithinDay
                   );
-                  const { originalDisplayName } = getCertificateDisplayName(
+                  const { originalDisplayName, isTruncated } = getCertificateDisplayName(
                     certificate,
                     64,
                     certificate.id
@@ -958,7 +958,10 @@ export const CertificatesTable = ({
                     <TableRow key={`certificate-${certificate.id}`} linked>
                       {visibleColumns.has("sanCn") && (
                         <TableCell isTruncatable>
-                          <RowLink {...detailLink}>
+                          <RowLink
+                            {...detailLink}
+                            title={isTruncated ? undefined : originalDisplayName}
+                          >
                             <CertificateDisplayName
                               cert={certificate}
                               maxLength={64}
