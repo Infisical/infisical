@@ -118,7 +118,10 @@ export const SecretCommentForm = ({
   const header = (
     <div
       {...dragHandleProps}
-      className="-mx-4 -mt-4 flex cursor-grab touch-none items-center justify-between px-4 pt-4 select-none active:cursor-grabbing"
+      role="button"
+      tabIndex={0}
+      aria-label="Move comment (drag or use arrow keys)"
+      className="-mx-4 -mt-4 flex cursor-grab touch-none items-center justify-between rounded-t-lg px-4 pt-4 outline-none select-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
     >
       <p className="text-sm font-medium">Comment</p>
       <GripHorizontalIcon className="size-4 text-accent" />

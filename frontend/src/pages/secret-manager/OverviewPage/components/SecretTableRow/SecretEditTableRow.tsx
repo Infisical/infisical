@@ -441,6 +441,7 @@ export const SecretEditTableRow = ({
 
   // Stable callbacks for child components to avoid resetting their debounce timers on re-render
   useLayoutEffect(() => {
+    commentDragStart.current = undefined;
     if (isCommentOpen) setCommentDragOffset({ x: 0, y: 0 });
   }, [isCommentOpen]);
 
@@ -1258,6 +1259,7 @@ export const SecretEditTableRow = ({
       onCloseAutoFocus={(e) => e.preventDefault()}
       className="w-80"
       align="end"
+      avoidCollisions={commentDragOffset.x === 0 && commentDragOffset.y === 0}
       style={{ translate: `${commentDragOffset.x}px ${commentDragOffset.y}px` }}
     >
       <SecretCommentForm
@@ -1283,8 +1285,20 @@ export const SecretEditTableRow = ({
           onPointerUp: () => {
             commentDragStart.current = undefined;
           },
-          onPointerCancel: () => {
+          onLostPointerCapture: () => {
             commentDragStart.current = undefined;
+          },
+          onKeyDown: (e) => {
+            const step = e.shiftKey ? 64 : 16;
+            const delta = {
+              ArrowLeft: { x: -step, y: 0 },
+              ArrowRight: { x: step, y: 0 },
+              ArrowUp: { x: 0, y: -step },
+              ArrowDown: { x: 0, y: step }
+            }[e.key];
+            if (!delta) return;
+            e.preventDefault();
+            setCommentDragOffset((prev) => ({ x: prev.x + delta.x, y: prev.y + delta.y }));
           }
         }}
         comment={isBatchMode ? ((watchedComment as string) ?? comment) : comment}
