@@ -1167,6 +1167,10 @@ export const PROJECT_USERS = {
     roleSlugs:
       "A list of role slugs to assign to the newly created project membership. If nothing is provided, it will default to the Member role."
   },
+  LIST_AVAILABLE_USERS: {
+    projectId:
+      "The ID of the project to list available users for. Includes users who reach the project's organization through a group."
+  },
   REMOVE_MEMBER: {
     projectId: "The ID of the project to remove the member from.",
     emails: "A list of organization member emails to remove from the project.",

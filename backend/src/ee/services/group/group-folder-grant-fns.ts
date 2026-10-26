@@ -22,39 +22,6 @@ type TReapOrphanedFolderGrantsArg = {
   projectIdsByIdentityId: Map<string, string[]>;
 };
 
-type TProjectMembershipActor = {
-  actorUserId?: string | null;
-  actorIdentityId?: string | null;
-  scopeProjectId?: string | null;
-};
-
-const $appendProjectId = (byActorId: Map<string, string[]>, actorId: string, projectId: string) => {
-  byActorId.set(actorId, [...(byActorId.get(actorId) ?? []), projectId]);
-};
-
-export const collectProjectIdsByActor = (
-  memberships: TProjectMembershipActor[],
-  maps: {
-    projectIdsByUserId?: Map<string, string[]>;
-    projectIdsByIdentityId?: Map<string, string[]>;
-  } = {}
-) => {
-  const projectIdsByUserId = maps.projectIdsByUserId ?? new Map<string, string[]>();
-  const projectIdsByIdentityId = maps.projectIdsByIdentityId ?? new Map<string, string[]>();
-
-  for (const membership of memberships) {
-    if (membership.scopeProjectId) {
-      if (membership.actorUserId) {
-        $appendProjectId(projectIdsByUserId, membership.actorUserId, membership.scopeProjectId);
-      } else if (membership.actorIdentityId) {
-        $appendProjectId(projectIdsByIdentityId, membership.actorIdentityId, membership.scopeProjectId);
-      }
-    }
-  }
-
-  return { projectIdsByUserId, projectIdsByIdentityId };
-};
-
 const $collectOrphanedActorsByProject = (
   candidatesByActorId: Map<string, string[]>,
   stillReachable: Map<string, Set<string>>
