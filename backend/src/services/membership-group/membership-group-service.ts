@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import {
   AccessScope,
   ProjectMembershipRole,
+  RESOURCE_SCOPE,
   TableName,
   TemporaryPermissionMode,
   TMembershipRolesInsert
@@ -21,7 +22,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
-import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -56,7 +57,10 @@ type TMembershipGroupServiceFactoryDep = {
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "find">;
   secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findPoliciesWhereSubjectIsApprover">;
+  approvalPolicyDAL: Pick<
+    TApprovalPolicyDALFactory,
+    "findPoliciesWhereSubjectIsApprover" | "deleteStepApproversBySubject" | "deleteBypassersBySubject"
+  >;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findOpenSecretChangeRequestsWhereSubjectIsApprover">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
@@ -378,8 +382,9 @@ export const membershipGroupServiceFactory = ({
     return { membership: membershipDoc, group };
   };
 
-  // Unlinks a group from an org plus its project rows there (or they'd keep granting access) and folder grants
-  // members only had through it. Members' own project rows are left to the reconcile consumer.
+  // Unlinks a group from an org plus its project and resource rows there (or they'd keep granting access: resource
+  // reads match group rows without checking the group still reaches the org) and folder grants members only had
+  // through it. Members' own project rows are left to the reconcile consumer.
   const detachGroupFromOrg = async (
     { groupId, orgId, orgMembershipId }: { groupId: string; orgId: string; orgMembershipId?: string },
     tx: Knex
@@ -390,11 +395,22 @@ export const membershipGroupServiceFactory = ({
       { actorGroupId: groupId, scopeOrgId: orgId, scope: AccessScope.Project },
       { tx }
     );
+    const groupResourceMemberships = await membershipGroupDAL.find(
+      { actorGroupId: groupId, scopeOrgId: orgId, scope: RESOURCE_SCOPE },
+      { tx }
+    );
 
     const userIds = groupUsers.map((membership) => membership.userId);
     const identityIds = groupIdentities.map((membership) => membership.identityId);
     const groupProjectIds = Array.from(
       new Set(groupProjectMemberships.map((membership) => membership.scopeProjectId).filter(Boolean) as string[])
+    );
+    const groupResourceProjectIds = Array.from(
+      new Set(
+        [...groupProjectMemberships, ...groupResourceMemberships]
+          .map((membership) => membership.scopeProjectId)
+          .filter(Boolean) as string[]
+      )
     );
 
     const membershipIds = [...groupProjectMemberships.map((membership) => membership.id)];
@@ -402,6 +418,21 @@ export const membershipGroupServiceFactory = ({
     if (membershipIds.length) {
       await membershipRoleDAL.delete({ $in: { membershipId: membershipIds } }, tx);
       await membershipGroupDAL.delete({ $in: { id: membershipIds } }, tx);
+    }
+
+    for await (const projectId of groupResourceProjectIds) {
+      await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
+        { projectId, actorKind: ApplicationMemberKind.Group, actorId: groupId },
+        tx
+      );
+      await approvalPolicyDAL.deleteStepApproversBySubject(
+        { projectId, scopeType: ApprovalPolicyScope.PamFolder, groupId },
+        tx
+      );
+      await approvalPolicyDAL.deleteBypassersBySubject(
+        { projectId, scopeType: ApprovalPolicyScope.PamFolder, groupId },
+        tx
+      );
     }
 
     await reapOrphanedFolderGrants(

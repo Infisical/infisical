@@ -297,6 +297,33 @@ describe("Org access reconcile", () => {
     });
   });
 
+  // Resource reads match a group's folder rows without checking the group still reaches the org, so the
+  // unlink itself has to drop them; the consumer only handles users and identities.
+  test("unlinking a group from the sub-org drops its PAM membership and folder grant there", async () => {
+    const groupId = await createLinkedGroup("pam-unlink-grp");
+    const pamProjectId = await implicitProjectId("pam");
+    const join = await asSubOrg("POST", `/api/v1/organization-admin/projects/${pamProjectId}/grant-admin-access`);
+    expect(join.statusCode, join.payload).toBe(200);
+
+    const memberRes = await asSubOrg("POST", `/api/v1/pam/memberships/groups/${groupId}`, { role: "member" });
+    expect(memberRes.statusCode, memberRes.payload).toBe(200);
+    const folderRes = await asSubOrg("POST", "/api/v1/pam/folders", { name: `pam-unlink-${randomUUID().slice(0, 8)}` });
+    expect(folderRes.statusCode, folderRes.payload).toBe(200);
+    const folderId = folderRes.json().folder.id as string;
+    const grantRes = await asSubOrg("POST", `/api/v1/pam/folders/${folderId}/groups/${groupId}`, { role: "operator" });
+    expect(grantRes.statusCode, grantRes.payload).toBe(200);
+
+    const groupRows = () => testDb(TableName.Membership).where({ scopeOrgId: subOrgId, actorGroupId: groupId });
+    expect(await groupRows()).toHaveLength(3);
+
+    await unlinkGroupFromOrg({ groupId, authToken: subOrgToken });
+
+    expect(await groupRows()).toHaveLength(0);
+    const listRes = await asSubOrg("GET", `/api/v1/pam/folders/${folderId}/groups`);
+    expect(listRes.statusCode, listRes.payload).toBe(200);
+    expect((listRes.json().members as { groupId?: string }[]).map((m) => m.groupId)).not.toContain(groupId);
+  });
+
   // A lazily created Agent Vault project starts empty, so an org admin has to join it first.
   test("Agent Vault offers and takes a user who reaches the sub-org only through a group", async () => {
     const groupId = await createLinkedGroup("av-grp");
