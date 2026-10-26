@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { subject } from "@casl/ability";
 import { Link } from "@tanstack/react-router";
 import axios from "axios";
-import { format } from "date-fns";
+import { addDays, format, max } from "date-fns";
 import {
   BanIcon,
   CheckIcon,
@@ -526,9 +526,15 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
       };
     }
     if (actor?.notJudgedReason === SecretReadNotJudgedReason.TrackingTooNew) {
+      // The project's start date is too early for a secret or an access that is newer still: each needs 30 days too.
+      const judgedAt = max([
+        new Date(readActivity.unusedAccessFrom),
+        addDays(new Date(readActivity.readsTrackedSince), 30),
+        addDays(new Date(actor.accessSince), 30)
+      ]);
       return {
         kind: "pending",
-        reason: `Reads have only been tracked since ${format(new Date(readActivity.readsTrackedSince), "PP")}. Unused access will show on ${format(new Date(readActivity.unusedAccessFrom), "PP")}, once reads have been tracked for 30 days.`
+        reason: `Reads have only been tracked since ${format(new Date(readActivity.readsTrackedSince), "PP")}. If they still have not read it, they will count as unused access from ${format(judgedAt, "PP")}.`
       };
     }
     if (actor?.notJudgedReason === SecretReadNotJudgedReason.AccessTooNew) {
