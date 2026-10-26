@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { BanIcon, ChevronLeftIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   EditPkiSyncModal,
   PkiSyncImportStatusBadge,
@@ -186,7 +187,7 @@ const PageContent = () => {
 export const PkiSyncDetailsByIDPage = () => {
   return (
     <>
-      <title>PKI Sync | Infisical</title>
+      <PageTitle title="PKI Sync" />
       <link rel="icon" href="/infisical.ico" />
       <PageContent />
     </>

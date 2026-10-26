@@ -6,6 +6,7 @@ import { ChevronLeft } from "lucide-react";
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { Button, CardContent, CardHeader, CardTitle, IconButton, Input } from "@app/components/v3";
 import { useServerConfig } from "@app/context";
 import { LoginMethod } from "@app/hooks/api/admin/types";
@@ -73,7 +74,7 @@ export const LoginLdapPage = () => {
 
   return (
     <AuthPageLayout variant="focused">
-      <title>{t("common.head-title", { title: t("login.title") })}</title>
+      <PageTitle title={t("login.title")} />
       <link rel="icon" href="/infisical.ico" />
       <meta property="og:image" content="/images/message.png" />
       <meta property="og:title" content={t("login.og-title") ?? ""} />

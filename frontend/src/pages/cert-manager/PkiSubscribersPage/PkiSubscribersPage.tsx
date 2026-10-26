@@ -1,5 +1,4 @@
-import { useTranslation } from "react-i18next";
-
+import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader } from "@app/components/v3";
 import { LegacyPkiResource } from "@app/const/legacyPkiDeprecation";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -8,10 +7,9 @@ import { LegacyPkiDeprecationAlert } from "../components/LegacyPkiDeprecationAle
 import { PkiSubscriberSection } from "./components";
 
 export const PkiSubscribersPage = () => {
-  const { t } = useTranslation();
   return (
     <>
-      <title>{t("common.head-title", { title: "PKI Subscribers" })}</title>
+      <PageTitle title="PKI Subscribers" />
       <div className="h-full bg-page">
         <div className="mx-auto flex flex-col justify-between text-foreground-inverse">
           <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">

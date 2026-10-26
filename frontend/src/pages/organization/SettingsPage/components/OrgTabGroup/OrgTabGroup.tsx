@@ -1,7 +1,7 @@
-import { useTranslation } from "react-i18next";
 import { Link, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   AlertDescription,
   AlertTitle,
@@ -19,7 +19,6 @@ import { OrgSecurityTab } from "../OrgSecurityTab";
 import { OrgSubOrgsTab } from "../OrgSubOrgsTab";
 
 export const OrgTabGroup = () => {
-  const { t } = useTranslation();
   const search = useSearch({
     from: ROUTE_PATHS.Organization.SettingsPage.id
   });
@@ -83,7 +82,7 @@ export const OrgTabGroup = () => {
 
   return (
     <div className="flex w-full flex-col">
-      <title>{t("common.head-title", { title: pageTitle })}</title>
+      <PageTitle title={pageTitle} />
       <PageHeader
         scope={isSubOrganization ? "namespace" : "org"}
         description={

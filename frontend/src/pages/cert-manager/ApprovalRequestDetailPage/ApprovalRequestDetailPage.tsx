@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -459,7 +460,7 @@ const PageContent = () => {
 export const ApprovalRequestDetailPage = () => {
   return (
     <>
-      <title>Approval Request | Infisical</title>
+      <PageTitle title="Approval Request" />
       <link rel="icon" href="/infisical.ico" />
       <PageContent />
     </>

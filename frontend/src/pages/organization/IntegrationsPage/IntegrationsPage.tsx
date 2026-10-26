@@ -1,6 +1,7 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   AlertDescription,
   DismissableAlert,
@@ -86,7 +87,7 @@ export const IntegrationsPage = () => {
 
   return (
     <>
-      <title>Infisical | Integrations</title>
+      <PageTitle title="Integrations" />
       <link rel="icon" href="/infisical.ico" />
       <meta property="og:image" content="/images/message.png" />
       <div className="flex w-full justify-center bg-page text-foreground-inverse">

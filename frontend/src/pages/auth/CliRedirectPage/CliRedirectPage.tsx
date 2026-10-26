@@ -4,6 +4,7 @@ import { CheckIcon, CopyIcon, EyeIcon, EyeOffIcon, KeyRoundIcon, TerminalIcon } 
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   CardContent,
@@ -49,7 +50,7 @@ export const CliRedirectPage = () => {
 
   return (
     <AuthPageLayout variant="focused">
-      <title>Infisical CLI | Login Successful!</title>
+      <PageTitle title="CLI Login Successful" />
       <link rel="icon" href="/infisical.ico" />
       {cliToken ? (
         <AuthPagePanel className="text-center">

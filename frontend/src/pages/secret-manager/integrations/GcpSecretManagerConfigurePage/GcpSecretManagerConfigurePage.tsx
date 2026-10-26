@@ -7,6 +7,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import { z } from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -193,7 +194,7 @@ export const GcpSecretManagerConfigurePage = () => {
       className="flex h-full w-full flex-col items-center justify-center"
     >
       <Card className="w-full max-w-lg">
-        <title>Set Up GCP Secret Manager Integration</title>
+        <PageTitle title="Set Up GCP Secret Manager Integration" />
         <CardHeader>
           <CardTitle>
             <img
@@ -528,7 +529,7 @@ export const GcpSecretManagerConfigurePage = () => {
     </form>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <title>Set Up GCP Secret Manager Integration</title>
+      <PageTitle title="Set Up GCP Secret Manager Integration" />
       {isIntegrationAuthAppsLoading ? (
         <img
           src="/images/loading/loading.gif"

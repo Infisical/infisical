@@ -1,6 +1,6 @@
-import { useTranslation } from "react-i18next";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DocumentationLinkBadge,
@@ -23,7 +23,6 @@ import { PkiDocsUrls } from "../pki-docs-urls";
 import { DiscoveryJobsTab, InstallationsTab } from "./components";
 
 export const DiscoveryPage = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { orgId } = useParams({ strict: false });
   const { currentProject } = useProject();
@@ -43,7 +42,7 @@ export const DiscoveryPage = () => {
 
   return (
     <div className="mx-auto flex h-full flex-col justify-between bg-page text-foreground-inverse">
-      <title>{t("common.head-title", { title: "Certificate Discovery" })}</title>
+      <PageTitle title="Certificate Discovery" />
       <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}

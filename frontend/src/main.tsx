@@ -6,6 +6,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import NProgress from "nprogress";
 
+import { PageTitle } from "./components/PageTitle";
 import { Loader } from "./components/v3/generic/Loader";
 import { initializeTheme } from "./components/v3/platform/ThemeProvider";
 import { queryClient } from "./hooks/api/reactQuery";
@@ -76,6 +77,7 @@ const router = createRouter({
   context: { serverConfig: null, queryClient },
   defaultPendingComponent: () => (
     <div className="flex h-full w-full items-center justify-center bg-page [#root>&]:h-screen">
+      <PageTitle title="Loading" />
       <Loader variant="brand" className="h-32 w-32" label="Loading page" />
     </div>
   ),
