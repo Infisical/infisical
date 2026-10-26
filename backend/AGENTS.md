@@ -1198,7 +1198,8 @@ EE routes register before community routes so they can override/extend endpoints
 **Deleting a honey token row without revoking it leaks its AWS IAM user.** Revocation needs the project KMS
 key, so it must run before the project is gone (`honey-token-cleanup-service.ts`): folder and environment
 deletes leave a folderless row (`folderId` is `SET NULL`) that the `HoneyTokenCleanup` queue reaps, and
-`deleteProject` and `deleteOrganizationById` revoke before deleting.
+`deleteProject` and `deleteOrganizationById` revoke before deleting. `projectId` is `SET NULL` too, so a token
+that escapes that (created mid-delete) is reported by the queue instead of vanishing.
 
 **Gateways: there is only one generation.** Gateway v1 (`ee/services/gateway`, `lib/gateway`, the QUIC
 transport over `@infisical/quic`, and `/api/v1/gateways`) is gone; `gateway-v2` and `gateway-pool` are the

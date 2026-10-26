@@ -72,6 +72,10 @@ export const honeyTokenCleanupServiceFactory = ({
       }
       const type = honeyToken.type as HoneyTokenType;
 
+      if (!honeyToken.projectId || !honeyToken.orgId) {
+        throw new NotFoundError({ message: "Honey token's project was deleted before it was revoked" });
+      }
+
       const appConnection = await findConnection(honeyToken.orgId, type);
       if (!appConnection) {
         throw new NotFoundError({ message: "Organization has no honey token connection" });
@@ -148,6 +152,16 @@ export const honeyTokenCleanupServiceFactory = ({
   const $processCleanupJob = async (honeyTokenId: string, isLastAttempt: boolean) => {
     const honeyToken = await honeyTokenDAL.findByIdForCleanup(honeyTokenId);
     if (!honeyToken) return;
+
+    // Its project, and the KMS key its credentials are encrypted with, are gone: it was created while the
+    // project or org was being deleted, so retrying cannot revoke it.
+    if (!honeyToken.projectId && honeyToken.status !== HoneyTokenStatus.Revoked) {
+      logger.error(
+        `honey-token-cleanup: could not clean up honey token, its project was deleted before it was revoked ${$logContext(honeyToken)}`
+      );
+      await honeyTokenDAL.deleteById(honeyToken.id);
+      return;
+    }
 
     try {
       if (honeyToken.status !== HoneyTokenStatus.Revoked) {

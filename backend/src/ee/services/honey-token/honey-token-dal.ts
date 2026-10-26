@@ -23,13 +23,13 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
         db.ref("description").withSchema(TableName.HoneyToken),
         db.ref("type").withSchema(TableName.HoneyToken),
         db.ref("status").withSchema(TableName.HoneyToken),
-        db.ref("projectId").withSchema(TableName.HoneyToken),
         db.ref("secretsMapping").withSchema(TableName.HoneyToken),
         db.ref("createdAt").withSchema(TableName.HoneyToken),
         db.ref("updatedAt").withSchema(TableName.HoneyToken)
       )
       .select(
-        // the joined folder always exists here, unlike the nullable honey token column
+        // the joined rows always exist here, unlike the nullable honey token columns
+        db.ref("projectId").withSchema(TableName.Environment).as("projectId"),
         db.ref("id").withSchema(TableName.SecretFolder).as("folderId"),
         db.ref("id").withSchema(TableName.Environment).as("envId"),
         db.ref("name").withSchema(TableName.Environment).as("envName"),
@@ -160,9 +160,10 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return Number(result?.count ?? 0);
   };
 
-  const $selectForCleanup = (tx?: Knex) =>
-    (tx || db.replicaNode())(TableName.HoneyToken)
-      .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
+  const $selectForCleanup = (knex: Knex) =>
+    knex(TableName.HoneyToken)
+      // left join: a row whose project was deleted before it was revoked still has to be found and reported
+      .leftJoin(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
       .select(
         db.ref("id").withSchema(TableName.HoneyToken),
         db.ref("type").withSchema(TableName.HoneyToken),
@@ -172,17 +173,19 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
         db.ref("orgId").withSchema(TableName.Project)
       );
 
+  // Read before a project or org is deleted, so it uses the primary: a token a lagging replica has not seen yet
+  // would be deleted without being revoked, with nothing left for a later pass to recover.
   const findUnrevokedByProjectIdForCleanup = async (projectId: string, tx?: Knex) =>
-    $selectForCleanup(tx)
+    $selectForCleanup(tx || db)
       .where(`${TableName.HoneyToken}.projectId`, projectId)
       .whereNot(`${TableName.HoneyToken}.status`, HoneyTokenStatus.Revoked);
 
   // covers sub-orgs at any depth, since deleting an org cascades through parentOrgId
   const findUnrevokedByOrgTreeForCleanup = async (orgId: string, tx?: Knex) =>
-    $selectForCleanup(tx)
+    $selectForCleanup(tx || db)
       .whereIn(
         `${TableName.Project}.orgId`,
-        (tx || db.replicaNode())
+        (tx || db)
           .withRecursive("org_tree", (qb) => {
             void qb
               .select("id")
@@ -201,10 +204,12 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       .whereNot(`${TableName.HoneyToken}.status`, HoneyTokenStatus.Revoked);
 
   const findByIdForCleanup = async (id: string, tx?: Knex) =>
-    $selectForCleanup(tx).where(`${TableName.HoneyToken}.id`, id).first();
+    $selectForCleanup(tx || db.replicaNode())
+      .where(`${TableName.HoneyToken}.id`, id)
+      .first();
 
   const findFolderlessForCleanup = async (limit: number, tx?: Knex) =>
-    $selectForCleanup(tx)
+    $selectForCleanup(tx || db.replicaNode())
       .whereNull(`${TableName.HoneyToken}.folderId`)
       .orderBy(`${TableName.HoneyToken}.updatedAt`, "asc")
       .limit(limit);

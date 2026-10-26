@@ -119,7 +119,7 @@ export type THoneyTokenServiceFactoryDep = {
 
 type TSendTriggerNotificationInput = {
   orgId: string;
-  honeyToken: THoneyTokens & { folderId: string };
+  honeyToken: THoneyTokens & { folderId: string; projectId: string };
   eventMetadata: {
     eventName: string;
     eventTime: string;
@@ -164,14 +164,15 @@ export const honeyTokenServiceFactory = ({
 }: THoneyTokenServiceFactoryDep) => {
   const honeyTokenProviderHooksByType = getHoneyTokenServiceHooksByType({ kmsService, appConnectionDAL });
 
-  // A null folderId means the folder was deleted and the cleanup cron has not reaped the row yet.
+  // A null folderId or projectId means the folder or project was deleted and the cleanup cron has not
+  // reaped the row yet.
   const $findHoneyTokenById = async (honeyTokenId: string) => {
     const honeyToken = await honeyTokenDAL.findById(honeyTokenId);
-    if (!honeyToken?.folderId) {
+    if (!honeyToken?.folderId || !honeyToken.projectId) {
       throw new NotFoundError({ message: `Honey token with ID "${honeyTokenId}" not found` });
     }
 
-    return { ...honeyToken, folderId: honeyToken.folderId };
+    return { ...honeyToken, folderId: honeyToken.folderId, projectId: honeyToken.projectId };
   };
 
   const create = async (
@@ -412,7 +413,7 @@ export const honeyTokenServiceFactory = ({
     });
 
     return {
-      honeyToken,
+      honeyToken: { ...honeyToken, projectId },
       ...(stackDeployment ? { stackDeployment } : {})
     };
   };
@@ -623,7 +624,7 @@ export const honeyTokenServiceFactory = ({
     }
 
     return {
-      honeyToken: updated,
+      honeyToken: { ...updated, projectId },
       folderInfo
     };
   };
@@ -784,7 +785,7 @@ export const honeyTokenServiceFactory = ({
       resetByUserId: actor.id
     });
 
-    return { honeyToken: updated };
+    return { honeyToken: { ...updated, projectId: honeyToken.projectId } };
   };
 
   const getDashboardHoneyTokenCount = async (
@@ -1120,10 +1121,10 @@ export const honeyTokenServiceFactory = ({
       eventMetadata.accessKeyId,
       honeyTokenWithOrg.orgId
     );
-    if (!honeyToken?.folderId || honeyToken.status === HoneyTokenStatus.Revoked) {
+    if (!honeyToken?.folderId || !honeyToken.projectId || honeyToken.status === HoneyTokenStatus.Revoked) {
       return { acknowledged: true };
     }
-    const honeyTokenWithFolder = { ...honeyToken, folderId: honeyToken.folderId };
+    const honeyTokenWithFolder = { ...honeyToken, folderId: honeyToken.folderId, projectId: honeyToken.projectId };
 
     await honeyTokenEventDAL.create({
       honeyTokenId: honeyToken.id,
