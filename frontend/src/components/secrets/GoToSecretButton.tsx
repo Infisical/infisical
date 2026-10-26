@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { ArrowRightIcon } from "lucide-react";
 
 import {
@@ -33,30 +33,40 @@ export const GoToSecretButton = ({
   isProjectMember,
   onNavigate
 }: Props) => {
-  const navigate = useNavigate();
-
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
           {/* A disabled button fires no pointer events, so the span carries the tooltip hover. */}
           <span className="inline-flex opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
-            <IconButton
-              variant="ghost"
-              size="sm"
-              aria-label="Go to secret"
-              isDisabled={!isProjectMember}
-              onClick={() => {
-                onNavigate?.();
-                navigate({
-                  to: overviewRoute,
-                  params: { orgId, projectId },
-                  search: { secretPath, environments: [environmentSlug], search: secretKey }
-                });
-              }}
-            >
-              <ArrowRightIcon className="size-3.5" />
-            </IconButton>
+            {isProjectMember ? (
+              <IconButton asChild variant="ghost" size="sm">
+                <Link
+                  to={overviewRoute}
+                  params={{ orgId, projectId }}
+                  search={{ secretPath, environments: [environmentSlug], search: secretKey }}
+                  aria-label="Go to secret"
+                  onClick={(event) => {
+                    if (
+                      event.metaKey ||
+                      event.ctrlKey ||
+                      event.shiftKey ||
+                      event.altKey ||
+                      event.button !== 0
+                    ) {
+                      return;
+                    }
+                    onNavigate?.();
+                  }}
+                >
+                  <ArrowRightIcon className="size-3.5" />
+                </Link>
+              </IconButton>
+            ) : (
+              <IconButton variant="ghost" size="sm" aria-label="Go to secret" isDisabled>
+                <ArrowRightIcon className="size-3.5" />
+              </IconButton>
+            )}
           </span>
         </TooltipTrigger>
         <TooltipContent>
