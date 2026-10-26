@@ -141,67 +141,7 @@ Requests that match this policy now go to ServiceNow. Policies that use the **In
 A policy that sends its requests to ServiceNow differs from one with Infisical approvers:
 
 - Nobody can approve its requests in Infisical, so the policy has no approvers, bypassers, or self approval
-- You can't edit the policy while it has pending requests (cancel them first, as described in [Follow a request in Infisical](#follow-a-request-in-infisical))
-
-## Follow a request in Infisical
-
-On the **Access Requests** tab, a request sent to ServiceNow shows one of these badges while it's pending:
-
-| Badge                     | Meaning                                                                                                                                            |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Submitting**            | Infisical is creating the record in ServiceNow. If ServiceNow can't be reached, Infisical keeps trying for about an hour, then closes the request. |
-| **Pending in ServiceNow** | The record exists, and Infisical is waiting for your flow's decision.                                                                              |
-| **Not Submitted**         | Infisical couldn't create the record. Open the request to see why.                                                                                 |
-
-Open a request to see its **Status**, the number of its ServiceNow record, and the reason for any failure. From there, you can take two actions:
-
-- **Retry**: sends a **Not Submitted** request to ServiceNow again, once you've fixed the cause (the requester and anyone who can view the project's approval requests can retry)
-- **Cancel Request**: closes a pending request (the requester and anyone who can edit the project's approval policies can cancel)
-
-**Cancel Request** is the only way to close a request from Infisical before ServiceNow decides.
-
-Infisical doesn't update the ServiceNow record after creating it. If you cancel a request, or it expires, the record stays in **Pending Approval** in ServiceNow, and Infisical ignores any decision your flow makes on it afterward.
-
-## What ServiceNow receives
-
-Each request becomes one **Infisical Access Request** record, numbered `INFAR<number>`. Infisical shows that number on the request, so you can find the matching record in ServiceNow.
-
-Infisical fills in these fields when it creates the record:
-
-| Field                            | Contents                                                                                                                                               |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Request Type                     | The kind of access requested, currently always Secret Access.                                                                                          |
-| Requestor Email / Requestor Name | The Infisical user who made the request.                                                                                                               |
-| Project Name / Project ID        | The Infisical project the request targets.                                                                                                             |
-| Environment                      | The environment slug, for example `prod`.                                                                                                              |
-| Secret Path                      | The folder path being requested.                                                                                                                       |
-| Permissions                      | The permissions requested, one line per resource, for example `secrets: read, edit`.                                                                   |
-| Duration Type / Duration         | Temporary with a duration, or permanent.                                                                                                               |
-| Justification                    | The reason the requester gave.                                                                                                                         |
-| Infisical Request ID             | The Infisical request this record corresponds to.                                                                                                      |
-| Callback URL                     | The Infisical address that **Infisical - Notify Decision** sends its notice to. It can't be changed, so a new `SITE_URL` only applies to new requests. |
-| Callback Token                   | The token that proves a notice comes from this record. ServiceNow stores it encrypted and shows it to nobody, including admins.                        |
-
-**Infisical - Notify Decision** fills in these fields:
-
-| Field          | Contents                                                 |
-| -------------- | -------------------------------------------------------- |
-| Decision       | `approved` or `rejected`. Once set, it can't be changed. |
-| Decision Date  | When the action recorded the decision.                   |
-| Callback Error | Why the action couldn't notify Infisical, if it failed.  |
-
-The record is a copy of the request. Infisical grants what the request asked for, never what the record says. If someone changes the **Permissions** field before the request is approved, Infisical closes the request instead of granting access. Changes to spacing, order, or letter case don't count.
-
-### States
-
-| State               | Meaning                                                                                                                                                                                                    |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pending Approval    | Waiting on your flow.                                                                                                                                                                                      |
-| Approved            | Your flow approved the request, and **Infisical - Notify Decision** hasn't run yet.                                                                                                                        |
-| Rejected            | Your flow rejected the request. The record stays in this state after Infisical receives the rejection.                                                                                                     |
-| Notifying Infisical | **Infisical - Notify Decision** is notifying Infisical.                                                                                                                                                    |
-| Completed           | Infisical received the approval. It then reads the decision from the record and grants the access, unless it has to close the request (see [Requests closed by Infisical](#requests-closed-by-infisical)). |
-| Callback Failed     | **Infisical - Notify Decision** couldn't notify Infisical. See the **Callback Error** field.                                                                                                               |
+- You can't edit the policy while it has pending requests (cancel them first: open each request in Infisical and select **Cancel Request**)
 
 ## Auditing
 
