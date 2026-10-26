@@ -8,12 +8,11 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
-import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
-import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TSamlConfigDALFactory } from "@app/ee/services/saml-config/saml-config-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -24,23 +23,24 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { isDisposableEmail, sanitizeEmail, validateEmail } from "@app/lib/validator";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
+import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
-import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { AuthMethod } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
 import { TOrgDALFactory } from "../org/org-dal";
 import { deleteOrgMembershipsFn } from "../org/org-fns";
 import { isCustomOrgRole } from "../org/org-role-fns";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
 import { TProjectAccessRequestDALFactory } from "../project/project-access-request-dal";
 import { TProjectDALFactory } from "../project/project-dal";
-import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
 import { TRoleDALFactory } from "../role/role-dal";
 import { TSmtpService } from "../smtp/smtp-service";
 import { getServerCfg } from "../super-admin/super-admin-service";
@@ -63,7 +63,15 @@ import { newProjectMembershipUserFactory } from "./project/project-membership-us
 type TMembershipUserServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "transaction" | "find">;
+  orgDAL: Pick<
+    TOrgDALFactory,
+    | "findById"
+    | "transaction"
+    | "find"
+    | "findActorsWithActiveOrgAccess"
+    | "findActorsWithOrgAccess"
+    | "lockActorsForOrgAccess"
+  >;
   roleDAL: Pick<TRoleDALFactory, "find">;
   userDAL: TUserDALFactory;
   permissionService: Pick<
@@ -75,7 +83,6 @@ type TMembershipUserServiceFactoryDep = {
     | "getResourcePermission"
   >;
   licenseService: TLicenseServiceFactory;
-  projectKeyDAL: TProjectKeyDALFactory;
   userAliasDAL: TUserAliasDALFactory;
   smtpService: TSmtpService;
   tokenService: TAuthTokenServiceFactory;
@@ -87,14 +94,14 @@ type TMembershipUserServiceFactoryDep = {
     TApplicationMembershipCleanupServiceFactory,
     "cleanupActorApplicationMemberships"
   >;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
+  projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit" | "emitForProject">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
-  pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  eventEmitter: TEventEmitter;
 };
 
 export type TMembershipUserServiceFactory = ReturnType<typeof membershipUserServiceFactory>;
@@ -106,7 +113,6 @@ export const membershipUserServiceFactory = ({
   userDAL,
   permissionService,
   orgDAL,
-  projectKeyDAL,
   userAliasDAL,
   licenseService,
   smtpService,
@@ -116,14 +122,14 @@ export const membershipUserServiceFactory = ({
   additionalPrivilegeDAL,
   projectAccessRequestDAL,
   applicationMembershipCleanupService,
-  approvalPolicyDAL,
+  projectAccessRevokeService,
+  auditLogService,
   emailDomainDAL,
   oidcConfigDAL,
   samlConfigDAL,
   usageMeteringService,
   alertChannelRecipientDAL,
-  pamSessionDAL,
-  gatewayV2Service
+  eventEmitter
 }: TMembershipUserServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipUserFactory({
@@ -321,15 +327,24 @@ export const membershipUserServiceFactory = ({
         actorUserId: users.map((el) => el.id)
       }
     });
+    const existingUserIds = new Set(existingMemberships.map((el) => el.actorUserId as string));
+    if (scopeData.scope === AccessScope.Organization && data.skipUsersWithOrgAccess) {
+      const withOrgAccess = await orgDAL.findActorsWithActiveOrgAccess({
+        orgId: scopeData.orgId,
+        userIds: users.map((el) => el.id),
+        identityIds: []
+      });
+      withOrgAccess.userIds.forEach((userId) => existingUserIds.add(userId));
+    }
 
-    if (existingMemberships.length === users.length) return { memberships: [] };
+    if (users.every((user) => existingUserIds.has(user.id))) return { memberships: [] };
     const isSubOrganization = Boolean(orgDetails.rootOrgId);
 
     const serverCfg = await getServerCfg();
     const isEmailLoginEnabled =
       !serverCfg.enabledLoginMethods || serverCfg.enabledLoginMethods.includes(LoginMethod.EMAIL);
 
-    const newMembershipUsers = users.filter((user) => !existingMemberships?.find((el) => el.actorUserId === user.id));
+    const newMembershipUsers = users.filter((user) => !existingUserIds.has(user.id));
     await factory.onCreateMembershipUserGuard(dto, newMembershipUsers);
     const newMemberships = newMembershipUsers.map((user) => {
       let status: OrgMembershipStatus | undefined;
@@ -375,6 +390,12 @@ export const membershipUserServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
+      if (scopeData.scope === AccessScope.Project) {
+        await lockAndAssertActiveOrgAccess(
+          { orgDAL, orgId: scopeData.orgId, userIds: newMembershipUsers.map((user) => user.id) },
+          tx
+        );
+      }
       const docs = await membershipUserDAL.insertMany(newMemberships, tx);
 
       const roleDocs: TMembershipRolesInsert[] = [];
@@ -597,18 +618,14 @@ export const membershipUserServiceFactory = ({
           orgMembershipIds: [existingMembership.id],
           orgId: dto.permission.orgId,
           orgDAL,
-          projectKeyDAL,
           userAliasDAL,
           licenseService,
           userId: dto.permission.id,
           membershipUserDAL,
           userGroupMembershipDAL,
-          membershipRoleDAL,
-          additionalPrivilegeDAL,
-          approvalPolicyDAL,
-          alertChannelRecipientDAL,
-          pamSessionDAL,
-          gatewayV2Service
+          projectAccessRevokeService,
+          auditLogService,
+          eventEmitter
         });
         return doc;
       }
@@ -701,19 +718,31 @@ export const membershipUserServiceFactory = ({
     return membership;
   };
 
-  // Should only be used for sub organization as of now
+  // It's a list of org members, so at project scope only org member read gates it, plus a check that the
+  // project is in the org.
   const listAvailableUsers = async (dto: TListMembershipUserDTO) => {
     const { scopeData } = dto;
-    const factory = scopeFactory[scopeData.scope];
 
-    await factory.onListMembershipUserGuard(dto);
+    if (scopeData.scope === AccessScope.Project) {
+      await scopeFactory[AccessScope.Organization].onListMembershipUserGuard({
+        ...dto,
+        scopeData: { scope: AccessScope.Organization, orgId: scopeData.orgId }
+      });
+      const project = await requestMemoize(requestMemoKeys.projectFindById(scopeData.projectId), () =>
+        projectDAL.findById(scopeData.projectId)
+      );
+      if (project?.orgId !== scopeData.orgId) {
+        throw new NotFoundError({ message: `Project with ID '${scopeData.projectId}' not found` });
+      }
+    } else {
+      await scopeFactory[scopeData.scope].onListMembershipUserGuard(dto);
+    }
 
     const organizationDetails = await requestMemoize(requestMemoKeys.orgFindById(dto.scopeData.orgId), () =>
       orgDAL.findById(dto.scopeData.orgId)
     );
-    if (!organizationDetails.rootOrgId) return { users: [] };
 
-    const users = await membershipUserDAL.listAvailableUsers(organizationDetails.id, organizationDetails.rootOrgId);
+    const users = await membershipUserDAL.listAvailableUsers(scopeData, organizationDetails.rootOrgId);
     return { users };
   };
 
