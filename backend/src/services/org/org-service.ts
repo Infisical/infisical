@@ -18,6 +18,7 @@ import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-ty
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { TLdapConfigDALFactory } from "@app/ee/services/ldap-config/ldap-config-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
@@ -149,6 +150,7 @@ type TOrgServiceFactoryDep = {
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   auditLogSettingsService: Pick<TAuditLogSettingsServiceFactory, "invalidateCache">;
   eventEmitter: TEventEmitter;
+  honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeOrgHoneyTokens">;
 };
 
 export type TOrgServiceFactory = ReturnType<typeof orgServiceFactory>;
@@ -188,7 +190,8 @@ export const orgServiceFactory = ({
   pamSessionDAL,
   gatewayV2Service,
   auditLogSettingsService,
-  eventEmitter
+  eventEmitter,
+  honeyTokenCleanupService
 }: TOrgServiceFactoryDep) => {
   /*
    * Get organization details by the organization id
@@ -927,6 +930,7 @@ export const orgServiceFactory = ({
         folderDAL
       });
     }
+    await honeyTokenCleanupService.revokeOrgHoneyTokens(orgId);
 
     const response = await orgDAL.transaction(async (tx) => {
       const deletedOrg = await orgDAL.deleteById(orgId, tx);

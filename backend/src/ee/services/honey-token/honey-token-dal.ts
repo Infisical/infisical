@@ -24,12 +24,13 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
         db.ref("type").withSchema(TableName.HoneyToken),
         db.ref("status").withSchema(TableName.HoneyToken),
         db.ref("projectId").withSchema(TableName.HoneyToken),
-        db.ref("folderId").withSchema(TableName.HoneyToken),
         db.ref("secretsMapping").withSchema(TableName.HoneyToken),
         db.ref("createdAt").withSchema(TableName.HoneyToken),
         db.ref("updatedAt").withSchema(TableName.HoneyToken)
       )
       .select(
+        // the joined folder always exists here, unlike the nullable honey token column
+        db.ref("id").withSchema(TableName.SecretFolder).as("folderId"),
         db.ref("id").withSchema(TableName.Environment).as("envId"),
         db.ref("name").withSchema(TableName.Environment).as("envName"),
         db.ref("slug").withSchema(TableName.Environment).as("envSlug"),
@@ -176,6 +177,32 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       .where(`${TableName.HoneyToken}.projectId`, projectId)
       .whereNot(`${TableName.HoneyToken}.status`, HoneyTokenStatus.Revoked);
 
+  // covers sub-orgs at any depth, since deleting an org cascades through parentOrgId
+  const findUnrevokedByOrgTreeForCleanup = async (orgId: string, tx?: Knex) =>
+    $selectForCleanup(tx)
+      .whereIn(
+        `${TableName.Project}.orgId`,
+        (tx || db.replicaNode())
+          .withRecursive("org_tree", (qb) => {
+            void qb
+              .select("id")
+              .from(TableName.Organization)
+              .where("id", orgId)
+              .union((uqb) => {
+                void uqb
+                  .select(`${TableName.Organization}.id`)
+                  .from(TableName.Organization)
+                  .join("org_tree", `${TableName.Organization}.parentOrgId`, "org_tree.id");
+              });
+          })
+          .select("id")
+          .from("org_tree")
+      )
+      .whereNot(`${TableName.HoneyToken}.status`, HoneyTokenStatus.Revoked);
+
+  const findByIdForCleanup = async (id: string, tx?: Knex) =>
+    $selectForCleanup(tx).where(`${TableName.HoneyToken}.id`, id).first();
+
   const findFolderlessForCleanup = async (limit: number, tx?: Knex) =>
     $selectForCleanup(tx)
       .whereNull(`${TableName.HoneyToken}.folderId`)
@@ -194,6 +221,8 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     createSecretMappings,
     deleteSecretMappingsByHoneyTokenId,
     findUnrevokedByProjectIdForCleanup,
-    findFolderlessForCleanup
+    findUnrevokedByOrgTreeForCleanup,
+    findFolderlessForCleanup,
+    findByIdForCleanup
   };
 };

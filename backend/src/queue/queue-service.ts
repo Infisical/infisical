@@ -130,6 +130,7 @@ export enum QueueName {
   CaAutoRenewal = "ca-auto-renewal",
   ProjectHardDelete = "project-hard-delete",
   ProjectEnvHardDelete = "project-env-hard-delete",
+  HoneyTokenCleanup = "honey-token-cleanup",
   SignerAutoRenewal = "signer-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event",
@@ -223,6 +224,7 @@ export enum QueueJobs {
   GoDaddyOrderPolling = "godaddy-order-polling-job",
   ProjectHardDelete = "project-hard-delete-job",
   ProjectEnvHardDelete = "project-env-hard-delete-job",
+  HoneyTokenCleanup = "honey-token-cleanup-job",
   SignerDailyAutoRenewal = "signer-daily-auto-renewal",
   SecretBlindIndexMigration = "secret-blind-index-migration",
   UsageEvent = "usage-event-job",
@@ -630,6 +632,10 @@ export type TQueueJobTypes = {
   [QueueName.ProjectEnvHardDelete]: {
     name: QueueJobs.ProjectEnvHardDelete;
     payload: { envId: string; projectId: string };
+  };
+  [QueueName.HoneyTokenCleanup]: {
+    name: QueueJobs.HoneyTokenCleanup;
+    payload: { honeyTokenId: string };
   };
   [QueueName.SignerAutoRenewal]: {
     name: QueueJobs.SignerDailyAutoRenewal;

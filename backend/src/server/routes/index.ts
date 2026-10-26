@@ -1082,7 +1082,8 @@ export const registerRoutes = async (
     honeyTokenDAL,
     honeyTokenConfigDAL,
     appConnectionDAL,
-    kmsService
+    kmsService,
+    queueService
   });
 
   const encryptionKeyRotationService = encryptionKeyRotationServiceFactory({
@@ -1744,7 +1745,8 @@ export const registerRoutes = async (
     usageMeteringService,
     pamSessionDAL,
     gatewayV2Service: deferredGatewayV2Service,
-    eventEmitter: eventOutboxService
+    eventEmitter: eventOutboxService,
+    honeyTokenCleanupService
   });
 
   const subOrgService = subOrgServiceFactory({
@@ -2485,7 +2487,8 @@ export const registerRoutes = async (
     roleDAL,
     groupDAL,
     projectAccessRequestDAL,
-    usageMeteringService
+    usageMeteringService,
+    honeyTokenCleanupService
   });
 
   const projectEnvQueue = projectEnvQueueFactory({
@@ -3479,8 +3482,7 @@ export const registerRoutes = async (
     certificateAuthoritySecretDAL,
     caKeySourceService,
     keyStore,
-    auditLogService,
-    honeyTokenCleanupService
+    auditLogService
   });
 
   const certificateProfileService = certificateProfileServiceFactory({
@@ -4721,6 +4723,7 @@ export const registerRoutes = async (
   dailyResourceCleanUp.init();
   projectEnvQueue.init();
   projectCleanupQueue.init();
+  honeyTokenCleanupService.init();
   usageEventQueue.init();
   healthAlert.init();
   alertQueue.init();

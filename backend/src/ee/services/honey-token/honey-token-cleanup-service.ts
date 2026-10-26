@@ -1,4 +1,6 @@
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -10,13 +12,21 @@ import { getHoneyTokenServiceHooksByType, HONEY_TOKEN_PROVIDER_MAP } from "./hon
 import { THoneyTokenProviderHooksDep } from "./honey-token-service-types";
 
 const FOLDERLESS_CLEANUP_BATCH = 100;
+const MAX_CLEANUP_ATTEMPTS = 3;
+const CLEANUP_WORKER_CONCURRENCY = 3;
 
 type THoneyTokenCleanupServiceFactoryDep = {
   honeyTokenDAL: Pick<
     THoneyTokenDALFactory,
-    "findUnrevokedByProjectIdForCleanup" | "findFolderlessForCleanup" | "delete"
+    | "findUnrevokedByProjectIdForCleanup"
+    | "findUnrevokedByOrgTreeForCleanup"
+    | "findFolderlessForCleanup"
+    | "findByIdForCleanup"
+    | "deleteById"
+    | "delete"
   >;
   honeyTokenConfigDAL: Pick<THoneyTokenConfigDALFactory, "findOne">;
+  queueService: Pick<TQueueServiceFactory, "queue" | "start">;
 } & THoneyTokenProviderHooksDep;
 
 type THoneyTokenCleanupRow = Awaited<ReturnType<THoneyTokenDALFactory["findFolderlessForCleanup"]>>[number];
@@ -27,104 +37,147 @@ export const honeyTokenCleanupServiceFactory = ({
   honeyTokenDAL,
   honeyTokenConfigDAL,
   kmsService,
-  appConnectionDAL
+  appConnectionDAL,
+  queueService
 }: THoneyTokenCleanupServiceFactoryDep) => {
   const providerHooksByType = getHoneyTokenServiceHooksByType({ kmsService, appConnectionDAL });
 
-  // Returns the ids that need no further attempt: revoked, already revoked, or impossible to revoke
-  // because the org no longer has a honey token configuration. Anything else is left for a retry.
-  const $revokeCredentials = async (honeyTokens: THoneyTokenCleanupRow[]) => {
-    const settledIds: string[] = [];
-    const connectionByOrgAndType = new Map<string, TAppConnection | null>();
+  const $logContext = (honeyToken: THoneyTokenCleanupRow) =>
+    `[honeyTokenId=${honeyToken.id}] [projectId=${honeyToken.projectId}] [orgId=${honeyToken.orgId}]`;
 
-    for await (const honeyToken of honeyTokens) {
-      const logContext = `[honeyTokenId=${honeyToken.id}] [projectId=${honeyToken.projectId}] [orgId=${honeyToken.orgId}]`;
+  // Resolves each org's honey token connection once, however many of its tokens are revoked. The credentials
+  // are encrypted with the project's KMS key, so every caller must run while the project is still live.
+  const $createRevoker = () => {
+    const connectionByOrgAndType = new Map<string, Promise<TAppConnection | null>>();
 
-      if (honeyToken.status === HoneyTokenStatus.Revoked) {
-        settledIds.push(honeyToken.id);
-        // eslint-disable-next-line no-continue
-        continue;
-      }
-
-      try {
-        const type = honeyToken.type as HoneyTokenType;
-        if (!Object.hasOwn(HONEY_TOKEN_PROVIDER_MAP, type)) {
-          logger.warn(`honey-token-cleanup: unsupported honey token type [type=${honeyToken.type}] ${logContext}`);
-          settledIds.push(honeyToken.id);
-          // eslint-disable-next-line no-continue
-          continue;
-        }
-
-        const connectionKey = `${honeyToken.orgId}:${type}`;
-        if (!connectionByOrgAndType.has(connectionKey)) {
-          const config = await honeyTokenConfigDAL.findOne({ orgId: honeyToken.orgId, type });
+    const findConnection = (orgId: string, type: HoneyTokenType) => {
+      const key = `${orgId}:${type}`;
+      let connection = connectionByOrgAndType.get(key);
+      if (!connection) {
+        connection = (async () => {
+          const config = await honeyTokenConfigDAL.findOne({ orgId, type });
           const rawConnection = config?.connectionId ? await appConnectionDAL.findById(config.connectionId) : null;
-          connectionByOrgAndType.set(
-            connectionKey,
-            rawConnection ? await decryptAppConnection(rawConnection, kmsService) : null
-          );
-        }
-
-        const appConnection = connectionByOrgAndType.get(connectionKey);
-        if (!appConnection) {
-          logger.warn(
-            `honey-token-cleanup: org has no honey token connection, cannot revoke provider credentials [type=${type}] ${logContext}`
-          );
-          settledIds.push(honeyToken.id);
-          // eslint-disable-next-line no-continue
-          continue;
-        }
-
-        const { decryptor } = await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId: honeyToken.projectId
-        });
-        const credentials = JSON.parse(
-          decryptor({ cipherTextBlob: honeyToken.encryptedCredentials }).toString()
-        ) as Record<string, string>;
-
-        await providerHooksByType[type].revokeCredentials({ appConnection, credentials });
-        settledIds.push(honeyToken.id);
-        logger.info(`honey-token-cleanup: revoked provider credentials ${logContext}`);
-      } catch (err) {
-        logger.error({ err }, `honey-token-cleanup: failed to revoke provider credentials ${logContext}`);
+          return rawConnection ? decryptAppConnection(rawConnection, kmsService) : null;
+        })();
+        connectionByOrgAndType.set(key, connection);
       }
-    }
+      return connection;
+    };
 
-    return settledIds;
+    return async (honeyToken: THoneyTokenCleanupRow) => {
+      if (!Object.hasOwn(HONEY_TOKEN_PROVIDER_MAP, honeyToken.type)) {
+        throw new NotFoundError({ message: `Unsupported honey token type '${honeyToken.type}'` });
+      }
+      const type = honeyToken.type as HoneyTokenType;
+
+      const appConnection = await findConnection(honeyToken.orgId, type);
+      if (!appConnection) {
+        throw new NotFoundError({ message: "Organization has no honey token connection" });
+      }
+
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId: honeyToken.projectId
+      });
+      const credentials = JSON.parse(
+        decryptor({ cipherTextBlob: honeyToken.encryptedCredentials }).toString()
+      ) as Record<string, string>;
+
+      await providerHooksByType[type].revokeCredentials({ appConnection, credentials });
+    };
   };
 
-  // Must run before the project row is deleted: the cascade drops the project KMS key that the
-  // credentials are encrypted with. Best effort, so a provider outage never blocks the delete.
-  const revokeProjectHoneyTokens = async (projectId: string) => {
-    const honeyTokens = await honeyTokenDAL.findUnrevokedByProjectIdForCleanup(projectId);
+  // Best effort: a provider failure is logged and the row is deleted regardless, so it never blocks the delete.
+  const $revokeAndDelete = async (honeyTokens: THoneyTokenCleanupRow[], reason: string) => {
     if (!honeyTokens.length) return;
 
-    await $revokeCredentials(honeyTokens);
+    const revoke = $createRevoker();
+    const results = await Promise.allSettled(honeyTokens.map((honeyToken) => revoke(honeyToken)));
+    results.forEach((result, i) => {
+      if (result.status === "rejected") {
+        logger.error(
+          { err: result.reason as unknown },
+          `honey-token-cleanup: could not clean up honey token on ${reason} ${$logContext(honeyTokens[i])}`
+        );
+      }
+    });
+
+    await honeyTokenDAL.delete({ $in: { id: honeyTokens.map((honeyToken) => honeyToken.id) } });
   };
 
-  // A deleted folder or environment leaves its honey tokens behind with a null folderId (see the
-  // SET NULL foreign key), so every folder deletion path is covered without each one calling in here.
+  // Runs before the project is soft-deleted: after that its KMS key no longer resolves and the credentials
+  // cannot be decrypted.
+  const revokeProjectHoneyTokens = async (projectId: string) =>
+    $revokeAndDelete(await honeyTokenDAL.findUnrevokedByProjectIdForCleanup(projectId), "project deletion");
+
+  // Runs before the org row is deleted: the cascade drops the honey token configuration and the app
+  // connection needed to reach the provider.
+  const revokeOrgHoneyTokens = async (orgId: string) =>
+    $revokeAndDelete(await honeyTokenDAL.findUnrevokedByOrgTreeForCleanup(orgId), "org deletion");
+
+  // Deleting a folder or environment leaves its honey tokens behind with a null folderId (the foreign key is
+  // SET NULL), so every folder deletion path is covered without each one calling in here. The jobId keeps a
+  // row that is already queued from being queued again.
   const cleanupFolderlessHoneyTokens = async () => {
     try {
       const honeyTokens = await honeyTokenDAL.findFolderlessForCleanup(FOLDERLESS_CLEANUP_BATCH);
-      if (!honeyTokens.length) return;
 
-      const settledIds = await $revokeCredentials(honeyTokens);
-      if (settledIds.length) {
-        await honeyTokenDAL.delete({ $in: { id: settledIds } });
-      }
-
-      logger.info(
-        `honey-token-cleanup: processed honey tokens of deleted folders [found=${honeyTokens.length}] [removed=${settledIds.length}]`
+      await Promise.all(
+        honeyTokens.map((honeyToken) =>
+          queueService.queue(
+            QueueName.HoneyTokenCleanup,
+            QueueJobs.HoneyTokenCleanup,
+            { honeyTokenId: honeyToken.id },
+            {
+              jobId: `honey-token-cleanup-${honeyToken.id}`,
+              attempts: MAX_CLEANUP_ATTEMPTS,
+              backoff: { type: "exponential", delay: 30_000 },
+              removeOnComplete: true,
+              removeOnFail: true
+            }
+          )
+        )
       );
     } catch (err) {
-      logger.error({ err }, "honey-token-cleanup: failed to clean up honey tokens of deleted folders");
+      logger.error({ err }, "honey-token-cleanup: failed to queue clean up of honey tokens of deleted folders");
     }
+  };
+
+  const $processCleanupJob = async (honeyTokenId: string, isLastAttempt: boolean) => {
+    const honeyToken = await honeyTokenDAL.findByIdForCleanup(honeyTokenId);
+    if (!honeyToken) return;
+
+    try {
+      if (honeyToken.status !== HoneyTokenStatus.Revoked) {
+        await $createRevoker()(honeyToken);
+      }
+    } catch (err) {
+      if (!isLastAttempt) throw err;
+
+      // Deleting here, rather than letting the job fail, keeps the next cron run from queueing it again.
+      logger.error(
+        { err },
+        `honey-token-cleanup: could not clean up honey token after ${MAX_CLEANUP_ATTEMPTS} attempts, deleting it anyway ${$logContext(honeyToken)}`
+      );
+    }
+
+    await honeyTokenDAL.deleteById(honeyToken.id);
+  };
+
+  const init = () => {
+    queueService.start(
+      QueueName.HoneyTokenCleanup,
+      async (job) => {
+        await $processCleanupJob(job.data.honeyTokenId, job.attemptsMade + 1 >= MAX_CLEANUP_ATTEMPTS);
+      },
+      { concurrency: CLEANUP_WORKER_CONCURRENCY }
+    );
   };
 
   return {
     revokeProjectHoneyTokens,
-    cleanupFolderlessHoneyTokens
+    revokeOrgHoneyTokens,
+    cleanupFolderlessHoneyTokens,
+    init
   };
 };
