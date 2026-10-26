@@ -119,7 +119,7 @@ type TGroupServiceFactoryDep = {
   identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals" | "pruneOutOfScopeRecipients">;
   eventEmitter: TEventEmitter;
-  membershipGroupService: Pick<TMembershipGroupServiceFactory, "detachGroupFromOrg">;
+  membershipGroupService: Pick<TMembershipGroupServiceFactory, "detachGroupFromOrg" | "bumpIdentityRevocationVersions">;
 };
 
 export type TGroupServiceFactory = ReturnType<typeof groupServiceFactory>;
@@ -471,12 +471,13 @@ export const groupServiceFactory = ({
 
     if (isLinkedGroup) {
       const unlinkedGroup = await groupDAL.findById(id);
-      await groupDAL.transaction(async (tx) => {
-        await membershipGroupService.detachGroupFromOrg(
+      const { identityIdsLosingOrgAccess } = await groupDAL.transaction((tx) =>
+        membershipGroupService.detachGroupFromOrg(
           { groupId: id, orgId: actorOrgId, orgMembershipId: groupMembership.id },
           tx
-        );
-      });
+        )
+      );
+      await membershipGroupService.bumpIdentityRevocationVersions(identityIdsLosingOrgAccess);
       // Removing the group drops its members from any project it was on.
       usageMeteringService.emit(actorOrgId, SecretIdentities.key);
       usageMeteringService.emit(actorOrgId, PamIdentities.key);

@@ -1030,6 +1030,7 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     identityGroupMembershipDAL,
     userGroupMembershipDAL,
+    identityAccessTokenService,
     eventEmitter: eventOutboxService
   });
 

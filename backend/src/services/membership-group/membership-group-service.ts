@@ -24,6 +24,7 @@ import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { emitGroupLinkRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
@@ -77,6 +78,7 @@ type TMembershipGroupServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "filterProjectsByIdentityMembership">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "filterProjectsByUserMembership">;
+  identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
   eventEmitter: TEventEmitter;
 };
 
@@ -103,6 +105,7 @@ export const membershipGroupServiceFactory = ({
   additionalPrivilegeDAL,
   identityGroupMembershipDAL,
   userGroupMembershipDAL,
+  identityAccessTokenService,
   eventEmitter
 }: TMembershipGroupServiceFactoryDep) => {
   const scopeFactory = {
@@ -452,6 +455,17 @@ export const membershipGroupServiceFactory = ({
       { orgId, groupId, members: toOrgMembershipActors({ userIds, identityIds }) },
       tx
     );
+
+    const stillReaching = identityIds.length
+      ? await orgDAL.findActorsWithOrgAccess({ orgId, userIds: [], identityIds }, tx)
+      : null;
+    return { identityIdsLosingOrgAccess: identityIds.filter((id) => !stillReaching?.identityIds.has(id)) };
+  };
+
+  const bumpIdentityRevocationVersions = async (identityIds: string[]) => {
+    for await (const identityId of identityIds) {
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId });
+    }
   };
 
   const deleteMembership = async (dto: TDeleteMembershipGroupDTO, externalTx?: Knex) => {
@@ -559,6 +573,7 @@ export const membershipGroupServiceFactory = ({
       }
     }
 
+    let identityIdsLosingOrgAccess: string[] = [];
     const performDelete = async (tx: Knex) => {
       if (scopeData.scope === AccessScope.Project && existingMembership.scopeProjectId) {
         await assertProductWillRetainAdmin({
@@ -613,14 +628,14 @@ export const membershipGroupServiceFactory = ({
       }
 
       if (scopeData.scope === AccessScope.Organization) {
-        await detachGroupFromOrg(
+        ({ identityIdsLosingOrgAccess } = await detachGroupFromOrg(
           {
             groupId: dto.selector.groupId,
             orgId: existingMembership.scopeOrgId,
             orgMembershipId: existingMembership.id
           },
           tx
-        );
+        ));
         return existingMembership;
       }
 
@@ -635,6 +650,7 @@ export const membershipGroupServiceFactory = ({
     const membershipDoc = externalTx
       ? await performDelete(externalTx)
       : await membershipGroupDAL.transaction(performDelete);
+    await bumpIdentityRevocationVersions(identityIdsLosingOrgAccess);
 
     // Removing a group from a project drops its users + identities from it, changing the meters.
     if (scopeData.scope === AccessScope.Project) {
@@ -691,6 +707,7 @@ export const membershipGroupServiceFactory = ({
     updateMembership,
     deleteMembership,
     detachGroupFromOrg,
+    bumpIdentityRevocationVersions,
     listMemberships,
     getMembershipByGroupId
   };
