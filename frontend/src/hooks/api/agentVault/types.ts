@@ -3,37 +3,51 @@ import {
   AgentVaultHttpMethod,
   AgentVaultMemberType,
   AgentVaultSessionLogDecision,
+  AgentVaultSessionLogStorageType,
   AgentVaultSessionScope,
   AgentVaultSessionStatus,
   AgentVaultSubstitutionSurface,
   AgentVaultTrafficPolicy,
-  AgentVaultVariableReferenceField
+  AgentVaultVariableReferenceField,
+  AgentVaultVariableScope
 } from "./enums";
 
+/** A field an admin can leave to each member: a bearer token or basic password, or a basic username. */
+export type TAgentVaultMemberProvidedField =
+  | AgentVaultVariableReferenceField.CredentialValue
+  | AgentVaultVariableReferenceField.CredentialUsername;
+
+export type TAgentVaultBearerMemberField = AgentVaultVariableReferenceField.CredentialValue;
+export type TAgentVaultBasicMemberField = TAgentVaultMemberProvidedField;
+
 export type TAgentVaultCredentialSummary =
-  | { type: AgentVaultCredentialType.Bearer; headerName: string; headerPrefix: string }
-  | { type: AgentVaultCredentialType.Basic }
+  | {
+      type: AgentVaultCredentialType.Bearer;
+      headerName: string;
+      headerPrefix: string;
+      memberProvidedFields: TAgentVaultBearerMemberField[];
+    }
+  | { type: AgentVaultCredentialType.Basic; memberProvidedFields: TAgentVaultBasicMemberField[] }
   | { type: AgentVaultCredentialType.Passthrough };
 
+// A member-provided field is sent without a value: each member sets their own.
 export type TAgentVaultCredentialInput =
   | {
       type: AgentVaultCredentialType.Bearer;
       headerName?: string;
       headerPrefix?: string;
-      value: string;
+      value?: string;
+      memberProvidedFields?: TAgentVaultBearerMemberField[];
     }
-  | { type: AgentVaultCredentialType.Basic; username: string; password: string }
+  | {
+      type: AgentVaultCredentialType.Basic;
+      username?: string;
+      password?: string;
+      memberProvidedFields?: TAgentVaultBasicMemberField[];
+    }
   | { type: AgentVaultCredentialType.Passthrough };
 
-export type TAgentVaultCredentialUpdate =
-  | {
-      type: AgentVaultCredentialType.Bearer;
-      headerName?: string;
-      headerPrefix?: string;
-      value?: string;
-    }
-  | { type: AgentVaultCredentialType.Basic; username?: string; password?: string }
-  | { type: AgentVaultCredentialType.Passthrough };
+export type TAgentVaultCredentialUpdate = TAgentVaultCredentialInput;
 
 export type TAgentVaultCustomHeaderSummary = { id: string; name: string; prefix: string };
 
@@ -85,6 +99,8 @@ export type TAgentVaultService = {
   substitutions: TAgentVaultSubstitutionSummary[];
   // Left out for a member, who can't see variables.
   variableReferences?: TAgentVaultVariableReference[];
+  // The caller's own values, on the bundle read only. null when the admin sets the whole credential.
+  personalValues?: TAgentVaultPersonalValues | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -136,9 +152,14 @@ export type TListAgentVaultProxiesDTO = {
 
 export type TListAgentVaultAccessBundlesDTO = Omit<TListAgentVaultProxiesDTO, "orderBy"> & {
   orderBy?: "name" | "serviceCount" | "createdAt";
+  /** Only the bundles the caller reaches that still require their personal values. */
+  requiresSetup?: boolean;
+  /** Only the bundles granted to the caller, or with false, only those an admin reaches by role. */
+  granted?: boolean;
 };
 
 export type TListAgentVaultVariablesDTO = {
+  scope?: AgentVaultVariableScope;
   search?: string;
   /** Exact keys. A key that doesn't exist is left out of the response. */
   keys?: string[];
@@ -189,6 +210,7 @@ export type TAgentVaultAccessBundleListItem = TAgentVaultAccessBundle & {
   serviceCount: number;
   memberCount: number;
   hostPatterns: string[];
+  servicesRequiringSetup: { id: string; name: string }[];
 };
 
 export type TAgentVaultAccessBundleDetails = TAgentVaultAccessBundle & {
@@ -306,12 +328,27 @@ export type TAgentVaultProxySettingsDTO = {
   pollInterval?: number;
 };
 
+export type TAgentVaultSessionLogExternalStorage = {
+  type: AgentVaultSessionLogStorageType.External;
+  appConnectionId: string;
+  bucket: string;
+  region: string;
+  keyPrefix: string | null;
+};
+
+export type TAgentVaultSessionLogStorage =
+  | { type: AgentVaultSessionLogStorageType.Default }
+  | TAgentVaultSessionLogExternalStorage;
+
 export type TAgentVaultSessionLogSettings = {
   enabled: boolean;
-  appConnectionId: string | null;
-  bucket: string | null;
-  region: string | null;
-  keyPrefix: string | null;
+  storage: TAgentVaultSessionLogStorage;
+};
+
+// settings is null when the instance has no default storage and no external bucket is saved.
+export type TAgentVaultSessionLogSettingsState = {
+  settings: TAgentVaultSessionLogSettings | null;
+  defaultStorage: { configured: boolean };
 };
 
 export type TAgentVaultSessionLogHealth = {
@@ -334,13 +371,13 @@ export type TAgentVaultSessionLogReadCheck = {
   host: string;
 };
 
-export type TUpdateAgentVaultSessionLogSettingsDTO = {
-  enabled?: boolean;
-  appConnectionId?: string | null;
-  bucket?: string;
-  region?: string;
-  keyPrefix?: string;
-};
+export type TAgentVaultSessionLogStorageInput =
+  | { type: AgentVaultSessionLogStorageType.Default }
+  | (Omit<TAgentVaultSessionLogExternalStorage, "keyPrefix"> & { keyPrefix?: string });
+
+export type TUpdateAgentVaultSessionLogSettingsDTO =
+  | { enabled: false }
+  | { enabled: true; storage: TAgentVaultSessionLogStorageInput };
 
 export type TAgentVaultSessionLogChunk = {
   chunkId: string;
@@ -349,8 +386,12 @@ export type TAgentVaultSessionLogChunk = {
   presignedGetUrl: string;
 };
 
+export type TAgentVaultSessionLogDisabledReason = "off" | "not-on-plan";
+
 export type TAgentVaultSessionLog = {
   enabled: boolean;
+  disabledReason: TAgentVaultSessionLogDisabledReason | null;
+  storageType: AgentVaultSessionLogStorageType | null;
   isRecordable: boolean;
   sessionKey: string | null;
 };
@@ -420,13 +461,16 @@ export type TAgentVaultVariableUsedByService = {
 export type TAgentVaultVariable = {
   id: string;
   key: string;
-  // Every service that references the variable, across all access bundles.
+  scope: AgentVaultVariableScope;
+  // Every service that references the variable, across all access bundles. For a personal variable, the services
+  // whose personal values, as the caller set them, use it.
   usedByServices: TAgentVaultVariableUsedByService[];
   createdAt: string;
   updatedAt: string;
 };
 
 export type TCreateAgentVaultVariableDTO = {
+  scope: AgentVaultVariableScope;
   key: string;
   value: string;
 };
@@ -436,3 +480,24 @@ export type TUpdateAgentVaultVariableDTO = {
   key?: string;
   value?: string;
 };
+
+// The caller's own values for one service, and which of them they have set. Values never come back.
+export type TAgentVaultPersonalValues = {
+  isConfigured: boolean;
+  fields: {
+    field: TAgentVaultMemberProvidedField;
+    isSet: boolean;
+    updatedAt: string | null;
+    variableReferences: { variableId: string; key: string }[];
+  }[];
+};
+
+export type TSetAgentVaultPersonalValuesDTO = {
+  accessBundleId: string;
+  serviceId: string;
+  values: { field: TAgentVaultMemberProvidedField; value: string }[];
+  /** The type the dialog shows. If an admin changed it since, the save fails with a 409 instead of mislabeling a value. */
+  credentialType: AgentVaultCredentialType;
+};
+
+export type TDeleteAgentVaultPersonalValuesDTO = { accessBundleId: string; serviceId: string };

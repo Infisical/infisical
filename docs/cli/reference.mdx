@@ -630,6 +630,20 @@ Without `--all` or `--profile`, the command logs out of the profile in effect. S
 </CLICommand>
 
 <CLICommand
+  id="migrate-config"
+  command="migrate-config"
+  examples={[
+    { title: "Convert the legacy project config", code: "infisical migrate-config" },
+  ]}
+>
+
+Convert a legacy `.infisical.json` into `.infisical.yaml`. The command looks for the project config in the current directory, then in each parent directory. It writes `.infisical.yaml` next to the file it finds, copies every setting into it, and deletes `.infisical.json`.
+
+If the project already uses `.infisical.yaml`, the command changes nothing. It warns you when a leftover `.infisical.json` sits in the same directory, because `.infisical.yaml` takes precedence and the old file is no longer read. See [Migrate to .infisical.yaml](/cli/project-config-migration) for the full steps.
+
+</CLICommand>
+
+<CLICommand
   id="org"
   command="org"
 >
@@ -710,7 +724,7 @@ Open a session for one PAM account. The command runs as the user you logged in a
 
 SSH accounts connect you to a shell on the target. Pass a command after `--` to run only that command, or `--proxy` to start a local proxy instead. If no terminal is attached, the CLI starts the proxy instead of a shell.
 
-For database, Redis, Snowflake, Kubernetes, GCP, Azure, and Windows accounts, the CLI starts a local proxy on `127.0.0.1` and prints how to connect to it. For AWS IAM accounts, the CLI writes temporary credentials to your AWS credentials file instead. The page for each [account type](/documentation/platform/pam/accounts/overview#account-types) describes how to connect. A proxy runs until you press `Ctrl+C` or the session expires, and the CLI then restores anything it changed, such as your kubeconfig.
+For database, Redis, Snowflake, Kubernetes, GCP, Azure, and Windows accounts, the CLI starts a local proxy on `127.0.0.1` and prints how to connect to it. For AWS IAM accounts, the CLI writes temporary credentials to your AWS credentials file instead. The page for each [account type](/documentation/platform/pam/accounts/account-types) describes how to connect. A proxy runs until you press `Ctrl+C` or the session expires, and the CLI then restores anything it changed, such as your kubeconfig.
 
 If the account requires approval, the CLI offers to submit an access request in an interactive terminal. If it requires MFA, the CLI has you complete MFA in your browser before it continues.
 
@@ -762,9 +776,9 @@ Run AI agents against PAM accounts. The agent reaches each account through a loc
 
 Start a local proxy for each PAM account you can launch, then start an AI agent with instructions for reaching them. Everything after `--` is the command that starts the agent. The `--` is required when that command has flags of its own.
 
-The CLI gives each account its own port on `127.0.0.1`, and the agent connects through those ports without ever holding a credential. The CLI skips accounts that require MFA and accounts of [types agentic access doesn't support](/documentation/platform/pam/ai-agents/overview#supported-account-types), and lists each skipped account with the reason. To open a skipped account, use [infisical pam access](/cli/reference#pam-access).
+The CLI gives each account its own port on `127.0.0.1`, and the agent connects through those ports without ever holding a credential. The CLI skips accounts that require MFA and accounts of [types agentic access doesn't support](/documentation/platform/pam/ai-agents/run#supported-account-types), and lists each skipped account with the reason. To open a skipped account, use [infisical pam access](/cli/reference#pam-access).
 
-The CLI [adds instructions for reaching the accounts](/documentation/platform/pam/ai-agents/overview#how-the-agent-is-told) to the agent's system prompt or to a file such as `AGENTS.md`, depending on the agent. It runs the agent in an [OS sandbox](/documentation/platform/pam/ai-agents/overview#the-sandbox), which stops the agent from reading your Infisical login. On a host without a sandbox, the command fails unless you pass `--no-sandbox`.
+The CLI [adds instructions for reaching the accounts](/documentation/platform/pam/ai-agents/instructions) to the agent's system prompt or to a file such as `AGENTS.md`, depending on the agent. It runs the agent in an [OS sandbox](/documentation/platform/pam/ai-agents/run#sandbox), which stops the agent from reading your Infisical login. On a host without a sandbox, the command fails unless you pass `--no-sandbox`.
 
 The run authenticates with `--token` when one is set, then as a machine identity when `--auth-method` is set, and otherwise as the user you logged in as with [infisical login](/cli/reference#login).
 
@@ -1915,6 +1929,8 @@ In scripts, pass `--plain --silent` to print only the values, with no other outp
 >
 
 Create secrets, or update the value of secrets that already exist. The result table masks values unless you pass `--show-values`.
+
+You can set secrets without permission to read secret values. In that case, the CLI can't compare values, so it writes every secret you pass that already exists and reports each one as `SECRET VALUE MODIFIED`, even when the value didn't change.
 
 Your shell saves the values you pass on the command line in its history file. To keep them out, pass `--file` or `name=@path`, or [set your shell to skip these commands](/cli/faq).
 

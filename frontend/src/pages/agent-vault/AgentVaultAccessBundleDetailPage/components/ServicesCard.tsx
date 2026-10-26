@@ -2,11 +2,14 @@ import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import {
   ChevronDownIcon,
+  CircleCheckIcon,
+  KeyIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
   SearchIcon,
-  TrashIcon
+  TrashIcon,
+  TriangleAlertIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -14,6 +17,7 @@ import { displayHostPattern } from "@app/components/agent-vault/service-sheet/se
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
 import { createNotification } from "@app/components/notifications";
 import {
+  Badge,
   Button,
   Card,
   CardAction,
@@ -71,6 +75,7 @@ type Props = {
   canManage: boolean;
   onAdd: () => void;
   onEdit: (service: TAgentVaultService) => void;
+  onSetUp: (service: TAgentVaultService) => void;
 };
 
 // Two hosts is what the column fits comfortably; the rest go behind the count so the table keeps its
@@ -94,7 +99,14 @@ const HostsCell = ({ hostPattern }: { hostPattern: string }) => {
   );
 };
 
-export const ServicesCard = ({ accessBundleId, services, canManage, onAdd, onEdit }: Props) => {
+export const ServicesCard = ({
+  accessBundleId,
+  services,
+  canManage,
+  onAdd,
+  onEdit,
+  onSetUp
+}: Props) => {
   const [search, setSearch] = useState("");
   const [serviceToDelete, setServiceToDelete] = useState<TAgentVaultService | null>(null);
   const deleteService = useDeleteAgentVaultService();
@@ -225,6 +237,7 @@ export const ServicesCard = ({ accessBundleId, services, canManage, onAdd, onEdi
                 Created
                 <ChevronDownIcon className={sortIconClassName(SortColumn.Created)} />
               </TableHead>
+              <TableHead className="w-0" />
               <TableHead variant="action" />
             </TableRow>
           </TableHeader>
@@ -252,8 +265,28 @@ export const ServicesCard = ({ accessBundleId, services, canManage, onAdd, onEdi
                     </TooltipContent>
                   </Tooltip>
                 </TableCell>
+                <TableCell>
+                  <div className="flex justify-center">
+                    {service.personalValues &&
+                      (service.personalValues.isConfigured ? (
+                        <Badge variant="neutral" asChild>
+                          <button type="button" onClick={() => onSetUp(service)}>
+                            <CircleCheckIcon />
+                            Configured
+                          </button>
+                        </Badge>
+                      ) : (
+                        <Badge variant="warning" asChild>
+                          <button type="button" onClick={() => onSetUp(service)}>
+                            <TriangleAlertIcon />
+                            Requires Setup
+                          </button>
+                        </Badge>
+                      ))}
+                  </div>
+                </TableCell>
                 <TableCell variant="action">
-                  {canManage && (
+                  {(canManage || service.personalValues) && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <IconButton variant="ghost" size="xs" aria-label="Open service actions">
@@ -261,17 +294,29 @@ export const ServicesCard = ({ accessBundleId, services, canManage, onAdd, onEdi
                         </IconButton>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent sideOffset={2} align="end">
-                        <DropdownMenuItem onClick={() => onEdit(service)}>
-                          <PencilIcon />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          variant="danger"
-                          onClick={() => setServiceToDelete(service)}
-                        >
-                          <TrashIcon />
-                          Delete
-                        </DropdownMenuItem>
+                        {service.personalValues && (
+                          <DropdownMenuItem onClick={() => onSetUp(service)}>
+                            <KeyIcon />
+                            {service.personalValues.isConfigured
+                              ? "Update My Personal Values"
+                              : "Set Up My Personal Values"}
+                          </DropdownMenuItem>
+                        )}
+                        {canManage && (
+                          <>
+                            <DropdownMenuItem onClick={() => onEdit(service)}>
+                              <PencilIcon />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              variant="danger"
+                              onClick={() => setServiceToDelete(service)}
+                            >
+                              <TrashIcon />
+                              Delete
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}

@@ -4,7 +4,7 @@ Things backend code should **at least** handle. This is a floor, not a standard:
 deliberately not exhaustive, and clearing everything here does not make a change correct.
 Expect it to grow as we find more worth checking.
 
-`backend/CLAUDE.md` still covers where code goes and which pattern to follow.
+`backend/AGENTS.md` still covers where code goes and which pattern to follow.
 
 - [Errors users can understand](#errors-users-can-understand)
 - [Validate every API input](#validate-every-api-input)

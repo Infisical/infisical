@@ -799,6 +799,7 @@ type TFnUpdateSecretLinkedReferences = {
   decryptor: (data: { cipherTextBlob: Buffer }) => Buffer;
   blindIndexer: TSecretBlindIndexer;
   tx?: Knex;
+  deferredSyncs?: Parameters<TSecretQueueFactory["syncSecrets"]>[0][];
 };
 
 /**
@@ -822,7 +823,8 @@ export const fnUpdateSecretLinkedReferences = async ({
   encryptor,
   decryptor,
   blindIndexer,
-  tx
+  tx,
+  deferredSyncs
 }: TFnUpdateSecretLinkedReferences) => {
   // case: nested references, can be inferred directly from the secret references table
   const nestedSecretReferences = await secretDAL.findReferencedSecretReferencesBySecretKey(
@@ -983,7 +985,7 @@ export const fnUpdateSecretLinkedReferences = async ({
     await Promise.all(
       folderPaths.map(async (folder) => {
         if (folder) {
-          await secretQueueService.syncSecrets({
+          const syncPayload = {
             projectId,
             orgId,
             environmentSlug: folder.environmentSlug,
@@ -991,7 +993,9 @@ export const fnUpdateSecretLinkedReferences = async ({
             secretPath: folder.path,
             actor: ActorType.PLATFORM,
             actorId: ""
-          });
+          };
+          if (deferredSyncs) deferredSyncs.push(syncPayload);
+          else await secretQueueService.syncSecrets(syncPayload);
         }
       })
     );

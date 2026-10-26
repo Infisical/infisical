@@ -78,3 +78,5 @@ backend/src/ee/services/secret-sync/chef/chef-sync-fns.test.ts:generic-api-key:3
 docs/documentation/platform/pki/ca/private-ca.mdx:generic-api-key:334
 docs/snippets/documentation/platform/secret-scanning/ignore-one-line.mdx:generic-api-key:6
 frontend/src/pages/secret-scanning/layout.tsx:generic-api-key:9
+frontend/src/pages/organization/BillingV2Page/billing-v2-offline-usage.ts:generic-api-key:18
+tests/suites/sso/scim/tokens_test.go:jwt:342

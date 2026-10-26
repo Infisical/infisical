@@ -1,109 +1,74 @@
 ---
 title: "SSH accounts"
 sidebarTitle: "SSH"
-description: "Add and connect to SSH servers."
+description: "Give people shell access to Linux and Unix servers."
 ---
 
-SSH accounts let you manage access to your Linux/Unix servers. Users connect through Web Access (a browser-based terminal) or the CLI, which drops you straight into a shell on the server (a local proxy is available with `--proxy` for your own SSH client). Every [session](/documentation/platform/pam/sessions/overview) can be recorded.
+An SSH account lets people open a shell on a Linux or Unix server without seeing the server's password or key. They connect in a browser terminal or through the Infisical CLI, and Infisical records each [session](/documentation/platform/pam/sessions/overview).
 
-SSH accounts support three authentication methods: password, public key, and certificate-based.
+## Prerequisites
 
-## Creating an account
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
+- A [Gateway](/documentation/platform/gateways/overview) that can reach the server on its SSH port
+
+## Create an account
 
 <Steps>
-  <Step title="Start adding an account">
-    Go to **Privileged Access Management → Accounts** and select **Add Account**.
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
   </Step>
-  <Step title="Select a folder and template">
-    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select an SSH [template](/documentation/platform/pam/templates/overview) (e.g., the default `ssh` or a custom one).
+  <Step>
+    Select the **Folder** to add the account to and an SSH **Account Template**, such as the default `ssh` [template](/documentation/platform/pam/templates/overview), then select **Next**.
   </Step>
-  <Step title="Enter connection details">
+  <Step>
+    Enter a **Name** for the account and the server's connection details:
+
     | Field | Description |
     |-------|-------------|
-    | **Name** | A descriptive name (e.g., `prod-web-01`) |
-    | **Host** | Server hostname or IP |
-    | **Port** | SSH port (default: 22) |
-    | **Username** | Linux username to connect as |
+    | **Host** | The server's hostname or IP address |
+    | **Port** | The server's SSH port (defaults to `22`) |
+    | **Gateway** | The Gateway that connects to the server (only shown if the template doesn't set one) |
   </Step>
-  <Step title="Choose authentication method">
-    See the section below for each method.
+  <Step>
+    Select an **Auth Method**, enter the **Username** to log in as, and fill in the fields for that [authentication method](#authentication-methods).
   </Step>
-  <Step title="Save">
+  <Step>
     Select **Create**.
   </Step>
 </Steps>
 
 ## Authentication methods
 
-<Tabs>
-  <Tab title="Password">
-    The simplest option. Provide the username and password.
+| Method | What you enter | What the server needs |
+|--------|----------------|-----------------------|
+| **Certificate** | Only the username | To trust the account's certificate authority (CA), as described in [Set up SSH certificate authentication](/documentation/platform/pam/guides/ssh-certificate-auth) |
+| **Public Key** | A **Private Key** in OpenSSH format | The matching public key in the user's `~/.ssh/authorized_keys` file |
+| **Password** | The user's **Password** | `PasswordAuthentication yes` in `sshd_config` |
 
-    The server must have `PasswordAuthentication yes` in sshd_config.
-  </Tab>
-  <Tab title="Public Key">
-    Authenticate with an SSH private key (OpenSSH format).
+Use **Certificate** where you can. Infisical issues a short-lived certificate for each session, so the account stores no password or key that could leak.
 
-    The corresponding public key must be in the user's `~/.ssh/authorized_keys` on the server.
-  </Tab>
-  <Tab title="Certificate (Recommended)">
-    The most secure option. Instead of storing static credentials, Infisical mints a short-lived certificate for each session.
+## Connect
 
-    After creating the account, configure the server to trust Infisical's CA. The account detail page provides a setup script.
+People can open a terminal in the browser or connect through the CLI. To learn how to launch a session, see [Connect to an account](/documentation/platform/pam/accounts/connect).
 
-    See the [SSH Certificate Auth guide](/documentation/platform/pam/guides/ssh-certificate-auth) for a full walkthrough.
-  </Tab>
-</Tabs>
+The CLI opens a shell on the server:
 
-## Connecting
+```bash
+infisical pam access <folder>/<account>
+```
 
-<Tabs>
-  <Tab title="Web Access">
-    Web Access provides an interactive terminal in your browser.
+To run one command instead of opening a shell, put the command after `--`:
 
-    1. Go to **Privileged Access Management → Accounts**
-    2. Find the account and click the rocket icon (or select **Launch Session** from the menu)
-    3. Click **Connect in Browser**
-    4. A terminal opens in a new tab
+```bash
+infisical pam access <folder>/<account> -- systemctl status nginx
+```
 
-    You get a full shell. To disconnect, type `exit` or close the tab.
-  </Tab>
-  <Tab title="CLI">
-    The CLI connects you straight to a shell on the server.
-
-    ```bash
-    infisical pam access prod-servers/web-01
-    ```
-
-    To disconnect, type `exit` or press `Ctrl+D`.
-
-    To run a single command and exit, put it after `--`:
-
-    ```bash
-    infisical pam access prod-servers/web-01 -- systemctl status nginx
-    ```
-
-    For file transfer, port forwarding, or your own SSH client and `~/.ssh/config`, use `--proxy` to
-    get a local port instead:
-
-    ```bash
-    infisical pam access prod-servers/web-01 --proxy
-    ```
-
-    **Flags:**
-    - `--proxy` — start a local proxy instead of connecting you, for SCP, SFTP, rsync and port forwarding
-    - `--port <port>` — use a specific local port (requires `--proxy`)
-    - `--reason <reason>` — provide an access reason (if required by template)
-  </Tab>
-</Tabs>
+To use your own SSH client, or to copy files with `scp`, `sftp`, or `rsync`, add `--proxy`. The CLI then starts a local proxy and prints the port to connect to.
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="SSH Certificate Auth" icon="key" href="/documentation/platform/pam/guides/ssh-certificate-auth">
-    Set up certificate-based authentication.
-  </Card>
-  <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
-    View and manage sessions.
+  <Card title="SSH certificate auth" icon="key" href="/documentation/platform/pam/guides/ssh-certificate-auth">
+    Let people connect to SSH servers with short-lived certificates instead of stored credentials.
   </Card>
 </CardGroup>

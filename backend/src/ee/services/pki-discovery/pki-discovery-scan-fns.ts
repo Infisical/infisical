@@ -23,7 +23,13 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { TPkiCertificateInstallationCertDALFactory } from "./pki-certificate-installation-cert-dal";
 import { TPkiCertificateInstallationDALFactory } from "./pki-certificate-installation-dal";
 import { TPkiDiscoveryConfigDALFactory } from "./pki-discovery-config-dal";
-import { computeLocationFingerprint, resolveDomain, resolveTargets, scanEndpoint } from "./pki-discovery-fns";
+import {
+  computeLocationFingerprint,
+  getPrivateIpRangeError,
+  resolveDomain,
+  resolveTargets,
+  scanEndpoint
+} from "./pki-discovery-fns";
 import { TPkiDiscoveryInstallationDALFactory } from "./pki-discovery-installation-dal";
 import { TPkiDiscoveryScanHistoryDALFactory } from "./pki-discovery-scan-history-dal";
 import {
@@ -158,6 +164,14 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
 
     const targetConfig = discoveryConfig.targetConfig as TNetworkTargetConfig;
     const hasGateway = !!effectiveGatewayId;
+
+    // The gateway FK is ON DELETE SET NULL, so a config saved with private ranges can lose its gateway later.
+    if (getPrivateIpRangeError(targetConfig.ipRanges, hasGateway)) {
+      throw new Error(
+        "This job targets private IP addresses but has no gateway attached. Attach a gateway or gateway pool to scan private networks."
+      );
+    }
+
     const targets = await resolveTargets(targetConfig, hasGateway);
 
     const uniqueHosts = new Set(targets.map((t) => t.host)).size;

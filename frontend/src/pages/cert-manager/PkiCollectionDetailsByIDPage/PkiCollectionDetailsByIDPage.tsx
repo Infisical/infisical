@@ -3,19 +3,18 @@ import { useTranslation } from "react-i18next";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Tooltip
-} from "@app/components/v2";
-import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3";
+  PageHeader
+} from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -70,7 +69,7 @@ export const PkiCollectionPage = () => {
   };
 
   return (
-    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
+    <div className="mx-auto flex flex-col justify-between bg-page">
       {data && (
         <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader
@@ -90,29 +89,22 @@ export const PkiCollectionPage = () => {
             description="Manage certificate collection"
           >
             <DropdownMenu>
-              <DropdownMenuTrigger asChild className="rounded-lg">
-                <div className="hover:text-project data-[state=open]:text-project">
-                  <Tooltip content="More options">
-                    <Button variant="outline_bg">More</Button>
-                  </Tooltip>
-                </div>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">More</Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="p-1">
+              <DropdownMenuContent align="end">
                 <ProjectPermissionCan
                   I={ProjectPermissionActions.Edit}
                   a={ProjectPermissionSub.PkiCollections}
                 >
                   {(isAllowed) => (
                     <DropdownMenuItem
-                      className={twMerge(
-                        !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                      )}
                       onClick={() => {
                         handlePopUpOpen("pkiCollection", {
                           collectionId
                         });
                       }}
-                      disabled={!isAllowed}
+                      isDisabled={!isAllowed}
                     >
                       Edit PKI Collection
                     </DropdownMenuItem>
@@ -124,18 +116,14 @@ export const PkiCollectionPage = () => {
                 >
                   {(isAllowed) => (
                     <DropdownMenuItem
-                      className={twMerge(
-                        isAllowed
-                          ? "hover:bg-danger! hover:text-white!"
-                          : "pointer-events-none cursor-not-allowed opacity-50"
-                      )}
                       onClick={() =>
                         handlePopUpOpen("deletePkiCollection", {
                           collectionId: data.id,
                           name: data.name
                         })
                       }
-                      disabled={!isAllowed}
+                      isDisabled={!isAllowed}
+                      variant="danger"
                     >
                       Delete PKI Collection
                     </DropdownMenuItem>

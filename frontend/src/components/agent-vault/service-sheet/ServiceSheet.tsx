@@ -27,6 +27,7 @@ import { useDebounce, useDiscardChangesGuard, useWizardSteps } from "@app/hooks"
 import {
   AgentVaultCredentialType,
   AgentVaultVariableReferenceField,
+  TAgentVaultMemberProvidedField,
   useAgentVaultVariableKeyStatus,
   useCreateAgentVaultService,
   useUpdateAgentVaultService
@@ -51,6 +52,7 @@ import {
   isAllMethods,
   SERVICE_STEP_FIELDS,
   ServiceStep,
+  storedMemberFields,
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
@@ -72,6 +74,7 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   headerPrefix: "Bearer",
   username: "",
   secret: "",
+  memberProvidedFields: [],
   methods: [...HTTP_METHODS],
   pathPrefixes: [],
   customHeaders: [],
@@ -297,6 +300,10 @@ export const ServiceSheet = ({
 
     if (service) {
       const { credential } = service;
+      const memberProvidedFields = storedMemberFields(service);
+      // A member-provided field has no stored value, so it starts empty rather than as "unchanged".
+      const storedValue = (field: TAgentVaultMemberProvidedField) =>
+        memberProvidedFields.includes(field) ? "" : UNCHANGED_SECRET;
       reset({
         ...BLANK_SERVICE_FORM,
         name: service.name,
@@ -311,8 +318,15 @@ export const ServiceSheet = ({
             : "Authorization",
         headerPrefix:
           credential.type === AgentVaultCredentialType.Bearer ? credential.headerPrefix : "Bearer",
-        username: credential.type === AgentVaultCredentialType.Basic ? UNCHANGED_SECRET : undefined,
-        secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET,
+        username:
+          credential.type === AgentVaultCredentialType.Basic
+            ? storedValue(AgentVaultVariableReferenceField.CredentialUsername)
+            : undefined,
+        secret: (() => {
+          if (credential.type === AgentVaultCredentialType.Passthrough) return "";
+          return storedValue(AgentVaultVariableReferenceField.CredentialValue);
+        })(),
+        memberProvidedFields,
         methods: service.allowedMethods ?? [...HTTP_METHODS],
         pathPrefixes: service.allowedPathPrefixes ?? [],
         // The stored values never come back, so each row carries the sentinel until it is retyped.
@@ -368,26 +382,52 @@ export const ServiceSheet = ({
       setStep(0);
     });
 
+  const memberFieldsOf = (data: TServiceForm) => {
+    const isMemberProvided = (field: TAgentVaultMemberProvidedField) =>
+      data.memberProvidedFields.includes(field);
+    return {
+      bearer: isMemberProvided(AgentVaultVariableReferenceField.CredentialValue)
+        ? [AgentVaultVariableReferenceField.CredentialValue as const]
+        : [],
+      basic: (
+        [
+          AgentVaultVariableReferenceField.CredentialUsername,
+          AgentVaultVariableReferenceField.CredentialValue
+        ] as TAgentVaultMemberProvidedField[]
+      ).filter(isMemberProvided),
+      isMemberProvided
+    };
+  };
+
+  // A member-provided field is sent without a value: each member sets their own.
   const buildCredential = (data: TServiceForm) => {
+    const { bearer, basic, isMemberProvided } = memberFieldsOf(data);
     if (data.credentialType === AgentVaultCredentialType.Passthrough) {
       return { type: AgentVaultCredentialType.Passthrough as const };
     }
     if (data.credentialType === AgentVaultCredentialType.Basic) {
       return {
         type: AgentVaultCredentialType.Basic as const,
-        username: data.username ?? "",
-        password: data.secret ?? ""
+        username: isMemberProvided(AgentVaultVariableReferenceField.CredentialUsername)
+          ? undefined
+          : (data.username ?? ""),
+        password: isMemberProvided(AgentVaultVariableReferenceField.CredentialValue)
+          ? undefined
+          : (data.secret ?? ""),
+        memberProvidedFields: basic
       };
     }
     return {
       type: AgentVaultCredentialType.Bearer as const,
       headerName: data.headerName || undefined,
       headerPrefix: data.headerPrefix ?? "",
-      value: data.secret ?? ""
+      value: bearer.length ? undefined : (data.secret ?? ""),
+      memberProvidedFields: bearer
     };
   };
 
   const buildCredentialPatch = (data: TServiceForm) => {
+    const { bearer, basic, isMemberProvided } = memberFieldsOf(data);
     if (data.credentialType === AgentVaultCredentialType.Passthrough) {
       return { type: AgentVaultCredentialType.Passthrough as const };
     }
@@ -396,15 +436,24 @@ export const ServiceSheet = ({
     if (data.credentialType === AgentVaultCredentialType.Basic) {
       return {
         type: AgentVaultCredentialType.Basic as const,
-        username: data.username === UNCHANGED_SECRET ? undefined : (data.username ?? ""),
-        password: untouched ? undefined : (data.secret ?? "")
+        username:
+          isMemberProvided(AgentVaultVariableReferenceField.CredentialUsername) ||
+          data.username === UNCHANGED_SECRET
+            ? undefined
+            : (data.username ?? ""),
+        password:
+          isMemberProvided(AgentVaultVariableReferenceField.CredentialValue) || untouched
+            ? undefined
+            : (data.secret ?? ""),
+        memberProvidedFields: basic
       };
     }
     return {
       type: AgentVaultCredentialType.Bearer as const,
       headerName: data.headerName || "Authorization",
       headerPrefix: data.headerPrefix ?? "",
-      value: untouched || !data.secret ? undefined : data.secret
+      value: bearer.length || untouched || !data.secret ? undefined : data.secret,
+      memberProvidedFields: bearer
     };
   };
 
@@ -647,12 +696,21 @@ export const ServiceSheet = ({
                   {current.step === ServiceStep.Credential && (
                     <ServiceVariablesContext.Provider value={serviceVariables}>
                       <div className="flex flex-col gap-5">
-                        <CredentialFields storedType={service?.credential.type} />
+                        <CredentialFields
+                          storedType={service?.credential.type}
+                          storedMemberFields={storedMemberFields(service)}
+                        />
                         <TransformationsFields openItem={openItem} onOpenChange={setOpenItem} />
                       </div>
                     </ServiceVariablesContext.Provider>
                   )}
-                  {current.step === ServiceStep.Review && <ReviewFields isUpdate={isUpdate} />}
+                  {current.step === ServiceStep.Review && (
+                    <ReviewFields
+                      isUpdate={isUpdate}
+                      storedType={service?.credential.type}
+                      storedMemberFields={storedMemberFields(service)}
+                    />
+                  )}
                 </div>
 
                 <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">

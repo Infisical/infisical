@@ -618,7 +618,7 @@ export type TProcessNewCommitRawDTO = {
   folders: {
     create?: { folderName: string; description?: string }[];
     update?: { folderName: string; description?: string | null; id: string }[];
-    delete?: { folderName: string; id: string }[];
+    delete?: { folderName?: string; id: string }[];
   };
 };
 

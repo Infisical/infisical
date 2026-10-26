@@ -103,7 +103,10 @@ const buildService = ({
       delete: vi.fn().mockResolvedValue(undefined)
     },
     projectAccessRequestDAL: { delete: vi.fn().mockResolvedValue(undefined) },
-    usageMeteringService: { emitForProject: vi.fn() }
+    usageMeteringService: { emitForProject: vi.fn() },
+    agentVaultPersonalValueDAL: { deleteForActorsWithoutGrant: vi.fn().mockResolvedValue(0) },
+    userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
+    identityGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) }
   };
 
   const service = agentVaultMembershipServiceFactory(
@@ -186,6 +189,11 @@ describe("agentVaultMembership guards", () => {
     await service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx });
 
     expect(deps.membershipDAL.delete).toHaveBeenCalledWith({ $in: { id: ["mem-1"] } }, expect.anything());
+    // Leaving Agent Vault loses every bundle, so the cleanup covers the whole project for this identity.
+    expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).toHaveBeenCalledWith(
+      { projectId: PROJECT_ID, accessBundleId: undefined, userIds: [], identityIds: [IDENTITY_ID] },
+      expect.anything()
+    );
   });
 
   // A sub-organization reaches one of its parent's groups through a membership of its own, and the group
@@ -404,6 +412,11 @@ describe("agentVaultMembership guards", () => {
       [{ membershipId: "mem-1", role: ProjectMembershipRole.Member }],
       expect.anything()
     );
+    // A demoted admin no longer reaches the bundles they hold no grant on.
+    expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).toHaveBeenCalledWith(
+      { projectId: PROJECT_ID, accessBundleId: undefined, userIds: [], identityIds: [IDENTITY_ID] },
+      expect.anything()
+    );
   });
 
   test("skips a member who already has the role instead of rewriting it", async () => {
@@ -459,6 +472,8 @@ describe("agentVaultMembership guards", () => {
       [{ membershipId: "mem-identity", role: ProjectMembershipRole.Admin }],
       expect.anything()
     );
+    // A promotion takes nothing away, so nothing is cleared.
+    expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).not.toHaveBeenCalled();
   });
 
   test("refuses one batch that would demote every remaining admin", async () => {

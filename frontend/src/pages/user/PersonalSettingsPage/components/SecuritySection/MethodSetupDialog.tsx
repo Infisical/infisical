@@ -26,18 +26,16 @@ export const MethodSetupDialog = ({ method, onOpenChange, onCompleted }: Props) 
           </DialogTitle>
           <DialogDescription>Configure this method as a second factor.</DialogDescription>
         </DialogHeader>
-        <div className="max-h-96 overflow-y-auto">
-          {method && (
-            <VerifyStep
-              method={method}
-              variant="neutral"
-              onVerified={() => {
-                onCompleted();
-                onOpenChange(false);
-              }}
-            />
-          )}
-        </div>
+        {method && (
+          <VerifyStep
+            method={method}
+            variant="neutral"
+            onVerified={() => {
+              onCompleted();
+              onOpenChange(false);
+            }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

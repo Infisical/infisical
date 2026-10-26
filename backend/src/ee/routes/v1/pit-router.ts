@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-base-to-string */
 import { z } from "zod";
 
+import { SecretApprovalRequestsSchema, SecretFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { isValidFolderName } from "@app/lib/validator";
@@ -8,7 +9,7 @@ import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { booleanSchema } from "@app/server/routes/sanitizedSchemas";
+import { booleanSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { commitChangesResponseSchema, resourceChangeSchema } from "@app/services/folder-commit/folder-commit-schemas";
 import { ResourceMetadataWithEncryptionSchema } from "@app/services/resource-metadata/resource-metadata-schema";
@@ -38,6 +39,35 @@ const commitAuthorSchema = z.object({
   actorId: z.string().nullable(),
   actorType: z.string(),
   name: z.string().nullable()
+});
+
+const CommitSecretSchema = secretRawSchema.extend({
+  secretValueHidden: z.boolean()
+});
+
+const CommitApprovalSchema = SecretApprovalRequestsSchema.pick({
+  id: true,
+  slug: true,
+  policyId: true,
+  folderId: true,
+  status: true,
+  hasMerged: true,
+  commitMessage: true,
+  committerUserId: true,
+  committerIdentityId: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+const CommitFolderSchema = SecretFoldersSchema.pick({
+  id: true,
+  name: true,
+  description: true,
+  envId: true,
+  parentId: true,
+  version: true,
+  createdAt: true,
+  updatedAt: true
 });
 
 const folderStateSchema = z.array(
@@ -637,7 +667,18 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          message: z.string()
+          commitId: z.string().uuid().nullable(),
+          approval: CommitApprovalSchema.nullable(),
+          secrets: z.object({
+            created: CommitSecretSchema.array(),
+            updated: CommitSecretSchema.array(),
+            deleted: CommitSecretSchema.array()
+          }),
+          folders: z.object({
+            created: CommitFolderSchema.array(),
+            updated: CommitFolderSchema.array(),
+            deleted: CommitFolderSchema.array()
+          })
         })
       }
     },
@@ -665,7 +706,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
           type: EventType.PIT_PROCESS_NEW_COMMIT_RAW,
           metadata: {
             commitId: result.commitId,
-            approvalId: result.approvalId,
+            approvalId: result.approval?.id,
             projectId: req.body.projectId,
             environment: req.body.environment,
             secretPath: req.body.secretPath,
@@ -701,7 +742,12 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
         );
       }
 
-      return { message: "success" };
+      return {
+        commitId: result.commitId ?? null,
+        approval: result.approval ?? null,
+        secrets: result.secrets,
+        folders: result.folders
+      };
     }
   });
 };
