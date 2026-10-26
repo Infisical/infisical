@@ -112,7 +112,7 @@ type TSecretSyncQueueFactoryDep = {
   secretImportDAL: Pick<TSecretImportDALFactory, "findByFolderIds" | "findByIds">;
   secretSyncDAL: Pick<
     TSecretSyncDALFactory,
-    "findById" | "find" | "updateById" | "deleteById" | "update" | "updateAndReturnIds"
+    "findById" | "find" | "findConnectionId" | "updateById" | "deleteById" | "update" | "updateAndReturnIds"
   >;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findAllProjectMembers">;
@@ -1247,15 +1247,13 @@ export const secretSyncQueueFactory = ({
       | TQueueSecretSyncImportSecretsByIdDTO
       | TQueueSecretSyncRemoveSecretsByIdDTO;
 
-    const secretSyncWithoutPath = await secretSyncDAL.findById(syncId, undefined, { includeFolderPath: false });
+    const connectionId = await secretSyncDAL.findConnectionId(syncId);
 
-    if (!secretSyncWithoutPath) {
+    if (!connectionId) {
       // skip rather than throw, so it doesn't retry-storm when a sync is deleted.
       logger.info(`AppConnectionSecretSync: secret sync ${syncId} not found, skipping`);
       return;
     }
-
-    const { connectionId } = secretSyncWithoutPath;
 
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
 

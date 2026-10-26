@@ -232,6 +232,19 @@ export const secretSyncDALFactory = (
     }
   };
 
+  const findConnectionId = async (id: string, tx?: Knex) => {
+    try {
+      const secretSync = await (tx || db.replicaNode())(TableName.SecretSync)
+        .where({ id })
+        .select("connectionId")
+        .first<{ connectionId: string } | undefined>();
+
+      return secretSync?.connectionId;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find Connection ID - Secret Sync" });
+    }
+  };
+
   const updateAndReturnIds = async (
     filter: Parameters<(typeof secretSyncOrm)["find"]>[0],
     data: Parameters<(typeof secretSyncOrm)["update"]>[1],
@@ -281,6 +294,7 @@ export const secretSyncDALFactory = (
     find,
     create,
     updateById,
+    findConnectionId,
     updateAndReturnIds,
     countByOrgId,
     findByDestinationAndOrgId
