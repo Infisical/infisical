@@ -14,6 +14,7 @@ import {
 } from "@app/db/schemas";
 import { bootstrapAgentVaultProject } from "@app/ee/services/agent-vault-project/agent-vault-project-bootstrap";
 import { TAuditLogSettingsServiceFactory } from "@app/ee/services/audit-log/audit-log-settings-service";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -141,6 +142,7 @@ type TOrgServiceFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "deleteReminderBySecretId">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   certificatePolicyDAL: Pick<TCertificatePolicyDALFactory, "create">;
@@ -180,6 +182,7 @@ export const orgServiceFactory = ({
   membershipDAL,
   userGroupMembershipDAL,
   projectAccessRevokeService,
+  auditLogService,
   certificatePolicyDAL,
   usageMeteringService,
   pamSessionDAL,
@@ -1386,6 +1389,7 @@ export const orgServiceFactory = ({
       membershipUserDAL,
       userGroupMembershipDAL,
       projectAccessRevokeService,
+      auditLogService,
       eventEmitter
     });
 
@@ -1439,6 +1443,7 @@ export const orgServiceFactory = ({
       membershipUserDAL,
       userGroupMembershipDAL,
       projectAccessRevokeService,
+      auditLogService,
       eventEmitter
     });
 

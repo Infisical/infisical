@@ -13,6 +13,7 @@ import {
   TOrganizations,
   TUsers
 } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
@@ -159,6 +160,7 @@ type TScimServiceFactoryDep = {
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients" | "deleteByPrincipals">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
@@ -189,6 +191,7 @@ export const scimServiceFactory = ({
   membershipRoleDAL,
   additionalPrivilegeDAL,
   projectAccessRevokeService,
+  auditLogService,
   alertChannelRecipientDAL,
   scimEventsDAL,
   emailDomainDAL,
@@ -1097,6 +1100,7 @@ export const scimServiceFactory = ({
       membershipUserDAL,
       userGroupMembershipDAL,
       projectAccessRevokeService,
+      auditLogService,
       eventEmitter
     });
 

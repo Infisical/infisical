@@ -1,4 +1,4 @@
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { chunkArray } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -12,6 +12,7 @@ import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/serv
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TProjectAccessRevokeServiceFactory } from "@app/services/membership/project-access-revoke-service";
 
+import { auditRevokedProjectAccess } from "./org-access-fns";
 import { TOrgDALFactory } from "./org-dal";
 import {
   GROUP_LINK_REMOVED_EVENT,
@@ -123,23 +124,13 @@ export const orgAccessReconcileConsumerFactory = ({
       const outcome = await $revokeActors(orgId, splitActors(actors));
       if (outcome) outcome.sendPamCancellations();
       if (outcome?.revoked.length) {
-        for await (const { userId, identityId, projectIds, resources } of outcome.revoked) {
-          await auditLogService.createAuditLog({
-            orgId,
-            actor: { type: ActorType.PLATFORM, metadata: {} },
-            event: {
-              type: EventType.REVOKE_ORG_PROJECT_ACCESS,
-              metadata: {
-                userId,
-                identityId,
-                projectIds,
-                resources,
-                reason: scope.reason,
-                groupId: scope.groupId
-              }
-            }
-          });
-        }
+        await auditRevokedProjectAccess({
+          auditLogService,
+          orgId,
+          revoked: outcome.revoked,
+          reason: scope.reason,
+          groupId: scope.groupId
+        });
 
         usageMeteringService.emit(orgId, SecretIdentities.key);
         usageMeteringService.emit(orgId, PamIdentities.key);

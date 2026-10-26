@@ -8,6 +8,7 @@ import {
   TemporaryPermissionMode,
   TMembershipRolesInsert
 } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -94,6 +95,7 @@ type TMembershipUserServiceFactoryDep = {
     "cleanupActorApplicationMemberships"
   >;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne">;
   samlConfigDAL: Pick<TSamlConfigDALFactory, "findOne">;
@@ -121,6 +123,7 @@ export const membershipUserServiceFactory = ({
   projectAccessRequestDAL,
   applicationMembershipCleanupService,
   projectAccessRevokeService,
+  auditLogService,
   emailDomainDAL,
   oidcConfigDAL,
   samlConfigDAL,
@@ -621,6 +624,7 @@ export const membershipUserServiceFactory = ({
           membershipUserDAL,
           userGroupMembershipDAL,
           projectAccessRevokeService,
+          auditLogService,
           eventEmitter
         });
         return doc;

@@ -1001,31 +1001,6 @@ export const registerRoutes = async (
     gatewayV2Service: deferredGatewayV2Service
   });
 
-  const membershipUserService = membershipUserServiceFactory({
-    licenseService,
-    membershipRoleDAL,
-    alertChannelRecipientDAL,
-    membershipUserDAL,
-    orgDAL,
-    permissionService,
-    roleDAL,
-    userDAL,
-    projectDAL,
-    smtpService,
-    tokenService,
-    userAliasDAL,
-    userGroupMembershipDAL,
-    additionalPrivilegeDAL,
-    projectAccessRequestDAL,
-    applicationMembershipCleanupService,
-    projectAccessRevokeService,
-    emailDomainDAL,
-    oidcConfigDAL,
-    samlConfigDAL,
-    usageMeteringService,
-    eventEmitter: eventOutboxService
-  });
-
   const identityAccessTokenService = identityAccessTokenServiceFactory({
     identityAccessTokenDAL,
     identityAccessTokenRevocationDAL,
@@ -1357,6 +1332,32 @@ export const registerRoutes = async (
     })
   });
 
+  const membershipUserService = membershipUserServiceFactory({
+    licenseService,
+    membershipRoleDAL,
+    alertChannelRecipientDAL,
+    membershipUserDAL,
+    orgDAL,
+    permissionService,
+    roleDAL,
+    userDAL,
+    projectDAL,
+    smtpService,
+    tokenService,
+    userAliasDAL,
+    userGroupMembershipDAL,
+    additionalPrivilegeDAL,
+    projectAccessRequestDAL,
+    applicationMembershipCleanupService,
+    projectAccessRevokeService,
+    auditLogService,
+    emailDomainDAL,
+    oidcConfigDAL,
+    samlConfigDAL,
+    usageMeteringService,
+    eventEmitter: eventOutboxService
+  });
+
   const oauthClientService = oauthClientServiceFactory({
     oauthClientDAL,
     permissionService,
@@ -1504,6 +1505,7 @@ export const registerRoutes = async (
     additionalPrivilegeDAL,
     alertChannelRecipientDAL,
     projectAccessRevokeService,
+    auditLogService,
     emailDomainDAL,
     telemetryService,
     usageMeteringService,
@@ -1726,6 +1728,7 @@ export const registerRoutes = async (
     roleDAL,
     userGroupMembershipDAL,
     projectAccessRevokeService,
+    auditLogService,
     certificatePolicyDAL,
     usageMeteringService,
     pamSessionDAL,
@@ -1794,6 +1797,7 @@ export const registerRoutes = async (
     gatewayV2Service: deferredGatewayV2Service,
     userGroupMembershipDAL,
     projectAccessRevokeService,
+    auditLogService,
     eventEmitter: eventOutboxService
   });
 

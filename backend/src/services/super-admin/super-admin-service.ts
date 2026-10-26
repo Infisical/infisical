@@ -7,6 +7,7 @@ import {
   TSuperAdminUpdate,
   TUsers
 } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -104,6 +105,7 @@ type TSuperAdminServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "delete">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   eventEmitter: TEventEmitter;
   emailDomainDAL: TEmailDomainDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
@@ -188,6 +190,7 @@ export const superAdminServiceFactory = ({
   gatewayV2Service,
   userGroupMembershipDAL,
   projectAccessRevokeService,
+  auditLogService,
   eventEmitter
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
@@ -1101,6 +1104,7 @@ export const superAdminServiceFactory = ({
       membershipUserDAL,
       userGroupMembershipDAL,
       projectAccessRevokeService,
+      auditLogService,
       eventEmitter
     });
 

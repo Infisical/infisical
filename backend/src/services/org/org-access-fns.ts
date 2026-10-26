@@ -1,8 +1,37 @@
 import { Knex } from "knex";
 
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
+import { ActorType } from "@app/services/auth/auth-type";
 
+import { TRevokedProjectAccess } from "../membership/project-access-revoke-service";
 import { TOrgDALFactory } from "./org-dal";
+import { OrgAccessRemovalCause } from "./org-membership-events";
+
+export const auditRevokedProjectAccess = async ({
+  auditLogService,
+  orgId,
+  revoked,
+  reason,
+  groupId
+}: {
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  orgId: string;
+  revoked: TRevokedProjectAccess[];
+  reason: OrgAccessRemovalCause;
+  groupId?: string;
+}) => {
+  for await (const { userId, identityId, projectIds, resources } of revoked) {
+    await auditLogService.createAuditLog({
+      orgId,
+      actor: { type: ActorType.PLATFORM, metadata: {} },
+      event: {
+        type: EventType.REVOKE_ORG_PROJECT_ACCESS,
+        metadata: { userId, identityId, projectIds, resources, reason, groupId }
+      }
+    });
+  }
+};
 
 // Call in the grant's tx before writing. Takes the consumer's per-actor lock and rechecks, so a path removed
 // at the same time is caught either here or by the consumer after commit, never neither.

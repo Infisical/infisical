@@ -2943,7 +2943,8 @@ interface UnlinkGroupFromSubOrgEvent {
   };
 }
 
-// Written by the reconcile consumer, so the actor is the platform and `reason` / `groupId` say why.
+// Written by the reconcile consumer and by direct org removals, so the actor is the platform and `reason` /
+// `groupId` say why.
 // `resources` are resource-level grants (PAM, Agent Vault, PKI apps, signers), including ones in projects
 // only reached through a group.
 interface RevokeOrgProjectAccessEvent {

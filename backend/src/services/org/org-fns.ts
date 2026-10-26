@@ -1,13 +1,19 @@
 import { AccessScope } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { BadRequestError } from "@app/lib/errors";
+import { auditRevokedProjectAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { emitOrgMembershipRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
+import {
+  emitOrgMembershipRemoved,
+  OrgAccessRemovalCause,
+  toOrgMembershipActors
+} from "@app/services/org/org-membership-events";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
-import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
+import { TProjectAccessRevokeServiceFactory, TRevokedProjectAccess } from "../membership/project-access-revoke-service";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
 
@@ -21,11 +27,13 @@ type TDeleteOrgMemberships = {
   licenseService: Pick<TLicenseServiceFactory, "updateSubscriptionOrgMemberCount">;
   userId?: string;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   eventEmitter: TEventEmitter;
 };
 
 // Removes the users from the org and its sub-orgs outright, org rows, groups and project access included.
-// Still emits the event so the reconcile consumer can confirm nothing's left.
+// Still emits the event so the reconcile consumer can confirm nothing's left. The project access entry is
+// written here since the consumer only audits rows it deleted itself.
 export const deleteOrgMembershipsFn = async ({
   orgMembershipIds,
   orgId,
@@ -36,9 +44,11 @@ export const deleteOrgMembershipsFn = async ({
   membershipUserDAL,
   userGroupMembershipDAL,
   projectAccessRevokeService,
+  auditLogService,
   eventEmitter
 }: TDeleteOrgMemberships) => {
   let sendPamCancellations = () => {};
+  let revoked: TRevokedProjectAccess[] = [];
 
   const deletedMemberships = await orgDAL.transaction(async (tx) => {
     await assertWillRetainOrgAdmin({
@@ -120,7 +130,7 @@ export const deleteOrgMembershipsFn = async ({
       tx
     );
 
-    ({ sendPamCancellations } = await projectAccessRevokeService.revokeActorsInOrgs(
+    ({ revoked, sendPamCancellations } = await projectAccessRevokeService.revokeActorsInOrgs(
       { orgIds, userIds: membershipUserIds },
       tx
     ));
@@ -136,6 +146,7 @@ export const deleteOrgMembershipsFn = async ({
   });
 
   sendPamCancellations();
+  await auditRevokedProjectAccess({ auditLogService, orgId, revoked, reason: OrgAccessRemovalCause.RemovedFromOrg });
 
   return deletedMemberships;
 };
