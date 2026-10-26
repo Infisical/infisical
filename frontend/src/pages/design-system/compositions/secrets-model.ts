@@ -213,7 +213,7 @@ export function createResources(scenario: Scenario): Resource[] {
   });
   add(at("dev"), "payments-app-db-creds", {
     kind: "rotation",
-    provider: "PostgreSQL credentials",
+    provider: "PostgreSQL Credentials",
     connection: "payments-postgres",
     status: "success",
     autoRotation: true,
@@ -279,7 +279,7 @@ export function createResources(scenario: Scenario): Resource[] {
   });
   add(at("prod", "/api"), "ledger-app-db-creds", {
     kind: "rotation",
-    provider: "PostgreSQL credentials",
+    provider: "PostgreSQL Credentials",
     connection: "ledger-postgres",
     status: "success",
     autoRotation: true,

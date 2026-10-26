@@ -4,6 +4,7 @@ import { CreateHoneyTokenFlow } from "./create-honey-token-flow";
 import { CreateImportFlow } from "./create-import-flow";
 import { CreateProxiedServiceFlow } from "./create-proxied-service-flow";
 import { CreateSecretFlow } from "./create-secret-flow";
+import { CreateSecretRotationFlow } from "./create-secret-rotation-flow";
 import type { AddFlowRegistry } from "./types";
 
 export { FlowToasts } from "./shared";
@@ -13,6 +14,7 @@ export const addFlows: AddFlowRegistry = {
   secret: CreateSecretFlow,
   folder: CreateFolderFlow,
   dynamic: CreateDynamicSecretFlow,
+  rotation: CreateSecretRotationFlow,
   import: CreateImportFlow,
   honey: CreateHoneyTokenFlow,
   proxy: CreateProxiedServiceFlow
