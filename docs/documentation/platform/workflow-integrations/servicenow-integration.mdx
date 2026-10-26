@@ -117,22 +117,29 @@ The action returns **Success** and **Message** outputs. You can branch on them t
 <Steps>
   <Step>
     In your Secrets Management project, select **Approvals** from the sidebar, open the **Policies** tab, and select **Add Policy**. To change an existing access policy instead, edit it from the same tab.
+
+    ![Approvals in the Sidebar](/images/platform/workflow-integrations/servicenow-integration/approvals-sidebar.png)
+    ![Policies Tab](/images/platform/workflow-integrations/servicenow-integration/policies-tab.png)
+
   </Step>
   <Step>
-    Set **Policy Type** to **Access Policy**, then fill out **Policy Name**, **Secret Path**, and **Environments** as for any [access policy](/documentation/platform/access-controls/access-requests#policy-configuration-options).
-  </Step>
-  <Step>
-    Optionally, set **Request Expiration** to how long a request can wait in ServiceNow before Infisical closes it. If you leave it empty, requests never expire.
-  </Step>
-  <Step>
+    Set **Policy Type** to **Access Policy**, then fill out **Policy Name**, **Secret Path**, and **Environments** as for any [access policy](/documentation/platform/access-controls/access-requests#policy-configuration-options). Optionally, set **Request Expiration** to how long a request can wait in ServiceNow before Infisical closes it. If you leave it empty, requests never expire.
+
     Under **Approval Workflow**, select **External Approval System**, then set:
 
     - **Provider**: **ServiceNow**
     - **App Connection**: the connection you created in [Step 2](#step-2-connect-infisical-to-servicenow)
 
+    Select **Add Policy**.
+
+    ![Create Access Policy](/images/platform/workflow-integrations/servicenow-integration/create-access-policy.png)
+
   </Step>
   <Step>
-    Select **Add Policy**, or **Update Policy** if you're editing an existing policy.
+    The policy appears on the **Policies** tab.
+
+    ![Access Policy Created](/images/platform/workflow-integrations/servicenow-integration/access-policy-created.png)
+
   </Step>
 </Steps>
 
@@ -142,6 +149,34 @@ A policy that sends its requests to ServiceNow differs from one with Infisical a
 
 - Nobody can approve its requests in Infisical, so the policy has no approvers, bypassers, or self approval
 - You can't edit the policy while it has pending requests (cancel them first: open each request in Infisical and select **Cancel Request**)
+
+## Request access
+
+Requesting access under a ServiceNow policy works like any other [access request](/documentation/platform/access-controls/access-requests#creating-a-request):
+
+<Steps>
+  <Step>
+    In your Secrets Management project, select **Approvals** from the sidebar, open the **Access Requests** tab, and select **Request Access**.
+  </Step>
+  <Step>
+    Choose an **Environment** and **Secret Path** that the policy covers, pick the permissions, fill out **Duration** and **Note**, then select **Request Access**.
+
+    ![Request Access](/images/platform/workflow-integrations/servicenow-integration/request-access.png)
+
+  </Step>
+  <Step>
+    The request appears on the **Access Requests** tab as **Pending in ServiceNow** while your flow decides.
+
+    ![Access Request Pending in ServiceNow](/images/platform/workflow-integrations/servicenow-integration/access-request-pending-in-servicenow.png)
+
+  </Step>
+  <Step>
+    Select the request to open it. Under **Status**, it shows the number of its ServiceNow record, such as `INFAR1000043`, so you can find the record in ServiceNow.
+
+    ![ServiceNow Record Number](/images/platform/workflow-integrations/servicenow-integration/access-request-servicenow-record.png)
+
+  </Step>
+</Steps>
 
 ## Auditing
 
@@ -170,7 +205,7 @@ If your flow fills in **Approved By** or **Decision Notes** on the record, Infis
 
 ### Requests closed by Infisical
 
-If Infisical can't finish a request in ServiceNow, it closes the request without granting access. The reason appears under the request's **Status**, and is one of these:
+Infisical closes a request without granting access in any of these cases, and shows the reason under the request's **Status**:
 
 - Someone changed the **Permissions** field on the record
 - Someone deleted the record from ServiceNow
