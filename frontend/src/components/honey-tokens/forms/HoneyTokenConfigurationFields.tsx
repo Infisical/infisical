@@ -4,7 +4,9 @@ import { AlertTriangle } from "lucide-react";
 
 import {
   Alert,
+  AlertAction,
   AlertDescription,
+  Button,
   Combobox,
   Field,
   FieldContent,
@@ -53,9 +55,18 @@ const getManagedUnavailableDescription = (reason: HoneyTokenManagedUnavailableRe
 type Props = {
   environments?: ProjectEnv[];
   hostingOptions?: THoneyTokenHostingOptions;
+  isHostingOptionsError?: boolean;
+  isRetryingHostingOptions?: boolean;
+  onRetryHostingOptions?: () => void;
 };
 
-export const HoneyTokenConfigurationFields = ({ environments, hostingOptions }: Props) => {
+export const HoneyTokenConfigurationFields = ({
+  environments,
+  hostingOptions,
+  isHostingOptionsError,
+  isRetryingHostingOptions,
+  onRetryHostingOptions
+}: Props) => {
   const {
     control,
     setValue,
@@ -149,7 +160,7 @@ export const HoneyTokenConfigurationFields = ({ environments, hostingOptions }: 
         !isCustomerAccountReady && (
           <Alert variant="warning">
             <AlertTriangle />
-            <AlertDescription className="text-xs">
+            <AlertDescription>
               <p>
                 {customerAccountStatus === HoneyTokenConfigStatus.VerificationPending
                   ? "Your organization connected its AWS account, but the CloudFormation stack is not verified yet."
@@ -170,7 +181,27 @@ export const HoneyTokenConfigurationFields = ({ environments, hostingOptions }: 
             </AlertDescription>
           </Alert>
         )}
-      {!isHostingChoiceShown && errors.hosting && <FieldError>{errors.hosting.message}</FieldError>}
+      {isHostingOptionsError && !hostingOptions && (
+        <Alert variant="danger">
+          <AlertTriangle />
+          <AlertDescription className="text-xs">
+            <span>Couldn&apos;t load where this honey token can be created.</span>
+            <AlertAction>
+              <Button
+                variant="danger"
+                size="xs"
+                isPending={isRetryingHostingOptions}
+                onClick={onRetryHostingOptions}
+              >
+                Retry
+              </Button>
+            </AlertAction>
+          </AlertDescription>
+        </Alert>
+      )}
+      {!isHostingChoiceShown && !isHostingOptionsError && errors.hosting && (
+        <FieldError>{errors.hosting.message}</FieldError>
+      )}
       {environments && (
         <Controller
           control={control}

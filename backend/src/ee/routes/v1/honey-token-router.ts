@@ -11,6 +11,7 @@ import {
   HONEY_TOKEN_CREDENTIALS_RESPONSE_SCHEMA_MAP,
   HONEY_TOKEN_REGISTER_ROUTER_MAP
 } from "@app/ee/services/honey-token/honey-token-provider-fns";
+import { AwsHoneyTokenRowConfigSchema } from "@app/ee/services/honey-token/honey-token-types";
 import { HoneyTokenConfigStatus } from "@app/ee/services/honey-token-config/honey-token-config-enums";
 import { HONEY_TOKENS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -25,12 +26,13 @@ const HoneyTokenResponseSchema = HoneyTokensSchema.pick({
   name: true,
   description: true,
   type: true,
-  hosting: true,
   status: true,
   projectId: true,
   secretsMapping: true,
   createdAt: true,
   updatedAt: true
+}).extend({
+  config: AwsHoneyTokenRowConfigSchema.describe(HONEY_TOKENS.CONFIG.config)
 });
 
 const HoneyTokenDetailsResponseSchema = HoneyTokensSchema.pick({
@@ -38,7 +40,6 @@ const HoneyTokenDetailsResponseSchema = HoneyTokensSchema.pick({
   name: true,
   description: true,
   type: true,
-  hosting: true,
   status: true,
   projectId: true,
   folderId: true,
@@ -46,6 +47,7 @@ const HoneyTokenDetailsResponseSchema = HoneyTokensSchema.pick({
   createdAt: true,
   updatedAt: true
 }).extend({
+  config: AwsHoneyTokenRowConfigSchema.describe(HONEY_TOKENS.CONFIG.config),
   projectId: z.string(),
   folderId: z.string().uuid(),
   environment: z
@@ -110,6 +112,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     schema: {
+      operationId: "getHoneyTokenHostingOptions",
       querystring: z.object({
         projectId: z.string().trim().min(1).max(64).describe(HONEY_TOKENS.HOSTING_OPTIONS.projectId),
         type: z.nativeEnum(HoneyTokenType).describe(HONEY_TOKENS.HOSTING_OPTIONS.type)
@@ -153,10 +156,15 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
         type: z.nativeEnum(HoneyTokenType),
         // Defaults to the customer's own account because that is how every token was created before managed
         // hosting existed, so callers that do not send it keep the same behaviour.
-        hosting: z
-          .nativeEnum(HoneyTokenHosting)
-          .default(HoneyTokenHosting.CustomerAccount)
-          .describe(HONEY_TOKENS.CREATE.hosting),
+        config: z
+          .object({
+            hosting: z
+              .nativeEnum(HoneyTokenHosting)
+              .default(HoneyTokenHosting.CustomerAccount)
+              .describe(HONEY_TOKENS.CONFIG.hosting)
+          })
+          .default({})
+          .describe(HONEY_TOKENS.CONFIG.config),
         name: slugSchema({ field: "name" }),
         description: z.string().trim().max(256).nullish(),
         secretsMapping: z.record(z.string(), z.string().min(1)),
@@ -187,7 +195,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
             honeyTokenId: honeyToken.id,
             name: honeyToken.name,
             type: honeyToken.type as HoneyTokenType,
-            hosting: honeyToken.hosting as HoneyTokenHosting,
+            hosting: honeyToken.config.hosting,
             environment: req.body.environment,
             secretPath: req.body.secretPath
           }

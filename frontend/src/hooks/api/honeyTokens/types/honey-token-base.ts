@@ -5,7 +5,7 @@ export type THoneyTokenBase = {
   id: string;
   name: string;
   description?: string | null;
-  hosting: HoneyTokenHosting;
+  config: { hosting: HoneyTokenHosting };
   status: HoneyTokenStatus;
   projectId: string;
   folderId: string;

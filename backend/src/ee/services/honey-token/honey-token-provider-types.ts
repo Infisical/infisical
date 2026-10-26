@@ -1,13 +1,13 @@
 import { OrderByDirection } from "@app/lib/types";
 
 import { TAwsHoneyTokenCredentials } from "./aws/honey-token-aws-types";
-import { HoneyTokenHosting, HoneyTokenType } from "./honey-token-enums";
-import { TAwsHoneyTokenConfig } from "./honey-token-types";
+import { HoneyTokenType } from "./honey-token-enums";
+import { TAwsHoneyTokenConfig, TAwsHoneyTokenRowConfig } from "./honey-token-types";
 
 export type THoneyTokenCreateInput = {
   projectId: string;
   type: HoneyTokenType;
-  hosting: HoneyTokenHosting;
+  config: TAwsHoneyTokenRowConfig;
   name: string;
   description?: string | null;
   secretsMapping: Record<string, string>;

@@ -66,7 +66,13 @@ import {
   THoneyTokenUpdateInput
 } from "./honey-token-provider-types";
 import { THoneyTokenCredentialTarget, THoneyTokenDeploymentStatus } from "./honey-token-service-types";
-import { AwsHoneyTokenConfigSchema, THoneyTokenEventsInput, THoneyTokenWebhookPayload } from "./honey-token-types";
+import {
+  AwsHoneyTokenConfigSchema,
+  getHoneyTokenConfig,
+  getHoneyTokenHosting,
+  THoneyTokenEventsInput,
+  THoneyTokenWebhookPayload
+} from "./honey-token-types";
 
 const TRIGGER_NOTIFICATION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
@@ -245,9 +251,10 @@ export const honeyTokenServiceFactory = ({
   };
 
   const create = async (
-    { projectId, type, hosting, name, description, secretsMapping, environment, secretPath }: THoneyTokenCreateInput,
+    { projectId, type, config, name, description, secretsMapping, environment, secretPath }: THoneyTokenCreateInput,
     actor: OrgServiceActor
   ) => {
+    const { hosting } = config;
     const canonicalPath = prefixWithSlash(removeTrailingSlash(secretPath));
 
     const { permission } = await permissionService.getProjectPermission({
@@ -415,7 +422,7 @@ export const honeyTokenServiceFactory = ({
             name,
             description,
             type: providerType,
-            hosting,
+            config,
             status: HoneyTokenStatus.Active,
             projectId,
             folderId: folder.id,
@@ -489,7 +496,7 @@ export const honeyTokenServiceFactory = ({
     });
 
     return {
-      honeyToken: { ...honeyToken, projectId },
+      honeyToken: { ...honeyToken, projectId, config: getHoneyTokenConfig(honeyToken) },
       ...(stackDeployment ? { stackDeployment } : {})
     };
   };
@@ -700,7 +707,7 @@ export const honeyTokenServiceFactory = ({
     }
 
     return {
-      honeyToken: { ...updated, projectId },
+      honeyToken: { ...updated, projectId, config: getHoneyTokenConfig(updated) },
       folderInfo
     };
   };
@@ -752,7 +759,7 @@ export const honeyTokenServiceFactory = ({
     if (!providerHooks) throw new BadRequestError({ message: "Unsupported honey token type" });
 
     let target: THoneyTokenCredentialTarget = { hosting: HoneyTokenHosting.InfisicalManaged };
-    if (honeyToken.hosting === HoneyTokenHosting.CustomerAccount) {
+    if (getHoneyTokenHosting(honeyToken) === HoneyTokenHosting.CustomerAccount) {
       const orgConfig = await honeyTokenConfigDAL.findOne({
         orgId: actor.orgId,
         type,
@@ -860,7 +867,9 @@ export const honeyTokenServiceFactory = ({
       resetByUserId: actor.id
     });
 
-    return { honeyToken: { ...updated, projectId: honeyToken.projectId } };
+    return {
+      honeyToken: { ...updated, projectId: honeyToken.projectId, config: getHoneyTokenConfig(updated) }
+    };
   };
 
   const getDashboardHoneyTokenCount = async (
@@ -1167,7 +1176,7 @@ export const honeyTokenServiceFactory = ({
     signatureHash: string;
   }) => {
     let webhookSigningKey: string | null = null;
-    if (honeyTokenWithOrg?.hosting === HoneyTokenHosting.CustomerAccount) {
+    if (honeyTokenWithOrg && getHoneyTokenHosting(honeyTokenWithOrg) === HoneyTokenHosting.CustomerAccount) {
       const config = await honeyTokenConfigDAL.findOne({
         orgId: honeyTokenWithOrg.orgId,
         type: HoneyTokenType.AWS,
@@ -1256,7 +1265,7 @@ export const honeyTokenServiceFactory = ({
     const honeyTokenWithOrg = await honeyTokenDAL.findOneByTokenIdentifier(eventMetadata.accessKeyId);
 
     if (isManagedTrigger) {
-      if (honeyTokenWithOrg?.hosting !== HoneyTokenHosting.InfisicalManaged) {
+      if (!honeyTokenWithOrg || getHoneyTokenHosting(honeyTokenWithOrg) !== HoneyTokenHosting.InfisicalManaged) {
         // Our own stack reported a key we no longer track (eg its project was deleted). Acknowledge so the
         // queue stops retrying it.
         logger.warn(
@@ -1370,6 +1379,7 @@ export const honeyTokenServiceFactory = ({
     return {
       honeyToken: {
         ...honeyToken,
+        config: getHoneyTokenConfig(honeyToken),
         environment: match?.environment ?? null,
         folder: match?.folder ?? null,
         openEvents

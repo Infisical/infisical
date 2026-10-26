@@ -90,7 +90,12 @@ export const HoneyTokenForm = ({
   const { name: tokenTypeName } = HONEY_TOKEN_MAP[type];
 
   const isUpdate = Boolean(honeyToken);
-  const { data: hostingOptions } = useGetHoneyTokenHostingOptions({
+  const {
+    data: hostingOptions,
+    isError: isHostingOptionsError,
+    isFetching: isFetchingHostingOptions,
+    refetch: refetchHostingOptions
+  } = useGetHoneyTokenHostingOptions({
     projectId: currentProject.id,
     type,
     enabled: !isUpdate
@@ -104,6 +109,7 @@ export const HoneyTokenForm = ({
     defaultValues: honeyToken
       ? {
           ...honeyToken,
+          hosting: honeyToken.config.hosting,
           environment: currentProject?.environments.find(
             (env) => env.slug === honeyToken.environment.slug
           ),
@@ -120,7 +126,9 @@ export const HoneyTokenForm = ({
   });
 
   useEffect(() => {
-    if (!hostingOptions || formMethods.getFieldState("hosting").isDirty) return;
+    if (!hostingOptions) return;
+    formMethods.clearErrors("hosting");
+    if (formMethods.getFieldState("hosting").isDirty) return;
 
     // An org that connected its own account most likely wants its tokens there.
     const preferCustomerAccount =
@@ -133,7 +141,7 @@ export const HoneyTokenForm = ({
     );
   }, [hostingOptions]);
 
-  const onSubmit = async ({ environment, ...formData }: THoneyTokenForm) => {
+  const onSubmit = async ({ environment, hosting, ...formData }: THoneyTokenForm) => {
     if (honeyToken) {
       await updateHoneyToken.mutateAsync({
         honeyTokenId: honeyToken.id,
@@ -150,6 +158,7 @@ export const HoneyTokenForm = ({
     } else {
       const { stackDeployment } = await createHoneyToken.mutateAsync({
         ...formData,
+        config: { hosting },
         environment: environment.slug,
         projectId: currentProject.id
       });
@@ -200,6 +209,16 @@ export const HoneyTokenForm = ({
   const isStepValid = async (index: number) => {
     const isValid = await trigger(formTabs[index].fields);
     if (!isValid || formTabs[index].key !== "configuration") return isValid;
+
+    // Without the options the form would keep its Infisical-managed default, which this instance may not offer.
+    if (!hostingOptions) {
+      formMethods.setError("hosting", {
+        message: isHostingOptionsError
+          ? "Couldn't load where this honey token can be created."
+          : "Still loading where this honey token can be created. Try again in a moment."
+      });
+      return false;
+    }
 
     if (
       formMethods.getValues("hosting") === HoneyTokenHosting.CustomerAccount &&
@@ -309,6 +328,9 @@ export const HoneyTokenForm = ({
         <HoneyTokenConfigurationFields
           environments={environments}
           hostingOptions={hostingOptions}
+          isHostingOptionsError={isHostingOptionsError}
+          isRetryingHostingOptions={isFetchingHostingOptions}
+          onRetryHostingOptions={() => refetchHostingOptions()}
         />
       )}
       {currentStep.key === "mapping" && <HoneyTokenMappingFields />}

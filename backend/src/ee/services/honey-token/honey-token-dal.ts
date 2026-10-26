@@ -5,6 +5,7 @@ import { TableName } from "@app/db/schemas";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 import { HoneyTokenStatus } from "./honey-token-enums";
+import { getHoneyTokenConfig } from "./honey-token-types";
 
 export type THoneyTokenDALFactory = ReturnType<typeof honeyTokenDALFactory>;
 
@@ -22,7 +23,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
         db.ref("name").withSchema(TableName.HoneyToken),
         db.ref("description").withSchema(TableName.HoneyToken),
         db.ref("type").withSchema(TableName.HoneyToken),
-        db.ref("hosting").withSchema(TableName.HoneyToken),
+        db.ref("config").withSchema(TableName.HoneyToken),
         db.ref("status").withSchema(TableName.HoneyToken),
         db.ref("secretsMapping").withSchema(TableName.HoneyToken),
         db.ref("createdAt").withSchema(TableName.HoneyToken),
@@ -43,7 +44,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
       name: row.name,
       description: row.description,
       type: row.type,
-      hosting: row.hosting,
+      config: getHoneyTokenConfig(row),
       status: row.status,
       projectId: row.projectId,
       folderId: row.folderId,
@@ -170,7 +171,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
         db.ref("id").withSchema(TableName.HoneyToken),
         db.ref("type").withSchema(TableName.HoneyToken),
         db.ref("status").withSchema(TableName.HoneyToken),
-        db.ref("hosting").withSchema(TableName.HoneyToken),
+        db.ref("config").withSchema(TableName.HoneyToken),
         db.ref("projectId").withSchema(TableName.HoneyToken),
         db.ref("encryptedCredentials").withSchema(TableName.HoneyToken),
         db.ref("orgId").withSchema(TableName.Project)

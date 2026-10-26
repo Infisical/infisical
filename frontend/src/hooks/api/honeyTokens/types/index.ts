@@ -31,7 +31,7 @@ export type THoneyTokenCredentialsResponseMap = {
 export type TCreateHoneyTokenDTO = {
   projectId: string;
   type: HoneyTokenType;
-  hosting: HoneyTokenHosting;
+  config: { hosting: HoneyTokenHosting };
   name: string;
   description?: string | null;
   secretsMapping: Record<string, string>;

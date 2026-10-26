@@ -28,7 +28,7 @@ export const HoneyTokensSchema = z.object({
   revokedByUserId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
-  hosting: z.string().default("customer-account")
+  config: z.unknown()
 });
 
 export type THoneyTokens = z.infer<typeof HoneyTokensSchema>;

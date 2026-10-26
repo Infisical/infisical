@@ -10,6 +10,7 @@ import { THoneyTokenDALFactory } from "./honey-token-dal";
 import { HoneyTokenHosting, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { getHoneyTokenServiceHooksByType, HONEY_TOKEN_PROVIDER_MAP } from "./honey-token-provider-fns";
 import { THoneyTokenCredentialTarget, THoneyTokenProviderHooksDep } from "./honey-token-service-types";
+import { getHoneyTokenHosting } from "./honey-token-types";
 
 const FOLDERLESS_CLEANUP_BATCH = 100;
 const MAX_CLEANUP_ATTEMPTS = 3;
@@ -77,7 +78,7 @@ export const honeyTokenCleanupServiceFactory = ({
       }
 
       let target: THoneyTokenCredentialTarget = { hosting: HoneyTokenHosting.InfisicalManaged };
-      if (honeyToken.hosting === HoneyTokenHosting.CustomerAccount) {
+      if (getHoneyTokenHosting(honeyToken) === HoneyTokenHosting.CustomerAccount) {
         const appConnection = await findConnection(honeyToken.orgId, type);
         if (!appConnection) {
           throw new NotFoundError({ message: "Organization has no honey token connection" });

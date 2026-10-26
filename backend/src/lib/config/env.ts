@@ -623,14 +623,20 @@ const envSchema = z
     HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY: zpStr(
       z
         .string()
-        .regex(/^[a-fA-F0-9]+$/, "HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY must be a hex string")
+        .regex(
+          /^[a-fA-F0-9]{64}$/,
+          "HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY must be 64 hex characters (32 random bytes), e.g. from `openssl rand -hex 32`"
+        )
         .optional()
     ),
     // Accepted alongside the current key so the key can be rotated without dropping trigger events.
     HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY_PREVIOUS: zpStr(
       z
         .string()
-        .regex(/^[a-fA-F0-9]+$/, "HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY_PREVIOUS must be a hex string")
+        .regex(
+          /^[a-fA-F0-9]{64}$/,
+          "HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY_PREVIOUS must be 64 hex characters (32 random bytes), e.g. from `openssl rand -hex 32`"
+        )
         .optional()
     ),
     HONEY_TOKEN_MANAGED_AWS_ROLE_ARN: zpStr(z.string().optional()),
