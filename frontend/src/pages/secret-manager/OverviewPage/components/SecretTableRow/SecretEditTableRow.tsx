@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import {
@@ -360,6 +360,10 @@ export const SecretEditTableRow = ({
   const [isEditing, setIsEditing] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCommentOpen, setIsCommentOpen] = useState(false);
+  const [commentDragOffset, setCommentDragOffset] = useState({ x: 0, y: 0 });
+  const commentDragStart = useRef<{ pointerX: number; pointerY: number; x: number; y: number }>(
+    undefined
+  );
   const [isTagOpen, setIsTagOpen] = useState(false);
   const [isMetadataOpen, setIsMetadataOpen] = useState(false);
   const [isReminderOpen, setIsReminderOpen] = useState(false);
@@ -436,6 +440,10 @@ export const SecretEditTableRow = ({
   }, [comment, tags, secretMetadata, isSingleEnvView, hasPendingChange]);
 
   // Stable callbacks for child components to avoid resetting their debounce timers on re-render
+  useLayoutEffect(() => {
+    if (isCommentOpen) setCommentDragOffset({ x: 0, y: 0 });
+  }, [isCommentOpen]);
+
   const handleCommentChange = useCallback(
     (newComment: string) => setValue("comment", newComment),
     [setValue]
@@ -1246,8 +1254,39 @@ export const SecretEditTableRow = ({
   };
 
   const commentPopoverContent = (
-    <PopoverContent onCloseAutoFocus={(e) => e.preventDefault()} className="w-80" align="end">
+    <PopoverContent
+      onCloseAutoFocus={(e) => e.preventDefault()}
+      className="w-80"
+      align="end"
+      style={{ translate: `${commentDragOffset.x}px ${commentDragOffset.y}px` }}
+    >
       <SecretCommentForm
+        dragHandleProps={{
+          onPointerDown: (e) => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            e.currentTarget.setPointerCapture(e.pointerId);
+            commentDragStart.current = {
+              pointerX: e.clientX,
+              pointerY: e.clientY,
+              ...commentDragOffset
+            };
+          },
+          onPointerMove: (e) => {
+            const start = commentDragStart.current;
+            if (!start) return;
+            setCommentDragOffset({
+              x: start.x + e.clientX - start.pointerX,
+              y: start.y + e.clientY - start.pointerY
+            });
+          },
+          onPointerUp: () => {
+            commentDragStart.current = undefined;
+          },
+          onPointerCancel: () => {
+            commentDragStart.current = undefined;
+          }
+        }}
         comment={isBatchMode ? ((watchedComment as string) ?? comment) : comment}
         secretKey={secretName}
         secretPath={secretPath}
