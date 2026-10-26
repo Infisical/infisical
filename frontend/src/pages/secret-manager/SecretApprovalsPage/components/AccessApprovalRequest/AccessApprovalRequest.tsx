@@ -854,7 +854,6 @@ export const AccessApprovalRequest = ({
                           from={ROUTE_PATHS.SecretManager.ApprovalPage.path}
                           to="."
                           search={(prev) => ({ ...prev, requestId: request.id })}
-                          title={environmentDisplayName}
                         >
                           {environmentDisplayName}
                         </RowLink>
