@@ -692,7 +692,7 @@ export const LinkedRows: Story = {
     docs: {
       description: {
         story:
-          "For rows that open a detail page, set `linked` on the row and render a `RowLink` in its main cell. The link's overlay covers the row, so a plain click, cmd/ctrl+click, middle-click and right-click \"Open link in new tab\" all work. Buttons, inputs, selects, checkboxes, other links, tooltip triggers and `variant=action` cells are lifted above the overlay automatically; mark any other control (a badge used as a tooltip anchor) with `data-row-interactive`. `RowLink disabled` renders plain text for rows the user cannot open. `Card` takes the same `linked` prop, and `CommandItemLink` covers `CommandItem` rows. Never navigate from a row's `onClick`."
+          "For rows that open a detail page, set `linked` on the row and render a `RowLink` in its main cell. The link's overlay covers the row, so a plain click, cmd/ctrl+click, middle-click and right-click \"Open link in new tab\" all work. Buttons, inputs, selects, checkboxes, other links, tooltip triggers and `variant=action` cells are lifted above the overlay automatically; mark any other control (a badge used as a tooltip anchor) with `data-row-interactive`. `RowLink disabled` renders plain text for rows the user cannot open (the last row here); leave `linked` off for that row too. To keep a whole cell clickable for its own controls, including the padding around them, put `data-row-interactive` on the cell. `Card` takes the same `linked` prop, and `CommandItemLink` covers `CommandItem` rows. Never navigate from a row's `onClick`."
       }
     }
   },
@@ -706,10 +706,12 @@ export const LinkedRows: Story = {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {identities.slice(0, 4).map((id) => (
-          <TableRow key={id.name} linked>
+        {identities.slice(0, 4).map((id, index) => (
+          <TableRow key={id.name} linked={index !== 3}>
             <TableCell isTruncatable>
-              <RowLink to=".">{id.name}</RowLink>
+              <RowLink to="." disabled={index === 3}>
+                {id.name}
+              </RowLink>
             </TableCell>
             <TableCell>{id.role}</TableCell>
             <TableCell variant="action">

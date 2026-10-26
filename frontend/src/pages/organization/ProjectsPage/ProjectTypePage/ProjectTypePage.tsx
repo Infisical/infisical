@@ -598,7 +598,7 @@ const MyProjectsForType = ({
               </p>
             </div>
           </div>
-          <CardAction>{renderFavoriteButton(workspace)}</CardAction>
+          <CardAction data-row-interactive>{renderFavoriteButton(workspace)}</CardAction>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <p className="line-clamp-2 text-sm leading-relaxed text-accent">
@@ -732,7 +732,7 @@ const MyProjectsForType = ({
                   <TableCell className="w-0 text-xs whitespace-nowrap">
                     {format(new Date(workspace.createdAt), "MMM d, yyyy")}
                   </TableCell>
-                  <TableCell className="w-0 text-right">
+                  <TableCell data-row-interactive className="w-0 text-right">
                     {renderFavoriteButton(workspace)}
                   </TableCell>
                 </TableRow>
@@ -975,7 +975,7 @@ const AllProjectsForType = ({
                 <TableCell className="w-0 text-xs whitespace-nowrap">
                   {format(new Date(workspace.createdAt), "MMM d, yyyy")}
                 </TableCell>
-                <TableCell className="w-0 pr-3 text-right">
+                <TableCell data-row-interactive className="w-0 pr-3 text-right">
                   {(() => {
                     const joinedBadge = (
                       <DropdownMenu>
