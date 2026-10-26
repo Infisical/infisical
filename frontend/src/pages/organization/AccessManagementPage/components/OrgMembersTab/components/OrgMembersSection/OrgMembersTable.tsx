@@ -534,7 +534,7 @@ export const OrgMembersTable = ({
                       linked={Boolean(membership)}
                       className="group"
                     >
-                      <TableCell>
+                      <TableCell data-row-interactive>
                         {membership ? (
                           <Checkbox
                             id={`select-member-${membership.id}`}

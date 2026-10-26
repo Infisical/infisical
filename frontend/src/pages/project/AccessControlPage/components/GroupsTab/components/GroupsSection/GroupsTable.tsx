@@ -238,7 +238,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                           </ProjectPermissionCan>
                         </TableCell>
                         <TableCell>{format(new Date(createdAt), "MMM d, yyyy")}</TableCell>
-                        <TableCell>
+                        <TableCell data-row-interactive>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <IconButton
