@@ -77,6 +77,7 @@ export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeletePro
               orgId: currentOrg.id,
               profileId: profile.id
             }}
+            className="hover:underline"
           >
             {profile.slug}
           </RowLink>

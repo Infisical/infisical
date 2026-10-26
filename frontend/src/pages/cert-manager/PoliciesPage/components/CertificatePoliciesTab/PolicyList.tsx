@@ -122,6 +122,7 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
                     orgId: currentOrg.id,
                     policyId: policy.id
                   }}
+                  className="hover:underline"
                 >
                   {policy.name}
                 </RowLink>
