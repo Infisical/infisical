@@ -58,7 +58,7 @@ const RoleBadge = ({ role, className }: { role: TIdentityRoleBadge; className?: 
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild className="relative z-10">
+      <TooltipTrigger asChild data-row-interactive>
         {badge}
       </TooltipTrigger>
       <TooltipContent className="flex flex-col gap-0.5">
@@ -91,7 +91,7 @@ export const IdentityRoleBadges = ({
       {overflow.length > 0 && (
         <Popover>
           <Tooltip>
-            <TooltipTrigger className="relative z-10 flex h-4 items-center">
+            <TooltipTrigger className="flex h-4 items-center">
               <PopoverTrigger asChild>
                 <Badge variant="neutral" asChild>
                   <button type="button" onClick={(e) => e.stopPropagation()}>

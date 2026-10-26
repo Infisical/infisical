@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import {
   ChevronDownIcon,
@@ -35,6 +35,7 @@ import {
   OrgIcon,
   Pagination,
   ProjectIcon,
+  RowLink,
   Skeleton,
   SubOrgIcon,
   Table,
@@ -195,7 +196,7 @@ const LastUsedCell = ({ lastLoginAuthMethod, lastLoginTime }: LastUsedCellProps)
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="relative z-10 cursor-default text-sm text-foreground/80">{label}</span>
+        <span className="cursor-default text-sm text-foreground/80">{label}</span>
       </TooltipTrigger>
       <TooltipContent className="max-w-96 min-w-52">
         <LastLoginSection
@@ -409,14 +410,9 @@ const IdentityRow = ({ membership, onDelete, onManageAuth, onAddAuthMethod }: Id
         } as const);
 
   return (
-    <TableRow className="relative cursor-pointer">
+    <TableRow linked>
       <TableCell isTruncatable>
-        <Link
-          {...identityLink}
-          className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
-        >
-          {name}
-        </Link>
+        <RowLink {...identityLink}>{name}</RowLink>
       </TableCell>
       <TableCell>
         <IdentityRoleBadges roles={membershipRoles ?? []} />
@@ -432,7 +428,7 @@ const IdentityRow = ({ membership, onDelete, onManageAuth, onAddAuthMethod }: Id
       <TableCell>
         <LastUsedCell lastLoginAuthMethod={lastLoginAuthMethod} lastLoginTime={lastLoginTime} />
       </TableCell>
-      <TableCell variant="action" className="relative z-10">
+      <TableCell variant="action">
         <div className="flex items-center justify-end gap-2">
           {(activeLockoutAuthMethods?.length ?? 0) > 0 && (
             <Tooltip>
