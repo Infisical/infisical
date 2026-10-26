@@ -291,6 +291,41 @@ export const orgServiceFactory = ({
     return members;
   };
 
+  // Group names and roles only go to callers who can read groups; the list itself just needs member read.
+  const listOrgUserAccess = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TFindAllOrgMembersDTO) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member);
+    const canReadGroups = permission.can(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+
+    const [members, groupAccess] = await Promise.all([
+      orgDAL.findAllOrgMembers(orgId),
+      orgDAL.findAllOrgGroupUserAccess(orgId)
+    ]);
+
+    const groupsByUserId = new Map(groupAccess.map(({ user, groups }) => [user.id, groups]));
+    const groupsFor = (userId: string) => (canReadGroups ? (groupsByUserId.get(userId) ?? []) : []);
+    const directUserIds = new Set(members.map((member) => member.user.id));
+
+    return [
+      ...members.map(({ user, ...membership }) => ({
+        user,
+        membership: { ...membership, status: membership.status || OrgMembershipStatus.Accepted },
+        groups: groupsFor(user.id)
+      })),
+      ...groupAccess
+        .filter(({ user }) => !directUserIds.has(user.id))
+        .map(({ user }) => ({ user, membership: null, groups: groupsFor(user.id) }))
+    ];
+  };
+
   const getOrgGroups = async ({ actor, actorId, orgId, actorAuthMethod, actorOrgId }: TGetOrgGroupsDTO) => {
     const { permission } = await permissionService.getOrgPermission({
       actor,
@@ -1661,6 +1696,7 @@ export const orgServiceFactory = ({
   return {
     findOrganizationById,
     findAllOrgMembers,
+    listOrgUserAccess,
     findAllOrganizationOfUser,
     findIdentityOrganization,
     verifyUserToOrg,
