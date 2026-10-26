@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -75,7 +76,7 @@ export const GitlabAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <title>Authorize GitLab Integration</title>
+      <PageTitle title="Authorize GitLab Integration" />
       <Card className="mb-12 w-full max-w-lg">
         <CardHeader>
           <CardTitle>

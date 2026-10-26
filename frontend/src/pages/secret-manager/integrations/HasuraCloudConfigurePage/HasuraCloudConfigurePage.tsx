@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -102,7 +103,7 @@ export const HasuraCloudConfigurePage = () => {
 
   return integrationAuth && integrationAuthApps ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
-      <title>{`Set Up ${APP_NAME} Integration`}</title>
+      <PageTitle title={`Set Up ${APP_NAME} Integration`} />
       <form onSubmit={handleSubmit(onFormSubmit)} className="w-full max-w-lg">
         <Card>
           <CardHeader>
@@ -233,7 +234,7 @@ export const HasuraCloudConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <title>{`Set Up ${APP_NAME} Integration`}</title>
+      <PageTitle title={`Set Up ${APP_NAME} Integration`} />
       {isIntegrationAuthLoading || isIntegrationAuthAppsLoading ? (
         <img
           src="/images/loading/loading.gif"

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, PageLoader } from "@app/components/v3";
 import { useProject } from "@app/context";
@@ -29,7 +29,6 @@ import {
 } from "./components";
 
 export const DashboardPage = () => {
-  const { t } = useTranslation();
   const { currentProject } = useProject();
   const navigate = useNavigate();
   const [trendRange, setTrendRange] = useState("30d");
@@ -53,11 +52,16 @@ export const DashboardPage = () => {
     [navigate, currentProject]
   );
   if (!currentProject) {
-    return <PageLoader />;
+    return (
+      <>
+        <PageTitle title="Certificate Dashboard" />
+        <PageLoader />
+      </>
+    );
   }
   return (
     <div className="h-full bg-page">
-      <title>{t("common.head-title", { title: "Certificate Dashboard" })}</title>
+      <PageTitle title="Certificate Dashboard" />
       <div className="mx-auto flex flex-col text-foreground-inverse">
         <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader

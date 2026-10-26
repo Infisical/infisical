@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   LookingForOrgPageLink,
   PageHeader,
@@ -127,7 +128,7 @@ export const AccessControlPage = () => {
 
   return (
     <>
-      <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
+      <PageTitle title={t("page-titles.access-control")} />
       <link rel="icon" href="/infisical.ico" />
       <Page />
     </>

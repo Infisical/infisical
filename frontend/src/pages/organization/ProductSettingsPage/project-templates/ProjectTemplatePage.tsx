@@ -53,7 +53,6 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
 
   return (
     <>
-      <title>Project Template | Infisical</title>
       <link rel="icon" href="/infisical.ico" />
       <div>
         <div className="mx-auto w-full max-w-8xl bg-page text-foreground-inverse">

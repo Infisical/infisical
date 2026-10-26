@@ -1,9 +1,9 @@
-import { useTranslation } from "react-i18next";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -152,10 +152,9 @@ const Page = () => {
 };
 
 export const PkiSubscriberDetailsByIDPage = () => {
-  const { t } = useTranslation();
   return (
     <>
-      <title>{t("common.head-title", { title: "PKI Subscriber" })}</title>
+      <PageTitle title="PKI Subscriber" />
       <ProjectPermissionCan
         I={ProjectPermissionPkiSubscriberActions.Read}
         a={ProjectPermissionSub.PkiSubscribers}

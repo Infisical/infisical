@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -74,7 +75,7 @@ export const FlyioAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <title>Authorize Fly.io Integration</title>
+      <PageTitle title="Authorize Fly.io Integration" />
       <Card className="mb-12 w-full max-w-lg">
         <CardHeader>
           <CardTitle>

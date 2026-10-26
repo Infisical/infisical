@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import z from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -75,7 +76,7 @@ export const RundeckAuthorizePage = () => {
   };
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <title>Authorize Rundeck Integration</title>
+      <PageTitle title="Authorize Rundeck Integration" />
       <form onSubmit={handleSubmit(onFormSubmit)} className="w-full max-w-lg">
         <Card>
           <CardHeader>

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Alert,
@@ -253,13 +254,9 @@ const Page = () => {
 
 export const RoleDetailsBySlugPage = () => {
   const { t } = useTranslation();
-  const { currentProject } = useProject();
-  const isCertManager = currentProject.type === ProjectType.CertificateManager;
   return (
     <>
-      <title>
-        {t("common.head-title", { title: isCertManager ? "Role" : "Project Settings" })}
-      </title>
+      <PageTitle title={t("page-titles.role")} />
       <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         I={ProjectPermissionActions.Read}

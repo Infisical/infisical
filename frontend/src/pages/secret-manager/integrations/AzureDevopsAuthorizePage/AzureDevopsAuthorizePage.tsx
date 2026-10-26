@@ -3,6 +3,7 @@ import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-sv
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -71,7 +72,7 @@ export const AzureDevopsAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <title>Authorize Azure DevOps Integration</title>
+      <PageTitle title="Authorize Azure DevOps Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>

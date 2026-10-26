@@ -3,6 +3,7 @@ import { ArrowRight, Building2, KeyRound, ServerCog } from "lucide-react";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
+import { PageTitle } from "@app/components/PageTitle";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
 
 type Props = {
@@ -14,7 +15,7 @@ export const WelcomePage = ({ organizationId }: Props) => {
 
   return (
     <AuthPageLayout variant="focused" contentClassName="max-w-xl">
-      <title>Instance ready | Infisical</title>
+      <PageTitle title="Instance Ready" />
       <link rel="icon" href="/infisical.ico" />
       <AuthPagePanel>
         <CardHeader className="gap-0">

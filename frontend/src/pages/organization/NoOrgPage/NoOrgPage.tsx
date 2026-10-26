@@ -5,6 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
+import { PageTitle } from "@app/components/PageTitle";
 import { PageLoader } from "@app/components/v3";
 import {
   fetchOrganizations,
@@ -99,7 +100,7 @@ export const NoOrgPage = () => {
 
   return (
     <>
-      <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
+      <PageTitle title={t("page-titles.create-organization")} />
       <link rel="icon" href="/infisical.ico" />
       <div className="min-h-screen bg-page">
         {failed ? (

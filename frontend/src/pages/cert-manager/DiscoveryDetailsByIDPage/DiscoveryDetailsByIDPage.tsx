@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
@@ -212,7 +213,7 @@ const Page = () => {
 export const DiscoveryDetailsByIDPage = () => {
   return (
     <>
-      <title>Discovery Job Details</title>
+      <PageTitle title="Discovery Job Details" />
       <link rel="icon" href="/infisical.ico" />
       <Page />
     </>
