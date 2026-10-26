@@ -1,12 +1,10 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { SingleValue } from "react-select";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { OPENAI_SERVICE_ACCOUNT_NAME_MAX_LENGTH } from "@app/components/secret-rotations-v2/forms/schemas/openai-service-account-rotation-schema";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
-import { Field, FieldError, FilterableSelect, Input } from "@app/components/v3";
+import { Combobox, Field, FieldError, Input } from "@app/components/v3";
 import { useListOpenAIConnectionProjects } from "@app/hooks/api/appConnections/openai";
-import { TOpenAIProject } from "@app/hooks/api/appConnections/openai/types";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 export const OpenAIServiceAccountRotationParametersFields = () => {
@@ -38,19 +36,19 @@ export const OpenAIServiceAccountRotationParametersFields = () => {
             >
               Project
             </FieldLabelWithTooltip>
-            <FilterableSelect
-              inputId="openai-project"
+            <Combobox
+              id="openai-project"
               isLoading={isProjectsPending && Boolean(connectionId)}
               isDisabled={!connectionId}
               value={projects?.find((project) => project.id === value) ?? null}
               onBlur={onBlur}
-              onChange={(option) => {
-                onChange((option as SingleValue<TOpenAIProject>)?.id ?? "");
-              }}
+              onValueChange={(option) => onChange(option.id)}
+              isClearable={false}
               options={projects}
               placeholder="Select a project..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
+              getOptionKeywords={(option) => [option.id]}
               isError={Boolean(error)}
             />
             <FieldError>{error?.message}</FieldError>

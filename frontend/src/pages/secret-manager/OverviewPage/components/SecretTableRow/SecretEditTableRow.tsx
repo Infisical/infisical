@@ -110,6 +110,7 @@ import {
 } from "../tableRowActionStyles";
 import { SecretAccessInsights } from "./SecretAccessInsights";
 import { SecretCommentForm } from "./SecretCommentForm";
+import { SecretLastEditedTime } from "./SecretLastEditedTime";
 import { SecretMetadataForm } from "./SecretMetadataForm";
 import { SecretReminderForm } from "./SecretReminderForm";
 import { SecretTagForm } from "./SecretTagForm";
@@ -183,6 +184,8 @@ type Props = {
   onCopySecret?: () => void;
   onAccessInsightsUpgrade: (onGranted: () => void) => void;
   onExpandedChange?: (isExpanded: boolean) => void;
+  lastEdited?: Pick<SecretV3RawSanitized, "createdAt" | "updatedAt" | "version">;
+  timestampField?: "createdAt" | "updatedAt";
 };
 
 export const SecretEditTableRow = ({
@@ -216,6 +219,8 @@ export const SecretEditTableRow = ({
   isBatchMode,
   isPendingCreate,
   isPendingDelete,
+  lastEdited,
+  timestampField,
   onBatchRevert,
   hasPendingChange,
   hasPendingValueChange,
@@ -2182,6 +2187,7 @@ export const SecretEditTableRow = ({
         </SheetContent>
       </Sheet>
       <AlertDialog
+        isPending={isEditing}
         open={popUp.editSecret.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("editSecret", isOpen)}
         confirmationValue="confirm"
@@ -2206,14 +2212,13 @@ export const SecretEditTableRow = ({
           )}
           <AlertDialogConfirmationField />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isEditing}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="project"
               onClick={(e) => {
                 e.preventDefault();
                 handleEditSecret(popUp?.editSecret?.data);
               }}
-              isPending={isEditing}
             >
               Save Changes
             </AlertDialogAction>
@@ -2239,43 +2244,46 @@ export const SecretEditTableRow = ({
             event.currentTarget.querySelector("input")?.focus();
           }}
         >
-          <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
-            <div className="flex items-center gap-1.5">
-              {showCommentPreview ? (
-                nameInput
-              ) : (
-                <PopoverAnchor asChild>
-                  <span className="inline-flex min-w-0">{nameInput}</span>
-                </PopoverAnchor>
-              )}
-              {showCommentPreview && (
-                <PopoverAnchor asChild>
-                  <span className="inline-flex shrink-0">
-                    <Tooltip open={isCommentOpen ? false : undefined}>
-                      <TooltipTrigger asChild>
-                        <IconButton
-                          aria-label="View secret comment"
-                          variant="ghost-muted"
-                          size="2xs"
-                          onClick={() => {
-                            if (!isPendingDelete) setIsCommentOpen(true);
-                          }}
-                        >
-                          <MessageSquareIcon />
-                        </IconButton>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-72">
-                        <p className="line-clamp-2 break-words whitespace-pre-wrap">
-                          {commentPreview}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </span>
-                </PopoverAnchor>
-              )}
-            </div>
-            {commentPopoverContent}
-          </Popover>
+          <div className="flex min-w-0 items-center gap-2">
+            <Popover open={isCommentOpen} onOpenChange={setIsCommentOpen}>
+              <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                {showCommentPreview ? (
+                  nameInput
+                ) : (
+                  <PopoverAnchor asChild>
+                    <span className="inline-flex min-w-0">{nameInput}</span>
+                  </PopoverAnchor>
+                )}
+                {showCommentPreview && (
+                  <PopoverAnchor asChild>
+                    <span className="inline-flex shrink-0">
+                      <Tooltip open={isCommentOpen ? false : undefined}>
+                        <TooltipTrigger asChild>
+                          <IconButton
+                            aria-label="View secret comment"
+                            variant="ghost-muted"
+                            size="2xs"
+                            onClick={() => {
+                              if (!isPendingDelete) setIsCommentOpen(true);
+                            }}
+                          >
+                            <MessageSquareIcon />
+                          </IconButton>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-72">
+                          <p className="line-clamp-2 break-words whitespace-pre-wrap">
+                            {commentPreview}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </span>
+                  </PopoverAnchor>
+                )}
+              </div>
+              {commentPopoverContent}
+            </Popover>
+            <SecretLastEditedTime secret={lastEdited} field={timestampField} />
+          </div>
         </TableCell>
         <TableCell
           className={twMerge("relative w-full max-w-0", isOverride && "border-b-border/50")}

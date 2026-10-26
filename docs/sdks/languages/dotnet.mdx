@@ -97,7 +97,7 @@ The SDK methods are organized into the following high-level categories:
 
 1. `Auth()`: Handles authentication methods.
 2. `Secrets()`: Manages CRUD operations for secrets.
-3. `Pki()`: Programmatically interact with the Infisical PKI.
+3. `Pki()`: Programmatically interact with Infisical Certificate Management.
     * `Subscribers()`: Manage PKI Subscribers.
 
 ### `Auth()`
@@ -328,7 +328,7 @@ Secret deletedSecret = await sdk.Secrets().DeleteAsync(options);
   you've already issued stay valid.
 </Warning>
 
-The `Pki().Subscribers()` sub-class is used to programmatically interact with the Infisical PKI product line. Currently only issuing new certificates and retrieving the latest certificate bundle from a subscriber is supported. More widespread support for the PKI product is coming to the .NET SDK in the near future.
+The `Pki().Subscribers()` sub-class is used to programmatically interact with Infisical Certificate Management. Currently only issuing new certificates and retrieving the latest certificate bundle from a subscriber is supported. More widespread support for Certificate Management is coming to the .NET SDK in the near future.
 
 
 #### Issue a new certificate

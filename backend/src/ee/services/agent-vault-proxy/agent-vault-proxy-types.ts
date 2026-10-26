@@ -35,9 +35,15 @@ export type TUpdateProxyDTO = TAgentVaultProxyScoped & {
 
 export type TProxyByIdDTO = TAgentVaultProxyScoped & { proxyId: string };
 
-export type TEnrollProxyDTO = {
-  enrollmentToken: string;
-  rootCaCertificate: string;
+export type TBootstrapProxyDTO = {
+  proxyId: string;
+  tokenVersion: number;
+  servedCaCertificate?: string;
+};
+
+export type TProxyRootCa = {
+  certificate: string;
+  privateKey: string;
 };
 
 export type THeartbeatDTO = {
@@ -64,4 +70,7 @@ export type TResolvedService = {
     | { type: "passthrough" };
   customHeaders: { name: string; prefix: string; value: string }[];
   substitutions: { placeholder: string; surfaces: string[]; value: string }[];
+  // The service takes part of its credential from each member and the session's actor has not set their values,
+  // so the proxy refuses its requests rather than sending them without one.
+  personalValuesMissing: boolean;
 };

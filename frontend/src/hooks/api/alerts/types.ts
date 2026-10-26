@@ -207,6 +207,7 @@ export type TAlert = {
     applicationIds?: string[];
     profileIds?: string[];
     sources?: CertSource[];
+    signerIds?: string[];
   } | null;
   enabled: boolean;
   orgId: string;

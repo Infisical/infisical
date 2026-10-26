@@ -78,6 +78,7 @@ export type TApiErrors =
       statusCode: 400;
       message: string;
       error: ApiErrorTypes.BadRequestError;
+      details?: unknown;
     }
   | {
       reqId: string;

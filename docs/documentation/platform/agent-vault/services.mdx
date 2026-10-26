@@ -70,6 +70,35 @@ Pass-through is the right choice when the proxy's strict [traffic policy](/docum
 For **Bearer** and **Basic** services, if the agent's request already carries a header with the same name as the one the service sends, the proxy replaces it with the service's credential.
 </Note>
 
+## Member-provided values
+
+By default, you set the whole credential and every session uses it. If each member should call the API with their own token or login, such as a personal API key, you can make that part of the credential member provided. Each member then [sets a personal value](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), and a session uses the personal value of the member who created the session.
+
+You can make these credential fields member provided:
+
+- **Token** in a [Bearer](#bearer) credential
+- **Username**, **Password**, or both in a [Basic](#basic) credential
+
+To make a field member provided:
+
+<Steps>
+  <Step>
+    In Agent Vault, go to **Access Bundles** and select the access bundle. Open the service's actions menu and select **Edit**, then go to the **Credential** step.
+  </Step>
+  <Step>
+    Next to the field, turn on **Member provided**.
+  </Step>
+  <Step>
+    Select **Continue**, then select **Save**.
+  </Step>
+</Steps>
+
+<Warning>
+If you change the credential type, each member has to set up their personal values for the service again.
+</Warning>
+
+Until a member sets up their personal values, the proxy refuses their sessions' requests to the service with a `403` response. Requests to the bundle's other services still go through.
+
 ## Host patterns
 
 When configuring a service, you have the option to set which host patterns it matches. A host pattern controls which outbound requests get the service's credential attached.

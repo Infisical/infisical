@@ -741,7 +741,7 @@ export const secretApprovalRequestServiceFactory = ({
       return secretChangeGlobalRequestBridgeService.mergeSecretChangeRequest(dto);
     }
 
-    const { approvalId, actor, actorId, actorOrgId, actorAuthMethod, bypassReason } = dto;
+    const { approvalId, actor, actorId, actorOrgId, actorAuthMethod, bypassReason, requireApprovals } = dto;
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest)
       throw new NotFoundError({ message: `Secret approval request with ID '${approvalId}' not found` });
@@ -793,6 +793,10 @@ export const secretApprovalRequestServiceFactory = ({
     const isSoftEnforcement = secretApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft;
     const canBypass = !bypassers.length || bypassers.some((bypasser) => bypasser.userId === actorId);
 
+    if (!hasMinApproval && requireApprovals)
+      throw new BadRequestError({
+        message: `Secret approval request '${secretApprovalRequest.slug}' needs ${policy.approvals} approval(s) before it can be merged without a policy bypass.`
+      });
     if (!hasMinApproval && !(isSoftEnforcement && canBypass))
       throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
 

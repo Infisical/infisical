@@ -90,7 +90,8 @@ export enum AppConnection {
   Stripe = "stripe",
   Keeper = "keeper",
   HpeIloRedFish = "hpe-ilo",
-  S3Compatible = "s3-compatible"
+  S3Compatible = "s3-compatible",
+  Jira = "jira"
 }
 
 export enum AWSRegion {
