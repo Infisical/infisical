@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CircleAlertIcon,
@@ -55,10 +55,16 @@ import {
   ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useUser
 } from "@app/context";
-import { getProjectBaseURL, getProjectLabel, hidesProjects } from "@app/helpers/project";
+import {
+  getInstancePinningLink,
+  getProjectBaseURL,
+  getProjectLabel,
+  hidesProjects
+} from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   getUserTablePreference,
@@ -93,7 +99,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
   const scopeVariant = useScopeVariant();
   const { currentProject } = useProject();
   const { user } = useUser();
-  const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const [filter, setFilter] = useState<Filter>({
     roles: []
   });
@@ -378,34 +384,32 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     return (
                       <TableRow
                         key={`membership-${membershipId}`}
-                        className="group cursor-pointer"
-                        role="link"
-                        tabIndex={0}
-                        onKeyDown={(evt) => {
-                          if (evt.key === "Enter") {
-                            navigate({
-                              to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
-                              params: {
-                                projectId,
-                                membershipId: detailKey
-                              }
-                            });
-                          }
-                        }}
-                        onClick={() =>
-                          navigate({
-                            to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
-                            params: {
-                              projectId,
-                              membershipId: detailKey
-                            }
-                          })
-                        }
+                        className="group relative cursor-pointer"
                       >
                         <TableCell isTruncatable>
                           {name ?? <span className="text-muted">&mdash;</span>}
                         </TableCell>
-                        <TableCell isTruncatable>{email}</TableCell>
+                        <TableCell isTruncatable>
+                          <Link
+                            {...(getInstancePinningLink(
+                              currentOrg.id,
+                              currentProject,
+                              `members/${detailKey}`
+                            ) ??
+                              ({
+                                to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
+                                params: {
+                                  orgId: currentOrg.id,
+                                  projectId,
+                                  membershipId: detailKey
+                                }
+                              } as const))}
+                            aria-label={email ? undefined : (name ?? u.username)}
+                            className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                          >
+                            {email}
+                          </Link>
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">
                             {roles
@@ -427,7 +431,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                                       </span>
                                       {isTemporary && (
                                         <Tooltip>
-                                          <TooltipTrigger>
+                                          <TooltipTrigger className="relative z-10">
                                             {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
                                           </TooltipTrigger>
                                           <TooltipContent>
@@ -442,7 +446,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                             {roles.length > MAX_ROLES_TO_BE_SHOWN_IN_TABLE && (
                               <Popover>
                                 <Tooltip>
-                                  <TooltipTrigger className="flex h-4 items-center">
+                                  <TooltipTrigger className="relative z-10 flex h-4 items-center">
                                     <PopoverTrigger asChild>
                                       <Badge variant="neutral" asChild>
                                         <button type="button" onClick={(e) => e.stopPropagation()}>
@@ -501,7 +505,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell variant="action">
+                        <TableCell variant="action" className="relative z-10">
                           <DropdownMenu>
                             <Tooltip>
                               <TooltipTrigger>

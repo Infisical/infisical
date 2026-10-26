@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { ChevronDownIcon, MoreHorizontalIcon, SearchIcon, UserRoundXIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -33,7 +33,12 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectBaseURL, getProjectLabel, hidesProjects } from "@app/helpers/project";
+import {
+  getInstancePinningLink,
+  getProjectBaseURL,
+  getProjectLabel,
+  hidesProjects
+} from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -63,7 +68,6 @@ enum GroupsOrderBy {
 export const GroupTable = ({ handlePopUpOpen }: Props) => {
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
-  const navigate = useNavigate();
   const productLabel = getProjectLabel(currentProject?.type);
   const projectsHidden = hidesProjects(currentProject?.type);
 
@@ -198,37 +202,27 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                     const isLinkedGroup =
                       groupOrgId != null && currentOrg != null && groupOrgId !== currentOrg.id;
                     return (
-                      <TableRow
-                        className="group cursor-pointer"
-                        key={`st-v3-${id}`}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(evt) => {
-                          if (evt.currentTarget !== evt.target) return;
-                          if (evt.key === "Enter" || evt.key === " ") {
-                            evt.preventDefault();
-                            navigate({
-                              to: `${getProjectBaseURL(currentProject.type)}/groups/$groupId` as const,
-                              params: {
-                                orgId: currentOrg.id,
-                                projectId: currentProject.id,
-                                groupId: id
-                              }
-                            });
-                          }
-                        }}
-                        onClick={() =>
-                          navigate({
-                            to: `${getProjectBaseURL(currentProject.type)}/groups/$groupId` as const,
-                            params: {
-                              orgId: currentOrg.id,
-                              projectId: currentProject.id,
-                              groupId: id
-                            }
-                          })
-                        }
-                      >
-                        <TableCell isTruncatable>{name}</TableCell>
+                      <TableRow className="group relative cursor-pointer" key={`st-v3-${id}`}>
+                        <TableCell isTruncatable>
+                          <Link
+                            {...(getInstancePinningLink(
+                              currentOrg.id,
+                              currentProject,
+                              `groups/${id}`
+                            ) ??
+                              ({
+                                to: `${getProjectBaseURL(currentProject.type)}/groups/$groupId`,
+                                params: {
+                                  orgId: currentOrg.id,
+                                  projectId: currentProject.id,
+                                  groupId: id
+                                }
+                              } as const))}
+                            className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                          >
+                            {name}
+                          </Link>
+                        </TableCell>
                         <TableCell>
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Edit}
@@ -245,7 +239,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                           </ProjectPermissionCan>
                         </TableCell>
                         <TableCell>{format(new Date(createdAt), "MMM d, yyyy")}</TableCell>
-                        <TableCell>
+                        <TableCell className="relative z-10">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <IconButton

@@ -68,7 +68,12 @@ import {
   useOrganization,
   useProject
 } from "@app/context";
-import { getProjectBaseURL, getProjectLabel, hidesProjects } from "@app/helpers/project";
+import {
+  getInstancePinningLink,
+  getProjectBaseURL,
+  getProjectLabel,
+  hidesProjects
+} from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -380,12 +385,19 @@ export const IdentityTab = withProjectPermission(
                             <TableRow className="group relative cursor-pointer" key={`st-v3-${id}`}>
                               <TableCell isTruncatable>
                                 <Link
-                                  to={`${getProjectBaseURL(currentProject.type)}/identities/$identityId`}
-                                  params={{
-                                    orgId: currentOrg.id,
-                                    projectId: currentProject.id,
-                                    identityId: id
-                                  }}
+                                  {...(getInstancePinningLink(
+                                    currentOrg.id,
+                                    currentProject,
+                                    `identities/${id}`
+                                  ) ??
+                                    ({
+                                      to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId`,
+                                      params: {
+                                        orgId: currentOrg.id,
+                                        projectId: currentProject.id,
+                                        identityId: id
+                                      }
+                                    } as const))}
                                   className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                                 >
                                   {name}

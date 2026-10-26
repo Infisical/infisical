@@ -180,6 +180,23 @@ export const pinProjectForNavigation = (orgId: string, project: Pick<Project, "i
   }
 };
 
+// Certificate Manager and Secret Scanning URLs carry no project id, so a link that may open in a
+// new tab goes through the legacy project URL, whose redirect pins the instance in that tab.
+export const getInstancePinningLink = (
+  orgId: string,
+  project: Pick<Project, "id" | "type">,
+  path: string
+) => {
+  const params = { orgId, projectId: project.id, _splat: path };
+  if (project.type === ProjectType.CertificateManager) {
+    return { to: "/organizations/$orgId/projects/cert-manager/$projectId/$", params } as const;
+  }
+  if (project.type === ProjectType.SecretScanning) {
+    return { to: "/organizations/$orgId/projects/secret-scanning/$projectId/$", params } as const;
+  }
+  return null;
+};
+
 export const getProjectBaseURL = (type: ProjectType) => {
   switch (type) {
     case ProjectType.SecretManager:

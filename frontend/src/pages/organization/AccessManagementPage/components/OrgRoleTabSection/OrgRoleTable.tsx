@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -321,25 +321,19 @@ export const OrgRoleTable = () => {
                         ? id === currentOrg?.defaultMembershipRole
                         : slug === currentOrg?.defaultMembershipRole;
                       return (
-                        <TableRow
-                          key={`role-list-${id}`}
-                          className="cursor-pointer"
-                          onClick={() =>
-                            navigate({
-                              to: "/organizations/$orgId/roles/$roleId",
-                              params: {
-                                roleId: id,
-                                orgId
-                              }
-                            })
-                          }
-                        >
+                        <TableRow key={`role-list-${id}`} className="relative cursor-pointer">
                           <TableCell isTruncatable>
                             <div className="flex gap-x-1.5">
-                              <p className="truncate">{name}</p>
+                              <Link
+                                to="/organizations/$orgId/roles/$roleId"
+                                params={{ roleId: id, orgId }}
+                                className="truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                              >
+                                {name}
+                              </Link>
                               {isDefaultOrgRole && (
                                 <Tooltip>
-                                  <TooltipTrigger asChild>
+                                  <TooltipTrigger asChild className="relative z-10">
                                     <Badge variant="info">Default</Badge>
                                   </TooltipTrigger>
                                   <TooltipContent>
@@ -366,7 +360,7 @@ export const OrgRoleTable = () => {
                               )}
                             </Badge>
                           </TableCell>
-                          <TableCell variant="action">
+                          <TableCell variant="action" className="relative z-10">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <IconButton
