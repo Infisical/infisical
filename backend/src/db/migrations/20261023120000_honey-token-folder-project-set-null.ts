@@ -26,7 +26,11 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasColumn(TableName.HoneyToken, "folderId"))) return;
 
-  await knex(TableName.HoneyToken).whereNull("folderId").orWhereNull("projectId").delete();
+  await knex(TableName.HoneyToken)
+    .where((qb) => {
+      void qb.whereNull("folderId").orWhereNull("projectId");
+    })
+    .delete();
 
   await knex.schema.alterTable(TableName.HoneyToken, (t) => {
     t.dropIndex("folderId");
