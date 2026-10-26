@@ -210,6 +210,13 @@ const placeholders: Row[] = Array.from({ length: 10 }, (_, index) => ({
   placeholder: true
 }));
 
+const truncate = {
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap"
+} as const;
+
 const makeColumns = (onOpen: (entry: AuditEvent) => void): DataTableColumn<Row>[] => [
   {
     id: "time",
@@ -242,12 +249,18 @@ const makeColumns = (onOpen: (entry: AuditEvent) => void): DataTableColumn<Row>[
       isPlaceholder(row) ? (
         <Skeleton width={240} height={12} />
       ) : (
-        <Inline gap={12} align="center" wrap={false}>
-          <code style={{ flexShrink: 0 }}>{row.event}</code>
+        <Inline
+          gap={12}
+          align="center"
+          wrap={false}
+          style={{ minWidth: 0, overflow: "hidden" }}
+          title={[row.event, row.project, row.environment, row.target].filter(Boolean).join(", ")}
+        >
+          <code style={truncate}>{row.event}</code>
           {(row.project || row.target) && (
             <Meta
               mono={false}
-              style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}
+              style={{ ...truncate, flex: "1 1 0", minWidth: "var(--v4-space-48)" }}
             >
               {[row.project, row.environment, row.target].filter(Boolean).join(", ")}
             </Meta>
