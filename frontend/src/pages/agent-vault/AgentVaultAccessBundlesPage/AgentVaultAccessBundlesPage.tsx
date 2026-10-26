@@ -289,23 +289,24 @@ export const AgentVaultAccessBundlesPage = () => {
                 displayedBundles.map((bundle) => (
                   <TableRow key={bundle.id} linked>
                     <TableCell isTruncatable className="min-w-64">
-                      <div className="flex items-center gap-2.5">
-                        <RowLink
-                          to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
-                          params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
-                          title={bundle.name}
-                        >
+                      <RowLink
+                        to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
+                        params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
+                        className="flex items-center gap-2.5"
+                      >
+                        <span className="truncate" title={bundle.name}>
                           {bundle.name}
-                        </RowLink>
+                        </span>
                         {bundle.description && (
                           <span
                             className="min-w-0 flex-1 truncate text-sm text-muted"
                             title={bundle.description}
+                            data-row-interactive
                           >
                             {bundle.description}
                           </span>
                         )}
-                      </div>
+                      </RowLink>
                     </TableCell>
                     <TableCell>
                       <ServiceIconStack hostPatterns={bundle.hostPatterns} />
