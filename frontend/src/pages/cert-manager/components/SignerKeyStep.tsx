@@ -29,7 +29,12 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce } from "@app/hooks";
-import { THsmConnectorKey, useListHsmConnectorKeys } from "@app/hooks/api/hsmConnectors";
+import {
+  HsmKeyAlgorithm,
+  hsmKeyAlgorithmLabels,
+  THsmConnectorKey,
+  useListHsmConnectorKeys
+} from "@app/hooks/api/hsmConnectors";
 import {
   CertKeySource,
   HSM_SUPPORTED_KEY_ALGORITHMS,
@@ -41,7 +46,9 @@ import { CreateHsmConnectorWizard } from "@app/pages/cert-manager/SettingsPage/c
 import { ExternalOrderMode, isUsingExistingCertificate } from "./DigiCertExistingOrderField";
 
 const formatHsmKeyOption = (key: THsmConnectorKey) =>
-  key.keyAlgorithm ? `ID ${key.keyId} (${key.keyAlgorithm.replace("_", " ")})` : `ID ${key.keyId}`;
+  key.keyAlgorithm
+    ? `ID ${key.keyId} (${hsmKeyAlgorithmLabels[key.keyAlgorithm as HsmKeyAlgorithm] ?? key.keyAlgorithm})`
+    : `ID ${key.keyId}`;
 
 export type HsmConnectorOption = { id: string; name: string; slotLabel: string };
 

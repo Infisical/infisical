@@ -1,4 +1,5 @@
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
+import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
@@ -11,6 +12,7 @@ import {
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 
+import { HSM_ML_DSA_MIN_GATEWAY_VERSION, HsmGatewayCapability } from "./hsm-connector-fns";
 import {
   THsmConnectorCredentials,
   THsmConnectorTestMemberResult,
@@ -22,6 +24,13 @@ const TEST_FANOUT_MAX = 10;
 const PKCS11_TARGET_HOST = "pkcs11";
 const NO_CAPABLE_MEMBER_MESSAGE =
   "No HSM-capable gateway available in the pool. Ensure at least one gateway in the pool has HSM support enabled.";
+const ML_DSA_DRIVER_HINT = "check that your HSM's PKCS#11 driver supports ML-DSA";
+const POOL_MISSING_CAPABILITY_MESSAGES: Record<HsmGatewayCapability, string> = {
+  [HsmGatewayCapability.MlDsa]: `No HSM-capable gateway in the pool supports ML-DSA keys. Update at least one of them to ${HSM_ML_DSA_MIN_GATEWAY_VERSION} or later and ${ML_DSA_DRIVER_HINT}.`
+};
+const GATEWAY_MISSING_CAPABILITY_MESSAGES: Record<HsmGatewayCapability, string> = {
+  [HsmGatewayCapability.MlDsa]: `The HSM Connector's gateway does not support ML-DSA keys. Update it to ${HSM_ML_DSA_MIN_GATEWAY_VERSION} or later and ${ML_DSA_DRIVER_HINT}.`
+};
 
 type TGatewayRouting = {
   gatewayId: string | null | undefined;
@@ -30,22 +39,41 @@ type TGatewayRouting = {
 
 type THsmConnectorRoutingDeps = {
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
+  gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "listHealthyGateways" | "selectGatewayFromPool">;
 };
 
-const isPkcs11Capable = (capabilities: unknown): boolean => {
+const isPkcs11Capable = (capabilities: unknown, requiredCapability?: HsmGatewayCapability): boolean => {
   const caps = (capabilities as Record<string, unknown> | null | undefined) ?? {};
-  return caps.pkcs11 === true;
+  return caps.pkcs11 === true && (!requiredCapability || caps[requiredCapability] === true);
 };
 
-export const hsmConnectorRoutingFactory = ({ gatewayV2Service, gatewayPoolService }: THsmConnectorRoutingDeps) => {
-  const pickGateway = async (connector: TGatewayRouting, triedGatewayIds: Set<string>): Promise<string> => {
+export const hsmConnectorRoutingFactory = ({
+  gatewayV2Service,
+  gatewayV2DAL,
+  gatewayPoolService
+}: THsmConnectorRoutingDeps) => {
+  const pickGateway = async (
+    connector: TGatewayRouting,
+    triedGatewayIds: Set<string>,
+    requiredCapability?: HsmGatewayCapability
+  ): Promise<string> => {
     if (connector.gatewayId) {
       if (triedGatewayIds.has(connector.gatewayId)) {
         throw new BadRequestError({
           message:
             "Gateway is unreachable for HSM operations. Ensure the gateway is online and has HSM support enabled."
         });
+      }
+      if (requiredCapability) {
+        const gateway = await gatewayV2DAL.findById(connector.gatewayId);
+        if (
+          gateway &&
+          isPkcs11Capable(gateway.capabilities) &&
+          !isPkcs11Capable(gateway.capabilities, requiredCapability)
+        ) {
+          throw new BadRequestError({ message: GATEWAY_MISSING_CAPABILITY_MESSAGES[requiredCapability] });
+        }
       }
       return connector.gatewayId;
     }
@@ -55,12 +83,25 @@ export const hsmConnectorRoutingFactory = ({ gatewayV2Service, gatewayPoolServic
 
     // Key material is not portable between HSMs, so a member without the module attached is not an
     // acceptable substitute no matter how idle it is.
-    const selected = await gatewayPoolService.selectGatewayFromPool({
-      poolId: connector.gatewayPoolId,
-      exclude: triedGatewayIds,
-      filter: (gateway) => isPkcs11Capable(gateway.capabilities),
-      unavailableMessage: NO_CAPABLE_MEMBER_MESSAGE
-    });
+    const poolId = connector.gatewayPoolId;
+    const selected = await gatewayPoolService
+      .selectGatewayFromPool({
+        poolId,
+        exclude: triedGatewayIds,
+        filter: (gateway) => isPkcs11Capable(gateway.capabilities, requiredCapability),
+        unavailableMessage: NO_CAPABLE_MEMBER_MESSAGE
+      })
+      .catch(async (err: unknown) => {
+        if (!requiredCapability || !(err instanceof BadRequestError)) throw err;
+        const healthyGateways = await gatewayPoolService.listHealthyGateways(poolId);
+        const hasOtherPkcs11Member = healthyGateways.some(
+          (gateway) => !triedGatewayIds.has(gateway.id) && isPkcs11Capable(gateway.capabilities)
+        );
+        if (hasOtherPkcs11Member) {
+          throw new BadRequestError({ message: POOL_MISSING_CAPABILITY_MESSAGES[requiredCapability] });
+        }
+        throw err;
+      });
     return selected.id;
   };
 
@@ -69,6 +110,7 @@ export const hsmConnectorRoutingFactory = ({ gatewayV2Service, gatewayPoolServic
     credentials: THsmConnectorCredentials;
     endpoint: Pkcs11RpcEndpoint;
     params: Record<string, unknown>;
+    requiredCapability?: HsmGatewayCapability;
   }): Promise<T> => {
     const triedGatewayIds = new Set<string>();
     let lastError: { code: string; message: string } | undefined;
@@ -80,7 +122,7 @@ export const hsmConnectorRoutingFactory = ({ gatewayV2Service, gatewayPoolServic
     for (let attempt = 0; attempt <= PKCS11_POOL_RETRY_LIMIT; attempt += 1) {
       let gatewayId;
       try {
-        gatewayId = await pickGateway(args.connector, triedGatewayIds);
+        gatewayId = await pickGateway(args.connector, triedGatewayIds, args.requiredCapability);
       } catch (err) {
         // Once every capable member has been tried, the accumulated PKCS#11 failure is the useful
         // error. Reporting "no HSM-capable gateway" instead points operators at the wrong problem.
