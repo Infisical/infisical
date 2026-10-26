@@ -45,6 +45,12 @@ export const honeyTokenCleanupServiceFactory = ({
   const $logContext = (honeyToken: THoneyTokenCleanupRow) =>
     `[honeyTokenId=${honeyToken.id}] [projectId=${honeyToken.projectId}] [orgId=${honeyToken.orgId}]`;
 
+  const $fetchConnection = async (orgId: string, type: HoneyTokenType) => {
+    const config = await honeyTokenConfigDAL.findOne({ orgId, type });
+    const rawConnection = config?.connectionId ? await appConnectionDAL.findById(config.connectionId) : null;
+    return rawConnection ? decryptAppConnection(rawConnection, kmsService) : null;
+  };
+
   // Resolves each org's honey token connection once, however many of its tokens are revoked. The credentials
   // are encrypted with the project's KMS key, so every caller must run while the project is still live.
   const $createRevoker = () => {
@@ -54,11 +60,7 @@ export const honeyTokenCleanupServiceFactory = ({
       const key = `${orgId}:${type}`;
       let connection = connectionByOrgAndType.get(key);
       if (!connection) {
-        connection = (async () => {
-          const config = await honeyTokenConfigDAL.findOne({ orgId, type });
-          const rawConnection = config?.connectionId ? await appConnectionDAL.findById(config.connectionId) : null;
-          return rawConnection ? decryptAppConnection(rawConnection, kmsService) : null;
-        })();
+        connection = $fetchConnection(orgId, type);
         connectionByOrgAndType.set(key, connection);
       }
       return connection;
