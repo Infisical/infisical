@@ -82,7 +82,7 @@ function AlertDialogContent({
   const toneValue = React.useMemo(() => ({ tone, claimMedia: setHasMedia }), [tone]);
   const fieldId = React.useId();
   const field = confirmText !== undefined && (
-    <div data-slot="alert-dialog-confirm" className="flex flex-col gap-1.5">
+    <div key="confirm-field" data-slot="alert-dialog-confirm" className="flex flex-col gap-1.5">
       <label htmlFor={fieldId} className="text-sm">
         Type <code className="font-mono">{confirmText}</code> to confirm
       </label>
@@ -132,7 +132,10 @@ function AlertDialogContent({
         {...props}
         onOpenAutoFocus={(event) => {
           props.onOpenAutoFocus?.(event);
-          if (confirmText !== undefined) setTyped("");
+          if (confirmText === undefined || event.defaultPrevented) return;
+          setTyped("");
+          event.preventDefault();
+          document.getElementById(fieldId)?.focus();
         }}
         onEscapeKeyDown={escape.onEscapeKeyDown}
       >

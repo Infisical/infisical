@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { GitCommitIcon, GroupIcon } from "lucide-react";
+import { GitCommitIcon } from "lucide-react";
 
 import { Banner } from "@app/components/v4/ui/alert";
 import {
@@ -56,8 +56,28 @@ import type { ToastItem } from "@app/components/v4/ui/toast-stack";
 import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
 import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/top-bar";
 
+import {
+  applyPending,
+  type PendingChange,
+  pendingIn,
+  pendingMarks,
+  pendingTarget,
+  stagePending,
+  withPending
+} from "./secrets/batch/pending";
+import { commitLabel, ReviewSheet } from "./secrets/batch/review-sheet";
+import { BulkTagDialog } from "./secrets/bulk/bulk-tag-dialog";
+import { type CopySecretsInvocation, CopySecretsSheet } from "./secrets/bulk/copy-secrets-sheet";
+import { MoveSecretsDialog } from "./secrets/bulk/move-secrets-dialog";
+import { CommitHistorySheet } from "./secrets/commits/commit-history-sheet";
+import { seedCommits } from "./secrets/commits/commits-model";
 import { addFlows, type FlowFeedback, FlowToasts, type NewResource } from "./secrets/flows";
-import { LOCAL_ONLY } from "./secrets/flows/shared";
+import { childPath, LOCAL_ONLY } from "./secrets/flows/shared";
+import {
+  type ImportSecretsRequest,
+  ImportSecretsSheet
+} from "./secrets/import-secrets/import-secrets-sheet";
+import { SecretDropzone } from "./secrets/import-secrets/secret-dropzone";
 import { NEXT_PHASE, type RowContext } from "./secrets/overview-cells";
 import { FolderRow, ImportRow, KindRow } from "./secrets/resource-rows";
 import { DynamicSecretActions } from "./secrets/row-actions/dynamic-secret-actions";
@@ -69,6 +89,9 @@ import { ProxiedServiceActions } from "./secrets/row-actions/proxied-service-act
 import { RotationActions } from "./secrets/row-actions/rotation-actions";
 import type { RowAction } from "./secrets/row-actions/types";
 import { SecretRow, type SecretRowHandlers } from "./secrets/secret-row";
+import { CreateSecretSyncSheet } from "./secrets/secret-sync/create-secret-sync-sheet";
+import { SecretSyncStatusBadge } from "./secrets/secret-sync/secret-sync-status-badge";
+import { seedSyncs } from "./secrets/secret-sync/sync-model";
 import {
   AddNewMenu,
   ExportMenu,
@@ -78,7 +101,6 @@ import {
   ResourceFilterMenu
 } from "./secrets/toolbar";
 import {
-  commitCounts,
   createResources,
   environments,
   projects,
@@ -149,24 +171,53 @@ function Overview({ scenario }: { scenario: Scenario }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
   const [rowAction, setRowAction] = useState<RowAction>();
+  const [importRequest, setImportRequest] = useState<ImportSecretsRequest>();
+  const [copyInvocation, setCopyInvocation] = useState<CopySecretsInvocation>();
+  const [tagging, setTagging] = useState<Secret[]>();
+  const [moving, setMoving] = useState<Resource[]>();
+  const [commitEnvironment, setCommitEnvironment] = useState<{ value: string; label: string }>();
+  const [commits, setCommits] = useState(() => seedCommits(createResources(scenario)));
+  const [syncs, setSyncs] = useState(seedSyncs);
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [pending, setPending] = useState<PendingChange[]>([]);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [deletingEnvironment, setDeletingEnvironment] = useState<{
+    value: string;
+    label: string;
+  }>();
+  const [removedEnvironments, setRemovedEnvironments] = useState<string[]>([]);
   const revealed = useRef("");
   const search = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLDivElement>(null);
-  const visibleEnvironments = environments.filter(
+  const projectEnvironments = environments.filter(
+    (environment) => !removedEnvironments.includes(`${project}:${environment.value}`)
+  );
+  const visibleEnvironments = projectEnvironments.filter(
     (environment) => !environmentIds.length || environmentIds.includes(environment.value)
   );
   const single = visibleEnvironments.length === 1;
-  const activeEnvironment = visibleEnvironments[0].value;
+  const activeEnvironment = visibleEnvironments[0]?.value ?? "";
   const currentProject = projects.find((entry) => entry.value === project)!;
+  const noEnvironments = scenario === "no-environments" || !projectEnvironments.length;
   const unavailable =
     scenario === "loading" ||
-    scenario === "no-environments" ||
+    noEnvironments ||
     scenario === "legacy" ||
     (scenario === "error" && !recovered);
   const readOnly = scenario === "permissions";
   let writeBlock: string | undefined;
   if (readOnly) writeBlock = "Access restricted";
   if (unavailable) writeBlock = "Resources are not available in this scenario";
+  const overlayOpen = Boolean(
+    importRequest ||
+      copyInvocation ||
+      tagging ||
+      moving ||
+      commitEnvironment ||
+      syncOpen ||
+      reviewOpen ||
+      deletingEnvironment
+  );
   useEffect(() => {
     const focus = (event: KeyboardEvent) => {
       if (
@@ -178,7 +229,8 @@ function Overview({ scenario }: { scenario: Scenario }) {
         deletingFolder ||
         deleting ||
         flowOpen ||
-        rowAction
+        rowAction ||
+        overlayOpen
       )
         return;
       if ((event.target as HTMLElement).closest("input, textarea, [contenteditable=true]")) return;
@@ -188,7 +240,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
     };
     document.addEventListener("keydown", focus);
     return () => document.removeEventListener("keydown", focus);
-  }, [editingFolder, deletingFolder, deleting, flowOpen, rowAction]);
+  }, [editingFolder, deletingFolder, deleting, flowOpen, rowAction, overlayOpen]);
 
   const resetView = () => {
     setPage(1);
@@ -201,7 +253,11 @@ function Overview({ scenario }: { scenario: Scenario }) {
     setQuery("");
     resetView();
   };
-  const scoped = resources.filter(
+  const pendingHere = single
+    ? pendingIn(pending, { project, environment: activeEnvironment, path })
+    : [];
+  const shown = pendingHere.length ? withPending(resources, pendingHere) : resources;
+  const scoped = shown.filter(
     (resource) =>
       resource.project === project &&
       resource.path === path &&
@@ -277,6 +333,46 @@ function Overview({ scenario }: { scenario: Scenario }) {
     .map(([key]) => key);
   const selectedEntries = scoped.filter((resource) => selected.includes(resourceKey(resource)));
   const report = (message: string) => setNotice(message);
+  const pushToast = (item: Omit<ToastItem, "id">) =>
+    setToasts((current) => [...current, { ...item, id: crypto.randomUUID() }]);
+  const stage = (shownResource: Secret | Of<"folder">, next: Secret | Of<"folder">) => {
+    setPending((current) => stagePending(current, shownResource, next, resources));
+    setSelected([]);
+  };
+  const commitChanges = (changes: PendingChange[], message: string) => {
+    if (!changes.length) return;
+    const [first] = changes;
+    const target = pendingTarget(first);
+    const past = { create: "created", update: "updated", delete: "deleted" }[first.type];
+    const title =
+      changes.length === 1
+        ? `${target.kind === "secret" ? "Secret" : "Folder"} "${target.name}" ${past}`
+        : `${changes.length} changes committed`;
+    setResources((current) => applyPending(current, changes, user.name));
+    setPending((current) => current.filter((change) => !changes.includes(change)));
+    setCommits((current) => [
+      {
+        id: crypto.randomUUID(),
+        project: target.project,
+        environment: target.environment,
+        path: target.path,
+        message: message.trim() || title,
+        actor: user.name,
+        createdAt: new Date().toISOString(),
+        changes: changes.map((change) => ({
+          resourceType: pendingTarget(change).kind,
+          action: change.type,
+          name: pendingTarget(change).name,
+          before: change.original,
+          after: change.next
+        }))
+      },
+      ...current
+    ]);
+    setReviewOpen(false);
+    setNotice("");
+    pushToast({ tone: "ok", title, description: LOCAL_ONLY });
+  };
   const ctx: RowContext = {
     environments: visibleEnvironments,
     single,
@@ -289,7 +385,16 @@ function Overview({ scenario }: { scenario: Scenario }) {
         selected.includes(key) ? selected.filter((entry) => entry !== key) : [...selected, key]
       ),
     report,
-    onAction: setRowAction
+    onAction: setRowAction,
+    pending: pendingMarks(pendingHere),
+    selectionDisabled: pendingHere.length > 0,
+    onSavePending: (id) =>
+      commitChanges(
+        pendingHere.filter((change) => pendingTarget(change).id === id),
+        ""
+      ),
+    onRevertPending: (id) =>
+      setPending((current) => current.filter((change) => pendingTarget(change).id !== id))
   };
   const importedFrom = (environment: string, key: string) =>
     resources
@@ -315,8 +420,6 @@ function Overview({ scenario }: { scenario: Scenario }) {
         resource.kind === "secret" && scopeMatches(resource, entry.source)
     );
 
-  const pushToast = (item: Omit<ToastItem, "id">) =>
-    setToasts((current) => [...current, { ...item, id: crypto.randomUUID() }]);
   const insert = (created: NewResource[], feedback: FlowFeedback) => {
     const timestamp = new Date().toISOString();
     setResources((current) => [
@@ -395,6 +498,10 @@ function Overview({ scenario }: { scenario: Scenario }) {
       });
       return;
     }
+    if (single) {
+      stage(folder, { ...folder, name, description });
+      return;
+    }
     const timestamp = new Date().toISOString();
     const prefix = path === "/" ? "" : path;
     const oldPath = `${prefix}/${folder.name}`;
@@ -420,7 +527,13 @@ function Overview({ scenario }: { scenario: Scenario }) {
       description: LOCAL_ONLY
     });
   };
-  const remove = (targets: Editable[]) => {
+  const remove = (selectedTargets: Editable[]) => {
+    const targets = selectedTargets.map(
+      (target) => (resources.find((resource) => resource.id === target.id) as Editable) ?? target
+    );
+    setPending((current) =>
+      current.filter((change) => !targets.some((target) => target.id === pendingTarget(change).id))
+    );
     setResources((current) =>
       current.filter(
         (resource) =>
@@ -441,6 +554,25 @@ function Overview({ scenario }: { scenario: Scenario }) {
     );
     setDeleting(undefined);
     setSelected([]);
+  };
+  const deleteEnvironment = (environment: string) => {
+    setDeletingEnvironment(undefined);
+    setResources((current) =>
+      current.filter(
+        (resource) => resource.project !== project || resource.environment !== environment
+      )
+    );
+    setPending((current) =>
+      current.filter(
+        (change) =>
+          pendingTarget(change).project !== project ||
+          pendingTarget(change).environment !== environment
+      )
+    );
+    setRemovedEnvironments((current) => [...current, `${project}:${environment}`]);
+    setEnvironmentIds((current) => current.filter((entry) => entry !== environment));
+    resetView();
+    pushToast({ tone: "ok", title: "Successfully removed environment", description: LOCAL_ONLY });
   };
   const deleteFolder = (folder: Of<"folder">) => {
     setDeletingFolder(undefined);
@@ -500,7 +632,10 @@ function Overview({ scenario }: { scenario: Scenario }) {
     (option) => option.field === sort.field && option.direction === sort.direction
   )?.label;
   const colSpan = visibleEnvironments.length + 2;
-  const commitCount = single ? commitCounts[`${project}:${activeEnvironment}:${path}`] : undefined;
+  const commitCount = commits.filter(
+    (commit) =>
+      commit.project === project && commit.environment === activeEnvironment && commit.path === path
+  ).length;
   const canQuickAdd = !writeBlock && isLastPage && totalCount > 0;
   const gate = (reason: string | undefined, node: ReactNode) =>
     reason ? (
@@ -514,7 +649,23 @@ function Overview({ scenario }: { scenario: Scenario }) {
     onCreateIn: (environment, key) =>
       openFlow("secret", { environments: [environment], name: key }),
     onDelete: (secret) => setDeleting([secret]),
+    onCopySecret: (secret) =>
+      setCopyInvocation({
+        origin: "row",
+        sourceEnvironmentSlug: secret.environment,
+        sourcePath: secret.path,
+        secrets: [{ id: secret.id, name: secret.name, path: secret.path }]
+      }),
+    copySecretBlock: pendingHere.length ? "Discard pending changes first" : undefined,
     onUpdate: (secret, { value, ...patch }, feedback) => {
+      if (single && !("reminder" in patch || "override" in patch || "versions" in patch)) {
+        stage(secret, {
+          ...secret,
+          ...patch,
+          ...(value === undefined ? {} : { value: { status: "present", value } })
+        });
+        return;
+      }
       const timestamp = new Date().toISOString();
       setResources((current) =>
         current.map((resource): Resource => {
@@ -557,6 +708,73 @@ function Overview({ scenario }: { scenario: Scenario }) {
   const deletable = selectedEntries.filter(
     (entry): entry is Editable => entry.kind === "secret" || entry.kind === "folder"
   );
+  const selectedSecrets = selectedEntries.filter(
+    (entry): entry is Secret => entry.kind === "secret"
+  );
+  const selectedFolders = selectedEntries.filter(
+    (entry): entry is Of<"folder"> => entry.kind === "folder"
+  );
+  const rotationsSelected = selectedEntries.some((entry) => entry.kind === "rotation");
+  const honeySelected = selectedSecrets.some((secret) => secret.honeyToken);
+  const managedSelected = selectedSecrets.some((secret) => secret.managedBy || secret.honeyToken);
+  const deleteBlocked = rotationsSelected || managedSelected;
+  let moveBlock: string | undefined;
+  if (honeySelected) moveBlock = "Moving honey tokens is not supported";
+  else if (
+    !selectedFolders.length &&
+    !rotationsSelected &&
+    selectedSecrets.length > 0 &&
+    selectedSecrets.every((secret) => secret.managedBy || secret.honeyToken)
+  )
+    moveBlock = "Rotated secrets are managed by their secret rotation. Move the rotation instead.";
+  let bulkCopyBlock: string | undefined;
+  if (honeySelected) bulkCopyBlock = "Honey token secrets cannot be copied";
+  else if (rotationsSelected || managedSelected) bulkCopyBlock = "Rotated secrets cannot be copied";
+  else if (!selectedSecrets.length && !selectedFolders.length) bulkCopyBlock = "Nothing to copy";
+  const clipboardBlock =
+    !selectedSecrets.length ||
+    selectedFolders.length > 0 ||
+    rotationsSelected ||
+    selectedSecrets.some((secret) => readableValue(secret) === undefined);
+  const groupByEnvironment = <T extends Resource, V>(entries: T[], map: (entry: T) => V) =>
+    entries.reduce<Record<string, V[]>>(
+      (byEnvironment, entry) => ({
+        ...byEnvironment,
+        [entry.environment]: [...(byEnvironment[entry.environment] ?? []), map(entry)]
+      }),
+      {}
+    );
+  const copySelectionToClipboard = async () => {
+    if (selectedSecrets.some((secret) => !/^[A-Za-z_][A-Za-z0-9_]*$/.test(secret.name))) {
+      pushToast({
+        tone: "bad",
+        title: "Cannot copy secrets as .env",
+        description:
+          "Some selected secret names aren’t compatible with .env format. Names must contain only letters, numbers, and underscores, and cannot start with a number. Nothing was copied."
+      });
+      return;
+    }
+    const text = Object.entries(groupByEnvironment(selectedSecrets, (secret) => secret))
+      .map(([environment, secrets]) => {
+        const lines = secrets.map(
+          (secret) =>
+            `${secret.name}="${(readableValue(secret) ?? "")
+              .replace(/\\/g, "\\\\")
+              .replace(/"/g, '\\"')
+              .replace(/\r/g, "\\r")
+              .replace(/\n/g, "\\n")}"`
+        );
+        if (!single) lines.unshift(`# ${environment}`);
+        return lines.join("\n");
+      })
+      .join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      pushToast({ tone: "ok", title: "Selected secrets copied to clipboard" });
+    } catch {
+      pushToast({ tone: "bad", title: "Failed to copy selected secrets to clipboard" });
+    }
+  };
   const clearFilters = () => {
     setQuery("");
     setTypes([]);
@@ -598,37 +816,58 @@ function Overview({ scenario }: { scenario: Scenario }) {
         />
       );
     return (
-      <EmptyState
-        icon="upload"
-        title="This table is empty"
-        description="Drag and drop a secrets file here"
-        actions={
-          <>
-            {gate(
-              NEXT_PHASE,
-              <Button variant="outline" icon="upload" disabled>
-                Upload secrets
-              </Button>
-            )}
-            {gate(
-              NEXT_PHASE,
-              <Button variant="outline" icon="copy" disabled>
-                Paste secrets
-              </Button>
-            )}
-            {gate(
-              writeBlock,
-              <Button icon="plus" disabled={Boolean(writeBlock)} onClick={() => openFlow("secret")}>
-                Add a new secret
-              </Button>
-            )}
-          </>
-        }
-      />
+      <SecretDropzone
+        disabledReason={writeBlock}
+        onFile={(file) => setImportRequest({ step: "upload", file })}
+      >
+        <div className={styles.dropPad}>
+          <EmptyState
+            icon="upload"
+            title="This table is empty"
+            description="Drag and drop a secrets file here"
+            actions={
+              <>
+                {gate(
+                  writeBlock,
+                  <Button
+                    variant="outline"
+                    icon="upload"
+                    disabled={Boolean(writeBlock)}
+                    onClick={() => setImportRequest({ step: "upload" })}
+                  >
+                    Upload secrets
+                  </Button>
+                )}
+                {gate(
+                  writeBlock,
+                  <Button
+                    variant="outline"
+                    icon="copy"
+                    disabled={Boolean(writeBlock)}
+                    onClick={() => setImportRequest({ step: "paste" })}
+                  >
+                    Paste secrets
+                  </Button>
+                )}
+                {gate(
+                  writeBlock,
+                  <Button
+                    icon="plus"
+                    disabled={Boolean(writeBlock)}
+                    onClick={() => openFlow("secret")}
+                  >
+                    Add a new secret
+                  </Button>
+                )}
+              </>
+            }
+          />
+        </div>
+      </SecretDropzone>
     );
   })();
   const unavailableState = (() => {
-    if (scenario === "no-environments")
+    if (noEnvironments)
       return (
         <EmptyState
           icon="folder"
@@ -759,12 +998,17 @@ function Overview({ scenario }: { scenario: Scenario }) {
           <Icon name="download" />
           Download as .env
         </DropdownMenuItem>
-        <DropdownMenuItem disabled description={NEXT_PHASE}>
+        <DropdownMenuItem onSelect={() => setCommitEnvironment(environment)}>
           <Icon icon={GitCommitIcon} />
           View commit history
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" disabled description={NEXT_PHASE}>
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={Boolean(writeBlock)}
+          description={writeBlock}
+          onSelect={() => setDeletingEnvironment(environment)}
+        >
           <Icon name="trash" />
           Delete environment
         </DropdownMenuItem>
@@ -836,8 +1080,8 @@ function Overview({ scenario }: { scenario: Scenario }) {
                 <div className={styles.envPicker}>
                   <MultiSelect
                     label="Environments"
-                    options={scenario === "no-environments" ? [] : environments}
-                    value={scenario === "no-environments" ? [] : environmentIds}
+                    options={noEnvironments ? [] : projectEnvironments}
+                    value={noEnvironments ? [] : environmentIds}
                     onChange={(value) => {
                       setEnvironmentIds(value);
                       setSort({ field: "name", direction: "asc" });
@@ -897,7 +1141,19 @@ function Overview({ scenario }: { scenario: Scenario }) {
                   writeBlock={writeBlock}
                   single={single}
                   available={Object.fromEntries(Object.keys(addFlows).map((kind) => [kind, true]))}
+                  copyBlock={
+                    pendingHere.length ? "Commit or discard pending changes first" : undefined
+                  }
                   onAdd={(kind) => openFlow(kind)}
+                  onUpload={() => setImportRequest({ step: "upload" })}
+                  onCopySecrets={() =>
+                    setCopyInvocation({
+                      origin: "toolbar",
+                      sourcePath: path,
+                      sourceEnvironmentSlug: single ? activeEnvironment : ""
+                    })
+                  }
+                  onAddSync={() => setSyncOpen(true)}
                 />
               </div>
               <div className={styles.tableBlock}>
@@ -961,23 +1217,24 @@ function Overview({ scenario }: { scenario: Scenario }) {
                                   >
                                     {revealAll ? "Hide values" : "Reveal all"}
                                   </Button>
-                                  {gate(
-                                    NEXT_PHASE,
-                                    <Button variant="ghost" size="xs" icon="git" disabled>
-                                      <span className={styles.headLabel}>
-                                        {commitCount === undefined
-                                          ? "Commit history"
-                                          : `${commitCount} commits`}
-                                      </span>
-                                    </Button>
-                                  )}
-                                  {gate(
-                                    NEXT_PHASE,
-                                    <Button variant="ghost" size="xs" disabled>
-                                      <Icon icon={GroupIcon} />
-                                      <span className={styles.headLabel}>Batch edit</span>
-                                    </Button>
-                                  )}
+                                  <Button
+                                    variant="ghost"
+                                    size="xs"
+                                    icon="git"
+                                    onClick={() => setCommitEnvironment(visibleEnvironments[0])}
+                                  >
+                                    <span className={styles.headLabel}>
+                                      {`${commitCount} commit${commitCount === 1 ? "" : "s"}`}
+                                    </span>
+                                  </Button>
+                                  <SecretSyncStatusBadge
+                                    syncs={syncs}
+                                    project={project}
+                                    environments={visibleEnvironments.map(
+                                      (environment) => environment.value
+                                    )}
+                                    path={path}
+                                  />
                                 </span>
                               </div>
                             </TableHead>
@@ -1012,7 +1269,11 @@ function Overview({ scenario }: { scenario: Scenario }) {
                           ))}
                         {scenario !== "loading" && totalCount === 0 && (
                           <TableRow>
-                            <TableCell colSpan={colSpan} className={styles.emptyCell}>
+                            <TableCell
+                              colSpan={colSpan}
+                              className={styles.emptyCell}
+                              data-dropzone={!isFiltered || undefined}
+                            >
                               {emptyState}
                             </TableCell>
                           </TableRow>
@@ -1080,6 +1341,37 @@ function Overview({ scenario }: { scenario: Scenario }) {
                                 visibleEnvironments.map((environment) => environment.value)
                               )
                             }
+                            onQueue={
+                              single
+                                ? (key, value) => {
+                                    const timestamp = new Date().toISOString();
+                                    setPending((current) => [
+                                      ...current,
+                                      {
+                                        id: crypto.randomUUID(),
+                                        type: "create",
+                                        next: {
+                                          kind: "secret",
+                                          id: crypto.randomUUID(),
+                                          project,
+                                          environment: activeEnvironment,
+                                          path,
+                                          name: key,
+                                          value: { status: "present", value },
+                                          version: 1,
+                                          comment: "",
+                                          tags: [],
+                                          metadata: [],
+                                          createdAt: timestamp,
+                                          updatedAt: timestamp
+                                        }
+                                      }
+                                    ]);
+                                    setSelected([]);
+                                  }
+                                : undefined
+                            }
+                            onPasteSecrets={(parsed) => setImportRequest({ step: "paste", parsed })}
                           />
                         )}
                       </TableBody>
@@ -1119,49 +1411,93 @@ function Overview({ scenario }: { scenario: Scenario }) {
               </div>
             </div>
           </PageGutter>
-          <div className={styles.fabDock} data-active={selected.length > 0 || undefined}>
-            <FloatingActionBar
-              placement="contained"
-              count={selected.length}
-              total={selectableOnPage.length}
-              onSelectAll={() => setSelected(selectableOnPage)}
-              onClear={() => setSelected([])}
-              noun="resources"
-              actions={[
-                { label: "Add tags", icon: "plus", disabled: true, onClick: () => undefined },
-                { label: "Move", icon: "folder", disabled: true, onClick: () => undefined },
-                {
-                  label: "Copy to clipboard",
-                  icon: "copy",
-                  disabled: !single || !selectedSecretNames.length,
-                  onClick: async () => {
-                    try {
-                      await navigator.clipboard.writeText(
-                        `${envFile(activeEnvironment, selectedSecretNames).join("\n")}\n`
-                      );
-                      setNotice("Secrets copied to clipboard. They are ready to paste.");
-                    } catch {
-                      setNotice("Failed to copy secrets. Please try again later.");
-                    }
+          <div
+            className={styles.fabDock}
+            data-active={
+              selected.length > 0 || (pendingHere.length > 0 && !reviewOpen) || undefined
+            }
+          >
+            {pendingHere.length ? (
+              <FloatingActionBar
+                placement="contained"
+                label="Pending change actions"
+                count={reviewOpen ? 0 : pendingHere.length}
+                noun={pendingHere.length === 1 ? "pending change" : "pending changes"}
+                onClear={() =>
+                  setPending((current) => current.filter((change) => !pendingHere.includes(change)))
+                }
+                actions={[
+                  { label: "Review", icon: "eye", onClick: () => setReviewOpen(true) },
+                  {
+                    label: commitLabel(pendingHere.length),
+                    icon: "check",
+                    disabled: Boolean(writeBlock),
+                    onClick: () => commitChanges(pendingHere, "")
                   }
-                },
-                {
-                  label: "Delete",
-                  icon: "trash",
-                  danger: true,
-                  disabled: Boolean(writeBlock) || !deletable.length,
-                  onClick: () => setDeleting(deletable)
-                }
-              ]}
-              moreActions={[
-                {
-                  label: "Copy to new source",
-                  icon: "copy",
-                  disabled: true,
-                  onClick: () => undefined
-                }
-              ]}
-            />
+                ]}
+              />
+            ) : (
+              <FloatingActionBar
+                placement="contained"
+                count={selected.length}
+                total={selectableOnPage.length}
+                onSelectAll={() => setSelected(selectableOnPage)}
+                onClear={() => setSelected([])}
+                noun="resources"
+                actions={[
+                  {
+                    label: "Add tags",
+                    icon: "plus",
+                    disabled: Boolean(writeBlock) || !selectedSecrets.length,
+                    onClick: () => setTagging(selectedSecrets)
+                  },
+                  {
+                    label: "Move",
+                    icon: "folder",
+                    disabled: Boolean(writeBlock || moveBlock),
+                    onClick: () => setMoving(selectedEntries)
+                  },
+                  {
+                    label: "Copy to clipboard",
+                    icon: "copy",
+                    disabled: Boolean(clipboardBlock),
+                    onClick: copySelectionToClipboard
+                  },
+                  {
+                    label: "Delete",
+                    icon: "trash",
+                    danger: true,
+                    disabled: Boolean(writeBlock) || !deletable.length || deleteBlocked,
+                    onClick: () => setDeleting(deletable)
+                  }
+                ]}
+                moreActions={[
+                  {
+                    label: "Copy to new source",
+                    icon: "copy",
+                    disabled: Boolean(bulkCopyBlock),
+                    onClick: () =>
+                      setCopyInvocation({
+                        origin: "bulk",
+                        sourcePath: path,
+                        selectedSecretCount: selectedSecretNames.length,
+                        sourceEnvironmentSlug: single ? activeEnvironment : undefined,
+                        secretsByEnvironment: groupByEnvironment(selectedSecrets, (secret) => ({
+                          id: secret.id,
+                          name: secret.name,
+                          path: secret.path,
+                          isRotated: Boolean(secret.managedBy),
+                          isHoneyToken: Boolean(secret.honeyToken)
+                        })),
+                        folderNames: [...new Set(selectedFolders.map((folder) => folder.name))],
+                        foldersByEnvironment: groupByEnvironment(selectedFolders, (folder) => ({
+                          path: childPath(path, folder.name)
+                        }))
+                      })
+                  }
+                ]}
+              />
+            )}
           </div>
         </AppInset>
         {editingFolder && (
@@ -1228,7 +1564,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
         {(() => {
           const host = {
             onClose: () => setRowAction(undefined),
-            scope: { project, path, environments, visibleEnvironments },
+            scope: { project, path, environments: projectEnvironments, visibleEnvironments },
             resources,
             onApply: (update: (current: Resource[]) => Resource[], feedback: FlowFeedback) => {
               setResources(update);
@@ -1248,9 +1584,97 @@ function Overview({ scenario }: { scenario: Scenario }) {
               <RotationActions action={pick("rotation")} {...host} />
               <HoneyTokenActions action={pick("honey")} {...host} />
               <ProxiedServiceActions action={pick("proxy")} {...host} />
+              <ImportSecretsSheet
+                {...host}
+                request={importRequest}
+                onClose={() => setImportRequest(undefined)}
+                onComplete={(targets) => {
+                  if (
+                    !environmentIds.length ||
+                    targets.every((entry) => environmentIds.includes(entry))
+                  )
+                    return;
+                  setEnvironmentIds([...new Set([...environmentIds, ...targets])]);
+                }}
+              />
+              <CopySecretsSheet
+                {...host}
+                invocation={copyInvocation}
+                onClose={() => setCopyInvocation(undefined)}
+                onCompleted={() => {
+                  if (copyInvocation?.origin === "bulk") setSelected([]);
+                }}
+              />
+              <BulkTagDialog
+                {...host}
+                targets={tagging}
+                onClose={() => setTagging(undefined)}
+                onCompleted={() => setSelected([])}
+              />
+              <MoveSecretsDialog
+                {...host}
+                targets={moving}
+                onClose={() => setMoving(undefined)}
+                onCompleted={() => setSelected([])}
+              />
+              <CommitHistorySheet
+                {...host}
+                environment={commitEnvironment}
+                commits={commits}
+                onClose={() => setCommitEnvironment(undefined)}
+                onRecordCommit={(commit) => setCommits((current) => [commit, ...current])}
+              />
             </>
           );
         })()}
+        <CreateSecretSyncSheet
+          open={syncOpen}
+          onOpenChange={setSyncOpen}
+          scope={{ project, path, environments: projectEnvironments, visibleEnvironments }}
+          initial={single ? { environment: activeEnvironment, path } : undefined}
+          syncs={syncs}
+          resources={resources}
+          onCreate={(sync, feedback) => {
+            setSyncs((current) => [...current, sync]);
+            setSyncOpen(false);
+            pushToast({ tone: "ok", ...feedback });
+          }}
+          onToast={(tone, feedback) => pushToast({ tone, ...feedback })}
+        />
+        <ReviewSheet
+          open={reviewOpen}
+          pending={pendingHere}
+          onOpenChange={setReviewOpen}
+          onDiscard={(change) =>
+            setPending((current) => current.filter((entry) => entry.id !== change.id))
+          }
+          onCommit={(message) => commitChanges(pendingHere, message)}
+        />
+        <AlertDialog
+          open={Boolean(deletingEnvironment)}
+          onOpenChange={(open) => {
+            if (!open) setDeletingEnvironment(undefined);
+          }}
+        >
+          <AlertDialogContent tone="danger" confirmText={deletingEnvironment?.label ?? ""}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete environment</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the environment and all its secrets. This action cannot
+                be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                onClick={() => deletingEnvironment && deleteEnvironment(deletingEnvironment.value)}
+              >
+                Delete environment
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         {flow &&
           (() => {
             const Flow = addFlows[flow.kind];
@@ -1260,10 +1684,11 @@ function Overview({ scenario }: { scenario: Scenario }) {
                   key={flow.session}
                   open={flowOpen}
                   onOpenChange={setFlowOpen}
-                  scope={{ project, path, environments, visibleEnvironments }}
+                  scope={{ project, path, environments: projectEnvironments, visibleEnvironments }}
                   resources={resources}
                   initial={flow.initial}
                   onCreate={insert}
+                  onUploadSecrets={() => setImportRequest({ step: "upload" })}
                   onError={(feedback) => pushToast({ tone: "bad", ...feedback })}
                   onNotice={(feedback) => pushToast({ tone: "neutral", ...feedback })}
                 />

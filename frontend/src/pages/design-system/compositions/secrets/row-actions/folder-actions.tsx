@@ -1,8 +1,12 @@
 import { useState } from "react";
 
+import {
+  type FolderMove,
+  isPathInsideFolder,
+  MoveSecretsDialog
+} from "../bulk/move-secrets-dialog";
 import { childPath, LOCAL_ONLY } from "../flows/shared";
 import { createAccessState, FolderAccessSheet, grantKey } from "./folder-access-sheet";
-import { type FolderMove, FolderMoveDialog, isPathInsideFolder } from "./folder-move-dialog";
 import type { RowActionHostProps } from "./types";
 
 export function FolderActions({
@@ -32,26 +36,31 @@ export function FolderActions({
         Object.keys(grants).length > 0
       );
     });
-  const remapGrants = (moves: FolderMove[], from: string, to: string) =>
+  const remapGrants = (moves: FolderMove[]) =>
     setAccess((current) => ({
       ...current,
       grants: Object.fromEntries(
         Object.entries(current.grants).map(([key, grants]) => {
           const [environment, ...rest] = key.split(":");
           const path = rest.join(":");
-          const move = moves.find((entry) => entry.environment === environment);
-          if (!move || !isPathInsideFolder(path, from)) return [key, grants];
-          return [grantKey(move.destinationEnvironment, `${to}${path.slice(from.length)}`), grants];
+          const move = moves.find(
+            (entry) => entry.environment === environment && isPathInsideFolder(path, entry.from)
+          );
+          if (!move) return [key, grants];
+          return [
+            grantKey(move.destinationEnvironment, `${move.to}${path.slice(move.from.length)}`),
+            grants
+          ];
         })
       )
     }));
 
   if (last.action === "move")
     return (
-      <FolderMoveDialog
+      <MoveSecretsDialog
         key={session}
         open={action?.action === "move"}
-        folder={last.entry}
+        targets={last.entries}
         scope={scope}
         resources={resources}
         foldersWithRbacPolicies={
@@ -60,7 +69,7 @@ export function FolderActions({
         onClose={onClose}
         onApply={onApply}
         onToast={onToast}
-        onMoved={remapGrants}
+        onFoldersMoved={remapGrants}
       />
     );
 

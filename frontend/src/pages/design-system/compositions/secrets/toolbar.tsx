@@ -9,6 +9,7 @@ import {
   ListPlusIcon
 } from "lucide-react";
 
+import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 import { Count } from "@app/components/v4/ui/badge";
 import { Breadcrumb } from "@app/components/v4/ui/breadcrumb";
 import { Button } from "@app/components/v4/ui/button";
@@ -160,14 +161,21 @@ export function AddNewMenu({
   writeBlock,
   single,
   available,
-  onAdd
+  copyBlock,
+  onAdd,
+  onUpload,
+  onCopySecrets,
+  onAddSync
 }: {
   writeBlock?: string;
   single: boolean;
   available: Partial<Record<ResourceKind, boolean>>;
+  copyBlock?: string;
   onAdd: (kind: ResourceKind) => void;
+  onUpload: () => void;
+  onCopySecrets: () => void;
+  onAddSync: () => void;
 }) {
-  const singleOnly = single ? NEXT_PHASE : "Select a single environment first";
   const blockOf = (kind: ResourceKind, singleReason?: string) => {
     if (!available[kind]) return NEXT_PHASE;
     if (writeBlock) return writeBlock;
@@ -195,7 +203,11 @@ export function AddNewMenu({
         <DropdownMenuLabel>Basic</DropdownMenuLabel>
         {item("secret", "New secret", <KindIcon kind="secret" />)}
         {item("folder", "New folder", <KindIcon kind="folder" />)}
-        <DropdownMenuItem disabled description={NEXT_PHASE}>
+        <DropdownMenuItem
+          disabled={Boolean(writeBlock)}
+          description={writeBlock}
+          onSelect={onUpload}
+        >
           <Icon name="upload" />
           Upload secrets
         </DropdownMenuItem>
@@ -222,11 +234,22 @@ export function AddNewMenu({
             More
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
-            <DropdownMenuItem disabled description={NEXT_PHASE}>
+            <DropdownMenuItem
+              disabled={Boolean(copyBlock)}
+              description={copyBlock}
+              onSelect={onCopySecrets}
+            >
               <Icon icon={ClipboardPasteIcon} />
               Copy secrets
             </DropdownMenuItem>
-            <DropdownMenuItem disabled description={singleOnly}>
+            <DropdownMenuItem
+              disabled={Boolean(writeBlock) || !single}
+              description={
+                writeBlock ??
+                (single ? undefined : "Select a single environment to add a secret sync")
+              }
+              onSelect={onAddSync}
+            >
               <Icon name="sync" />
               New secret sync
             </DropdownMenuItem>
@@ -300,12 +323,16 @@ export function QuickAddRow({
   multiple,
   colSpan,
   existing,
-  onCreate
+  onCreate,
+  onQueue,
+  onPasteSecrets
 }: {
   multiple: boolean;
   colSpan: number;
   existing: string[];
   onCreate: (key: string, value: string) => void;
+  onQueue?: (key: string, value: string) => void;
+  onPasteSecrets: (parsed: ReturnType<typeof parsePastedEnv>) => void;
 }) {
   const [key, setKey] = useState("");
   const [value, setValue] = useState("");
@@ -317,7 +344,7 @@ export function QuickAddRow({
     setValue("");
     setError("");
   };
-  const save = () => {
+  const save = (queue = false) => {
     const name = key.trim();
     if (!name) {
       setError("Secret name is required");
@@ -331,11 +358,19 @@ export function QuickAddRow({
       setError("A secret with this name already exists");
       return;
     }
-    onCreate(name, value);
+    if (queue && onQueue) onQueue(name, value);
+    else onCreate(name, value);
     reset();
   };
   return (
-    <TableRow className={styles.quickAdd}>
+    <TableRow
+      className={styles.quickAdd}
+      onBlurCapture={(event) => {
+        if (!onQueue || !key.trim() || event.currentTarget.contains(event.relatedTarget as Node))
+          return;
+        save(true);
+      }}
+    >
       <TableCell className={styles.iconCell}>
         <span className={styles.iconSlot}>
           <Tooltip content={NEXT_PHASE}>
@@ -360,6 +395,21 @@ export function QuickAddRow({
           onChange={(event) => {
             setKey(event.target.value);
             setError("");
+          }}
+          onPaste={(event) => {
+            const { selectionStart, selectionEnd, value: current } = event.currentTarget;
+            if (key && !(selectionStart === 0 && selectionEnd === current.length)) return;
+            const entries = Object.entries(parsePastedEnv(event.clipboardData.getData("text")));
+            if (!entries.length) return;
+            event.preventDefault();
+            if (entries.length > 1) {
+              onPasteSecrets(Object.fromEntries(entries));
+              return;
+            }
+            setKey(entries[0][0]);
+            setValue(entries[0][1].value);
+            setError("");
+            setTimeout(() => valueRef.current?.focus(), 0);
           }}
           onKeyDown={(event) => {
             if (event.key !== "Enter") return;
@@ -391,7 +441,7 @@ export function QuickAddRow({
               <Button variant="ghost" size="xs" onClick={reset}>
                 Undo
               </Button>
-              <Button size="xs" onClick={save}>
+              <Button size="xs" onClick={() => save()}>
                 Save
               </Button>
             </span>

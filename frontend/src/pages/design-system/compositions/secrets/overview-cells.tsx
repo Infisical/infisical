@@ -7,7 +7,9 @@ import {
   GitBranchIcon,
   HexagonIcon,
   ImportIcon,
-  type LucideIcon
+  type LucideIcon,
+  SaveIcon,
+  Undo2Icon
 } from "lucide-react";
 
 import { Button } from "@app/components/v4/ui/button";
@@ -17,6 +19,7 @@ import { TableCell } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import type { Resource, ResourceKind } from "../secrets-model";
+import type { PendingType } from "./batch/pending";
 import type { RowAction } from "./row-actions/types";
 
 import styles from "./overview.module.css";
@@ -33,6 +36,10 @@ export type RowContext = {
   onToggleSelect: (key: string) => void;
   report: (message: string) => void;
   onAction: (action: RowAction) => void;
+  pending?: Record<string, PendingType>;
+  selectionDisabled?: boolean;
+  onSavePending?: (id: string) => void;
+  onRevertPending?: (id: string) => void;
 };
 export type EnvironmentStatus = "present" | "missing" | "empty" | "imported" | "no-access";
 type Glyph = { name?: IconName; icon?: LucideIcon };
@@ -144,6 +151,25 @@ export function ActionButton({
   );
 }
 
+export function PendingActions({ id, ctx }: { id: string; ctx: RowContext }) {
+  if (!ctx.pending?.[id]) return null;
+  return (
+    <>
+      <ActionButton
+        label="Save pending changes"
+        icon={SaveIcon}
+        disabledReason={ctx.writeBlock}
+        onClick={() => ctx.onSavePending?.(id)}
+      />
+      <ActionButton
+        label="Discard pending changes"
+        icon={Undo2Icon}
+        onClick={() => ctx.onRevertPending?.(id)}
+      />
+    </>
+  );
+}
+
 export function SelectCell({
   kind,
   rowKey,
@@ -176,6 +202,7 @@ export function SelectCell({
             <Checkbox
               aria-label={`Select ${label}`}
               checked={isSelected}
+              disabled={ctx.selectionDisabled}
               onClick={(event) => event.stopPropagation()}
               onCheckedChange={() => ctx.onToggleSelect(rowKey)}
             />

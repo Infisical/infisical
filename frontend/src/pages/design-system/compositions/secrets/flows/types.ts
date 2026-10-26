@@ -24,6 +24,7 @@ export type AddFlowProps = {
   onCreate: (created: NewResource[], feedback: FlowFeedback) => void;
   onError: (feedback: FlowFeedback) => void;
   onNotice: (feedback: FlowFeedback) => void;
+  onUploadSecrets?: () => void;
 };
 
 export type AddFlowRegistry = Partial<Record<ResourceKind, ComponentType<AddFlowProps>>>;

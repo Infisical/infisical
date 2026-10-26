@@ -19,13 +19,23 @@ export function CreateSecretRotationFlow({
       environment: rotation.environment,
       path: rotation.path
     };
+    const parameters = rotation.parameters ?? {};
+    const configured = (key: string) => {
+      const field = Object.entries(rotation.secretsMapping ?? {}).find(
+        ([, mapped]) => mapped === key
+      )?.[0];
+      if (!field) return undefined;
+      const value = parameters[field] ?? (field === "username" ? parameters.username1 : undefined);
+      return typeof value === "string" && value ? value : undefined;
+    };
     const secrets: NewResource[] = rotation.managedKeys.map((key) => ({
       ...at,
       kind: "secret",
       name: key,
       value: {
         status: "present",
-        value: `fake-${key.toLowerCase().replace(/_/g, "-")}-${rotation.environment}`
+        value:
+          configured(key) ?? `fake-${key.toLowerCase().replace(/_/g, "-")}-${rotation.environment}`
       },
       comment: "",
       tags: [],
@@ -35,7 +45,7 @@ export function CreateSecretRotationFlow({
     }));
     onCreate([rotation, ...secrets], {
       title: `Created ${rotation.name} locally`,
-      description: `Fake values for ${rotation.managedKeys.join(", ")}. No credentials were issued.`
+      description: `Local values for ${rotation.managedKeys.join(", ")}. No credentials were issued.`
     });
   };
   return (

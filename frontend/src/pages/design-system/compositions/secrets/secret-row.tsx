@@ -69,6 +69,7 @@ import {
   ExpandToggle,
   type KindOverlay,
   NEXT_PHASE,
+  PendingActions,
   type RowContext,
   SelectCell,
   StatusCell
@@ -86,6 +87,8 @@ export type SecretRowHandlers = {
   onCreateIn: (environment: string, key: string) => void;
   onDelete: (secret: Secret) => void;
   onUpdate: SecretUpdate;
+  onCopySecret: (secret: Secret) => void;
+  copySecretBlock?: string;
   onNavigate: (environment: string, path: string, key: string) => void;
   importedFrom: (environment: string, key: string) => string | undefined;
   resources: readonly Resource[];
@@ -271,6 +274,9 @@ function SecretActions({
   let copyBlock: string | undefined;
   if (value === undefined) copyBlock = "Access denied";
   else if (value === "") copyBlock = "No secret value";
+  let { copySecretBlock } = handlers;
+  if (secret.honeyToken) copySecretBlock = "Cannot copy honey token secret";
+  if (secret.managedBy) copySecretBlock = "Cannot copy rotated secret";
   let referencesBlock: string | undefined;
   if (value === undefined) referencesBlock = "Access denied";
   else if (value === "") referencesBlock = "Create secret to view references";
@@ -296,6 +302,7 @@ function SecretActions({
       >
         <PopoverAnchor asChild>
           <ActionBar open={Boolean(popover)}>
+            <PendingActions id={secret.id} ctx={ctx} />
             {!ctx.single && secret.comment && (
               <ActionButton
                 label="View comment"
@@ -448,7 +455,11 @@ function SecretActions({
                   <Icon icon={ForwardIcon} />
                   Share secret
                 </DropdownMenuItem>
-                <DropdownMenuItem disabled description={NEXT_PHASE}>
+                <DropdownMenuItem
+                  disabled={Boolean(copySecretBlock)}
+                  description={copySecretBlock}
+                  onSelect={() => handlers.onCopySecret(secret)}
+                >
                   <Icon icon={CopyPlusIcon} />
                   Copy secret
                 </DropdownMenuItem>
@@ -733,6 +744,7 @@ export function SecretRow({
       <>
         <TableRow
           data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
+          data-pending={ctx.pending?.[first.id]}
           className={styles.row}
         >
           <SelectCell

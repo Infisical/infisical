@@ -30,6 +30,14 @@ export type RowAction =
 
 export type RowActionTone = "ok" | "bad" | "neutral";
 
+export type OverlayHostProps = {
+  onClose: () => void;
+  scope: FlowScope;
+  resources: readonly Resource[];
+  onApply: (update: (current: Resource[]) => Resource[], feedback: FlowFeedback) => void;
+  onToast: (tone: RowActionTone, feedback: FlowFeedback) => void;
+};
+
 export type RowActionHostProps<K extends RowAction["kind"]> = {
   action?: Extract<RowAction, { kind: K }>;
   onClose: () => void;

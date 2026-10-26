@@ -29,6 +29,7 @@ import { getKeyValue } from "@app/helpers/parseEnvVar";
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
 import { NEXT_PHASE } from "../overview-cells";
+import { PasswordGenerator } from "./password-generator";
 import {
   DiscardDialog,
   environmentLabel,
@@ -154,11 +155,14 @@ export function SecretEntryFields({
             </span>
           </Tooltip>
           <span className={styles.push}>
-            <Gate reason={NEXT_PHASE}>
-              <Button type="button" variant="ghost" size="xs" disabled>
-                Generate
-              </Button>
-            </Gate>
+            <PasswordGenerator
+              trigger={
+                <Button type="button" variant="ghost" size="xs">
+                  Generate
+                </Button>
+              }
+              onUsePassword={(value) => onPatch({ value })}
+            />
           </span>
         </div>
         <Textarea
@@ -325,7 +329,8 @@ export function CreateSecretFlow({
   resources,
   initial,
   onCreate,
-  onError
+  onError,
+  onUploadSecrets
 }: AddFlowProps) {
   const { project, path } = scope;
   const [selected, setSelected] = useState(
@@ -582,8 +587,17 @@ export function CreateSecretFlow({
           </SheetBody>
           <SheetFooter>
             <Inline justify="between">
-              <Gate reason={NEXT_PHASE}>
-                <Button type="button" variant="outline" icon="upload" disabled>
+              <Gate reason={onUploadSecrets ? undefined : NEXT_PHASE}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  icon="upload"
+                  disabled={!onUploadSecrets}
+                  onClick={() => {
+                    onOpenChange(false);
+                    onUploadSecrets?.();
+                  }}
+                >
                   Upload
                 </Button>
               </Gate>

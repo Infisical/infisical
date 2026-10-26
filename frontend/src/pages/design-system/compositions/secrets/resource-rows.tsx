@@ -45,6 +45,7 @@ import {
   ActionBar,
   ActionButton,
   ExpandToggle,
+  PendingActions,
   presenceOf,
   type RowContext,
   SelectCell,
@@ -513,6 +514,7 @@ export function FolderRow({
   return (
     <TableRow
       data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
+      data-pending={ctx.pending?.[first.id]}
       className={`${styles.row} ${styles.clickable}`}
       onClick={onOpen}
     >
@@ -524,6 +526,7 @@ export function FolderRow({
           </span>
           {first.description && <InfoHint text={first.description} />}
           <ActionBar>
+            <PendingActions id={first.id} ctx={ctx} />
             <ActionButton
               label="Move folder"
               icon={FolderInputIcon}
