@@ -26,9 +26,10 @@ import {
 import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub,
-  useOrganization,
+  useProject,
   useProjectPermission
 } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { CaStatus, CaType, useListCasByTypeAndProjectId } from "@app/hooks/api";
 import {
   caStatusToNameMap,
@@ -51,7 +52,7 @@ type Props = {
 };
 
 export const CaTable = ({ handlePopUpOpen }: Props) => {
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const { data, isPending } = useListCasByTypeAndProjectId(CaType.INTERNAL);
   const cas = data as TInternalCertificateAuthority[];
@@ -104,11 +105,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
             >
               <TableCell>
                 <RowLink
-                  to="/organizations/$orgId/cert-manager/ca/$caId"
-                  params={{
-                    orgId: currentOrg.id,
-                    caId: ca.id
-                  }}
+                  {...getInstancePinningLink(currentProject.orgId, currentProject, `ca/${ca.id}`)!}
                   disabled={!canReadCa}
                 >
                   {ca.name}

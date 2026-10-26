@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useParams } from "@tanstack/react-router";
 import { InfoIcon, MoreHorizontalIcon, PlusIcon, SlidersHorizontalIcon } from "lucide-react";
 
 import { PageTitle } from "@app/components/PageTitle";
@@ -36,7 +35,8 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useProjectPermission } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -54,7 +54,7 @@ import { PkiApplicationModal } from "./components/PkiApplicationModal";
 const APPLICATIONS_TABLE = "pkiApplicationsTable";
 
 export const ApplicationsPage = () => {
-  const { orgId } = useParams({ strict: false });
+  const { currentProject } = useProject();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(() =>
     getUserTablePreference(APPLICATIONS_TABLE, PreferenceKey.PerPage, 20)
@@ -113,11 +113,11 @@ export const ApplicationsPage = () => {
                 <div className="flex items-center gap-x-2 font-mono">
                   <ResourceIcon className="size-4 shrink-0 text-project" />
                   <RowLink
-                    to="/organizations/$orgId/cert-manager/applications/$applicationName"
-                    params={{
-                      orgId: orgId ?? "",
-                      applicationName: app.name
-                    }}
+                    {...getInstancePinningLink(
+                      currentProject.orgId,
+                      currentProject,
+                      `applications/${app.name}`
+                    )!}
                   >
                     {app.name}
                   </RowLink>

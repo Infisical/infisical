@@ -34,8 +34,9 @@ import {
 import {
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionSub,
-  useOrganization
+  useProject
 } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import {
   TPkiInstallation,
   useDeletePkiInstallation,
@@ -69,7 +70,7 @@ type Props = {
 const PAGE_SIZE = 25;
 
 export const InstallationsTab = ({ projectId }: Props) => {
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const [page, setPage] = useState(1);
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter, 300);
@@ -193,11 +194,11 @@ export const InstallationsTab = ({ projectId }: Props) => {
                           className="size-4 shrink-0"
                         />
                         <RowLink
-                          to="/organizations/$orgId/cert-manager/discovery/installations/$installationId"
-                          params={{
-                            orgId: currentOrg.id,
-                            installationId: installation.id
-                          }}
+                          {...getInstancePinningLink(
+                            currentProject.orgId,
+                            currentProject,
+                            `discovery/installations/${installation.id}`
+                          )!}
                         >
                           {installation.name || getEndpoint(installation)}
                         </RowLink>

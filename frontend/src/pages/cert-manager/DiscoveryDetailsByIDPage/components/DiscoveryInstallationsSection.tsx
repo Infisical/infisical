@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import {
@@ -22,6 +21,8 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { useProject } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useListPkiInstallations } from "@app/hooks/api";
 import { getEndpoint, getGatewayLabel } from "@app/pages/cert-manager/pki-discovery-utils";
 
@@ -37,9 +38,7 @@ const SCAN_IN_FLIGHT_POLL_MS = 5000;
 export const DiscoveryInstallationsSection = ({ discoveryId, projectId, isScanRunning }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
-  const { orgId } = useParams({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/discovery/$discoveryId"
-  });
+  const { currentProject } = useProject();
 
   const { data, isPending } = useListPkiInstallations(
     {
@@ -90,11 +89,11 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId, isScanRu
                   <TableRow key={installation.id} linked>
                     <TableCell>
                       <RowLink
-                        to="/organizations/$orgId/cert-manager/discovery/installations/$installationId"
-                        params={{
-                          orgId,
-                          installationId: installation.id
-                        }}
+                        {...getInstancePinningLink(
+                          currentProject.orgId,
+                          currentProject,
+                          `discovery/installations/${installation.id}`
+                        )!}
                       >
                         {installation.name || getEndpoint(installation)}
                       </RowLink>

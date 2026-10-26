@@ -51,6 +51,7 @@ import {
   ProjectPermissionHsmConnectorActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useTimedReset } from "@app/hooks";
 import { useListGatewayPools } from "@app/hooks/api/gateway-pools";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
@@ -221,8 +222,11 @@ export const HsmConnectorsTab = () => {
                     <TableRow key={c.id} className="hover:bg-surface-hover" linked={canOpenDetail}>
                       <TableCell>
                         <RowLink
-                          to="/organizations/$orgId/cert-manager/hsm-connectors/$connectorId"
-                          params={{ orgId: orgId ?? "", connectorId: c.id }}
+                          {...getInstancePinningLink(
+                            currentProject.orgId,
+                            currentProject,
+                            `hsm-connectors/${c.id}`
+                          )!}
                           disabled={!canOpenDetail}
                         >
                           {c.name}

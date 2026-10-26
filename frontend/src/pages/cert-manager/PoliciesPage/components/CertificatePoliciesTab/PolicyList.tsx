@@ -33,11 +33,12 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useProject } from "@app/context";
 import {
   ProjectPermissionCertificatePolicyActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import { TCertificatePolicy, useListCertificatePolicies } from "@app/hooks/api/certificatePolicies";
 
@@ -48,7 +49,6 @@ interface Props {
 
 export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
   const { currentProject } = useProject();
-  const { currentOrg } = useOrganization();
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
   const { data, isLoading } = useListCertificatePolicies({
@@ -117,11 +117,11 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
             <TableCell>
               <div className="flex items-center gap-2">
                 <RowLink
-                  to="/organizations/$orgId/cert-manager/certificate-policies/$policyId"
-                  params={{
-                    orgId: currentOrg.id,
-                    policyId: policy.id
-                  }}
+                  {...getInstancePinningLink(
+                    currentProject.orgId,
+                    currentProject,
+                    `certificate-policies/${policy.id}`
+                  )!}
                   className="hover:underline"
                 >
                   {policy.name}

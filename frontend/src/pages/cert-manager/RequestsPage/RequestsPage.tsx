@@ -38,6 +38,7 @@ import {
   TabsTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useDebounce } from "@app/hooks";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
@@ -381,15 +382,17 @@ export const RequestsPage = () => {
                               <TableRow key={r.id} className="[&>td]:py-3" linked>
                                 <TableCell isTruncatable className="font-mono">
                                   <RowLink
-                                    to="/organizations/$orgId/cert-manager/approvals/$approvalRequestId"
-                                    params={{
-                                      orgId: orgId ?? "",
-                                      approvalRequestId: r.id
-                                    }}
-                                    search={{
-                                      policyType: ApprovalPolicyType.CertRequest,
-                                      from: "root-requests"
-                                    }}
+                                    {...getInstancePinningLink(
+                                      currentProject.orgId,
+                                      currentProject,
+                                      `approvals/${r.id}`
+                                    )!}
+                                    search={
+                                      {
+                                        policyType: ApprovalPolicyType.CertRequest,
+                                        from: "root-requests"
+                                      } as never
+                                    }
                                   >
                                     {cn}
                                   </RowLink>
@@ -398,11 +401,11 @@ export const RequestsPage = () => {
                                 <TableCell className="font-mono text-xs">
                                   {app ? (
                                     <Link
-                                      to="/organizations/$orgId/cert-manager/applications/$applicationName"
-                                      params={{
-                                        orgId: orgId ?? "",
-                                        applicationName: app.name
-                                      }}
+                                      {...getInstancePinningLink(
+                                        currentProject.orgId,
+                                        currentProject,
+                                        `applications/${app.name}`
+                                      )!}
                                       className="text-foreground hover:text-project"
                                     >
                                       {app.name}
@@ -524,15 +527,17 @@ export const RequestsPage = () => {
                               <TableRow key={r.id} className="[&>td]:py-3" linked>
                                 <TableCell isTruncatable className="font-mono">
                                   <RowLink
-                                    to="/organizations/$orgId/cert-manager/approvals/$approvalRequestId"
-                                    params={{
-                                      orgId: orgId ?? "",
-                                      approvalRequestId: r.id
-                                    }}
-                                    search={{
-                                      policyType: ApprovalPolicyType.CertCodeSigning,
-                                      from: "root-requests"
-                                    }}
+                                    {...getInstancePinningLink(
+                                      currentProject.orgId,
+                                      currentProject,
+                                      `approvals/${r.id}`
+                                    )!}
+                                    search={
+                                      {
+                                        policyType: ApprovalPolicyType.CertCodeSigning,
+                                        from: "root-requests"
+                                      } as never
+                                    }
                                   >
                                     {signerName}
                                   </RowLink>

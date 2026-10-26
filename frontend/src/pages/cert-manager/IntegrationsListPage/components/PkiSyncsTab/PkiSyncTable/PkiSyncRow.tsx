@@ -35,9 +35,9 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization } from "@app/context";
+import { useProject } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import {
   PkiSyncStatus,
@@ -81,7 +81,7 @@ export const PkiSyncRow = ({
 
   const { syncOption } = usePkiSyncOption(destination);
 
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
   const {
@@ -129,12 +129,12 @@ export const PkiSyncRow = ({
         <div>
           <div className="flex w-full items-center">
             <RowLink
-              to={ROUTE_PATHS.CertManager.PkiSyncDetailsByIDPage.path}
-              params={{
-                syncId: id,
-                orgId: currentOrg.id
-              }}
-              search={applicationName ? { applicationName } : undefined}
+              {...getInstancePinningLink(
+                currentProject.orgId,
+                currentProject,
+                `integrations/${id}`
+              )!}
+              search={(applicationName ? { applicationName } : undefined) as never}
               disabled={!canReadSync}
             >
               {name}

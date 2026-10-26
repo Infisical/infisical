@@ -36,9 +36,10 @@ import {
 import {
   ProjectPermissionCodeSigningActions,
   ProjectPermissionSub,
-  useOrganization,
+  useProject,
   useSubscription
 } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import {
   getSignerStatusBadgeVariant,
   SIGNER_TABLE_PAGE_SIZE,
@@ -56,7 +57,7 @@ type Props = {
 };
 
 export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const { subscription } = useSubscription();
   const { openUpgradeGate, upgradeGate } = useUpgradeGate();
 
@@ -140,11 +141,11 @@ export const SignersTable = ({ projectId, onCreateSigner }: Props) => {
                   <TableRow key={signer.id} className="hover:bg-surface-hover" linked>
                     <TableCell>
                       <RowLink
-                        to="/organizations/$orgId/cert-manager/code-signing/$signerId"
-                        params={{
-                          orgId: currentOrg.id,
-                          signerId: signer.id
-                        }}
+                        {...getInstancePinningLink(
+                          currentProject.orgId,
+                          currentProject,
+                          `code-signing/${signer.id}`
+                        )!}
                       >
                         {signer.name}
                       </RowLink>

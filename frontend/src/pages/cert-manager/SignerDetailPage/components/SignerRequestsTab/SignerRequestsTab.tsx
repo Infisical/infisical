@@ -36,7 +36,8 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useProject } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
   SIGNER_TABLE_PAGE_SIZE,
@@ -70,7 +71,7 @@ type Props = {
 };
 
 export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: Props) => {
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const [statusFilters, setStatusFilters] = useState<Set<FilterStatus>>(new Set());
   const [isRequestOpen, setIsRequestOpen] = useState(false);
   const [isPreApproveOpen, setIsPreApproveOpen] = useState(false);
@@ -259,15 +260,17 @@ export const SignerRequestsTab = ({ signerId, canPreApprove, canRequestSign }: P
                           </div>
                           <div className="min-w-0 flex-1">
                             <RowLink
-                              to="/organizations/$orgId/cert-manager/approvals/$approvalRequestId"
-                              params={{
-                                orgId: currentOrg.id,
-                                approvalRequestId: req.id
-                              }}
-                              search={{
-                                policyType: ApprovalPolicyType.CertCodeSigning,
-                                signerId
-                              }}
+                              {...getInstancePinningLink(
+                                currentProject.orgId,
+                                currentProject,
+                                `approvals/${req.id}`
+                              )!}
+                              search={
+                                {
+                                  policyType: ApprovalPolicyType.CertCodeSigning,
+                                  signerId
+                                } as never
+                              }
                               className="text-foreground"
                             >
                               {member.label}

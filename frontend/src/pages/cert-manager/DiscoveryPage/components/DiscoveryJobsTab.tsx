@@ -41,10 +41,11 @@ import {
 import {
   ProjectPermissionPkiDiscoveryActions,
   ProjectPermissionSub,
-  useOrganization,
+  useProject,
   useSubscription
 } from "@app/context";
 import { PKI_DISCOVERY_TYPE_MAP } from "@app/helpers/pkiDiscovery";
+import { getInstancePinningLink } from "@app/helpers/project";
 import {
   PkiDiscoveryScanStatus,
   PkiDiscoveryType,
@@ -87,7 +88,7 @@ const getTargetItems = (discovery: TPkiDiscovery) => {
 };
 
 export const DiscoveryJobsTab = ({ projectId }: Props) => {
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const [page, setPage] = useState(1);
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter, 300);
@@ -215,11 +216,11 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
                   <TableRow key={discovery.id} linked>
                     <TableCell>
                       <RowLink
-                        to="/organizations/$orgId/cert-manager/discovery/$discoveryId"
-                        params={{
-                          orgId: currentOrg.id,
-                          discoveryId: discovery.id
-                        }}
+                        {...getInstancePinningLink(
+                          currentProject.orgId,
+                          currentProject,
+                          `discovery/${discovery.id}`
+                        )!}
                       >
                         {discovery.name}
                       </RowLink>

@@ -26,6 +26,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { CaStatus } from "@app/hooks/api/ca/enums";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { useListHsmConnectorLinkedResources } from "@app/hooks/api/hsmConnectors";
@@ -135,9 +136,12 @@ export const HsmConnectorLinkedResourcesSection = ({ connectorId }: Props) => {
                   <TableRow key={c.id} className="hover:bg-surface-hover" linked={canOpenCert}>
                     <TableCell className="font-medium">
                       <RowLink
-                        to="/organizations/$orgId/cert-manager/certificates/$certificateId"
-                        params={{ orgId: currentOrg.id, certificateId: c.id }}
-                        search={{ fromHsmConnector: connectorId }}
+                        {...getInstancePinningLink(
+                          currentProject.orgId,
+                          currentProject,
+                          `certificates/${c.id}`
+                        )!}
+                        search={{ fromHsmConnector: connectorId } as never}
                         disabled={!canOpenCert}
                       >
                         {c.commonName}

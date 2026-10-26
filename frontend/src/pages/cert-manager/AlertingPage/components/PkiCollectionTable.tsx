@@ -20,12 +20,8 @@ import {
   TableRow,
   TableSkeletonRows
 } from "@app/components/v3";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useOrganization,
-  useProject
-} from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useListWorkspacePkiCollections } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -37,7 +33,6 @@ type Props = {
 };
 
 export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
-  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
 
@@ -73,11 +68,11 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
                 <TableRow key={`pki-collection-${pkiCollection.id}`} linked>
                   <TableCell>
                     <RowLink
-                      to="/organizations/$orgId/cert-manager/pki-collections/$collectionId"
-                      params={{
-                        orgId: currentOrg.id,
-                        collectionId: pkiCollection.id
-                      }}
+                      {...getInstancePinningLink(
+                        currentProject.orgId,
+                        currentProject,
+                        `pki-collections/${pkiCollection.id}`
+                      )!}
                     >
                       {pkiCollection.name}
                     </RowLink>

@@ -44,7 +44,8 @@ import {
   TableRow,
   TableSkeletonRows
 } from "@app/components/v3";
-import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
+import { useProject, useProjectPermission, useUser } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { getUserTablePreference, PreferenceKey } from "@app/helpers/userTablePreferences";
 import { usePagination } from "@app/hooks";
 import {
@@ -101,7 +102,6 @@ const checkIfUserNeedsToApprove = (
 
 export const RequestsTab = () => {
   const { currentProject } = useProject();
-  const { currentOrg } = useOrganization();
   const { memberships } = useProjectPermission();
   const { user } = useUser();
   const [search, setSearch] = useState("");
@@ -242,14 +242,16 @@ export const RequestsTab = () => {
                       <TableCell>
                         <div>
                           <RowLink
-                            to="/organizations/$orgId/cert-manager/approvals/$approvalRequestId"
-                            params={{
-                              orgId: currentOrg.id,
-                              approvalRequestId: request.id
-                            }}
-                            search={{
-                              policyType: ApprovalPolicyType.CertRequest
-                            }}
+                            {...getInstancePinningLink(
+                              currentProject.orgId,
+                              currentProject,
+                              `approvals/${request.id}`
+                            )!}
+                            search={
+                              {
+                                policyType: ApprovalPolicyType.CertRequest
+                              } as never
+                            }
                             className="text-sm font-medium text-foreground"
                           >
                             {request.requesterName || "Unknown"}

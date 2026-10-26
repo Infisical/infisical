@@ -24,9 +24,9 @@ import {
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
-  useOrganization,
   useProject
 } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useListWorkspacePkiSubscribers } from "@app/hooks/api";
 import {
   getPkiSubscriberStatusBadgeVariant,
@@ -43,7 +43,6 @@ type Props = {
 };
 
 export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
-  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { data, isPending } = useListWorkspacePkiSubscribers(currentProject?.id || "");
   if (!isPending && !data?.length) {
@@ -77,11 +76,11 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
                 <TableRow key={`pki-subscriber-${subscriber.id}`} linked>
                   <TableCell>
                     <RowLink
-                      to="/organizations/$orgId/cert-manager/subscribers/$subscriberName"
-                      params={{
-                        orgId: currentOrg.id,
-                        subscriberName: subscriber.name
-                      }}
+                      {...getInstancePinningLink(
+                        currentProject.orgId,
+                        currentProject,
+                        `subscribers/${subscriber.name}`
+                      )!}
                     >
                       {subscriber.name}
                     </RowLink>

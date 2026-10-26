@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import {
@@ -19,6 +18,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import { useProject } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useListPkiInstallations } from "@app/hooks/api";
 import { getEndpoint, getGatewayLabel } from "@app/pages/cert-manager/pki-discovery-utils";
 
@@ -31,9 +31,6 @@ const PER_PAGE_INIT = 10;
 export const CertificateInstallationsSection = ({ certificateId }: Props) => {
   const { currentProject } = useProject();
   const projectId = currentProject.id;
-  const { orgId } = useParams({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/certificates/$certificateId"
-  });
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
 
@@ -89,11 +86,11 @@ export const CertificateInstallationsSection = ({ certificateId }: Props) => {
               <TableRow key={installation.id} linked>
                 <TableCell>
                   <RowLink
-                    to="/organizations/$orgId/cert-manager/discovery/installations/$installationId"
-                    params={{
-                      orgId,
-                      installationId: installation.id
-                    }}
+                    {...getInstancePinningLink(
+                      currentProject.orgId,
+                      currentProject,
+                      `discovery/installations/${installation.id}`
+                    )!}
                   >
                     {installation.name || getEndpoint(installation)}
                   </RowLink>
