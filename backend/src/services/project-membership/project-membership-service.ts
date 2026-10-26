@@ -341,6 +341,16 @@ export const projectMembershipServiceFactory = ({
       }
     });
 
+    const deactivatedUserIds = new Set(orgMembers.filter((el) => !el.isActive).map((el) => el.actorUserId));
+    if (deactivatedUserIds.size) {
+      const deactivatedUsers = orgMembershipUsernames.filter((el) => deactivatedUserIds.has(el.id));
+      throw new BadRequestError({
+        message: `${deactivatedUsers.map((el) => `'${el.email || el.username}'`).join(", ")} ${
+          deactivatedUsers.length === 1 ? "is" : "are"
+        } deactivated in this organization. Reactivate them before adding them to this project.`
+      });
+    }
+
     const memberRolePermissions = await permissionService.getProjectPermissionByRoles(
       [ProjectMembershipRole.Member],
       projectId

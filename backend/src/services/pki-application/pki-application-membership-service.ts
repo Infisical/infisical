@@ -174,6 +174,11 @@ export const pkiApplicationMembershipServiceFactory = ({
         message: "The actor is not a member of this organization. Invite them to the organization first."
       });
     }
+    if (!orgMembership[0].isActive) {
+      throw new BadRequestError({
+        message: "The actor is deactivated in this organization. Reactivate them before granting them access."
+      });
+    }
     return orgMembership[0];
   };
 

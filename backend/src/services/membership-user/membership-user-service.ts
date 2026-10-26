@@ -64,7 +64,12 @@ type TMembershipUserServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
   orgDAL: Pick<
     TOrgDALFactory,
-    "findById" | "transaction" | "find" | "findActorsWithActiveOrgAccess" | "lockActorsForOrgAccess"
+    | "findById"
+    | "transaction"
+    | "find"
+    | "findActorsWithActiveOrgAccess"
+    | "findActorsWithOrgAccess"
+    | "lockActorsForOrgAccess"
   >;
   roleDAL: Pick<TRoleDALFactory, "find">;
   userDAL: TUserDALFactory;

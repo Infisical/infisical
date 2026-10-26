@@ -218,6 +218,28 @@ describe("Org access reconcile", () => {
     });
   });
 
+  test("a deactivated member is refused for a project by name, not as a non-member", async () => {
+    const { userId, username } = await createUser("reconcile-deactivated");
+    createdUserIds.push(userId);
+    await addUserMembership({ userId, orgId: subOrgId, role: OrgMembershipRole.Member });
+    await testDb(TableName.Membership)
+      .where({ scope: AccessScope.Organization, scopeOrgId: subOrgId, actorUserId: userId })
+      .update({ isActive: false });
+
+    const available = await listAvailableProjectUsers({ projectId: subOrgProjectId, authToken: subOrgToken });
+    expect(available.map((user) => user.id)).not.toContain(userId);
+
+    await inviteUsersToProject({ projectId: subOrgProjectId, usernames: [username], authToken: subOrgToken }).expect(
+      (res) => {
+        expect(res.statusCode).toBe(400);
+        expect(res.json().message).toBe(
+          `'${username}' is deactivated in this organization. Reactivate them before adding them to this project.`
+        );
+      }
+    );
+    expect(await projectRows(subOrgProjectId, { actorUserId: userId })).toHaveLength(0);
+  });
+
   test("a user with no path into the sub-org is not offered for its project", async () => {
     const { userId } = await createUser("assign-outsider");
     createdUserIds.push(userId);

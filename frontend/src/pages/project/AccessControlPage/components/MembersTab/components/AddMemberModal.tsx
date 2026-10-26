@@ -41,6 +41,7 @@ import { useScopeVariant } from "@app/hooks";
 import {
   useAddUserToWsNonE2EE,
   useGetAvailableProjectUsers,
+  useGetOrgUsers,
   useGetProjectRoles,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
@@ -117,6 +118,9 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     OrgPermissionMemberActions.Create,
     OrgPermissionSubjects.Member
   );
+  const { data: orgUsers } = useGetOrgUsers(orgId, {
+    enabled: orgPermission.can(OrgPermissionMemberActions.Read, OrgPermissionSubjects.Member)
+  });
   const isReferenceDataLoading = isMembersLoading || isAvailableUsersLoading || isRolesLoading;
   const hasReferenceDataError = isMembersError || isAvailableUsersError || isRolesError;
 
@@ -209,11 +213,14 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
     const knownUsernames = new Set([
       ...wsUserUsernames,
-      ...(availableUsers || []).flatMap((user) => [user.username, user.email].filter(Boolean))
+      ...(availableUsers || []).flatMap((user) => [user.username, user.email].filter(Boolean)),
+      ...(orgUsers || []).flatMap(({ user, inviteEmail }) =>
+        [user?.username, user?.email, inviteEmail].filter(Boolean)
+      )
     ]);
 
     return { list, requesterStatus, knownUsernames };
-  }, [availableUsers, members]);
+  }, [availableUsers, members, orgUsers]);
 
   const selectedOrgMemberships = watch("orgMemberships");
   const selectedRoleSlugs = watch("projectRoleSlugs");

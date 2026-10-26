@@ -37,7 +37,7 @@ import { TMembershipUserScopeFactory } from "../membership-user-types";
 
 type TProjectMembershipUserScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess" | "findActorsWithOrgAccess">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "getUserById">;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -91,9 +91,24 @@ export const newProjectMembershipUserFactory = ({
       userIds: newUsers.map((el) => el.id),
       identityIds: []
     });
-    const missingUsers = newUsers.filter((el) => !withOrgAccess.userIds.has(el.id)).map((el) => el.email);
-    if (missingUsers.length) {
-      throw new BadRequestError({ message: `Users ${missingUsers.join(",")} not part of organization` });
+    const withoutActiveAccess = newUsers.filter((el) => !withOrgAccess.userIds.has(el.id));
+    if (withoutActiveAccess.length) {
+      const withAnyAccess = await orgDAL.findActorsWithOrgAccess({
+        orgId: dto.permission.orgId,
+        userIds: withoutActiveAccess.map((el) => el.id),
+        identityIds: []
+      });
+      const deactivatedUsers = withoutActiveAccess.filter((el) => withAnyAccess.userIds.has(el.id));
+      if (deactivatedUsers.length) {
+        throw new BadRequestError({
+          message: `${deactivatedUsers.map((el) => `'${el.email}'`).join(", ")} ${
+            deactivatedUsers.length === 1 ? "is" : "are"
+          } deactivated in this organization. Reactivate them before adding them to this project.`
+        });
+      }
+      throw new BadRequestError({
+        message: `Users ${withoutActiveAccess.map((el) => el.email).join(",")} not part of organization`
+      });
     }
 
     const project = await requestMemoize(requestMemoKeys.projectFindById(scope.value), () =>
