@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import { subject } from "@casl/ability";
-import { Link } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   FilterIcon,
@@ -48,6 +47,7 @@ import {
   OrgIcon,
   Pagination,
   ProjectIcon,
+  RowLink,
   Skeleton,
   Spinner,
   SubOrgIcon,
@@ -382,9 +382,9 @@ export const IdentityTab = withProjectPermission(
                             roles
                           } = identityMember;
                           return (
-                            <TableRow className="group relative cursor-pointer" key={`st-v3-${id}`}>
+                            <TableRow linked key={`st-v3-${id}`}>
                               <TableCell isTruncatable>
-                                <Link
+                                <RowLink
                                   {...(getInstancePinningLink(
                                     currentOrg.id,
                                     currentProject,
@@ -398,10 +398,9 @@ export const IdentityTab = withProjectPermission(
                                         identityId: id
                                       }
                                     } as const))}
-                                  className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                                 >
                                   {name}
-                                </Link>
+                                </RowLink>
                               </TableCell>
                               <TableCell>
                                 <IdentityRoleBadges roles={roles} />
@@ -436,7 +435,7 @@ export const IdentityTab = withProjectPermission(
                                   )}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="relative z-10">
+                              <TableCell data-row-interactive>
                                 <div className="flex items-center justify-end gap-2">
                                   {(activeLockoutAuthMethods?.length ?? 0) > 0 && (
                                     <Tooltip>

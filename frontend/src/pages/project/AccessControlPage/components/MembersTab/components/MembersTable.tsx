@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 import { subject } from "@casl/ability";
-import { Link } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CircleAlertIcon,
@@ -40,6 +39,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -382,15 +382,12 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     const detailKey = isCertManager ? u.id : membershipId;
 
                     return (
-                      <TableRow
-                        key={`membership-${membershipId}`}
-                        className="group relative cursor-pointer"
-                      >
+                      <TableRow key={`membership-${membershipId}`} linked>
                         <TableCell isTruncatable>
                           {name ?? <span className="text-muted">&mdash;</span>}
                         </TableCell>
                         <TableCell isTruncatable>
-                          <Link
+                          <RowLink
                             {...(getInstancePinningLink(
                               currentOrg.id,
                               currentProject,
@@ -405,10 +402,9 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                                 }
                               } as const))}
                             aria-label={email ? undefined : (name ?? u.username)}
-                            className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                           >
                             {email}
-                          </Link>
+                          </RowLink>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">
@@ -431,7 +427,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                                       </span>
                                       {isTemporary && (
                                         <Tooltip>
-                                          <TooltipTrigger className="relative z-10">
+                                          <TooltipTrigger>
                                             {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
                                           </TooltipTrigger>
                                           <TooltipContent>
@@ -446,7 +442,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                             {roles.length > MAX_ROLES_TO_BE_SHOWN_IN_TABLE && (
                               <Popover>
                                 <Tooltip>
-                                  <TooltipTrigger className="relative z-10 flex h-4 items-center">
+                                  <TooltipTrigger className="flex h-4 items-center">
                                     <PopoverTrigger asChild>
                                       <Badge variant="neutral" asChild>
                                         <button type="button" onClick={(e) => e.stopPropagation()}>
@@ -505,7 +501,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell variant="action" className="relative z-10">
+                        <TableCell variant="action">
                           <DropdownMenu>
                             <Tooltip>
                               <TooltipTrigger>

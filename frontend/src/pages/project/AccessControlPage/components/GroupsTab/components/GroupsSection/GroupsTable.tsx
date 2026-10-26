@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { ChevronDownIcon, MoreHorizontalIcon, SearchIcon, UserRoundXIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -19,6 +18,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -202,9 +202,9 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                     const isLinkedGroup =
                       groupOrgId != null && currentOrg != null && groupOrgId !== currentOrg.id;
                     return (
-                      <TableRow className="group relative cursor-pointer" key={`st-v3-${id}`}>
+                      <TableRow linked key={`st-v3-${id}`}>
                         <TableCell isTruncatable>
-                          <Link
+                          <RowLink
                             {...(getInstancePinningLink(
                               currentOrg.id,
                               currentProject,
@@ -218,10 +218,9 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                                   groupId: id
                                 }
                               } as const))}
-                            className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                           >
                             {name}
-                          </Link>
+                          </RowLink>
                         </TableCell>
                         <TableCell>
                           <ProjectPermissionCan
@@ -239,7 +238,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                           </ProjectPermissionCan>
                         </TableCell>
                         <TableCell>{format(new Date(createdAt), "MMM d, yyyy")}</TableCell>
-                        <TableCell className="relative z-10">
+                        <TableCell data-row-interactive>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <IconButton

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -42,6 +42,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -321,19 +322,18 @@ export const OrgRoleTable = () => {
                         ? id === currentOrg?.defaultMembershipRole
                         : slug === currentOrg?.defaultMembershipRole;
                       return (
-                        <TableRow key={`role-list-${id}`} className="relative cursor-pointer">
+                        <TableRow key={`role-list-${id}`} linked>
                           <TableCell isTruncatable>
                             <div className="flex gap-x-1.5">
-                              <Link
+                              <RowLink
                                 to="/organizations/$orgId/roles/$roleId"
                                 params={{ roleId: id, orgId }}
-                                className="truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                               >
                                 {name}
-                              </Link>
+                              </RowLink>
                               {isDefaultOrgRole && (
                                 <Tooltip>
-                                  <TooltipTrigger asChild className="relative z-10">
+                                  <TooltipTrigger asChild data-row-interactive>
                                     <Badge variant="info">Default</Badge>
                                   </TooltipTrigger>
                                   <TooltipContent>
@@ -360,7 +360,7 @@ export const OrgRoleTable = () => {
                               )}
                             </Badge>
                           </TableCell>
-                          <TableCell variant="action" className="relative z-10">
+                          <TableCell variant="action">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <IconButton

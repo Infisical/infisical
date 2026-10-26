@@ -465,9 +465,7 @@ export const GroupRoles = ({
               </span>
               {isTemporary && (
                 <Tooltip>
-                  <TooltipTrigger className="relative z-10">
-                    {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
-                  </TooltipTrigger>
+                  <TooltipTrigger>{isExpired ? <ClockAlertIcon /> : <ClockIcon />}</TooltipTrigger>
                   <TooltipContent>
                     {isExpired ? "Expired access" : "Temporary access"}
                   </TooltipContent>
@@ -479,7 +477,7 @@ export const GroupRoles = ({
       {roles.length > MAX_ROLES_TO_BE_SHOWN_IN_TABLE && (
         <Popover>
           <Tooltip>
-            <TooltipTrigger className="relative z-10 flex h-4 items-center">
+            <TooltipTrigger className="flex h-4 items-center">
               <PopoverTrigger asChild>
                 <Badge variant="neutral" asChild>
                   <button type="button" onClick={(e) => e.stopPropagation()}>
@@ -527,7 +525,6 @@ export const GroupRoles = ({
               variant="ghost"
               size="xs"
               aria-label={`Edit roles for ${groupName}`}
-              className="relative z-10"
               onClick={(e) => e.stopPropagation()}
             >
               <EditIcon />

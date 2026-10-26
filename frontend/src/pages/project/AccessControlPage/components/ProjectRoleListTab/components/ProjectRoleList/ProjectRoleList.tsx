@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -39,6 +39,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -342,14 +343,9 @@ export const ProjectRoleList = () => {
                       } as const);
 
                     return (
-                      <TableRow key={`role-list-${id}`} className="relative cursor-pointer">
+                      <TableRow key={`role-list-${id}`} linked>
                         <TableCell isTruncatable>
-                          <Link
-                            {...roleLink}
-                            className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
-                          >
-                            {name}
-                          </Link>
+                          <RowLink {...roleLink}>{name}</RowLink>
                         </TableCell>
                         <TableCell isTruncatable>{slug}</TableCell>
                         <TableCell>
@@ -367,7 +363,7 @@ export const ProjectRoleList = () => {
                             )}
                           </Badge>
                         </TableCell>
-                        <TableCell variant="action" className="relative z-10">
+                        <TableCell variant="action">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <IconButton
