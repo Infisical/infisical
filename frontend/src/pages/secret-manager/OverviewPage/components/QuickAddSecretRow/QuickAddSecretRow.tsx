@@ -142,11 +142,14 @@ export const QuickAddSecretRow = ({
       setKey("");
       setValue("");
       setComment("");
+      const { activeElement } = document;
+      if (activeElement instanceof HTMLElement && rowRef.current?.contains(activeElement)) {
+        activeElement.blur();
+      }
+      setIsActive(false);
     } finally {
       setIsSubmitting(false);
     }
-
-    if (refocus) setTimeout(() => keyInputRef.current?.focus(), 0);
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
