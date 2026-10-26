@@ -21,7 +21,6 @@ import {
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
 import {
-  AgentVaultSetupStep,
   useAgentVaultSetupProgress,
   useOpenAgentVaultSetupStep
 } from "@app/components/agent-vault/SetupChecklist";
@@ -180,11 +179,15 @@ export const AgentVaultSessionsPage = () => {
   // sessions, so they see it while they have none of their own.
   const isSampleShown =
     !isFiltered && (!isAdmin || (setupProgress.isSessionCountLoaded && !setupProgress.hasSession));
-  const startSetup = () => {
-    setupProgress.restore();
-    setIsSampleOpen(false);
-    openSetupStep(setupProgress.nextStep ?? AgentVaultSetupStep.Session);
-  };
+  // Offered only once the next step is known; until then there's nowhere to send the admin.
+  const { nextStep } = setupProgress;
+  const startSetup = nextStep
+    ? () => {
+        setupProgress.restore();
+        setIsSampleOpen(false);
+        openSetupStep(nextStep);
+      }
+    : undefined;
 
   let emptyTitle: string;
   let emptyDescription: string;
