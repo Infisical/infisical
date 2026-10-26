@@ -358,6 +358,7 @@ export const GatewayTab = withPermission(
                                     getKey={(pool) => pool.id}
                                     getLabel={(pool) => pool.name}
                                     appearance="text"
+                                    className="pointer-events-none [&_[data-slot=tooltip-trigger]]:pointer-events-auto [&_button]:pointer-events-auto"
                                     onItemClick={(pool) => setSelectedPoolId(pool.id)}
                                     maxBadgeWidth={144}
                                   />
