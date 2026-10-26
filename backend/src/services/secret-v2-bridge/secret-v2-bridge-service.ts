@@ -2343,8 +2343,7 @@ export const secretV2BridgeServiceFactory = ({
         inputSecrets: inputSecretsWithBlindIndex,
         folderId,
         eventEmitter,
-        // The caller's folder carries no path, so use the one it was resolved from.
-        eventScope: { projectId, environment, secretPath },
+        eventScope: { projectId, environment, secretPath: `/${secretPath.split("/").filter(Boolean).join("/")}` },
         commitChanges,
         orgId: actorOrgId,
         secretDAL,

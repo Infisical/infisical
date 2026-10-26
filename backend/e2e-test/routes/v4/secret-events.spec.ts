@@ -108,6 +108,29 @@ describe("Secret, folder and import events", () => {
     expect(new Set(events.map(({ payload }) => payload.secretId)).size).toBe(3);
   });
 
+  // The batch route accepts a path without a leading slash and resolves it to the same folder.
+  test.each(["app", "app/", "/app//"])(
+    "a bulk create at '%s' reports the folder's canonical path",
+    async (secretPath) => {
+      await createFolder({ workspaceId: projectId, environmentSlug: "dev", secretPath: "/", name: "app", authToken });
+
+      const res = await testServer.inject({
+        method: "POST",
+        url: "/api/v4/secrets/batch",
+        headers: { authorization: `Bearer ${authToken}` },
+        body: {
+          projectId,
+          environment: "dev",
+          secretPath,
+          secrets: [{ secretKey: "UNNORMALIZED", secretValue: "value" }]
+        }
+      });
+      expect(res.statusCode).toBe(200);
+
+      expect(changesOf(await recordedEvents(projectId, SecretModifiedEventV1.type))).toEqual(["created dev:/app"]);
+    }
+  );
+
   // A move recreates the secret under a new id, so the original is deleted and the copy created.
   test("a move emits deleted at the source and created at the destination", async () => {
     await createFolder({ workspaceId: projectId, environmentSlug: "dev", secretPath: "/", name: "target", authToken });
