@@ -92,9 +92,9 @@ export const GroupAccessPopover = ({
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
-          size="xs"
+          size="sm"
           aria-label="Show groups granting access"
-          className="-mx-2 gap-1.5 text-sm"
+          className="-mx-2.5"
           onClick={(e) => e.stopPropagation()}
         >
           <UsersIcon className="text-muted" />
