@@ -415,15 +415,10 @@ export const Navbar = () => {
             >
               <NavbarSwitcher open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
                 <div className="group flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden text-sm text-foreground transition-all duration-100">
-                  <button
+                  <Link
+                    to="/organizations/$orgId/projects"
+                    params={{ orgId: currentOrg.id }}
                     className="flex cursor-pointer items-center gap-x-2 truncate whitespace-nowrap"
-                    type="button"
-                    onClick={() => {
-                      navigate({
-                        to: "/organizations/$orgId/projects",
-                        params: { orgId: currentOrg.id }
-                      });
-                    }}
                   >
                     {isSubOrganization ? (
                       <SubOrgIcon
@@ -452,7 +447,7 @@ export const Navbar = () => {
                         {isSubOrganization ? "Sub" : "Org"}
                       </Badge>
                     )}
-                  </button>
+                  </Link>
                   {subscription.cardDeclined && !isProjectScope && !isSubOrganization && (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -517,20 +512,20 @@ export const Navbar = () => {
                                       <Tooltip>
                                         <TooltipTrigger asChild>
                                           <IconButton
+                                            asChild
                                             variant="ghost-muted"
                                             size="xs"
-                                            aria-label="Sub-Organization Settings"
                                             className="-mr-1 size-5"
-                                            onClick={() => {
-                                              setIsOrgSelectOpen(false);
-                                              navigate({
-                                                to: "/organizations/$orgId/settings",
-                                                params: { orgId: rootOrg.id },
-                                                search: { selectedTab: "tab-sub-organizations" }
-                                              });
-                                            }}
                                           >
-                                            <Settings className="size-3.5!" />
+                                            <Link
+                                              to="/organizations/$orgId/settings"
+                                              params={{ orgId: rootOrg.id }}
+                                              search={{ selectedTab: "tab-sub-organizations" }}
+                                              aria-label="Sub-Organization Settings"
+                                              onClick={() => setIsOrgSelectOpen(false)}
+                                            >
+                                              <Settings className="size-3.5!" />
+                                            </Link>
                                           </IconButton>
                                         </TooltipTrigger>
                                         <TooltipContent>Sub-Organization Settings</TooltipContent>
