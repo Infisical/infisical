@@ -73,3 +73,32 @@ Without filters, the alert covers every active signer under **Code Signing** > *
 - When you reissue a signer's certificate, the alert follows the new certificate and stops alerting on the one it replaced
 - If several signers share a certificate, the notification names only the ones the filter selects
 - If you delete a signer that the filter lists, the **Filters** step shows it as **Unknown signer** when you edit the alert, so you can remove it
+
+## Create an alert through the API
+
+To create an alert from a script, send a request to the create alert endpoint with an [access token](/api-reference/overview/authentication). The request sets which certificates the alert covers and which event it watches:
+
+| Alert | `resourceType` | `resourceId` | `eventType` |
+| --- | --- | --- | --- |
+| Certificate Management | `cert-manager` | Leave out | `cert-manager.certificate.expiry`, `cert-manager.certificate.issuance`, `cert-manager.certificate.renewal`, or `cert-manager.certificate.revocation` |
+| Application | `cert-manager.application` | The application's ID | `cert-manager.application.certificate.expiry`, `cert-manager.application.certificate.issuance`, `cert-manager.application.certificate.renewal`, or `cert-manager.application.certificate.revocation` |
+| Signer certificate expiration | `cert-manager.signer` | Leave out | `cert-manager.signer.certificate.expiry` |
+
+To find an application's ID, call [the list applications endpoint](/api-reference/endpoints/pki/applications/configuration/list).
+
+For a full request, see the API tab in the [email](/documentation/platform/pki/applications/alerting/email-alerts), [Slack](/documentation/platform/pki/applications/alerting/slack-alerts), [PagerDuty](/documentation/platform/pki/applications/alerting/pagerduty-alerts), or [webhook](/documentation/platform/pki/applications/alerting/webhook-alerts) guide.
+
+### Expiration and filter settings
+
+The `condition` object holds the same settings as the **Alert Before** field, the **Repeat daily until expiry** toggle, and the **Filters** step in Infisical:
+
+| Field | Applies to | Value |
+| --- | --- | --- |
+| `alertBefore` | Expiration alerts (required) | A number and a unit, such as `30d` or `2w`, up to 365 days |
+| `dailyReminder` | Expiration alerts | `true` to [repeat the alert every day](#how-often-expiration-alerts-repeat) until the certificate expires |
+| `applicationIds` | Certificate Management alerts | Up to 100 application IDs |
+| `profileIds` | Certificate Management alerts | Up to 100 certificate profile IDs |
+| `sources` | Certificate Management alerts | Any of `issued` (**Managed** in Infisical), `imported`, and `discovered` |
+| `signerIds` | Signer certificate expiration alerts | Up to 100 signer IDs |
+
+For issuance, renewal, and revocation alerts on an application, leave out `condition`.
