@@ -392,6 +392,9 @@ export const AzureAppConfigurationConfigurePage = () => {
       </Card>
     </form>
   ) : (
-    <div />
+    <>
+      <PageTitle title="Set Up Azure App Configuration Integration" />
+      <div />
+    </>
   );
 };

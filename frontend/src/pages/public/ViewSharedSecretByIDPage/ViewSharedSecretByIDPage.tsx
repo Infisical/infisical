@@ -209,7 +209,7 @@ export const ViewSharedSecretByIDPage = () => {
   if (isLoading || isLoadingBrandingConfig) {
     return (
       <>
-        <PageTitle title="Securely Share Secrets" />
+        <title>Securely Share Secrets</title>
         <div className="h-screen w-screen bg-page">
           <PageLoader lottieClassName="w-34" />
         </div>
@@ -240,7 +240,7 @@ export const ViewSharedSecretByIDPage = () => {
   if (hasCustomBranding) {
     return (
       <>
-        <PageTitle title="Securely Share Secrets" />
+        <title>Securely Share Secrets</title>
         <meta property="og:image" content="/images/message.png" />
         <div
           className="flex min-h-screen flex-col items-center justify-center overflow-auto px-4 py-10 scheme-dark"

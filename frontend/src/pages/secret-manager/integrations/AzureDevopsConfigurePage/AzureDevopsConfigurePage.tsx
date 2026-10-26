@@ -207,6 +207,9 @@ export const AzureDevopsConfigurePage = () => {
       </Card>
     </div>
   ) : (
-    <div />
+    <>
+      <PageTitle title="Set Up Azure DevOps Integration" />
+      <div />
+    </>
   );
 };

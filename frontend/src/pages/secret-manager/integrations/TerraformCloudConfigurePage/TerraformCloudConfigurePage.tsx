@@ -278,6 +278,9 @@ export const TerraformCloudConfigurePage = () => {
       </Card>
     </div>
   ) : (
-    <div />
+    <>
+      <PageTitle title="Create Terraform Cloud Integration" />
+      <div />
+    </>
   );
 };

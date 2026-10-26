@@ -168,7 +168,7 @@ export const ViewSecretRequestByIDPage = () => {
   if (isPending) {
     return (
       <>
-        <PageTitle title="Secret Request" />
+        <title>Secret Request</title>
         <div className="h-screen w-screen bg-page">
           <PageLoader lottieClassName="w-34" />
         </div>
@@ -217,7 +217,7 @@ export const ViewSecretRequestByIDPage = () => {
   if (hasCustomBranding) {
     return (
       <>
-        <PageTitle title="Secret Request" />
+        <title>Secret Request</title>
         <meta property="og:image" content="/images/message.png" />
         <div
           className="flex min-h-screen flex-col items-center justify-center overflow-auto px-4 py-10 scheme-dark"
