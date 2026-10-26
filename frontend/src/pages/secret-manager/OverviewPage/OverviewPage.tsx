@@ -4543,7 +4543,7 @@ const OverviewPageContent = () => {
                               onCreateSecret={(environment, key, value, comment, isDirectSave) => {
                                 if (isSingleEnvView)
                                   setRecentQuickAddKeys((prev) =>
-                                    prev.includes(key) ? prev : [...prev, key]
+                                    prev.includes(key) ? prev : [key, ...prev]
                                   );
                                 return handleSecretCreate(
                                   environment,
