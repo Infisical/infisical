@@ -924,7 +924,9 @@ itself whether the actor still reaches the org.
   rows an actor holds aren't bounded. PAM cancellations, the `revoke-org-project-access` audit log and usage
   meters fire after each batch commits and only when something was removed, so replays are silent.
 - **The audit event is written for admins.** The actor is the platform; `reason` is an
-  `OrgAccessRemovalCause` mapped from the event type. Actors and the group are recorded by id only: a name
+  `OrgAccessRemovalCause` mapped from the event type. `revokeActorsInOrgs` returns one entry per (org, actor)
+  and each is logged under that org, so a sub-org admin sees the revoke in their own log when a root
+  removal cascaded into their org. Actors and the group are recorded by id only: a name
   lookup after the revoke commits could fail, and the retry would find nothing left to log. `projectIds` are
   project memberships, `resources` the resource grants.
 - **The daily `org-access-reconcile-sweep` cron is a backstop, not a substitute.** It looks for project and

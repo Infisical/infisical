@@ -127,7 +127,6 @@ export const orgAccessReconcileConsumerFactory = ({
       if (outcome?.revoked.length) {
         await auditRevokedProjectAccess({
           auditLogService,
-          orgId,
           revoked: outcome.revoked,
           reason: scope.reason,
           groupId: scope.groupId

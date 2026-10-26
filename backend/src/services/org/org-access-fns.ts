@@ -10,18 +10,16 @@ import { OrgAccessRemovalCause } from "./org-membership-events";
 
 export const auditRevokedProjectAccess = async ({
   auditLogService,
-  orgId,
   revoked,
   reason,
   groupId
 }: {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  orgId: string;
   revoked: TRevokedProjectAccess[];
   reason: OrgAccessRemovalCause;
   groupId?: string;
 }) => {
-  for await (const { userId, identityId, projectIds, resources } of revoked) {
+  for await (const { orgId, userId, identityId, projectIds, resources } of revoked) {
     await auditLogService.createAuditLog({
       orgId,
       actor: { type: ActorType.PLATFORM, metadata: {} },

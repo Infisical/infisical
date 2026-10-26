@@ -146,7 +146,7 @@ export const deleteOrgMembershipsFn = async ({
   });
 
   sendPamCancellations();
-  await auditRevokedProjectAccess({ auditLogService, orgId, revoked, reason: OrgAccessRemovalCause.RemovedFromOrg });
+  await auditRevokedProjectAccess({ auditLogService, revoked, reason: OrgAccessRemovalCause.RemovedFromOrg });
 
   return deletedMemberships;
 };

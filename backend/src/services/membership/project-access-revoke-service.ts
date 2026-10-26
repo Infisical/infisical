@@ -31,6 +31,7 @@ export type TProjectAccessRevokeServiceFactory = ReturnType<typeof projectAccess
 
 type TRevokedProjectResource = { projectId: string; resourceType: string; resourceId: string };
 export type TRevokedProjectAccess = {
+  orgId: string;
   userId?: string;
   identityId?: string;
   projectIds: string[];
@@ -106,21 +107,20 @@ export const projectAccessRevokeServiceFactory = ({
       tx
     });
 
-    const rows = [...userRows, ...identityRows, ...resourceRows];
-    const revoked: TRevokedProjectAccess[] = [
-      ...Object.entries(
-        groupBy(
-          rows.filter((row) => row.actorUserId),
-          (row) => row.actorUserId as string
-        )
-      ).map(([userId, actorRows]) => ({ userId, ...toRevoked(actorRows) })),
-      ...Object.entries(
-        groupBy(
-          rows.filter((row) => row.actorIdentityId),
-          (row) => row.actorIdentityId as string
-        )
-      ).map(([identityId, actorRows]) => ({ identityId, ...toRevoked(actorRows) }))
-    ];
+    const rows = [...userRows, ...identityRows, ...resourceRows].filter(
+      (row) => row.actorUserId || row.actorIdentityId
+    );
+    const revoked: TRevokedProjectAccess[] = Object.values(
+      groupBy(rows, (row) => `${row.scopeOrgId}|${row.actorUserId ?? ""}|${row.actorIdentityId ?? ""}`)
+    ).map((actorRows) => {
+      const [{ scopeOrgId, actorUserId, actorIdentityId }] = actorRows;
+      return {
+        orgId: scopeOrgId as string,
+        userId: actorUserId ?? undefined,
+        identityId: actorIdentityId ?? undefined,
+        ...toRevoked(actorRows)
+      };
+    });
 
     return { revoked, sendPamCancellations };
   };

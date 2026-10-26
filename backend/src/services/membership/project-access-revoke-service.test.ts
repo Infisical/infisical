@@ -20,6 +20,7 @@ const tx = {} as never;
 
 type TRow = {
   id: string;
+  scopeOrgId?: string;
   actorUserId?: string;
   actorIdentityId?: string;
   scopeProjectId: string;
@@ -34,7 +35,13 @@ const build = (opts?: { projectRows?: TRow[]; resourceRows?: TRow[] }) => {
     membershipDAL: {
       find: vi.fn(),
       delete: vi.fn((filter: { $in?: { actorUserId?: string[]; actorIdentityId?: string[] } }) =>
-        Promise.resolve(ofActor(opts?.projectRows ?? [], filter).map((row) => ({ ...row, scope: AccessScope.Project })))
+        Promise.resolve(
+          ofActor(opts?.projectRows ?? [], filter).map((row) => ({
+            scopeOrgId: ORG_ID,
+            ...row,
+            scope: AccessScope.Project
+          }))
+        )
       )
     },
     projectDAL: { find: vi.fn().mockResolvedValue([{ id: PROJECT_A }, { id: PROJECT_B }, { id: PROJECT_C }]) },
@@ -49,7 +56,7 @@ const build = (opts?: { projectRows?: TRow[]; resourceRows?: TRow[] }) => {
                 ? filter.userIds.includes(row.actorUserId)
                 : filter.identityIds.includes(row.actorIdentityId!)
             )
-            .map((row) => ({ ...row, scope: RESOURCE_SCOPE }))
+            .map((row) => ({ scopeOrgId: ORG_ID, ...row, scope: RESOURCE_SCOPE }))
         )
       )
     },
@@ -84,7 +91,7 @@ describe("projectAccessRevokeService", () => {
     const { service, deps } = build({
       projectRows: [
         { id: uuid(100), actorUserId: USER_ID, scopeProjectId: PROJECT_A },
-        { id: uuid(101), actorUserId: USER_ID, scopeProjectId: PROJECT_B }
+        { id: uuid(101), scopeOrgId: SUB_ORG_ID, actorUserId: USER_ID, scopeProjectId: PROJECT_B }
       ]
     });
     const orgIds = [ORG_ID, SUB_ORG_ID];
@@ -119,7 +126,10 @@ describe("projectAccessRevokeService", () => {
       expect.objectContaining({ orgIds, userIds: [USER_ID], tx })
     );
     expect(send).toBe(sendPamCancellations);
-    expect(revoked).toEqual([{ userId: USER_ID, projectIds: [PROJECT_A, PROJECT_B], resources: [] }]);
+    expect(revoked).toEqual([
+      { orgId: ORG_ID, userId: USER_ID, projectIds: [PROJECT_A], resources: [] },
+      { orgId: SUB_ORG_ID, userId: USER_ID, projectIds: [PROJECT_B], resources: [] }
+    ]);
   });
 
   test("removes an identity's rows and resource grants and reports them per actor", async () => {
@@ -150,6 +160,7 @@ describe("projectAccessRevokeService", () => {
     expect(deps.alertChannelRecipientDAL.pruneOutOfScopeRecipients).not.toHaveBeenCalled();
     expect(revoked).toEqual([
       {
+        orgId: ORG_ID,
         identityId: IDENTITY_ID,
         projectIds: [PROJECT_A],
         resources: [{ projectId: PROJECT_A, resourceType: "pam-account", resourceId: uuid(302) }]
@@ -174,6 +185,7 @@ describe("projectAccessRevokeService", () => {
 
     expect(revoked).toEqual([
       {
+        orgId: ORG_ID,
         userId: USER_ID,
         projectIds: [],
         resources: [{ projectId: PROJECT_C, resourceType: "pam-folder", resourceId: uuid(303) }]

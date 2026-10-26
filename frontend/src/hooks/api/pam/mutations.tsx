@@ -530,6 +530,7 @@ export const useAddPamProductUserMember = () => {
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.all });
       queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId, true) });
       queryClient.invalidateQueries({ queryKey: projectKeys.getAvailableProjectUsers(projectId) });
     }
   });
@@ -549,6 +550,7 @@ export const useAddPamProductGroupMember = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.getProjectGroupMemberships(projectId)
       });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId, true) });
     }
   });
 };
@@ -595,6 +597,7 @@ export const useRemovePamProductUserMember = () => {
     onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.all });
       queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId, true) });
       queryClient.invalidateQueries({ queryKey: projectKeys.getAvailableProjectUsers(projectId) });
     }
   });
@@ -612,6 +615,7 @@ export const useRemovePamProductGroupMember = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.getProjectGroupMemberships(projectId)
       });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId, true) });
     }
   });
 };

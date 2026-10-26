@@ -34,7 +34,8 @@ const userRemovedFromOrg = (orgId = ORG_ID) =>
 // The revoke service only reports actors it found rows for.
 const build = (opts?: {
   withAccess?: { userIds?: string[]; identityIds?: string[] };
-  revoked?: TRevokedProjectAccess[];
+  // The mock stamps the org it was called for, like the real service does from the rows.
+  revoked?: Omit<TRevokedProjectAccess, "orgId">[];
   orgs?: Record<string, unknown>;
   childOrgs?: string[];
 }) => {
@@ -61,6 +62,7 @@ const build = (opts?: {
     projectAccessRevokeService: {
       revokeActorsInOrgs: vi.fn(
         async ({
+          orgIds,
           userIds = [],
           identityIds = []
         }: {
@@ -68,11 +70,13 @@ const build = (opts?: {
           userIds?: string[];
           identityIds?: string[];
         }) => ({
-          revoked: (opts?.revoked ?? []).filter(
-            (entry) =>
-              (entry.userId && userIds.includes(entry.userId)) ||
-              (entry.identityId && identityIds.includes(entry.identityId))
-          ),
+          revoked: (opts?.revoked ?? [])
+            .filter(
+              (entry) =>
+                (entry.userId && userIds.includes(entry.userId)) ||
+                (entry.identityId && identityIds.includes(entry.identityId))
+            )
+            .map((entry) => ({ ...entry, orgId: orgIds[0] })),
           sendPamCancellations
         })
       )
