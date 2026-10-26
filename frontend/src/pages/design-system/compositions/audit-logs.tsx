@@ -40,7 +40,7 @@ type AuditEvent = {
   ip: string;
 };
 
-const total = 12408;
+const total = 2316;
 const page = 500;
 const rowHeight = 48;
 const maxFrame = 840;
@@ -221,8 +221,8 @@ const makeColumns = (onOpen: (entry: AuditEvent) => void): DataTableColumn<Row>[
   {
     id: "actor",
     header: "Actor",
-    width: 300,
-    maxWidth: 300,
+    width: 264,
+    maxWidth: 264,
     text: (row) => (isPlaceholder(row) ? "" : row.actor.name),
     render: (row) =>
       isPlaceholder(row) ? (
@@ -456,6 +456,7 @@ export default function AuditLogs() {
               onChange={(event) => {
                 setSearch(event.target.value);
                 setLoaded(page);
+                setFrame(initialFrame);
               }}
             />
           </div>
@@ -506,6 +507,7 @@ export default function AuditLogs() {
             </Meta>
           </Inline>
           <DataTable<Row>
+            key={[active.from, active.to, eventType, actor, project, environment, search].join()}
             label={`Audit log, ${active.title}`}
             rows={refreshing ? placeholders : shown}
             columns={columns}
@@ -525,6 +527,7 @@ export default function AuditLogs() {
                   }
                 : undefined
             }
+            end={refreshing ? undefined : "End of logs"}
             empty={
               <EmptyState
                 size="sm"

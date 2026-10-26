@@ -92,7 +92,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - Basic/striped/bordered, controlled sorting, stable selection, empty and load-more.
 - Sortable headers show the direction with a custom-set arrow: up for ascending and down for descending, always visible on the sorted column. An unsorted column shows the up arrow it would apply only while its header is hovered or focused. The sorted header steps up to ink.
 - Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization.
-- With a fixed height, load-more floats over the frame's last rows: the rows fade into the raised surface under an outline button, an end spacer lets the last loaded row scroll clear of it, and the button morphs to its loading state in place.
+- With a fixed height, load-more sits in flow after the last loaded row, inside the scroll frame, so nothing covers readable rows; the outline button morphs to its loading state in place. Once loadMore is undefined, the optional end message takes the same slot.
 
 ## Accessibility
 
@@ -111,7 +111,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - Virtual tables use one uniform effective row height. rowHeight defaults to a requested 48px minimum; observed enlarged content can raise the shared metric used by rows, slices and spacers. This does not support arbitrary variable-height rows. Supply width/maxWidth for variable columns.
 - Only a final column may be pinned. Prefer one or two actions per row. Use grow for a flexible resource column; an explicit numeric width takes precedence.
 - Use text(row) for full hover text when render returns truncated complex content.
-- The host owns how many rows load and how tall the frame grows; pass a larger height as rows arrive and leave loadMore undefined once every row is loaded.
+- The host owns how many rows load and how tall the frame grows; pass a larger height as rows arrive, leave loadMore undefined once every row is loaded and pass end to say so. Remount or reset scroll when a filter replaces the rows.
 
 ## Declared example coverage
 
@@ -454,9 +454,9 @@ export default function Example() {
       <div className="relative min-w-0 w-full overflow-auto max-h-[400px]">
         <DataTable label="Example event log" rows={rows} columns={columns} getRowId={(row) => row.id} rowLabel={(row) => row.name} height={320} rowHeight={48} virtual loadMore={rows.length < total
             ? { label: `Load ${page} more`, loading, onClick: () => setLoading(true) }
-            : undefined} footer={`Showing ${rows.length} of ${total} events`}/>
+            : undefined} end="End of events" footer={`Showing ${rows.length} of ${total} events`}/>
       </div>
-    </div><figcaption className="text-muted-foreground text-xs">{"Floating load more, focus lands on the first new row"}</figcaption></figure>);
+    </div><figcaption className="text-muted-foreground text-xs">{"Load more after the last row, focus lands on the first new row"}</figcaption></figure>);
 }
 ```
 

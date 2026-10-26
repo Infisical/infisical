@@ -44,6 +44,7 @@ export interface DataTableProps<Row> {
   virtual?: boolean;
   rowHeight?: number;
   loadMore?: { label: string; onClick: () => void; loading?: boolean };
+  end?: React.ReactNode;
   footer?: React.ReactNode;
 }
 export function DataTable<Row>({
@@ -65,6 +66,7 @@ export function DataTable<Row>({
   virtual = false,
   rowHeight = 40,
   loadMore,
+  end,
   footer
 }: DataTableProps<Row>) {
   const [ownSelected, setOwnSelected] = React.useState<readonly string[]>(defaultSelectedIds);
@@ -73,7 +75,6 @@ export function DataTable<Row>({
   const [landing, setLanding] = React.useState<number | null>(null);
   const [focusRow, setFocusRow] = React.useState<number | null>(null);
   const focusPending = React.useRef(false);
-  const floating = Boolean(loadMore && height);
   const [measuredRow, setMeasuredRow] = React.useState({ requested: rowHeight, height: rowHeight });
   const effectiveRowHeight = measuredRow.requested === rowHeight ? measuredRow.height : rowHeight;
   const selected = selectedIds ?? ownSelected;
@@ -83,11 +84,12 @@ export function DataTable<Row>({
     if (selectedIds === undefined) setOwnSelected(next);
     onSelectionChange?.(next);
   };
-  const start = height && virtual ? Math.max(0, Math.floor(top / effectiveRowHeight) - 4) : 0;
-  const end =
+  const windowSize = height ? Math.ceil(height / effectiveRowHeight) + 8 : rows.length;
+  const start =
     height && virtual
-      ? Math.min(rows.length, start + Math.ceil(height / effectiveRowHeight) + 8)
-      : rows.length;
+      ? Math.max(0, Math.min(Math.floor(top / effectiveRowHeight) - 4, rows.length - windowSize))
+      : 0;
+  const stop = height && virtual ? Math.min(rows.length, start + windowSize) : rows.length;
   React.useLayoutEffect(() => {
     const container = scroll.current;
     if (!container || !height || !virtual) return;
@@ -106,7 +108,7 @@ export function DataTable<Row>({
     const observer = new ResizeObserver(measure);
     visibleRows.forEach((row) => observer.observe(row));
     return () => observer.disconnect();
-  }, [rowHeight, effectiveRowHeight, height, virtual, start, end, rows, columns]);
+  }, [rowHeight, effectiveRowHeight, height, virtual, start, stop, rows, columns]);
   React.useLayoutEffect(() => {
     const container = scroll.current;
     if (landing === null || !container || loadMore?.loading || rows.length <= landing) return;
@@ -137,7 +139,7 @@ export function DataTable<Row>({
     maxHeight: height,
     "--v4-table-row-height": `${effectiveRowHeight}px`
   };
-  const more = loadMore && (
+  const more = loadMore ? (
     <Button
       type="button"
       variant="outline"
@@ -149,6 +151,8 @@ export function DataTable<Row>({
     >
       {loadMore.label}
     </Button>
+  ) : (
+    rows.length > 0 && end
   );
   const scrollFrame = (
     <div
@@ -237,7 +241,7 @@ export function DataTable<Row>({
               />
             </TableRow>
           )}
-          {rows.slice(start, end).map((row, i) => (
+          {rows.slice(start, stop).map((row, i) => (
             <TableRow
               key={getRowId(row)}
               aria-rowindex={start + i + 2}
@@ -288,17 +292,12 @@ export function DataTable<Row>({
               ))}
             </TableRow>
           ))}
-          {end < rows.length && (
+          {stop < rows.length && (
             <TableRow aria-hidden data-spacer>
               <TableCell
                 colSpan={span}
-                style={{ height: (rows.length - end) * effectiveRowHeight, padding: 0 }}
+                style={{ height: (rows.length - stop) * effectiveRowHeight, padding: 0 }}
               />
-            </TableRow>
-          )}
-          {floating && rows.length > 0 && (
-            <TableRow aria-hidden data-spacer>
-              <TableCell colSpan={span} className={styles.tableMoreSpace} />
             </TableRow>
           )}
           {!rows.length && (
@@ -308,19 +307,13 @@ export function DataTable<Row>({
           )}
         </TableBody>
       </Table>
+      {height && more && <div className={cn(frame.frameFoot, styles.tableMore)}>{more}</div>}
     </div>
   );
   return (
     <div className={styles.tableShell} data-slot="data-table" data-variant={variant}>
-      {floating ? (
-        <div className={styles.tableStage}>
-          {scrollFrame}
-          <div className={styles.tableMore}>{more}</div>
-        </div>
-      ) : (
-        scrollFrame
-      )}
-      {!floating && more && <div className={styles.actions}>{more}</div>}
+      {scrollFrame}
+      {!height && more && <div className={styles.actions}>{more}</div>}
       {footer && <div className={styles.status}>{footer}</div>}
       <span className={styles.sr} role="status">
         {selectable ? `${selected.length} selected. ` : ""}

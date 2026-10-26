@@ -791,36 +791,16 @@ button.rowTitle::after {
   border-spacing: 0;
   min-width: 100%;
 }
-.tableShell > .tableScroll,
-.tableStage > .tableScroll {
+.tableShell > .tableScroll {
   padding-top: 0;
 }
-/* A fixed-height table floats load-more over its last rows: the rows fade into the raised
-   surface under the button, and an end spacer lets the last loaded row scroll clear of it. */
-.tableStage {
-  position: relative;
-}
+/* Sticky at the inline start so a horizontally scrolled table keeps the control centered in view. */
 .tableMore {
-  position: absolute;
-  inset-inline: calc(var(--v4-space-3) + var(--v4-size-control-border));
-  bottom: calc(var(--v4-space-3) + var(--v4-size-control-border));
-  z-index: 5;
+  position: sticky;
+  inset-inline-start: 0;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  height: calc(var(--v4-space-40) + var(--v4-space-32));
-  padding-bottom: var(--v4-space-16);
-  border-end-start-radius: 0;
-  border-end-end-radius: 0;
-  background: linear-gradient(to bottom, transparent, var(--v4-surface) 70%);
-  pointer-events: none;
-}
-.tableMore > * {
-  pointer-events: auto;
-}
-.tableScroll .tableMoreSpace {
-  height: calc(var(--v4-space-40) + var(--v4-space-32));
-  padding: 0;
 }
 .tableScroll tbody tr[tabindex="-1"]:focus {
   outline: var(--v4-size-focus-ring) solid var(--v4-focus-ring);

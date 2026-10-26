@@ -33,7 +33,10 @@ export default function Example() {
     return () => window.clearTimeout(timer);
   }, [loading]);
   return (
-    <ExampleCell align="stretch" label="Floating load more, focus lands on the first new row">
+    <ExampleCell
+      align="stretch"
+      label="Load more after the last row, focus lands on the first new row"
+    >
       <ExampleStage height="data">
         <DataTable
           label="Example event log"
@@ -49,6 +52,7 @@ export default function Example() {
               ? { label: `Load ${page} more`, loading, onClick: () => setLoading(true) }
               : undefined
           }
+          end="End of events"
           footer={`Showing ${rows.length} of ${total} events`}
         />
       </ExampleStage>
