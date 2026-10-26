@@ -1,7 +1,6 @@
 /* eslint-disable no-nested-ternary */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { subject } from "@casl/ability";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   ArrowDownIcon,
@@ -44,6 +43,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -271,7 +271,6 @@ export const CertificatesTable = ({
     return () => clearTimeout(timeoutId);
   }, [search]);
 
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission, hasProjectRole } = useProjectPermission();
@@ -949,28 +948,23 @@ export const CertificatesTable = ({
                     certificate.id
                   );
 
+                  const detailLink = {
+                    to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
+                    params: { orgId: currentOrg.id, certificateId: certificate.id },
+                    search: applicationName ? { fromApplication: applicationName } : undefined
+                  } as const;
+
                   return (
-                    <TableRow
-                      className="group"
-                      key={`certificate-${certificate.id}`}
-                      onClick={() => {
-                        navigate({
-                          to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
-                          params: {
-                            orgId: currentOrg.id,
-                            certificateId: certificate.id
-                          },
-                          search: applicationName ? { fromApplication: applicationName } : undefined
-                        });
-                      }}
-                    >
+                    <TableRow key={`certificate-${certificate.id}`} linked>
                       {visibleColumns.has("sanCn") && (
                         <TableCell isTruncatable>
-                          <CertificateDisplayName
-                            cert={certificate}
-                            maxLength={64}
-                            fallback={certificate.id}
-                          />
+                          <RowLink {...detailLink}>
+                            <CertificateDisplayName
+                              cert={certificate}
+                              maxLength={64}
+                              fallback={certificate.id}
+                            />
+                          </RowLink>
                         </TableCell>
                       )}
                       {visibleColumns.has("serialNumber") && (
@@ -1043,6 +1037,9 @@ export const CertificatesTable = ({
                         </TableCell>
                       )}
                       <TableCell>
+                        {!visibleColumns.has("sanCn") && (
+                          <RowLink {...detailLink} aria-label={`View ${originalDisplayName}`} />
+                        )}
                         <div className="flex items-center justify-end gap-2">
                           <div
                             className={`transition-opacity ${(() => {
