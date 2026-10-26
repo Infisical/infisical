@@ -31,6 +31,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
+import { useUser } from "@app/context";
 import {
   useBulkActOnSecretApprovalRequests,
   useGetSecretApprovalRequestDetailsList
@@ -43,19 +44,16 @@ import {
 import { ApprovalStatus } from "@app/hooks/api/types";
 import { formatReservedPaths } from "@app/lib/fn/string";
 
+import {
+  computeBulkReviewOutcomes,
+  filterRequestsEligibleForMerge,
+  filterRequestsNeedingApproval,
+  Outcome
+} from "./BulkReviewChangeRequestsSheet.utils";
 import { SecretApprovalRequestChangeItem } from "./SecretApprovalRequestChangeItem";
 import { generateCommitText } from "./SecretApprovalRequestChanges";
 
 type Decision = "approve" | "reject";
-
-type Outcome =
-  | { status: "merged"; reviewError?: string }
-  | { status: "rejected" }
-  | { status: "awaiting" }
-  | { status: "approved"; message: string }
-  | { status: "failed"; message: string };
-
-const PENDING_APPROVALS_PATTERN = /needs \d+ approval\(s\)/;
 
 type Conflict = { secretKey: string; slug: string; mergesFirst: boolean };
 
@@ -102,6 +100,7 @@ const BulkReviewChangeRequestsSheetContent = ({
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [comment, setComment] = useState("");
   const [outcomes, setOutcomes] = useState<Record<string, Outcome> | null>(null);
+  const { user: userSession } = useUser();
 
   const { mutateAsync: bulkAct } = useBulkActOnSecretApprovalRequests();
   const detailQueries = useGetSecretApprovalRequestDetailsList({
@@ -174,12 +173,19 @@ const BulkReviewChangeRequestsSheetContent = ({
       const approveIds = idsFor("approve");
       const rejectIds = idsFor("reject");
 
-      const approveResults = approveIds.length
+      const idsToApprove = filterRequestsNeedingApproval({
+        approveIds,
+        requests,
+        detailsById,
+        userId: userSession?.id
+      });
+
+      const approveResults = idsToApprove.length
         ? await bulkAct({
             projectId,
             action: BulkChangeRequestAction.Approve,
             comment: reviewComment,
-            requestIds: approveIds
+            requestIds: idsToApprove
           })
         : [];
       const rejectResults = rejectIds.length
@@ -190,36 +196,31 @@ const BulkReviewChangeRequestsSheetContent = ({
             requestIds: rejectIds
           })
         : [];
-      const mergeResults = approveIds.length
+
+      const idsToMerge = filterRequestsEligibleForMerge({
+        approveIds,
+        requests,
+        detailsById,
+        approveResults,
+        userId: userSession?.id
+      });
+
+      const mergeResults = idsToMerge.length
         ? await bulkAct({
             projectId,
             action: BulkChangeRequestAction.Merge,
-            requestIds: approveIds
+            requestIds: idsToMerge
           })
         : [];
 
-      const nextOutcomes: Record<string, Outcome> = {};
-      rejectResults.forEach(({ id, isSuccess, errorMessage }) => {
-        nextOutcomes[id] = isSuccess
-          ? { status: "rejected" }
-          : { status: "failed", message: errorMessage ?? "Review failed" };
-      });
-      mergeResults.forEach(({ id, isSuccess, errorMessage }) => {
-        const review = approveResults.find((result) => result.id === id);
-        if (isSuccess) {
-          nextOutcomes[id] = {
-            status: "merged",
-            reviewError: review?.isSuccess ? undefined : review?.errorMessage
-          };
-          return;
-        }
-        if (review?.isSuccess && PENDING_APPROVALS_PATTERN.test(errorMessage ?? "")) {
-          nextOutcomes[id] = { status: "awaiting" };
-          return;
-        }
-        nextOutcomes[id] = review?.isSuccess
-          ? { status: "approved", message: errorMessage ?? "Could not be merged" }
-          : { status: "failed", message: review?.errorMessage ?? errorMessage ?? "Review failed" };
+      const nextOutcomes = computeBulkReviewOutcomes({
+        approveIds,
+        requests,
+        detailsById,
+        rejectResults,
+        approveResults,
+        mergeResults,
+        userId: userSession?.id
       });
       setOutcomes(nextOutcomes);
 
