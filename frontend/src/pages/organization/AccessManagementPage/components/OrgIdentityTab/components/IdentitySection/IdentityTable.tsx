@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow } from "date-fns";
 import {
   ChevronDownIcon,
@@ -51,11 +51,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import {
-  getProjectBaseURL,
-  getProjectDisplayName,
-  pinProjectForNavigation
-} from "@app/helpers/project";
+import { getProjectBaseURL, getProjectDisplayName } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -72,6 +68,7 @@ import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance"
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { IdentityMembershipSearchResult, SearchIdentitiesScope } from "@app/hooks/api/identities";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
 import { IdentityAuthMethodSheet } from "@app/views/IdentityAuthMethods";
@@ -195,7 +192,7 @@ const LastUsedCell = ({ lastLoginAuthMethod, lastLoginTime }: LastUsedCellProps)
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="cursor-default text-sm text-foreground/80">{label}</span>
+        <span className="relative z-10 cursor-default text-sm text-foreground/80">{label}</span>
       </TooltipTrigger>
       <TooltipContent className="max-w-96 min-w-52">
         <LastLoginSection
@@ -396,28 +393,49 @@ const IdentityRow = ({ membership, onDelete, onManageAuth, onAddAuthMethod }: Id
   const isSubOrgIdentity = currentOrg.id === orgId;
   const isProjectScoped = scope === SearchIdentitiesScope.ProjectScope;
 
-  const navigateToIdentity = () => {
-    if (isProjectScoped && project) {
-      pinProjectForNavigation(currentOrg.id, project);
-      navigate({
-        to: `${getProjectBaseURL(project.type)}/identities/$identityId` as const,
-        params: {
-          orgId: currentOrg.id,
-          projectId: project.id,
-          identityId: id
-        }
-      });
-      return;
+  const getIdentityLink = () => {
+    if (!isProjectScoped || !project) {
+      return {
+        to: "/organizations/$orgId/identities/$identityId",
+        params: { identityId: id, orgId: currentOrg.id }
+      } as const;
     }
-    navigate({
-      to: "/organizations/$orgId/identities/$identityId",
-      params: { identityId: id, orgId: currentOrg.id }
-    });
+    // Certificate Manager and Secret Scanning URLs carry no project id, so link through their
+    // legacy project URL, whose redirect pins the instance in whichever tab opens the link.
+    const legacyProjectParams = {
+      orgId: currentOrg.id,
+      projectId: project.id,
+      _splat: `identities/${id}`
+    };
+    if (project.type === ProjectType.CertificateManager) {
+      return {
+        to: "/organizations/$orgId/projects/cert-manager/$projectId/$",
+        params: legacyProjectParams
+      } as const;
+    }
+    if (project.type === ProjectType.SecretScanning) {
+      return {
+        to: "/organizations/$orgId/projects/secret-scanning/$projectId/$",
+        params: legacyProjectParams
+      } as const;
+    }
+    return {
+      to: `${getProjectBaseURL(project.type)}/identities/$identityId`,
+      params: { orgId: currentOrg.id, projectId: project.id, identityId: id }
+    } as const;
   };
+  const identityLink = getIdentityLink();
 
   return (
-    <TableRow className="cursor-pointer" onClick={navigateToIdentity}>
-      <TableCell isTruncatable>{name}</TableCell>
+    <TableRow className="relative cursor-pointer">
+      <TableCell isTruncatable>
+        <Link
+          {...identityLink}
+          className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+        >
+          {name}
+        </Link>
+      </TableCell>
       <TableCell>
         <IdentityRoleBadges roles={membershipRoles ?? []} />
       </TableCell>
@@ -432,7 +450,7 @@ const IdentityRow = ({ membership, onDelete, onManageAuth, onAddAuthMethod }: Id
       <TableCell>
         <LastUsedCell lastLoginAuthMethod={lastLoginAuthMethod} lastLoginTime={lastLoginTime} />
       </TableCell>
-      <TableCell variant="action">
+      <TableCell variant="action" className="relative z-10">
         <div className="flex items-center justify-end gap-2">
           {(activeLockoutAuthMethods?.length ?? 0) > 0 && (
             <Tooltip>
@@ -453,7 +471,7 @@ const IdentityRow = ({ membership, onDelete, onManageAuth, onAddAuthMethod }: Id
             isSubOrgIdentity={isSubOrgIdentity}
             authMethods={authMethods ?? []}
             activeLockoutAuthMethods={activeLockoutAuthMethods}
-            onEdit={navigateToIdentity}
+            onEdit={() => navigate(identityLink)}
             onDelete={() => onDelete({ identityId: id, name })}
             onManageAuth={(authMethod) => onManageAuth({ identityId: id, authMethod })}
             onAddAuthMethod={() =>
