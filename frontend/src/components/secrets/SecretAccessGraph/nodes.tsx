@@ -37,7 +37,15 @@ const hiddenHandle = "!opacity-0";
 // How the reader has the value, on one line whatever the number of groups: the first group by name, the rest
 // as a count that stays visible however long that name is, and every group listed on hover.
 const AccessPath = ({ isDirect, groupNames }: { isDirect: boolean; groupNames: string[] }) => {
-  if (!groupNames.length) return <span className="truncate text-xs text-muted">Direct access</span>;
+  // A group whose role uses a placeholder such as {{identity.username}} cannot be named here, so the API's isDirect
+  // decides the label.
+  if (!groupNames.length) {
+    return (
+      <span className="truncate text-xs text-muted">
+        {isDirect ? "Direct access" : "Through a group"}
+      </span>
+    );
+  }
   const [first, ...rest] = groupNames;
   return (
     <Tooltip>
