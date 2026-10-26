@@ -118,7 +118,7 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
       opts: { attempts: ATTEMPTS }
     });
 
-  return { state, runSync };
+  return { state, runSync, secretSyncDAL };
 };
 
 const syncSecrets = vi.mocked(SecretSyncFns.syncSecrets);
@@ -256,6 +256,24 @@ describe("secret sync status change", () => {
       { destination: SecretSync.Railway, newStatus: "failed" },
       { destination: SecretSync.Railway, newStatus: "healthy" }
     ]);
+  });
+
+  test("counts the change once the result commits, even if the rest of the finished-run write fails", async () => {
+    syncSecrets.mockRejectedValue(new Error("upstream 500"));
+    const { runSync, state, secretSyncDAL } = createHarness(healthy);
+    const writeRun = secretSyncDAL.updateById.getMockImplementation()!;
+    secretSyncDAL.updateById.mockImplementation(async (id, data) => {
+      if (data.lastSyncResult !== undefined) throw new Error("connection reset");
+      return writeRun(id, data);
+    });
+
+    await expect(runSync(ATTEMPTS)).rejects.toThrow();
+    expect(state.lastSyncResult).toBe("failed");
+    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, newStatus: "failed" }]);
+
+    secretSyncDAL.updateById.mockImplementation(writeRun);
+    await expect(runSync(ATTEMPTS)).rejects.toThrow();
+    expect(statusChangeCalls()).toHaveLength(1);
   });
 
   test("reports a breakage once when two jobs loaded the same healthy sync", async () => {

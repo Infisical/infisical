@@ -280,8 +280,6 @@ export const secretRotationV2ServiceFactory = ({
     return matched;
   };
 
-  // Every writer that can move rotationStatus from Failed to Success goes through this, so recoveries balance failures.
-  // The conditional update makes only the run that actually moves it report the change, whatever it loaded earlier.
   const $markRotationSucceeded = async (rotationId: string, tx: Knex) =>
     (
       await secretRotationV2DAL.update(
@@ -1393,8 +1391,6 @@ export const secretRotationV2ServiceFactory = ({
 
           let isRecovery = false;
           const rotated = await secretRotationV2DAL.transaction(async (tx) => {
-            isRecovery = await $markRotationSucceeded(secretRotation.id, tx);
-
             const secretsPayload = rotationFactory.getSecretsPayload(newCredentials);
 
             // update mapped secrets with new credential values
@@ -1433,6 +1429,7 @@ export const secretRotationV2ServiceFactory = ({
 
             const currentTime = new Date();
 
+            isRecovery = await $markRotationSucceeded(secretRotation.id, tx);
             return secretRotationV2DAL.updateById(
               secretRotation.id,
               {
@@ -1518,20 +1515,28 @@ export const secretRotationV2ServiceFactory = ({
           plainText: Buffer.from(errorMessage)
         });
 
-        const isStatusChange =
-          (
-            await secretRotationV2DAL.update(
-              { id: secretRotation.id, rotationStatus: SecretRotationStatus.Success },
-              { rotationStatus: SecretRotationStatus.Failed }
-            )
-          ).length > 0;
+        let isStatusChange = false;
+        const updatedRotation = await secretRotationV2DAL.transaction(async (tx) => {
+          isStatusChange =
+            (
+              await secretRotationV2DAL.update(
+                { id: secretRotation.id, rotationStatus: SecretRotationStatus.Success },
+                { rotationStatus: SecretRotationStatus.Failed },
+                tx
+              )
+            ).length > 0;
 
-        const updatedRotation = await secretRotationV2DAL.updateById(secretRotation.id, {
-          rotationStatus: SecretRotationStatus.Failed,
-          lastRotationJobId: jobId,
-          lastRotationAttemptedAt: new Date(),
-          encryptedLastRotationMessage: encryptedMessage,
-          nextRotationAt: getNextUtcRotationInterval(secretRotation.rotateAtUtc as TSecretRotationV2["rotateAtUtc"])
+          return secretRotationV2DAL.updateById(
+            secretRotation.id,
+            {
+              rotationStatus: SecretRotationStatus.Failed,
+              lastRotationJobId: jobId,
+              lastRotationAttemptedAt: new Date(),
+              encryptedLastRotationMessage: encryptedMessage,
+              nextRotationAt: getNextUtcRotationInterval(secretRotation.rotateAtUtc as TSecretRotationV2["rotateAtUtc"])
+            },
+            tx
+          );
         });
 
         if (isStatusChange) recordSecretRotationStatusChangeMetric({ type, newStatus: "failed" });

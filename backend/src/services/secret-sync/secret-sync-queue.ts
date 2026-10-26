@@ -656,6 +656,14 @@ export const secretSyncQueueFactory = ({
             )
           ).length > 0;
 
+       
+        if (isStatusChange) {
+          recordSecretSyncStatusChangeMetric({
+            destination: secretSync.destination,
+            newStatus: isSynced ? "healthy" : "failed"
+          });
+        }
+
         const updatedSecretSync = await secretSyncDAL.updateById(secretSync.id, {
           syncStatus,
           lastSyncJobId: job.id,
@@ -663,13 +671,6 @@ export const secretSyncQueueFactory = ({
           lastSyncedAt: isSynced ? ranAt : undefined,
           lastSyncResult: syncStatus
         });
-
-        if (isStatusChange) {
-          recordSecretSyncStatusChangeMetric({
-            destination: secretSync.destination,
-            newStatus: isSynced ? "healthy" : "failed"
-          });
-        }
 
         if (!isSynced) {
           void telemetryService

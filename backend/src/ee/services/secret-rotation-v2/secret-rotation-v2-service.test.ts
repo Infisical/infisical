@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { recordSecretRotationOutcomeMetric, recordSecretRotationStatusChangeMetric } from "@app/lib/telemetry/metrics";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
+import { fnSecretBulkUpdate } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 
 import { SecretRotation, SecretRotationStatus } from "./secret-rotation-v2-enums";
 import { SecretRotationInProgressError, secretRotationV2ServiceFactory } from "./secret-rotation-v2-service";
@@ -85,6 +86,8 @@ const rotation = (rotationStatus: SecretRotationStatus, type = SecretRotation.St
     environment: { id: "env-1", slug: "dev", name: "Development" }
   }) as unknown as TSecretRotationV2Raw;
 
+const TX = { name: "rotation-transaction" };
+
 const actor = {
   type: ActorType.USER,
   id: "user-1",
@@ -129,7 +132,7 @@ const createService = ({
     secretValidationRuleService: { findConstraintsForGeneratedSecret: vi.fn(async () => ({ ruleNames: [] })) },
     secretRotationV2DAL: {
       findById: vi.fn(async () => rotation(stored.rotationStatus, type)),
-      transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => callback({})),
+      transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => callback(TX)),
       // A conditional UPDATE: only a row still matching the filter is changed and returned.
       update: vi.fn(async (filter: { rotationStatus?: string }, data: { rotationStatus: SecretRotationStatus }) => {
         if (filter.rotationStatus !== stored.rotationStatus) return [];
@@ -200,6 +203,18 @@ describe("rotateGeneratedCredentials metrics", () => {
     expect(stored.rotationStatus).toBe(SecretRotationStatus.Failed);
   });
 
+  test("writes the failed status and the run's fields in one transaction", async () => {
+    rotateCredentials.mockRejectedValueOnce(new Error("provider down"));
+    const { service, deps } = createService({ storedStatus: SecretRotationStatus.Success });
+
+    await expect(
+      service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success), { isFinalAttempt: true })
+    ).rejects.toThrow();
+
+    expect(deps.secretRotationV2DAL.update).toHaveBeenCalledWith(expect.anything(), expect.anything(), TX);
+    expect(deps.secretRotationV2DAL.updateById).toHaveBeenCalledWith("rotation-1", expect.anything(), TX);
+  });
+
   test("does not flip again when an already failed rotation fails", async () => {
     rotateCredentials.mockRejectedValueOnce(new Error("provider down"));
     const { service } = createService({ storedStatus: SecretRotationStatus.Failed });
@@ -243,6 +258,43 @@ describe("rotateGeneratedCredentials metrics", () => {
     await service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Success));
 
     expect(statusChangeCalls()).toEqual([]);
+  });
+});
+
+// Rotation and reconcile can run at once on the same rotation (reconcile does not take the rotation lock), so both must
+// lock the secrets before the rotation row or they can deadlock each other.
+describe("row lock order", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const expectSecretsWrittenBeforeRotationRow = (deps: ReturnType<typeof createService>["deps"]) => {
+    const [secretsWrite] = vi.mocked(fnSecretBulkUpdate).mock.invocationCallOrder;
+    const [rotationRowWrite] = deps.secretRotationV2DAL.update.mock.invocationCallOrder;
+    expect(secretsWrite).toBeLessThan(rotationRowWrite);
+  };
+
+  test("a rotation writes the secrets before the rotation row", async () => {
+    rotateCredentials.mockImplementationOnce(runCallback);
+    const { service, deps } = createService({ storedStatus: SecretRotationStatus.Failed });
+
+    await service.rotateGeneratedCredentials(rotation(SecretRotationStatus.Failed));
+
+    expectSecretsWrittenBeforeRotationRow(deps);
+  });
+
+  test("a reconcile writes the secrets before the rotation row", async () => {
+    const { service, deps } = createService({
+      storedStatus: SecretRotationStatus.Failed,
+      type: SecretRotation.UnixLinuxLocalAccount
+    });
+
+    await service.reconcileLocalAccountRotation(
+      { rotationId: "rotation-1", type: SecretRotation.UnixLinuxLocalAccount },
+      actor as never
+    );
+
+    expectSecretsWrittenBeforeRotationRow(deps);
   });
 });
 
