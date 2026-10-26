@@ -1,18 +1,34 @@
+import { MouseEvent } from "react";
 import Markdown from "react-markdown";
 import { formatDistance } from "date-fns";
 import { Trash2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { IconButton, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import {
+  DropdownMenuItem,
+  IconButton,
+  rowLinkClassName,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { isCriticalNotification, TUserNotification } from "@app/hooks/api/notifications/types";
 
 type Props = {
   notification: TUserNotification;
+  href?: string;
+  onOpen: (event: MouseEvent<HTMLElement>) => void;
+  onAuxOpen: () => void;
   onDelete: (notificationId: string) => void;
 };
 
-export const Notification = ({ notification, onDelete }: Props) => {
+export const Notification = ({ notification, href, onOpen, onAuxOpen, onDelete }: Props) => {
   const isCritical = isCriticalNotification(notification.type);
+  const titleClassName = twMerge(
+    rowLinkClassName,
+    "static min-w-0 rounded-none p-0 text-left text-sm leading-5 font-medium text-foreground focus:bg-transparent"
+  );
+  const title = <Markdown components={{ p: "span" }}>{notification.title}</Markdown>;
 
   return (
     <div
@@ -37,9 +53,27 @@ export const Notification = ({ notification, onDelete }: Props) => {
           )}
           <Tooltip delayDuration={300}>
             <TooltipTrigger asChild>
-              <span className="overflow-hidden text-sm leading-5 font-medium text-ellipsis whitespace-nowrap text-foreground">
-                <Markdown components={{ p: "span" }}>{notification.title}</Markdown>
-              </span>
+              <DropdownMenuItem
+                asChild
+                className={titleClassName}
+                onSelect={(event) => event.preventDefault()}
+              >
+                {href ? (
+                  <a
+                    href={href}
+                    onClick={onOpen}
+                    onAuxClick={(event) => {
+                      if (event.button === 1) onAuxOpen();
+                    }}
+                  >
+                    {title}
+                  </a>
+                ) : (
+                  <button type="button" onClick={onOpen}>
+                    {title}
+                  </button>
+                )}
+              </DropdownMenuItem>
             </TooltipTrigger>
             <TooltipContent className="z-[var(--z-index-tooltip)]">
               <Markdown>{notification.title}</Markdown>
@@ -53,7 +87,7 @@ export const Notification = ({ notification, onDelete }: Props) => {
               aria-label="Delete notification"
               variant="ghost-muted"
               size="2xs"
-              className="absolute -top-0.5 right-0 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+              className="absolute -top-0.5 right-0 z-10 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete(notification.id);
@@ -65,7 +99,7 @@ export const Notification = ({ notification, onDelete }: Props) => {
           </div>
         </div>
         {notification.body && (
-          <div className="w-full overflow-hidden text-xs break-words text-accent">
+          <div className="w-full overflow-hidden text-xs break-words text-accent [&_a]:relative [&_a]:z-10">
             <Markdown>{notification.body}</Markdown>
           </div>
         )}
