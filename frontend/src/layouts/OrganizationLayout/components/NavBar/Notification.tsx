@@ -31,7 +31,7 @@ export const Notification = ({ notification, href, onOpen, onAuxOpen, onDelete }
   const titleWithTooltip = (
     <Tooltip delayDuration={300}>
       <TooltipTrigger asChild>
-        <span className="block truncate">
+        <span className="relative z-10 block truncate">
           <Markdown components={{ p: "span" }}>{notification.title}</Markdown>
         </span>
       </TooltipTrigger>
