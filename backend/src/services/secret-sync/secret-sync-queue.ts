@@ -505,9 +505,13 @@ export const secretSyncQueueFactory = ({
       "Failed to sync secrets due to plan restriction. Upgrade plan to access enterprise secret syncs."
     );
 
-    await secretSyncDAL.updateById(syncId, {
-      syncStatus: SecretSyncStatus.Running
-    });
+    await secretSyncDAL.updateById(
+      syncId,
+      {
+        syncStatus: SecretSyncStatus.Running
+      },
+      { includeFolderPath: false }
+    );
 
     logger.info(
       `SecretSync Sync [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
@@ -637,12 +641,16 @@ export const secretSyncQueueFactory = ({
       });
 
       if (isSynced || isFinalAttempt) {
-        const updatedSecretSync = await secretSyncDAL.updateById(secretSync.id, {
-          syncStatus,
-          lastSyncJobId: job.id,
-          lastSyncMessage: syncMessage,
-          lastSyncedAt: isSynced ? ranAt : undefined
-        });
+        const updatedSecretSync = await secretSyncDAL.updateById(
+          secretSync.id,
+          {
+            syncStatus,
+            lastSyncJobId: job.id,
+            lastSyncMessage: syncMessage,
+            lastSyncedAt: isSynced ? ranAt : undefined
+          },
+          { includeFolderPath: false }
+        );
 
         if (!isSynced) {
           void telemetryService
@@ -659,7 +667,7 @@ export const secretSyncQueueFactory = ({
             .catch(() => {});
 
           await $queueSendSecretSyncFailedNotifications({
-            secretSync: updatedSecretSync,
+            secretSync: { ...updatedSecretSync, folder: secretSync.folder },
             action: SecretSyncAction.SyncSecrets,
             auditLogInfo
           });
@@ -675,9 +683,13 @@ export const secretSyncQueueFactory = ({
       data: { syncId, auditLogInfo, importBehavior }
     } = job;
 
-    await secretSyncDAL.updateById(syncId, {
-      importStatus: SecretSyncStatus.Running
-    });
+    await secretSyncDAL.updateById(
+      syncId,
+      {
+        importStatus: SecretSyncStatus.Running
+      },
+      { includeFolderPath: false }
+    );
 
     logger.info(
       `SecretSync Import [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
@@ -771,16 +783,20 @@ export const secretSyncQueueFactory = ({
       });
 
       if (isSuccess || isFinalAttempt) {
-        const updatedSecretSync = await secretSyncDAL.updateById(secretSync.id, {
-          importStatus,
-          lastImportJobId: job.id,
-          lastImportMessage: importMessage,
-          lastImportedAt: isSuccess ? ranAt : undefined
-        });
+        const updatedSecretSync = await secretSyncDAL.updateById(
+          secretSync.id,
+          {
+            importStatus,
+            lastImportJobId: job.id,
+            lastImportMessage: importMessage,
+            lastImportedAt: isSuccess ? ranAt : undefined
+          },
+          { includeFolderPath: false }
+        );
 
         if (!isSuccess) {
           await $queueSendSecretSyncFailedNotifications({
-            secretSync: updatedSecretSync,
+            secretSync: { ...updatedSecretSync, folder: secretSync.folder },
             action: SecretSyncAction.ImportSecrets,
             auditLogInfo
           });
@@ -803,9 +819,13 @@ export const secretSyncQueueFactory = ({
       "Failed to remove secrets due to plan restriction. Upgrade plan to access enterprise secret syncs."
     );
 
-    await secretSyncDAL.updateById(syncId, {
-      removeStatus: SecretSyncStatus.Running
-    });
+    await secretSyncDAL.updateById(
+      syncId,
+      {
+        removeStatus: SecretSyncStatus.Running
+      },
+      { includeFolderPath: false }
+    );
 
     logger.info(
       `SecretSync Remove [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
@@ -912,16 +932,20 @@ export const secretSyncQueueFactory = ({
         if (isSuccess && deleteSyncOnComplete) {
           await secretSyncDAL.deleteById(secretSync.id);
         } else {
-          const updatedSecretSync = await secretSyncDAL.updateById(secretSync.id, {
-            removeStatus,
-            lastRemoveJobId: job.id,
-            lastRemoveMessage: removeMessage,
-            lastRemovedAt: isSuccess ? ranAt : undefined
-          });
+          const updatedSecretSync = await secretSyncDAL.updateById(
+            secretSync.id,
+            {
+              removeStatus,
+              lastRemoveJobId: job.id,
+              lastRemoveMessage: removeMessage,
+              lastRemovedAt: isSuccess ? ranAt : undefined
+            },
+            { includeFolderPath: false }
+          );
 
           if (!isSuccess) {
             await $queueSendSecretSyncFailedNotifications({
-              secretSync: updatedSecretSync,
+              secretSync: { ...updatedSecretSync, folder: secretSync.folder },
               action: SecretSyncAction.RemoveSecrets,
               auditLogInfo
             });
@@ -1060,10 +1084,14 @@ export const secretSyncQueueFactory = ({
       )
     ).filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
 
-    const candidateSyncs = await secretSyncDAL.find({
-      $in: { folderId: [...ancestorFolders.map((entry) => entry.id), ...(folder ? [folder.id] : [])] },
-      isAutoSyncEnabled: true
-    });
+    const candidateSyncs = await secretSyncDAL.find(
+      {
+        $in: { folderId: [...ancestorFolders.map((entry) => entry.id), ...(folder ? [folder.id] : [])] },
+        isAutoSyncEnabled: true
+      },
+      undefined,
+      { includeFolderPath: false }
+    );
 
     // A sync on the path itself always matches, whether or not it includes subfolders. A sync on an
     // ancestor folder only matches when it includes them, so a sync rooted above this path that does
@@ -1219,15 +1247,15 @@ export const secretSyncQueueFactory = ({
       | TQueueSecretSyncImportSecretsByIdDTO
       | TQueueSecretSyncRemoveSecretsByIdDTO;
 
-    const secretSync = await secretSyncDAL.findById(syncId);
+    const secretSyncWithoutPath = await secretSyncDAL.findById(syncId, undefined, { includeFolderPath: false });
 
-    if (!secretSync) {
+    if (!secretSyncWithoutPath) {
       // skip rather than throw, so it doesn't retry-storm when a sync is deleted.
-      logger.info(`AppConnectionSecretSync: secret sync ${syncId} not found (deleted?), skipping`);
+      logger.info(`AppConnectionSecretSync: secret sync ${syncId} not found, skipping`);
       return;
     }
 
-    const { connectionId } = secretSync;
+    const { connectionId } = secretSyncWithoutPath;
 
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
 
@@ -1261,6 +1289,13 @@ export const secretSyncQueueFactory = ({
 
           return;
         }
+      }
+
+      const secretSync = await secretSyncDAL.findById(syncId);
+
+      if (!secretSync) {
+        logger.info(`AppConnectionSecretSync: secret sync ${syncId} not found, skipping`);
+        return;
       }
 
       switch (job.name) {
