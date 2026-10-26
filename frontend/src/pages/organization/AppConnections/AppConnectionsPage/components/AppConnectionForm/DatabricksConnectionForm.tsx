@@ -6,6 +6,7 @@ import { z } from "zod";
 import {
   Combobox,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Input,
@@ -55,6 +56,13 @@ const formSchema = z.discriminatedUnion("method", [
 ]);
 
 type FormData = z.infer<typeof formSchema>;
+
+const SCOPE_DESCRIPTIONS: Record<DatabricksConnectionScope, string> = {
+  [DatabricksConnectionScope.Secrets]: "Syncs secrets to Databricks secret scopes.",
+  [DatabricksConnectionScope.Authentication]:
+    "Creates and deletes service principal secrets during rotation.",
+  [DatabricksConnectionScope.Scim]: "Lists service principals when setting up a rotation."
+};
 
 export const DatabricksConnectionForm = ({ appConnection, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
@@ -176,7 +184,7 @@ export const DatabricksConnectionForm = ({ appConnection, onSubmit }: Props) => 
                   <TooltipContent className="max-w-sm">
                     The OAuth scopes assigned to the client secret. Secret syncs require
                     &apos;secrets&apos;, and secret rotations require &apos;authentication&apos; and
-                    &apos;scim&apos;. If none are selected, &apos;all-apis&apos; will be used.
+                    &apos;scim&apos;.
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
@@ -191,6 +199,15 @@ export const DatabricksConnectionForm = ({ appConnection, onSubmit }: Props) => 
                 placeholder="all-apis"
                 isError={Boolean(error)}
               />
+              <FieldDescription>
+                {value?.length
+                  ? value.map((scope) => (
+                      <span key={scope} className="block">
+                        {scope}: {SCOPE_DESCRIPTIONS[scope]}
+                      </span>
+                    ))
+                  : "Infisical will request all-apis, which allows every API the service principal can access."}
+              </FieldDescription>
               <FieldError errors={[error]} />
             </Field>
           )}
