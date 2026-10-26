@@ -252,7 +252,7 @@ export const secretReadActivityServiceFactory = ({
       ? targets.map(({ secret }) => computeSecretReach(secret, graph))
       : undefined;
     const objectIds = requestedReaches
-      ? requestedReaches.flatMap((reach) => [...reach.folderIds, ...reach.ownerFolderIds.keys(), ...reach.secretIds])
+      ? requestedReaches.flatMap((reach) => [...reach.folderIds, ...reach.secretIds])
       : [
           ...folders.map((folder) => folder.id),
           ...loadedSecrets.map((secret) => secret.id),

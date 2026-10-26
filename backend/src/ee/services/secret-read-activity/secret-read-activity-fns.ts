@@ -84,18 +84,15 @@ export const loadProjectFolderTree = async (
 export const computeSecretReach = (secret: TReachSecret, graph: TSecretReachGraph): TSecretReach => {
   const secretIds = new Set([secret.id]);
   const folderIds = new Set([secret.folderId]);
-  const ownerFolderIds = new Map<string, Set<string>>();
 
   const pendingSecrets = [secret];
   while (pendingSecrets.length) {
     for (const referencer of graph.getReferencers(pendingSecrets.pop() as TReachSecret)) {
-      // A personal secret is returned only to its owner, and a reference to its key resolves to the shared secret
-      // unless the reader expands their own overrides, which records exactly what resolved. So it hands the value on
-      // to its owner alone, and nothing that references or imports it is followed.
+      // A personal secret is left out of folder reads that skip personal values, so only a read of the personal secret
+      // itself counts, not of its folder. Nothing referencing it is followed either: a reference to its key resolves to
+      // the shared secret unless the reader expands their own overrides, which records exactly what resolved.
       if (referencer.userId) {
         secretIds.add(referencer.id);
-        const owners = ownerFolderIds.get(referencer.folderId) ?? new Set<string>();
-        ownerFolderIds.set(referencer.folderId, owners.add(referencer.userId));
       } else {
         folderIds.add(referencer.folderId);
         if (!secretIds.has(referencer.id)) {
@@ -116,8 +113,7 @@ export const computeSecretReach = (secret: TReachSecret, graph: TSecretReachGrap
     }
   }
 
-  folderIds.forEach((folderId) => ownerFolderIds.delete(folderId));
-  return { secretId: secret.id, secretIds, folderIds, ownerFolderIds };
+  return { secretId: secret.id, secretIds, folderIds };
 };
 
 export const indexSecretReads = (reads: TSecretLastRead[]) => groupBy(reads, (read) => read.objectId);
@@ -200,10 +196,9 @@ export const classifySecretReads = (
   trackedSince: Date
 ) => {
   const activity = new Map<string, TSecretReadResult>();
-  const record = (objectType: SecretReadObjectType, objectId: string, readers?: Set<string>) => {
+  const record = (objectType: SecretReadObjectType, objectId: string) => {
     (readsByObjectId[objectId] ?? []).forEach((read) => {
       if (read.objectType !== objectType || read.lastReadAt < trackedSince) return;
-      if (readers && !readers.has(read.actorId)) return;
       const current = activity.get(read.actorId) ?? {
         actorType: read.actorType as TSecretReaderType,
         actorId: read.actorId,
@@ -221,7 +216,6 @@ export const classifySecretReads = (
   reach.secretIds.forEach((secretId) => record(SecretReadObjectType.Secret, secretId));
   record(SecretReadObjectType.SecretUnexpanded, reach.secretId);
   reach.folderIds.forEach((folderId) => record(SecretReadObjectType.Folder, folderId));
-  reach.ownerFolderIds.forEach((owners, folderId) => record(SecretReadObjectType.Folder, folderId, owners));
   return activity;
 };
 

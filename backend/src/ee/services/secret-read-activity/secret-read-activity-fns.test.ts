@@ -113,7 +113,7 @@ describe("classifySecretReads", () => {
     ).toBeUndefined();
   });
 
-  test("credits reads through a personal secret referencing it only to that secret's owner", () => {
+  test("counts a personal secret referencing it only when that secret itself is read, not its folder", () => {
     const aliceUrl: TReachSecret = { id: "alice-db-url", folderId: "app", key: "DB_URL", userId: "alice" };
     const reach = computeSecretReach(dbPass, {
       getReferencers: (secret) => (secret.id === dbPass.id ? [aliceUrl] : []),
@@ -122,8 +122,7 @@ describe("classifySecretReads", () => {
     const readerIds = (reads: TSecretLastRead[]) => [
       ...classifySecretReads(indexSecretReads(reads), reach, trackedSince).keys()
     ];
-    expect(readerIds([read({ objectId: "app", actorId: "bob" })])).toEqual([]);
-    expect(readerIds([read({ objectId: "app", actorId: "alice" })])).toEqual(["alice"]);
+    expect(readerIds([read({ objectId: "app", actorId: "alice" })])).toEqual([]);
     expect(
       readerIds([read({ objectId: aliceUrl.id, objectType: SecretReadObjectType.Secret, actorId: "alice" })])
     ).toEqual(["alice"]);
