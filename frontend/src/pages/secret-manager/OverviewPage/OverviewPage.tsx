@@ -738,6 +738,9 @@ const OverviewPageContent = () => {
       getSecretSortValue(orderBy, orderDirection)
   );
   const ActiveSecretSortIcon = activeSecretSort?.Icon ?? ArrowUpDownIcon;
+  const isNameHeaderSortActive =
+    !sortEnvironment &&
+    !(orderBy === DashboardSecretsOrderBy.Name && orderDirection === OrderByDirection.ASC);
   let activeSecretSortScope = "";
   if (sortEnvironment) {
     activeSecretSortScope = ` in ${
@@ -3945,7 +3948,19 @@ const OverviewPageContent = () => {
                               className="flex h-full w-full cursor-pointer items-center justify-between px-3 text-left focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                               aria-label={`Sort secrets. Current order: ${activeSecretSort?.label ?? "Name (A to Z)"}${activeSecretSortScope}`}
                             >
-                              <span className="text-sm font-medium text-muted">Name</span>
+                              <span className="flex min-w-0 items-center gap-x-2 text-sm font-medium text-muted">
+                                <span
+                                  className={twMerge(
+                                    "truncate",
+                                    isNameHeaderSortActive && "text-foreground"
+                                  )}
+                                >
+                                  Name
+                                </span>
+                                {isNameHeaderSortActive && (
+                                  <ActiveSecretSortIcon className="size-3.5 shrink-0 text-foreground" />
+                                )}
+                              </span>
                               <ChevronDownIcon className="size-3.5 shrink-0 text-muted" />
                             </button>
                           </DropdownMenuTrigger>
