@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -125,9 +124,7 @@ export const HerokuConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
-      <Helmet>
-        <title>Set Up Heroku Integration</title>
-      </Helmet>
+      <title>Set Up Heroku Integration</title>
       <form onSubmit={handleSubmit(onFormSubmit)} className="w-full max-w-lg">
         <Card>
           <CardHeader>
@@ -323,9 +320,7 @@ export const HerokuConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up Heroku Integration</title>
-      </Helmet>
+      <title>Set Up Heroku Integration</title>
       {isIntegrationAuthAppsLoading ? (
         <img
           src="/images/loading/loading.gif"

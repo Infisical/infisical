@@ -12,11 +12,7 @@ import {
 } from "../../utils/overlay-layer";
 
 const isAllowedOutsideInteraction = (target: EventTarget | null) =>
-  Boolean(
-    (target as HTMLElement)?.closest?.(
-      "[data-sonner-toast], [data-slot='combobox-portal'], .react-select-menu-portal"
-    )
-  );
+  Boolean((target as HTMLElement)?.closest?.("[data-sonner-toast], [data-slot='combobox-portal']"));
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />;

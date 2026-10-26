@@ -1,4 +1,9 @@
-import { AgentVaultCredentialType, AgentVaultServiceType } from "@app/hooks/api/agentVault";
+import {
+  AgentVaultCredentialType,
+  AgentVaultServiceType,
+  AgentVaultVariableReferenceField,
+  TAgentVaultMemberProvidedField
+} from "@app/hooks/api/agentVault";
 import {
   TAgentVaultCredentialInput,
   TAgentVaultCredentialUpdate,
@@ -20,23 +25,52 @@ const bearerCredential = (data: TServiceForm) => ({
   value: data.secret ?? ""
 });
 
+const memberFieldsOf = (data: TServiceForm) => {
+  const isMemberProvided = (field: TAgentVaultMemberProvidedField) =>
+    data.memberProvidedFields.includes(field);
+  return {
+    bearer: isMemberProvided(AgentVaultVariableReferenceField.CredentialValue)
+      ? [AgentVaultVariableReferenceField.CredentialValue as const]
+      : [],
+    basic: (
+      [
+        AgentVaultVariableReferenceField.CredentialUsername,
+        AgentVaultVariableReferenceField.CredentialValue
+      ] as TAgentVaultMemberProvidedField[]
+    ).filter(isMemberProvided),
+    isMemberProvided
+  };
+};
+
+// A member-provided field is sent without a value: each member sets their own.
 const buildHttpCredential = (data: TServiceForm): TAgentVaultCredentialInput => {
+  const { bearer, basic, isMemberProvided } = memberFieldsOf(data);
   if (data.credentialType === AgentVaultCredentialType.Passthrough) {
     return { type: AgentVaultCredentialType.Passthrough };
   }
   if (data.credentialType === AgentVaultCredentialType.Basic) {
     return {
       type: AgentVaultCredentialType.Basic,
-      username: data.username ?? "",
-      password: data.secret ?? ""
+      username: isMemberProvided(AgentVaultVariableReferenceField.CredentialUsername)
+        ? undefined
+        : (data.username ?? ""),
+      password: isMemberProvided(AgentVaultVariableReferenceField.CredentialValue)
+        ? undefined
+        : (data.secret ?? ""),
+      memberProvidedFields: basic
     };
   }
-  return bearerCredential(data);
+  return {
+    ...bearerCredential(data),
+    value: bearer.length ? undefined : (data.secret ?? ""),
+    memberProvidedFields: bearer
+  };
 };
 
 // A field left at the sentinel is omitted so the stored value is kept. A bearer token can never be
 // empty, so an empty one is omitted too, where an empty Basic half clears that half.
 const buildHttpCredentialPatch = (data: TServiceForm): TAgentVaultCredentialUpdate => {
+  const { bearer, basic, isMemberProvided } = memberFieldsOf(data);
   if (data.credentialType === AgentVaultCredentialType.Passthrough) {
     return { type: AgentVaultCredentialType.Passthrough };
   }
@@ -45,15 +79,24 @@ const buildHttpCredentialPatch = (data: TServiceForm): TAgentVaultCredentialUpda
   if (data.credentialType === AgentVaultCredentialType.Basic) {
     return {
       type: AgentVaultCredentialType.Basic,
-      username: data.username === UNCHANGED_SECRET ? undefined : (data.username ?? ""),
-      password: isSecretUntouched ? undefined : (data.secret ?? "")
+      username:
+        isMemberProvided(AgentVaultVariableReferenceField.CredentialUsername) ||
+        data.username === UNCHANGED_SECRET
+          ? undefined
+          : (data.username ?? ""),
+      password:
+        isMemberProvided(AgentVaultVariableReferenceField.CredentialValue) || isSecretUntouched
+          ? undefined
+          : (data.secret ?? ""),
+      memberProvidedFields: basic
     };
   }
   return {
     type: AgentVaultCredentialType.Bearer,
     headerName: data.headerName || "Authorization",
     headerPrefix: data.headerPrefix ?? "",
-    value: isSecretUntouched || !data.secret ? undefined : data.secret
+    value: bearer.length || isSecretUntouched || !data.secret ? undefined : data.secret,
+    memberProvidedFields: bearer
   };
 };
 

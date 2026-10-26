@@ -46,6 +46,7 @@ import {
   AgentVaultServiceType,
   AgentVaultVariableReferenceField,
   SERVICE_SAVE_HANDLED_ERROR_CODES,
+  TAgentVaultMemberProvidedField,
   useAgentVaultVariableKeyStatus,
   useCreateAgentVaultService,
   useUpdateAgentVaultService
@@ -75,6 +76,7 @@ import {
   SERVICE_STEP_FIELDS,
   SERVICE_TYPE_LABELS,
   ServiceStep,
+  storedMemberFields,
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
@@ -105,6 +107,7 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   oauthAuthorizationRejection: "",
   oauthClientId: "",
   oauthClientSecret: "",
+  memberProvidedFields: [],
   methods: [...HTTP_METHODS],
   pathPrefixes: [],
   customHeaders: [],
@@ -462,6 +465,10 @@ export const ServiceSheet = ({
       });
     } else if (service) {
       const { credential } = service;
+      const memberProvidedFields = storedMemberFields(service);
+      // A member-provided field has no stored value, so it starts empty rather than as "unchanged".
+      const storedValue = (field: TAgentVaultMemberProvidedField) =>
+        memberProvidedFields.includes(field) ? "" : UNCHANGED_SECRET;
       reset({
         ...BLANK_SERVICE_FORM,
         name: service.name,
@@ -476,8 +483,15 @@ export const ServiceSheet = ({
             : "Authorization",
         headerPrefix:
           credential.type === AgentVaultCredentialType.Bearer ? credential.headerPrefix : "Bearer",
-        username: credential.type === AgentVaultCredentialType.Basic ? UNCHANGED_SECRET : undefined,
-        secret: credential.type === AgentVaultCredentialType.Passthrough ? "" : UNCHANGED_SECRET,
+        username:
+          credential.type === AgentVaultCredentialType.Basic
+            ? storedValue(AgentVaultVariableReferenceField.CredentialUsername)
+            : undefined,
+        secret: (() => {
+          if (credential.type === AgentVaultCredentialType.Passthrough) return "";
+          return storedValue(AgentVaultVariableReferenceField.CredentialValue);
+        })(),
+        memberProvidedFields,
         methods: service.allowedMethods ?? [...HTTP_METHODS],
         pathPrefixes: service.allowedPathPrefixes ?? [],
         // The stored values never come back, so each row carries the sentinel until it is retyped.
@@ -834,13 +848,21 @@ export const ServiceSheet = ({
                   {current.step === ServiceStep.Credential && !isMcp && (
                     <ServiceVariablesContext.Provider value={serviceVariables}>
                       <div className="flex flex-col gap-5">
-                        <CredentialFields storedType={service?.credential.type} />
+                        <CredentialFields
+                          storedType={service?.credential.type}
+                          storedMemberFields={storedMemberFields(service)}
+                        />
                         <TransformationsFields openItem={openItem} onOpenChange={setOpenItem} />
                       </div>
                     </ServiceVariablesContext.Provider>
                   )}
                   {current.step === ServiceStep.Review && (
-                    <ReviewFields isUpdate={isUpdate} service={service} />
+                    <ReviewFields
+                      isUpdate={isUpdate}
+                      service={service}
+                      storedType={service?.credential.type}
+                      storedMemberFields={storedMemberFields(service)}
+                    />
                   )}
                 </div>
 

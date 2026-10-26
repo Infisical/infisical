@@ -16,7 +16,7 @@ type StepMeta = {
 };
 
 const VARIABLE_TIP =
-  "To use a variable, type {{ in any value and pick it from the list. The proxy puts the variable's value in its place.";
+  "To use a global variable, type {{ in any value and pick it from the list. The proxy puts the variable's value in its place. For a member-provided field, each member sets their own value, and can use their personal variables there.";
 
 const TEMPLATE_STEP: StepMeta = { step: ServiceStep.Template, name: "Template" };
 

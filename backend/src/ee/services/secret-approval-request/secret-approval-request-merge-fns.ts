@@ -5,8 +5,9 @@ import { SecretType } from "@app/db/schemas";
 import { Actor, Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
+import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -270,6 +271,17 @@ export const secretApprovalRequestMergeFnsFactory = ({
     const conflicts: TSecretApprovalCommitConflict[] = [];
 
     let creates = commits.filter(({ op }) => op === SecretOperations.Create);
+    const createCountByKey = new Map<string, number>();
+    for (const { key } of creates) {
+      createCountByKey.set(key, (createCountByKey.get(key) ?? 0) + 1);
+    }
+    const keysCreatedTwice = [...createCountByKey].filter(([, count]) => count > 1).map(([key]) => `'${key}'`);
+    if (keysCreatedTwice.length) {
+      throw new BadRequestError({
+        message: `Could not merge this change request because it creates ${keysCreatedTwice.length === 1 ? "secret" : "secrets"} ${keysCreatedTwice.join(", ")} more than once. Close the request, then submit the change again.`
+      });
+    }
+
     if (creates.length) {
       const secrets = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -497,7 +509,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
                 skipMultilineEncoding: el.skipMultilineEncoding !== null ? el.skipMultilineEncoding : undefined,
                 key: el.key,
                 tags: el?.tags.map(({ id }) => id),
-                secretMetadata: toSecretMetadataInput(el.secretMetadata),
+                secretMetadata: Array.isArray(el.secretMetadata) ? toSecretMetadataInput(el.secretMetadata) : undefined,
                 ...encryptedValue
               }
             };
@@ -656,20 +668,27 @@ export const secretApprovalRequestMergeFnsFactory = ({
     const recipients = approverUsers.filter((approver) => approver.email).map((approver) => approver.email!);
 
     if (recipients?.length) {
-      await smtpService.sendMail({
-        recipients,
-        subjectLine: "Infisical Secret Change Policy Bypassed",
-        substitutions: {
-          projectName: project.name,
-          requesterFullName: `${requestedByUser.firstName} ${requestedByUser.lastName}`,
-          requesterEmail: requestedByUser.email,
-          bypassReason,
-          secretPath,
-          environment: environmentName,
-          approvalUrl: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/approval`
-        },
-        template: SmtpTemplates.AccessSecretRequestBypassed
-      });
+      try {
+        await smtpService.sendMail({
+          recipients,
+          subjectLine: "Infisical Secret Change Policy Bypassed",
+          substitutions: {
+            projectName: project.name,
+            requesterFullName: `${requestedByUser.firstName} ${requestedByUser.lastName}`,
+            requesterEmail: requestedByUser.email,
+            bypassReason,
+            secretPath,
+            environment: environmentName,
+            approvalUrl: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/approval`
+          },
+          template: SmtpTemplates.AccessSecretRequestBypassed
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to send secret change policy bypass email [projectId=${project.id}] [actorId=${actorId}]`
+        );
+      }
     }
   };
 

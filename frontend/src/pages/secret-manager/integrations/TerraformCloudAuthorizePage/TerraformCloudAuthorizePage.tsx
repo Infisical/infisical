@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useNavigate } from "@tanstack/react-router";
 
 import {
@@ -68,9 +67,7 @@ export const TerraformCloudAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Authorize Terraform Cloud Integration</title>
-      </Helmet>
+      <title>Authorize Terraform Cloud Integration</title>
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>

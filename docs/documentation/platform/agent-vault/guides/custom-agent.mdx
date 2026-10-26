@@ -47,9 +47,9 @@ First, create an [access bundle](/documentation/platform/agent-vault/access-bund
   </Step>
 </Steps>
 
-### Enroll a proxy
+### Create a proxy
 
-Next, enroll a proxy. Every request your agent makes goes through the proxy, which attaches the real credential from the access bundle before forwarding the request to the API.
+Next, create a proxy. Every request your agent makes goes through the proxy, which attaches the real credential from the access bundle before forwarding the request to the API.
 
 <Steps>
   <Step>
@@ -59,7 +59,7 @@ Next, enroll a proxy. Every request your agent makes goes through the proxy, whi
     Give the proxy a **Name**, then select **Create**.
   </Step>
   <Step>
-    In the **Enrollment Token** dialog, copy the command from the **CLI** tab, or from the **Docker** or **systemd** tab to keep the proxy running after you close the terminal. The enrollment token expires in an hour.
+    In the **Proxy Token** dialog, copy the command from the **CLI** tab, or from the **Docker** or **Kubernetes** tab to keep the proxy running after you close the terminal. The dialog shows the proxy token only once.
   </Step>
   <Step>
     Run the command on the machine that will run the proxy.
@@ -104,7 +104,7 @@ openssl x509 -in ca.pem -noout -fingerprint -sha256
 
 Compare the colon-separated value with the proxy's fingerprint on the **Proxies** page in Agent Vault. The **Certificate Authority** column shows the start of the fingerprint, and hovering over it shows the full value. If the values don't match, don't use the file.
 
-Store `ca.pem` where the agent can read it. The certificate isn't secret, so you can add it to the agent's container image. If you [re-enroll the proxy](/documentation/platform/agent-vault/proxies#re-enroll-a-proxy), download the certificate again.
+Store `ca.pem` where the agent can read it. The certificate isn't secret, so you can add it to the agent's container image. If you [rotate the proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxys-token), download the certificate again.
 
 ## Step 3: Replace the API keys with placeholders
 
@@ -228,7 +228,7 @@ Keep the session token out of logs. Anyone who can reach the proxy with the toke
 
 Make a request from the agent to an API in the session's access bundle. For example, if the bundle has a GitHub service, request `https://api.github.com/user`. GitHub returns the account that the service's token belongs to, even though the agent doesn't have a GitHub token.
 
-If you've [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs), [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made. Requests that got a credential have the outcome **Brokered**.
+[View the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made. Requests that got a credential have the outcome **Brokered**.
 
 <Check>
   Your agent now calls APIs through the proxy. The only credential the agent has is the session token, and if you revoke the session, the proxy stops attaching credentials to the agent's requests.
@@ -253,7 +253,7 @@ To replace sessions automatically, such as for a process that runs for days, [cr
     The request reached the API without the real credential. Check that a service in the session's access bundle covers the host, and that the service's credential is correct. If the service uses a substitution, check that the agent sends the exact placeholder in **Replace**.
   </Accordion>
   <Accordion title="Requests fail with a certificate error">
-    The agent doesn't trust the proxy's certificate. Check that the client loads `ca.pem`, and download the certificate again if you re-enrolled the proxy.
+    The agent doesn't trust the proxy's certificate. Check that the client loads `ca.pem`, and download the certificate again if you rotated the proxy's token.
   </Accordion>
   <Accordion title="Requests reach the API without the proxy">
     If the API rejects the placeholder key and the request doesn't appear in the session logs, the agent's requests skip the proxy. Check that the host isn't in `NO_PROXY`, and that the HTTP client reads the proxy setting:

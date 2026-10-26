@@ -386,3 +386,141 @@ describe.each([{ path: "/" }, { path: "/deep" }])(
   },
   { timeout: 60_000 }
 );
+
+describe(
+  "Secret replication of a source that also imports one of its own keys",
+  () => {
+    const sourcePath = "/replication-overlap";
+    const upstreamPath = "/replication-overlap-upstream";
+    const destinationPath = "/replication-overlap";
+
+    beforeAll(async () => {
+      const sourceFolder = await createFolder({
+        authToken: jwtAuthToken,
+        environmentSlug: "staging",
+        workspaceId: seedData1.projectV3.id,
+        secretPath: "/",
+        name: "replication-overlap"
+      });
+
+      const upstreamFolder = await createFolder({
+        authToken: jwtAuthToken,
+        environmentSlug: "staging",
+        workspaceId: seedData1.projectV3.id,
+        secretPath: "/",
+        name: "replication-overlap-upstream"
+      });
+
+      const destinationFolder = await createFolder({
+        authToken: jwtAuthToken,
+        environmentSlug: seedData1.environment.slug,
+        workspaceId: seedData1.projectV3.id,
+        secretPath: "/",
+        name: "replication-overlap"
+      });
+
+      return async () => {
+        await deleteFolder({
+          authToken: jwtAuthToken,
+          secretPath: "/",
+          id: destinationFolder.id,
+          workspaceId: seedData1.projectV3.id,
+          environmentSlug: seedData1.environment.slug
+        });
+
+        await deleteFolder({
+          authToken: jwtAuthToken,
+          secretPath: "/",
+          id: sourceFolder.id,
+          workspaceId: seedData1.projectV3.id,
+          environmentSlug: "staging"
+        });
+
+        await deleteFolder({
+          authToken: jwtAuthToken,
+          secretPath: "/",
+          id: upstreamFolder.id,
+          workspaceId: seedData1.projectV3.id,
+          environmentSlug: "staging"
+        });
+      };
+    });
+
+    test("Replicates the source folder's own value of the key once", async () => {
+      await createTrackedSecret({
+        environmentSlug: "staging",
+        workspaceId: seedData1.projectV3.id,
+        secretPath: upstreamPath,
+        authToken: jwtAuthToken,
+        key: "OVERLAP_KEY",
+        value: "upstream-value"
+      });
+
+      await createTrackedSecret({
+        environmentSlug: "staging",
+        workspaceId: seedData1.projectV3.id,
+        secretPath: upstreamPath,
+        authToken: jwtAuthToken,
+        key: "UPSTREAM_ONLY_KEY",
+        value: "upstream-only-value"
+      });
+
+      await createTrackedSecret({
+        environmentSlug: "staging",
+        workspaceId: seedData1.projectV3.id,
+        secretPath: sourcePath,
+        authToken: jwtAuthToken,
+        key: "OVERLAP_KEY",
+        value: "source-value"
+      });
+
+      await createSecretImport({
+        authToken: jwtAuthToken,
+        secretPath: sourcePath,
+        environmentSlug: "staging",
+        workspaceId: seedData1.projectV3.id,
+        importPath: upstreamPath,
+        importEnv: "staging"
+      });
+
+      await createSecretImport({
+        authToken: jwtAuthToken,
+        secretPath: destinationPath,
+        environmentSlug: seedData1.environment.slug,
+        workspaceId: seedData1.projectV3.id,
+        importPath: sourcePath,
+        importEnv: "staging",
+        isReplication: true
+      });
+
+      await waitForReplicatedSecret({
+        environmentSlug: seedData1.environment.slug,
+        workspaceId: seedData1.projectV3.id,
+        secretPath: destinationPath,
+        authToken: jwtAuthToken,
+        key: "UPSTREAM_ONLY_KEY",
+        value: "upstream-only-value"
+      });
+
+      const secret = await waitForReplicatedSecret({
+        environmentSlug: seedData1.environment.slug,
+        workspaceId: seedData1.projectV3.id,
+        secretPath: destinationPath,
+        authToken: jwtAuthToken,
+        key: "OVERLAP_KEY",
+        value: "source-value"
+      });
+      expect(secret.secretValue).toBe("source-value");
+
+      const { imports } = await getSecretsV2({
+        environmentSlug: seedData1.environment.slug,
+        workspaceId: seedData1.projectV3.id,
+        secretPath: destinationPath,
+        authToken: jwtAuthToken
+      });
+      const replicatedKeys = imports.flatMap(({ secrets }) => secrets.map(({ secretKey }) => secretKey));
+      expect(replicatedKeys.filter((key) => key === "OVERLAP_KEY")).toHaveLength(1);
+    });
+  },
+  { timeout: 60_000 }
+);

@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { SettingsIcon } from "lucide-react";
 
@@ -17,9 +16,7 @@ export const AgentVaultSettingsPage = () => {
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Settings" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Settings" })}</title>
 
       <PageHeader
         scope={ProjectType.AgentVault}

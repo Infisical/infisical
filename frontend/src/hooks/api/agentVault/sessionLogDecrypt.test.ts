@@ -98,6 +98,8 @@ describe("decryptSessionLogPage", () => {
   const page: TAgentVaultSessionLogPage = {
     sessionLogs: {
       enabled: true,
+      disabledReason: null,
+      storageType: null,
       isRecordable: true,
       sessionKey: btoa("\0".repeat(32))
     },
@@ -122,6 +124,8 @@ describe("decryptSessionLogPage", () => {
   const vectorPage: TAgentVaultSessionLogPage = {
     sessionLogs: {
       enabled: true,
+      disabledReason: null,
+      storageType: null,
       isRecordable: true,
       sessionKey: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="
     },
@@ -322,7 +326,13 @@ describe("mergeSessionLogPages", () => {
     presignedGetUrl: `https://bucket.example/${proxyId}`
   });
   const decryptedPage = (proxyId: string, path: string) => ({
-    sessionLogs: { enabled: true, isRecordable: true, sessionKey: null },
+    sessionLogs: {
+      enabled: true,
+      disabledReason: null,
+      storageType: null,
+      isRecordable: true,
+      sessionKey: null
+    },
     chunks: [chunk(proxyId)],
     decrypted: {
       [sessionLogChunkKey(chunk(proxyId))]: {

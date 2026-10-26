@@ -2,13 +2,15 @@ export enum ApprovalNotificationEvent {
   Requested = "requested",
   Approved = "approved",
   Rejected = "rejected",
-  Bypassed = "bypassed"
+  Bypassed = "bypassed",
+  AutoApproved = "auto-approved"
 }
 
 export enum ApprovalAuditAction {
   RequestCreated = "request-created",
   RequestReviewed = "request-reviewed",
   RequestBypassed = "request-bypassed",
+  RequestAutoApproved = "request-auto-approved",
   GrantRevoked = "grant-revoked"
 }
 

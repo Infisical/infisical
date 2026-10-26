@@ -222,17 +222,24 @@ export const secretChangeGlobalRequestFnsFactory = ({
 
     for await (const approver of approvers) {
       if (!approver.email) continue;
-      await smtpService.sendMail({
-        recipients: [approver.email],
-        subjectLine: "Infisical Secret Change Request",
-        substitutions: {
-          firstName: approver.firstName,
-          projectName: project.name,
-          organizationName: project.organization.name,
-          approvalUrl
-        },
-        template: SmtpTemplates.SecretApprovalRequestNeedsReview
-      });
+      try {
+        await smtpService.sendMail({
+          recipients: [approver.email],
+          subjectLine: "Infisical Secret Change Request",
+          substitutions: {
+            firstName: approver.firstName,
+            projectName: project.name,
+            organizationName: project.organization.name,
+            approvalUrl
+          },
+          template: SmtpTemplates.SecretApprovalRequestNeedsReview
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to send secret change request email to approver [requestId=${requestId}] [userId=${approver.id}]`
+        );
+      }
     }
   };
 

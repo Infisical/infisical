@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import {
@@ -126,9 +125,7 @@ export const TerraformCloudConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps && targetApp ? (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Create Terraform Cloud Integration</title>
-      </Helmet>
+      <title>Create Terraform Cloud Integration</title>
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>

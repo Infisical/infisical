@@ -37,6 +37,7 @@ const mcpForm = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   oauthAuthorizationId: "",
   oauthAuthorizedUrl: "",
   oauthScopes: [],
+  memberProvidedFields: [],
   methods: [],
   pathPrefixes: [],
   customHeaders: [],
@@ -170,7 +171,8 @@ describe("storedOAuthCredential", () => {
       credential: {
         type: AgentVaultCredentialType.Bearer,
         headerName: "Authorization",
-        headerPrefix: "Bearer"
+        headerPrefix: "Bearer",
+        memberProvidedFields: []
       }
     } satisfies TAgentVaultService;
     expect(storedOAuthCredential(bearer, SERVER_URL)).toBeNull();

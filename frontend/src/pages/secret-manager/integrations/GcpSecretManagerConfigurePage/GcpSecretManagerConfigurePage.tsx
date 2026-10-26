@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -194,9 +193,7 @@ export const GcpSecretManagerConfigurePage = () => {
       className="flex h-full w-full flex-col items-center justify-center"
     >
       <Card className="w-full max-w-lg">
-        <Helmet>
-          <title>Set Up GCP Secret Manager Integration</title>
-        </Helmet>
+        <title>Set Up GCP Secret Manager Integration</title>
         <CardHeader>
           <CardTitle>
             <img
@@ -531,9 +528,7 @@ export const GcpSecretManagerConfigurePage = () => {
     </form>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up GCP Secret Manager Integration</title>
-      </Helmet>
+      <title>Set Up GCP Secret Manager Integration</title>
       {isIntegrationAuthAppsLoading ? (
         <img
           src="/images/loading/loading.gif"

@@ -112,7 +112,16 @@ const buildService = ({
           Promise.resolve(aliases.filter((a) => externalIds.includes(a.externalId)))
       )
     },
-    orgDAL: { findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null }) },
+    orgDAL: {
+      findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null }),
+      lockActorsForOrgAccess: vi.fn().mockResolvedValue(undefined),
+      findActorsWithActiveOrgAccess: vi.fn(({ userIds }: { userIds: string[] }) =>
+        Promise.resolve({
+          userIds: new Set(userIds.filter((id) => orgMemberUserIds.includes(id))),
+          identityIds: new Set<string>()
+        })
+      )
+    },
     membershipDAL: {
       find: vi.fn(({ scope }: { scope: string }) =>
         Promise.resolve(scope === AccessScope.Organization ? orgMemberUserIds.map((id) => ({ actorUserId: id })) : [])

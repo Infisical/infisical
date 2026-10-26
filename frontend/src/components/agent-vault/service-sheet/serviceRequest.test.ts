@@ -29,6 +29,7 @@ const form = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   oauthAuthorizationId: "",
   oauthAuthorizedUrl: "",
   oauthScopes: [],
+  memberProvidedFields: [],
   methods: [...HTTP_METHODS],
   pathPrefixes: [],
   customHeaders: [],
@@ -78,7 +79,8 @@ describe("buildCreateServiceRequest", () => {
         type: AgentVaultCredentialType.Bearer,
         headerName: undefined,
         headerPrefix: "Bearer",
-        value: "sk_test"
+        value: "sk_test",
+        memberProvidedFields: []
       },
       customHeaders: [{ name: "X-Org", prefix: "", value: "acme" }],
       substitutions: [
@@ -98,7 +100,12 @@ describe("buildCreateServiceRequest", () => {
         "bundle-1",
         form({ credentialType: AgentVaultCredentialType.Basic, username: "me", secret: "pw" })
       ).credential
-    ).toEqual({ type: AgentVaultCredentialType.Basic, username: "me", password: "pw" });
+    ).toEqual({
+      type: AgentVaultCredentialType.Basic,
+      username: "me",
+      password: "pw",
+      memberProvidedFields: []
+    });
     expect(
       buildCreateServiceRequest(
         "bundle-1",
@@ -183,7 +190,8 @@ describe("buildUpdateServiceRequest", () => {
         type: AgentVaultCredentialType.Bearer,
         headerName: "Authorization",
         headerPrefix: "Bearer",
-        value: undefined
+        value: undefined,
+        memberProvidedFields: []
       },
       customHeaders: [{ id: "h-1", name: "X-Org", prefix: "" }],
       substitutions: [
@@ -200,7 +208,8 @@ describe("buildUpdateServiceRequest", () => {
       type: AgentVaultCredentialType.Bearer,
       headerName: "Authorization",
       headerPrefix: "Bearer",
-      value: undefined
+      value: undefined,
+      memberProvidedFields: []
     });
     expect(
       buildUpdateServiceRequest(
@@ -212,7 +221,12 @@ describe("buildUpdateServiceRequest", () => {
           secret: ""
         })
       ).credential
-    ).toEqual({ type: AgentVaultCredentialType.Basic, username: undefined, password: "" });
+    ).toEqual({
+      type: AgentVaultCredentialType.Basic,
+      username: undefined,
+      password: "",
+      memberProvidedFields: []
+    });
   });
 
   it("leaves the OAuth credential out unless a new authorization matches the URL", () => {

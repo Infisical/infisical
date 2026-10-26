@@ -9,7 +9,9 @@ import {
   AgentVaultMcpTransport,
   AgentVaultOauthStatus,
   AgentVaultServiceType,
-  AgentVaultSubstitutionSurface
+  AgentVaultSubstitutionSurface,
+  AgentVaultVariableReferenceField,
+  TAgentVaultMemberProvidedField
 } from "@app/hooks/api/agentVault";
 import {
   TAgentVaultOauthCredentialSummary,
@@ -29,6 +31,28 @@ export const displayHostPattern = (hostPattern: string) =>
     .split(",")
     .map((host) => host.trim().replace(/:443$/, ""))
     .join(", ");
+
+/**
+ * The form field that holds each member-provided field's admin value. credential-value is a bearer token or a basic
+ * password, which share the form's `secret`.
+ */
+export const FORM_FIELD_OF_CREDENTIAL_FIELD: Record<
+  TAgentVaultMemberProvidedField,
+  "secret" | "username"
+> = {
+  [AgentVaultVariableReferenceField.CredentialValue]: "secret",
+  [AgentVaultVariableReferenceField.CredentialUsername]: "username"
+};
+
+/** The member-provided fields a service had when the sheet opened. None stand behind a stored value. */
+export const storedMemberFields = (
+  service?: TAgentVaultService | null
+): TAgentVaultMemberProvidedField[] =>
+  service &&
+  (service.credential.type === AgentVaultCredentialType.Bearer ||
+    service.credential.type === AgentVaultCredentialType.Basic)
+    ? service.credential.memberProvidedFields
+    : [];
 
 export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
   [AgentVaultCredentialType.Bearer]: "Bearer",
@@ -180,6 +204,7 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
     "headerPrefix",
     "username",
     "secret",
+    "memberProvidedFields",
     "customHeaders",
     "substitutions"
   ],
@@ -282,6 +307,13 @@ export const buildServiceSchema = (
       // Checked in the refine below, only while OAuth is selected: switching to Bearer keeps these values.
       oauthClientId: z.string().optional(),
       oauthClientSecret: z.string().optional(),
+      // Each member sets these for themselves, so the form holds no value for them.
+      memberProvidedFields: z.array(
+        z.enum([
+          AgentVaultVariableReferenceField.CredentialValue,
+          AgentVaultVariableReferenceField.CredentialUsername
+        ])
+      ),
       methods: z.array(z.nativeEnum(AgentVaultHttpMethod)),
       pathPrefixes: z
         .array(z.string())
@@ -532,13 +564,23 @@ export const buildServiceSchema = (
         if (message) ctx.addIssue({ code: z.ZodIssueCode.custom, path, message });
       };
 
+      const isMemberProvided = (field: TAgentVaultMemberProvidedField) =>
+        data.memberProvidedFields.includes(field);
+      const isSecretMemberProvided = isMemberProvided(
+        AgentVaultVariableReferenceField.CredentialValue
+      );
+      const isUsernameMemberProvided = isMemberProvided(
+        AgentVaultVariableReferenceField.CredentialUsername
+      );
+
       if (
         data.credentialType !== AgentVaultCredentialType.Passthrough &&
-        data.credentialType !== AgentVaultCredentialType.OAuth
+        data.credentialType !== AgentVaultCredentialType.OAuth &&
+        !isSecretMemberProvided
       ) {
         addReferenceIssue(data.secret, ["secret"]);
       }
-      if (data.credentialType === AgentVaultCredentialType.Basic) {
+      if (data.credentialType === AgentVaultCredentialType.Basic && !isUsernameMemberProvided) {
         addReferenceIssue(data.username, ["username"]);
       }
       data.customHeaders.forEach((header, index) =>
@@ -558,13 +600,25 @@ export const buildServiceSchema = (
       const isUnchanged = data.secret === UNCHANGED_SECRET;
 
       const typeChanged = Boolean(service) && service?.credential.type !== data.credentialType;
+      // A field each member used to set has nothing stored for the admin to keep.
+      const wasMemberProvided = (field: TAgentVaultMemberProvidedField) =>
+        !typeChanged && storedMemberFields(service).includes(field);
 
       if (data.credentialType === AgentVaultCredentialType.Bearer) {
-        if ((!service || typeChanged) && !data.secret) {
+        if (isSecretMemberProvided) return;
+        if (
+          (!service ||
+            typeChanged ||
+            wasMemberProvided(AgentVaultVariableReferenceField.CredentialValue)) &&
+          !data.secret
+        ) {
           ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["secret"], message: "Required" });
         }
         return;
       }
+
+      // A member sends at least one half, so the credential is never empty.
+      if (isSecretMemberProvided || isUsernameMemberProvided) return;
 
       const willHaveUsername = data.username === UNCHANGED_SECRET ? true : Boolean(data.username);
       const willHavePassword = isUnchanged ? true : Boolean(data.secret);

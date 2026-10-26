@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { LoaderCircle } from "lucide-react";
@@ -300,13 +299,11 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
 
   const pageContent = (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("signup.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t("signup.og-title") as string} />
-        <meta name="og:description" content={t("signup.og-description") as string} />
-      </Helmet>
+      <title>{t("common.head-title", { title: t("signup.title") })}</title>
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
+      <meta property="og:title" content={t("signup.og-title") as string} />
+      <meta name="og:description" content={t("signup.og-description") as string} />
       <OnboardingStepTransition step={section}>
         {section === SignupSection.VerifyCode ||
         section === SignupSection.UserInfo ||

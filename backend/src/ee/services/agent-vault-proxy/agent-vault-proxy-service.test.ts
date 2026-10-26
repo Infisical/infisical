@@ -6,6 +6,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { ConflictError } from "@app/lib/errors";
+import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
 import {
   AgentVaultCredentialType,
@@ -19,6 +20,9 @@ import { TResolveServiceRow } from "./agent-vault-resolve-dal";
 
 vi.mock("@app/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
+}));
+vi.mock("@app/services/object-storage/object-storage-default-fns", () => ({
+  isDefaultStorageConfigured: () => false
 }));
 
 const PROJECT_ID = "11111111-1111-4111-8111-111111111111";
@@ -41,9 +45,19 @@ const serviceRow = (overrides: Partial<TResolveServiceRow> = {}): TResolveServic
   encryptedCredential: Buffer.from(JSON.stringify({ accessToken: "snapshot-access" })),
   allowedMethods: null,
   allowedPathPrefixes: null,
+  memberProvidedFields: null,
   position: 0,
   ...overrides
 });
+
+const sessionLogConfig = {
+  id: "logs-config",
+  projectId: PROJECT_ID,
+  enabled: false,
+  storageType: ObjectStorageType.Default,
+  createdAt: new Date(),
+  updatedAt: new Date()
+};
 
 const setup = (
   refresh: (dto: TRefreshServiceTokenDTO) => Promise<unknown>,
@@ -60,18 +74,14 @@ const setup = (
     agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
     agentVaultServiceSubstitutionDAL: { findByServiceIds: async () => [] },
     agentVaultVariableDAL: { findValuesForResolve: async () => variables },
+    agentVaultPersonalValueDAL: { findForResolve: async () => [] },
     agentVaultSessionDAL: {
       findByTokenHash: async () =>
         ({ id: "session-1", projectId: PROJECT_ID, userId: "user-1", revokedAt: null, expiresAt: null }) as never
     },
     agentVaultSessionLogConfigDAL: {
-      findOne: async () => ({
-        id: "logs-config",
-        projectId: PROJECT_ID,
-        enabled: false,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      })
+      findOne: async () => sessionLogConfig,
+      findByProjectIdFromPrimary: async () => sessionLogConfig
     },
     membershipDAL: { findResourceMembershipsForActor: async () => [] },
     orgDAL: { findEffectiveOrgMembership: async () => ({ isActive: true }) as never },

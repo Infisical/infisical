@@ -22,7 +22,8 @@ export const AgentVaultServicesSchema = z.object({
   allowedMethods: z.string().array().nullable().optional(),
   allowedPathPrefixes: z.string().array().nullable().optional(),
   type: z.string().default("http"),
-  config: z.unknown().nullable().optional()
+  config: z.unknown().nullable().optional(),
+  memberProvidedFields: z.string().array().nullable().optional()
 });
 
 export type TAgentVaultServices = z.infer<typeof AgentVaultServicesSchema>;
