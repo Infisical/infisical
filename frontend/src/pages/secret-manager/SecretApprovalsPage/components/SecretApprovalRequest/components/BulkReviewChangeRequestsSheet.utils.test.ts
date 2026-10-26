@@ -61,9 +61,7 @@ describe("BulkReviewChangeRequestsSheet.utils", () => {
       const details = {
         reviewers: [{ userId: currentUserId, status: ApprovalStatus.APPROVED }]
       };
-      expect(
-        isRequestApprovedByUser({ request, details, userId: currentUserId })
-      ).toBe(true);
+      expect(isRequestApprovedByUser({ request, details, userId: currentUserId })).toBe(true);
     });
   });
 
@@ -127,9 +125,7 @@ describe("BulkReviewChangeRequestsSheet.utils", () => {
       ]);
       const req2 = createMockRequest("2", []);
 
-      const approveResults: TBulkChangeRequestResult[] = [
-        { id: "2", isSuccess: true }
-      ];
+      const approveResults: TBulkChangeRequestResult[] = [{ id: "2", isSuccess: true }];
 
       const eligibleForMerge = filterRequestsEligibleForMerge({
         approveIds: ["1", "2"],
@@ -156,9 +152,7 @@ describe("BulkReviewChangeRequestsSheet.utils", () => {
         detailsById: {},
         rejectResults: [],
         approveResults: [], // skipped because already approved
-        mergeResults: [
-          { id: "1", isSuccess: false, errorMessage: "Secret key conflict with #42" }
-        ],
+        mergeResults: [{ id: "1", isSuccess: false, errorMessage: "Secret key conflict with #42" }],
         userId: currentUserId
       });
 
@@ -176,9 +170,7 @@ describe("BulkReviewChangeRequestsSheet.utils", () => {
         requests: [req1],
         detailsById: {},
         rejectResults: [],
-        approveResults: [
-          { id: "1", isSuccess: false, errorMessage: "Review permission denied" }
-        ],
+        approveResults: [{ id: "1", isSuccess: false, errorMessage: "Review permission denied" }],
         mergeResults: [], // not merged because approval failed
         userId: currentUserId
       });

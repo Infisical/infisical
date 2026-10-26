@@ -37,7 +37,10 @@ export const filterRequestsNeedingApproval = ({
 }: {
   approveIds: string[];
   requests: TSecretApprovalRequest[];
-  detailsById: Record<string, { reviewers?: { userId: string; status: ApprovalStatus }[] } | undefined>;
+  detailsById: Record<
+    string,
+    { reviewers?: { userId: string; status: ApprovalStatus }[] } | undefined
+  >;
   userId?: string;
 }): string[] => {
   return approveIds.filter((id) => {
@@ -55,7 +58,10 @@ export const filterRequestsEligibleForMerge = ({
 }: {
   approveIds: string[];
   requests: TSecretApprovalRequest[];
-  detailsById: Record<string, { reviewers?: { userId: string; status: ApprovalStatus }[] } | undefined>;
+  detailsById: Record<
+    string,
+    { reviewers?: { userId: string; status: ApprovalStatus }[] } | undefined
+  >;
   approveResults: TBulkChangeRequestResult[];
   userId?: string;
 }): string[] => {
@@ -80,7 +86,10 @@ export const computeBulkReviewOutcomes = ({
 }: {
   approveIds: string[];
   requests: TSecretApprovalRequest[];
-  detailsById: Record<string, { reviewers?: { userId: string; status: ApprovalStatus }[] } | undefined>;
+  detailsById: Record<
+    string,
+    { reviewers?: { userId: string; status: ApprovalStatus }[] } | undefined
+  >;
   rejectResults: TBulkChangeRequestResult[];
   approveResults: TBulkChangeRequestResult[];
   mergeResults: TBulkChangeRequestResult[];
