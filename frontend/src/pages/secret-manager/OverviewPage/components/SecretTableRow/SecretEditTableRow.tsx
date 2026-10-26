@@ -495,11 +495,11 @@ export const SecretEditTableRow = ({
     tags: unknown;
     metadata: unknown;
   }>({
-    value: undefined,
-    key: undefined,
-    comment: undefined,
-    tags: undefined,
-    metadata: undefined
+    value: isPendingCreate ? watchedValue : undefined,
+    key: isPendingCreate ? watchedKey : undefined,
+    comment: isPendingCreate ? watchedComment : undefined,
+    tags: isPendingCreate ? watchedTags : undefined,
+    metadata: isPendingCreate ? watchedMetadata : undefined
   });
 
   const areTagsEqual = (a: { id: string; slug: string }[], b: { id: string; slug: string }[]) => {
@@ -1233,6 +1233,7 @@ export const SecretEditTableRow = ({
                 if (document.activeElement !== e.currentTarget) e.currentTarget.scrollLeft = 0;
               }}
               onBlur={(e) => {
+                setIsNameTooltipOpen(false);
                 e.currentTarget.scrollLeft = 0;
                 field.onBlur();
                 if (!isBatchMode && field.onChange) field.onChange(e);
