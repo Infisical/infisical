@@ -1332,6 +1332,13 @@ const OverviewPageContent = () => {
     // value that the next person to sign in on this tab would read.
     const authSession = getAuthSessionMarker();
     const startedAt = Date.now();
+    const invalidatedAtStart = new Set(
+      queryClient
+        .getQueryCache()
+        .findAll({ queryKey: dashboardKeys.getSecretValuesRoot() })
+        .filter((query) => query.state.isInvalidated)
+        .map((query) => query.queryHash)
+    );
     const visibleAtStart = visibleSecretRows;
     const identities = keys.map((key) => [key, getSecretRowIdentity(key)] as const);
 
@@ -1383,8 +1390,13 @@ const OverviewPageContent = () => {
           });
           // A save during the bulk read invalidates or rewrites this value, and this response
           // may predate it, so leave the newer cache entry alone.
-          const cached = queryClient.getQueryState(valueKey);
-          if (cached && (cached.isInvalidated || cached.dataUpdatedAt > startedAt)) return;
+          const cached = queryClient.getQueryCache().find({ queryKey: valueKey, exact: true });
+          if (
+            cached &&
+            (cached.state.dataUpdatedAt > startedAt ||
+              (cached.state.isInvalidated && !invalidatedAtStart.has(cached.queryHash)))
+          )
+            return;
           queryClient.setQueryData(
             valueKey,
             isOverride ? { valueOverride: secretValue } : { value: secretValue }
