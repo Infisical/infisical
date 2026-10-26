@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { subject } from "@casl/ability";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   FilterIcon,
@@ -98,7 +98,6 @@ export const IdentityTab = withProjectPermission(
   () => {
     const scopeVariant = useScopeVariant();
     const { currentProject, projectId } = useProject();
-    const navigate = useNavigate();
     const { isSubOrganization, currentOrg } = useOrganization();
     const productLabel = getProjectLabel(currentProject?.type);
     const projectsHidden = hidesProjects(currentProject?.type);
@@ -378,37 +377,20 @@ export const IdentityTab = withProjectPermission(
                             roles
                           } = identityMember;
                           return (
-                            <TableRow
-                              className="group cursor-pointer"
-                              key={`st-v3-${id}`}
-                              role="button"
-                              tabIndex={0}
-                              onKeyDown={(evt) => {
-                                if (evt.target !== evt.currentTarget) return;
-                                if (evt.key === "Enter" || evt.key === " ") {
-                                  evt.preventDefault();
-                                  navigate({
-                                    to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId` as const,
-                                    params: {
-                                      orgId: currentOrg.id,
-                                      projectId: currentProject.id,
-                                      identityId: id
-                                    }
-                                  });
-                                }
-                              }}
-                              onClick={() =>
-                                navigate({
-                                  to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId` as const,
-                                  params: {
+                            <TableRow className="group relative cursor-pointer" key={`st-v3-${id}`}>
+                              <TableCell isTruncatable>
+                                <Link
+                                  to={`${getProjectBaseURL(currentProject.type)}/identities/$identityId`}
+                                  params={{
                                     orgId: currentOrg.id,
                                     projectId: currentProject.id,
                                     identityId: id
-                                  }
-                                })
-                              }
-                            >
-                              <TableCell isTruncatable>{name}</TableCell>
+                                  }}
+                                  className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                                >
+                                  {name}
+                                </Link>
+                              </TableCell>
                               <TableCell>
                                 <IdentityRoleBadges roles={roles} />
                               </TableCell>
@@ -442,7 +424,7 @@ export const IdentityTab = withProjectPermission(
                                   )}
                                 </Badge>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="relative z-10">
                                 <div className="flex items-center justify-end gap-2">
                                   {(activeLockoutAuthMethods?.length ?? 0) > 0 && (
                                     <Tooltip>
