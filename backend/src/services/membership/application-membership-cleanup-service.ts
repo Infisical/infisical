@@ -11,13 +11,14 @@ type TApplicationMembershipCleanupServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "delete">;
   approvalPolicyDAL: Pick<
     TApprovalPolicyDALFactory,
-    "deleteStepApproversBySubject" | "deleteUserStepApproversInProjects"
+    "deleteStepApproversBySubject" | "deleteUserStepApproversInProjects" | "deleteUserBypassersInProjects"
   >;
 };
 
 export type TApplicationMembershipCleanupServiceFactory = ReturnType<typeof applicationMembershipCleanupServiceFactory>;
 
 const APPLICATION_APPROVAL_SCOPES = [ApprovalPolicyScope.PkiApplication, ApprovalPolicyScope.Signer];
+const ORG_EXIT_APPROVAL_SCOPES = [...APPLICATION_APPROVAL_SCOPES, ApprovalPolicyScope.PamFolder];
 
 export const applicationMembershipCleanupServiceFactory = ({
   membershipDAL,
@@ -89,7 +90,11 @@ export const applicationMembershipCleanupServiceFactory = ({
 
     if (userIds.length) {
       await approvalPolicyDAL.deleteUserStepApproversInProjects(
-        { projectIds, userIds, scopeTypes: APPLICATION_APPROVAL_SCOPES },
+        { projectIds, userIds, scopeTypes: ORG_EXIT_APPROVAL_SCOPES },
+        tx
+      );
+      await approvalPolicyDAL.deleteUserBypassersInProjects(
+        { projectIds, userIds, scopeTypes: ORG_EXIT_APPROVAL_SCOPES },
         tx
       );
     }
