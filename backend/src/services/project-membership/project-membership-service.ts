@@ -634,15 +634,20 @@ export const projectMembershipServiceFactory = ({
       await assertProductWillRetainAdmin({ project, excludeMembershipIds: [actorMembership.id], tx });
 
       const [lockedMembership] = await lockMembershipsById([actorMembership.id], tx);
-      if (lockedMembership) {
-        await additionalPrivilegeDAL.delete(
-          {
-            projectId: project.id,
-            actorUserId: actorId
-          },
-          tx
-        );
+      if (!lockedMembership) {
+        throw new BadRequestError({
+          message:
+            "Your membership in this project changed before the leave completed. Leave the project again if you still want to remove it."
+        });
       }
+
+      await additionalPrivilegeDAL.delete(
+        {
+          projectId: project.id,
+          actorUserId: actorId
+        },
+        tx
+      );
 
       await secretReminderRecipientsDAL.delete(
         {
@@ -652,16 +657,7 @@ export const projectMembershipServiceFactory = ({
         tx
       );
 
-      const membership = (
-        await membershipUserDAL.delete(
-          {
-            scope: AccessScope.Project,
-            scopeProjectId: project.id,
-            actorUserId: actorId
-          },
-          tx
-        )
-      )?.[0];
+      const membership = await membershipUserDAL.deleteById(lockedMembership.id, tx);
 
       await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
         {
