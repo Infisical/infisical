@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import { type ComponentProps, type ReactNode, useEffect, useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -376,10 +375,8 @@ const ProjectTypeContent = ({
 
   return (
     <div className="mx-auto flex max-w-8xl flex-col">
-      <Helmet>
-        <title>{typeTitle} Projects</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>{`${typeTitle} Projects`}</title>
+      <link rel="icon" href="/infisical.ico" />
       <PageHeader
         title={typeTitle}
         scope={projectType}

@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -23,9 +22,7 @@ export const SettingsPage = () => {
 
   return (
     <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
-      <Helmet>
-        <title>Settings</title>
-      </Helmet>
+      <title>Settings</title>
       <div className="flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}

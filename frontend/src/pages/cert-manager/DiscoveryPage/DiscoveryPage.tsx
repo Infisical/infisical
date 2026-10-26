@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
@@ -44,9 +43,7 @@ export const DiscoveryPage = () => {
 
   return (
     <div className="mx-auto flex h-full flex-col justify-between bg-page text-foreground-inverse">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Certificate Discovery" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Certificate Discovery" })}</title>
       <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}

@@ -7,7 +7,6 @@ import {
   useRef,
   useState
 } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
 import { DragDropProvider, DragEndEvent, DragOverlay } from "@dnd-kit/react";
@@ -3686,11 +3685,9 @@ const OverviewPageContent = () => {
   return withOverviewTelemetry(
     overviewTelemetry,
     <div className="mx-auto flex max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("dashboard.title") })}</title>
-        <meta property="og:title" content={String(t("dashboard.og-title"))} />
-        <meta name="og:description" content={String(t("dashboard.og-description"))} />
-      </Helmet>
+      <title>{t("common.head-title", { title: t("dashboard.title") })}</title>
+      <meta property="og:title" content={String(t("dashboard.og-title"))} />
+      <meta name="og:description" content={String(t("dashboard.og-description"))} />
       <PageHeader
         className="mb-6 md:mb-10"
         scope={ProjectType.SecretManager}

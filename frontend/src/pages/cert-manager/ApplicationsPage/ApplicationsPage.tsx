@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { InfoIcon, MoreHorizontalIcon, PlusIcon, SlidersHorizontalIcon } from "lucide-react";
 
@@ -174,9 +173,7 @@ export const ApplicationsPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Applications</title>
-      </Helmet>
+      <title>Applications</title>
       <div className="h-full bg-page">
         <div className="mx-auto flex flex-col text-foreground-inverse">
           <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">

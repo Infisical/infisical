@@ -1,5 +1,4 @@
 import { ReactNode, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import {
@@ -224,9 +223,7 @@ export const AgentVaultProxiesPage = () => {
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Proxies" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Proxies" })}</title>
       <PageHeader
         scope={ProjectType.AgentVault}
         icon={ServerIcon}

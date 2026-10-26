@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -15,9 +14,7 @@ export const SecretScanningDataSourcesPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: "Secret Scanning" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Secret Scanning" })}</title>
       <ProjectPermissionCan
         renderGuardBanner
         I={ProjectPermissionSecretScanningDataSourceActions.Read}

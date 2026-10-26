@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -160,9 +159,7 @@ export const AgentVaultAccessBundlesPage = () => {
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Access Bundles" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Access Bundles" })}</title>
       <PageHeader
         scope={ProjectType.AgentVault}
         icon={PackageIcon}

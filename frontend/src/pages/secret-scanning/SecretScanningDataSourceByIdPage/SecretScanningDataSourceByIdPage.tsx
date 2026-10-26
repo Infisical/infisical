@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
   ChevronLeftIcon,
@@ -283,10 +282,8 @@ const PageContent = () => {
 export const SecretScanningDataSourceByIdPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Secret Scanning Data Source | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>Secret Scanning Data Source | Infisical</title>
+      <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         renderGuardBanner
         passThrough={false}

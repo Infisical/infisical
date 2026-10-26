@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -126,9 +125,7 @@ export const RenderConfigurePage = () => {
       onSubmit={handleSubmit(onFormSubmit)}
       className="flex h-full w-full flex-col items-center justify-center gap-6"
     >
-      <Helmet>
-        <title>Set Up Render Integration</title>
-      </Helmet>
+      <title>Set Up Render Integration</title>
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
@@ -296,9 +293,7 @@ export const RenderConfigurePage = () => {
     </form>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up Render Integration</title>
-      </Helmet>
+      <title>Set Up Render Integration</title>
       {isIntegrationAuthLoading || isIntegrationAuthAppsLoading ? (
         <img
           src="/images/loading/loading.gif"

@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, ServerIcon } from "lucide-react";
@@ -94,10 +93,8 @@ export const KmipServerDetailsByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
+      <link rel="icon" href="/infisical.ico" />
       <OrgPermissionCan
         passThrough={false}
         I={OrgKmipServerPermissionActions.ListKmipServers}

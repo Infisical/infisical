@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
@@ -379,10 +378,8 @@ export const MemberDetailsByIDPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
+      <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         passThrough
         renderGuardBanner

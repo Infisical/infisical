@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { PageHeader } from "@app/components/v3";
@@ -12,9 +11,7 @@ export const PkiSubscribersPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: "PKI Subscribers" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "PKI Subscribers" })}</title>
       <div className="h-full bg-page">
         <div className="mx-auto flex flex-col justify-between text-foreground-inverse">
           <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
