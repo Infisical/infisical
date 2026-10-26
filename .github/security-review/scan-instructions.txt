@@ -1,0 +1,41 @@
+**Tenant Isolation:**
+- Queries on org- or project-owned rows (DAL files under backend/src/services and backend/src/ee/services) that do not filter by the orgId or projectId of the authenticated actor
+- Lookups by ID that return a row from another organization or project because the scope check happens after the read, or not at all
+- Machine identity or service token paths that resolve resources outside the token's own org or project
+
+**Authorization:**
+- New or changed routes and service methods that act on a resource without a permissionService.getProjectPermission / getOrgPermission call followed by ForbiddenError.from(permission).throwUnlessCan(...) for the action actually performed
+- Returning a secret value when only DescribeSecret was checked; value reads require ReadValue (see hasSecretReadValueOrDescribePermission)
+- Returning a stored credential, certificate private key, or KMS key material when only the "use" action was checked; the read or export action must be enforced on its own
+- Role, privilege, or membership changes that do not go through assertRoleSetBoundary / validatePrivilegeChangeOperation
+- Permission resolution that skips isActiveRole, letting an expired temporary role or privilege still apply
+- New CASL condition operators or glob handling that change how isOperatorsASubset or validatePermissionBoundary compare rules
+
+**Authentication:**
+- Routes that drop or loosen onRequest: verifyAuth([...]), accept an AuthMode the handler does not expect, or add the deprecated API_KEY or SERVICE_TOKEN modes to new code
+- Changes to backend/src/server/plugins/auth (inject-identity, verify-auth, inject-assume-privilege) that let a request proceed without a verified identity
+- Machine identity auth methods (OIDC, JWT, Kubernetes, AWS, Azure, GCP, SPIFFE, LDAP) that skip signature, issuer, audience, or bound-claim verification on the external assertion
+- SAML, OIDC, or LDAP login paths that skip assertion signature or replay checks
+
+**Secrets and Cryptography:**
+- Secret values, tokens, keys, or credentials persisted without encryption through the KMS service (createCipherPairWithDataKey) or the lib/crypto helpers
+- New hand-rolled encryption, static or reused IVs or nonces, or key material shared across orgs or projects
+- Token, HMAC, or signature comparisons that do not use a constant-time comparison
+- Secret values, access tokens, encryption keys, or request bodies carrying them written to logs, error messages, audit log metadata, or telemetry
+- Sensitive fields (encrypted blobs, hashes, private keys, tokens) added to a route's Zod response schema
+
+**Server-Side Request Forgery:**
+- New HTTP requests to user-supplied URLs (webhooks, app connections, secret syncs, rotations, dynamic secrets, integrations) that do not go through safeRequest from backend/src/lib/validator/safe-request.ts
+- Redirect handling on user-supplied URLs that follows a redirect without validating and pinning the next hop
+
+**Secret References, Imports, and Sharing:**
+- Same-project secret reference expansion that resolves a secret in another environment or folder without the canExpandValue check
+- Cross-project references or imports that resolve without a matching project folder grant, ignore the organization's cross-project sharing setting, or resolve across organizations
+- Secret sharing links with guessable tokens, or that skip their expiry, max-views, or organization restriction checks
+
+**Database Migrations:**
+- Migrations under backend/src/db/migrations that read the license service or a feature flag, directly or through a helper (for example getMigrationEncryptionServices without skipHsmLicenseCheck: true); the license is not initialized when migrations run, so the migration can take the wrong encryption path
+
+**CI Workflows:**
+- Workflows triggered by pull_request_target or workflow_run that check out or execute code from the pull request
+- PR-controlled values (title, body, branch name, commit message) interpolated with ${{ }} directly into a run: script
