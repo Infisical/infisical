@@ -1412,7 +1412,6 @@ export const SecretEditTableRow = ({
                 secretPath={secretPath}
                 environment={environment}
                 isImport={isImportedSecret}
-                defaultValue={secretValueHidden ? "" : undefined}
                 canEditButNotView={secretValueHidden && !isManagedSecret}
                 onFocus={() => setIsFieldFocused.on()}
                 containerClassName={secretHasReference && isFieldActive ? "pl-6" : ""}
