@@ -1,3 +1,4 @@
+import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader } from "@app/components/v3/platform";
 import { useProject } from "@app/context";
 import {
@@ -8,13 +9,12 @@ import { getProjectLabel, hidesProjects } from "@app/helpers/project";
 import { withProjectPermission } from "@app/hoc";
 import { AppConnectionsTable } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
-export const AppConnectionsPage = withProjectPermission(
+const AppConnectionsPageContent = withProjectPermission(
   () => {
     const { currentProject } = useProject();
 
     return (
       <div className="bg-page">
-        <title>Infisical | App Connections</title>
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
         <div className="flex w-full justify-center bg-page text-foreground-inverse">
@@ -39,4 +39,11 @@ export const AppConnectionsPage = withProjectPermission(
     subject: ProjectPermissionSub.AppConnections,
     accessRestrictedMode: "dialog"
   }
+);
+
+export const AppConnectionsPage = () => (
+  <>
+    <PageTitle title="App Connections" />
+    <AppConnectionsPageContent />
+  </>
 );

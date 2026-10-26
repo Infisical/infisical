@@ -4,6 +4,7 @@ import { ChevronLeftIcon, CopyIcon, EllipsisIcon, PencilIcon, TrashIcon } from "
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -201,7 +202,7 @@ export const RoleByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
+      <PageTitle title={t("page-titles.role")} />
       <link rel="icon" href="/infisical.ico" />
       <OrgPermissionCan
         passThrough={false}

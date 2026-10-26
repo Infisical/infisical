@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -100,7 +101,7 @@ export const GcpSecretManagerAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <title>Authorize GCP Secret Manager Integration</title>
+      <PageTitle title="Authorize GCP Secret Manager Integration" />
       <Card className="mb-12 w-full max-w-lg">
         <CardHeader>
           <CardTitle>

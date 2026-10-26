@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { OnboardingPageLayout } from "@app/components/auth/OnboardingPageLayout";
+import { PageTitle } from "@app/components/PageTitle";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   Alert,
@@ -106,7 +107,7 @@ export const SignUpPage = () => {
 
   return (
     <OnboardingPageLayout currentStep={activeStep + 1} totalSteps={4}>
-      <title>Set up your instance | Infisical</title>
+      <PageTitle title="Set Up Your Instance" />
       <link rel="icon" href="/infisical.ico" />
       <meta property="og:image" content="/images/message.png" />
       <AuthPagePanel>

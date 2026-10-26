@@ -1,6 +1,6 @@
-import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useOrganization } from "@app/context";
@@ -15,7 +15,6 @@ export enum CertificateAuthorityTab {
 }
 
 export const CertificateAuthoritiesPage = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
 
@@ -36,7 +35,7 @@ export const CertificateAuthoritiesPage = () => {
 
   return (
     <div className="mx-auto flex h-full flex-col justify-between bg-page text-foreground-inverse">
-      <title>{t("common.head-title", { title: "Certificate Authorities" })}</title>
+      <PageTitle title="Certificate Authorities" />
       <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}

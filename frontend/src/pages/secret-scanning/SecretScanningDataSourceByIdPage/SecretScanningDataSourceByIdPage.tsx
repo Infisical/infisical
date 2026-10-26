@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
@@ -282,7 +283,7 @@ const PageContent = () => {
 export const SecretScanningDataSourceByIdPage = () => {
   return (
     <>
-      <title>Secret Scanning Data Source | Infisical</title>
+      <PageTitle title="Secret Scanning Data Source" />
       <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         renderGuardBanner

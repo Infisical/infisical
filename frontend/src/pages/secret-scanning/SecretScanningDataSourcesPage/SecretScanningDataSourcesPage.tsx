@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v3/platform";
 import {
@@ -14,7 +15,7 @@ export const SecretScanningDataSourcesPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <title>{t("common.head-title", { title: "Secret Scanning" })}</title>
+      <PageTitle title={t("page-titles.secret-scanning-data-sources")} />
       <ProjectPermissionCan
         renderGuardBanner
         I={ProjectPermissionSecretScanningDataSourceActions.Read}

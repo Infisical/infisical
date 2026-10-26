@@ -8,6 +8,7 @@ import {
   TriangleAlertIcon
 } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Alert,
@@ -243,7 +244,7 @@ const Page = () => {
 export const InstallationDetailsByIDPage = () => {
   return (
     <>
-      <title>Installation Details</title>
+      <PageTitle title="Installation Details" />
       <link rel="icon" href="/infisical.ico" />
       <Page />
     </>

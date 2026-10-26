@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { Activity, Ban, SearchIcon, Video } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Badge,
@@ -142,7 +142,6 @@ const FolderNameCell = ({ session, search }: { session: TPamSession; search: str
 };
 
 export const PamSessionsPage = () => {
-  const { t } = useTranslation();
   const { currentProject } = useProject();
   const { map: accountTypeMap } = usePamAccountTypeMap();
 
@@ -204,7 +203,7 @@ export const PamSessionsPage = () => {
 
   return (
     <div className="mx-auto mb-6 w-full max-w-8xl">
-      <title>{t("common.head-title", { title: "Sessions" })}</title>
+      <PageTitle title="Sessions" />
       <PageHeader
         scope={ProjectType.PAM}
         icon={Video}

@@ -14,6 +14,7 @@ import {
 import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Alert,
@@ -378,7 +379,7 @@ export const MemberDetailsByIDPage = () => {
 
   return (
     <>
-      <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
+      <PageTitle title={t("page-titles.user")} />
       <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         passThrough

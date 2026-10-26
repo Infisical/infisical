@@ -1,5 +1,4 @@
 import { ReactNode, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import {
   BanIcon,
@@ -15,6 +14,7 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -136,7 +136,6 @@ const truncateFingerprint = (fingerprint: string) =>
   `${fingerprint.split(":").slice(0, 5).join(":")}…`;
 
 export const AgentVaultProxiesPage = () => {
-  const { t } = useTranslation();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
@@ -223,7 +222,7 @@ export const AgentVaultProxiesPage = () => {
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <title>{t("common.head-title", { title: "Proxies" })}</title>
+      <PageTitle title="Proxies" />
       <PageHeader
         scope={ProjectType.AgentVault}
         icon={ServerIcon}
