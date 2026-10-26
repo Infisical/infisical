@@ -220,7 +220,11 @@ export const SelectOrgPage = () => {
   }, [selectedRootOrg, searchTerm]);
 
   // For sub-orgs, inherit the root org's SSO settings but override the ID
-  const handleSelectOrganization = async (org: TOrgWithSubOrgs, subOrgId?: string) => {
+  const handleSelectOrganization = async (
+    org: TOrgWithSubOrgs,
+    subOrgId?: string,
+    { needsFactorSetup }: { needsFactorSetup?: boolean } = {}
+  ) => {
     const targetOrgId = subOrgId || org.id;
     const canBypassOrgAuth = org.bypassOrgAuthEnabled && isBreakglassRoute;
 
@@ -305,7 +309,9 @@ export const SelectOrgPage = () => {
     } else {
       setAuthToken(token);
       createNotification({ text: "Successfully logged in", type: "success" });
-      if (redirectTo?.startsWith(`/organizations/${targetOrgId}/`)) {
+      if (needsFactorSetup) {
+        navigate({ to: "/personal-settings", search: { selectedTab: "authentication" } });
+      } else if (redirectTo?.startsWith(`/organizations/${targetOrgId}/`)) {
         navigate({ href: redirectTo });
       } else {
         navigateUserToOrg({ navigate, organizationId: targetOrgId });
@@ -461,11 +467,12 @@ export const SelectOrgPage = () => {
         </Helmet>
         <Mfa
           email={user.email as string}
-          successCallback={() => {
+          successCallback={(options) => {
             if (mfaOrgInfo.current) {
               return handleSelectOrganization(
                 mfaOrgInfo.current.rootOrg,
-                mfaOrgInfo.current.subOrgId
+                mfaOrgInfo.current.subOrgId,
+                options
               );
             }
             return undefined;
