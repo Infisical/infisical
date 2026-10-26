@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import {
   ChevronsLeftRightEllipsisIcon,
   ClipboardPasteIcon,
@@ -159,15 +159,33 @@ export function ExportMenu({
 export function AddNewMenu({
   writeBlock,
   single,
-  onNewSecret,
-  onNewFolder
+  available,
+  onAdd
 }: {
   writeBlock?: string;
   single: boolean;
-  onNewSecret: () => void;
-  onNewFolder: () => void;
+  available: Partial<Record<ResourceKind, boolean>>;
+  onAdd: (kind: ResourceKind) => void;
 }) {
   const singleOnly = single ? NEXT_PHASE : "Select a single environment first";
+  const blockOf = (kind: ResourceKind, singleReason?: string) => {
+    if (!available[kind]) return NEXT_PHASE;
+    if (writeBlock) return writeBlock;
+    return singleReason && !single ? singleReason : undefined;
+  };
+  const item = (kind: ResourceKind, label: string, icon: ReactNode, singleReason?: string) => {
+    const reason = blockOf(kind, singleReason);
+    return (
+      <DropdownMenuItem
+        disabled={Boolean(reason)}
+        description={reason}
+        onSelect={() => onAdd(kind)}
+      >
+        {icon}
+        {label}
+      </DropdownMenuItem>
+    );
+  };
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -175,48 +193,29 @@ export function AddNewMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>Basic</DropdownMenuLabel>
-        <DropdownMenuItem
-          disabled={Boolean(writeBlock)}
-          description={writeBlock}
-          onSelect={onNewSecret}
-        >
-          <KindIcon kind="secret" />
-          New secret
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          disabled={Boolean(writeBlock)}
-          description={writeBlock}
-          onSelect={onNewFolder}
-        >
-          <KindIcon kind="folder" />
-          New folder
-        </DropdownMenuItem>
+        {item("secret", "New secret", <KindIcon kind="secret" />)}
+        {item("folder", "New folder", <KindIcon kind="folder" />)}
         <DropdownMenuItem disabled description={NEXT_PHASE}>
           <Icon name="upload" />
           Upload secrets
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Advanced</DropdownMenuLabel>
-        <DropdownMenuItem disabled description={singleOnly}>
-          <Icon icon={ImportIcon} />
-          Import secrets
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled description={NEXT_PHASE}>
-          <Icon icon={FingerprintIcon} />
-          Add dynamic secret
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled description={NEXT_PHASE}>
-          <Icon name="sync" />
-          Add secret rotation
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled description={singleOnly}>
-          <Icon icon={ChevronsLeftRightEllipsisIcon} />
-          Add proxied service
-        </DropdownMenuItem>
-        <DropdownMenuItem disabled description={NEXT_PHASE}>
-          <Icon icon={HexagonIcon} />
-          Add honey token
-        </DropdownMenuItem>
+        {item(
+          "import",
+          "Import secrets",
+          <Icon icon={ImportIcon} />,
+          "Select a single environment to import secrets"
+        )}
+        {item("dynamic", "Add dynamic secret", <Icon icon={FingerprintIcon} />)}
+        {item("rotation", "Add secret rotation", <Icon name="sync" />)}
+        {item(
+          "proxy",
+          "Add proxied service",
+          <Icon icon={ChevronsLeftRightEllipsisIcon} />,
+          "Select a single environment to add a proxied service"
+        )}
+        {item("honey", "Add honey token", <Icon icon={HexagonIcon} />)}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <Icon icon={ListPlusIcon} />

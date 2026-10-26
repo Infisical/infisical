@@ -337,7 +337,10 @@ export function KindRow({
   );
   if (ctx.single)
     return (
-      <TableRow className={styles.row}>
+      <TableRow
+        data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
+        className={styles.row}
+      >
         <SelectCell
           kind={kind}
           rowKey={rowKey}
@@ -353,6 +356,7 @@ export function KindRow({
   return (
     <>
       <TableRow
+        data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
         className={styles.row}
         data-expanded={expanded || undefined}
         onClick={() => setExpanded(!expanded)}
@@ -410,7 +414,11 @@ export function FolderRow({
 }) {
   const first = entries[0];
   return (
-    <TableRow className={`${styles.row} ${styles.clickable}`} onClick={onOpen}>
+    <TableRow
+      data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
+      className={`${styles.row} ${styles.clickable}`}
+      onClick={onOpen}
+    >
       <SelectCell kind="folder" rowKey={rowKey} label={first.name} ctx={ctx} selectable />
       <TableCell colSpan={ctx.single ? 2 : undefined} className={styles.nameCell}>
         <div className={styles.nameLine}>
@@ -510,6 +518,7 @@ export function ImportRow({
   return (
     <>
       <TableRow
+        data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
         className={`${styles.row} ${styles.clickable}`}
         data-expanded={expanded || undefined}
         onClick={() => setExpanded(!expanded)}

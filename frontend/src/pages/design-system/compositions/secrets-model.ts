@@ -113,7 +113,8 @@ export const scopeMatches = (resource: Scope, scope: Scope) =>
   resource.project === scope.project &&
   resource.environment === scope.environment &&
   resource.path === scope.path;
-export const resourceKey = (resource: Resource) => `${resource.kind}:${resource.name}`;
+export const resourceKey = (resource: Pick<Resource, "kind" | "name">) =>
+  `${resource.kind}:${resource.name}`;
 export const readableValue = (secret: Secret) =>
   secret.value.status === "present" ? secret.value.value : undefined;
 

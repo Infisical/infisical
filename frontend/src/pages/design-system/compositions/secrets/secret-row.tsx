@@ -273,7 +273,10 @@ export function SecretRow({
   if (ctx.single)
     return (
       <>
-        <TableRow className={styles.row}>
+        <TableRow
+          data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
+          className={styles.row}
+        >
           <SelectCell
             kind="secret"
             rowKey={rowKey}
@@ -353,6 +356,7 @@ export function SecretRow({
   return (
     <>
       <TableRow
+        data-state={ctx.recent.includes(rowKey) ? "selected" : undefined}
         className={`${styles.row} ${styles.clickable}`}
         data-expanded={expanded || undefined}
         onClick={() => setExpanded(!expanded)}

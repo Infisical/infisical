@@ -54,9 +54,11 @@ import {
   TableRow
 } from "@app/components/v4/ui/table";
 import { Textarea } from "@app/components/v4/ui/textarea";
+import type { ToastItem } from "@app/components/v4/ui/toast-stack";
 import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
 import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/top-bar";
 
+import { addFlows, type FlowFeedback, FlowToasts, type NewResource } from "./secrets/flows";
 import { NEXT_PHASE, type RowContext } from "./secrets/overview-cells";
 import { FolderRow, ImportRow, KindRow } from "./secrets/resource-rows";
 import { SecretRow, type SecretRowHandlers } from "./secrets/secret-row";
@@ -139,6 +141,15 @@ function Overview({ scenario }: { scenario: Scenario }) {
   const [validation, setValidation] = useState("");
   const [notice, setNotice] = useState("");
   const [recovered, setRecovered] = useState(false);
+  const [flow, setFlow] = useState<{
+    kind: ResourceKind;
+    session: number;
+    initial?: { environments?: string[]; name?: string };
+  }>();
+  const [flowOpen, setFlowOpen] = useState(false);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [recent, setRecent] = useState<string[]>([]);
+  const revealed = useRef("");
   const search = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const visibleEnvironments = environments.filter(
@@ -158,7 +169,15 @@ function Overview({ scenario }: { scenario: Scenario }) {
   if (unavailable) writeBlock = "Resources are not available in this scenario";
   useEffect(() => {
     const focus = (event: KeyboardEvent) => {
-      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey || draft || deleting)
+      if (
+        event.key !== "/" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        draft ||
+        deleting ||
+        flowOpen
+      )
         return;
       if ((event.target as HTMLElement).closest("input, textarea, [contenteditable=true]")) return;
       if (!root.current?.getClientRects().length) return;
@@ -167,12 +186,13 @@ function Overview({ scenario }: { scenario: Scenario }) {
     };
     document.addEventListener("keydown", focus);
     return () => document.removeEventListener("keydown", focus);
-  }, [draft, deleting]);
+  }, [draft, deleting, flowOpen]);
 
   const resetView = () => {
     setPage(1);
     setSelected([]);
     setNotice("");
+    setRecent([]);
   };
   const navigate = (nextPath: string) => {
     setPath(nextPath);
@@ -224,6 +244,21 @@ function Overview({ scenario }: { scenario: Scenario }) {
   const currentPage = Math.min(page, pageCount);
   const windowRows = ordered.slice((currentPage - 1) * perPage, currentPage * perPage);
   const isLastPage = currentPage === pageCount;
+  useEffect(() => {
+    const signature = recent.join("|");
+    if (!signature || revealed.current === signature) return;
+    const index = ordered.findIndex(([key]) => recent.includes(key));
+    if (index < 0) return;
+    const target = Math.floor(index / perPage) + 1;
+    if (target !== currentPage) {
+      setPage(target);
+      return;
+    }
+    revealed.current = signature;
+    root.current
+      ?.querySelector('tbody tr[data-state="selected"]')
+      ?.scrollIntoView({ block: "nearest" });
+  }, [recent, ordered, perPage, currentPage]);
   const isFiltered = Boolean(query.trim() || types.length || tags.length);
   const tagOptions = [
     ...new Set(
@@ -246,6 +281,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
     path,
     writeBlock,
     selected,
+    recent,
     onToggleSelect: (key) =>
       setSelected(
         selected.includes(key) ? selected.filter((entry) => entry !== key) : [...selected, key]
@@ -300,35 +336,53 @@ function Overview({ scenario }: { scenario: Scenario }) {
     if (draft && JSON.stringify(draft) !== initialDraft) setDiscard(true);
     else setDraft(undefined);
   };
-  const create = (kind: Draft["kind"], name: string, value: string, targets: string[]) => {
+  const pushToast = (item: Omit<ToastItem, "id">) =>
+    setToasts((current) => [...current, { ...item, id: crypto.randomUUID() }]);
+  const insert = (created: NewResource[], feedback: FlowFeedback) => {
     const timestamp = new Date().toISOString();
     setResources((current) => [
       ...current,
-      ...targets.map((environment): Resource => {
-        const base = {
-          id: crypto.randomUUID(),
-          project,
-          environment,
-          path,
-          name,
-          createdAt: timestamp,
-          updatedAt: timestamp
-        };
-        return kind === "folder"
-          ? { ...base, kind: "folder", description: value }
-          : {
-              ...base,
-              kind: "secret",
-              value: { status: "present", value },
-              version: 1,
-              comment: "",
-              tags: [],
-              metadata: []
-            };
-      })
+      ...created.map(
+        (resource) =>
+          ({
+            ...resource,
+            id: crypto.randomUUID(),
+            createdAt: timestamp,
+            updatedAt: timestamp
+          }) as Resource
+      )
     ]);
-    setNotice(`Created ${name} in local demo data.`);
+    setNotice("");
+    setRecent([
+      ...new Set(
+        created
+          .filter((resource) => resource.project === project && resource.path === path)
+          .map(resourceKey)
+      )
+    ]);
+    pushToast({ tone: "ok", ...feedback });
   };
+  const openFlow = (kind: ResourceKind, initial?: { environments?: string[]; name?: string }) => {
+    setFlow({ kind, session: (flow?.session ?? 0) + 1, initial });
+    setFlowOpen(true);
+    setRecent([]);
+  };
+  const create = (name: string, value: string, targets: string[]) =>
+    insert(
+      targets.map((environment) => ({
+        kind: "secret",
+        project,
+        environment,
+        path,
+        name,
+        value: { status: "present", value },
+        version: 1,
+        comment: "",
+        tags: [],
+        metadata: []
+      })),
+      { title: `Created ${name} in local demo data.` }
+    );
   const save = () => {
     if (!draft || writeBlock) return;
     const name = draft.name.trim();
@@ -359,11 +413,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
       return;
     }
     const original = draft.resource;
-    if (!original) {
-      create(draft.kind, name, draft.value, draft.environments);
-      setDraft(undefined);
-      return;
-    }
+    if (!original) return;
     const timestamp = new Date().toISOString();
     const prefix = path === "/" ? "" : path;
     setResources((current) =>
@@ -474,7 +524,8 @@ function Overview({ scenario }: { scenario: Scenario }) {
     );
   const handlers: SecretRowHandlers = {
     onEdit: (secret) => openDraft("secret", secret, [secret.environment]),
-    onCreateIn: (environment, key) => openDraft("secret", undefined, [environment], key),
+    onCreateIn: (environment, key) =>
+      openFlow("secret", { environments: [environment], name: key }),
     onDelete: (secret) => setDeleting([secret]),
     importedFrom
   };
@@ -550,11 +601,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
             )}
             {gate(
               writeBlock,
-              <Button
-                icon="plus"
-                disabled={Boolean(writeBlock)}
-                onClick={() => openDraft("secret")}
-              >
+              <Button icon="plus" disabled={Boolean(writeBlock)} onClick={() => openFlow("secret")}>
                 Add a new secret
               </Button>
             )}
@@ -729,16 +776,6 @@ function Overview({ scenario }: { scenario: Scenario }) {
           onChange={(event) => setDraft({ ...draft, value: event.target.value })}
         />
       </Field>
-      {!draft.resource && draft.environments.length > 0 && (
-        <Field label="Environments">
-          <MultiSelect
-            label="Environments"
-            options={environments}
-            value={draft.environments}
-            onChange={(value) => setDraft({ ...draft, environments: value })}
-          />
-        </Field>
-      )}
     </form>
   );
   const draftScope = `Local demo data in ${
@@ -747,7 +784,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
       .map((environment) => environment.label)
       .join(", ") || "no environment"
   } ${path === "/" ? "at the root folder" : `in the ${path} folder`}.`;
-  const draftTitle = `${draft?.resource ? "Edit" : "Create"} ${draft?.kind === "folder" ? "folder" : "secret"}`;
+  const draftTitle = `Edit ${draft?.kind === "folder" ? "folder" : "secret"}`;
 
   return (
     <TooltipProvider>
@@ -873,8 +910,8 @@ function Overview({ scenario }: { scenario: Scenario }) {
                 <AddNewMenu
                   writeBlock={writeBlock}
                   single={single}
-                  onNewSecret={() => openDraft("secret")}
-                  onNewFolder={() => openDraft("folder")}
+                  available={Object.fromEntries(Object.keys(addFlows).map((kind) => [kind, true]))}
+                  onAdd={(kind) => openFlow(kind)}
                 />
               </div>
               <div className={styles.tableBlock}>
@@ -1054,7 +1091,6 @@ function Overview({ scenario }: { scenario: Scenario }) {
                               .map(([, entries]) => entries[0].name)}
                             onCreate={(key, value) =>
                               create(
-                                "secret",
                                 key,
                                 value,
                                 visibleEnvironments.map((environment) => environment.value)
@@ -1239,6 +1275,29 @@ function Overview({ scenario }: { scenario: Scenario }) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        {flow &&
+          (() => {
+            const Flow = addFlows[flow.kind];
+            return (
+              Flow && (
+                <Flow
+                  key={flow.session}
+                  open={flowOpen}
+                  onOpenChange={setFlowOpen}
+                  scope={{ project, path, environments, visibleEnvironments }}
+                  resources={resources}
+                  initial={flow.initial}
+                  onCreate={insert}
+                  onError={(feedback) => pushToast({ tone: "bad", ...feedback })}
+                  onNotice={(feedback) => pushToast({ tone: "neutral", ...feedback })}
+                />
+              )
+            );
+          })()}
+        <FlowToasts
+          items={toasts}
+          onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))}
+        />
       </AppShell>
     </TooltipProvider>
   );

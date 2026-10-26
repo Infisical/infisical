@@ -28,6 +28,7 @@ export type RowContext = {
   path: string;
   writeBlock?: string;
   selected: string[];
+  recent: string[];
   onToggleSelect: (key: string) => void;
   report: (message: string) => void;
 };
