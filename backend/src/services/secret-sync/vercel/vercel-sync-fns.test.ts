@@ -80,7 +80,7 @@ describe("Vercel errors that retrying can't fix", () => {
     ({
       flatten: () => Object.fromEntries(keys.map((key) => [key, { value: "value" }]))
     }) as unknown as TSecretSyncPayload;
-  const writeError = (code: string) =>
+  const vercelError = (code: string) =>
     new AxiosError("bad request", "ERR_BAD_REQUEST", undefined, undefined, {
       status: 400,
       statusText: "Bad Request",
@@ -92,22 +92,25 @@ describe("Vercel errors that retrying can't fix", () => {
     get.mockReset();
     post.mockReset();
   });
-  it("rejects names Vercel can't store before calling Vercel", async () => {
-    const result = VercelSyncFns.syncSecrets(sync, payloadOf(["VALID_KEY", "1STARTS_WITH_DIGIT", "has-dash"]));
-    await expect(result).rejects.toBeInstanceOf(SecretSyncError);
-    await expect(result).rejects.toMatchObject({ shouldRetry: false, secretKey: "1STARTS_WITH_DIGIT" });
-    await expect(result).rejects.toThrow("1STARTS_WITH_DIGIT, has-dash");
-    expect(get).not.toHaveBeenCalled();
-  });
   it.each([
-    ["envs_size_too_large", false],
-    ["some_other_error", true]
-  ])("sets shouldRetry when a create fails with %s", async (code, shouldRetry) => {
+    ["BAD_REQUEST", false, "65,535-byte limit"],
+    ["env_key_invalid_characters", false, "Rename the secret"],
+    ["envs_size_too_large", false, "no space left"],
+    ["some_other_error", true, ""]
+  ])("sets shouldRetry and the message when a create fails with %s", async (code, shouldRetry, message) => {
     get.mockResolvedValue({ data: { envs: [] } });
-    post.mockRejectedValue(writeError(code));
+    post.mockRejectedValue(vercelError(code));
     await expect(VercelSyncFns.syncSecrets(sync, payloadOf(["API_KEY"]))).rejects.toMatchObject({
       shouldRetry,
-      secretKey: "API_KEY"
+      secretKey: "API_KEY",
+      message: message ? expect.stringContaining(message) : ""
     });
+  });
+  it("stops retrying a read that fails with a listed code", async () => {
+    get.mockRejectedValue(vercelError("bad_request"));
+    const result = VercelSyncFns.getSecrets(sync);
+    await expect(result).rejects.toBeInstanceOf(SecretSyncError);
+    await expect(result).rejects.toMatchObject({ shouldRetry: false });
+    expect(get).toHaveBeenCalledTimes(1);
   });
 });

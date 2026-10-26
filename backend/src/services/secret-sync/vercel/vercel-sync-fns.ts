@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { AxiosError, isAxiosError } from "axios";
-import RE2 from "re2";
 
 import { request } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -23,7 +22,17 @@ function isVercelDefaultEnvType(value: string): value is DefaultVercelEnvType {
 
 const MAX_RETRIES = 5;
 const RATE_LIMIT_DELAY_MS = 60000;
-const VERCEL_ENV_KEY_PATTERN = new RE2(/^[A-Za-z_][A-Za-z0-9_]*$/);
+
+// Vercel answers with these codes when a request can never succeed as sent, so retrying only repeats the
+// failure. Each maps to the message shown as the sync's error.
+const NON_RETRYABLE_VERCEL_ERRORS: Record<string, string> = {
+  bad_request:
+    "Vercel rejected this environment variable as invalid, for example because its name and value together are larger than Vercel's 65,535-byte limit. Fix the secret in Infisical, then sync again.",
+  env_key_invalid_characters:
+    "Vercel rejected this environment variable's name. Names can only contain letters, digits and underscores, and cannot start with a digit. Rename the secret or change the sync's key schema, then sync again.",
+  envs_size_too_large:
+    "Vercel has no space left for environment variables in this project. Remove environment variables you no longer need in Vercel, then sync again."
+};
 
 const sleep = async (ms: number) =>
   new Promise((resolve) => {
@@ -42,21 +51,14 @@ const getRateLimitDelayMs = (error: AxiosError) => {
   return Math.min(Math.max(delayMs, 0), RATE_LIMIT_DELAY_MS);
 };
 
-const toVercelWriteError = (error: unknown, secretKey: string) => {
-  // Vercel rejects writes once a project's environment variables use up its storage; retrying can't free space.
-  const isOutOfSpace =
-    isAxiosError(error) &&
-    (error.response?.data as { error?: { code?: string } } | undefined)?.error?.code === "envs_size_too_large";
+// Vercel isn't consistent about casing, e.g. BAD_REQUEST alongside envs_size_too_large.
+const toVercelSyncError = (error: unknown, secretKey?: string) => {
+  const code = isAxiosError(error)
+    ? String((error.response?.data as { error?: { code?: unknown } } | undefined)?.error?.code ?? "").toLowerCase()
+    : "";
+  const message = NON_RETRYABLE_VERCEL_ERRORS[code];
 
-  return new SecretSyncError({
-    error,
-    secretKey,
-    shouldRetry: !isOutOfSpace,
-    ...(isOutOfSpace && {
-      message:
-        "Vercel has no space left for environment variables in this project. Remove environment variables you no longer need in Vercel, then sync again."
-    })
-  });
+  return new SecretSyncError({ error, secretKey, shouldRetry: !message, message });
 };
 
 const getVercelSecretsWithRetries = async (
@@ -98,7 +100,8 @@ const getVercelSecretsWithRetries = async (
       await sleep(getRateLimitDelayMs(error));
       return await getVercelSecretsWithRetries(secretSync, attempt + 1);
     }
-    throw error;
+    const syncError = toVercelSyncError(error);
+    throw syncError.shouldRetry ? error : syncError;
   }
 };
 
@@ -144,7 +147,8 @@ const getDecryptedVercelSecret = async (
       await sleep(getRateLimitDelayMs(error));
       return await getDecryptedVercelSecret(secretSync, secret, attempt + 1);
     }
-    throw error;
+    const syncError = toVercelSyncError(error, secret.key);
+    throw syncError.shouldRetry ? error : syncError;
   }
 };
 
@@ -230,10 +234,7 @@ const deleteSecret = async (
       await sleep(getRateLimitDelayMs(error));
       return await deleteSecret(secretSync, vercelSecret, attempt + 1);
     }
-    throw new SecretSyncError({
-      error,
-      secretKey: vercelSecret.key
-    });
+    throw toVercelSyncError(error, vercelSecret.key);
   }
 };
 
@@ -282,7 +283,7 @@ const createSecret = async (
       await sleep(getRateLimitDelayMs(error));
       return await createSecret(secretSync, secretMap, key, attempt + 1);
     }
-    throw toVercelWriteError(error, key);
+    throw toVercelSyncError(error, key);
   }
 };
 
@@ -343,7 +344,7 @@ const updateSecret = async (
       await sleep(getRateLimitDelayMs(error));
       return await updateSecret(secretSync, secretMap, vercelSecret, attempt + 1);
     }
-    throw toVercelWriteError(error, vercelSecret.key);
+    throw toVercelSyncError(error, vercelSecret.key);
   }
 };
 
@@ -437,10 +438,7 @@ const detachEnvFromProjectSecret = async (
       await sleep(getRateLimitDelayMs(error));
       return detachEnvFromProjectSecret(secretSync, vercelSecret, attempt + 1);
     }
-    throw new SecretSyncError({
-      error,
-      secretKey: vercelSecret.key
-    });
+    throw toVercelSyncError(error, vercelSecret.key);
   }
 };
 
@@ -534,7 +532,8 @@ const listTeamSharedEnvVarsWithRetries = async (
         // eslint-disable-next-line no-await-in-loop
         await sleep(getRateLimitDelayMs(error));
       } else {
-        throw error;
+        const syncError = toVercelSyncError(error);
+        throw syncError.shouldRetry ? error : syncError;
       }
     }
   }
@@ -577,7 +576,8 @@ const getDecryptedTeamSharedEnvVar = async (
       await sleep(getRateLimitDelayMs(error));
       return getDecryptedTeamSharedEnvVar(secretSync, envVar, attempt + 1);
     }
-    throw error;
+    const syncError = toVercelSyncError(error, envVar.key);
+    throw syncError.shouldRetry ? error : syncError;
   }
 };
 
@@ -681,7 +681,7 @@ const createTeamSharedEnvVar = async (
       await sleep(getRateLimitDelayMs(error));
       return createTeamSharedEnvVar(secretSync, key, value, attempt + 1);
     }
-    throw toVercelWriteError(error, key);
+    throw toVercelSyncError(error, key);
   }
 };
 
@@ -762,7 +762,7 @@ const updateTeamSharedEnvVar = async (
       await sleep(getRateLimitDelayMs(error));
       return updateTeamSharedEnvVar(secretSync, envVar, value, attempt + 1);
     }
-    throw toVercelWriteError(error, envVar.key);
+    throw toVercelSyncError(error, envVar.key);
   }
 };
 
@@ -810,7 +810,7 @@ const deleteTeamSharedEnvVar = async (
       await sleep(getRateLimitDelayMs(error));
       return deleteTeamSharedEnvVar(secretSync, envVar, attempt + 1);
     }
-    throw new SecretSyncError({ error, secretKey: envVar.key });
+    throw toVercelSyncError(error, envVar.key);
   }
 };
 
@@ -894,24 +894,13 @@ const detachTeamSharedEnvVar = async (
       await sleep(getRateLimitDelayMs(error));
       return detachTeamSharedEnvVar(secretSync, envVar, attempt + 1);
     }
-    throw new SecretSyncError({ error, secretKey: envVar.key });
+    throw toVercelSyncError(error, envVar.key);
   }
 };
 
 export const VercelSyncFns = {
   syncSecrets: async (secretSync: TVercelSyncWithCredentials, payload: TSecretSyncPayload) => {
     const secretMap = payload.flatten();
-
-    const invalidKeys = Object.keys(secretMap).filter((key) => !VERCEL_ENV_KEY_PATTERN.test(key));
-    if (invalidKeys.length) {
-      throw new SecretSyncError({
-        secretKey: invalidKeys[0],
-        shouldRetry: false,
-        message: `${invalidKeys.length} secret ${
-          invalidKeys.length === 1 ? "key is" : "keys are"
-        } not a valid Vercel environment variable name: ${invalidKeys.join(", ")}. Vercel environment variable names can only contain letters, digits and underscores, and cannot start with a digit. Rename the secrets or change the key schema.`
-      });
-    }
     if (secretSync.destinationConfig.scope === VercelSyncScope.Team) {
       const teamDestinationConfig = secretSync.destinationConfig;
       const allSharedEnvVars = await getTeamSharedEnvVars(secretSync);
