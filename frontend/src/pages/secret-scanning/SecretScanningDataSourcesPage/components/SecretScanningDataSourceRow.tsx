@@ -1,4 +1,3 @@
-import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNowStrict } from "date-fns";
 import { CopyIcon, MoreHorizontalIcon, PencilIcon, TrashIcon } from "lucide-react";
 
@@ -13,6 +12,7 @@ import {
   DropdownMenuTrigger,
   IconButton,
   ProviderIcon,
+  RowLink,
   TableCell,
   TableRow
 } from "@app/components/v3";
@@ -37,7 +37,6 @@ type Props = {
 };
 
 export const SecretScanningDataSourceRow = ({ dataSource, onDelete, onEdit }: Props) => {
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const {
     id,
@@ -75,14 +74,7 @@ export const SecretScanningDataSourceRow = ({ dataSource, onDelete, onEdit }: Pr
   };
 
   return (
-    <TableRow
-      onClick={() =>
-        navigate({
-          to: ROUTE_PATHS.SecretScanning.DataSourceByIdPage.path,
-          params: { orgId: currentOrg.id, dataSourceId: id, type }
-        })
-      }
-    >
+    <TableRow linked>
       <TableCell>
         <div className="flex items-center gap-1.5">
           <ProviderIcon
@@ -94,7 +86,12 @@ export const SecretScanningDataSourceRow = ({ dataSource, onDelete, onEdit }: Pr
         </div>
       </TableCell>
       <TableCell isTruncatable>
-        <p className="truncate">{name}</p>
+        <RowLink
+          to={ROUTE_PATHS.SecretScanning.DataSourceByIdPage.path}
+          params={{ orgId: currentOrg.id, dataSourceId: id, type }}
+        >
+          {name}
+        </RowLink>
         {description && <p className="truncate text-xs text-muted">{description}</p>}
       </TableCell>
       <TableCell>
@@ -114,7 +111,7 @@ export const SecretScanningDataSourceRow = ({ dataSource, onDelete, onEdit }: Pr
       <TableCell>
         <DataSourceStatusBadge dataSource={dataSource} />
       </TableCell>
-      <TableCell variant="action" onClick={(e) => e.stopPropagation()}>
+      <TableCell variant="action">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton aria-label="Data source options" variant="ghost" size="sm">
