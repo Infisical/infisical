@@ -1,10 +1,11 @@
-import { type CSSProperties, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Controller,
   type FieldValues,
   FormProvider,
   type Resolver,
-  useForm
+  useForm,
+  useFormContext
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -52,7 +53,11 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import type { Resource } from "../../secrets-model";
 import { ProviderFormItems } from "./dynamic-secret/fields";
 import { dynamicSecretDocsSlug, dynamicSecretFlowProviders } from "./dynamic-secret/registry";
-import type { DynamicSecretFlowContext } from "./dynamic-secret/types";
+import type {
+  DynamicSecretEditContext,
+  DynamicSecretFlowContext,
+  DynamicSecretFlowProvider
+} from "./dynamic-secret/types";
 
 export type DynamicSecretResource = Extract<Resource, { kind: "dynamic" }>;
 
@@ -67,6 +72,7 @@ export type DynamicSecretFlowProps = {
 };
 
 const FORM_ID = "dynamic-secret-flow-form";
+const EDIT_FORM_ID = "dynamic-secret-edit-form";
 const ON_LIGHT_LOGOS: Record<string, string> = {
   "Amazon Web Services.png": "Amazon Web Services.on-light.png",
   "GitHub.png": "GitHub.on-light.png",
@@ -91,6 +97,155 @@ function ProviderLogo({ provider }: { provider: DynamicSecretProviders }) {
         <Icon name="key" />
       )}
     </Media>
+  );
+}
+
+const providerResolver = (
+  current: () => { schema: DynamicSecretFlowProvider["schema"] } | undefined
+): Resolver<FieldValues> =>
+  ((values, resolverContext, options) => {
+    const definition = current();
+    return definition
+      ? zodResolver(definition.schema)(values, resolverContext, options)
+      : { values, errors: {} };
+  }) as Resolver<FieldValues>;
+
+function DynamicSecretFormSections({
+  mode,
+  definition,
+  context,
+  setSubmitState
+}: {
+  mode: "create" | "edit";
+  definition: DynamicSecretFlowProvider;
+  context: DynamicSecretFlowContext;
+  setSubmitState: (state: { isDisabled?: boolean; isPending?: boolean }) => void;
+}) {
+  const { control } = useFormContext<FieldValues>();
+  const modeDefinition = mode === "create" ? definition : definition.edit;
+  const { commonFields } = modeDefinition;
+  const fields = mode === "create" ? definition.fields : undefined;
+  const Renderer = modeDefinition.Renderer ?? definition.Renderer;
+  const ttlCount =
+    Number(commonFields?.defaultTTL?.isVisible !== false) +
+    Number(commonFields?.maxTTL?.isVisible !== false);
+  let nameSpan = "col-span-3";
+  if (ttlCount === 1) nameSpan = "col-span-4";
+  if (ttlCount === 0) nameSpan = "col-span-5";
+
+  return (
+    <Stack gap={24}>
+      <Stack gap={16} aria-label="Dynamic secret details">
+        <div className="grid grid-cols-5 gap-3">
+          {commonFields?.name?.isVisible !== false && (
+            <Controller
+              control={control}
+              name="name"
+              render={({ field, fieldState: { error } }) => (
+                <Field
+                  wide
+                  className={nameSpan}
+                  label={commonFields?.name?.label ?? "Secret Name"}
+                  description={commonFields?.name?.description}
+                  error={error?.message}
+                >
+                  <Input
+                    {...field}
+                    value={typeof field.value === "string" ? field.value : ""}
+                    placeholder="dynamic-secret"
+                    disabled={commonFields?.name?.isDisabled}
+                  />
+                </Field>
+              )}
+            />
+          )}
+          {commonFields?.defaultTTL?.isVisible !== false && (
+            <Controller
+              control={control}
+              name="defaultTTL"
+              render={({ field, fieldState: { error } }) => (
+                <Field
+                  wide
+                  label={commonFields?.defaultTTL?.label ?? "Default TTL"}
+                  description={commonFields?.defaultTTL?.description}
+                  error={error?.message}
+                >
+                  <Input
+                    {...field}
+                    value={typeof field.value === "string" ? field.value : ""}
+                    disabled={commonFields?.defaultTTL?.isDisabled}
+                  />
+                </Field>
+              )}
+            />
+          )}
+          {commonFields?.maxTTL?.isVisible !== false && (
+            <Controller
+              control={control}
+              name="maxTTL"
+              render={({ field, fieldState: { error } }) => (
+                <Field
+                  wide
+                  label={commonFields?.maxTTL?.label ?? "Max TTL"}
+                  description={commonFields?.maxTTL?.description}
+                  error={error?.message}
+                >
+                  <Input
+                    {...field}
+                    value={typeof field.value === "string" ? field.value : ""}
+                    disabled={commonFields?.maxTTL?.isDisabled}
+                  />
+                </Field>
+              )}
+            />
+          )}
+        </div>
+        {commonFields?.ttlDescription && ttlCount > 0 && (
+          <FieldDescription>{commonFields.ttlDescription}</FieldDescription>
+        )}
+        {mode === "create" &&
+          !context.isSingleEnvironmentMode &&
+          commonFields?.environment?.isVisible !== false && (
+            <Controller
+              control={control}
+              name="environment"
+              render={({ field, fieldState: { error } }) => (
+                <Field
+                  wide
+                  label={commonFields?.environment?.label ?? "Environment"}
+                  description={commonFields?.environment?.description}
+                  error={error?.message}
+                >
+                  <Combobox
+                    label="Environment"
+                    options={context.environments.map((item) => ({
+                      value: item.slug,
+                      label: item.name
+                    }))}
+                    value={(field.value as { slug?: string } | undefined)?.slug ?? ""}
+                    placeholder="Select the environment to create the secret in..."
+                    disabled={commonFields?.environment?.isDisabled}
+                    invalid={Boolean(error)}
+                    onChange={(slug) => {
+                      const match = context.environments.find((item) => item.slug === slug);
+                      field.onChange(match ? { name: match.name, slug: match.slug } : undefined);
+                    }}
+                  />
+                </Field>
+              )}
+            />
+          )}
+      </Stack>
+      <Stack gap={16}>
+        {commonFields?.configurationHeading !== false && (
+          <Heading level={3} size="subsection">
+            {commonFields?.configurationHeading ?? "Configuration"}
+          </Heading>
+        )}
+        {fields && <ProviderFormItems items={fields} />}
+        {Renderer && <Renderer mode={mode} context={context} setSubmitState={setSubmitState} />}
+      </Stack>
+    </Stack>
   );
 }
 
@@ -126,10 +281,7 @@ export function DynamicSecretFlow({
   }, [environment, environments, project, secretPath]);
 
   const form = useForm<FieldValues>({
-    resolver: ((values, resolverContext, options) =>
-      definitionRef.current
-        ? zodResolver(definitionRef.current.schema)(values, resolverContext, options)
-        : { values, errors: {} }) as Resolver<FieldValues>,
+    resolver: providerResolver(() => definitionRef.current),
     shouldFocusError: true
   });
   const { isDirty } = form.formState;
@@ -190,6 +342,12 @@ export function DynamicSecretFlow({
         provider: definition.label,
         defaultTTL: item.defaultTTL,
         maxTTL: item.maxTTL || undefined,
+        config: {
+          type: definition.provider,
+          inputs: item.provider.inputs,
+          usernameTemplate: item.usernameTemplate,
+          metadata: item.metadata
+        },
         createdAt: now,
         updatedAt: now
       }))
@@ -202,14 +360,6 @@ export function DynamicSecretFlow({
     close();
   });
 
-  const commonFields = definition?.commonFields;
-  const ttlCount =
-    Number(commonFields?.defaultTTL?.isVisible !== false) +
-    Number(commonFields?.maxTTL?.isVisible !== false);
-  let nameSpan = "col-span-3";
-  if (ttlCount === 1) nameSpan = "col-span-4";
-  if (ttlCount === 0) nameSpan = "col-span-5";
-  const Renderer = definition?.Renderer;
   const isPending = form.formState.isSubmitting || submitState.isPending;
 
   return (
@@ -291,131 +441,15 @@ export function DynamicSecretFlow({
           {definition && (
             <SheetBody>
               <FormProvider {...form}>
-                <form
-                  id={FORM_ID}
-                  onSubmit={submit}
-                  autoComplete="off"
-                  noValidate
-                  style={{ "--v4-size-measure-field": "none" } as CSSProperties}
-                >
-                  <Stack gap={24}>
-                    <Stack gap={16} aria-label="Dynamic secret details">
-                      <div className="grid grid-cols-5 gap-3">
-                        {commonFields?.name?.isVisible !== false && (
-                          <Controller
-                            control={form.control}
-                            name="name"
-                            render={({ field, fieldState: { error } }) => (
-                              <Field
-                                className={nameSpan}
-                                label={commonFields?.name?.label ?? "Secret Name"}
-                                description={commonFields?.name?.description}
-                                error={error?.message}
-                              >
-                                <Input
-                                  {...field}
-                                  value={typeof field.value === "string" ? field.value : ""}
-                                  placeholder="dynamic-secret"
-                                  disabled={commonFields?.name?.isDisabled}
-                                />
-                              </Field>
-                            )}
-                          />
-                        )}
-                        {commonFields?.defaultTTL?.isVisible !== false && (
-                          <Controller
-                            control={form.control}
-                            name="defaultTTL"
-                            render={({ field, fieldState: { error } }) => (
-                              <Field
-                                label={commonFields?.defaultTTL?.label ?? "Default TTL"}
-                                description={commonFields?.defaultTTL?.description}
-                                error={error?.message}
-                              >
-                                <Input
-                                  {...field}
-                                  value={typeof field.value === "string" ? field.value : ""}
-                                  disabled={commonFields?.defaultTTL?.isDisabled}
-                                />
-                              </Field>
-                            )}
-                          />
-                        )}
-                        {commonFields?.maxTTL?.isVisible !== false && (
-                          <Controller
-                            control={form.control}
-                            name="maxTTL"
-                            render={({ field, fieldState: { error } }) => (
-                              <Field
-                                label={commonFields?.maxTTL?.label ?? "Max TTL"}
-                                description={commonFields?.maxTTL?.description}
-                                error={error?.message}
-                              >
-                                <Input
-                                  {...field}
-                                  value={typeof field.value === "string" ? field.value : ""}
-                                  disabled={commonFields?.maxTTL?.isDisabled}
-                                />
-                              </Field>
-                            )}
-                          />
-                        )}
-                      </div>
-                      {commonFields?.ttlDescription && ttlCount > 0 && (
-                        <FieldDescription>{commonFields.ttlDescription}</FieldDescription>
-                      )}
-                      {!context.isSingleEnvironmentMode &&
-                        commonFields?.environment?.isVisible !== false && (
-                          <Controller
-                            control={form.control}
-                            name="environment"
-                            render={({ field, fieldState: { error } }) => (
-                              <Field
-                                label={commonFields?.environment?.label ?? "Environment"}
-                                description={commonFields?.environment?.description}
-                                error={error?.message}
-                              >
-                                <Combobox
-                                  label="Environment"
-                                  options={context.environments.map((item) => ({
-                                    value: item.slug,
-                                    label: item.name
-                                  }))}
-                                  value={(field.value as { slug?: string } | undefined)?.slug ?? ""}
-                                  placeholder="Select the environment to create the secret in..."
-                                  disabled={commonFields?.environment?.isDisabled}
-                                  invalid={Boolean(error)}
-                                  onChange={(slug) => {
-                                    const match = context.environments.find(
-                                      (item) => item.slug === slug
-                                    );
-                                    field.onChange(
-                                      match ? { name: match.name, slug: match.slug } : undefined
-                                    );
-                                  }}
-                                />
-                              </Field>
-                            )}
-                          />
-                        )}
-                    </Stack>
-                    <Stack gap={16}>
-                      {commonFields?.configurationHeading !== false && (
-                        <Heading level={3} size="subsection">
-                          {commonFields?.configurationHeading ?? "Configuration"}
-                        </Heading>
-                      )}
-                      {definition.fields && <ProviderFormItems items={definition.fields} />}
-                      {Renderer && (
-                        <Renderer
-                          context={context}
-                          setSubmitState={(state) =>
-                            setSubmitState((current) => ({ ...current, ...state }))
-                          }
-                        />
-                      )}
-                    </Stack>
-                  </Stack>
+                <form id={FORM_ID} onSubmit={submit} autoComplete="off" noValidate>
+                  <DynamicSecretFormSections
+                    mode="create"
+                    definition={definition}
+                    context={context}
+                    setSubmitState={(state) =>
+                      setSubmitState((current) => ({ ...current, ...state }))
+                    }
+                  />
                 </form>
               </FormProvider>
             </SheetBody>
@@ -479,12 +513,14 @@ export function DynamicSecretFlow({
           </DialogHeader>
           <Stack gap={16}>
             <Field
+              wide
               label="Run this command on the target host:"
               description="No certificate authority exists in this local preview, so there is no setup command to copy."
             >
               <Input value="" readOnly disabled />
             </Field>
             <Field
+              wide
               label="Or install the CA public key manually:"
               description="No certificate authority exists in this local preview, so there is no public key to copy."
             >
@@ -498,6 +534,203 @@ export function DynamicSecretFlow({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </>
+  );
+}
+
+const FAKE_INPUTS: Partial<Record<DynamicSecretProviders, Record<string, unknown>>> = {
+  [DynamicSecretProviders.SqlDatabase]: {
+    host: "fake-db.payments.internal",
+    database: "payments",
+    username: "fake-admin",
+    password: "fake-password"
+  }
+};
+
+export const dynamicSecretDefinitionFor = (entry: DynamicSecretResource) =>
+  dynamicSecretFlowProviders.find((item) =>
+    entry.config ? item.provider === entry.config.type : item.label === entry.provider
+  ) ??
+  dynamicSecretFlowProviders.find((item) => item.provider === DynamicSecretProviders.SqlDatabase);
+
+const editContextFor = (
+  entry: DynamicSecretResource,
+  definition: DynamicSecretFlowProvider
+): DynamicSecretEditContext => {
+  const fallback = () => {
+    const defaults = definition.getDefaultValues({
+      projectSlug: entry.project,
+      secretPath: entry.path,
+      environments: [{ id: entry.environment, name: entry.environment, slug: entry.environment }],
+      isSingleEnvironmentMode: true
+    }) as {
+      inputs?: Record<string, unknown>;
+      usernameTemplate?: string | null;
+    };
+    return {
+      type: definition.provider,
+      inputs: { ...defaults.inputs, ...FAKE_INPUTS[definition.provider] },
+      usernameTemplate: defaults.usernameTemplate,
+      metadata: []
+    };
+  };
+  const config = entry.config ?? fallback();
+  return {
+    projectSlug: entry.project,
+    secretPath: entry.path,
+    environment: entry.environment,
+    dynamicSecret: {
+      id: entry.id,
+      name: entry.name,
+      type: definition.provider,
+      createdAt: entry.createdAt,
+      updatedAt: entry.updatedAt,
+      defaultTTL: entry.defaultTTL,
+      maxTTL: entry.maxTTL,
+      usernameTemplate: config.usernameTemplate,
+      metadata: config.metadata ?? [],
+      inputs: config.inputs
+    }
+  };
+};
+
+export function DynamicSecretEditSheet({
+  entry: openEntry,
+  onClose,
+  onSave
+}: {
+  entry?: DynamicSecretResource;
+  onClose: () => void;
+  onSave: (entry: DynamicSecretResource, successMessage: string) => boolean;
+}) {
+  const lastEntry = useRef(openEntry);
+  if (openEntry) lastEntry.current = openEntry;
+  const entry = openEntry ?? lastEntry.current;
+  const definition = entry && dynamicSecretDefinitionFor(entry);
+  const editContext = useMemo(
+    () => (entry && definition ? editContextFor(entry, definition) : undefined),
+    [definition, entry]
+  );
+  const definitionRef = useRef(definition?.edit);
+  definitionRef.current = definition?.edit;
+  const [discardOpen, setDiscardOpen] = useState(false);
+  const [submitState, setSubmitState] = useState({ isDisabled: false, isPending: false });
+  const form = useForm<FieldValues>({
+    resolver: providerResolver(() => definitionRef.current),
+    shouldFocusError: true
+  });
+
+  useEffect(() => {
+    if (!definition || !editContext) return undefined;
+    form.reset(definition.edit.getDefaultValues(editContext));
+    setSubmitState({ isDisabled: false, isPending: false });
+    const timer = window.setTimeout(() => form.reset(form.getValues()), 0);
+    return () => window.clearTimeout(timer);
+  }, [definition, editContext, form]);
+
+  const context = useMemo<DynamicSecretFlowContext | undefined>(
+    () =>
+      entry && {
+        projectSlug: entry.project,
+        secretPath: entry.path,
+        environments: [{ id: entry.environment, name: entry.environment, slug: entry.environment }],
+        isSingleEnvironmentMode: true
+      },
+    [entry]
+  );
+
+  const requestClose = () => (form.formState.isDirty ? setDiscardOpen(true) : onClose());
+  const submit = form.handleSubmit((values) => {
+    if (!entry || !definition || !editContext) return;
+    const { data } = definition.edit.toPayload(values, editContext);
+    const current = editContext.dynamicSecret.inputs;
+    const saved = onSave(
+      {
+        ...entry,
+        name: data.newName ?? entry.name,
+        defaultTTL: data.defaultTTL ?? entry.defaultTTL,
+        maxTTL: data.maxTTL ?? undefined,
+        config: {
+          type: definition.provider,
+          inputs:
+            data.inputs && typeof data.inputs === "object" && current && typeof current === "object"
+              ? { ...current, ...data.inputs }
+              : (data.inputs ?? current),
+          usernameTemplate: data.usernameTemplate,
+          metadata: data.metadata
+        },
+        updatedAt: new Date().toISOString()
+      },
+      definition.edit.successMessage
+    );
+    if (saved) onClose();
+  });
+  const isPending = form.formState.isSubmitting || submitState.isPending;
+
+  return (
+    <>
+      <Sheet open={Boolean(openEntry)} onOpenChange={(next) => !next && requestClose()}>
+        <SheetContent className="w-full data-[side=right]:sm:max-w-3xl">
+          <SheetHeader>
+            <SheetTitle>Edit dynamic secret</SheetTitle>
+            <SheetDescription>Update dynamic secret parameters.</SheetDescription>
+          </SheetHeader>
+          <SheetBody>
+            {definition && context && (
+              <FormProvider {...form}>
+                <form id={EDIT_FORM_ID} onSubmit={submit} autoComplete="off" noValidate>
+                  <DynamicSecretFormSections
+                    key={entry?.id}
+                    mode="edit"
+                    definition={definition}
+                    context={context}
+                    setSubmitState={(state) =>
+                      setSubmitState((current) => ({ ...current, ...state }))
+                    }
+                  />
+                </form>
+              </FormProvider>
+            )}
+          </SheetBody>
+          <SheetFooter>
+            <Inline gap={8} justify="end">
+              <Button type="button" variant="ghost" onClick={requestClose} disabled={isPending}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                form={EDIT_FORM_ID}
+                loading={isPending}
+                disabled={submitState.isDisabled || isPending}
+              >
+                {definition?.edit.submitLabel ?? "Save"}
+              </Button>
+            </Inline>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+      <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
+        <AlertDialogContent tone="danger" icon="alert">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard dynamic secret changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your unsaved changes to this dynamic secret will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                setDiscardOpen(false);
+                onClose();
+              }}
+            >
+              Discard
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

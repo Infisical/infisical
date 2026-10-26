@@ -3,7 +3,10 @@ import { Controller, useFormContext } from "react-hook-form";
 import {
   getIbmApiConnectCreateDefaultValues,
   getIbmApiConnectCreatePayload,
+  getIbmApiConnectEditDefaultValues,
+  getIbmApiConnectEditPayload,
   ibmApiConnectCreateFormSchema,
+  ibmApiConnectEditFormSchema,
   normalizeIbmApiConnectGatewayValueForMode,
   type TIbmApiConnectFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/ibmApiConnectContract";
@@ -13,7 +16,7 @@ import { Field } from "@app/components/v4/ui/field";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import { fieldError, GatewayPicker, ProviderFields, ProviderGroup } from "../fields";
-import { defineFlowProvider } from "../types";
+import { defineFlowProvider, type DynamicSecretRendererProps } from "../types";
 
 type LocalOption = { id: string; name: string; title?: string };
 
@@ -98,7 +101,7 @@ const credentialFields = [
   }
 ] satisfies readonly TDynamicSecretProviderField<TIbmApiConnectFormValues>[];
 
-function IbmApiConnectFields() {
+function IbmApiConnectFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
   const { control, setValue, watch } = useFormContext<TIbmApiConnectFormValues>();
   const instanceUrl = watch("inputs.instanceUrl");
   const apiKey = watch("inputs.apiKey");
@@ -122,18 +125,18 @@ function IbmApiConnectFields() {
   return (
     <>
       <ProviderGroup id="ibm-api-connect-connection">
-        <Field label="Gateway">
+        <Field wide label="Gateway">
           <GatewayPicker
             value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
             onChange={({ gatewayId: nextId, gatewayPoolId: nextPoolId }) => {
               setValue(
                 "inputs.gatewayId",
-                normalizeIbmApiConnectGatewayValueForMode("create", nextId),
+                normalizeIbmApiConnectGatewayValueForMode(mode, nextId),
                 { shouldDirty: true }
               );
               setValue(
                 "inputs.gatewayPoolId",
-                normalizeIbmApiConnectGatewayValueForMode("create", nextPoolId),
+                normalizeIbmApiConnectGatewayValueForMode(mode, nextPoolId),
                 { shouldDirty: true }
               );
             }}
@@ -152,6 +155,7 @@ function IbmApiConnectFields() {
           name="inputs.orgId"
           render={({ field, fieldState: { error } }) => (
             <Field
+              wide
               label="Organization"
               description={
                 credentialsComplete
@@ -182,6 +186,7 @@ function IbmApiConnectFields() {
           name="inputs.catalogId"
           render={({ field, fieldState: { error } }) => (
             <Field
+              wide
               label="Catalog"
               description={
                 orgSelected ? LOCAL_PREVIEW_DESCRIPTION : "Select an organization first."
@@ -209,6 +214,7 @@ function IbmApiConnectFields() {
           name="inputs.appId"
           render={({ field, fieldState: { error } }) => (
             <Field
+              wide
               label="Application"
               description={catalogSelected ? LOCAL_PREVIEW_DESCRIPTION : "Select a catalog first."}
               error={fieldError(error)}
@@ -243,5 +249,12 @@ export const ibmApiConnectFlowProvider = defineFlowProvider({
   getDefaultValues: getIbmApiConnectCreateDefaultValues,
   toPayload: getIbmApiConnectCreatePayload,
   Renderer: IbmApiConnectFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: ibmApiConnectEditFormSchema,
+    getDefaultValues: getIbmApiConnectEditDefaultValues,
+    toPayload: getIbmApiConnectEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

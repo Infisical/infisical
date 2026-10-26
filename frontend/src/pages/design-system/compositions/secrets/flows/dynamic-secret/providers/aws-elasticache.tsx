@@ -1,7 +1,10 @@
 import {
   awsElastiCacheCreateFormSchema,
+  awsElastiCacheEditFormSchema,
   getAwsElastiCacheCreateDefaultValues,
   getAwsElastiCacheCreatePayload,
+  getAwsElastiCacheEditDefaultValues,
+  getAwsElastiCacheEditPayload,
   type TAwsElastiCacheCreateValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/awsManagedStoresContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
@@ -65,5 +68,12 @@ export const awsElastiCacheFlowProvider = defineFlowProvider({
   getDefaultValues: getAwsElastiCacheCreateDefaultValues,
   toPayload: getAwsElastiCacheCreatePayload,
   Renderer: AwsElastiCacheFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: awsElastiCacheEditFormSchema,
+    getDefaultValues: getAwsElastiCacheEditDefaultValues,
+    toPayload: getAwsElastiCacheEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

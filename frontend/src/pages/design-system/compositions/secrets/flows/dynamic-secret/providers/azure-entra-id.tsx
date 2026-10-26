@@ -2,9 +2,13 @@ import { Controller, useFormContext } from "react-hook-form";
 
 import {
   azureEntraIdCreateFormSchema,
+  azureEntraIdEditFormSchema,
   getAzureEntraIdCreateDefaultValues,
   getAzureEntraIdCreatePayload,
-  TAzureEntraIdCreateValues
+  getAzureEntraIdEditDefaultValues,
+  getAzureEntraIdEditPayload,
+  TAzureEntraIdCreateValues,
+  TAzureEntraIdEditValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/azureEntraIdContract";
 import { Combobox } from "@app/components/v4/ui/combobox";
 import { Field } from "@app/components/v4/ui/field";
@@ -13,7 +17,7 @@ import { Stack } from "@app/components/v4/ui/layout";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import { fieldError, ProviderGroup } from "../fields";
-import { defineFlowProvider } from "../types";
+import { defineFlowProvider, type DynamicSecretRendererProps } from "../types";
 
 const credentialLabels = {
   tenantId: "Tenant ID",
@@ -45,11 +49,50 @@ const localUsers = [
   }
 ];
 
-function AzureEntraIdFields() {
+const editFields = [
+  ["email", "Email", true],
+  ["userId", "User ID", true],
+  ["tenantId", "Tenant ID", true],
+  ["applicationId", "Application ID", false],
+  ["clientSecret", "Client Secret", false]
+] as const;
+
+function AzureEntraIdEditFields() {
+  const { control } = useFormContext<TAzureEntraIdEditValues>();
+  return (
+    <ProviderGroup id="azure-entra-credentials">
+      <div className="grid grid-cols-2 gap-4">
+        {editFields.map(([key, label, isReadOnly]) => (
+          <Controller
+            key={key}
+            control={control}
+            name={`inputs.${key}`}
+            render={({ field, fieldState: { error } }) => (
+              <Field wide label={label} error={fieldError(error)}>
+                <Input
+                  {...field}
+                  value={field.value ?? ""}
+                  type="password"
+                  autoComplete="new-password"
+                  readOnly={isReadOnly}
+                  invalid={Boolean(error)}
+                />
+              </Field>
+            )}
+          />
+        ))}
+      </div>
+    </ProviderGroup>
+  );
+}
+
+function AzureEntraIdFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
   const { control, watch } = useFormContext<TAzureEntraIdCreateValues>();
   const isConfigured = Boolean(
     watch("inputs.tenantId") && watch("inputs.applicationId") && watch("inputs.clientSecret")
   );
+
+  if (mode === "edit") return <AzureEntraIdEditFields />;
 
   return (
     <ProviderGroup id="azure-entra-configuration">
@@ -60,7 +103,7 @@ function AzureEntraIdFields() {
             control={control}
             name={`inputs.${key}`}
             render={({ field, fieldState: { error } }) => (
-              <Field label={credentialLabels[key]} error={fieldError(error)}>
+              <Field wide label={credentialLabels[key]} error={fieldError(error)}>
                 <Input
                   {...field}
                   type={key === "clientSecret" ? "password" : "text"}
@@ -77,6 +120,7 @@ function AzureEntraIdFields() {
           name="selectedUsers"
           render={({ field, fieldState: { error } }) => (
             <Field
+              wide
               label="Users"
               description="A unique dynamic secret is created for each selected user. These are local preview options."
               error={fieldError(error)}
@@ -112,5 +156,12 @@ export const azureEntraIdFlowProvider = defineFlowProvider({
   toPayload: getAzureEntraIdCreatePayload,
   Renderer: AzureEntraIdFields,
   commonFields: { name: { label: "Secret Prefix" } },
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: azureEntraIdEditFormSchema,
+    getDefaultValues: getAzureEntraIdEditDefaultValues,
+    toPayload: getAzureEntraIdEditPayload,
+    submitLabel: "Submit",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

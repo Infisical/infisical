@@ -1,7 +1,10 @@
 import {
   getSnowflakeCreateDefaultValues,
   getSnowflakeCreatePayload,
+  getSnowflakeEditDefaultValues,
+  getSnowflakeEditPayload,
   snowflakeCreateFormSchema,
+  snowflakeEditFormSchema,
   type TSnowflakeCreateFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/snowflakeContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
@@ -64,5 +67,12 @@ export const snowflakeFlowProvider = defineFlowProvider({
   getDefaultValues: getSnowflakeCreateDefaultValues,
   toPayload: getSnowflakeCreatePayload,
   Renderer: SnowflakeFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: snowflakeEditFormSchema,
+    getDefaultValues: getSnowflakeEditDefaultValues,
+    toPayload: getSnowflakeEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

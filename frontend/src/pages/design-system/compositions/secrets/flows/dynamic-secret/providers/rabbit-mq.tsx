@@ -3,7 +3,10 @@ import { Controller, useFormContext } from "react-hook-form";
 import {
   getRabbitMqCreateDefaultValues,
   getRabbitMqCreatePayload,
+  getRabbitMqEditDefaultValues,
+  getRabbitMqEditPayload,
   rabbitMqCreateFormSchema,
+  rabbitMqEditFormSchema,
   type TRabbitMqFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/rabbitMqContract";
 import type {
@@ -135,7 +138,7 @@ function RabbitMqFields() {
               control={control}
               name={`inputs.tags.${index}`}
               render={({ field, fieldState: { error } }) => (
-                <Field label="Tag" error={fieldError(error)}>
+                <Field wide label="Tag" error={fieldError(error)}>
                   <Inline gap={8} align="start" wrap={false}>
                     <div className="min-w-0 flex-1">
                       <Input {...field} placeholder="management" invalid={Boolean(error)} />
@@ -188,5 +191,12 @@ export const rabbitMqFlowProvider = defineFlowProvider({
   toPayload: getRabbitMqCreatePayload,
   fields: rabbitMqFormFields,
   Renderer: RabbitMqFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: rabbitMqEditFormSchema,
+    getDefaultValues: getRabbitMqEditDefaultValues,
+    toPayload: getRabbitMqEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

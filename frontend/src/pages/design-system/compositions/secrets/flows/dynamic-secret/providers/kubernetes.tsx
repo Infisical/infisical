@@ -4,8 +4,11 @@ import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import {
   getKubernetesCreateDefaultValues,
   getKubernetesCreatePayload,
+  getKubernetesEditDefaultValues,
+  getKubernetesEditPayload,
   KubernetesAuthMethod,
   kubernetesCreateFormSchema,
+  kubernetesEditFormSchema,
   KubernetesRoleType,
   normalizeKubernetesGatewayValueForMode,
   type TKubernetesFormValues
@@ -24,7 +27,7 @@ import {
 } from "@app/hooks/api/dynamicSecret/types";
 
 import { fieldError, GatewayPicker, ProviderFields, ProviderGroup } from "../fields";
-import { defineFlowProvider } from "../types";
+import { defineFlowProvider, type DynamicSecretRendererProps } from "../types";
 
 const authMethodField = [
   {
@@ -125,7 +128,7 @@ const roleFields = [
   }
 ] satisfies readonly TDynamicSecretProviderField<TKubernetesFormValues>[];
 
-function KubernetesFields() {
+function KubernetesFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
   const { control, getValues, setValue, watch } = useFormContext<TKubernetesFormValues>();
   const audienceFields = useFieldArray({ control, name: "inputs.audiences" });
   const sslEnabled = watch("inputs.sslEnabled");
@@ -150,15 +153,15 @@ function KubernetesFields() {
           control={control}
           name="inputs.gatewayId"
           render={({ field, fieldState: { error } }) => (
-            <Field label="Gateway" error={fieldError(error)}>
+            <Field wide label="Gateway" error={fieldError(error)}>
               <GatewayPicker
                 invalid={Boolean(error)}
                 value={{ gatewayId: field.value ?? null, gatewayPoolId: gatewayPoolId ?? null }}
                 onChange={({ gatewayId: nextGatewayId, gatewayPoolId: nextGatewayPoolId }) => {
-                  field.onChange(normalizeKubernetesGatewayValueForMode("create", nextGatewayId));
+                  field.onChange(normalizeKubernetesGatewayValueForMode(mode, nextGatewayId));
                   setValue(
                     "inputs.gatewayPoolId",
-                    normalizeKubernetesGatewayValueForMode("create", nextGatewayPoolId),
+                    normalizeKubernetesGatewayValueForMode(mode, nextGatewayPoolId),
                     { shouldDirty: true }
                   );
                 }}
@@ -191,7 +194,7 @@ function KubernetesFields() {
               control={control}
               name="inputs.ca"
               render={({ field, fieldState: { error } }) => (
-                <Field label="CA" optional error={fieldError(error)}>
+                <Field wide label="CA" optional error={fieldError(error)}>
                   <Textarea
                     ref={field.ref}
                     name={field.name}
@@ -247,7 +250,7 @@ function KubernetesFields() {
                 control={control}
                 name={`inputs.audiences.${index}`}
                 render={({ field, fieldState: { error } }) => (
-                  <Field className="flex-1" label="Audience" error={fieldError(error)}>
+                  <Field wide className="flex-1" label="Audience" error={fieldError(error)}>
                     <Input
                       ref={field.ref}
                       name={field.name}
@@ -297,5 +300,12 @@ export const kubernetesFlowProvider = defineFlowProvider({
   getDefaultValues: getKubernetesCreateDefaultValues,
   toPayload: getKubernetesCreatePayload,
   Renderer: KubernetesFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: kubernetesEditFormSchema,
+    getDefaultValues: getKubernetesEditDefaultValues,
+    toPayload: getKubernetesEditPayload,
+    submitLabel: "Submit",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

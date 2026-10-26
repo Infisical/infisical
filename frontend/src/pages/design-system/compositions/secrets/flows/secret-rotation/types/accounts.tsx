@@ -22,6 +22,7 @@ import {
   SecretsMappingFields,
   TextField,
   useConnectionId,
+  useIsUpdate,
   useRotationForm
 } from "../fields";
 import { ROTATION_TEMPLATES } from "../model";
@@ -74,6 +75,7 @@ function RotationMethodField({
   onMethodChange: (value: string) => void;
 }) {
   const { control } = useRotationForm();
+  const isUpdate = useIsUpdate();
   return (
     <Controller
       control={control}
@@ -83,10 +85,11 @@ function RotationMethodField({
         <RotationField
           label="Rotation Method"
           tooltip={tooltip}
-          description={description(field.value)}
+          description={isUpdate ? "Cannot be updated." : description(field.value)}
           error={error?.message}
         >
           <Select
+            disabled={isUpdate}
             value={field.value ?? ""}
             onValueChange={(value) => {
               onMethodChange(value);
@@ -134,6 +137,7 @@ const LOGIN_AS_TARGET_TOOLTIP_ITEM: [string, string] = [
 function LdapPasswordParameters() {
   const { control, setValue } = useRotationForm();
   const rotationMethod = useWatch({ control, name: "parameters.rotationMethod" });
+  const isUpdate = useIsUpdate();
   return (
     <>
       <RotationMethodField
@@ -165,9 +169,12 @@ function LdapPasswordParameters() {
             label="Target Principal's DN/UPN"
             tooltip="The DN/UPN of the principal that you want to perform password rotation on."
             placeholder="CN=John,OU=Users,DC=example,DC=com"
+            disabled={isUpdate}
+            description={isUpdate ? "Cannot be updated." : undefined}
           />
         }
         password={
+          !isUpdate &&
           rotationMethod === LdapPasswordRotationMethod.TargetPrincipal && (
             <CurrentPasswordField label="Target Principal's Password" />
           )
@@ -205,6 +212,7 @@ function UseSudoField() {
 
 function UnixLinuxLocalAccountParameters() {
   const { control, setValue } = useRotationForm();
+  const isUpdate = useIsUpdate();
   const rotationMethod =
     useWatch({ control, name: "parameters.rotationMethod" }) ??
     UnixLinuxLocalAccountRotationMethod.LoginAsTarget;
@@ -235,9 +243,12 @@ function UnixLinuxLocalAccountParameters() {
             label="Target Username"
             tooltip="The Unix/Linux username of the account to rotate the password for."
             placeholder="appuser"
+            disabled={isUpdate}
+            description={isUpdate ? "Cannot be updated." : undefined}
           />
         }
         password={
+          !isUpdate &&
           rotationMethod === UnixLinuxLocalAccountRotationMethod.LoginAsTarget && (
             <CurrentPasswordField label="Current Password" tooltip={CURRENT_PASSWORD_TOOLTIP} />
           )
@@ -250,6 +261,7 @@ function UnixLinuxLocalAccountParameters() {
 
 function WindowsLocalAccountParameters() {
   const { control, setValue } = useRotationForm();
+  const isUpdate = useIsUpdate();
   const rotationMethod =
     useWatch({ control, name: "parameters.rotationMethod" }) ??
     WindowsLocalAccountRotationMethod.LoginAsTarget;
@@ -279,9 +291,12 @@ function WindowsLocalAccountParameters() {
             label="Target Username"
             tooltip="The Windows username of the account to rotate the password for."
             placeholder="appuser"
+            disabled={isUpdate}
+            description={isUpdate ? "Cannot be updated." : undefined}
           />
         }
         password={
+          !isUpdate &&
           rotationMethod === WindowsLocalAccountRotationMethod.LoginAsTarget && (
             <CurrentPasswordField label="Current Password" tooltip={CURRENT_PASSWORD_TOOLTIP} />
           )
@@ -312,12 +327,13 @@ function HpIloParameters() {
   const rotationMethod =
     useWatch({ control, name: "parameters.rotationMethod" }) ?? HpIloRotationMethod.LoginAsRoot;
   const isSshConnection = useIsSshConnection();
+  const isUpdate = useIsUpdate();
 
   useEffect(() => {
-    if (isSshConnection) return;
+    if (isSshConnection || isUpdate) return;
     setValue("parameters.rotationMethod", undefined);
     setValue("temporaryParameters", undefined);
-  }, [isSshConnection, setValue]);
+  }, [isSshConnection, isUpdate, setValue]);
 
   return (
     <>
@@ -347,9 +363,12 @@ function HpIloParameters() {
             label="Target Username"
             tooltip="The HP iLO username of the account to rotate the password for."
             placeholder="ilo_user"
+            disabled={isUpdate}
+            description={isUpdate ? "Cannot be updated." : undefined}
           />
         }
         password={
+          !isUpdate &&
           isSshConnection &&
           rotationMethod === HpIloRotationMethod.LoginAsTarget && (
             <CurrentPasswordField label="Current Password" tooltip={CURRENT_PASSWORD_TOOLTIP} />
@@ -508,6 +527,7 @@ const RSA_MODULUS_LENGTHS = [2048, 4096] as const;
 function SnowflakeUserKeyPairParameters() {
   const { control } = useRotationForm();
   const connectionId = useConnectionId();
+  const isUpdate = useIsUpdate();
   return (
     <>
       <Controller
@@ -516,10 +536,14 @@ function SnowflakeUserKeyPairParameters() {
         render={({ field, fieldState: { error } }) => (
           <RotationField
             label="User"
-            description={notListedHint(
-              "Don't see the user you're looking for?",
-              "Select an existing Snowflake user, or type a new username to create it. New users are created as key-pair-only SERVICE users. Ensure your connection's role has the privileges to list users, alter the user's RSA public key, and (for new users) create users. If the keys are rotated the user will continue to exist."
-            )}
+            description={
+              isUpdate
+                ? "Cannot be updated."
+                : notListedHint(
+                    "Don't see the user you're looking for?",
+                    "Select an existing Snowflake user, or type a new username to create it. New users are created as key-pair-only SERVICE users. Ensure your connection's role has the privileges to list users, alter the user's RSA public key, and (for new users) create users. If the keys are rotated the user will continue to exist."
+                  )
+            }
             error={error?.message}
           >
             <Combobox
@@ -532,7 +556,7 @@ function SnowflakeUserKeyPairParameters() {
                 connectionId ? SNOWFLAKE_USERS.map((name) => ({ value: name, label: name })) : []
               }
               placeholder="Select or add a new user..."
-              disabled={!connectionId}
+              disabled={!connectionId || isUpdate}
               invalid={Boolean(error)}
             />
           </RotationField>

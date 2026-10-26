@@ -3,7 +3,10 @@ import { Controller, useFormContext } from "react-hook-form";
 import {
   getGithubCreateDefaultValues,
   getGithubCreatePayload,
+  getGithubEditDefaultValues,
+  getGithubEditPayload,
   githubCreateFormSchema,
+  githubEditFormSchema,
   TGithubFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/githubContract";
 import { Field } from "@app/components/v4/ui/field";
@@ -27,6 +30,7 @@ function GithubFields() {
             name={`inputs.${key}`}
             render={({ field, fieldState: { error } }) => (
               <Field
+                wide
                 label={key === "appId" ? "App ID" : "Installation ID"}
                 error={fieldError(error)}
               >
@@ -48,7 +52,12 @@ function GithubFields() {
           control={control}
           name="inputs.privateKey"
           render={({ field, fieldState: { error } }) => (
-            <Field className="col-span-2" label="App Private Key PEM" error={fieldError(error)}>
+            <Field
+              wide
+              className="col-span-2"
+              label="App Private Key PEM"
+              error={fieldError(error)}
+            >
               <Textarea
                 {...field}
                 placeholder="-----BEGIN PRIVATE KEY----- ..."
@@ -62,6 +71,14 @@ function GithubFields() {
   );
 }
 
+const commonFields = {
+  defaultTTL: {
+    isDisabled: true,
+    description: "GitHub token TTL is fixed to 1 hour"
+  },
+  maxTTL: { isVisible: false }
+};
+
 export const githubFlowProvider = defineFlowProvider({
   provider: DynamicSecretProviders.Github,
   label: "GitHub",
@@ -69,12 +86,14 @@ export const githubFlowProvider = defineFlowProvider({
   getDefaultValues: getGithubCreateDefaultValues,
   toPayload: getGithubCreatePayload,
   Renderer: GithubFields,
-  commonFields: {
-    defaultTTL: {
-      isDisabled: true,
-      description: "GitHub token TTL is fixed to 1 hour"
-    },
-    maxTTL: { isVisible: false }
-  },
-  submitLabel: "Submit"
+  commonFields,
+  submitLabel: "Submit",
+  edit: {
+    schema: githubEditFormSchema,
+    getDefaultValues: getGithubEditDefaultValues,
+    toPayload: getGithubEditPayload,
+    commonFields,
+    submitLabel: "Submit",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

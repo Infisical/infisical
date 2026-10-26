@@ -2,6 +2,16 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { GitCommitIcon, GroupIcon } from "lucide-react";
 
 import { Banner } from "@app/components/v4/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
 import { Checkbox } from "@app/components/v4/ui/checkbox";
 import {
@@ -26,7 +36,6 @@ import {
   DropdownMenuTrigger
 } from "@app/components/v4/ui/dropdown-menu";
 import { EmptyState } from "@app/components/v4/ui/empty";
-import { Field } from "@app/components/v4/ui/field";
 import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
@@ -43,14 +52,22 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v4/ui/table";
-import { Textarea } from "@app/components/v4/ui/textarea";
 import type { ToastItem } from "@app/components/v4/ui/toast-stack";
 import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
 import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/top-bar";
 
 import { addFlows, type FlowFeedback, FlowToasts, type NewResource } from "./secrets/flows";
+import { LOCAL_ONLY } from "./secrets/flows/shared";
 import { NEXT_PHASE, type RowContext } from "./secrets/overview-cells";
 import { FolderRow, ImportRow, KindRow } from "./secrets/resource-rows";
+import { DynamicSecretActions } from "./secrets/row-actions/dynamic-secret-actions";
+import { EditFolderDialog } from "./secrets/row-actions/edit-folder-dialog";
+import { FolderActions } from "./secrets/row-actions/folder-actions";
+import { HoneyTokenActions } from "./secrets/row-actions/honey-token-actions";
+import { ImportActions } from "./secrets/row-actions/import-actions";
+import { ProxiedServiceActions } from "./secrets/row-actions/proxied-service-actions";
+import { RotationActions } from "./secrets/row-actions/rotation-actions";
+import type { RowAction } from "./secrets/row-actions/types";
 import { SecretRow, type SecretRowHandlers } from "./secrets/secret-row";
 import {
   AddNewMenu,
@@ -81,12 +98,6 @@ import styles from "./secrets/overview.module.css";
 
 type Of<K extends ResourceKind> = Extract<Resource, { kind: K }>;
 type Editable = Of<"secret" | "folder">;
-type Draft = {
-  resource: Of<"folder">;
-  environments: string[];
-  name: string;
-  value: string;
-};
 type SortField = "name" | "updatedAt" | "createdAt";
 type Sort = { field: SortField; direction: "asc" | "desc"; environment?: string };
 const overviewOrder: ResourceKind[] = [
@@ -124,11 +135,9 @@ function Overview({ scenario }: { scenario: Scenario }) {
   const [perPage, setPerPage] = useState(100);
   const [revealAll, setRevealAll] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
-  const [draft, setDraft] = useState<Draft>();
-  const [initialDraft, setInitialDraft] = useState("");
-  const [discard, setDiscard] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<Of<"folder">>();
+  const [deletingFolder, setDeletingFolder] = useState<Of<"folder">>();
   const [deleting, setDeleting] = useState<Editable[]>();
-  const [validation, setValidation] = useState("");
   const [notice, setNotice] = useState("");
   const [recovered, setRecovered] = useState(false);
   const [flow, setFlow] = useState<{
@@ -139,6 +148,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
   const [flowOpen, setFlowOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
+  const [rowAction, setRowAction] = useState<RowAction>();
   const revealed = useRef("");
   const search = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -164,9 +174,11 @@ function Overview({ scenario }: { scenario: Scenario }) {
         event.metaKey ||
         event.ctrlKey ||
         event.altKey ||
-        draft ||
+        editingFolder ||
+        deletingFolder ||
         deleting ||
-        flowOpen
+        flowOpen ||
+        rowAction
       )
         return;
       if ((event.target as HTMLElement).closest("input, textarea, [contenteditable=true]")) return;
@@ -176,7 +188,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
     };
     document.addEventListener("keydown", focus);
     return () => document.removeEventListener("keydown", focus);
-  }, [draft, deleting, flowOpen]);
+  }, [editingFolder, deletingFolder, deleting, flowOpen, rowAction]);
 
   const resetView = () => {
     setPage(1);
@@ -276,7 +288,8 @@ function Overview({ scenario }: { scenario: Scenario }) {
       setSelected(
         selected.includes(key) ? selected.filter((entry) => entry !== key) : [...selected, key]
       ),
-    report
+    report,
+    onAction: setRowAction
   };
   const importedFrom = (environment: string, key: string) =>
     resources
@@ -302,21 +315,6 @@ function Overview({ scenario }: { scenario: Scenario }) {
         resource.kind === "secret" && scopeMatches(resource, entry.source)
     );
 
-  const openDraft = (resource: Of<"folder">) => {
-    const next = {
-      resource,
-      environments: [resource.environment],
-      name: resource.name,
-      value: resource.description
-    };
-    setDraft(next);
-    setInitialDraft(JSON.stringify(next));
-    setValidation("");
-  };
-  const closeDraft = () => {
-    if (draft && JSON.stringify(draft) !== initialDraft) setDiscard(true);
-    else setDraft(undefined);
-  };
   const pushToast = (item: Omit<ToastItem, "id">) =>
     setToasts((current) => [...current, { ...item, id: crypto.randomUUID() }]);
   const insert = (created: NewResource[], feedback: FlowFeedback) => {
@@ -364,46 +362,63 @@ function Overview({ scenario }: { scenario: Scenario }) {
       })),
       { title: `Created ${name} in local demo data.` }
     );
-  const save = () => {
-    if (!draft || writeBlock) return;
-    const name = draft.name.trim();
-    if (!name || name.includes("/") || name === "." || name === "..") {
-      setValidation("Enter a folder name without slashes, . or ..");
-      return;
-    }
-    if (
+  const folderTargets = (folder: Of<"folder">) =>
+    resources.filter(
+      (resource): resource is Of<"folder"> =>
+        resource.kind === "folder" &&
+        resource.project === folder.project &&
+        resource.path === folder.path &&
+        resource.name === folder.name &&
+        (!single || resource.environment === folder.environment)
+    );
+  const updateFolder = (folder: Of<"folder">, name: string, description: string) => {
+    setEditingFolder(undefined);
+    const targets = folderTargets(folder);
+    const taken = targets.filter((target) =>
       resources.some(
         (resource) =>
-          resource.project === project &&
-          resource.path === path &&
-          draft.environments.includes(resource.environment) &&
           resource.kind === "folder" &&
+          resource.project === target.project &&
+          resource.environment === target.environment &&
+          resource.path === target.path &&
           resource.name === name &&
-          resource.id !== draft.resource?.id
+          resource.id !== target.id
       )
-    ) {
-      setValidation("A folder with this name already exists in a selected environment.");
+    );
+    if (taken.length) {
+      pushToast({
+        tone: "bad",
+        title: single ? "Failed to update folder" : "Failed to rename folder across environments",
+        description: `A folder named ${name} already exists in ${taken
+          .map((target) => environments.find((entry) => entry.value === target.environment)?.label)
+          .join(", ")}.`
+      });
       return;
     }
-    const original = draft.resource;
     const timestamp = new Date().toISOString();
     const prefix = path === "/" ? "" : path;
+    const oldPath = `${prefix}/${folder.name}`;
     setResources((current) =>
       current.map((resource): Resource => {
-        if (resource.id === original.id)
-          return { ...original, name, description: draft.value, updatedAt: timestamp };
-        const oldPath = `${prefix}/${original.name}`;
+        const target = targets.find((entry) => entry.id === resource.id);
+        if (target) return { ...target, name, description, updatedAt: timestamp };
         if (
           resource.project === project &&
-          resource.environment === original.environment &&
+          targets.some((entry) => entry.environment === resource.environment) &&
           (resource.path === oldPath || resource.path.startsWith(`${oldPath}/`))
         )
           return { ...resource, path: `${prefix}/${name}${resource.path.slice(oldPath.length)}` };
         return resource;
       })
     );
-    setNotice(`Updated ${name} in local demo data.`);
-    setDraft(undefined);
+    setNotice("");
+    pushToast({
+      tone: "ok",
+      title: single
+        ? `Folder "${name}" updated`
+        : "Successfully renamed folder across environments",
+      description: LOCAL_ONLY
+    });
   };
   const remove = (targets: Editable[]) => {
     setResources((current) =>
@@ -426,6 +441,16 @@ function Overview({ scenario }: { scenario: Scenario }) {
     );
     setDeleting(undefined);
     setSelected([]);
+  };
+  const deleteFolder = (folder: Of<"folder">) => {
+    setDeletingFolder(undefined);
+    remove(folderTargets(folder));
+    setNotice("");
+    pushToast({
+      tone: "ok",
+      title: single ? `Folder "${folder.name}" deleted` : "Successfully deleted folder",
+      description: LOCAL_ONLY
+    });
   };
   const envFile = (environment: string, keys?: string[]) => {
     const scope = { project, environment, path };
@@ -746,37 +771,6 @@ function Overview({ scenario }: { scenario: Scenario }) {
       </DropdownMenuContent>
     </DropdownMenu>
   );
-  const draftForm = draft && (
-    <form
-      id="secret-draft"
-      className={styles.form}
-      onSubmit={(event) => {
-        event.preventDefault();
-        save();
-      }}
-    >
-      <Field label="Name" error={validation || undefined}>
-        <Input
-          autoFocus
-          value={draft.name}
-          onChange={(event) => setDraft({ ...draft, name: event.target.value })}
-        />
-      </Field>
-      <Field label="Description">
-        <Textarea
-          value={draft.value}
-          onChange={(event) => setDraft({ ...draft, value: event.target.value })}
-        />
-      </Field>
-    </form>
-  );
-  const draftScope = `Local demo data in ${
-    environments
-      .filter((environment) => draft?.environments.includes(environment.value))
-      .map((environment) => environment.label)
-      .join(", ") || "no environment"
-  } ${path === "/" ? "at the root folder" : `in the ${path} folder`}.`;
-  const draftTitle = "Edit folder";
 
   return (
     <TooltipProvider>
@@ -1047,8 +1041,8 @@ function Overview({ scenario }: { scenario: Scenario }) {
                                   onOpen={() =>
                                     navigate(`${path === "/" ? "" : path}/${first.name}`)
                                   }
-                                  onEdit={(folder) => openDraft(folder)}
-                                  onDelete={(folder) => setDeleting([folder])}
+                                  onEdit={setEditingFolder}
+                                  onDelete={setDeletingFolder}
                                 />
                               );
                             if (first.kind === "secret")
@@ -1170,50 +1164,40 @@ function Overview({ scenario }: { scenario: Scenario }) {
             />
           </div>
         </AppInset>
-        <Dialog
-          open={Boolean(draft)}
+        {editingFolder && (
+          <EditFolderDialog
+            name={editingFolder.name}
+            description={editingFolder.description}
+            showDescriptionOverwriteWarning={!single}
+            onClose={() => setEditingFolder(undefined)}
+            onSave={(name, description) => updateFolder(editingFolder, name, description)}
+          />
+        )}
+        <AlertDialog
+          open={Boolean(deletingFolder)}
           onOpenChange={(open) => {
-            if (!open) closeDraft();
+            if (!open) setDeletingFolder(undefined);
           }}
         >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{draftTitle}</DialogTitle>
-              <DialogDescription>{draftScope}</DialogDescription>
-            </DialogHeader>
-            {draftForm}
-            <DialogFooter>
-              <Button variant="outline" onClick={closeDraft}>
-                Cancel
-              </Button>
-              <Button form="secret-draft" type="submit">
-                Save
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <Dialog open={discard} onOpenChange={setDiscard}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Discard changes?</DialogTitle>
-              <DialogDescription>Your unsaved changes will be lost.</DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDiscard(false)}>
-                Keep editing
-              </Button>
-              <Button
+          <AlertDialogContent tone="danger">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete folder</AlertDialogTitle>
+              <AlertDialogDescription>
+                This folder and all its contents will be removed. You can reverse this action by
+                rolling back to a previous commit.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
                 variant="destructive"
-                onClick={() => {
-                  setDiscard(false);
-                  setDraft(undefined);
-                }}
+                onClick={() => deletingFolder && deleteFolder(deletingFolder)}
               >
-                Discard
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         <Dialog
           open={Boolean(deleting)}
           onOpenChange={(open) => {
@@ -1241,6 +1225,32 @@ function Overview({ scenario }: { scenario: Scenario }) {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        {(() => {
+          const host = {
+            onClose: () => setRowAction(undefined),
+            scope: { project, path, environments, visibleEnvironments },
+            resources,
+            onApply: (update: (current: Resource[]) => Resource[], feedback: FlowFeedback) => {
+              setResources(update);
+              setNotice("");
+              pushToast({ tone: "ok", ...feedback });
+            },
+            onToast: (tone: "ok" | "bad" | "neutral", feedback: FlowFeedback) =>
+              pushToast({ tone, ...feedback })
+          };
+          const pick = <K extends RowAction["kind"]>(kind: K) =>
+            rowAction?.kind === kind ? (rowAction as Extract<RowAction, { kind: K }>) : undefined;
+          return (
+            <>
+              <FolderActions action={pick("folder")} {...host} />
+              <ImportActions action={pick("import")} {...host} />
+              <DynamicSecretActions action={pick("dynamic")} {...host} />
+              <RotationActions action={pick("rotation")} {...host} />
+              <HoneyTokenActions action={pick("honey")} {...host} />
+              <ProxiedServiceActions action={pick("proxy")} {...host} />
+            </>
+          );
+        })()}
         {flow &&
           (() => {
             const Flow = addFlows[flow.kind];

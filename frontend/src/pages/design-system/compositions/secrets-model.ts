@@ -58,6 +58,12 @@ export type Resource =
       defaultTTL: string;
       maxTTL?: string;
       status?: "failed-deletion" | "deleting";
+      config?: {
+        type: string;
+        inputs: unknown;
+        usernameTemplate?: string | null;
+        metadata?: { key: string; value: string }[];
+      };
     })
   | (ResourceBase & {
       kind: "rotation";
@@ -69,6 +75,13 @@ export type Resource =
       lastRotatedAt: string;
       nextRotationAt?: string;
       managedKeys: string[];
+      type?: string;
+      rotationInterval?: number;
+      rotateAtUtc?: { hours: number; minutes: number };
+      parameters?: Record<string, unknown>;
+      secretsMapping?: Record<string, string>;
+      generatedCredentials?: Record<string, string>[];
+      activeIndex?: number;
     })
   | (ResourceBase & {
       kind: "honey";
@@ -76,12 +89,32 @@ export type Resource =
       status: "active" | "triggered" | "revoked";
       description: string;
       mappedKeys: string[];
+      events?: {
+        id: string;
+        createdAt: string;
+        eventName?: string;
+        awsRegion?: string;
+        sourceIp?: string;
+        userAgent?: string;
+      }[];
     })
   | (ResourceBase & {
       kind: "proxy";
       host: string;
       enabled: boolean;
       lastUsedAt?: string;
+      credentials?: {
+        role: string;
+        secretKey?: string;
+        dynamicSecretName?: string;
+        dynamicSecretField?: string;
+        headerName?: string;
+        headerPrefix?: string;
+        headerPurpose?: string;
+        placeholderKey?: string;
+        placeholderValue?: string;
+        substitutionSurfaces?: string[];
+      }[];
     });
 type ResourceDetails = {
   [K in ResourceKind]: Omit<Extract<Resource, { kind: K }>, keyof ResourceBase>;
@@ -228,6 +261,14 @@ export function createResources(scenario: Scenario): Resource[] {
   imports("/", at("dev", "/workers"), ["dev"]);
   imports("/", at("staging", "/api"), ["dev"]);
   imports("/", at("staging", "/workers"), ["staging"]);
+  add(at("dev"), "prod:/api", {
+    kind: "import",
+    source: at("prod", "/api"),
+    revoked: false,
+    replicated: true,
+    replicationStatus: "succeeded",
+    lastReplicated: "2026-10-22T08:00:00Z"
+  });
   ["api", "workers"].forEach((name) =>
     (name === "api" ? all : ["dev", "staging"]).forEach((environment) =>
       add(at(environment), name, { kind: "folder", description: "" })
@@ -264,9 +305,33 @@ export function createResources(scenario: Scenario): Resource[] {
     description: "",
     mappedKeys: ["AWS_ACCESS_KEY_ID_LEGACY", "AWS_SECRET_ACCESS_KEY_LEGACY"]
   });
-  add(at("prod"), "sentry-ingest", { kind: "proxy", host: "*.ingest.sentry.io", enabled: false });
+  add(at("prod"), "sentry-ingest", {
+    kind: "proxy",
+    host: "*.ingest.sentry.io",
+    enabled: false,
+    credentials: [
+      {
+        role: "header-rewrite",
+        headerName: "X-Sentry-Auth",
+        headerPrefix: "Sentry sentry_key=",
+        secretKey: "SENTRY_DSN"
+      }
+    ]
+  });
   ["dev", "prod"].forEach((environment) =>
-    add(at(environment), "stripe-api", { kind: "proxy", host: "api.stripe.com", enabled: true })
+    add(at(environment), "stripe-api", {
+      kind: "proxy",
+      host: "api.stripe.com",
+      enabled: true,
+      credentials: [
+        {
+          role: "header-rewrite",
+          headerName: "Authorization",
+          headerPrefix: "Bearer",
+          secretKey: "STRIPE_SECRET_KEY"
+        }
+      ]
+    })
   );
   secrets("/", [
     { name: "API_BASE_URL", envs: all, values: { dev: "https://api.dev.example.test" } },
@@ -353,7 +418,8 @@ export function createResources(scenario: Scenario): Resource[] {
     kind: "dynamic",
     provider: "SQL Database",
     defaultTTL: "1h",
-    maxTTL: "24h"
+    maxTTL: "24h",
+    status: "failed-deletion"
   });
   add(at("prod", "/api"), "ledger-app-db-creds", {
     kind: "rotation",
@@ -376,7 +442,15 @@ export function createResources(scenario: Scenario): Resource[] {
     add(at(environment, "/api"), "ledger-api", {
       kind: "proxy",
       host: "ledger.internal.example.test",
-      enabled: true
+      enabled: true,
+      credentials: [
+        {
+          role: "header-rewrite",
+          headerName: "Authorization",
+          headerPrefix: "Bearer",
+          secretKey: "LEDGER_API_KEY"
+        }
+      ]
     })
   );
   secrets("/api", [

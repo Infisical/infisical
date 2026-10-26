@@ -2,8 +2,11 @@ import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 
 import {
   gcpIamCreateFormSchema,
+  gcpIamEditFormSchema,
   getGcpIamCreateDefaultValues,
   getGcpIamCreatePayload,
+  getGcpIamEditDefaultValues,
+  getGcpIamEditPayload,
   TGcpIamFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/gcpIamContract";
 import { Button } from "@app/components/v4/ui/button";
@@ -29,6 +32,7 @@ function GcpIamFields() {
         name="inputs.serviceAccountEmail"
         render={({ field, fieldState: { error } }) => (
           <Field
+            wide
             label="Service Account Email"
             description={`The service account ID (the part before "@") must end with the first two sections of your organization ID: "${suffix}". Example: my-service-account-${suffix}@my-project.iam.gserviceaccount.com`}
             error={fieldError(error)}
@@ -41,7 +45,7 @@ function GcpIamFields() {
           </Field>
         )}
       />
-      <Field label="Token Scopes" group>
+      <Field wide label="Token Scopes" group>
         <Stack gap={12} align="start">
           {scopes.fields.map(({ id }, index) => (
             <Controller
@@ -50,7 +54,7 @@ function GcpIamFields() {
               name={`inputs.tokenScopes.${index}.value`}
               render={({ field, fieldState: { error } }) => (
                 <div className="flex w-full items-end gap-3">
-                  <Field className="flex-1" label="Token Scope" error={fieldError(error)}>
+                  <Field wide className="flex-1" label="Token Scope" error={fieldError(error)}>
                     <Input
                       {...field}
                       placeholder="https://www.googleapis.com/auth/cloud-platform"
@@ -93,5 +97,12 @@ export const gcpIamFlowProvider = defineFlowProvider({
   getDefaultValues: getGcpIamCreateDefaultValues,
   toPayload: getGcpIamCreatePayload,
   Renderer: GcpIamFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: gcpIamEditFormSchema,
+    getDefaultValues: getGcpIamEditDefaultValues,
+    toPayload: getGcpIamEditPayload,
+    submitLabel: "Submit",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

@@ -12,6 +12,7 @@ import {
   type RotationViews,
   SecretsMappingFields,
   TextField,
+  useIsUpdate,
   useRotationForm
 } from "../fields";
 import { ROTATION_TEMPLATES } from "../model";
@@ -309,6 +310,7 @@ function SalesforceReview() {
 }
 
 function GcpParameters() {
+  const isUpdate = useIsUpdate();
   return (
     <TextField
       name="parameters.serviceAccountEmail"
@@ -316,6 +318,8 @@ function GcpParameters() {
       tooltip="The service account whose keys will be rotated. The connection's service account needs the Service Account Key Admin role (roles/iam.serviceAccountKeyAdmin) on it."
       placeholder="my-app@my-project.iam.gserviceaccount.com"
       maxLength={GCP_SERVICE_ACCOUNT_EMAIL_MAX_LENGTH}
+      disabled={isUpdate}
+      description={isUpdate ? "Cannot be updated." : undefined}
     />
   );
 }

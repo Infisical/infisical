@@ -87,6 +87,7 @@ function Field({
   error,
   optional = false,
   group = false,
+  wide = false,
   children,
   id,
   ref,
@@ -98,6 +99,7 @@ function Field({
     error?: string;
     optional?: boolean;
     group?: boolean;
+    wide?: boolean;
   } & { ref?: React.Ref<React.ComponentRef<"div">> }) {
   const generated = React.useId();
   const child = React.isValidElement<{ id?: string }>(children) ? children : null;
@@ -131,6 +133,7 @@ function Field({
         role={label ? undefined : "group"}
         data-slot="field"
         data-orientation={orientation}
+        data-width={wide ? "wide" : undefined}
         data-invalid={Boolean(error) || undefined}
         className={cn(fieldVariants({ orientation }), helperStyles.field, className)}
         {...props}

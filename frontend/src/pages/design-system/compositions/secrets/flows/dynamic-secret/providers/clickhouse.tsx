@@ -2,8 +2,11 @@ import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 
 import {
   clickHouseCreateFormSchema,
+  clickHouseEditFormSchema,
   getClickHouseCreateDefaultValues,
   getClickHouseCreatePayload,
+  getClickHouseEditDefaultValues,
+  getClickHouseEditPayload,
   type TClickHouseFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/clickHouseContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
@@ -131,7 +134,7 @@ const ClickHouseMetadataFields = () => {
                   control={control}
                   name={`metadata.${index}.key`}
                   render={({ field, fieldState: { error } }) => (
-                    <Field label="Key" error={fieldError(error)}>
+                    <Field wide label="Key" error={fieldError(error)}>
                       <Input {...field} invalid={Boolean(error)} />
                     </Field>
                   )}
@@ -140,7 +143,7 @@ const ClickHouseMetadataFields = () => {
                   control={control}
                   name={`metadata.${index}.value`}
                   render={({ field, fieldState: { error } }) => (
-                    <Field label="Value" optional error={fieldError(error)}>
+                    <Field wide label="Value" optional error={fieldError(error)}>
                       <Input {...field} invalid={Boolean(error)} />
                     </Field>
                   )}
@@ -175,7 +178,7 @@ const ClickHouseFields = () => {
           control={control}
           name="inputs.gatewayId"
           render={({ fieldState: { error } }) => (
-            <Field label="Gateway" error={fieldError(error)}>
+            <Field wide label="Gateway" error={fieldError(error)}>
               <GatewayPicker
                 invalid={Boolean(error)}
                 value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
@@ -221,5 +224,12 @@ export const clickHouseFlowProvider = defineFlowProvider({
   getDefaultValues: getClickHouseCreateDefaultValues,
   toPayload: getClickHouseCreatePayload,
   Renderer: ClickHouseFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: clickHouseEditFormSchema,
+    getDefaultValues: getClickHouseEditDefaultValues,
+    toPayload: getClickHouseEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

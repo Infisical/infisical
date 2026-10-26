@@ -3,9 +3,12 @@ import { Controller, useFormContext } from "react-hook-form";
 import {
   getVerticaCreateDefaultValues,
   getVerticaCreatePayload,
+  getVerticaEditDefaultValues,
+  getVerticaEditPayload,
   type TVerticaCreateFormValues,
   type TVerticaEditFormValues,
-  verticaCreateFormSchema
+  verticaCreateFormSchema,
+  verticaEditFormSchema
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/verticaContract";
 import { normalizeDynamicSecretGatewayValueForMode } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/schemas";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
@@ -13,7 +16,7 @@ import { Field } from "@app/components/v4/ui/field";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import { fieldError, GatewayPicker, ProviderFields, ProviderGroup } from "../fields";
-import { defineFlowProvider } from "../types";
+import { defineFlowProvider, type DynamicSecretRendererProps } from "../types";
 
 const connectionFields = [
   {
@@ -109,7 +112,7 @@ const passwordRequirementFields = [
   }
 ] satisfies readonly TDynamicSecretProviderField<TVerticaCreateFormValues>[];
 
-function VerticaFields() {
+function VerticaFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
   const { control, setValue, watch } = useFormContext<
     TVerticaCreateFormValues | TVerticaEditFormValues
   >();
@@ -123,19 +126,19 @@ function VerticaFields() {
           control={control}
           name="inputs.gatewayId"
           render={({ fieldState: { error } }) => (
-            <Field label="Gateway" error={fieldError(error)}>
+            <Field wide label="Gateway" error={fieldError(error)}>
               <GatewayPicker
                 invalid={Boolean(error)}
                 value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
                 onChange={({ gatewayId: nextGatewayId, gatewayPoolId: nextGatewayPoolId }) => {
                   setValue(
                     "inputs.gatewayId",
-                    normalizeDynamicSecretGatewayValueForMode("create", nextGatewayId),
+                    normalizeDynamicSecretGatewayValueForMode(mode, nextGatewayId),
                     { shouldDirty: true }
                   );
                   setValue(
                     "inputs.gatewayPoolId",
-                    normalizeDynamicSecretGatewayValueForMode("create", nextGatewayPoolId),
+                    normalizeDynamicSecretGatewayValueForMode(mode, nextGatewayPoolId),
                     { shouldDirty: true }
                   );
                 }}
@@ -169,5 +172,12 @@ export const verticaFlowProvider = defineFlowProvider({
   getDefaultValues: getVerticaCreateDefaultValues,
   toPayload: getVerticaCreatePayload,
   Renderer: VerticaFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: verticaEditFormSchema,
+    getDefaultValues: getVerticaEditDefaultValues,
+    toPayload: getVerticaEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

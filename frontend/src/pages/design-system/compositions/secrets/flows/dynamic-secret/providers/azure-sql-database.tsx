@@ -2,8 +2,11 @@ import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 
 import {
   azureSqlCreateFormSchema,
+  azureSqlEditFormSchema,
   getAzureSqlCreateDefaultValues,
   getAzureSqlCreatePayload,
+  getAzureSqlEditDefaultValues,
+  getAzureSqlEditPayload,
   normalizeAzureSqlGatewayValueForMode,
   type TAzureSqlCreateValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/azureSqlDatabaseContract";
@@ -24,7 +27,7 @@ import {
   ProviderGroup,
   SslRejectUnauthorizedField
 } from "../fields";
-import { defineFlowProvider } from "../types";
+import { defineFlowProvider, type DynamicSecretRendererProps } from "../types";
 
 const scalarFields = [
   {
@@ -120,6 +123,7 @@ const AzureSqlMetadataFields = () => {
                   name={`metadata.${index}.${key}`}
                   render={({ field, fieldState: { error } }) => (
                     <Field
+                      wide
                       label={key === "key" ? "Key" : "Value"}
                       optional={key === "value"}
                       error={fieldError(error)}
@@ -165,7 +169,7 @@ const AzureSqlPasswordRequirements = () => {
         control={control}
         name="inputs.passwordRequirements.length"
         render={({ field, fieldState: { error } }) => (
-          <Field label="Password Length" error={fieldError(error)}>
+          <Field wide label="Password Length" error={fieldError(error)}>
             <Input
               ref={field.ref}
               name={field.name}
@@ -186,7 +190,7 @@ const AzureSqlPasswordRequirements = () => {
           control={control}
           name={`inputs.passwordRequirements.required.${key}`}
           render={({ field, fieldState: { error } }) => (
-            <Field label={label} description={description} error={fieldError(error)}>
+            <Field wide label={label} description={description} error={fieldError(error)}>
               <Input
                 ref={field.ref}
                 name={field.name}
@@ -206,6 +210,7 @@ const AzureSqlPasswordRequirements = () => {
         name="inputs.passwordRequirements.allowedSymbols"
         render={({ field, fieldState: { error } }) => (
           <Field
+            wide
             className="col-span-2"
             label="Symbols to use in password"
             description="Default: -_.~!*"
@@ -219,7 +224,7 @@ const AzureSqlPasswordRequirements = () => {
   );
 };
 
-const AzureSqlFields = () => {
+const AzureSqlFields = ({ mode }: Pick<DynamicSecretRendererProps, "mode">) => {
   const { control, setValue, watch } = useFormContext<TAzureSqlCreateValues>();
   const sslEnabled = watch("inputs.sslEnabled");
   const gatewayId = watch("inputs.gatewayId");
@@ -231,15 +236,15 @@ const AzureSqlFields = () => {
           control={control}
           name="inputs.gatewayId"
           render={({ field, fieldState: { error } }) => (
-            <Field label="Gateway" error={fieldError(error)}>
+            <Field wide label="Gateway" error={fieldError(error)}>
               <GatewayPicker
                 invalid={Boolean(error)}
                 value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
                 onChange={({ gatewayId: nextId, gatewayPoolId: nextPoolId }) => {
-                  field.onChange(normalizeAzureSqlGatewayValueForMode("create", nextId));
+                  field.onChange(normalizeAzureSqlGatewayValueForMode(mode, nextId));
                   setValue(
                     "inputs.gatewayPoolId",
-                    normalizeAzureSqlGatewayValueForMode("create", nextPoolId) ?? undefined,
+                    normalizeAzureSqlGatewayValueForMode(mode, nextPoolId) ?? undefined,
                     { shouldDirty: true }
                   );
                 }}
@@ -252,7 +257,7 @@ const AzureSqlFields = () => {
           control={control}
           name="inputs.port"
           render={({ field, fieldState: { error } }) => (
-            <Field label="Port" error={fieldError(error)}>
+            <Field wide label="Port" error={fieldError(error)}>
               <Input
                 ref={field.ref}
                 name={field.name}
@@ -269,7 +274,7 @@ const AzureSqlFields = () => {
           control={control}
           name="inputs.password"
           render={({ field, fieldState: { error } }) => (
-            <Field label="Password" error={fieldError(error)}>
+            <Field wide label="Password" error={fieldError(error)}>
               <Input
                 {...field}
                 type="password"
@@ -331,5 +336,12 @@ export const azureSqlDatabaseFlowProvider = defineFlowProvider({
   getDefaultValues: getAzureSqlCreateDefaultValues,
   toPayload: getAzureSqlCreatePayload,
   Renderer: AzureSqlFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: azureSqlEditFormSchema,
+    getDefaultValues: getAzureSqlEditDefaultValues,
+    toPayload: getAzureSqlEditPayload,
+    submitLabel: "Submit",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

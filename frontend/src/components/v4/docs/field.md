@@ -71,7 +71,7 @@ Exports: Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLab
 
 ## Behavior
 
-- Use label/description/error shorthand around one control for automatic ID, label, described-by and invalid-state association. Compound FieldLabel/FieldDescription/FieldError parts remain available for custom layouts. An error renders one way everywhere: a red alert icon and the message, several messages stacked under one icon. The label stays ink; the control's red border and the message carry the error. The label sits 6px above the control (the field-label space token).
+- Use label/description/error shorthand around one control for automatic ID, label, described-by and invalid-state association. Compound FieldLabel/FieldDescription/FieldError parts remain available for custom layouts. An error renders one way everywhere: a red alert icon and the message, several messages stacked under one icon. The label stays ink; the control's red border and the message carry the error. The label sits 6px above the control (the field-label space token). A stacked Field caps at the field measure (size-measure-field, 400px); wide lets it fill its column (size-measure-field-wide).
 
 ## Accessibility
 
@@ -80,6 +80,11 @@ Exports: Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLab
 ## Use cases
 
 - Use vertical, horizontal or responsive Field composition to keep a value's visible name, help and correction together.
+- Use wide on Fields inside a multi-column form row, such as host and port or name and TTLs in dynamic secret, secret rotation and app connection forms, so the row's grid sets each field's width.
+
+## Avoid
+
+- Use wide on a lone stacked field to stretch it across a card, or override size-measure-field locally to widen a row.
 
 ## Limits
 

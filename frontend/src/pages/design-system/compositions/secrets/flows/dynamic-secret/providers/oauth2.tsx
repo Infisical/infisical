@@ -3,8 +3,11 @@ import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import {
   getOAuth2CreateDefaultValues,
   getOAuth2CreatePayload,
+  getOAuth2EditDefaultValues,
+  getOAuth2EditPayload,
   OAUTH2_MAX_EXTRA_PARAMS,
   oauth2CreateFormSchema,
+  oauth2EditFormSchema,
   TOAuth2CreateFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/oauth2Contract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
@@ -15,7 +18,7 @@ import { Stack } from "@app/components/v4/ui/layout";
 import { DynamicSecretProviders, OAuth2ClientAuthMethod } from "@app/hooks/api/dynamicSecret/types";
 
 import { fieldError, ProviderFields, ProviderGroup } from "../fields";
-import { defineFlowProvider } from "../types";
+import { defineFlowProvider, type DynamicSecretRendererProps } from "../types";
 
 const connectionFields = [
   {
@@ -69,14 +72,25 @@ const connectionFields = [
   }
 ] satisfies readonly TDynamicSecretProviderField<TOAuth2CreateFormValues>[];
 
-function OAuth2Fields() {
+const editConnectionFields = connectionFields.map((field) =>
+  field.name === "inputs.clientAuth.clientSecret"
+    ? {
+        ...field,
+        placeholder: "••••••••",
+        isOptional: true,
+        description: "Leave blank to keep the current client secret."
+      }
+    : field
+);
+
+function OAuth2Fields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
   const { control } = useFormContext<TOAuth2CreateFormValues>();
   const extraParams = useFieldArray({ control, name: "inputs.extraParams" });
 
   return (
     <>
       <ProviderGroup id="oauth2-configuration">
-        <ProviderFields fields={connectionFields} />
+        <ProviderFields fields={mode === "edit" ? editConnectionFields : connectionFields} />
       </ProviderGroup>
 
       <ProviderGroup
@@ -95,7 +109,11 @@ function OAuth2Fields() {
                     control={control}
                     name={`inputs.extraParams.${index}.${part}`}
                     render={({ field, fieldState: { error } }) => (
-                      <Field label={part === "key" ? "Name" : "Value"} error={fieldError(error)}>
+                      <Field
+                        wide
+                        label={part === "key" ? "Name" : "Value"}
+                        error={fieldError(error)}
+                      >
                         <Input
                           {...field}
                           placeholder={part === "key" ? "audience" : "https://api.example.com"}
@@ -134,6 +152,11 @@ function OAuth2Fields() {
   );
 }
 
+const commonFields = {
+  ttlDescription:
+    "TTLs must fit within the token lifetime the authorization server sets. They aren't checked if the server doesn't report a lifetime."
+};
+
 export const oauth2FlowProvider = defineFlowProvider({
   provider: DynamicSecretProviders.OAuth2,
   label: "OAuth 2.0",
@@ -141,9 +164,14 @@ export const oauth2FlowProvider = defineFlowProvider({
   getDefaultValues: getOAuth2CreateDefaultValues,
   toPayload: getOAuth2CreatePayload,
   Renderer: OAuth2Fields,
-  commonFields: {
-    ttlDescription:
-      "TTLs must fit within the token lifetime the authorization server sets. They aren't checked if the server doesn't report a lifetime."
-  },
-  submitLabel: "Submit"
+  commonFields,
+  submitLabel: "Submit",
+  edit: {
+    schema: oauth2EditFormSchema,
+    getDefaultValues: getOAuth2EditDefaultValues,
+    toPayload: getOAuth2EditPayload,
+    commonFields,
+    submitLabel: "Submit",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

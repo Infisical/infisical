@@ -40,11 +40,11 @@ import {
   type ResourceKind,
   type Secret
 } from "../secrets-model";
+import { canReconcile } from "./row-actions/rotation-actions";
 import {
   ActionBar,
   ActionButton,
   ExpandToggle,
-  NEXT_PHASE,
   presenceOf,
   type RowContext,
   SelectCell,
@@ -105,7 +105,7 @@ type Spec = {
   label: (entry: Resource) => ReactNode;
   details: (entry: Resource) => ReactNode;
   flag?: (entries: Resource[]) => ReactNode;
-  actions: (entry: Resource) => ReactNode;
+  actions: (entry: Resource, ctx: RowContext) => ReactNode;
 };
 const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec> = {
   dynamic: {
@@ -135,17 +135,45 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
           </Badge>
         </Tooltip>
       ),
-    actions: (entry) => (
-      <>
-        <ActionButton label="View leases" icon={ListIcon} disabledReason={NEXT_PHASE} />
-        <ActionButton label="Generate lease" icon={FileKeyIcon} disabledReason={NEXT_PHASE} />
-        <ActionButton label="Edit" icon={EditIcon} disabledReason={NEXT_PHASE} />
-        {entry.kind === "dynamic" && entry.status === "failed-deletion" && (
-          <ActionButton label="Force delete" icon={XIcon} disabledReason={NEXT_PHASE} />
-        )}
-        <ActionButton label="Delete" name="trash" disabledReason={NEXT_PHASE} />
-      </>
-    )
+    actions: (entry, ctx) => {
+      const item = entry as Of<"dynamic">;
+      const run = (action: "leases" | "lease" | "edit" | "delete" | "force-delete") => () =>
+        ctx.onAction({ kind: "dynamic", action, entry: item });
+      const block =
+        ctx.writeBlock ??
+        (item.status === "deleting" ? "Dynamic secret is being revoked" : undefined);
+      return (
+        <>
+          <ActionButton
+            label="View leases"
+            icon={ListIcon}
+            disabledReason={block}
+            onClick={run("leases")}
+          />
+          <ActionButton
+            label="Generate lease"
+            icon={FileKeyIcon}
+            disabledReason={block}
+            onClick={run("lease")}
+          />
+          <ActionButton label="Edit" icon={EditIcon} disabledReason={block} onClick={run("edit")} />
+          {item.status === "failed-deletion" && (
+            <ActionButton
+              label="Force delete"
+              icon={XIcon}
+              disabledReason={ctx.writeBlock}
+              onClick={run("force-delete")}
+            />
+          )}
+          <ActionButton
+            label="Delete"
+            name="trash"
+            disabledReason={block}
+            onClick={run("delete")}
+          />
+        </>
+      );
+    }
   },
   rotation: {
     label: (entry) => entry.name,
@@ -170,20 +198,54 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
           </Badge>
         </Tooltip>
       ),
-    actions: () => (
-      <>
-        <ActionButton
-          label="Validate credentials"
-          icon={ActivityIcon}
-          disabledReason={NEXT_PHASE}
-        />
-        <ActionButton label="View generated credentials" name="eye" disabledReason={NEXT_PHASE} />
-        <ActionButton label="Rotate secret" name="sync" disabledReason={NEXT_PHASE} />
-        <ActionButton label="Reconcile secret" icon={HandshakeIcon} disabledReason={NEXT_PHASE} />
-        <ActionButton label="Edit" icon={EditIcon} disabledReason={NEXT_PHASE} />
-        <ActionButton label="Delete" name="trash" disabledReason={NEXT_PHASE} />
-      </>
-    )
+    actions: (entry, ctx) => {
+      const item = entry as Of<"rotation">;
+      const run =
+        (action: "validate" | "credentials" | "rotate" | "reconcile" | "edit" | "delete") => () =>
+          ctx.onAction({ kind: "rotation", action, entry: item });
+      return (
+        <>
+          <ActionButton
+            label="Validate credentials"
+            icon={ActivityIcon}
+            disabledReason={ctx.writeBlock}
+            onClick={run("validate")}
+          />
+          <ActionButton
+            label="View generated credentials"
+            name="eye"
+            disabledReason={ctx.writeBlock}
+            onClick={run("credentials")}
+          />
+          <ActionButton
+            label="Rotate secret"
+            name="sync"
+            disabledReason={ctx.writeBlock}
+            onClick={run("rotate")}
+          />
+          {canReconcile(item) && (
+            <ActionButton
+              label="Reconcile secret"
+              icon={HandshakeIcon}
+              disabledReason={ctx.writeBlock}
+              onClick={run("reconcile")}
+            />
+          )}
+          <ActionButton
+            label="Edit"
+            icon={EditIcon}
+            disabledReason={ctx.writeBlock}
+            onClick={run("edit")}
+          />
+          <ActionButton
+            label="Delete"
+            name="trash"
+            disabledReason={ctx.writeBlock}
+            onClick={run("delete")}
+          />
+        </>
+      );
+    }
   },
   honey: {
     label: (entry) => entry.name,
@@ -203,36 +265,58 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
         </>
       );
     },
-    actions: (entry) => (
-      <>
-        <ActionButton label="View details" icon={ListIcon} disabledReason={NEXT_PHASE} />
-        <DropdownMenu>
-          <Tooltip content={`More actions for ${entry.name}`}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                iconOnly
-                onClick={(event) => event.stopPropagation()}
-              >
-                <Icon name="more" />
-                <span className="sr-only">{`More actions for ${entry.name}`}</span>
-              </Button>
-            </DropdownMenuTrigger>
-          </Tooltip>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem disabled description={NEXT_PHASE}>
-              <Icon icon={EditIcon} />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled variant="destructive" description={NEXT_PHASE}>
-              <Icon name="alert" />
-              Revoke
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </>
-    )
+    actions: (entry, ctx) => {
+      const item = entry as Of<"honey">;
+      const run = (action: "details" | "edit" | "revoke") => () =>
+        ctx.onAction({ kind: "honey", action, entry: item });
+      return (
+        <>
+          <ActionButton label="View details" icon={ListIcon} onClick={run("details")} />
+          {item.status === "revoked" ? (
+            <ActionButton
+              label={`More actions unavailable for ${item.name}`}
+              name="more"
+              disabledReason="Revoked honey tokens cannot be edited."
+            />
+          ) : (
+            <DropdownMenu>
+              <Tooltip content={`More actions for ${item.name}`}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    iconOnly
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <Icon name="more" />
+                    <span className="sr-only">{`More actions for ${item.name}`}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+              </Tooltip>
+              <DropdownMenuContent align="end" onCloseAutoFocus={(event) => event.preventDefault()}>
+                <DropdownMenuItem
+                  disabled={Boolean(ctx.writeBlock)}
+                  description={ctx.writeBlock}
+                  onSelect={run("edit")}
+                >
+                  <Icon icon={EditIcon} />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={Boolean(ctx.writeBlock)}
+                  description={ctx.writeBlock}
+                  variant="destructive"
+                  onSelect={run("revoke")}
+                >
+                  <Icon name="alert" />
+                  Revoke
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </>
+      );
+    }
   },
   proxy: {
     label: (entry) => entry.name,
@@ -261,12 +345,25 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
         </>
       );
     },
-    actions: () => (
-      <>
-        <ActionButton label="Edit" icon={EditIcon} disabledReason={NEXT_PHASE} />
-        <ActionButton label="Delete" name="trash" disabledReason={NEXT_PHASE} />
-      </>
-    )
+    actions: (entry, ctx) => {
+      const item = entry as Of<"proxy">;
+      return (
+        <>
+          <ActionButton
+            label="Edit"
+            icon={EditIcon}
+            disabledReason={ctx.writeBlock}
+            onClick={() => ctx.onAction({ kind: "proxy", action: "edit", entry: item })}
+          />
+          <ActionButton
+            label="Delete"
+            name="trash"
+            disabledReason={ctx.writeBlock}
+            onClick={() => ctx.onAction({ kind: "proxy", action: "delete", entry: item })}
+          />
+        </>
+      );
+    }
   }
 };
 
@@ -332,7 +429,7 @@ export function KindRow({
     <div className={styles.nameLine}>
       {withName && <span className={styles.truncate}>{spec.label(entry)}</span>}
       {spec.details(entry)}
-      <ActionBar>{spec.actions(entry)}</ActionBar>
+      <ActionBar>{spec.actions(entry, ctx)}</ActionBar>
     </div>
   );
   if (ctx.single)
@@ -427,22 +524,34 @@ export function FolderRow({
           </span>
           {first.description && <InfoHint text={first.description} />}
           <ActionBar>
-            <ActionButton label="Move folder" icon={FolderInputIcon} disabledReason={NEXT_PHASE} />
+            <ActionButton
+              label="Move folder"
+              icon={FolderInputIcon}
+              disabledReason={ctx.writeBlock}
+              onClick={() =>
+                ctx.onAction({ kind: "folder", action: "move", entry: first, entries })
+              }
+            />
             <ActionButton
               label="Edit folder"
               icon={EditIcon}
-              disabledReason={
-                ctx.single ? ctx.writeBlock : "Expand to a single environment to edit."
-              }
+              disabledReason={ctx.writeBlock}
               onClick={() => onEdit(first)}
             />
-            <ActionButton label="Manage access" icon={UsersIcon} disabledReason={NEXT_PHASE} />
+            <ActionButton
+              label="Manage access"
+              icon={UsersIcon}
+              disabledReason={
+                ctx.single ? ctx.writeBlock : "Select a single environment to manage folder access."
+              }
+              onClick={() =>
+                ctx.onAction({ kind: "folder", action: "access", entry: first, entries })
+              }
+            />
             <ActionButton
               label="Delete folder"
               name="trash"
-              disabledReason={
-                ctx.single ? ctx.writeBlock : "Select a single environment to delete."
-              }
+              disabledReason={ctx.writeBlock}
               onClick={() => onDelete(first)}
             />
           </ActionBar>
@@ -503,8 +612,20 @@ export function ImportRow({
     );
   const actions = (entry: Of<"import">) => (
     <ActionBar>
-      {entry.replicated && <ActionButton label="Resync" name="sync" disabledReason={NEXT_PHASE} />}
-      <ActionButton label="Delete" name="trash" disabledReason={NEXT_PHASE} />
+      {entry.replicated && (
+        <ActionButton
+          label="Resync"
+          name="sync"
+          disabledReason={ctx.writeBlock}
+          onClick={() => ctx.onAction({ kind: "import", action: "resync", entry })}
+        />
+      )}
+      <ActionButton
+        label="Delete"
+        name="trash"
+        disabledReason={ctx.writeBlock}
+        onClick={() => ctx.onAction({ kind: "import", action: "delete", entry })}
+      />
     </ActionBar>
   );
   const toggle = (

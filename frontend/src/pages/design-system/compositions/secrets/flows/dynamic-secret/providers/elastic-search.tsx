@@ -2,8 +2,11 @@ import { Controller, useFormContext } from "react-hook-form";
 
 import {
   elasticSearchCreateFormSchema,
+  elasticSearchEditFormSchema,
   getElasticSearchCreateDefaultValues,
   getElasticSearchCreatePayload,
+  getElasticSearchEditDefaultValues,
+  getElasticSearchEditPayload,
   type TElasticSearchFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/elasticSearchContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
@@ -77,7 +80,7 @@ function ElasticSearchFields() {
             control={control}
             name="inputs.auth.type"
             render={({ field, fieldState: { error } }) => (
-              <Field label="Authentication Method" error={fieldError(error)}>
+              <Field wide label="Authentication Method" error={fieldError(error)}>
                 <Select
                   value={field.value}
                   invalid={Boolean(error)}
@@ -92,7 +95,7 @@ function ElasticSearchFields() {
             control={control}
             name={isUser ? "inputs.auth.username" : "inputs.auth.apiKeyId"}
             render={({ field, fieldState: { error } }) => (
-              <Field label={isUser ? "Username" : "API Key ID"} error={fieldError(error)}>
+              <Field wide label={isUser ? "Username" : "API Key ID"} error={fieldError(error)}>
                 <Input
                   {...field}
                   value={field.value ?? ""}
@@ -108,7 +111,7 @@ function ElasticSearchFields() {
             control={control}
             name={isUser ? "inputs.auth.password" : "inputs.auth.apiKey"}
             render={({ field, fieldState: { error } }) => (
-              <Field label={isUser ? "Password" : "API Key"} error={fieldError(error)}>
+              <Field wide label={isUser ? "Password" : "API Key"} error={fieldError(error)}>
                 <Input
                   {...field}
                   value={field.value ?? ""}
@@ -138,7 +141,7 @@ function ElasticSearchFields() {
               control={control}
               name={`inputs.roles.${index}`}
               render={({ field, fieldState: { error } }) => (
-                <Field label="Role" error={fieldError(error)}>
+                <Field wide label="Role" error={fieldError(error)}>
                   <Inline gap={8} align="start" wrap={false}>
                     <div className="min-w-0 flex-1">
                       <Input {...field} placeholder="superuser" invalid={Boolean(error)} />
@@ -191,5 +194,12 @@ export const elasticSearchFlowProvider = defineFlowProvider({
   getDefaultValues: getElasticSearchCreateDefaultValues,
   toPayload: getElasticSearchCreatePayload,
   Renderer: ElasticSearchFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: elasticSearchEditFormSchema,
+    getDefaultValues: getElasticSearchEditDefaultValues,
+    toPayload: getElasticSearchEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

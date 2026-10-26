@@ -38,6 +38,11 @@ export type RotationViews = {
 
 export const useRotationForm = () => useFormContext<FieldValues>();
 
+export const useIsUpdate = () => {
+  const { control } = useRotationForm();
+  return Boolean(useWatch({ control, name: "id" }));
+};
+
 export const useConnectionId = () => {
   const { control } = useRotationForm();
   return useWatch({ control, name: "connection.id" }) as string | undefined;

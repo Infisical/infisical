@@ -3,9 +3,12 @@ import { Controller, useFormContext } from "react-hook-form";
 import {
   getTotpCreateDefaultValues,
   getTotpCreatePayload,
+  getTotpEditDefaultValues,
+  getTotpEditPayload,
   TotpAlgorithm,
   TotpConfigType,
   totpCreateFormSchema,
+  totpEditFormSchema,
   TTotpFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/totpContract";
 import { Field, FieldDescription } from "@app/components/v4/ui/field";
@@ -26,7 +29,7 @@ function TotpFields() {
         control={control}
         name="inputs.configType"
         render={({ field, fieldState: { error } }) => (
-          <Field label="Configuration Type" error={fieldError(error)}>
+          <Field wide label="Configuration Type" error={fieldError(error)}>
             <Select
               value={field.value}
               invalid={Boolean(error)}
@@ -48,7 +51,7 @@ function TotpFields() {
           control={control}
           name="inputs.url"
           render={({ field, fieldState: { error } }) => (
-            <Field label="OTP URL" error={fieldError(error)}>
+            <Field wide label="OTP URL" error={fieldError(error)}>
               <Input
                 {...field}
                 type="password"
@@ -67,7 +70,7 @@ function TotpFields() {
             control={control}
             name="inputs.secret"
             render={({ field, fieldState: { error } }) => (
-              <Field label="Secret Key" error={fieldError(error)}>
+              <Field wide label="Secret Key" error={fieldError(error)}>
                 <Input
                   {...field}
                   type="password"
@@ -85,7 +88,11 @@ function TotpFields() {
                 control={control}
                 name={`inputs.${key}`}
                 render={({ field, fieldState: { error } }) => (
-                  <Field label={key === "period" ? "Period" : "Digits"} error={fieldError(error)}>
+                  <Field
+                    wide
+                    label={key === "period" ? "Period" : "Digits"}
+                    error={fieldError(error)}
+                  >
                     <Input
                       {...field}
                       type="number"
@@ -101,7 +108,7 @@ function TotpFields() {
               control={control}
               name="inputs.algorithm"
               render={({ field, fieldState: { error } }) => (
-                <Field label="Algorithm" error={fieldError(error)}>
+                <Field wide label="Algorithm" error={fieldError(error)}>
                   <Select
                     value={field.value}
                     invalid={Boolean(error)}
@@ -129,6 +136,11 @@ function TotpFields() {
   );
 }
 
+const commonFields = {
+  defaultTTL: { isVisible: false },
+  maxTTL: { isVisible: false }
+};
+
 export const totpFlowProvider = defineFlowProvider({
   provider: DynamicSecretProviders.Totp,
   label: "TOTP",
@@ -136,9 +148,14 @@ export const totpFlowProvider = defineFlowProvider({
   getDefaultValues: getTotpCreateDefaultValues,
   toPayload: getTotpCreatePayload,
   Renderer: TotpFields,
-  commonFields: {
-    defaultTTL: { isVisible: false },
-    maxTTL: { isVisible: false }
-  },
-  submitLabel: "Submit"
+  commonFields,
+  submitLabel: "Submit",
+  edit: {
+    schema: totpEditFormSchema,
+    getDefaultValues: getTotpEditDefaultValues,
+    toPayload: getTotpEditPayload,
+    commonFields,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

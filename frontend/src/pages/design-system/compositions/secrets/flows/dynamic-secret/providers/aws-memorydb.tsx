@@ -1,7 +1,10 @@
 import {
   awsMemoryDbCreateFormSchema,
+  awsMemoryDbEditFormSchema,
   getAwsMemoryDbCreateDefaultValues,
   getAwsMemoryDbCreatePayload,
+  getAwsMemoryDbEditDefaultValues,
+  getAwsMemoryDbEditPayload,
   type TAwsMemoryDbCreateValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/awsManagedStoresContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
@@ -65,5 +68,12 @@ export const awsMemoryDbFlowProvider = defineFlowProvider({
   getDefaultValues: getAwsMemoryDbCreateDefaultValues,
   toPayload: getAwsMemoryDbCreatePayload,
   Renderer: AwsMemoryDbFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: awsMemoryDbEditFormSchema,
+    getDefaultValues: getAwsMemoryDbEditDefaultValues,
+    toPayload: getAwsMemoryDbEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

@@ -4,7 +4,6 @@ import { Button } from "@app/components/v4/ui/button";
 import { Inline } from "@app/components/v4/ui/layout";
 import { SmallText } from "@app/components/v4/ui/text";
 
-import { dynamicSecretFlowProviders } from "./dynamic-secret/registry";
 import {
   hasAtLeastOneCredential,
   HeaderRewritingMode,
@@ -15,106 +14,33 @@ import {
 } from "./managed-proxy-schema";
 import type { ProxiedServiceTemplate } from "./managed-proxy-templates";
 import {
+  PROXIED_SERVICE_DOCS_URL,
+  PROXIED_SERVICE_STEPS,
+  proxySources,
+  toCredentials
+} from "./managed-proxy-utils";
+import {
   CreateSecretDialog,
   DetailsFields,
   emptySource,
   HeaderFields,
   type ProxyErrors,
   ReviewFields,
-  type SourceOption,
   SubstitutionDiagram,
   SubstitutionFields,
   TemplatePicker
 } from "./proxied-service-fields";
-import { DiscardDialog, LOCAL_ONLY, secretsAt } from "./shared";
+import { DiscardDialog, LOCAL_ONLY } from "./shared";
 import type { AddFlowProps } from "./types";
 import { ProviderLogo, WizardSheet } from "./wizard-sheet";
 
 import styles from "./flows.module.css";
 
-const DOCS_URL =
-  "https://infisical.com/docs/documentation/platform/agent-proxy/quickstart/credentials";
-const STEPS = [
-  {
-    step: ProxiedServiceStep.Details,
-    name: "Details",
-    shortDescription: "Name and host",
-    title: "Service details",
-    subtitle: "Name the service and choose which hosts it brokers.",
-    rightDescription:
-      "The name identifies this service within the folder. The host pattern decides which outbound requests the agent proxy applies these credentials to."
-  },
-  {
-    step: ProxiedServiceStep.Headers,
-    name: "Header rewrites",
-    shortDescription: "Request headers",
-    title: "Header rewrites",
-    subtitle: "Set or overwrite request headers with a secret.",
-    rightDescription:
-      "The proxy sets these headers on every outbound request, overwriting whatever the agent sent. Use this for Bearer tokens, API-key headers, or basic auth. Skip it if the credential is carried elsewhere."
-  },
-  {
-    step: ProxiedServiceStep.Substitution,
-    name: "Substitution",
-    shortDescription: "Placeholder swaps",
-    title: "Secret substitution",
-    subtitle: "Swap a placeholder the agent sends for the real secret.",
-    rightDescription:
-      "Infisical hands the agent a placeholder as an environment variable; the proxy swaps it for the real secret wherever it appears in the surfaces you pick (path, query, header, body). Ideal when the credential sits in the URL or the agent's client validates its format."
-  },
-  {
-    step: ProxiedServiceStep.Review,
-    name: "Review",
-    shortDescription: "Confirm",
-    title: "Review",
-    subtitle: "Confirm the configuration before saving.",
-    rightDescription:
-      "Double-check the host pattern and each credential. You can edit any of this later from the folder view."
-  }
-];
+const STEPS = PROXIED_SERVICE_STEPS;
 const DETAILS = 0;
 const HEADERS = 1;
 const SUBSTITUTION = 2;
 const REVIEW = STEPS.length - 1;
-
-const BROKERABLE_DYNAMIC_SECRETS: Record<string, { name: string; label: string }[]> = {
-  kubernetes: [{ name: "TOKEN", label: "Service Account JWT" }],
-  github: [{ name: "TOKEN", label: "Token" }],
-  "gcp-iam": [{ name: "TOKEN", label: "Token" }],
-  "ibm-api-connect": [
-    { name: "CLIENT_ID", label: "Client ID" },
-    { name: "CLIENT_SECRET", label: "Client Secret" }
-  ],
-  "elastic-search": [
-    { name: "DB_USERNAME", label: "Username" },
-    { name: "DB_PASSWORD", label: "Password" }
-  ],
-  clickhouse: [
-    { name: "DB_USERNAME", label: "Database User" },
-    { name: "DB_PASSWORD", label: "Database Password" }
-  ],
-  couchbase: [
-    { name: "username", label: "Username" },
-    { name: "password", label: "Password" }
-  ],
-  "rabbit-mq": [
-    { name: "DB_USERNAME", label: "Username" },
-    { name: "DB_PASSWORD", label: "Password" }
-  ],
-  snowflake: [
-    { name: "DB_USERNAME", label: "Username" },
-    { name: "DB_PASSWORD", label: "Password" }
-  ],
-  milvus: [
-    { name: "DB_USERNAME", label: "Database User" },
-    { name: "DB_PASSWORD", label: "Database Password" }
-  ],
-  "azure-entra-id": [
-    { name: "email", label: "Email" },
-    { name: "password", label: "Password" }
-  ],
-  totp: [{ name: "TOTP", label: "Time-based one-time password" }]
-};
 
 const uniqueServiceName = (base: string, existingNames: string[]) => {
   if (!existingNames.includes(base)) return base;
@@ -197,64 +123,7 @@ export function CreateProxiedServiceFlow({
   const isHeaderStepEmpty =
     form.headerMode !== HeaderRewritingMode.BasicAuth && form.headers.length === 0;
 
-  const localSecrets = [
-    ...new Set(
-      [
-        ...secretsAt(resources, scope.project, environment, scope.path),
-        ...resources
-          .filter(
-            (resource) =>
-              resource.kind === "import" &&
-              !resource.revoked &&
-              resource.project === scope.project &&
-              resource.environment === environment &&
-              resource.path === scope.path
-          )
-          .flatMap((entry) =>
-            entry.kind === "import"
-              ? secretsAt(
-                  resources,
-                  entry.source.project,
-                  entry.source.environment,
-                  entry.source.path
-                )
-              : []
-          )
-      ].map((secret) => secret.name)
-    )
-  ];
-  const sourceOptions: SourceOption[] = [
-    ...localSecrets.map((name) => ({ value: `secret:${name}`, label: name, meta: "Secret" })),
-    ...resources
-      .filter(
-        (resource) =>
-          resource.kind === "dynamic" &&
-          resource.project === scope.project &&
-          resource.environment === environment &&
-          resource.path === scope.path
-      )
-      .flatMap((resource): SourceOption[] => {
-        const label = resource.kind === "dynamic" ? resource.provider : "";
-        const provider = dynamicSecretFlowProviders.find(
-          (entry) => entry.label === label
-        )?.provider;
-        const fields = provider ? BROKERABLE_DYNAMIC_SECRETS[provider] : undefined;
-        if (!fields)
-          return [
-            {
-              value: `dynamic:${resource.name}:`,
-              label: resource.name,
-              meta: "This dynamic secret type can't be brokered over HTTP.",
-              disabled: true
-            }
-          ];
-        return fields.map((field) => ({
-          value: `dynamic:${resource.name}:${field.name}`,
-          label: `${resource.name} → ${field.label}`,
-          meta: "Dynamic secret"
-        }));
-      })
-  ];
+  const { localSecrets, sourceOptions } = proxySources(resources, at);
 
   const pick = (template: ProxiedServiceTemplate | null) => {
     const seeded = template ? buildTemplateFormValues(template, existingNames) : emptyFormValues();
@@ -310,7 +179,8 @@ export function CreateProxiedServiceFlow({
           kind: "proxy",
           name: parsed.data.name,
           host: parsed.data.hostPattern,
-          enabled: parsed.data.isEnabled
+          enabled: parsed.data.isEnabled,
+          credentials: toCredentials(parsed.data)
         }
       ],
       {
@@ -372,7 +242,7 @@ export function CreateProxiedServiceFlow({
             <span className={styles.titleLink}>
               {selection ? selection.name : "Custom proxied service"}
               <Button asChild variant="ghost" size="xs" iconRight="external">
-                <a href={DOCS_URL} target="_blank" rel="noopener noreferrer">
+                <a href={PROXIED_SERVICE_DOCS_URL} target="_blank" rel="noopener noreferrer">
                   Docs
                 </a>
               </Button>

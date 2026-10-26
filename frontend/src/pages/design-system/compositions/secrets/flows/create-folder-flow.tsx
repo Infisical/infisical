@@ -19,12 +19,12 @@ import type { AddFlowProps } from "./types";
 
 import styles from "./flows.module.css";
 
-const nameSchema = z
+export const nameSchema = z
   .string()
   .trim()
   .max(255, "Name cannot exceed 255 characters")
   .regex(/^[a-zA-Z0-9-_]+$/, "Name can only contain letters, numbers, dashes, and underscores");
-const MAX_DESCRIPTION_LINES = 10;
+export const MAX_DESCRIPTION_LINES = 10;
 
 export function CreateFolderFlow({
   open,

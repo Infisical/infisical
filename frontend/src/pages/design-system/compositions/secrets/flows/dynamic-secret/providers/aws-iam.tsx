@@ -2,8 +2,11 @@ import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 
 import {
   awsIamCreateFormSchema,
+  awsIamEditFormSchema,
   getAwsIamCreateDefaultValues,
   getAwsIamCreatePayload,
+  getAwsIamEditDefaultValues,
+  getAwsIamEditPayload,
   TAwsIamFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/awsIamContract";
 import { DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/schemas";
@@ -215,5 +218,12 @@ export const awsIamFlowProvider = defineFlowProvider({
   getDefaultValues: getAwsIamCreateDefaultValues,
   toPayload: getAwsIamCreatePayload,
   Renderer: AwsIamFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: awsIamEditFormSchema,
+    getDefaultValues: getAwsIamEditDefaultValues,
+    toPayload: getAwsIamEditPayload,
+    submitLabel: "Submit",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

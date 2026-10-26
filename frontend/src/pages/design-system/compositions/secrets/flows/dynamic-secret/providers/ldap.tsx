@@ -3,8 +3,11 @@ import { Controller, useFormContext } from "react-hook-form";
 import {
   getLdapCreateDefaultValues,
   getLdapCreatePayload,
+  getLdapEditDefaultValues,
+  getLdapEditPayload,
   ldapCreateFormSchema,
   LdapCredentialType,
+  ldapEditFormSchema,
   TLdapCreateFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/ldapContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
@@ -77,7 +80,7 @@ function LdapFields() {
           control={control}
           name="inputs.credentialType"
           render={({ field, fieldState: { error } }) => (
-            <Field label="Credential Type" error={fieldError(error)}>
+            <Field wide label="Credential Type" error={fieldError(error)}>
               <Select
                 value={field.value}
                 invalid={Boolean(error)}
@@ -117,5 +120,12 @@ export const ldapFlowProvider = defineFlowProvider({
   getDefaultValues: getLdapCreateDefaultValues,
   toPayload: getLdapCreatePayload,
   Renderer: LdapFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: ldapEditFormSchema,
+    getDefaultValues: getLdapEditDefaultValues,
+    toPayload: getLdapEditPayload,
+    submitLabel: "Submit",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

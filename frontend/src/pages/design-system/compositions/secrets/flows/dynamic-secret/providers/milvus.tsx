@@ -3,7 +3,10 @@ import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import {
   getMilvusCreateDefaultValues,
   getMilvusCreatePayload,
+  getMilvusEditDefaultValues,
+  getMilvusEditPayload,
   milvusCreateFormSchema,
+  milvusEditFormSchema,
   type TMilvusFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/milvusContract";
 import { DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/schemas";
@@ -18,11 +21,12 @@ import { DynamicSecretProviders, MILVUS_OBJECT_TYPES } from "@app/hooks/api/dyna
 import {
   fieldError,
   GatewayPicker,
+  MetadataFields,
   ProviderFields,
   ProviderGroup,
   SslRejectUnauthorizedField
 } from "../fields";
-import { defineFlowProvider } from "../types";
+import { defineFlowProvider, type DynamicSecretRendererProps } from "../types";
 
 const privilegeLabels = {
   objectName: "Object Name",
@@ -89,7 +93,7 @@ const trailingFields = [
   }
 ] satisfies readonly TDynamicSecretProviderField<TMilvusFormValues>[];
 
-function MilvusFields() {
+function MilvusFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
   const { control, setValue, watch } = useFormContext<TMilvusFormValues>();
   const privileges = useFieldArray({ control, name: "inputs.privileges" });
   const gatewayId = watch("inputs.gatewayId");
@@ -97,7 +101,7 @@ function MilvusFields() {
   return (
     <>
       <ProviderGroup id="milvus-connection">
-        <Field label="Gateway">
+        <Field wide label="Gateway">
           <GatewayPicker
             value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
             onChange={({ gatewayId: nextId, gatewayPoolId: nextPoolId }) => {
@@ -123,7 +127,7 @@ function MilvusFields() {
                   control={control}
                   name={`inputs.privileges.${index}.objectType`}
                   render={({ field, fieldState: { error } }) => (
-                    <Field label="Object Type" error={fieldError(error)}>
+                    <Field wide label="Object Type" error={fieldError(error)}>
                       <Select
                         value={field.value}
                         invalid={Boolean(error)}
@@ -143,6 +147,7 @@ function MilvusFields() {
                     name={`inputs.privileges.${index}.${key}`}
                     render={({ field, fieldState: { error } }) => (
                       <Field
+                        wide
                         label={privilegeLabels[key]}
                         optional={key === "dbName"}
                         error={fieldError(error)}
@@ -199,6 +204,7 @@ function MilvusFields() {
         <ProviderFields fields={trailingFields} />
         <SslRejectUnauthorizedField />
       </ProviderGroup>
+      {mode === "edit" && <MetadataFields id="milvus-metadata" />}
     </>
   );
 }
@@ -210,5 +216,12 @@ export const milvusFlowProvider = defineFlowProvider({
   getDefaultValues: getMilvusCreateDefaultValues,
   toPayload: getMilvusCreatePayload,
   Renderer: MilvusFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: milvusEditFormSchema,
+    getDefaultValues: getMilvusEditDefaultValues,
+    toPayload: getMilvusEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

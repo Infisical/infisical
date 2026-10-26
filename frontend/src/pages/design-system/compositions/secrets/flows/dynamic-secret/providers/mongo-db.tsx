@@ -3,7 +3,10 @@ import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import {
   getMongoDbCreateDefaultValues,
   getMongoDbCreatePayload,
+  getMongoDbEditDefaultValues,
+  getMongoDbEditPayload,
   mongoDbCreateFormSchema,
+  mongoDbEditFormSchema,
   type TMongoDbCreateValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/mongoDbContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
@@ -92,7 +95,7 @@ function MongoDbFields() {
               control={control}
               name={`inputs.roles.${index}.roleName`}
               render={({ field, fieldState: { error } }) => (
-                <Field label="Role" error={fieldError(error)}>
+                <Field wide label="Role" error={fieldError(error)}>
                   <Inline gap={8} align="start" wrap={false}>
                     <div className="min-w-0 flex-1">
                       <Input {...field} invalid={Boolean(error)} />
@@ -144,5 +147,12 @@ export const mongoDbFlowProvider = defineFlowProvider({
   getDefaultValues: getMongoDbCreateDefaultValues,
   toPayload: getMongoDbCreatePayload,
   Renderer: MongoDbFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: mongoDbEditFormSchema,
+    getDefaultValues: getMongoDbEditDefaultValues,
+    toPayload: getMongoDbEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

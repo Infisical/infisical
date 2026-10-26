@@ -3,7 +3,10 @@ import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import {
   getMongoAtlasCreateDefaultValues,
   getMongoAtlasCreatePayload,
+  getMongoAtlasEditDefaultValues,
+  getMongoAtlasEditPayload,
   mongoAtlasCreateFormSchema,
+  mongoAtlasEditFormSchema,
   type TMongoAtlasCreateValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/mongoAtlasContract";
 import type {
@@ -90,7 +93,7 @@ function MongoAtlasFields() {
                 control={control}
                 name={`inputs.roles.${index}.databaseName`}
                 render={({ field, fieldState: { error } }) => (
-                  <Field label="Database Name" error={fieldError(error)}>
+                  <Field wide label="Database Name" error={fieldError(error)}>
                     <Input {...field} invalid={Boolean(error)} />
                   </Field>
                 )}
@@ -99,7 +102,7 @@ function MongoAtlasFields() {
                 control={control}
                 name={`inputs.roles.${index}.collectionName`}
                 render={({ field, fieldState: { error } }) => (
-                  <Field label="Collection" optional error={fieldError(error)}>
+                  <Field wide label="Collection" optional error={fieldError(error)}>
                     <Input {...field} value={field.value ?? ""} invalid={Boolean(error)} />
                   </Field>
                 )}
@@ -108,7 +111,7 @@ function MongoAtlasFields() {
                 control={control}
                 name={`inputs.roles.${index}.roleName`}
                 render={({ field, fieldState: { error } }) => (
-                  <Field label="Role" error={fieldError(error)}>
+                  <Field wide label="Role" error={fieldError(error)}>
                     <Inline gap={8} align="start" wrap={false}>
                       <div className="min-w-0 flex-1">
                         <Input {...field} invalid={Boolean(error)} />
@@ -166,6 +169,7 @@ function MongoAtlasFields() {
                   name={`inputs.scopes.${index}.name`}
                   render={({ field, fieldState: { error } }) => (
                     <Field
+                      wide
                       label="Label"
                       description="Human-readable label for the cluster or MongoDB Atlas Data Lake this user can access."
                       error={fieldError(error)}
@@ -182,7 +186,7 @@ function MongoAtlasFields() {
                   control={control}
                   name={`inputs.scopes.${index}.type`}
                   render={({ field, fieldState: { error } }) => (
-                    <Field label="Type" error={fieldError(error)}>
+                    <Field wide label="Type" error={fieldError(error)}>
                       <Inline gap={8} align="start" wrap={false}>
                         <div className="min-w-0 flex-1">
                           <Select
@@ -236,5 +240,12 @@ export const mongoAtlasFlowProvider = defineFlowProvider({
   toPayload: getMongoAtlasCreatePayload,
   fields: mongoAtlasFields,
   Renderer: MongoAtlasFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: mongoAtlasEditFormSchema,
+    getDefaultValues: getMongoAtlasEditDefaultValues,
+    toPayload: getMongoAtlasEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

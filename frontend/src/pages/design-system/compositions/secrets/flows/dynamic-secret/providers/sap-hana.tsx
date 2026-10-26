@@ -1,7 +1,10 @@
 import {
   getSapHanaCreateDefaultValues,
   getSapHanaCreatePayload,
+  getSapHanaEditDefaultValues,
+  getSapHanaEditPayload,
   sapHanaCreateFormSchema,
+  sapHanaEditFormSchema,
   type TSapHanaCreateFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/sapHanaContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
@@ -70,5 +73,12 @@ export const sapHanaFlowProvider = defineFlowProvider({
   getDefaultValues: getSapHanaCreateDefaultValues,
   toPayload: getSapHanaCreatePayload,
   Renderer: SapHanaFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: sapHanaEditFormSchema,
+    getDefaultValues: getSapHanaEditDefaultValues,
+    toPayload: getSapHanaEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

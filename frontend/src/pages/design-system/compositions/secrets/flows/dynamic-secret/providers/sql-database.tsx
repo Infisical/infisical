@@ -1,15 +1,17 @@
-import { Controller, type Path, useFieldArray, useFormContext } from "react-hook-form";
+import { Controller, type Path, useFormContext } from "react-hook-form";
 
 import {
   getSqlClientResetValues,
   getSqlDatabaseCreateDefaultValues,
   getSqlDatabaseCreatePayload,
+  getSqlDatabaseEditDefaultValues,
+  getSqlDatabaseEditPayload,
   normalizeSqlGatewayValueForMode,
   sqlDatabaseCreateFormSchema,
+  sqlDatabaseEditFormSchema,
   type TSqlDatabaseFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/sqlDatabaseContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
-import { Button } from "@app/components/v4/ui/button";
 import {
   Field,
   FieldDescription,
@@ -27,13 +29,14 @@ import { DynamicSecretProviders, SqlProviders } from "@app/hooks/api/dynamicSecr
 import {
   fieldError,
   GatewayPicker,
+  MetadataFields,
   numberInput,
   ProviderFields,
   ProviderGroup,
   SslRejectUnauthorizedField,
   usernameTemplateFieldDefinition
 } from "../fields";
-import { defineFlowProvider } from "../types";
+import { defineFlowProvider, type DynamicSecretRendererProps } from "../types";
 
 const sqlConnectionFields = [
   { name: "inputs.host", type: "text", label: "Host", placeholder: "db.example.com" },
@@ -86,68 +89,6 @@ const sqlStatementFields = [
   }
 ] satisfies readonly TDynamicSecretProviderField<TSqlDatabaseFormValues>[];
 
-const SqlMetadataFields = () => {
-  const { control } = useFormContext<TSqlDatabaseFormValues>();
-  const metadataFields = useFieldArray({ control, name: "metadata" });
-  const addEntry = (
-    <Button
-      type="button"
-      size="sm"
-      variant="outline"
-      icon="plus"
-      onClick={() => metadataFields.append({ key: "", value: "" })}
-    >
-      Add entry
-    </Button>
-  );
-
-  return (
-    <ProviderGroup id="sql-metadata" surface title="Metadata">
-      {metadataFields.fields.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 border border-dashed border-[color:var(--v4-line)] p-5 text-center">
-          <FieldDescription>No metadata entries</FieldDescription>
-          {addEntry}
-        </div>
-      ) : (
-        <Stack gap={12}>
-          {metadataFields.fields.map((metadataField, index) => (
-            <div key={metadataField.id} className="flex items-end gap-3">
-              <div className="grid flex-1 grid-cols-2 gap-3">
-                {(["key", "value"] as const).map((key) => (
-                  <Controller
-                    key={key}
-                    control={control}
-                    name={`metadata.${index}.${key}`}
-                    render={({ field, fieldState: { error } }) => (
-                      <Field
-                        label={key === "key" ? "Key" : "Value"}
-                        optional={key === "value"}
-                        error={fieldError(error)}
-                      >
-                        <Input {...field} invalid={Boolean(error)} />
-                      </Field>
-                    )}
-                  />
-                ))}
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                icon="trash"
-                iconOnly
-                aria-label={`Remove metadata entry ${index + 1}`}
-                onClick={() => metadataFields.remove(index)}
-              />
-            </div>
-          ))}
-          <div>{addEntry}</div>
-        </Stack>
-      )}
-    </ProviderGroup>
-  );
-};
-
 type NumericRequirement = "length" | "lowercase" | "uppercase" | "digits" | "symbols";
 
 const requirementLabels: Record<NumericRequirement, string> = {
@@ -178,6 +119,7 @@ const SqlPasswordNumberField = ({ fieldName }: { fieldName: NumericRequirement }
       name={name}
       render={({ field, fieldState: { error } }) => (
         <Field
+          wide
           label={requirementLabels[fieldName]}
           description={requirementDescriptions[fieldName]}
           error={fieldError(error)}
@@ -237,6 +179,7 @@ const SqlPasswordConfiguration = () => {
         name="inputs.passwordRequirements.allowedSymbols"
         render={({ field, fieldState: { error } }) => (
           <Field
+            wide
             label="Symbols to use in password"
             description="Default: -_.~!*"
             error={fieldError(error)}
@@ -254,7 +197,7 @@ const SqlPasswordConfiguration = () => {
   );
 };
 
-const SqlDatabaseFields = () => {
+const SqlDatabaseFields = ({ mode }: Pick<DynamicSecretRendererProps, "mode">) => {
   const { control, setValue, watch } = useFormContext<TSqlDatabaseFormValues>();
   const selectedClient = watch("inputs.client") ?? SqlProviders.Postgres;
   const gatewayPoolId = watch("inputs.gatewayPoolId");
@@ -266,15 +209,15 @@ const SqlDatabaseFields = () => {
           control={control}
           name="inputs.gatewayId"
           render={({ field, fieldState: { error } }) => (
-            <Field label="Gateway" error={fieldError(error)}>
+            <Field wide label="Gateway" error={fieldError(error)}>
               <GatewayPicker
                 invalid={Boolean(error)}
                 value={{ gatewayId: field.value ?? null, gatewayPoolId: gatewayPoolId ?? null }}
                 onChange={({ gatewayId, gatewayPoolId: nextGatewayPoolId }) => {
-                  field.onChange(normalizeSqlGatewayValueForMode("create", gatewayId));
+                  field.onChange(normalizeSqlGatewayValueForMode(mode, gatewayId));
                   setValue(
                     "inputs.gatewayPoolId",
-                    normalizeSqlGatewayValueForMode("create", nextGatewayPoolId),
+                    normalizeSqlGatewayValueForMode(mode, nextGatewayPoolId),
                     { shouldDirty: true }
                   );
                 }}
@@ -287,9 +230,10 @@ const SqlDatabaseFields = () => {
           control={control}
           name="inputs.client"
           render={({ field, fieldState: { error } }) => (
-            <Field label="Service" error={fieldError(error)}>
+            <Field wide label="Service" error={fieldError(error)}>
               <Select
                 value={field.value ?? SqlProviders.Postgres}
+                disabled={mode === "edit"}
                 invalid={Boolean(error)}
                 options={[
                   { value: SqlProviders.Postgres, label: "PostgreSQL" },
@@ -321,7 +265,7 @@ const SqlDatabaseFields = () => {
             control={control}
             name="inputs.port"
             render={({ field, fieldState: { error } }) => (
-              <Field label="Port" error={fieldError(error)}>
+              <Field wide label="Port" error={fieldError(error)}>
                 <Input
                   ref={field.ref}
                   name={field.name}
@@ -362,7 +306,7 @@ const SqlDatabaseFields = () => {
           control={control}
           name="inputs.ca"
           render={({ field, fieldState: { error } }) => (
-            <Field label="CA (SSL)" optional error={fieldError(error)}>
+            <Field wide label="CA (SSL)" optional error={fieldError(error)}>
               <Textarea {...field} value={field.value ?? ""} />
             </Field>
           )}
@@ -371,7 +315,7 @@ const SqlDatabaseFields = () => {
         <SslRejectUnauthorizedField<TSqlDatabaseFormValues> description="Verify the server certificate against the supplied certificate authorities. Disable this option when using a self-signed certificate." />
       </ProviderGroup>
 
-      <SqlMetadataFields />
+      <MetadataFields id="sql-metadata" />
       <ProviderGroup
         id="sql-statements"
         presentation="collapse"
@@ -395,5 +339,12 @@ export const sqlDatabaseFlowProvider = defineFlowProvider({
   getDefaultValues: getSqlDatabaseCreateDefaultValues,
   toPayload: getSqlDatabaseCreatePayload,
   Renderer: SqlDatabaseFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: sqlDatabaseEditFormSchema,
+    getDefaultValues: getSqlDatabaseEditDefaultValues,
+    toPayload: getSqlDatabaseEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

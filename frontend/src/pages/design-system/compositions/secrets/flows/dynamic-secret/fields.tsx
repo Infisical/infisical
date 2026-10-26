@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
-import { Controller, type FieldValues, type Path, useFormContext } from "react-hook-form";
+import {
+  Controller,
+  type FieldValues,
+  type Path,
+  useFieldArray,
+  useFormContext
+} from "react-hook-form";
 
 import { parseDynamicSecretProviderNumberInput } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/scalarValues";
 import { DEFAULT_DYNAMIC_SECRET_USERNAME_TEMPLATE } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/schemas";
@@ -15,6 +21,7 @@ import {
   AccordionItem,
   AccordionTrigger
 } from "@app/components/v4/ui/accordion";
+import { Button } from "@app/components/v4/ui/button";
 import {
   Field,
   FieldDescription,
@@ -123,6 +130,7 @@ export function ProviderFields<TValues extends FieldValues>({
             }
             return (
               <Field
+                wide
                 className={span}
                 label={definition.label}
                 optional={definition.isOptional}
@@ -179,6 +187,69 @@ export function ProviderGroup(props: GroupProps) {
     <div className="border border-[color:var(--v4-line)] p-3">{content}</div>
   ) : (
     content
+  );
+}
+
+export function MetadataFields({ id }: { id: string }) {
+  const { control } = useFormContext<{ metadata: { key: string; value: string }[] }>();
+  const metadataFields = useFieldArray({ control, name: "metadata" });
+  const addEntry = (
+    <Button
+      type="button"
+      size="sm"
+      variant="outline"
+      icon="plus"
+      onClick={() => metadataFields.append({ key: "", value: "" })}
+    >
+      Add entry
+    </Button>
+  );
+
+  return (
+    <ProviderGroup id={id} surface title="Metadata">
+      {metadataFields.fields.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 border border-dashed border-[color:var(--v4-line)] p-5 text-center">
+          <FieldDescription>No metadata entries</FieldDescription>
+          {addEntry}
+        </div>
+      ) : (
+        <Stack gap={12}>
+          {metadataFields.fields.map((metadataField, index) => (
+            <div key={metadataField.id} className="flex items-end gap-3">
+              <div className="grid flex-1 grid-cols-2 gap-3">
+                {(["key", "value"] as const).map((key) => (
+                  <Controller
+                    key={key}
+                    control={control}
+                    name={`metadata.${index}.${key}`}
+                    render={({ field, fieldState: { error } }) => (
+                      <Field
+                        wide
+                        label={key === "key" ? "Key" : "Value"}
+                        optional={key === "value"}
+                        error={fieldError(error)}
+                      >
+                        <Input {...field} invalid={Boolean(error)} />
+                      </Field>
+                    )}
+                  />
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                icon="trash"
+                iconOnly
+                aria-label={`Remove metadata entry ${index + 1}`}
+                onClick={() => metadataFields.remove(index)}
+              />
+            </div>
+          ))}
+          <div>{addEntry}</div>
+        </Stack>
+      )}
+    </ProviderGroup>
   );
 }
 

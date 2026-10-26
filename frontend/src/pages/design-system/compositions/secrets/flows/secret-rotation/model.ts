@@ -1,4 +1,11 @@
-import { AppConnection, CloudflareR2AccessLevel, SecretRotation } from "./schemas";
+import type { Resource, Secret } from "../../../secrets-model";
+import {
+  AppConnection,
+  CloudflareR2AccessLevel,
+  getSecretRotationConnectionApps,
+  SECRET_ROTATION_MAP,
+  SecretRotation
+} from "./schemas";
 
 export type RotationEnvironment = { id: string; slug: string; name: string };
 export type RotationConnection = { id: string; name: string; app: AppConnection };
@@ -243,3 +250,97 @@ export const ROTATION_TEMPLATES: Record<SecretRotation, RotationTemplate> = {
     secretsMapping: { serviceAccountKey: "GCP_SERVICE_ACCOUNT_KEY" }
   }
 };
+
+export type RotationResource = Extract<Resource, { kind: "rotation" }>;
+
+export const DEFAULT_ROTATION_INTERVAL = 30;
+
+export const rotationTypeOf = (rotation: RotationResource) => {
+  const types = Object.values(SecretRotation);
+  return (
+    types.find((type) => type === rotation.type) ??
+    types.find((type) => SECRET_ROTATION_MAP[type].name === rotation.provider) ??
+    SecretRotation.PostgresCredentials
+  );
+};
+
+export const rotationConnectionOf = (rotation: RotationResource): RotationConnection =>
+  LOCAL_ROTATION_CONNECTIONS.find((connection) => connection.name === rotation.connection) ?? {
+    id: "00000000-0000-4000-8000-000000000000",
+    name: rotation.connection,
+    app: getSecretRotationConnectionApps(rotationTypeOf(rotation))[0]
+  };
+
+export const rotationSecretsMapping = (rotation: RotationResource): Record<string, string> =>
+  rotation.secretsMapping ??
+  Object.fromEntries(
+    Object.keys(ROTATION_TEMPLATES[rotationTypeOf(rotation)].secretsMapping)
+      .map((field, index) => [field, rotation.managedKeys[index]])
+      .filter(([, key]) => key)
+  );
+
+export const rotationSecrets = (rotation: RotationResource, resources: readonly Resource[]) => {
+  const mapping = rotationSecretsMapping(rotation);
+  return Object.fromEntries(
+    Object.entries(mapping).flatMap(([field, key]) => {
+      const secret = resources.find(
+        (resource): resource is Secret =>
+          resource.kind === "secret" &&
+          resource.project === rotation.project &&
+          resource.environment === rotation.environment &&
+          resource.path === rotation.path &&
+          resource.name === key
+      );
+      return secret ? [[field, secret]] : [];
+    })
+  ) as Record<string, Secret>;
+};
+
+const SQL_ROTATIONS = [
+  SecretRotation.PostgresCredentials,
+  SecretRotation.MsSqlCredentials,
+  SecretRotation.MySqlCredentials,
+  SecretRotation.OracleDBCredentials
+];
+
+export const rotationParameters = (
+  rotation: RotationResource,
+  resources: readonly Resource[]
+): Record<string, unknown> => {
+  if (rotation.parameters) return rotation.parameters;
+  const type = rotationTypeOf(rotation);
+  if (!SQL_ROTATIONS.includes(type)) return ROTATION_TEMPLATES[type].parameters ?? {};
+  const username = rotationSecrets(rotation, resources).username?.value;
+  const username1 = username?.status === "present" ? username.value : `fake-${rotation.name}-user`;
+  return { username1, username2: `${username1}-2` };
+};
+
+export const nextRotationFrom = (
+  from: Date,
+  interval: number,
+  rotateAtUtc: { hours: number; minutes: number }
+) => {
+  const next = new Date(from);
+  next.setUTCDate(next.getUTCDate() + interval);
+  next.setUTCHours(rotateAtUtc.hours, rotateAtUtc.minutes, 0, 0);
+  return next.toISOString();
+};
+
+export const rotationFormValues = (
+  rotation: RotationResource,
+  resources: readonly Resource[],
+  environment: RotationEnvironment
+) => ({
+  id: rotation.id,
+  type: rotationTypeOf(rotation),
+  name: rotation.name,
+  description: rotation.description ?? "",
+  connection: rotationConnectionOf(rotation),
+  environment,
+  secretPath: rotation.path,
+  isAutoRotationEnabled: rotation.autoRotation,
+  rotationInterval: rotation.rotationInterval ?? DEFAULT_ROTATION_INTERVAL,
+  rotateAtUtc: rotation.rotateAtUtc ?? { hours: 0, minutes: 0 },
+  parameters: rotationParameters(rotation, resources),
+  secretsMapping: { ...rotationSecretsMapping(rotation) }
+});

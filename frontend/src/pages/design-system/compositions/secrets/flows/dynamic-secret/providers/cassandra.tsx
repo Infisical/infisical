@@ -1,7 +1,10 @@
 import {
   cassandraCreateFormSchema,
+  cassandraEditFormSchema,
   getCassandraCreateDefaultValues,
   getCassandraCreatePayload,
+  getCassandraEditDefaultValues,
+  getCassandraEditPayload,
   type TCassandraFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/cassandraContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
@@ -93,5 +96,12 @@ export const cassandraFlowProvider = defineFlowProvider({
   getDefaultValues: getCassandraCreateDefaultValues,
   toPayload: getCassandraCreatePayload,
   Renderer: CassandraFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: cassandraEditFormSchema,
+    getDefaultValues: getCassandraEditDefaultValues,
+    toPayload: getCassandraEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

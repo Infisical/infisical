@@ -38,10 +38,16 @@ import type { Resource } from "../../secrets-model";
 import { ReviewSection, RotationField, TextField, useRotationForm } from "./secret-rotation/fields";
 import {
   appConnectionName,
+  DEFAULT_ROTATION_INTERVAL,
   LOCAL_ROTATION_CONNECTIONS,
+  nextRotationFrom,
   ROTATION_TEMPLATES,
   type RotationConnection,
-  type RotationEnvironment
+  type RotationEnvironment,
+  rotationFormValues,
+  type RotationResource,
+  rotationSecretsMapping,
+  rotationTypeOf
 } from "./secret-rotation/model";
 import { ROTATION_VIEWS } from "./secret-rotation/registry";
 import {
@@ -52,7 +58,7 @@ import {
   SecretRotationV2FormSchema
 } from "./secret-rotation/schemas";
 
-export type RotationResource = Extract<Resource, { kind: "rotation" }>;
+export type { RotationResource };
 
 type Props = {
   open: boolean;
@@ -62,7 +68,9 @@ type Props = {
   environment?: string;
   secretPath: string;
   resources: Resource[];
-  onCreate: (resource: RotationResource) => void;
+  onCreate?: (resource: RotationResource) => void;
+  rotation?: RotationResource;
+  onUpdate?: (rotation: RotationResource) => void;
 };
 
 const FORM_STEPS = [
@@ -119,7 +127,6 @@ const FORM_STEPS = [
   }
 ];
 
-const DEFAULT_ROTATION_INTERVAL = 30;
 const docsHref = (type: SecretRotation) =>
   `https://infisical.com/docs/documentation/platform/secret-rotation/${type}`;
 
@@ -222,10 +229,12 @@ function ProviderSelect({ onSelect }: { onSelect: (type: SecretRotation) => void
 }
 
 function ConfigurationFields({
+  isUpdate,
   environments,
   connections,
   onCreateConnection
 }: {
+  isUpdate: boolean;
   environments?: RotationEnvironment[];
   connections: RotationConnection[];
   onCreateConnection: (connection: RotationConnection) => void;
@@ -241,7 +250,7 @@ function ConfigurationFields({
   const connectionLabel = apps.length > 1 ? "Connection" : `${appConnectionName(app)} Connection`;
   return (
     <Stack gap={16}>
-      {environments && (
+      {!isUpdate && environments && (
         <Controller
           control={control}
           name="environment"
@@ -273,17 +282,21 @@ function ConfigurationFields({
             tooltip="App Connections can be created from the Organization Settings page."
             error={error?.message ?? error?.root?.message}
             description={
-              <>
-                Check out{" "}
-                <a
-                  href={`https://infisical.com/docs/integrations/app-connections/${field.value?.app ?? app}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  our docs
-                </a>{" "}
-                to ensure your connection has the required permissions for secret rotation.
-              </>
+              isUpdate ? (
+                "Cannot be updated"
+              ) : (
+                <>
+                  Check out{" "}
+                  <a
+                    href={`https://infisical.com/docs/integrations/app-connections/${field.value?.app ?? app}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    our docs
+                  </a>{" "}
+                  to ensure your connection has the required permissions for secret rotation.
+                </>
+              )
             }
           >
             <Combobox
@@ -297,6 +310,7 @@ function ConfigurationFields({
               }))}
               placeholder="Select connection..."
               invalid={Boolean(error)}
+              disabled={isUpdate}
               onCreate={(name) => {
                 const connection = { id: crypto.randomUUID(), name, app };
                 onCreateConnection(connection);
@@ -449,6 +463,7 @@ const defaultsFor = (
 });
 
 function RotationSteps({
+  isUpdate,
   type,
   step,
   onStep,
@@ -457,6 +472,7 @@ function RotationSteps({
   connections,
   onCreateConnection
 }: {
+  isUpdate: boolean;
   type: SecretRotation;
   step: number;
   onStep: (step: number) => void;
@@ -467,6 +483,7 @@ function RotationSteps({
 }) {
   const Views = ROTATION_VIEWS[type];
   const current = FORM_STEPS[step];
+  const offset = isUpdate ? 0 : 1;
   return (
     <div className="flex min-h-0 flex-1 border-y border-[color:var(--v4-line-soft)]">
       <aside className="flex w-60 shrink-0 flex-col gap-5 border-r border-[color:var(--v4-line-soft)] px-5 py-6">
@@ -474,17 +491,17 @@ function RotationSteps({
         <Steps
           orientation="vertical"
           label="Setup steps"
-          current={step + 1}
+          current={step + offset}
           steps={[
-            { title: "Provider", summary: SECRET_ROTATION_MAP[type].name },
+            ...(isUpdate ? [] : [{ title: "Provider", summary: SECRET_ROTATION_MAP[type].name }]),
             ...FORM_STEPS.map((entry) => ({ title: entry.name, summary: entry.shortDescription }))
           ]}
           onStepClick={(index) => {
-            if (index === 0) {
+            if (!isUpdate && index === 0) {
               onCancel();
               return;
             }
-            if (index - 1 < step) onStep(index - 1);
+            if (index - offset < step) onStep(index - offset);
           }}
         />
       </aside>
@@ -501,6 +518,7 @@ function RotationSteps({
         </Stack>
         {step === 0 && (
           <ConfigurationFields
+            isUpdate={isUpdate}
             environments={environments}
             connections={connections}
             onCreateConnection={onCreateConnection}
@@ -522,7 +540,7 @@ function RotationSteps({
       <aside className="hidden w-80 shrink-0 flex-col gap-4 border-l border-[color:var(--v4-line-soft)] px-6 py-6 xl:flex">
         <Inline justify="between" wrap={false}>
           <SmallText muted>
-            Step {step + 2}: {current.name}
+            Step {step + offset + 1}: {current.name}
           </SmallText>
           <DocsLink type={type} />
         </Inline>
@@ -543,24 +561,40 @@ export function SecretRotationFlow({
   environment,
   secretPath,
   resources,
-  onCreate
+  onCreate,
+  rotation,
+  onUpdate
 }: Props) {
-  const [type, setType] = useState<SecretRotation | null>(null);
-  const [step, setStep] = useState(0);
-  const [submitError, setSubmitError] = useState<string>();
-  const [discard, setDiscard] = useState<"close" | "provider" | null>(null);
-  const [connections, setConnections] = useState(LOCAL_ROTATION_CONNECTIONS);
-  const form = useForm<FieldValues>({
-    resolver: zodResolver(SecretRotationV2FormSchema(false)),
-    mode: "onChange",
-    reValidateMode: "onChange"
-  });
-  const { isDirty } = form.formState;
+  const isUpdate = Boolean(rotation);
   const rotationEnvironments = environments.map((entry) => ({
     id: entry.value,
     slug: entry.value,
     name: entry.label
   }));
+  const [type, setType] = useState<SecretRotation | null>(
+    rotation ? rotationTypeOf(rotation) : null
+  );
+  const [step, setStep] = useState(0);
+  const [submitError, setSubmitError] = useState<string>();
+  const [discard, setDiscard] = useState<"close" | "provider" | null>(null);
+  const [connections, setConnections] = useState(LOCAL_ROTATION_CONNECTIONS);
+  const form = useForm<FieldValues>({
+    resolver: zodResolver(SecretRotationV2FormSchema(isUpdate)),
+    defaultValues: rotation
+      ? rotationFormValues(
+          rotation,
+          resources,
+          rotationEnvironments.find((entry) => entry.slug === rotation.environment) ?? {
+            id: rotation.environment,
+            slug: rotation.environment,
+            name: rotation.environment
+          }
+        )
+      : undefined,
+    mode: "onChange",
+    reValidateMode: "onChange"
+  });
+  const { isDirty } = form.formState;
   const select = (next: SecretRotation) => {
     form.reset(
       defaultsFor(
@@ -578,7 +612,7 @@ export function SecretRotationFlow({
     setSubmitError(undefined);
   };
   const close = () => {
-    reset();
+    if (!isUpdate) reset();
     onOpenChange(false);
   };
   const request = (target: "close" | "provider") => {
@@ -596,12 +630,19 @@ export function SecretRotationFlow({
     const scoped = resources.filter(
       (entry) => entry.project === project && entry.environment === env.slug && entry.path === path
     );
-    if (scoped.some((entry) => entry.kind === "rotation" && entry.name === values.name))
+    if (
+      scoped.some(
+        (entry) =>
+          entry.kind === "rotation" && entry.name === values.name && entry.id !== rotation?.id
+      )
+    )
       return `A Secret Rotation with the name "${values.name}" already exists at the secret path "${path}"`;
     if (new Set(keys).size !== keys.length)
       return `Secrets mapping keys must be unique. "${keys.join(", ")}" contains duplicate keys.`;
+    const currentKeys = rotation ? Object.values(rotationSecretsMapping(rotation)) : [];
     const conflicts = scoped.filter(
-      (entry) => entry.kind === "secret" && keys.includes(entry.name)
+      (entry) =>
+        entry.kind === "secret" && keys.includes(entry.name) && !currentKeys.includes(entry.name)
     );
     if (conflicts.length)
       return `The following secrets already exist at the path "${path}": ${conflicts.map((entry) => entry.name).join(", ")}`;
@@ -615,26 +656,50 @@ export function SecretRotationFlow({
     }
     const env = values.environment as RotationEnvironment;
     const now = new Date();
-    const next = new Date(now);
-    next.setUTCDate(next.getUTCDate() + Number(values.rotationInterval));
-    next.setUTCHours(values.rotateAtUtc.hours, values.rotateAtUtc.minutes, 0, 0);
-    onCreate({
+    const secretsMapping = values.secretsMapping as Record<string, string>;
+    const configured = {
+      name: values.name,
+      autoRotation: values.isAutoRotationEnabled,
+      description: values.description || undefined,
+      managedKeys: Object.values(secretsMapping),
+      type: values.type,
+      rotationInterval: Number(values.rotationInterval),
+      rotateAtUtc: values.rotateAtUtc,
+      parameters: values.parameters,
+      secretsMapping
+    };
+    if (rotation) {
+      onUpdate?.({
+        ...rotation,
+        ...configured,
+        updatedAt: now.toISOString(),
+        nextRotationAt: values.isAutoRotationEnabled
+          ? nextRotationFrom(
+              new Date(rotation.lastRotatedAt),
+              configured.rotationInterval,
+              values.rotateAtUtc
+            )
+          : undefined
+      });
+      close();
+      return;
+    }
+    onCreate?.({
+      ...configured,
       kind: "rotation",
       id: `${project}:${env.slug}:${values.secretPath}:rotation:${values.name}`,
       project,
       environment: env.slug,
       path: values.secretPath,
-      name: values.name,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
       provider: SECRET_ROTATION_MAP[values.type as SecretRotation].name,
       connection: values.connection.name,
       status: "success",
-      autoRotation: values.isAutoRotationEnabled,
-      description: values.description || undefined,
       lastRotatedAt: now.toISOString(),
-      nextRotationAt: values.isAutoRotationEnabled ? next.toISOString() : undefined,
-      managedKeys: Object.values(values.secretsMapping as Record<string, string>)
+      nextRotationAt: values.isAutoRotationEnabled
+        ? nextRotationFrom(now, configured.rotationInterval, values.rotateAtUtc)
+        : undefined
     });
     close();
   };
@@ -649,7 +714,7 @@ export function SecretRotationFlow({
   };
   const handlePrev = () => {
     setSubmitError(undefined);
-    if (step === 0) request("provider");
+    if (step === 0) request(isUpdate ? "close" : "provider");
     else setStep(step - 1);
   };
   return (
@@ -673,7 +738,9 @@ export function SecretRotationFlow({
                       <DocsLink type={type} />
                     </Inline>
                     <SheetDescription>
-                      Configure how Infisical rotates {SECRET_ROTATION_MAP[type].name}.
+                      {isUpdate
+                        ? `Edit the ${SECRET_ROTATION_MAP[type].name} rotation configuration.`
+                        : `Configure how Infisical rotates ${SECRET_ROTATION_MAP[type].name}.`}
                     </SheetDescription>
                   </Stack>
                 </Inline>
@@ -688,6 +755,7 @@ export function SecretRotationFlow({
             )}
             {type ? (
               <RotationSteps
+                isUpdate={isUpdate}
                 type={type}
                 step={step}
                 onStep={setStep}
@@ -714,13 +782,15 @@ export function SecretRotationFlow({
                   )}
                   <Inline gap={12} wrap={false}>
                     <SmallText muted>
-                      Step {step + 2} of {FORM_STEPS.length + 1}
+                      Step {step + (isUpdate ? 1 : 2)} of {FORM_STEPS.length + (isUpdate ? 0 : 1)}
                     </SmallText>
                     <Button variant="outline" onClick={handlePrev}>
                       Back
                     </Button>
                     <Button variant="primary" onClick={handleNext}>
-                      {isFinalStep ? "Create secret rotation" : "Continue"}
+                      {isFinalStep
+                        ? `${isUpdate ? "Update" : "Create"} secret rotation`
+                        : "Continue"}
                     </Button>
                   </Inline>
                 </Inline>
@@ -732,9 +802,13 @@ export function SecretRotationFlow({
       <AlertDialog open={discard !== null} onOpenChange={(next) => !next && setDiscard(null)}>
         <AlertDialogContent icon="alert">
           <AlertDialogHeader>
-            <AlertDialogTitle>Discard Secret Rotation Setup?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {isUpdate ? "Discard changes?" : "Discard Secret Rotation Setup?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Your progress configuring this secret rotation will be lost.
+              {isUpdate
+                ? "Your unsaved changes to this secret rotation will be lost."
+                : "Your progress configuring this secret rotation will be lost."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

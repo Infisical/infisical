@@ -11,7 +11,10 @@ import {
   getDefaultKafkaBootstrapServer,
   getKafkaCreateDefaultValues,
   getKafkaCreatePayload,
+  getKafkaEditDefaultValues,
+  getKafkaEditPayload,
   kafkaCreateFormSchema,
+  kafkaEditFormSchema,
   TKafkaFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/kafkaContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
@@ -169,7 +172,12 @@ function KafkaRows<TName extends "inputs.bootstrapServers" | "inputs.acls">({
               control={control}
               name={`${name}.${index}.${column.key}` as Path<TKafkaFormValues>}
               render={({ field, fieldState: { error } }) => (
-                <Field className={column.className} label={column.label} error={fieldError(error)}>
+                <Field
+                  wide
+                  className={column.className}
+                  label={column.label}
+                  error={fieldError(error)}
+                >
                   {column.options ? (
                     <Select
                       value={String(field.value)}
@@ -281,5 +289,12 @@ export const kafkaFlowProvider = defineFlowProvider({
   getDefaultValues: getKafkaCreateDefaultValues,
   toPayload: getKafkaCreatePayload,
   Renderer: KafkaFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: kafkaEditFormSchema,
+    getDefaultValues: getKafkaEditDefaultValues,
+    toPayload: getKafkaEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

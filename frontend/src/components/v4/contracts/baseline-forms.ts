@@ -178,7 +178,7 @@ export const baselineForms = [
     ],
     referenceNames: ["Field"],
     behavior: [
-      "Use label/description/error shorthand around one control for automatic ID, label, described-by and invalid-state association. Compound FieldLabel/FieldDescription/FieldError parts remain available for custom layouts. An error renders one way everywhere: a red alert icon and the message, several messages stacked under one icon. The label stays ink; the control's red border and the message carry the error. The label sits 6px above the control (the field-label space token)."
+      "Use label/description/error shorthand around one control for automatic ID, label, described-by and invalid-state association. Compound FieldLabel/FieldDescription/FieldError parts remain available for custom layouts. An error renders one way everywhere: a red alert icon and the message, several messages stacked under one icon. The label stays ink; the control's red border and the message carry the error. The label sits 6px above the control (the field-label space token). A stacked Field caps at the field measure (size-measure-field, 400px); wide lets it fill its column (size-measure-field-wide)."
     ],
     accessibility: [
       "The short form connects the label, help and error to a single control. In a compound layout, match htmlFor to the control's id and point aria-describedby at the help and error. Grouped controls take a group with a legend."
@@ -307,9 +307,12 @@ export const baselineForms = [
     ],
     guidance: {
       use: [
-        "Use vertical, horizontal or responsive Field composition to keep a value's visible name, help and correction together."
+        "Use vertical, horizontal or responsive Field composition to keep a value's visible name, help and correction together.",
+        "Use wide on Fields inside a multi-column form row, such as host and port or name and TTLs in dynamic secret, secret rotation and app connection forms, so the row's grid sets each field's width."
       ],
-      avoid: [],
+      avoid: [
+        "Use wide on a lone stacked field to stretch it across a card, or override size-measure-field locally to widen a row."
+      ],
       decision:
         "Choose Field to connect a control with its label, help and error. Use FieldSet and FieldLegend for a group rather than assigning one label to several controls.",
       rules: [

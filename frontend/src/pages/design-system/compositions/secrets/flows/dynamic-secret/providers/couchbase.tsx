@@ -4,8 +4,11 @@ import { Controller, useFormContext, useWatch } from "react-hook-form";
 
 import {
   couchbaseCreateFormSchema,
+  couchbaseEditFormSchema,
   getCouchbaseCreateDefaultValues,
   getCouchbaseCreatePayload,
+  getCouchbaseEditDefaultValues,
+  getCouchbaseEditPayload,
   type TCouchbaseCreateValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/couchbaseContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
@@ -25,11 +28,12 @@ import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 
 import {
   fieldError,
+  MetadataFields,
   ProviderFields,
   ProviderGroup,
   usernameTemplateFieldDefinition
 } from "../fields";
-import { defineFlowProvider } from "../types";
+import { defineFlowProvider, type DynamicSecretRendererProps } from "../types";
 
 type TCouchbaseValues = TCouchbaseCreateValues;
 type TCouchbaseBuckets = Exclude<TCouchbaseValues["inputs"]["buckets"], string>;
@@ -231,6 +235,7 @@ function CouchbaseBucketFields() {
           name="inputs.buckets"
           render={({ field, fieldState: { error } }) => (
             <Field
+              wide
               label="Bucket Access"
               description="Specify comma-separated bucket names, or use * for all buckets, scopes, and collections."
               error={fieldError(error)}
@@ -253,7 +258,7 @@ function CouchbaseBucketFields() {
                   control={control}
                   name={`inputs.buckets.${bucketIndex}.name`}
                   render={({ field, fieldState: { error } }) => (
-                    <Field label="Bucket Name" error={fieldError(error)}>
+                    <Field wide label="Bucket Name" error={fieldError(error)}>
                       <RemovableRow
                         label={`Remove bucket ${bucketIndex + 1}`}
                         onRemove={() =>
@@ -282,7 +287,7 @@ function CouchbaseBucketFields() {
                           control={control}
                           name={`inputs.buckets.${bucketIndex}.scopes.${scopeIndex}.name`}
                           render={({ field, fieldState: { error } }) => (
-                            <Field label="Scope Name" error={fieldError(error)}>
+                            <Field wide label="Scope Name" error={fieldError(error)}>
                               <RemovableRow
                                 label={`Remove scope ${scopeIndex + 1} from bucket ${bucketIndex + 1}`}
                                 onRemove={() =>
@@ -315,7 +320,7 @@ function CouchbaseBucketFields() {
                                 control={control}
                                 name={`inputs.buckets.${bucketIndex}.scopes.${scopeIndex}.collections.${collectionIndex}`}
                                 render={({ field, fieldState: { error } }) => (
-                                  <Field label="Collection Name" error={fieldError(error)}>
+                                  <Field wide label="Collection Name" error={fieldError(error)}>
                                     <RemovableRow
                                       label={`Remove collection ${collectionIndex + 1} from scope ${scopeIndex + 1}`}
                                       onRemove={() =>
@@ -438,7 +443,7 @@ function CouchbasePasswordFields() {
   );
 }
 
-function CouchbaseFields() {
+function CouchbaseFields({ mode }: Pick<DynamicSecretRendererProps, "mode">) {
   return (
     <>
       <ProviderGroup id="couchbase-connection" presentation="panel">
@@ -448,6 +453,7 @@ function CouchbaseFields() {
       </ProviderGroup>
       <CouchbaseBucketFields />
       <CouchbasePasswordFields />
+      {mode === "edit" && <MetadataFields id="couchbase-metadata" />}
     </>
   );
 }
@@ -459,5 +465,12 @@ export const couchbaseFlowProvider = defineFlowProvider({
   getDefaultValues: getCouchbaseCreateDefaultValues,
   toPayload: getCouchbaseCreatePayload,
   Renderer: CouchbaseFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: couchbaseEditFormSchema,
+    getDefaultValues: getCouchbaseEditDefaultValues,
+    toPayload: getCouchbaseEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

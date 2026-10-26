@@ -17,6 +17,7 @@ import { TableCell } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import type { Resource, ResourceKind } from "../secrets-model";
+import type { RowAction } from "./row-actions/types";
 
 import styles from "./overview.module.css";
 
@@ -31,6 +32,7 @@ export type RowContext = {
   recent: string[];
   onToggleSelect: (key: string) => void;
   report: (message: string) => void;
+  onAction: (action: RowAction) => void;
 };
 export type EnvironmentStatus = "present" | "missing" | "empty" | "imported" | "no-access";
 type Glyph = { name?: IconName; icon?: LucideIcon };

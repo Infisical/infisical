@@ -570,6 +570,9 @@
 .field:not([data-orientation="horizontal"]) {
   max-width: var(--v4-size-measure-field);
 }
+.field[data-width="wide"]:not([data-orientation="horizontal"]) {
+  max-width: var(--v4-size-measure-field-wide);
+}
 .field[data-orientation="horizontal"] {
   gap: var(--v4-space-12);
 }

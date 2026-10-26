@@ -1,7 +1,10 @@
 import {
   getRedisCreateDefaultValues,
   getRedisCreatePayload,
+  getRedisEditDefaultValues,
+  getRedisEditPayload,
   redisCreateFormSchema,
+  redisEditFormSchema,
   type TRedisCreateFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/redisContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
@@ -72,5 +75,12 @@ export const redisFlowProvider = defineFlowProvider({
   getDefaultValues: getRedisCreateDefaultValues,
   toPayload: getRedisCreatePayload,
   Renderer: RedisFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: redisEditFormSchema,
+    getDefaultValues: getRedisEditDefaultValues,
+    toPayload: getRedisEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

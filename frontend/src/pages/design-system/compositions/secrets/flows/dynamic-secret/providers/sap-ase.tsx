@@ -1,7 +1,10 @@
 import {
   getSapAseCreateDefaultValues,
   getSapAseCreatePayload,
+  getSapAseEditDefaultValues,
+  getSapAseEditPayload,
   sapAseCreateFormSchema,
+  sapAseEditFormSchema,
   type TSapAseCreateFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/sapAseContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
@@ -65,5 +68,12 @@ export const sapAseFlowProvider = defineFlowProvider({
   getDefaultValues: getSapAseCreateDefaultValues,
   toPayload: getSapAseCreatePayload,
   Renderer: SapAseFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: sapAseEditFormSchema,
+    getDefaultValues: getSapAseEditDefaultValues,
+    toPayload: getSapAseEditPayload,
+    submitLabel: "Save",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });

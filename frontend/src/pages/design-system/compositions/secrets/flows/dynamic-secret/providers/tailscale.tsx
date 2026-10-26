@@ -3,7 +3,10 @@ import { useFormContext } from "react-hook-form";
 import {
   getTailscaleCreateDefaultValues,
   getTailscaleCreatePayload,
+  getTailscaleEditDefaultValues,
+  getTailscaleEditPayload,
   tailscaleCreateFormSchema,
+  tailscaleEditFormSchema,
   TTailscaleFormValues
 } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/providerDefinitions/tailscaleContract";
 import type { TDynamicSecretProviderField } from "@app/components/dynamic-secrets/DynamicSecretProviderForm/types";
@@ -169,5 +172,12 @@ export const tailscaleFlowProvider = defineFlowProvider({
   getDefaultValues: getTailscaleCreateDefaultValues,
   toPayload: getTailscaleCreatePayload,
   Renderer: TailscaleFields,
-  submitLabel: "Submit"
+  submitLabel: "Submit",
+  edit: {
+    schema: tailscaleEditFormSchema,
+    getDefaultValues: getTailscaleEditDefaultValues,
+    toPayload: getTailscaleEditPayload,
+    submitLabel: "Submit",
+    successMessage: "Successfully updated dynamic secret"
+  }
 });
