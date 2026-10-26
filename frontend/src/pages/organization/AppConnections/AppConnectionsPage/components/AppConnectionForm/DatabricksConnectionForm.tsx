@@ -4,6 +4,7 @@ import { Info } from "lucide-react";
 import { z } from "zod";
 
 import {
+  Combobox,
   Field,
   FieldError,
   FieldLabel,
@@ -22,6 +23,7 @@ import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   DatabricksConnectionMethod,
+  DatabricksConnectionScope,
   TDatabricksConnection
 } from "@app/hooks/api/appConnections/types/databricks-connection";
 
@@ -46,7 +48,8 @@ const formSchema = z.discriminatedUnion("method", [
     credentials: z.object({
       workspaceUrl: z.string().url().trim().min(1, "Workspace URL required"),
       clientId: z.string().trim().min(1, "Client ID required"),
-      clientSecret: z.string().trim().min(1, "Client secret required")
+      clientSecret: z.string().trim().min(1, "Client secret required"),
+      scopes: z.nativeEnum(DatabricksConnectionScope).array().optional()
     })
   })
 ]);
@@ -155,6 +158,40 @@ export const DatabricksConnectionForm = ({ appConnection, onSubmit }: Props) => 
                 onChange={(e) => onChange(e.target.value)}
               />
               <FieldError id="client-secret-error" errors={[error]} />
+            </Field>
+          )}
+        />
+        <Controller
+          name="credentials.scopes"
+          control={control}
+          shouldUnregister
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel htmlFor="scopes">
+                Scopes <span className="text-muted">(optional)</span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm">
+                    The OAuth scopes assigned to the client secret. Secret syncs require
+                    &apos;secrets&apos;, and secret rotations require &apos;authentication&apos; and
+                    &apos;scim&apos;. If none are selected, &apos;all-apis&apos; will be used.
+                  </TooltipContent>
+                </Tooltip>
+              </FieldLabel>
+              <Combobox
+                id="scopes"
+                multiple
+                value={value ?? []}
+                onValueChange={onChange}
+                options={Object.values(DatabricksConnectionScope)}
+                getOptionValue={(scope) => scope}
+                getOptionLabel={(scope) => scope}
+                placeholder="all-apis"
+                isError={Boolean(error)}
+              />
+              <FieldError errors={[error]} />
             </Field>
           )}
         />
