@@ -64,7 +64,6 @@
     "@fortawesome/free-solid-svg-icons": "^6.7.1",
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@hcaptcha/react-hcaptcha": "^1.11.0",
-    "@headlessui/react": "^2.2.10",
     "@hookform/resolvers": "^3.9.1",
     "@lexical/react": "^0.29.0",
     "@lezer/highlight": "^1.2.3",
