@@ -404,6 +404,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                                   membershipId: detailKey
                                 }
                               } as const))}
+                            aria-label={email ? undefined : (name ?? u.username)}
                             className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                           >
                             {email}

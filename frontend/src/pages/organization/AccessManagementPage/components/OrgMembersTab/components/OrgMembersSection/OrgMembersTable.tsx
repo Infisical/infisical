@@ -117,8 +117,8 @@ export const OrgMembersTable = ({
   selectedMemberIds,
   setSelectedMemberIds
 }: Props) => {
-  const { subscription } = useSubscription();
   const navigate = useNavigate();
+  const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
   const { user } = useUser();
   const userId = user?.id || "";
