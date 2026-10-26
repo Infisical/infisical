@@ -7,7 +7,7 @@ import {
   ShieldCheckIcon,
   TriangleAlertIcon
 } from "lucide-react";
-import RandExp from "randexp";
+import type RandExp from "randexp";
 import { twMerge } from "tailwind-merge";
 
 import { useTimedReset } from "@app/hooks";
@@ -27,6 +27,7 @@ import { IconButton } from "../../generic/IconButton";
 import { Label } from "../../generic/Label";
 import { Popover, PopoverContent, PopoverTrigger } from "../../generic/Popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../generic/Tooltip";
+import { buildSecureRandExp } from "./secure-randexp";
 
 type PasswordOptionsType = {
   length: number;
@@ -67,11 +68,13 @@ const generateFromConstraints = (constraints: TValueConstraints): string => {
 
   if (regexValue) {
     // Regex takes full precedence over min/max length constraints
+    let generator: RandExp | undefined;
     try {
-      middle = new RandExp(new RegExp(regexValue)).gen();
+      generator = buildSecureRandExp(new RegExp(regexValue));
     } catch {
       // Fall through to manual generation if regex is invalid
     }
+    middle = generator?.gen();
   }
 
   if (middle === undefined) {
