@@ -656,7 +656,6 @@ export const secretSyncQueueFactory = ({
             )
           ).length > 0;
 
-       
         if (isStatusChange) {
           recordSecretSyncStatusChangeMetric({
             destination: secretSync.destination,
