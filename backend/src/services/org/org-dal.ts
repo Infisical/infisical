@@ -1405,6 +1405,7 @@ export const orgDALFactory = (db: TDbClient) => {
     deleteMembershipsById,
     updateMembership,
     findIdentityOrganization,
-    findRootOrgDetails
+    findRootOrgDetails,
+    primaryNode: () => db.primaryNode()
   });
 };

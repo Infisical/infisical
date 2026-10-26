@@ -39,9 +39,11 @@ const build = (opts?: {
   childOrgs?: string[];
 }) => {
   const tx = { raw: vi.fn().mockResolvedValue(undefined) };
+  const primary = { node: "primary" };
   const sendPamCancellations = vi.fn();
   const deps = {
     orgDAL: {
+      primaryNode: vi.fn(() => primary),
       findById: vi.fn((id: string) => {
         const orgs = opts?.orgs ?? { [ORG_ID]: { id: ORG_ID }, [SUB_ORG_ID]: { id: SUB_ORG_ID } };
         const org = orgs[id];
@@ -79,7 +81,7 @@ const build = (opts?: {
     usageMeteringService: { emit: vi.fn() }
   };
   const consumer = orgAccessReconcileConsumerFactory(deps as never);
-  return { consumer, deps, tx, sendPamCancellations };
+  return { consumer, deps, tx, primary, sendPamCancellations };
 };
 
 const auditMetadata = (deps: ReturnType<typeof build>["deps"], call = 0) =>
@@ -158,11 +160,12 @@ describe("org access reconcile consumer", () => {
     });
 
     test("an org membership removal also rechecks the org's sub-orgs", async () => {
-      const { consumer, deps } = build({ childOrgs: [SUB_ORG_ID] });
+      const { consumer, deps, primary } = build({ childOrgs: [SUB_ORG_ID] });
 
       await consumer.handle([userRemovedFromOrg()]);
 
-      expect(deps.orgDAL.find).toHaveBeenCalledWith({ rootOrgId: ORG_ID });
+      expect(deps.orgDAL.find).toHaveBeenCalledWith({ rootOrgId: ORG_ID }, { tx: primary });
+      expect(deps.orgDAL.findById).toHaveBeenCalledWith(ORG_ID, primary);
       expect(deps.orgDAL.findActorsWithOrgAccess).toHaveBeenCalledTimes(2);
     });
   });

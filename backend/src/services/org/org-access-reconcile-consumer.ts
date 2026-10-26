@@ -38,7 +38,7 @@ const RECONCILE_STATEMENT_TIMEOUT_MS = 30_000;
 type TOrgAccessReconcileConsumerDep = {
   orgDAL: Pick<
     TOrgDALFactory,
-    "findById" | "find" | "findActorsWithOrgAccess" | "lockActorsForOrgAccess" | "transaction"
+    "findById" | "find" | "findActorsWithOrgAccess" | "lockActorsForOrgAccess" | "transaction" | "primaryNode"
   >;
   projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -92,7 +92,7 @@ export const orgAccessReconcileConsumerFactory = ({
         const { orgId, ...actor } = OrgMembershipRemovedPayloadSchema.parse(event.payload);
         const reason = ORG_ACCESS_REMOVAL_CAUSE_BY_EVENT[event.eventType];
         return async () => {
-          const childOrgs = await orgDAL.find({ rootOrgId: orgId });
+          const childOrgs = await orgDAL.find({ rootOrgId: orgId }, { tx: orgDAL.primaryNode() });
           return { orgIds: [orgId, ...childOrgs.map((org) => org.id)], actors: [actor], reason };
         };
       }
@@ -115,9 +115,10 @@ export const orgAccessReconcileConsumerFactory = ({
     });
 
   // Small actor batches, each in its own short tx, since what they hold isn't bounded. Side effects fire per
-  // batch after commit and only when rows went, so replays are no-ops.
+  // batch after commit and only when rows went, so replays are no-ops. The org and sub-org reads go to the
+  // primary: a row the replica hasn't seen yet would otherwise mark the event delivered with nothing done.
   const $reconcileOrg = async (orgId: string, scope: TReconcileScope) => {
-    const org = await orgDAL.findById(orgId);
+    const org = await orgDAL.findById(orgId, orgDAL.primaryNode());
     if (!org) return;
 
     for await (const actors of chunkArray(scope.actors, ACTORS_PER_RECONCILE_TX)) {
