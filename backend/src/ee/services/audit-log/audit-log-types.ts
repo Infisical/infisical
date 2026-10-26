@@ -5727,6 +5727,7 @@ interface PitProcessNewCommitRawEvent {
     secretPath: string;
     message: string;
     approvalId?: string;
+    approvalSlug?: string;
     commitId?: string;
   };
 }

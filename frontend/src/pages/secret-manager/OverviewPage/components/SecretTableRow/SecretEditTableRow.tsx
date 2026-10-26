@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import {
@@ -360,6 +360,11 @@ export const SecretEditTableRow = ({
   const [isEditing, setIsEditing] = useToggle();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCommentOpen, setIsCommentOpen] = useState(false);
+  const [commentDragOffset, setCommentDragOffset] = useState({ x: 0, y: 0 });
+  const [commentSide, setCommentSide] = useState<"top" | "right" | "bottom" | "left">();
+  const commentDragStart = useRef<{ pointerX: number; pointerY: number; x: number; y: number }>(
+    undefined
+  );
   const [isTagOpen, setIsTagOpen] = useState(false);
   const [isMetadataOpen, setIsMetadataOpen] = useState(false);
   const [isReminderOpen, setIsReminderOpen] = useState(false);
@@ -434,6 +439,13 @@ export const SecretEditTableRow = ({
         isEncrypted: m.isEncrypted ?? false
       })) ?? [];
   }, [comment, tags, secretMetadata, isSingleEnvView, hasPendingChange]);
+
+  useLayoutEffect(() => {
+    commentDragStart.current = undefined;
+    if (!isCommentOpen) return;
+    setCommentDragOffset({ x: 0, y: 0 });
+    setCommentSide(undefined);
+  }, [isCommentOpen]);
 
   // Stable callbacks for child components to avoid resetting their debounce timers on re-render
   const handleCommentChange = useCallback(
@@ -1245,9 +1257,63 @@ export const SecretEditTableRow = ({
     }
   };
 
+  const lockCommentSide = (handle: HTMLElement) => {
+    if (commentSide) return;
+    const side = handle.closest("[data-side]")?.getAttribute("data-side");
+    setCommentSide(side === "top" || side === "left" || side === "right" ? side : "bottom");
+  };
+
   const commentPopoverContent = (
-    <PopoverContent onCloseAutoFocus={(e) => e.preventDefault()} className="w-80" align="end">
+    <PopoverContent
+      onCloseAutoFocus={(e) => e.preventDefault()}
+      className="w-80"
+      align="end"
+      side={commentSide ?? "bottom"}
+      avoidCollisions={!commentSide}
+      style={{ translate: `${commentDragOffset.x}px ${commentDragOffset.y}px` }}
+    >
       <SecretCommentForm
+        dragHandleProps={{
+          onPointerDown: (e) => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            e.currentTarget.setPointerCapture(e.pointerId);
+            lockCommentSide(e.currentTarget);
+            commentDragStart.current = {
+              pointerX: e.clientX,
+              pointerY: e.clientY,
+              ...commentDragOffset
+            };
+          },
+          onPointerMove: (e) => {
+            const start = commentDragStart.current;
+            if (!start) return;
+            setCommentDragOffset({
+              x: start.x + e.clientX - start.pointerX,
+              y: start.y + e.clientY - start.pointerY
+            });
+          },
+          onPointerUp: () => {
+            commentDragStart.current = undefined;
+          },
+          onLostPointerCapture: () => {
+            commentDragStart.current = undefined;
+          },
+          onKeyDown: (e) => {
+            const step = e.shiftKey ? 64 : 16;
+            const deltas: Record<string, { x: number; y: number } | undefined> = {
+              ArrowLeft: { x: -step, y: 0 },
+              ArrowRight: { x: step, y: 0 },
+              ArrowUp: { x: 0, y: -step },
+              ArrowDown: { x: 0, y: step }
+            };
+            const delta = deltas[e.key];
+            if (!delta) return;
+            e.preventDefault();
+            lockCommentSide(e.currentTarget);
+            setCommentDragOffset((prev) => ({ x: prev.x + delta.x, y: prev.y + delta.y }));
+          }
+        }}
         comment={isBatchMode ? ((watchedComment as string) ?? comment) : comment}
         secretKey={secretName}
         secretPath={secretPath}
