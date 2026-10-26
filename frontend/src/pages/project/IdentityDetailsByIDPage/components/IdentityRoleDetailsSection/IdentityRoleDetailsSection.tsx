@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { subject } from "@casl/ability";
-import { useNavigate } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PencilIcon } from "lucide-react";
 
@@ -31,6 +30,7 @@ import {
   EmptyTitle,
   IconButton,
   PageLoader,
+  RowLink,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -49,6 +49,7 @@ import {
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission
 } from "@app/context";
@@ -79,9 +80,9 @@ export const IdentityRoleDetailsSection = ({
   isMembershipDetailsLoading
 }: Props) => {
   const scopeVariant = useScopeVariant();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const navigate = useNavigate();
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "deleteRole",
     "modifyRole",
@@ -243,43 +244,22 @@ export const IdentityRoleDetailsSection = ({
                     return (
                       <TableRow
                         key={`user-project-identity-${roleDetails?.id}`}
-                        className={isStandaloneProduct ? "" : "cursor-pointer"}
-                        role={isStandaloneProduct ? undefined : "button"}
-                        tabIndex={isStandaloneProduct ? undefined : 0}
-                        onKeyDown={(event) => {
-                          if (
-                            isStandaloneProduct ||
-                            event.target !== event.currentTarget ||
-                            (event.key !== "Enter" && event.key !== " ")
-                          ) {
-                            return;
-                          }
-                          event.preventDefault();
-                          navigate({
-                            to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
-                            params: {
-                              projectId: currentProject.id,
-                              roleSlug
-                            }
-                          });
-                        }}
-                        onClick={
-                          isStandaloneProduct
-                            ? undefined
-                            : () =>
-                                navigate({
-                                  to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
-                                  params: {
-                                    projectId: currentProject.id,
-                                    roleSlug
-                                  }
-                                })
-                        }
+                        linked={!isStandaloneProduct}
                       >
                         <TableCell className="max-w-0 truncate">
-                          {roleDetails.role === "custom"
-                            ? roleDetails.customRoleName
-                            : formatProjectRoleName(roleDetails.role)}
+                          <RowLink
+                            to={`${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`}
+                            params={{
+                              orgId: currentOrg.id,
+                              projectId: currentProject.id,
+                              roleSlug
+                            }}
+                            disabled={isStandaloneProduct}
+                          >
+                            {roleDetails.role === "custom"
+                              ? roleDetails.customRoleName
+                              : formatProjectRoleName(roleDetails.role)}
+                          </RowLink>
                         </TableCell>
                         <TableCell>
                           {isTemporary ? (
@@ -288,6 +268,7 @@ export const IdentityRoleDetailsSection = ({
                                 <Badge
                                   className="capitalize"
                                   variant={isExpired ? "danger" : "warning"}
+                                  data-row-interactive
                                 >
                                   {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
                                   {text}

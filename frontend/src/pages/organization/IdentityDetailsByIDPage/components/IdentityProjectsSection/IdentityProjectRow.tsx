@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon } from "lucide-react";
 
@@ -41,7 +41,6 @@ export const IdentityProjectRow = ({
   handlePopUpOpen
 }: Props) => {
   const { data: workspaces } = useGetUserProjects();
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
 
   const isAccessible = useMemo(() => {
@@ -93,14 +92,10 @@ export const IdentityProjectRow = ({
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              isDisabled={!isAccessible}
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate({ ...projectLink, search: projectSearch });
-              }}
-            >
-              Access Project
+            <DropdownMenuItem asChild isDisabled={!isAccessible}>
+              <Link {...projectLink} search={projectSearch}>
+                Access Project
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuItem
               variant="danger"

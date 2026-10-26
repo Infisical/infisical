@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PencilIcon } from "lucide-react";
 import picomatch from "picomatch";
@@ -33,6 +32,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  RowLink,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -51,6 +51,7 @@ import {
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission,
   useUser
@@ -81,9 +82,9 @@ export const MemberRoleDetailsSection = ({
   const scopeVariant = useScopeVariant();
   const { user } = useUser();
   const userId = user?.id;
+  const { currentOrg } = useOrganization();
   const { projectId, currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const navigate = useNavigate();
 
   const assignRoleConditions = useMemo(
     () => getMemberAssignRoleConditions(permission),
@@ -217,18 +218,6 @@ export const MemberRoleDetailsSection = ({
                       roleDetails.isTemporary &&
                       new Date() > new Date(roleDetails.temporaryAccessEndTime || "");
 
-                    const navigateToRole = () =>
-                      navigate({
-                        to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
-                        params: {
-                          projectId: currentProject.id,
-                          roleSlug:
-                            roleDetails.role === "custom"
-                              ? roleDetails.customRoleSlug
-                              : roleDetails.role
-                        }
-                      });
-
                     let text = "Permanent";
                     let toolTipText = "Non-Expiring Access";
                     if (roleDetails.isTemporary) {
@@ -249,19 +238,27 @@ export const MemberRoleDetailsSection = ({
 
                     return (
                       <TableRow
-                        className={`group h-10 ${isCertManager ? "" : "cursor-pointer"}`}
+                        className="group h-10"
                         key={`user-project-identity-${roleDetails?.id}`}
-                        role={isCertManager ? undefined : "link"}
-                        tabIndex={isCertManager ? undefined : 0}
-                        onKeyDown={(event) => {
-                          if (!isCertManager && event.key === "Enter") navigateToRole();
-                        }}
-                        onClick={isCertManager ? undefined : navigateToRole}
+                        linked={!isCertManager}
                       >
                         <TableCell className="max-w-0 truncate">
-                          {roleDetails.role === "custom"
-                            ? roleDetails.customRoleName
-                            : formatProjectRoleName(roleDetails.role)}
+                          <RowLink
+                            to={`${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`}
+                            params={{
+                              orgId: currentOrg.id,
+                              projectId: currentProject.id,
+                              roleSlug:
+                                roleDetails.role === "custom"
+                                  ? roleDetails.customRoleSlug
+                                  : roleDetails.role
+                            }}
+                            disabled={isCertManager}
+                          >
+                            {roleDetails.role === "custom"
+                              ? roleDetails.customRoleName
+                              : formatProjectRoleName(roleDetails.role)}
+                          </RowLink>
                         </TableCell>
                         <TableCell>
                           {isTemporary ? (
@@ -270,6 +267,7 @@ export const MemberRoleDetailsSection = ({
                                 <Badge
                                   className="capitalize"
                                   variant={isExpired ? "danger" : "warning"}
+                                  data-row-interactive
                                 >
                                   {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
                                   {text}
