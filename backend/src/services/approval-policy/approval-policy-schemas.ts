@@ -10,6 +10,13 @@ import {
 import { ms } from "@app/lib/ms";
 
 import { ApprovalPolicyScope, ApproverType, EnforcementLevel } from "./approval-policy-enums";
+import {
+  AutoApprovalConfigResponseSchema,
+  AutoApprovalConfigSchema,
+  AutoApprovalInputDetailsSchema,
+  AutoApprovalInputValuesSchema,
+  AutoApprovalOutcomeSchema
+} from "./auto-approval/auto-approval-schemas";
 
 const ApprovalPolicyStepSchema = z.object({
   name: z.string().min(1).max(128).nullable().optional(),
@@ -42,7 +49,8 @@ const MaxRequestTtlSchema = z.string().refine(
 export const BaseApprovalPolicySchema = ApprovalPoliciesSchema.extend({
   steps: ApprovalPolicyStepSchema.array(),
   enforcementLevel: z.nativeEnum(EnforcementLevel).default(EnforcementLevel.Hard),
-  bypassers: BypasserSchema.array().default([])
+  bypassers: BypasserSchema.array().default([]),
+  autoApproval: AutoApprovalConfigResponseSchema.optional()
 });
 
 export const BaseCreateApprovalPolicySchema = z.object({
@@ -53,7 +61,8 @@ export const BaseCreateApprovalPolicySchema = z.object({
   steps: ApprovalPolicyStepSchema.array(),
   bypassForMachineIdentities: z.boolean().optional().default(false),
   enforcementLevel: z.nativeEnum(EnforcementLevel).optional().default(EnforcementLevel.Hard),
-  bypassers: BypasserSchema.array().max(100).optional().default([])
+  bypassers: BypasserSchema.array().max(100).optional().default([]),
+  autoApproval: AutoApprovalConfigSchema.optional()
 });
 
 export const BaseUpdateApprovalPolicySchema = z.object({
@@ -62,7 +71,8 @@ export const BaseUpdateApprovalPolicySchema = z.object({
   steps: ApprovalPolicyStepSchema.array().optional(),
   bypassForMachineIdentities: z.boolean().optional(),
   enforcementLevel: z.nativeEnum(EnforcementLevel).optional(),
-  bypassers: BypasserSchema.array().max(100).optional()
+  bypassers: BypasserSchema.array().max(100).optional(),
+  autoApproval: AutoApprovalConfigSchema.optional()
 });
 
 // Request
@@ -83,11 +93,12 @@ const ApprovalRequestStepSchema = ApprovalRequestStepsSchema.extend({
   approvals: ApprovalRequestApprovalsSchema.array()
 });
 
-export const BaseApprovalRequestSchema = ApprovalRequestsSchema.extend({
+export const BaseApprovalRequestSchema = ApprovalRequestsSchema.omit({ autoApprovalEvidence: true }).extend({
   steps: ApprovalRequestStepSchema.array(),
   canBreakGlass: z.boolean().default(false),
   isBreakGlass: z.boolean().default(false),
-  bypassReason: z.string().nullable().optional()
+  bypassReason: z.string().nullable().optional(),
+  autoApproval: AutoApprovalOutcomeSchema.optional()
 });
 
 export const BaseCreateApprovalRequestSchema = z.object({
@@ -106,7 +117,8 @@ export const BaseCreateApprovalRequestSchema = z.object({
       { message: "Duration must be between 1 minute and 30 days" }
     )
     .nullable()
-    .optional()
+    .optional(),
+  autoApprovalInputs: AutoApprovalInputValuesSchema.optional()
 });
 
 // Grants
@@ -115,5 +127,6 @@ export const BaseApprovalRequestGrantSchema = ApprovalRequestGrantsSchema;
 // Check Policy Match Response
 export const BaseCheckPolicyMatchResponseSchema = z.object({
   requiresApproval: z.boolean(),
-  hasActiveGrant: z.boolean()
+  hasActiveGrant: z.boolean(),
+  autoApprovalInputs: AutoApprovalInputDetailsSchema.array().optional()
 });

@@ -65,13 +65,13 @@ import {
   CERTIFICATE_ALERT_EVENT_LABELS,
   CERTIFICATE_FILTER_DEFINITIONS,
   CertificateAlertScopeKind,
-  CertificateFilterKind,
   formatAlertBefore,
   fromApiEventType,
   getAlertResourceId,
+  getFilterKinds,
   getFilterName,
   getScopeEventTypes,
-  isFilterableEventType,
+  isSignerEventType,
   pluralize,
   TCertificateAlertScope,
   toConditionNames
@@ -97,17 +97,18 @@ const SCOPE_CARD_CONFIG: Record<
 
 const AlertFiltersSummary = ({ alert }: { alert: TAlert }) => {
   const conditionNames = toConditionNames(alert);
-  const activeFilters = Object.values(CertificateFilterKind).flatMap((kind) => {
+  const eventType = alert.eventType as TCertificateAlertEventType;
+  const activeFilters = getFilterKinds(eventType).flatMap((kind) => {
     const ids: string[] = alert.condition?.[kind] ?? [];
     return ids.length ? [{ kind, ids }] : [];
   });
 
-  if (!isFilterableEventType(alert.eventType as TCertificateAlertEventType)) {
-    return <span className="text-muted">All signers</span>;
-  }
-
   if (!activeFilters.length) {
-    return <span className="text-muted">All certificates</span>;
+    return (
+      <span className="text-muted">
+        {isSignerEventType(eventType) ? "All signers" : "All certificates"}
+      </span>
+    );
   }
 
   return (

@@ -2,6 +2,12 @@
 
 The migration is complete only when the legacy UI implementations, exports, imports, aliases, and private dependencies are removed from the latest `main`. Migrating a consumer in an open PR does not mean its legacy family is removed on `main`. Moving an implementation into V3, renaming it, or wrapping it does not establish parity or removal.
 
+## Status on main
+
+The `components/v2` tree and its `@app/components/v2` root barrel are deleted. The last census before deletion, at `e434f2fdfdd608f97cd4041af84062991d2645cf`, found 24 families, 50 files, and one external consumer: the root `TooltipProvider` in `pages/root.tsx`, which now uses the V3 `TooltipProvider` with the same 700 ms delay and 300 ms skip delay. Every other V2 import was between V2 families.
+
+`legacy.css` is also deleted, so `audit-v2-ui.mjs --assert-zero` passes: zero V2 files, zero legacy module edges, zero known outside paths, and zero computed imports. The family coverage and product-surface tables below are the 2026-10-04 baseline record; keep using them for replacement guidance, not as current consumer counts.
+
 ## Baseline and measurement
 
 Baseline: `infisical/infisical` `origin/main` **70e06365043ae3b6f49ef6c95a8b9997b20f4a34**, fetched **2026-10-04**. The September 24 design audit is historical context, not current acceptance evidence.
@@ -117,7 +123,7 @@ All source anchors in this surface table are relative to `frontend/src/`. Refres
 - `components/basic/InputField.tsx` is an unversioned legacy input, and `components/basic/Error.tsx` is a legacy error presentation used by `components/auth/Mfa.tsx`. Remove unused source or migrate the live caller; neither may be hidden by a rename.
 - `components/integrations/NoEnvironmentsBanner.tsx`, `components/navigation/SecretDashboardPathBreadcrumb.tsx`, and `components/tags/CreateTagModal/CreateTagModal.tsx` are V2-dependent feature wrappers with no consuming module/symbol references at the baseline. Reverify and delete their unused implementation/export closure in a separate focused unit. The known outside-path completion gate includes these files.
 - `pages/secret-manager/OverviewPage/components/SecretSearchInput/SecretSearchInput.tsx` and its barrel are an old Headless UI search control. Its sibling quick-search components are also consumed by the newer `ResourceSearchInput`; preserve those workflows while removing or replacing the old control.
-- `legacy.css`, imported by `index.css`, is the legacy palette. Migrate all remaining utility consumers before deleting it; deleting V2 React files alone is not a token cleanup proof.
+- `legacy.css`, the legacy palette, is deleted. At `e434f2fdfdd608f97cd4041af84062991d2645cf` none of its color tokens had a literal utility, `--color-*` variable, `@apply` or `theme()` user in frontend sources, CSS, or config, so its default-palette overrides (`red`, `green`, `blue`, `yellow`) had no consumers either.
 - V3 `ReactSelect` is an independently implemented, token-based compatibility family, not a wrapper importing V2. Its deprecated status does not make every current consumer a V2 import. Do not use it as a cosmetic shortcut to avoid verifying Combobox behavior. Record custom option/group/creation/portal contracts and any replacement work before retiring `react-select`.
 - V3 `SecretInput`, `InfisicalSecretInput`, `SecretPathInput`, and `PasswordGenerator` have their own implementations. Compare security-sensitive behavior, not names. Removing unused V2 Editor/PasswordGenerator does not certify every active V3 editor flow.
 - API/data versions such as `hooks/api/secretRotationsV2`, `BillingV2Page`, `PkiAlertsV2Page`, backend secret-v2 services and migration files are not automatically legacy UI. Their actual UI imports and implementations remain in scope; their legitimate API versions are not renamed.
@@ -151,7 +157,7 @@ Use this recipe for every V2 `Modal`, `DeleteActionModal`, and `ConfirmActionMod
 
 **What the V3 contract provides.** `DialogContent`, `SheetContent`, `AlertDialogContent`, and `ConfirmationAlertDialog` provide these behaviors without consumer code:
 
-- **Innermost layer first.** Escape or an outside click closes an open nested popup first. The next Escape or outside click reaches the overlay. Radix popups (`Select`, `DropdownMenu`, `Tooltip`, `HoverCard`, `Popover`) do this natively. `Combobox` registers its open popup with the nearest `DialogContent`, `SheetContent`, or `AlertDialogContent` (which includes `ConfirmationAlertDialog`), and an event that closed the popup cannot also close the overlay. Inside an overlay, `Combobox` defaults to `modal`.
+- **Innermost layer first.** Escape or an outside click closes an open nested popup first. The next Escape or outside click reaches the overlay. Radix popups (`Select`, `DropdownMenu`, `Tooltip`, `HoverCard`, `Popover`) do this natively. `Combobox` registers its open popup with the nearest `DialogContent`, `SheetContent`, `AlertDialogContent` (which includes `ConfirmationAlertDialog`), or `PopoverContent`, and an event that closed the popup cannot also close the overlay. Inside a `Dialog`, `Sheet`, or `AlertDialog`, `Combobox` defaults to `modal`. Inside a `Popover` that is not nested in one of those, it stays non-modal.
 - **Pending close.** While `isPending` is true on `DialogContent` or `SheetContent`, Escape, outside clicks, the built-in close button, and every `DialogClose` or `SheetClose` cannot dismiss the overlay. `ConfirmationAlertDialog` locks itself while `onConfirm` is in flight, disables Cancel and the input, and shows the pending state on its confirm button.
 - **Focus return.** Closing returns focus to the element that opened the overlay. When a V3 `DropdownMenuItem` opened it, focus returns to that menu's trigger. No refs or `onCloseAutoFocus` handlers are needed. If the opener no longer exists, for example a row removed by a successful delete, Radix's default applies.
 - **Typed confirmation.** `ConfirmationAlertDialog` compares the typed value with `confirmKey`, resets it on every open and close, submits on Enter only when it matches, and keeps the dialog open if `onConfirm` rejects. The global mutation error toast reports the failure.
@@ -301,7 +307,7 @@ After:
 - **Chained confirmations.** If `onConfirm` opens a second dialog instead of closing, as `IntegrationsDetailsByIDPage` does, keep that control flow and check the second dialog's focus return.
 - **Pending state outside the form.** If the mutation runs in the parent, pass the mutation's `isPending` to `DialogContent` or `ConfirmationAlertDialog`. Do not add `onOpenChange` guards.
 - **Reset and discard.** Keep the consumer's `reset()` or state clearing on close. Radix unmounts closed content, so state inside the content subtree resets by itself. Add `useDiscardChangesGuard` only when the product asks for a dirty-form guard; V2 never had one.
-- **Existing AlertDialog compositions** with `confirmationValue` do not lock while pending. New typed confirmations use `ConfirmationAlertDialog`.
+- **Existing AlertDialog compositions** with `confirmationValue` lock while pending when the mutation's `isPending` is passed to `AlertDialog`: Escape, Cancel, the confirmation input, and Enter are disabled, and `AlertDialogAction` shows the pending state. New typed confirmations use `ConfirmationAlertDialog`, which is built on the same confirmation state.
 - **Proof.** For each sweep, open each migrated overlay once in the preview: Escape with a nested popup open, Escape and an outside click while a mutation is pending, and focus after close.
 
 ## Completion acceptance

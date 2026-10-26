@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { ShieldIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  DiscardChangesAlertDialog,
   DocumentationLinkBadge,
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -20,6 +21,7 @@ import {
   useListSignerMembers,
   useUpdateSignerPolicy
 } from "@app/hooks/api/signers";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 import { ApproversStep } from "./ApproversStep";
@@ -138,9 +140,43 @@ export const EditSignerPolicyModal = ({
   const updateStep = (key: string, patch: Partial<StepDraft>) =>
     setSteps((prev) => prev.map((s) => (s.key === key ? { ...s, ...patch } : s)));
 
+  const close = () => {
+    setStep(0);
+    onOpenChange(false);
+  };
+  const policyDraft = {
+    steps: steps.map((s) => ({
+      name: s.name,
+      requiredApprovals: s.requiredApprovals,
+      approvers: s.approvers.map((a) => approverKey(a.kind, a.value))
+    })),
+    maxSignings,
+    maxWindow
+  };
+  const initialPolicyDraft = {
+    steps: (existingPolicy?.steps ?? []).map((s) => ({
+      name: s.name ?? "",
+      requiredApprovals: s.requiredApprovals,
+      approvers: s.approvers
+        .filter((a) => a.type === "user" || a.type === "group")
+        .map((a) => approverKey(a.type as ApproverKind, a.id))
+    })),
+    maxSignings: existingPolicy?.steps.length
+      ? (existingPolicy.constraints.maxSignings ?? null)
+      : null,
+    maxWindow: existingPolicy?.steps.length
+      ? (existingPolicy.constraints.maxWindowDuration ?? null)
+      : null
+  };
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({
+      isDirty: JSON.stringify(policyDraft) !== JSON.stringify(initialPolicyDraft),
+      onDiscard: close
+    });
   const handleClose = (open: boolean) => {
-    if (!open) setStep(0);
-    onOpenChange(open);
+    if (submitting) return;
+    if (open) onOpenChange(true);
+    else requestDiscard();
   };
 
   const totalApprovers = steps.reduce((sum, s) => sum + s.approvers.length, 0);
@@ -161,6 +197,7 @@ export const EditSignerPolicyModal = ({
   const limitsInvalid = steps.length > 0 && maxSignings == null && maxWindow == null;
 
   const onSave = async () => {
+    if (submitting) return;
     if (limitsInvalid) {
       setShowLimitsError(true);
       if (safeStep !== 1) setStep(1);
@@ -211,7 +248,7 @@ export const EditSignerPolicyModal = ({
               })),
         constraints: steps.length === 0 ? undefined : { maxSignings, maxWindowDuration: maxWindow }
       });
-      handleClose(false);
+      close();
     } catch (err) {
       createNotification({
         type: "error",
@@ -227,132 +264,148 @@ export const EditSignerPolicyModal = ({
   const isCreating = !existingPolicy?.hasSteps;
 
   return (
-    <Sheet open={isOpen} onOpenChange={handleClose}>
-      <SheetContent size="workspace" className="flex h-full max-h-full flex-col gap-y-0">
-        <SheetHeader className="border-b">
-          <SheetTitle>
-            <div className="flex w-full items-start gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-warning/10 text-warning">
-                <ShieldIcon className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-x-2 text-label">
-                  {isCreating ? "Add approval policy" : "Edit approval policy"}
-                  <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.approvals.policy} />
-                </div>
-                <p className="text-sm leading-4 text-muted">
-                  Choose who approves, and how much each approval gives.
-                </p>
-              </div>
-            </div>
-          </SheetTitle>
-        </SheetHeader>
+    <>
+      <Sheet open={isOpen} onOpenChange={handleClose}>
+        <SheetContent size="workspace" isPending={submitting}>
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              {isCreating ? "Add Approval Policy" : "Edit Approval Policy"}
+              <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.approvals.policy} />
+            </SheetTitle>
+            <SheetDescription>
+              Choose who approves, and how much each approval gives.
+            </SheetDescription>
+          </SheetHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 overflow-hidden">
-            <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
-              <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
-                Setup steps
-              </p>
-              <Stepper
-                activeStep={safeStep}
-                orientation="vertical"
-                onStepChange={(i) => {
-                  if (i < safeStep) setStep(i);
-                }}
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
+                <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
+                  Setup steps
+                </p>
+                <Stepper
+                  activeStep={safeStep}
+                  orientation="vertical"
+                  onStepChange={(i) => {
+                    if (i < safeStep && !submitting) setStep(i);
+                  }}
+                >
+                  <StepperList>
+                    {WIZARD_STEPS.map((s, i) => (
+                      <StepperStep
+                        key={s.title}
+                        index={i}
+                        title={s.title}
+                        description={s.subtitle}
+                      />
+                    ))}
+                  </StepperList>
+                </Stepper>
+              </aside>
+
+              <fieldset
+                disabled={submitting}
+                className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6"
               >
-                <StepperList>
-                  {WIZARD_STEPS.map((s, i) => (
-                    <StepperStep key={s.title} index={i} title={s.title} description={s.subtitle} />
-                  ))}
-                </StepperList>
-              </Stepper>
-            </aside>
+                {!showLimitsTab ? (
+                  <ApproversStep
+                    steps={steps}
+                    approverOptions={approverOptions}
+                    onAddStep={addStep}
+                    onRemoveStep={removeStep}
+                    onUpdateStep={updateStep}
+                  />
+                ) : (
+                  <LimitsStep
+                    maxSignings={maxSignings}
+                    setMaxSignings={setMaxSignings}
+                    maxWindow={maxWindow}
+                    setMaxWindow={setMaxWindow}
+                    showError={showLimitsError && limitsInvalid}
+                  />
+                )}
+              </fieldset>
 
-            <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
-              {!showLimitsTab ? (
-                <ApproversStep
-                  steps={steps}
-                  approverOptions={approverOptions}
-                  onAddStep={addStep}
-                  onRemoveStep={removeStep}
-                  onUpdateStep={updateStep}
-                />
-              ) : (
-                <LimitsStep
-                  maxSignings={maxSignings}
-                  setMaxSignings={setMaxSignings}
-                  maxWindow={maxWindow}
-                  setMaxWindow={setMaxWindow}
-                  showError={showLimitsError && limitsInvalid}
-                />
-              )}
+              <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
+                <div className="mb-auto">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
+                      Step {safeStep + 1} · {WIZARD_STEPS[safeStep].title.toUpperCase()}
+                    </p>
+                    <DocumentationLinkBadge href={WIZARD_STEPS[safeStep].docsUrl} />
+                  </div>
+                  <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">
+                    {!showLimitsTab
+                      ? 'Approvals run in order. Each step has its own approvers and a "required" count: the number of approvers that must approve before moving on.'
+                      : "Limits decide how many signatures one approval can make and how long it stays valid before expiring."}
+                  </p>
+                </div>
+              </aside>
             </div>
 
-            <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
-              <div className="mb-auto">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
-                    Step {safeStep + 1} · {WIZARD_STEPS[safeStep].title.toUpperCase()}
-                  </p>
-                  <DocumentationLinkBadge href={WIZARD_STEPS[safeStep].docsUrl} />
-                </div>
-                <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
-                <p className="mt-2 text-sm leading-relaxed text-muted">
-                  {!showLimitsTab
-                    ? 'Approvals run in order. Each step has its own approvers and a "required" count: the number of approvers that must approve before moving on.'
-                    : "Limits decide how many signatures one approval can make and how long it stays valid before expiring."}
-                </p>
-              </div>
-            </aside>
-          </div>
-
-          <SheetFooter className="shrink-0 items-center justify-between border-t">
-            <span className="text-xs text-muted">
-              {/* eslint-disable-next-line no-nested-ternary */}
-              {hasEmptyStep
-                ? `Step ${firstEmptyStepIndex + 1} needs at least one approver, or remove it.`
-                : // eslint-disable-next-line no-nested-ternary
-                  hasOverCommittedStep
-                  ? `Step ${firstOverCommittedStepIndex + 1}: required approvals can't exceed the number of approvers. Add a group to allow more.`
-                  : // eslint-disable-next-line no-nested-ternary
-                    steps.length === 0
-                    ? "Approval is not configured"
-                    : `${steps.length} step${steps.length === 1 ? "" : "s"} · ${totalApprovers} approver${
-                        totalApprovers === 1 ? "" : "s"
-                      }`}
-            </span>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted">
-                Step {safeStep + 1} of {WIZARD_STEPS.length}
-              </span>
+            <SheetFooter className="shrink-0 items-center justify-between border-t">
               {safeStep > 0 && (
-                <Button variant="outline" onClick={() => setStep((s) => s - 1)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setStep((s) => s - 1)}
+                  isDisabled={submitting}
+                  className="mr-auto"
+                >
                   Back
                 </Button>
               )}
-              {!isLast ? (
-                <Button
-                  variant="project"
-                  onClick={() => setStep((s) => s + 1)}
-                  isDisabled={stepOneInvalid}
-                >
-                  Continue
+              <span className="text-xs text-muted">
+                {/* eslint-disable-next-line no-nested-ternary */}
+                {hasEmptyStep
+                  ? `Step ${firstEmptyStepIndex + 1} needs at least one approver, or remove it.`
+                  : // eslint-disable-next-line no-nested-ternary
+                    hasOverCommittedStep
+                    ? `Step ${firstOverCommittedStepIndex + 1}: required approvals can't exceed the number of approvers. Add a group to allow more.`
+                    : // eslint-disable-next-line no-nested-ternary
+                      steps.length === 0
+                      ? "Approval is not configured"
+                      : `${steps.length} step${steps.length === 1 ? "" : "s"} · ${totalApprovers} approver${
+                          totalApprovers === 1 ? "" : "s"
+                        }`}
+              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted">
+                  Step {safeStep + 1} of {WIZARD_STEPS.length}
+                </span>
+                <Button variant="ghost" onClick={() => handleClose(false)} isDisabled={submitting}>
+                  Cancel
                 </Button>
-              ) : (
-                <Button
-                  variant="project"
-                  onClick={onSave}
-                  isPending={submitting}
-                  isDisabled={stepOneInvalid}
-                >
-                  Save policy
-                </Button>
-              )}
-            </div>
-          </SheetFooter>
-        </div>
-      </SheetContent>
-    </Sheet>
+                {!isLast ? (
+                  <Button
+                    variant="project"
+                    onClick={() => setStep((s) => s + 1)}
+                    isDisabled={stepOneInvalid}
+                  >
+                    Continue
+                  </Button>
+                ) : (
+                  <Button
+                    variant="project"
+                    onClick={onSave}
+                    isPending={submitting}
+                    isDisabled={stepOneInvalid}
+                  >
+                    Save policy
+                  </Button>
+                )}
+              </div>
+            </SheetFooter>
+          </div>
+        </SheetContent>
+      </Sheet>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your approval policy changes will be lost."
+      />
+    </>
   );
 };

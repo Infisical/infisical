@@ -1,58 +1,112 @@
 ---
 title: "Launch your first PAM session"
-sidebarTitle: "Launch first session"
-description: "Connect to a PostgreSQL database in under 10 minutes."
+sidebarTitle: "Quickstart"
+description: "Connect to a PostgreSQL database through Infisical PAM."
 ---
 
-This quickstart walks you through connecting to a PostgreSQL database via PAM. You'll create a [folder](/documentation/platform/pam/folders/overview), add a database [account](/documentation/platform/pam/accounts/overview), and launch a session.
-
-<Note>
-**Gateway required** — PAM connects to your databases and servers through a Gateway. If you haven't deployed one yet, [deploy a Gateway](/documentation/platform/gateways/gateway-deployment) first.
-</Note>
+In this quickstart, you add a PostgreSQL database to Infisical PAM, connect to it from your browser, review the recording of what you did, and give your team access to the database. Neither you nor your team ever sees the database password.
 
 ## Prerequisites
 
-- Admin access to PAM
-- A deployed [Gateway](/documentation/platform/gateways/gateway-deployment) that can reach your database
-- Database credentials (username and password)
+- The **Product Admin** [role](/documentation/platform/pam/concepts/access-control) in PAM
+- A [Gateway](/documentation/platform/gateways/gateway-deployment) that can reach your PostgreSQL database
+- The host, port, and database name of the PostgreSQL database, and a username and password for it
 
-## Steps
+## Step 1: Create a folder
+
+A [folder](/documentation/platform/pam/folders/overview) groups the accounts that the same people need to reach.
 
 <Steps>
-  <Step title="Create a Folder">
-    Group accounts by who needs access to them — that's what folders are for.
-
-    1. Go to **Privileged Access Management → Accounts**
-    2. Click the arrow next to **Add Account** and select **Add Folder**
-    3. Name it based on who needs access (e.g., `platform-team`, `checkout-service`)
-    4. Click **Add Folder**
+  <Step>
+    Go to **Privileged Access Management** > **Accounts**, select the arrow next to **Add Account**, and select **Add Folder**.
   </Step>
-  <Step title="Add a Database Account">
-    1. Select **Add Account**
-    2. Select the folder you just created
-    3. Select the `postgres` [template](/documentation/platform/pam/templates/overview)
-    4. Fill in your database connection details (host, port, credentials)
-    5. Select **Create**
-  </Step>
-  <Step title="Launch a Session">
-    1. Go to **Privileged Access Management → Accounts**
-    2. Find the account you created and select the rocket icon (or select **Launch Session** from the menu)
-    3. Select **Connect in Browser**
-
-    You'll see the Data Explorer (browse tables) and SQL Editor (run queries).
+  <Step>
+    Enter a name for the folder, such as `platform-team`, and select **Add Folder**.
   </Step>
 </Steps>
+
+Infisical gives you the **Admin** role on the folder, so you can add accounts to it.
+
+## Step 2: Add the database
+
+An [account](/documentation/platform/pam/accounts/overview) stores the connection details and credentials for one database or server.
+
+<Steps>
+  <Step>
+    Select **Add Account**.
+  </Step>
+  <Step>
+    Select the folder you created, select the `postgres` [template](/documentation/platform/pam/templates/overview), and select **Next**.
+  </Step>
+  <Step>
+    Enter a name for the account, such as `orders-db`.
+  </Step>
+  <Step>
+    Select the **Gateway** that can reach the database, and enter the database's host, port, and database name.
+  </Step>
+  <Step>
+    Enter the username and password, and select **Create**.
+  </Step>
+</Steps>
+
+## Step 3: Connect to the database
+
+<Steps>
+  <Step>
+    On the **Accounts** page, select the rocket icon on the account's row.
+  </Step>
+  <Step>
+    Select **Browser**, then select **Connect in Browser**.
+  </Step>
+</Steps>
+
+The database opens in a new browser tab, where you can browse its tables and run SQL queries. Infisical connects as the account's user, so you don't enter a password.
+
+Run a query or two, then close the tab to end the session.
+
+## Step 4: Review the session
+
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Sessions** and select your session.
+  </Step>
+  <Step>
+    On the **Session Logs** tab, review the queries you ran and the database's responses.
+  </Step>
+</Steps>
+
+## Step 5: Give your team access
+
+Give your team a role on the folder, so they can connect to the database the same way you did.
+
+<Note>
+  Your team members, or a group they belong to, must already be [product members](/documentation/platform/pam/concepts/access-control#product-membership) of PAM.
+</Note>
+
+<Steps>
+  <Step>
+    On the **Accounts** page, open the folder's options menu, select **Configure**, and open the **Permissions** tab.
+  </Step>
+  <Step>
+    Select **Assign Access**.
+  </Step>
+  <Step>
+    Select your team's group, or a team member, as the **Assignee**, and select **Connector** as the **Role**.
+  </Step>
+  <Step>
+    Select **Assign**.
+  </Step>
+</Steps>
+
+The Connector role lets your team launch sessions on every account in the folder, including accounts you add later. To let someone add accounts and manage access to the folder, give them the **Admin** role instead.
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Core Concepts" icon="book" href="/documentation/platform/pam/concepts/pam-components">
-    Understand how folders, templates, and accounts work together.
+  <Card title="Concepts" icon="book-open" href="/documentation/platform/pam/concepts/overview">
+    Learn how Infisical PAM controls access to your infrastructure.
   </Card>
-  <Card title="Team Access Guide" icon="users" href="/documentation/platform/pam/guides/team-access">
-    Grant your team access to production databases.
-  </Card>
-  <Card title="AI Agents" icon="bot" href="/documentation/platform/pam/ai-agents/overview">
-    Point an AI agent at the same account, sandboxed and recorded.
+  <Card title="Access requests" icon="hand" href="/documentation/platform/pam/access-requests/overview">
+    Require approval before a member can use a sensitive account.
   </Card>
 </CardGroup>

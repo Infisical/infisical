@@ -1,85 +1,71 @@
 ---
 title: "Windows accounts"
 sidebarTitle: "Windows"
-description: "Add and connect to Windows servers via RDP."
+description: "Give people remote desktop access to a Windows server with a local account."
 ---
 
-Windows accounts let you manage access to Windows servers via Remote Desktop Protocol (RDP). Users connect through Web Access (a browser-based RDP client) or CLI (using your own RDP client), and every [session](/documentation/platform/pam/sessions/overview) is recorded.
+A Windows account lets people open a remote desktop (RDP) session on one Windows server without seeing the account's password. They connect with an RDP client in the browser or with their own RDP client through the Infisical CLI, and Infisical records each [session](/documentation/platform/pam/sessions/overview).
 
-<Note>
-Windows accounts require session recordings to be stored in an external S3 bucket. Configure this in the [template](/documentation/platform/pam/templates/overview) before creating Windows accounts.
-</Note>
+To sign in to several servers with one Active Directory account, use a [Windows AD account](/documentation/platform/pam/accounts/windows-ad) instead.
 
-## Creating an account
+<Info>
+  Windows accounts are available under Infisical's [Enterprise](https://infisical.com/pricing) plan.
+</Info>
+
+## Prerequisites
+
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
+- A [Gateway](/documentation/platform/gateways/overview) that can reach the server on its RDP port
+- A Windows [template](/documentation/platform/pam/templates/overview) that stores recordings in [your own S3 bucket](/documentation/platform/pam/sessions/external-storage) (the default Windows template stores them in Infisical's database, so a Product Admin must change it or create another template)
+
+## Create an account
 
 <Steps>
-  <Step title="Start adding an account">
-    Go to **Privileged Access Management → Accounts** and select **Add Account**.
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
   </Step>
-  <Step title="Select a folder and template">
-    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a Windows [template](/documentation/platform/pam/templates/overview).
+  <Step>
+    Select the **Folder** to add the account to and a Windows **Account Template**, then select **Next**.
   </Step>
-  <Step title="Enter connection details">
+  <Step>
+    Enter a **Name** for the account and the server's connection details:
+
     | Field | Description |
     |-------|-------------|
-    | **Name** | A descriptive name (e.g., `prod-app-server`) |
-    | **Host** | Server hostname or IP |
-    | **Port** | RDP port (default: 3389) |
+    | **Host** | The server's hostname or IP address |
+    | **RDP Port** | The server's RDP port (defaults to `3389`) |
+    | **WinRM Port** | The server's WinRM port (defaults to `5985`) |
+    | **Use WinRM HTTPS** | Whether to connect to WinRM over HTTPS |
+    | **Gateway** | The Gateway that connects to the server (only shown if the template doesn't set one) |
+
+    Infisical uses WinRM for [credential rotation](/documentation/platform/pam/credential-rotation/windows), [credential health](/documentation/platform/pam/credential-health/overview) checks, and [dependency](/documentation/platform/pam/credential-rotation/windows#dependencies) detection, not for RDP sessions.
   </Step>
-  <Step title="Enter credentials">
-    | Field | Description |
-    |-------|-------------|
-    | **Username** | Windows username |
-    | **Password** | Windows password |
+  <Step>
+    Enter the **Username** and **Password** of the local Windows account.
+    
+    <Note>
+    Enter the username on its own, such as `svc-backup`, without a `.\` or computer name in front of it.
+    </Note>
   </Step>
-  <Step title="Save">
+  <Step>
     Select **Create**.
   </Step>
 </Steps>
 
-## Connecting
+## Connect
 
-<Tabs>
-  <Tab title="Web Access">
-    Web Access provides a browser-based RDP client:
+People can open a remote desktop in the browser or connect through the CLI. To learn how to launch a session, see [Connect to an account](/documentation/platform/pam/accounts/connect).
 
-    1. Go to **Privileged Access Management → Accounts**
-    2. Find the account and click the rocket icon (or select **Launch Session** from the menu)
-    3. Click **Connect in Browser**
-    4. A remote desktop session opens in a new tab
+The CLI starts a local proxy and prints its port:
 
-    You get a full Windows desktop. To disconnect, log out or close the tab.
-  </Tab>
-  <Tab title="CLI">
-    The CLI starts a local proxy that you connect to with your own RDP client:
+```bash
+infisical pam access <folder>/<account>
+```
 
-    ```bash
-    infisical pam access <folder>/<account>
-    ```
+Point your RDP client at `localhost` on that port, for example:
 
-    The command prints the local port. Connect your RDP client to `localhost` on that port:
+```bash
+xfreerdp /v:localhost:<port>
+```
 
-    ```bash
-    # Example using xfreerdp
-    xfreerdp /v:localhost:53306
-    ```
-
-    <Tip>
-    The port is dynamically assigned. Use the `--port` flag if you need a specific port:
-    `infisical pam access <folder>/<account> --port 13389`
-    </Tip>
-
-    Press `Ctrl+C` to end the session and close the proxy.
-  </Tab>
-</Tabs>
-
-## Next steps
-
-<CardGroup cols={2}>
-  <Card title="Windows AD Accounts" icon="windows" iconType="brands" href="/documentation/platform/pam/accounts/windows-ad">
-    Add Windows Active Directory accounts.
-  </Card>
-  <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
-    View and manage sessions.
-  </Card>
-</CardGroup>
+Press `Ctrl+C` to end the session.

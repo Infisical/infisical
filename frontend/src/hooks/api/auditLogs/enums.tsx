@@ -404,12 +404,14 @@ export enum EventType {
   APPROVAL_REQUEST_LIST = "approval-request-list",
   APPROVAL_REQUEST_CREATE = "approval-request-create",
   APPROVAL_REQUEST_APPROVE = "approval-request-approve",
+  APPROVAL_REQUEST_AUTO_APPROVE = "approval-request-auto-approve",
   APPROVAL_REQUEST_REJECT = "approval-request-reject",
   APPROVAL_REQUEST_CANCEL = "approval-request-cancel",
   APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
   APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
   APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke",
   PAM_ACCESS_POLICY_BYPASSED = "pam-access-policy-bypassed",
+  PAM_ACCESS_REQUEST_AUTO_APPROVED = "pam-access-request-auto-approved",
 
   // Dynamic Secrets
   CREATE_DYNAMIC_SECRET = "create-dynamic-secret",
@@ -482,6 +484,8 @@ export enum EventType {
   AGENT_VAULT_VARIABLE_UPDATE = "agent-vault-variable-update",
   AGENT_VAULT_VARIABLE_DELETE = "agent-vault-variable-delete",
   AGENT_VAULT_VARIABLE_VALUE_VIEW = "agent-vault-variable-value-view",
+  AGENT_VAULT_PERSONAL_VALUES_SET = "agent-vault-personal-values-set",
+  AGENT_VAULT_PERSONAL_VALUES_DELETE = "agent-vault-personal-values-delete",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",

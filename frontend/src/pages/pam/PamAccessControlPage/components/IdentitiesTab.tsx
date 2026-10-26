@@ -312,10 +312,10 @@ export const IdentitiesTab = () => {
       />
 
       <AlertDialog
+        isPending={isRemoving}
         open={!!identityToRemove}
         confirmationValue={isRemovingManagedIdentity ? "delete" : "remove"}
         onOpenChange={(isOpen) => {
-          if (!isOpen && isRemoving) return;
           if (!isOpen) setIdentityToRemove(null);
         }}
       >
@@ -344,14 +344,12 @@ export const IdentitiesTab = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogConfirmationField
-            inputProps={{ disabled: isRemoving }}
             onConfirm={() => handleDeleteIdentity().catch(() => undefined)}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isRemoving}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={isRemoving}
               onClick={(event) => {
                 event.preventDefault();
                 handleDeleteIdentity().catch(() => undefined);

@@ -32,6 +32,11 @@ import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-
 import { agentVaultServiceVariableReferenceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-variable-reference-dal";
 import { agentVaultMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-member-dal";
 import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
+import {
+  agentVaultPersonalValueDALFactory,
+  agentVaultPersonalValueReferenceDALFactory
+} from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-dal";
+import { agentVaultPersonalValueServiceFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-service";
 import { agentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
 import { agentVaultProxyDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-dal";
 import { agentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
@@ -295,6 +300,8 @@ import {
   approvalRequestStepEligibleApproversDALFactory,
   approvalRequestStepsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
+import { approvalPolicyAutoApprovalDALFactory } from "@app/services/approval-policy/auto-approval/auto-approval-dal";
+import { autoApprovalServiceFactory } from "@app/services/approval-policy/auto-approval/auto-approval-service";
 import { certRequestApprovalResourceFactory } from "@app/services/approval-policy/cert-request/cert-request-policy-factory";
 import { codeSigningApprovalResourceFactory } from "@app/services/approval-policy/code-signing/code-signing-policy-factory";
 import { secretAccessApprovalGlobalResourceFactory } from "@app/services/approval-policy/secret-access/secret-access-policy-factory";
@@ -859,6 +866,7 @@ export const registerRoutes = async (
   const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
   const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
   const approvalPolicyBypassersDAL = approvalPolicyBypassersDALFactory(db);
+  const approvalPolicyAutoApprovalDAL = approvalPolicyAutoApprovalDALFactory(db);
   const approvalPolicySecretEnvironmentDAL = approvalPolicySecretEnvironmentDALFactory(db);
   const approvalRequestDAL = approvalRequestDALFactory(db);
   const secretChangeGlobalPolicyBridgeDAL = secretChangeGlobalPolicyBridgeDALFactory(db);
@@ -1997,6 +2005,8 @@ export const registerRoutes = async (
   const agentVaultServiceSubstitutionDAL = agentVaultServiceSubstitutionDALFactory(db);
   const agentVaultVariableDAL = agentVaultVariableDALFactory(db);
   const agentVaultServiceVariableReferenceDAL = agentVaultServiceVariableReferenceDALFactory(db);
+  const agentVaultPersonalValueDAL = agentVaultPersonalValueDALFactory(db);
+  const agentVaultPersonalValueReferenceDAL = agentVaultPersonalValueReferenceDALFactory(db);
   const agentVaultSessionDAL = agentVaultSessionDALFactory(db);
   const agentVaultSessionAccessBundleDAL = agentVaultSessionAccessBundleDALFactory(db);
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
@@ -2005,7 +2015,19 @@ export const registerRoutes = async (
 
   const agentVaultVariableService = agentVaultVariableServiceFactory({
     agentVaultVariableDAL,
+    agentVaultPersonalValueDAL,
+    membershipDAL,
     permissionService,
+    kmsService
+  });
+
+  const agentVaultPersonalValueService = agentVaultPersonalValueServiceFactory({
+    agentVaultPersonalValueDAL,
+    agentVaultPersonalValueReferenceDAL,
+    agentVaultVariableDAL,
+    agentVaultServiceDAL,
+    permissionService,
+    membershipDAL,
     kmsService
   });
 
@@ -2016,6 +2038,8 @@ export const registerRoutes = async (
     agentVaultServiceSubstitutionDAL,
     agentVaultVariableDAL,
     agentVaultServiceVariableReferenceDAL,
+    agentVaultPersonalValueDAL,
+    agentVaultPersonalValueService,
     permissionService,
     kmsService,
     membershipDAL,
@@ -2056,7 +2080,10 @@ export const registerRoutes = async (
     userAliasDAL,
     orgDAL,
     permissionService,
-    usageMeteringService
+    usageMeteringService,
+    agentVaultPersonalValueDAL,
+    userGroupMembershipDAL,
+    identityGroupMembershipDAL
   });
 
   const pamProjectResolver = pamProjectResolverFactory({
@@ -2144,6 +2171,7 @@ export const registerRoutes = async (
     agentVaultServiceCustomHeaderDAL,
     agentVaultServiceSubstitutionDAL,
     agentVaultVariableDAL,
+    agentVaultPersonalValueDAL,
     agentVaultSessionDAL,
     agentVaultSessionLogConfigDAL,
     membershipDAL,
@@ -3949,6 +3977,15 @@ export const registerRoutes = async (
     }) as TApprovalResourceRegistry[ApprovalPolicyType]
   };
 
+  const autoApprovalService = autoApprovalServiceFactory({
+    approvalPolicyAutoApprovalDAL,
+    appConnectionDAL,
+    appConnectionService,
+    kmsService,
+    gatewayV2Service,
+    gatewayPoolService
+  });
+
   const approvalPolicyService = approvalPolicyServiceFactory({
     approvalPolicyDAL,
     approvalPolicyStepsDAL,
@@ -3972,6 +4009,7 @@ export const registerRoutes = async (
     slackIntegrationDAL,
     kmsService,
     eventEmitter: eventOutboxService,
+    autoApprovalService,
     resources: approvalResources
   });
 
@@ -4722,6 +4760,7 @@ export const registerRoutes = async (
     agentVaultProjectResolver,
     agentVaultAccessBundle: agentVaultAccessBundleService,
     agentVaultVariable: agentVaultVariableService,
+    agentVaultPersonalValue: agentVaultPersonalValueService,
     agentVaultProxy: agentVaultProxyService,
     agentVaultSession: agentVaultSessionService,
     agentVaultSessionLog: agentVaultSessionLogService,

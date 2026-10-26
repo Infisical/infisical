@@ -4,7 +4,9 @@ import {
   SecretSyncImportBehavior,
   SecretSyncInitialSyncBehavior
 } from "@app/hooks/api/secretSyncs";
+import { CloudflarePagesVariableType } from "@app/hooks/api/secretSyncs/types/cloudflare-pages-sync";
 import { CloudflareSecretsStoreScope } from "@app/hooks/api/secretSyncs/types/cloudflare-secrets-store-sync";
+import { CloudflareWorkersVariableType } from "@app/hooks/api/secretSyncs/types/cloudflare-workers-sync";
 import { GcpSyncScope } from "@app/hooks/api/secretSyncs/types/gcp-sync";
 import { HumanitecSyncScope } from "@app/hooks/api/secretSyncs/types/humanitec-sync";
 import { RenderSyncScope } from "@app/hooks/api/secretSyncs/types/render-sync";
@@ -482,4 +484,18 @@ export const CLOUDFLARE_SECRETS_STORE_SCOPE_LABELS: Record<CloudflareSecretsStor
   [CloudflareSecretsStoreScope.Workers]: "Workers",
   [CloudflareSecretsStoreScope.AiGateway]: "AI Gateway",
   [CloudflareSecretsStoreScope.Containers]: "Containers"
+};
+
+export const CLOUDFLARE_PAGES_VARIABLE_TYPE_LABELS: Record<CloudflarePagesVariableType, string> = {
+  [CloudflarePagesVariableType.Secret]: "Secret",
+  [CloudflarePagesVariableType.Text]: "Text"
+};
+
+export const CLOUDFLARE_WORKERS_VARIABLE_TYPE_LABELS: Record<
+  CloudflareWorkersVariableType,
+  string
+> = {
+  [CloudflareWorkersVariableType.Secret]: "Secret",
+  [CloudflareWorkersVariableType.Text]: "Text",
+  [CloudflareWorkersVariableType.Json]: "JSON"
 };

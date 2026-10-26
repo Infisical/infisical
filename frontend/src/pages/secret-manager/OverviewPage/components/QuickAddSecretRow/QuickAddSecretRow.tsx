@@ -33,7 +33,8 @@ type Props = {
     environment: string,
     key: string,
     value: string,
-    comment?: string
+    comment?: string,
+    isDirectSave?: boolean
   ) => Promise<void>;
   onPasteSecrets: (env: TParsedEnv) => void;
   renderResourceTypeTrigger: (isDisabled: boolean) => ReactNode;
@@ -111,7 +112,10 @@ export const QuickAddSecretRow = ({
     [activityId, onActivityChange]
   );
 
-  const submitDraft = async ({ refocus = true }: { refocus?: boolean } = {}) => {
+  const submitDraft = async ({
+    refocus = true,
+    isDirectSave = true
+  }: { refocus?: boolean; isDirectSave?: boolean } = {}) => {
     const normalizedKey = key.trim();
 
     if (!normalizedKey) {
@@ -132,7 +136,7 @@ export const QuickAddSecretRow = ({
     try {
       await Promise.all(
         environments.map((environment) =>
-          onCreateSecret(environment, normalizedKey, value, comment)
+          onCreateSecret(environment, normalizedKey, value, comment, isDirectSave)
         )
       );
       setKey("");
@@ -205,6 +209,10 @@ export const QuickAddSecretRow = ({
       ref={rowRef}
       className={isActive ? `group ${TABLE_ROW_ACTIVE_FILTER_CLASS_NAME}` : "group"}
       onFocusCapture={() => setIsActive(true)}
+      onMouseDown={(event) => {
+        if (!(event.target as HTMLElement).closest("input, textarea, button, a, [tabindex]"))
+          event.preventDefault();
+      }}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
           setIsActive(false);
@@ -220,7 +228,7 @@ export const QuickAddSecretRow = ({
           return;
         }
 
-        submitDraft({ refocus: false }).catch(() => undefined);
+        submitDraft({ refocus: false, isDirectSave: false }).catch(() => undefined);
       }}
     >
       <TableCell

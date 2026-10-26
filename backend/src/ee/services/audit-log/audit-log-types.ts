@@ -216,7 +216,8 @@ export enum SecretApprovalEvent {
   Delete = "delete",
   CreateMany = "create-many",
   UpdateMany = "update-many",
-  DeleteMany = "delete-many"
+  DeleteMany = "delete-many",
+  Commit = "commit"
 }
 
 export enum UserAgentType {
@@ -822,6 +823,8 @@ export enum EventType {
   AGENT_VAULT_VARIABLE_UPDATE = "agent-vault-variable-update",
   AGENT_VAULT_VARIABLE_DELETE = "agent-vault-variable-delete",
   AGENT_VAULT_VARIABLE_VALUE_VIEW = "agent-vault-variable-value-view",
+  AGENT_VAULT_PERSONAL_VALUES_SET = "agent-vault-personal-values-set",
+  AGENT_VAULT_PERSONAL_VALUES_DELETE = "agent-vault-personal-values-delete",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
@@ -846,12 +849,14 @@ export enum EventType {
   APPROVAL_REQUEST_LIST = "approval-request-list",
   APPROVAL_REQUEST_CREATE = "approval-request-create",
   APPROVAL_REQUEST_APPROVE = "approval-request-approve",
+  APPROVAL_REQUEST_AUTO_APPROVE = "approval-request-auto-approve",
   APPROVAL_REQUEST_REJECT = "approval-request-reject",
   APPROVAL_REQUEST_CANCEL = "approval-request-cancel",
   APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
   APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
   APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke",
   PAM_ACCESS_POLICY_BYPASSED = "pam-access-policy-bypassed",
+  PAM_ACCESS_REQUEST_AUTO_APPROVED = "pam-access-request-auto-approved",
   ACCESS_APPROVAL_REQUEST_CREATE = "access-approval-request-create",
   ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
   ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
@@ -6551,6 +6556,8 @@ interface AgentVaultServiceCreateEvent {
     headerPrefix?: string;
     allowedMethods?: string[] | null;
     allowedPathPrefixes?: string[] | null;
+    // The fields each member sets for themselves, such as credential-value or credential-username.
+    memberProvidedFields?: string[];
     // Names and placeholders only. A sealed value must never reach an audit row.
     customHeaderNames?: string[];
     substitutionPlaceholders?: string[];
@@ -6571,6 +6578,8 @@ interface AgentVaultServiceUpdateEvent {
     headerPrefix?: string;
     allowedMethods?: string[] | null;
     allowedPathPrefixes?: string[] | null;
+    // The fields each member sets for themselves after the update, present when it touched the credential.
+    memberProvidedFields?: string[];
     customHeaderNames?: string[];
     customHeadersReplaced?: string[];
     substitutionPlaceholders?: string[];
@@ -6600,6 +6609,8 @@ interface AgentVaultVariableCreateEvent {
     accessBundleName?: string;
     variableId: string;
     key: string;
+    // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
+    scope?: string;
   };
 }
 
@@ -6610,6 +6621,8 @@ interface AgentVaultVariableUpdateEvent {
     accessBundleName?: string;
     variableId: string;
     key: string;
+    // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
+    scope?: string;
     // Present only when the update changed the key.
     previousKey?: string;
     valueReplaced: boolean;
@@ -6623,6 +6636,8 @@ interface AgentVaultVariableDeleteEvent {
     accessBundleName?: string;
     variableId: string;
     key: string;
+    // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
+    scope?: string;
   };
 }
 
@@ -6633,6 +6648,35 @@ interface AgentVaultVariableValueViewEvent {
     accessBundleName?: string;
     variableId: string;
     key: string;
+    // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
+    scope?: string;
+  };
+}
+
+// The personal values the actor set for a service that leaves some fields to each member. Field names only, never a value.
+interface AgentVaultPersonalValuesSetEvent {
+  type: EventType.AGENT_VAULT_PERSONAL_VALUES_SET;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    serviceId: string;
+    serviceName: string;
+    // Which credential the fields belong to: credential-value is a token for bearer and a password for basic.
+    credentialType: string;
+    // The fields this update set. A field it left out kept its saved value.
+    fields: string[];
+    variableKeys: string[];
+  };
+}
+
+interface AgentVaultPersonalValuesDeleteEvent {
+  type: EventType.AGENT_VAULT_PERSONAL_VALUES_DELETE;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    serviceId: string;
+    serviceName: string;
+    credentialType: string;
   };
 }
 
@@ -6906,6 +6950,7 @@ interface PamApprovalConfigUpdateEvent {
     stepCount: number;
     notificationConfigCount?: number;
     breakGlassUserCount?: number;
+    autoApprovalRuleCount?: number;
   };
 }
 
@@ -7109,6 +7154,25 @@ interface ApprovalRequestApproveEvent {
   } & TApprovalRequestSubjectMetadata;
 }
 
+// The rule that approved the request and what it checked, so an admin can see why access was granted
+type TAutoApprovalAuditMetadata = {
+  ruleId: string | null;
+  ruleName?: string;
+  linkedRecords: { label: string; value: string }[];
+  conditions: string[];
+};
+
+interface ApprovalRequestAutoApproveEvent {
+  type: EventType.APPROVAL_REQUEST_AUTO_APPROVE;
+  metadata: {
+    policyType: string;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
+  } & TAutoApprovalAuditMetadata &
+    TApprovalRequestSubjectMetadata;
+}
+
 interface ApprovalRequestRejectEvent {
   type: EventType.APPROVAL_REQUEST_REJECT;
   metadata: {
@@ -7176,6 +7240,22 @@ interface PamAccessPolicyBypassedEvent {
     bypassReason: string;
     approverCount: number;
   };
+}
+
+interface PamAccessRequestAutoApprovedEvent {
+  type: EventType.PAM_ACCESS_REQUEST_AUTO_APPROVED;
+  metadata: {
+    approvalRequestId: string;
+    grantId?: string;
+    accountId?: string;
+    accountName?: string;
+    folderId?: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
+    duration?: string;
+    accessType: string;
+  } & TAutoApprovalAuditMetadata;
 }
 
 interface AccessApprovalRequestCreateEvent {
@@ -8630,6 +8710,8 @@ export type Event =
   | AgentVaultVariableUpdateEvent
   | AgentVaultVariableDeleteEvent
   | AgentVaultVariableValueViewEvent
+  | AgentVaultPersonalValuesSetEvent
+  | AgentVaultPersonalValuesDeleteEvent
   | AgentVaultProductMemberAddEvent
   | AgentVaultProductMemberUpdateEvent
   | AgentVaultProductMemberRemoveEvent
@@ -8686,12 +8768,14 @@ export type Event =
   | ApprovalRequestListEvent
   | ApprovalRequestCreateEvent
   | ApprovalRequestApproveEvent
+  | ApprovalRequestAutoApproveEvent
   | ApprovalRequestRejectEvent
   | ApprovalRequestCancelEvent
   | ApprovalRequestGrantListEvent
   | ApprovalRequestGrantGetEvent
   | ApprovalRequestGrantRevokeEvent
   | PamAccessPolicyBypassedEvent
+  | PamAccessRequestAutoApprovedEvent
   | AccessApprovalRequestCreateEvent
   | AccessApprovalRequestReviewEvent
   | AccessApprovalRequestRevokeEvent

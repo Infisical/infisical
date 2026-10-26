@@ -1,21 +1,23 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { HardDriveIcon, UserIcon, UsersIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
   ButtonGroup,
+  Combobox,
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DiscardChangesAlertDialog,
   Field,
   FieldContent,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   Select,
   SelectContent,
   SelectItem,
@@ -36,6 +38,7 @@ import {
   useAddSignerUserMembers
 } from "@app/hooks/api/signers";
 import { useGetOrgUsers } from "@app/hooks/api/users";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
 type Props = {
   isOpen: boolean;
@@ -48,18 +51,14 @@ type Kind = "user" | "identity" | "group";
 
 type Option = { value: string; label: string };
 
-const formatMemberOptionLabel = (option: Option, meta: { context: "menu" | "value" }) => (
-  <span className={meta.context === "value" ? "block max-w-[22rem] truncate" : "block truncate"}>
-    {option.label}
-  </span>
-);
-
 export const AddSignerMemberModal = ({
   isOpen,
   onOpenChange,
   signerId,
   existingMembers
 }: Props) => {
+  const formId = useId();
+  const memberId = useId();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const orgId = currentOrg?.id ?? "";
@@ -128,12 +127,28 @@ export const AddSignerMemberModal = ({
     setRole(SignerMemberRole.Operator);
   };
 
+  const close = () => {
+    reset();
+    onOpenChange(false);
+  };
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({
+      isDirty:
+        kind !== "user" ||
+        selectedUsers.length > 0 ||
+        selectedIdentities.length > 0 ||
+        selectedGroups.length > 0 ||
+        role !== SignerMemberRole.Operator,
+      onDiscard: close
+    });
   const handleClose = (open: boolean) => {
-    if (!open) reset();
-    onOpenChange(open);
+    if (submitting) return;
+    if (open) onOpenChange(true);
+    else requestDiscard();
   };
 
   const onSubmit = async () => {
+    if (submitting) return;
     setSubmitting(true);
     try {
       if (kind === "user" && selectedUsers.length > 0) {
@@ -160,7 +175,7 @@ export const AddSignerMemberModal = ({
         );
         createNotification({ type: "success", text: "Members added" });
       }
-      handleClose(false);
+      close();
     } catch (err) {
       createNotification({
         type: "error",
@@ -184,84 +199,122 @@ export const AddSignerMemberModal = ({
     else if (kind === "identity") setSelectedIdentities(next);
     else setSelectedGroups(next);
   };
+  const selectionLabel = { user: "users", identity: "identities", group: "groups" }[kind];
+  const isLoading = {
+    user: usersQuery.isPending,
+    identity: projectIdentitiesQuery.isPending,
+    group: groupsQuery.isPending
+  }[kind];
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Add member</DialogTitle>
-          <DialogDescription>
-            Pick existing org members, machine identities, or groups to attach to this signer.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="max-w-xl" isPending={submitting}>
+          <DialogHeader>
+            <DialogTitle>Add member</DialogTitle>
+            <DialogDescription>
+              Pick existing org members, machine identities, or groups to attach to this signer.
+            </DialogDescription>
+          </DialogHeader>
 
-        <FieldGroup>
-          <ButtonGroup className="w-full">
-            {[
-              { value: "user" as const, label: "Users", icon: UserIcon },
-              { value: "identity" as const, label: "Machine Identities", icon: HardDriveIcon },
-              { value: "group" as const, label: "Groups", icon: UsersIcon }
-            ].map((opt) => {
-              const Icon = opt.icon;
-              return (
-                <Button
-                  key={opt.value}
-                  variant={kind === opt.value ? "project" : "outline"}
-                  onClick={() => setKind(opt.value)}
-                  className="flex-1"
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{opt.label}</span>
-                </Button>
-              );
-            })}
-          </ButtonGroup>
+          <DialogBody>
+            <form
+              id={formId}
+              onSubmit={(event) => {
+                event.preventDefault();
+                onSubmit();
+              }}
+            >
+              <fieldset disabled={submitting}>
+                <FieldGroup>
+                  <ButtonGroup className="w-full">
+                    {[
+                      { value: "user" as const, label: "Users", icon: UserIcon },
+                      {
+                        value: "identity" as const,
+                        label: "Machine Identities",
+                        icon: HardDriveIcon
+                      },
+                      { value: "group" as const, label: "Groups", icon: UsersIcon }
+                    ].map((opt) => {
+                      const Icon = opt.icon;
+                      return (
+                        <Button
+                          key={opt.value}
+                          variant={kind === opt.value ? "project" : "outline"}
+                          onClick={() => setKind(opt.value)}
+                          className="flex-1"
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          <span>{opt.label}</span>
+                        </Button>
+                      );
+                    })}
+                  </ButtonGroup>
 
-          <Field>
-            <FieldLabel>
-              {/* eslint-disable-next-line no-nested-ternary */}
-              Select {kind === "user" ? "users" : kind === "identity" ? "identities" : "groups"}
-            </FieldLabel>
-            <FieldContent>
-              <FilterableSelect
-                isMulti
-                options={optionsForKind}
-                value={valueForKind}
-                onChange={(selected) => setSelected((selected as Option[] | null) ?? [])}
-                placeholder="Pick..."
-                formatOptionLabel={formatMemberOptionLabel}
-              />
-            </FieldContent>
-          </Field>
+                  <Field>
+                    <FieldLabel htmlFor={memberId}>Select {selectionLabel}</FieldLabel>
+                    <FieldContent>
+                      <Combobox
+                        key={kind}
+                        id={memberId}
+                        multiple
+                        options={optionsForKind}
+                        getOptionValue={(option) => option.value}
+                        getOptionLabel={(option) => option.label}
+                        includeMissingSelectedOptions={false}
+                        value={valueForKind}
+                        onValueChange={setSelected}
+                        isDisabled={submitting}
+                        isLoading={isLoading}
+                        placeholder="Pick..."
+                      />
+                    </FieldContent>
+                  </Field>
 
-          <Field>
-            <FieldLabel>Role</FieldLabel>
-            <FieldContent>
-              <Select value={role} onValueChange={(v) => setRole(v as SignerMemberRole)}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent position="popper" align="start" sideOffset={4}>
-                  {Object.values(SignerMemberRole).map((r) => (
-                    <SelectItem key={r} value={r} description={signerMemberRoleDescriptions[r]}>
-                      {signerMemberRoleLabels[r]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FieldContent>
-          </Field>
-        </FieldGroup>
+                  <Field>
+                    <FieldLabel>Role</FieldLabel>
+                    <FieldContent>
+                      <Select value={role} onValueChange={(v) => setRole(v as SignerMemberRole)}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent position="popper" align="start" sideOffset={4}>
+                          {Object.values(SignerMemberRole).map((r) => (
+                            <SelectItem
+                              key={r}
+                              value={r}
+                              description={signerMemberRoleDescriptions[r]}
+                            >
+                              {signerMemberRoleLabels[r]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FieldContent>
+                  </Field>
+                </FieldGroup>
+              </fieldset>
+            </form>
+          </DialogBody>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => handleClose(false)}>
-            Cancel
-          </Button>
-          <Button variant="project" onClick={onSubmit} isPending={submitting}>
-            Add members
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => handleClose(false)} isDisabled={submitting}>
+              Cancel
+            </Button>
+            <Button type="submit" form={formId} variant="project" isPending={submitting}>
+              Add members
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your member selections and role will be lost."
+      />
+    </>
   );
 };

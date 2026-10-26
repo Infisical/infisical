@@ -558,6 +558,77 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Users with no direct org row never show up in findAllOrgMembers, so this is the only place they come
+  // from. Expired temporary roles are skipped to match isActiveRole. Roles come back permanent first so
+  // the one a client shows when it has room for only one is never the one about to expire. The group id
+  // breaks name ties: a sub-org can hold a local group and a linked parent group with the same name, and
+  // sqlNestRelationships nests each role under the group it last appended, so a group's rows must stay
+  // contiguous.
+  const findAllOrgGroupUserAccess = async (orgId: string) => {
+    try {
+      const rows = await db
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorGroupId`)
+        .join(TableName.Groups, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
+        .join(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.groupId`, `${TableName.Groups}.id`)
+        .join(TableName.Users, `${TableName.Users}.id`, `${TableName.UserGroupMembership}.userId`)
+        .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .where(`${TableName.Users}.isGhost`, false)
+        .where((qb) => {
+          void qb
+            .where(`${TableName.MembershipRole}.isTemporary`, false)
+            .orWhere(`${TableName.MembershipRole}.temporaryAccessEndTime`, ">", new Date());
+        })
+        .select(
+          db.ref("id").withSchema(TableName.Users).as("userId"),
+          db.ref("email").withSchema(TableName.Users),
+          db.ref("username").withSchema(TableName.Users),
+          db.ref("firstName").withSchema(TableName.Users),
+          db.ref("lastName").withSchema(TableName.Users),
+          db.ref("superAdmin").withSchema(TableName.Users),
+          db.ref("id").withSchema(TableName.Groups).as("groupId"),
+          db.ref("name").withSchema(TableName.Groups).as("groupName"),
+          db.ref("slug").withSchema(TableName.Groups).as("groupSlug"),
+          db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
+          db.ref("role").withSchema(TableName.MembershipRole),
+          db.ref("customRoleId").withSchema(TableName.MembershipRole).as("roleId")
+        )
+        .orderBy([
+          { column: `${TableName.Groups}.name` },
+          { column: `${TableName.Groups}.id` },
+          { column: `${TableName.MembershipRole}.isTemporary` },
+          { column: `${TableName.MembershipRole}.temporaryAccessEndTime` },
+          { column: `${TableName.MembershipRole}.role` }
+        ]);
+
+      return sqlNestRelationships({
+        data: rows,
+        key: "userId",
+        parentMapper: ({ userId, email, username, firstName, lastName, superAdmin }) => ({
+          user: { id: userId, email, username, firstName, lastName, superAdmin }
+        }),
+        childrenMapper: [
+          {
+            key: "groupId",
+            label: "groups" as const,
+            mapper: ({ groupId, groupName, groupSlug }) => ({ id: groupId, name: groupName, slug: groupSlug }),
+            childrenMapper: [
+              {
+                key: "membershipRoleId",
+                label: "roles" as const,
+                mapper: ({ role, roleId }) => ({ role, roleId: roleId ?? null })
+              }
+            ]
+          }
+        ]
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find all org group user access" });
+    }
+  };
+
   // TODO(sub-org): updated this logic later
   const countAllOrgMembers = async (orgId: string) => {
     try {
@@ -1187,6 +1258,7 @@ export const orgDALFactory = (db: TDbClient) => {
     ...orgOrm,
     findOrgByProjectId,
     findAllOrgMembers,
+    findAllOrgGroupUserAccess,
     countAllOrgMembers,
     countSecretManagerProjectMembers,
     listSubOrganizations,

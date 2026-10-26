@@ -14,6 +14,12 @@ type TServiceVariables = {
   };
   /** Opens the new-variable dialog on top of the sheet. Resolves to null if it is dismissed. */
   requestVariable: (key: string) => Promise<TAgentVaultVariable | null>;
+  /**
+   * Set when the fields reference the caller's own variables instead of the global ones. There are few enough to hold
+   * whole, so the list is filtered here rather than searched on the server. Undefined while it loads.
+   */
+  localVariables?: TAgentVaultVariable[];
+  isLocal?: boolean;
 };
 
 export const NO_STORED_KEYS: TServiceVariables["storedKeys"] = {

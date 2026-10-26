@@ -1,55 +1,57 @@
 ---
 title: "PAM session recording"
 sidebarTitle: "Session recording"
-description: "How PAM captures and stores session activity."
+description: "Review what happened during each session on your accounts."
 ---
 
-PAM captures everything that happens during a session — every query, command, and response. This gives you a complete record for compliance audits and incident investigation.
+Infisical records what happens in each [session](/documentation/platform/pam/sessions/overview), whether the user connected in the browser or through the CLI. Use recordings to investigate incidents and to show auditors what was done on an account.
+
+The [Gateway](/documentation/platform/gateways/overview) records the session as the traffic passes through it, encrypts the recording, and uploads it while the session runs. To learn more, see [Architecture](/documentation/platform/pam/architecture#recording).
 
 ## What gets recorded
 
-The content depends on the account type:
+What a recording contains depends on the [account type](/documentation/platform/pam/accounts/overview):
 
-**PostgreSQL sessions:**
-- All SQL queries executed
-- Query responses and result summaries (not full result data)
-- Timestamps for each action
+| Account type | What the recording contains |
+| --- | --- |
+| PostgreSQL, MySQL, Microsoft SQL Server, Oracle, MongoDB, Redis, Snowflake, ClickHouse | Each query or command, and the database's response |
+| SSH | Terminal input and output, commands run without a shell, and SFTP file operations |
+| Kubernetes, GCP service account, Azure CLI | Each HTTP request to the provider's API, and its response |
+| Windows, Windows AD | A replay of the remote desktop |
+| AWS IAM | Nothing, because connections don't go through the Gateway (use [AWS CloudTrail](/documentation/platform/pam/accounts/aws-iam#track-activity-in-aws) instead) |
 
-**SSH sessions:**
-- All commands entered
-- Command output
-- Timestamps for each action
+## View a recording
 
-Both Web Access and CLI sessions are recorded the same way.
+To view a recording, you need the **Admin** or **Auditor** [role](/documentation/platform/pam/concepts/access-control) on the account or its folder.
 
-Recording happens at the [Gateway](/documentation/platform/gateways/overview) level — events are captured, encrypted, and uploaded in real-time. See [Architecture](/documentation/platform/pam/architecture) for details on how this works.
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Sessions** and select the session.
+  </Step>
+  <Step>
+    Review the recording:
 
-## Storage options
+    - For Windows and Windows AD accounts, play the replay on the **Session Recording** tab
+    - For every other account type, read the entries on the **Session Logs** tab, and search them with the search bar
+  </Step>
+</Steps>
 
-Recording is always enabled. You can configure where recordings are stored at the **[template](/documentation/platform/pam/templates/overview) level** — all accounts using a template inherit its storage settings.
+You can view the recording of an active session while it's still running.
 
-| Backend | Description |
-|---------|-------------|
-| **Internal** | Stored in Infisical's managed database |
-| **External S3** | Stored in your own S3 bucket |
+## Mask sensitive values
 
-For most cases, internal storage works fine. Use [External Storage](/documentation/platform/pam/sessions/external-storage) if you need control over data residency or retention.
+Under **Session Log Masking**, the account's [template](/documentation/platform/pam/templates/overview) can mask sensitive values before Infisical stores the recording:
 
-## Viewing recordings
+- **Built-in Detection** masks API keys and tokens from known providers, and the account's own credentials
+- **Custom patterns** mask any text that matches one of your regular expressions
 
-1. Go to **Sessions** and select a session
-2. The session detail page shows the full log of activity
-3. Use the search bar to find specific content
+You can't mask recordings of Windows and Windows AD sessions.
 
-Recordings are available in real-time for both active and completed sessions.
+## Where recordings are stored
 
-## Next steps
+Each [template](/documentation/platform/pam/templates/overview) sets where Infisical stores the recordings of the accounts that use it:
 
-<CardGroup cols={2}>
-  <Card title="External Storage" icon="cloud" href="/documentation/platform/pam/sessions/external-storage">
-    Store recordings in your own S3 bucket.
-  </Card>
-  <Card title="Auditing" icon="clipboard-list" href="/documentation/platform/pam/auditing">
-    View the complete audit trail.
-  </Card>
-</CardGroup>
+- **Internal Database**: Infisical stores recordings in its own database
+- **S3 Bucket**: Infisical stores recordings in an S3-compatible bucket that you own
+
+Windows and Windows AD accounts require a bucket. To set one up, see [External storage](/documentation/platform/pam/sessions/external-storage).
