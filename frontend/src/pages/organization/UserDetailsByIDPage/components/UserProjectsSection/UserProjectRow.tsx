@@ -77,7 +77,7 @@ export const UserProjectRow = ({
       <TableCell>{`${formatProjectRoleName(roles[0].role, roles[0].customRoleName)}${
         roles.length > 1 ? ` (+${roles.length - 1})` : ""
       }`}</TableCell>
-      <TableCell>
+      <TableCell data-row-interactive>
         <DropdownMenu>
           <DropdownMenuTrigger>
             <IconButton variant="ghost" size="xs">

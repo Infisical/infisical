@@ -85,7 +85,7 @@ export const IdentityProjectRow = ({
         roles.length > 1 ? ` (+${roles.length - 1})` : ""
       }`}</TableCell>
       <TableCell>{format(new Date(createdAt), "yyyy-MM-dd")}</TableCell>
-      <TableCell>
+      <TableCell data-row-interactive>
         <DropdownMenu>
           <DropdownMenuTrigger>
             <IconButton variant="ghost" size="xs">

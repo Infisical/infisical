@@ -74,7 +74,7 @@ export const GroupProjectRow = ({ project, handlePopUpOpen }: Props) => {
       </TableCell>
       <TableCell>{getProjectTitle(project.type as ProjectType)}</TableCell>
       <TableCell>{format(new Date(project.joinedGroupAt), "yyyy-MM-dd")}</TableCell>
-      <TableCell>
+      <TableCell data-row-interactive>
         <DropdownMenu>
           <DropdownMenuTrigger>
             <IconButton variant="ghost" size="xs">
