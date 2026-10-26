@@ -3655,7 +3655,13 @@ const OverviewPageContent = () => {
       onSecretCreate={handleSecretCreate}
       onSecretDelete={handleSecretDelete}
       onSecretUpdate={handleSecretUpdate}
-      key={rowKey}
+      key={
+        (isSingleEnvView &&
+          pendingChanges.secrets.find(
+            (change) => change.type === PendingAction.Create && change.secretKey === key
+          )?.id) ||
+        rowKey
+      }
       environments={visibleEnvs}
       secretKey={key}
       getSecretByKey={getSecretByKeyWithPending}

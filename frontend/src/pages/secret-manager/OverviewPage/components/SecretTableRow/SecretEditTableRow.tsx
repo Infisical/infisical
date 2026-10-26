@@ -252,6 +252,7 @@ export const SecretEditTableRow = ({
   const isPendingBatchChange = isBatchMode && hasPendingChange;
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
+  const [isNameTooltipOpen, setIsNameTooltipOpen] = useState(false);
   const [isResolvedValueOpen, setIsResolvedValueOpen] = useToggle();
   const isFieldActive = isFieldFocused || isResolvedValueOpen;
   const [isCopied, , setIsCopied] = useTimedReset<boolean>({ initialState: false });
@@ -575,7 +576,14 @@ export const SecretEditTableRow = ({
         !areMetadataEqual(watchedMetadata, originalMetadataRef.current);
 
       // If nothing changed from original, remove pending change directly
-      if (!isValueChanged && !isKeyDirty && !isCommentDirty && !isTagsDirty && !isMetadataDirty) {
+      if (
+        !isPendingCreate &&
+        !isValueChanged &&
+        !isKeyDirty &&
+        !isCommentDirty &&
+        !isTagsDirty &&
+        !isMetadataDirty
+      ) {
         if (lastAppliedRef.current.value !== undefined) {
           onBatchRevert?.(environment, secretName);
           lastAppliedRef.current = {
@@ -628,6 +636,7 @@ export const SecretEditTableRow = ({
 
       // If only the key was dirty and it conflicted, reset key back and bail
       if (
+        !isPendingCreate &&
         !isValueChanged &&
         !effectiveKeyDirty &&
         !isCommentDirty &&
@@ -675,14 +684,14 @@ export const SecretEditTableRow = ({
         onSecretUpdate({
           env: environment,
           key: secretName,
-          value: isValueChanged ? ((watchedValue as string) ?? "") : undefined,
+          value: isPendingCreate || isValueChanged ? ((watchedValue as string) ?? "") : undefined,
           secretValueHidden,
           type: SecretType.Shared,
           secretId,
           newSecretName: effectiveKeyDirty ? (watchedKey as string) : undefined,
-          secretComment: isCommentDirty ? (watchedComment as string) : undefined,
-          tags: isTagsDirty ? watchedTags : undefined,
-          secretMetadata: isMetadataDirty ? watchedMetadata : undefined,
+          secretComment: isPendingCreate || isCommentDirty ? (watchedComment as string) : undefined,
+          tags: isPendingCreate || isTagsDirty ? watchedTags : undefined,
+          secretMetadata: isPendingCreate || isMetadataDirty ? watchedMetadata : undefined,
           originalValue: originalValueRef.current ?? undefined
         });
       }
@@ -1192,7 +1201,8 @@ export const SecretEditTableRow = ({
         <Tooltip
           delayDuration={1000}
           skipDelayDuration={0}
-          open={isFieldFocused || !field.value ? false : undefined}
+          open={isNameTooltipOpen && !isFieldFocused && Boolean(field.value)}
+          onOpenChange={(open) => setIsNameTooltipOpen(open && !isFieldFocused)}
         >
           <TooltipTrigger asChild>
             <Input
@@ -1214,7 +1224,10 @@ export const SecretEditTableRow = ({
                   : event.currentTarget.value;
                 field.onChange(value);
               }}
-              onFocus={() => setIsFieldFocused.on()}
+              onFocus={() => {
+                setIsNameTooltipOpen(false);
+                setIsFieldFocused.on();
+              }}
               onKeyDown={handleEditShortcut}
               onScroll={(e) => {
                 if (document.activeElement !== e.currentTarget) e.currentTarget.scrollLeft = 0;
