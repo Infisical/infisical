@@ -17,6 +17,7 @@ import {
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { CertManagerAdminOnly } from "@app/pages/cert-manager/components/CertManagerAdminOnly";
 
+import { getInventoryLink, type InventoryFilters } from "./components/inventory-link";
 import {
   ActivityTrend,
   CodeSigningSection,
@@ -39,18 +40,13 @@ export const DashboardPage = () => {
   );
   const { data: trendData } = useGetCertActivityTrend(currentProject?.id || "", trendRange);
   const { data: pqcTrendData } = useGetCertPqcTrend(currentProject?.id || "", pqcTrendRange);
+  const getLink = useCallback(
+    (filters: InventoryFilters) => getInventoryLink(currentProject?.orgId || "", filters),
+    [currentProject?.orgId]
+  );
   const navigateToInventory = useCallback(
-    (filters: Record<string, string | undefined>) => {
-      navigate({
-        to: "/organizations/$orgId/cert-manager/inventory",
-        params: {
-          orgId: currentProject?.orgId || ""
-        },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        search: filters as any
-      });
-    },
-    [navigate, currentProject]
+    (filters: InventoryFilters) => navigate(getLink(filters)),
+    [navigate, getLink]
   );
   if (!currentProject) {
     return <PageLoader />;
@@ -75,11 +71,16 @@ export const DashboardPage = () => {
                 <PageLoader />
               ) : (
                 <div className="flex flex-col gap-6">
-                  <KpiCards stats={stats} onNavigate={navigateToInventory} />
+                  <KpiCards stats={stats} getLink={getLink} />
                   <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                    <DistributionCharts stats={stats} onNavigate={navigateToInventory} />
+                    <DistributionCharts
+                      stats={stats}
+                      getLink={getLink}
+                      onNavigate={navigateToInventory}
+                    />
                     <ExpirationTimeline
                       buckets={stats.expirationBuckets}
+                      getLink={getLink}
                       onNavigate={navigateToInventory}
                     />
                   </div>
@@ -96,7 +97,11 @@ export const DashboardPage = () => {
                         Post-Quantum Readiness
                       </h2>
                       <div className="flex flex-wrap gap-4">
-                        <PqcReadinessChart stats={stats} onNavigate={navigateToInventory} />
+                        <PqcReadinessChart
+                          stats={stats}
+                          getLink={getLink}
+                          onNavigate={navigateToInventory}
+                        />
                         <PqcTrend
                           data={pqcTrendData?.periods || []}
                           currentRange={pqcTrendRange}

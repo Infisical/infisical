@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { BanIcon, ChevronLeftIcon } from "lucide-react";
 
 import {
@@ -83,6 +83,9 @@ const PageContent = () => {
 
   const destinationDetails = PKI_SYNC_MAP[pkiSync.destination];
 
+  const backLinkClassName =
+    "mb-4 flex w-fit cursor-pointer items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80";
+
   const handleBack = () => {
     if (applicationName) {
       navigate({
@@ -112,14 +115,27 @@ const PageContent = () => {
     <>
       <div className="container mx-auto flex flex-col justify-between bg-page font-sans text-foreground-inverse">
         <div className="mx-auto mb-6 w-full max-w-8xl">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="mb-4 flex w-fit cursor-pointer items-center gap-x-1 text-sm text-muted transition duration-100 hover:text-muted/80"
-          >
-            <ChevronLeftIcon className="size-4" />
-            {applicationName ? "Back to Application" : "Certificate Syncs"}
-          </button>
+          {applicationName ? (
+            <Link
+              to="/organizations/$orgId/cert-manager/applications/$applicationName"
+              params={{ orgId, applicationName }}
+              search={{ selectedTab: ApplicationTab.Syncs }}
+              className={backLinkClassName}
+            >
+              <ChevronLeftIcon className="size-4" />
+              Back to Application
+            </Link>
+          ) : (
+            <Link
+              to={ROUTE_PATHS.CertManager.IntegrationsListPage.path}
+              params={{ orgId }}
+              search={{ selectedTab: IntegrationsListPageTabs.PkiSyncs }}
+              className={backLinkClassName}
+            >
+              <ChevronLeftIcon className="size-4" />
+              Certificate Syncs
+            </Link>
+          )}
           <div className="mb-6 flex w-full items-center gap-3">
             <ProviderIcon
               alt={`${destinationDetails.name} sync`}
