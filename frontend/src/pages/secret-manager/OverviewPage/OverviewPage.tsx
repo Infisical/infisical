@@ -2369,7 +2369,10 @@ const OverviewPageContent = () => {
         );
         if (!pendingCreate) return;
 
-        if (newSecretName) {
+        if (newSecretName && newSecretName !== key) {
+          pendingSecretRowKeys.current.delete(
+            overviewRowKey("secret", projectId, env, secretPath, key)
+          );
           pendingSecretRowKeys.current.set(
             overviewRowKey("secret", projectId, env, secretPath, newSecretName),
             pendingCreate.id
@@ -3015,6 +3018,9 @@ const OverviewPageContent = () => {
       );
       const [createdSecret] = appliedSecrets;
       if (pendingSecret.type === PendingAction.Create && createdSecret) {
+        pendingSecretRowKeys.current.forEach((rowId, identity) => {
+          if (rowId === pendingSecret.id) pendingSecretRowKeys.current.delete(identity);
+        });
         pendingSecretRowKeys.current.set(
           overviewRowKey("secret", projectId, env, secretPath, createdSecret.secretKey),
           pendingSecret.id
