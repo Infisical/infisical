@@ -14,8 +14,8 @@ import {
   ProjectPermissionHsmConnectorActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { Pkcs11Mechanism } from "@app/lib/csr/pkcs11-algorithm-map";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isPkcs11Error, Pkcs11ErrorCode } from "@app/lib/gateway-v2/pkcs11-rpc";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";

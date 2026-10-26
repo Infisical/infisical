@@ -8,7 +8,6 @@ import { getPqcCrypto } from "@app/lib/crypto/pqc";
 import { bufferToArrayBuffer, ecdsaRawRsToDer } from "@app/lib/csr/pkcs11-algorithm-map";
 import { BadRequestError } from "@app/lib/errors";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
-import { HsmKeyAlgorithm } from "@app/services/signer/signer-enums";
 
 // @peculiar/x509's generators require a local CryptoKey, so for CAs whose key lives outside
 // Infisical (HSM, AWS KMS) we build the structure with a throwaway key of the matching algorithm,
