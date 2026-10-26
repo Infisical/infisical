@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { InfoIcon, MoreHorizontalIcon, PlusIcon, SlidersHorizontalIcon } from "lucide-react";
 
 import {
@@ -24,6 +24,7 @@ import {
   PageLoader,
   Pagination,
   ResourceIcon,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -53,7 +54,6 @@ const APPLICATIONS_TABLE = "pkiApplicationsTable";
 
 export const ApplicationsPage = () => {
   const { orgId } = useParams({ strict: false });
-  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(() =>
     getUserTablePreference(APPLICATIONS_TABLE, PreferenceKey.PerPage, 20)
@@ -107,23 +107,19 @@ export const ApplicationsPage = () => {
         </TableHeader>
         <TableBody>
           {applications.map((app) => (
-            <TableRow
-              key={app.id}
-              className="cursor-pointer"
-              onClick={() =>
-                navigate({
-                  to: "/organizations/$orgId/cert-manager/applications/$applicationName",
-                  params: {
-                    orgId: orgId ?? "",
-                    applicationName: app.name
-                  }
-                })
-              }
-            >
+            <TableRow key={app.id} linked>
               <TableCell className="w-full">
                 <div className="flex items-center gap-x-2 font-mono">
                   <ResourceIcon className="size-4 shrink-0 text-project" />
-                  <span>{app.name}</span>
+                  <RowLink
+                    to="/organizations/$orgId/cert-manager/applications/$applicationName"
+                    params={{
+                      orgId: orgId ?? "",
+                      applicationName: app.name
+                    }}
+                  >
+                    {app.name}
+                  </RowLink>
                   {app.description?.length ? (
                     <Tooltip>
                       <TooltipTrigger asChild>

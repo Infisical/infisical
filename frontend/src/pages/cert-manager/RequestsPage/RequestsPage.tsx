@@ -24,6 +24,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   PageHeader,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -376,25 +377,21 @@ export const RequestsPage = () => {
                             };
 
                             return (
-                              <TableRow
-                                key={r.id}
-                                className="cursor-pointer [&>td]:py-3"
-                                onClick={() =>
-                                  navigate({
-                                    to: "/organizations/$orgId/cert-manager/approvals/$approvalRequestId",
-                                    params: {
+                              <TableRow key={r.id} className="[&>td]:py-3" linked>
+                                <TableCell isTruncatable className="font-mono">
+                                  <RowLink
+                                    to="/organizations/$orgId/cert-manager/approvals/$approvalRequestId"
+                                    params={{
                                       orgId: orgId ?? "",
                                       approvalRequestId: r.id
-                                    },
-                                    search: {
+                                    }}
+                                    search={{
                                       policyType: ApprovalPolicyType.CertRequest,
                                       from: "root-requests"
-                                    }
-                                  })
-                                }
-                              >
-                                <TableCell isTruncatable className="font-mono">
-                                  {cn}
+                                    }}
+                                  >
+                                    {cn}
+                                  </RowLink>
                                 </TableCell>
                                 <TableCell className="font-mono text-xs">{profile}</TableCell>
                                 <TableCell className="font-mono text-xs">
@@ -406,7 +403,6 @@ export const RequestsPage = () => {
                                         applicationName: app.name
                                       }}
                                       className="text-foreground hover:text-project"
-                                      onClick={(e) => e.stopPropagation()}
                                     >
                                       {app.name}
                                     </Link>
@@ -524,25 +520,21 @@ export const RequestsPage = () => {
                             };
 
                             return (
-                              <TableRow
-                                key={r.id}
-                                className="cursor-pointer [&>td]:py-3"
-                                onClick={() =>
-                                  navigate({
-                                    to: "/organizations/$orgId/cert-manager/approvals/$approvalRequestId",
-                                    params: {
+                              <TableRow key={r.id} className="[&>td]:py-3" linked>
+                                <TableCell isTruncatable className="font-mono">
+                                  <RowLink
+                                    to="/organizations/$orgId/cert-manager/approvals/$approvalRequestId"
+                                    params={{
                                       orgId: orgId ?? "",
                                       approvalRequestId: r.id
-                                    },
-                                    search: {
+                                    }}
+                                    search={{
                                       policyType: ApprovalPolicyType.CertCodeSigning,
                                       from: "root-requests"
-                                    }
-                                  })
-                                }
-                              >
-                                <TableCell isTruncatable className="font-mono">
-                                  {signerName}
+                                    }}
+                                  >
+                                    {signerName}
+                                  </RowLink>
                                 </TableCell>
                                 <TableCell>{r.requesterName || r.requesterEmail || "—"}</TableCell>
                                 <TableCell>

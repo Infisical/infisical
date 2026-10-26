@@ -1,7 +1,7 @@
 /* eslint-disable no-nested-ternary */
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   CheckIcon,
   CopyIcon,
@@ -20,6 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  RowLink,
   TableCell,
   TableRow,
   Tooltip,
@@ -45,7 +46,6 @@ interface Props {
 
 export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeleteProfile }: Props) => {
   const { currentOrg } = useOrganization();
-  const navigate = useNavigate();
   const isInternalCa = !profile.certificateAuthority?.isExternal;
   const { data: caData } = useGetInternalCaById(isInternalCa ? (profile.caId ?? "") : "");
 
@@ -68,31 +68,18 @@ export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeletePro
   });
 
   return (
-    <TableRow
-      key={profile.id}
-      onClick={() =>
-        navigate({
-          to: "/organizations/$orgId/cert-manager/certificate-profiles/$profileId",
-          params: {
-            orgId: currentOrg.id,
-            profileId: profile.id
-          }
-        })
-      }
-    >
+    <TableRow key={profile.id} linked>
       <TableCell>
         <div className="flex items-center gap-2">
-          <Link
+          <RowLink
             to="/organizations/$orgId/cert-manager/certificate-profiles/$profileId"
             params={{
               orgId: currentOrg.id,
               profileId: profile.id
             }}
-            className="rounded-sm hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            onClick={(e) => e.stopPropagation()}
           >
             {profile.slug}
-          </Link>
+          </RowLink>
           {profile.description && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -114,7 +101,7 @@ export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeletePro
                 profile.caId}
         </span>
       </TableCell>
-      <TableCell onClick={(e) => e.stopPropagation()}>
+      <TableCell data-row-interactive>
         <Link
           to="/organizations/$orgId/cert-manager/certificate-policies/$policyId"
           params={{
@@ -126,7 +113,7 @@ export const ProfileRow = ({ profile, onEditProfile, onCloneProfile, onDeletePro
           {policyData?.name || profile.certificatePolicyId}
         </Link>
       </TableCell>
-      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+      <TableCell className="text-right" data-row-interactive>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton variant="ghost" size="xs" aria-label="Profile actions">

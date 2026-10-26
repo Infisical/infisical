@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   CheckCircle2Icon,
@@ -37,6 +37,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -65,7 +66,6 @@ import { DeleteHsmConnectorDialog } from "./DeleteHsmConnectorDialog";
 import { EditHsmConnectorSheet } from "./EditHsmConnectorSheet";
 
 export const HsmConnectorsTab = () => {
-  const navigate = useNavigate();
   const { orgId } = useParams({ strict: false });
   const { currentProject } = useProject();
   const projectId = currentProject.id;
@@ -79,13 +79,7 @@ export const HsmConnectorsTab = () => {
   const [copiedId, , setCopiedId] = useTimedReset<string>({ initialState: "" });
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
-  const openDetail = (connectorId: string) => {
-    if (!orgId || !projectId) return;
-    navigate({
-      to: "/organizations/$orgId/cert-manager/hsm-connectors/$connectorId",
-      params: { orgId, connectorId }
-    });
-  };
+  const canOpenDetail = Boolean(orgId && projectId);
 
   const { data: connectors = [], isPending } = useListHsmConnectors({
     enabled: isLicensed
@@ -224,16 +218,20 @@ export const HsmConnectorsTab = () => {
                 </TableHeader>
                 <TableBody>
                   {filtered.map((c) => (
-                    <TableRow
-                      key={c.id}
-                      className="cursor-pointer hover:bg-surface-hover"
-                      onClick={() => openDetail(c.id)}
-                    >
-                      <TableCell>{c.name}</TableCell>
+                    <TableRow key={c.id} className="hover:bg-surface-hover" linked={canOpenDetail}>
+                      <TableCell>
+                        <RowLink
+                          to="/organizations/$orgId/cert-manager/hsm-connectors/$connectorId"
+                          params={{ orgId: orgId ?? "", connectorId: c.id }}
+                          disabled={!canOpenDetail}
+                        >
+                          {c.name}
+                        </RowLink>
+                      </TableCell>
                       <TableCell>{reachedFromLabel(c)}</TableCell>
                       <TableCell>{c.slotLabel}</TableCell>
                       <TableCell>{format(new Date(c.createdAt), "MMM d, yyyy")}</TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()} className="cursor-default">
+                      <TableCell data-row-interactive className="cursor-default">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton aria-label="Actions" variant="ghost">

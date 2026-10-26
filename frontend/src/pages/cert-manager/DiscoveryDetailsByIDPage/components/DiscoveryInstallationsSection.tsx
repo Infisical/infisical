@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import {
@@ -14,6 +14,7 @@ import {
   EmptyTitle,
   Loader,
   Pagination,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -34,7 +35,6 @@ const PER_PAGE_INIT = 10;
 const SCAN_IN_FLIGHT_POLL_MS = 5000;
 
 export const DiscoveryInstallationsSection = ({ discoveryId, projectId, isScanRunning }: Props) => {
-  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
   const { orgId } = useParams({
@@ -87,19 +87,18 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId, isScanRu
               </TableHeader>
               <TableBody>
                 {installations.map((installation) => (
-                  <TableRow
-                    key={installation.id}
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/cert-manager/discovery/installations/$installationId",
-                        params: {
+                  <TableRow key={installation.id} linked>
+                    <TableCell>
+                      <RowLink
+                        to="/organizations/$orgId/cert-manager/discovery/installations/$installationId"
+                        params={{
                           orgId,
                           installationId: installation.id
-                        }
-                      })
-                    }
-                  >
-                    <TableCell>{installation.name || getEndpoint(installation)}</TableCell>
+                        }}
+                      >
+                        {installation.name || getEndpoint(installation)}
+                      </RowLink>
+                    </TableCell>
                     <TableCell>{installation.primaryCertName || "N/A"}</TableCell>
                     <TableCell>{getGatewayLabel(installation) || "N/A"}</TableCell>
                     <TableCell>

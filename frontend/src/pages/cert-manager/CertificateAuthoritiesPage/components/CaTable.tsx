@@ -1,5 +1,4 @@
 import { subject } from "@casl/ability";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { BanIcon, MoreHorizontalIcon, ScrollTextIcon, Trash2Icon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -15,6 +14,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -51,7 +51,6 @@ type Props = {
 };
 
 export const CaTable = ({ handlePopUpOpen }: Props) => {
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
   const { data, isPending } = useListCasByTypeAndProjectId(CaType.INTERNAL);
@@ -101,18 +100,20 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
             <TableRow
               className={twMerge(!canReadCa && "cursor-not-allowed opacity-60")}
               key={`ca-${ca.id}`}
-              onClick={() =>
-                canReadCa &&
-                navigate({
-                  to: "/organizations/$orgId/cert-manager/ca/$caId",
-                  params: {
+              linked={canReadCa}
+            >
+              <TableCell>
+                <RowLink
+                  to="/organizations/$orgId/cert-manager/ca/$caId"
+                  params={{
                     orgId: currentOrg.id,
                     caId: ca.id
-                  }
-                })
-              }
-            >
-              <TableCell>{ca.name}</TableCell>
+                  }}
+                  disabled={!canReadCa}
+                >
+                  {ca.name}
+                </RowLink>
+              </TableCell>
               <TableCell>
                 <Badge variant={getCaStatusBadgeVariant(ca.status)}>
                   {caStatusToNameMap[ca.status]}
@@ -128,7 +129,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                   </p>
                 </div>
               </TableCell>
-              <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+              <TableCell className="text-right" data-row-interactive>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <IconButton variant="ghost" size="xs" aria-label="CA actions">

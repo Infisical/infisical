@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import {
   BanIcon,
   CheckIcon,
@@ -29,6 +28,7 @@ import {
   DropdownMenuTrigger,
   IconButton,
   ProviderIcon,
+  RowLink,
   TableCell,
   TableRow,
   Tooltip,
@@ -67,7 +67,6 @@ export const PkiSyncRow = ({
   onToggleEnable,
   applicationName
 }: Props) => {
-  const navigate = useNavigate();
   const {
     id,
     lastSyncMessage,
@@ -111,23 +110,11 @@ export const PkiSyncRow = ({
 
   return (
     <TableRow
-      onClick={() => {
-        if (!canReadSync) {
-          return;
-        }
-        navigate({
-          to: ROUTE_PATHS.CertManager.PkiSyncDetailsByIDPage.path,
-          params: {
-            syncId: id,
-            orgId: currentOrg.id
-          },
-          search: applicationName ? { applicationName } : undefined
-        });
-      }}
+      linked={canReadSync}
       className={twMerge(
         "group h-14 transition-colors duration-100 [&>td]:py-2",
         syncStatus === PkiSyncStatus.Failed && "bg-danger/5 hover:bg-danger/10",
-        canReadSync ? "cursor-pointer" : "cursor-not-allowed"
+        !canReadSync && "cursor-not-allowed"
       )}
       key={`sync-${id}`}
     >
@@ -141,7 +128,17 @@ export const PkiSyncRow = ({
       <TableCell className="max-w-0 min-w-32!">
         <div>
           <div className="flex w-full items-center">
-            <p className="truncate">{name}</p>
+            <RowLink
+              to={ROUTE_PATHS.CertManager.PkiSyncDetailsByIDPage.path}
+              params={{
+                syncId: id,
+                orgId: currentOrg.id
+              }}
+              search={applicationName ? { applicationName } : undefined}
+              disabled={!canReadSync}
+            >
+              {name}
+            </RowLink>
             {description && (
               <Tooltip>
                 <TooltipTrigger asChild>

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon, PlusIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
 
@@ -30,6 +29,7 @@ import {
   InputGroupInput,
   OverflowBadgeList,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -87,7 +87,6 @@ const getTargetItems = (discovery: TPkiDiscovery) => {
 };
 
 export const DiscoveryJobsTab = ({ projectId }: Props) => {
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const [page, setPage] = useState(1);
   const [searchFilter, setSearchFilter] = useState("");
@@ -213,20 +212,18 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
               </TableHeader>
               <TableBody>
                 {discoveries.map((discovery) => (
-                  <TableRow
-                    key={discovery.id}
-                    className="cursor-pointer"
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/cert-manager/discovery/$discoveryId",
-                        params: {
+                  <TableRow key={discovery.id} linked>
+                    <TableCell>
+                      <RowLink
+                        to="/organizations/$orgId/cert-manager/discovery/$discoveryId"
+                        params={{
                           orgId: currentOrg.id,
                           discoveryId: discovery.id
-                        }
-                      })
-                    }
-                  >
-                    <TableCell>{discovery.name}</TableCell>
+                        }}
+                      >
+                        {discovery.name}
+                      </RowLink>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <DiscoveryTypeIcon type={discovery.discoveryType} className="size-4" />
@@ -259,7 +256,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
                         ? format(new Date(discovery.lastScannedAt), "MMM dd, yyyy HH:mm")
                         : "Never"}
                     </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell data-row-interactive>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton variant="ghost" size="xs">

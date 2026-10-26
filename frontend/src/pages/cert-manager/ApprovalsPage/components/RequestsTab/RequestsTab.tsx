@@ -7,7 +7,6 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
 
 import {
@@ -36,6 +35,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -106,7 +106,6 @@ export const RequestsTab = () => {
   const { user } = useUser();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState(ApprovalRequestStatus.Pending);
-  const navigate = useNavigate();
 
   const projectId = currentProject?.id || "";
   const userId = user?.id || "";
@@ -239,27 +238,22 @@ export const RequestsTab = () => {
                   const requestData = request.requestData.requestData as CertRequestRequestData;
 
                   return (
-                    <TableRow
-                      key={request.id}
-                      className="cursor-pointer"
-                      onClick={() =>
-                        navigate({
-                          to: "/organizations/$orgId/cert-manager/approvals/$approvalRequestId",
-                          params: {
-                            orgId: currentOrg.id,
-                            approvalRequestId: request.id
-                          },
-                          search: {
-                            policyType: ApprovalPolicyType.CertRequest
-                          }
-                        })
-                      }
-                    >
+                    <TableRow key={request.id} linked>
                       <TableCell>
                         <div>
-                          <div className="text-sm font-medium text-foreground">
+                          <RowLink
+                            to="/organizations/$orgId/cert-manager/approvals/$approvalRequestId"
+                            params={{
+                              orgId: currentOrg.id,
+                              approvalRequestId: request.id
+                            }}
+                            search={{
+                              policyType: ApprovalPolicyType.CertRequest
+                            }}
+                            className="text-sm font-medium text-foreground"
+                          >
                             {request.requesterName || "Unknown"}
-                          </div>
+                          </RowLink>
                           <div className="text-xs text-muted">{request.requesterEmail}</div>
                         </div>
                       </TableCell>

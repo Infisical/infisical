@@ -1,6 +1,5 @@
 import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -12,6 +11,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -38,7 +38,6 @@ type Props = {
 
 export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
   const { currentOrg } = useOrganization();
-  const navigate = useNavigate();
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
 
@@ -71,19 +70,18 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
           {!isPending &&
             data?.collections.map((pkiCollection) => {
               return (
-                <TableRow
-                  key={`pki-collection-${pkiCollection.id}`}
-                  onClick={() =>
-                    navigate({
-                      to: "/organizations/$orgId/cert-manager/pki-collections/$collectionId",
-                      params: {
+                <TableRow key={`pki-collection-${pkiCollection.id}`} linked>
+                  <TableCell>
+                    <RowLink
+                      to="/organizations/$orgId/cert-manager/pki-collections/$collectionId"
+                      params={{
                         orgId: currentOrg.id,
                         collectionId: pkiCollection.id
-                      }
-                    })
-                  }
-                >
-                  <TableCell>{pkiCollection.name}</TableCell>
+                      }}
+                    >
+                      {pkiCollection.name}
+                    </RowLink>
+                  </TableCell>
                   <TableCell>
                     {pkiCollection.description ? pkiCollection.description : "-"}
                   </TableCell>

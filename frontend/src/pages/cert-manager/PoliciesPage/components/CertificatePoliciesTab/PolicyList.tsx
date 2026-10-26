@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
-import { Link, useNavigate } from "@tanstack/react-router";
 import {
   CheckIcon,
   CopyIcon,
@@ -22,6 +21,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -49,7 +49,6 @@ interface Props {
 export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
-  const navigate = useNavigate();
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
   const { data, isLoading } = useListCertificatePolicies({
@@ -114,31 +113,18 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
       </TableHeader>
       <TableBody>
         {policies.map((policy) => (
-          <TableRow
-            key={policy.id}
-            onClick={() =>
-              navigate({
-                to: "/organizations/$orgId/cert-manager/certificate-policies/$policyId",
-                params: {
-                  orgId: currentOrg.id,
-                  policyId: policy.id
-                }
-              })
-            }
-          >
+          <TableRow key={policy.id} linked>
             <TableCell>
               <div className="flex items-center gap-2">
-                <Link
+                <RowLink
                   to="/organizations/$orgId/cert-manager/certificate-policies/$policyId"
                   params={{
                     orgId: currentOrg.id,
                     policyId: policy.id
                   }}
-                  className="rounded-sm hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                  onClick={(e) => e.stopPropagation()}
                 >
                   {policy.name}
-                </Link>
+                </RowLink>
                 {policy.description && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -152,7 +138,7 @@ export const PolicyList = ({ onEditPolicy, onDeletePolicy }: Props) => {
             <TableCell>
               <span className="text-sm">{formatDate(policy.createdAt)}</span>
             </TableCell>
-            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+            <TableCell className="text-right" data-row-interactive>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <IconButton variant="ghost" size="xs" aria-label="Policy actions">

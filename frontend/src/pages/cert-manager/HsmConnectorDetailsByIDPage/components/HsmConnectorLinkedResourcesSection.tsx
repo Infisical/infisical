@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import {
@@ -14,6 +13,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -42,22 +42,13 @@ export const HsmConnectorLinkedResourcesSection = ({ connectorId }: Props) => {
   const linked = data?.certificates ?? [];
   const linkedCas = data?.certificateAuthorities ?? [];
   const totalCount = data?.totalCount ?? 0;
-  const navigate = useNavigate();
   const { currentProject } = useProject();
   const { currentOrg } = useOrganization();
+  const canOpenCert = Boolean(currentProject?.id && currentOrg?.id);
 
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
     setPage(1);
-  };
-
-  const openCert = (certificateId: string) => {
-    if (!currentProject?.id || !currentOrg?.id) return;
-    navigate({
-      to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
-      params: { orgId: currentOrg.id, certificateId },
-      search: { fromHsmConnector: connectorId }
-    });
   };
 
   return (
@@ -141,12 +132,17 @@ export const HsmConnectorLinkedResourcesSection = ({ connectorId }: Props) => {
               </TableHeader>
               <TableBody>
                 {linked.map((c) => (
-                  <TableRow
-                    key={c.id}
-                    className="cursor-pointer hover:bg-surface-hover"
-                    onClick={() => openCert(c.id)}
-                  >
-                    <TableCell className="font-medium">{c.commonName}</TableCell>
+                  <TableRow key={c.id} className="hover:bg-surface-hover" linked={canOpenCert}>
+                    <TableCell className="font-medium">
+                      <RowLink
+                        to="/organizations/$orgId/cert-manager/certificates/$certificateId"
+                        params={{ orgId: currentOrg.id, certificateId: c.id }}
+                        search={{ fromHsmConnector: connectorId }}
+                        disabled={!canOpenCert}
+                      >
+                        {c.commonName}
+                      </RowLink>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={c.status === CertStatus.ACTIVE ? "success" : "outline"}>
                         {c.status}
