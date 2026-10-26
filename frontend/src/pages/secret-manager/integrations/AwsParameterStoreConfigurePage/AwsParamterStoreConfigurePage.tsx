@@ -9,6 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { motion } from "motion/react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -182,7 +183,7 @@ export const AWSParameterStoreConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && !isIntegrationAuthAwsKmsKeysLoading ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
-      <title>Set Up AWS Parameter Integration</title>
+      <PageTitle title="Set Up AWS Parameter Store Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
@@ -402,7 +403,7 @@ export const AWSParameterStoreConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <title>Set Up AWS Parameter Store Integration</title>
+      <PageTitle title="Set Up AWS Parameter Store Integration" />
       {isintegrationAuthLoading || isIntegrationAuthAwsKmsKeysLoading ? (
         <img
           src="/images/loading/loading.gif"

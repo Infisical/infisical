@@ -7,6 +7,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
   AlertDescription,
@@ -119,7 +120,7 @@ export const HashicorpVaultConfigurePage = () => {
 
   return integrationAuth ? (
     <div className="flex h-full w-full flex-col items-center justify-center gap-6">
-      <title>Set Up Vault Integration</title>
+      <PageTitle title="Set Up Vault Integration" />
       <form onSubmit={handleSubmit(handleFormSubmit)} noValidate className="w-full max-w-lg">
         <Card>
           <CardHeader>
@@ -294,7 +295,7 @@ export const HashicorpVaultConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <title>Set Up Vault Integration</title>
+      <PageTitle title="Set Up Vault Integration" />
       {isintegrationAuthLoading ? (
         <img
           src="/images/loading/loading.gif"

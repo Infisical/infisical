@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArrowLeftIcon } from "lucide-react";
 
 import { WishForm } from "@app/components/features/WishForm";
+import { PageTitle } from "@app/components/PageTitle";
 
 import { PersonalTabGroup } from "./components/PersonalTabGroup";
 
@@ -15,7 +16,7 @@ export const PersonalSettingsPage = () => {
 
   return (
     <div className="mx-auto w-full max-w-5xl p-4 lg:p-8">
-      <title>{t("common.head-title", { title: t("settings.personal.title") })}</title>
+      <PageTitle title={t("settings.personal.title")} />
       <link rel="icon" href="/infisical.ico" />
       <Link
         to="/"

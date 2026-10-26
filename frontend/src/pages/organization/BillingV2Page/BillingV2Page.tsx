@@ -7,6 +7,7 @@ import {
 } from "@app/components/license/self-hosted-license";
 import { getSafeUpgradeReturnPath } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v3/platform";
 import {
@@ -332,7 +333,7 @@ export const BillingV2Page = () => {
 
   return (
     <>
-      <title>{t("common.head-title", { title: t("billing.title") })}</title>
+      <PageTitle title={t("billing.title")} />
       <link rel="icon" href="/infisical.ico" />
       <meta property="og:image" content="/images/message.png" />
       <div className="mb-8 flex w-full justify-center bg-page text-foreground-inverse">

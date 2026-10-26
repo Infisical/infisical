@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v3/platform";
 import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
@@ -26,7 +27,7 @@ export const ProductSettingsPage = () => {
 
   return (
     <>
-      <title>Product Settings | Infisical</title>
+      <PageTitle title="Product Settings" />
       <link rel="icon" href="/infisical.ico" />
       <div>
         <div className="mx-auto w-full max-w-8xl bg-page text-foreground-inverse">

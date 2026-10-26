@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { CircleHelpIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -104,6 +105,7 @@ export const WindmillAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
+      <PageTitle title="Authorize Windmill Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Windmill Integration</CardTitle>

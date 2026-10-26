@@ -3,6 +3,7 @@ import { Link, useSearch } from "@tanstack/react-router";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
   AlertDescription,
@@ -73,24 +74,27 @@ export const OauthConsentPage = () => {
 
   if (isRedirecting) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-page">
-        <Card className="w-full max-w-md items-center text-center">
-          <div className="flex size-16 items-center justify-center rounded-full bg-success/10">
-            <CheckCircle2 className="size-8 text-success" />
-          </div>
-          <CardTitle className="justify-center">Authorization Successful</CardTitle>
-          <CardDescription className="flex items-center justify-center gap-2">
-            <Loader2 className="size-3.5 animate-spin" />
-            Redirecting back to the application
-          </CardDescription>
-        </Card>
-      </div>
+      <>
+        <PageTitle title="Authorize Application" />
+        <div className="flex min-h-screen flex-col items-center justify-center bg-page">
+          <Card className="w-full max-w-md items-center text-center">
+            <div className="flex size-16 items-center justify-center rounded-full bg-success/10">
+              <CheckCircle2 className="size-8 text-success" />
+            </div>
+            <CardTitle className="justify-center">Authorization Successful</CardTitle>
+            <CardDescription className="flex items-center justify-center gap-2">
+              <Loader2 className="size-3.5 animate-spin" />
+              Redirecting back to the application
+            </CardDescription>
+          </Card>
+        </div>
+      </>
     );
   }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-page">
-      <title>Authorize Application</title>
+      <PageTitle title="Authorize Application" />
       <link rel="icon" href="/infisical.ico" />
 
       <Card className="w-full max-w-md">

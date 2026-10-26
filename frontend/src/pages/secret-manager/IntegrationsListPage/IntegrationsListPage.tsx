@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { TriangleAlertIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   PageHeader,
@@ -64,7 +65,7 @@ export const IntegrationsListPage = () => {
 
   return (
     <>
-      <title>{t("common.head-title", { title: t("integrations.title") })}</title>
+      <PageTitle title={t("integrations.title")} />
       <meta property="og:image" content="/images/message.png" />
       <meta property="og:title" content="Manage your .env files in seconds" />
       <meta name="og:description" content={t("integrations.description") as string} />
