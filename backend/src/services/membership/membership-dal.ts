@@ -207,7 +207,7 @@ export const membershipDALFactory = (db: TDbClient) => {
     try {
       const userGroupSubquery = tx(TableName.UserGroupMembership).where("userId", userId).select("groupId");
 
-      const memberships = await tx(TableName.Membership)
+      const lockedMemberships = (await tx(TableName.Membership)
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
         .where((qb) => {
@@ -217,8 +217,21 @@ export const membershipDALFactory = (db: TDbClient) => {
         })
         .orderBy(`${TableName.Membership}.id`)
         .select(`${TableName.Membership}.id`)
-        .forUpdate();
-      return memberships.length > 0;
+        .forUpdate()) as { id: string }[];
+      if (!lockedMemberships.length) return false;
+
+      const membership = (await tx(TableName.Membership)
+        .whereIn(
+          `${TableName.Membership}.id`,
+          lockedMemberships.map(({ id }) => id)
+        )
+        .where((qb) => {
+          void qb
+            .where(`${TableName.Membership}.actorUserId`, userId)
+            .orWhereIn(`${TableName.Membership}.actorGroupId`, userGroupSubquery);
+        })
+        .first(`${TableName.Membership}.id`)) as { id: string } | undefined;
+      return Boolean(membership);
     } catch (error) {
       throw new DatabaseError({ error, name: "Lock user project memberships" });
     }
