@@ -1,4 +1,6 @@
 /* eslint-disable no-continue */
+import { HttpStatusCode, isAxiosError } from "axios";
+
 import { NetlifyPublicAPI } from "@app/services/app-connection/netlify/netlify-connection-public-client";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
@@ -6,6 +8,15 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { SecretSyncError } from "../secret-sync-errors";
 import type { TNetlifySyncWithCredentials } from "./netlify-sync-types";
+
+const throwNetlifySyncError = (error: unknown, secretKey: string): never => {
+  throw new SecretSyncError({
+    error,
+    secretKey,
+    // Netlify answers 400 for variables it refuses to store, so retrying the same request can't succeed.
+    shouldRetry: !(isAxiosError(error) && error.response?.status === HttpStatusCode.BadRequest)
+  });
+};
 
 export const NetlifySyncFns = {
   async getSecrets(secretSync: TNetlifySyncWithCredentials): Promise<TSecretMap> {
@@ -76,7 +87,7 @@ export const NetlifySyncFns = {
           values: [{ context: config.context, value: secretMap[key].value }]
         });
       } catch (error) {
-        throw new SecretSyncError({ error, secretKey: key });
+        throwNetlifySyncError(error, key);
       }
     }
 
@@ -88,7 +99,7 @@ export const NetlifySyncFns = {
           value: secretMap[key].value
         });
       } catch (error) {
-        throw new SecretSyncError({ error, secretKey: key });
+        throwNetlifySyncError(error, key);
       }
     }
 
@@ -110,7 +121,7 @@ export const NetlifySyncFns = {
           await NetlifyPublicAPI.deleteVariable(secretSync.connection, params, { key });
         }
       } catch (error) {
-        throw new SecretSyncError({ error, secretKey: key });
+        throwNetlifySyncError(error, key);
       }
     }
   },
