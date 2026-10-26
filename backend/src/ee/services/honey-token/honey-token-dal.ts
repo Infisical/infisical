@@ -170,6 +170,7 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
         db.ref("id").withSchema(TableName.HoneyToken),
         db.ref("type").withSchema(TableName.HoneyToken),
         db.ref("status").withSchema(TableName.HoneyToken),
+        db.ref("hosting").withSchema(TableName.HoneyToken),
         db.ref("projectId").withSchema(TableName.HoneyToken),
         db.ref("encryptedCredentials").withSchema(TableName.HoneyToken),
         db.ref("orgId").withSchema(TableName.Project)

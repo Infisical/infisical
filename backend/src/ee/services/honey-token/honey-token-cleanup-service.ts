@@ -7,9 +7,9 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
-import { HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
+import { HoneyTokenHosting, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { getHoneyTokenServiceHooksByType, HONEY_TOKEN_PROVIDER_MAP } from "./honey-token-provider-fns";
-import { THoneyTokenProviderHooksDep } from "./honey-token-service-types";
+import { THoneyTokenCredentialTarget, THoneyTokenProviderHooksDep } from "./honey-token-service-types";
 
 const FOLDERLESS_CLEANUP_BATCH = 100;
 const MAX_CLEANUP_ATTEMPTS = 3;
@@ -76,9 +76,13 @@ export const honeyTokenCleanupServiceFactory = ({
         throw new NotFoundError({ message: "Honey token's project was deleted before it was revoked" });
       }
 
-      const appConnection = await findConnection(honeyToken.orgId, type);
-      if (!appConnection) {
-        throw new NotFoundError({ message: "Organization has no honey token connection" });
+      let target: THoneyTokenCredentialTarget = { hosting: HoneyTokenHosting.InfisicalManaged };
+      if (honeyToken.hosting === HoneyTokenHosting.CustomerAccount) {
+        const appConnection = await findConnection(honeyToken.orgId, type);
+        if (!appConnection) {
+          throw new NotFoundError({ message: "Organization has no honey token connection" });
+        }
+        target = { hosting: HoneyTokenHosting.CustomerAccount, appConnection };
       }
 
       const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -89,7 +93,7 @@ export const honeyTokenCleanupServiceFactory = ({
         decryptor({ cipherTextBlob: honeyToken.encryptedCredentials }).toString()
       ) as Record<string, string>;
 
-      await providerHooksByType[type].revokeCredentials({ appConnection, credentials });
+      await providerHooksByType[type].revokeCredentials({ target, credentials });
     };
   };
 
