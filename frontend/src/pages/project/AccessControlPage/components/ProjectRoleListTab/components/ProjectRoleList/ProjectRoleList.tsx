@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -48,8 +48,13 @@ import {
   TableRow,
   type TableSortDirection
 } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
-import { getProjectBaseURL, hidesProjects } from "@app/helpers/project";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
+import { getInstancePinningLink, getProjectBaseURL, hidesProjects } from "@app/helpers/project";
 import { isCustomProjectRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
@@ -85,6 +90,7 @@ export const ProjectRoleList = () => {
     "duplicateRole"
   ] as const);
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const projectId = currentProject?.id || "";
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
   const projectsHidden = hidesProjects(currentProject?.type);
@@ -324,27 +330,27 @@ export const ProjectRoleList = () => {
                       slug as ProjectMembershipRole
                     );
 
-                    const navigateToRole = () =>
-                      navigate({
+                    const roleLink =
+                      getInstancePinningLink(currentOrg.id, currentProject, `roles/${slug}`) ??
+                      ({
                         to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
                         params: {
+                          orgId: currentOrg.id,
                           projectId: currentProject.id,
                           roleSlug: slug
                         }
-                      });
+                      } as const);
 
                     return (
-                      <TableRow
-                        key={`role-list-${id}`}
-                        tabIndex={0}
-                        aria-label={`View ${name}`}
-                        onClick={navigateToRole}
-                        onKeyDown={(event) => {
-                          if (event.target !== event.currentTarget || event.key !== "Enter") return;
-                          navigateToRole();
-                        }}
-                      >
-                        <TableCell isTruncatable>{name}</TableCell>
+                      <TableRow key={`role-list-${id}`} className="relative cursor-pointer">
+                        <TableCell isTruncatable>
+                          <Link
+                            {...roleLink}
+                            className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                          >
+                            {name}
+                          </Link>
+                        </TableCell>
                         <TableCell isTruncatable>{slug}</TableCell>
                         <TableCell>
                           <Badge variant="ghost">
@@ -361,7 +367,7 @@ export const ProjectRoleList = () => {
                             )}
                           </Badge>
                         </TableCell>
-                        <TableCell variant="action">
+                        <TableCell variant="action" className="relative z-10">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <IconButton
@@ -382,7 +388,7 @@ export const ProjectRoleList = () => {
                                   <DropdownMenuItem
                                     onClick={(event) => {
                                       event.stopPropagation();
-                                      navigateToRole();
+                                      navigate(roleLink);
                                     }}
                                     isDisabled={!isAllowed}
                                   >

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -310,20 +310,16 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                   const isLinkedGroup = currentOrg ? groupOrgId !== currentOrg.id : false;
                   const isManagedBySubOrg = currentOrg ? groupOrgId === currentOrg.id : false;
                   return (
-                    <TableRow
-                      key={`org-group-${id}`}
-                      className="cursor-pointer"
-                      onClick={() =>
-                        navigate({
-                          to: "/organizations/$orgId/groups/$groupId",
-                          params: {
-                            orgId,
-                            groupId: id
-                          }
-                        })
-                      }
-                    >
-                      <TableCell isTruncatable>{name}</TableCell>
+                    <TableRow key={`org-group-${id}`} className="relative cursor-pointer">
+                      <TableCell isTruncatable>
+                        <Link
+                          to="/organizations/$orgId/groups/$groupId"
+                          params={{ orgId, groupId: id }}
+                          className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                        >
+                          {name}
+                        </Link>
+                      </TableCell>
                       <TableCell isTruncatable>{slug}</TableCell>
                       <TableCell>
                         <OrgPermissionCan
@@ -343,7 +339,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                             >
                               <SelectTrigger
                                 size="sm"
-                                className="w-full max-w-32 lg:max-w-64"
+                                className="relative z-10 w-full max-w-32 lg:max-w-64"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <SelectValue />
@@ -376,7 +372,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                           </Badge>
                         </TableCell>
                       )}
-                      <TableCell variant="action">
+                      <TableCell variant="action" className="relative z-10">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton
