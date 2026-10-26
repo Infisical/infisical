@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+import { logger } from "@app/lib/logger";
+import { recordDynamicSecretStatusChangeMetric } from "@app/lib/telemetry/metrics";
+
+import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
+
 const LeaseDataSchema = z.record(z.string());
 
 export const pickPersistedLeaseData = (data: unknown, fields: string[]): Record<string, string> => {
@@ -20,4 +25,36 @@ export const decryptLeaseData = (
   return LeaseDataSchema.parse(
     JSON.parse(decryptor({ cipherTextBlob: Buffer.from(encryptedLeaseData) }).toString()) as unknown
   );
+};
+
+export const recordDynamicSecretRevocationResult = async ({
+  dynamicSecretDAL,
+  dynamicSecretId,
+  provider,
+  isRevoked,
+  wasFailing
+}: {
+  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "update">;
+  dynamicSecretId: string;
+  provider: string;
+  isRevoked: boolean;
+  wasFailing: boolean;
+}) => {
+  const isFailing = !isRevoked;
+  if (wasFailing === isFailing) return;
+
+  try {
+    const flipped = await dynamicSecretDAL.update(
+      { id: dynamicSecretId, revocationFailing: !isFailing },
+      { revocationFailing: isFailing }
+    );
+    if (flipped.length) {
+      recordDynamicSecretStatusChangeMetric({ provider, newStatus: isFailing ? "failed" : "healthy" });
+    }
+  } catch (error) {
+    logger.warn(
+      error,
+      `Failed to record dynamic secret revocation result [dynamicSecretId=${dynamicSecretId}] [provider=${provider}]`
+    );
+  }
 };

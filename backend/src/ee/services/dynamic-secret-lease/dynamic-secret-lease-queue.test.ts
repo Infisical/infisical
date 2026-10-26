@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { KeyStorePrefixes } from "@app/keystore/keystore";
-import { inMemoryKeyStore } from "@app/keystore/memory";
 import { logger } from "@app/lib/logger";
 import {
-  isTelemetryEnabled,
   recordDynamicSecretOrphanedLeaseMetric,
   recordDynamicSecretRevocationOutcomeMetric,
   recordDynamicSecretStatusChangeMetric
@@ -26,7 +23,6 @@ vi.mock("@app/lib/logger", () => ({
 
 vi.mock("@app/lib/telemetry/metrics", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/telemetry/metrics")>()),
-  isTelemetryEnabled: vi.fn(() => true),
   recordDynamicSecretOrphanedLeaseMetric: vi.fn(),
   recordDynamicSecretRevocationOutcomeMetric: vi.fn(),
   recordDynamicSecretStatusChangeMetric: vi.fn()
@@ -41,7 +37,8 @@ const dynamicSecretCfg = {
   type: PROVIDER,
   folderId: "folder-1",
   encryptedInput: Buffer.from("{}"),
-  status: DynamicSecretStatus.Deleting
+  status: DynamicSecretStatus.Deleting,
+  revocationFailing: false
 };
 
 const lease = (id: string) => ({
@@ -49,42 +46,50 @@ const lease = (id: string) => ({
   dynamicSecretId: CONFIG_ID,
   externalEntityId: `entity-${id}`,
   config: {},
-  encryptedLeaseData: null,
-  dynamicSecret: dynamicSecretCfg
+  encryptedLeaseData: null
 });
 
 type THandler = (job: unknown) => Promise<void>;
 
-const createHarness = () => {
+// staleFlag: the revocationFailing value every lease load returns, standing in for a snapshot taken before another
+// lease of the same config flipped the row.
+const createHarness = ({ staleFlag }: { staleFlag?: boolean } = {}) => {
   const handlers = new Map<string, THandler>();
   const queueService = {
     start: vi.fn((name: string, fn: THandler) => {
       handlers.set(name, fn);
     }),
     queue: vi.fn(async () => undefined),
-    stopJobById: vi.fn(async () => undefined)
+    stopJobById: vi.fn<(queue: string, jobId: string) => Promise<void>>(async () => undefined)
   };
 
+  const cfg = { ...dynamicSecretCfg };
   const leases = new Map<string, ReturnType<typeof lease>>();
   const dynamicSecretLeaseDAL = {
-    findById: vi.fn(async (id: string) => leases.get(id)),
+    findById: vi.fn(async (id: string) => {
+      const found = leases.get(id);
+      if (!found) return undefined;
+      return { ...found, dynamicSecret: { ...cfg, revocationFailing: staleFlag ?? cfg.revocationFailing } };
+    }),
     deleteById: vi.fn(async (id: string) => {
       leases.delete(id);
     }),
     find: vi.fn(async () => [...leases.values()]),
     updateById: vi.fn(async () => ({}))
   };
-  const cfg = { ...dynamicSecretCfg };
   const dynamicSecretDAL = {
     findById: vi.fn(async () => cfg),
     deleteById: vi.fn(async () => cfg),
-    updateById: vi.fn(async (_id: string, data: Partial<typeof cfg>) => Object.assign(cfg, data))
+    updateById: vi.fn(async (_id: string, data: Partial<typeof cfg>) => Object.assign(cfg, data)),
+    // A conditional UPDATE: only a row still matching the filter is changed and returned.
+    update: vi.fn(async (filter: Partial<typeof cfg>, data: Partial<typeof cfg>) => {
+      const matches = Object.entries(filter).every(([key, value]) => cfg[key as keyof typeof cfg] === value);
+      return matches ? [Object.assign(cfg, data)] : [];
+    })
   };
   const revoke = vi.fn<(inputs: unknown, entityId: string) => Promise<{ entityId: string }>>(
     async (_inputs, entityId) => ({ entityId })
   );
-  const keyStore = inMemoryKeyStore();
-
   dynamicSecretLeaseQueueServiceFactory({
     queueService: queueService as never,
     dynamicSecretLeaseDAL: dynamicSecretLeaseDAL as never,
@@ -94,7 +99,6 @@ const createHarness = () => {
     kmsService: {
       createCipherPairWithDataKey: vi.fn(async () => ({ decryptor: () => Buffer.from("{}") }))
     } as never,
-    keyStore,
     smtpService: {} as never,
     userDAL: {} as never,
     identityDAL: {} as never,
@@ -137,7 +141,17 @@ const createHarness = () => {
 
   const addLease = (id: string) => leases.set(id, lease(id));
 
-  return { queueService, revoke, keyStore, addLease, runScheduled, runRetry, runPruning };
+  return {
+    queueService,
+    revoke,
+    cfg,
+    dynamicSecretDAL,
+    dynamicSecretLeaseDAL,
+    addLease,
+    runScheduled,
+    runRetry,
+    runPruning
+  };
 };
 
 const outcomeCalls = () => vi.mocked(recordDynamicSecretRevocationOutcomeMetric).mock.calls.map(([params]) => params);
@@ -146,15 +160,12 @@ const orphanedCalls = () => vi.mocked(recordDynamicSecretOrphanedLeaseMetric).mo
 const retryQueued = (queue: ReturnType<typeof createHarness>["queueService"]["queue"]) =>
   queue.mock.calls.filter((call) => (call as unknown[])[1] === QueueJobs.DynamicSecretRevocation);
 
-const failingKey = KeyStorePrefixes.DynamicSecretRevocationFailing(CONFIG_ID);
-
 describe("dynamic secret lease revocation metrics", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(isTelemetryEnabled).mockReturnValue(true);
   });
 
-  describe("scheduled phase", () => {
+  describe("scheduled revocation", () => {
     test("records one success and no status change for a healthy config", async () => {
       const harness = createHarness();
       harness.addLease("lease-1");
@@ -162,7 +173,7 @@ describe("dynamic secret lease revocation metrics", () => {
       await harness.runScheduled("lease-1");
 
       expect(outcomeCalls()).toEqual([
-        { provider: PROVIDER, phase: "scheduled", outcome: "success", attemptsExhausted: false }
+        { provider: PROVIDER, trigger: "scheduled", outcome: "success", attemptsExhausted: false }
       ]);
       expect(statusChangeCalls()).toEqual([]);
     });
@@ -180,7 +191,7 @@ describe("dynamic secret lease revocation metrics", () => {
 
       await expect(harness.runScheduled("lease-1", 3)).rejects.toThrow("connection refused");
       expect(outcomeCalls()).toEqual([
-        { provider: PROVIDER, phase: "scheduled", outcome: "failure", attemptsExhausted: true }
+        { provider: PROVIDER, trigger: "scheduled", outcome: "failure", attemptsExhausted: true }
       ]);
       expect(retryQueued(harness.queueService.queue)).toHaveLength(1);
     });
@@ -194,7 +205,7 @@ describe("dynamic secret lease revocation metrics", () => {
       await harness.runScheduled("lease-1", 2);
 
       expect(outcomeCalls()).toEqual([
-        { provider: PROVIDER, phase: "scheduled", outcome: "success", attemptsExhausted: false }
+        { provider: PROVIDER, trigger: "scheduled", outcome: "success", attemptsExhausted: false }
       ]);
     });
 
@@ -207,8 +218,8 @@ describe("dynamic secret lease revocation metrics", () => {
       await expect(harness.runScheduled("lease-1", MAX_ATTEMPTS)).rejects.toThrow();
       await expect(harness.runScheduled("lease-2", MAX_ATTEMPTS)).rejects.toThrow();
 
-      expect(statusChangeCalls()).toEqual([{ provider: PROVIDER, to: "failed" }]);
-      expect(await harness.keyStore.getItem(failingKey)).toBe("1");
+      expect(statusChangeCalls()).toEqual([{ provider: PROVIDER, newStatus: "failed" }]);
+      expect(harness.cfg.revocationFailing).toBe(true);
     });
 
     test("flips to healthy once when a failing config revokes again", async () => {
@@ -223,41 +234,72 @@ describe("dynamic secret lease revocation metrics", () => {
       await harness.runScheduled("lease-3");
 
       expect(statusChangeCalls()).toEqual([
-        { provider: PROVIDER, to: "failed" },
-        { provider: PROVIDER, to: "healthy" }
+        { provider: PROVIDER, newStatus: "failed" },
+        { provider: PROVIDER, newStatus: "healthy" }
       ]);
-      expect(await harness.keyStore.getItem(failingKey)).toBeNull();
+      expect(harness.cfg.revocationFailing).toBe(false);
     });
 
-    test("does not let a Redis error fail or change the revocation", async () => {
+    test("does not let a failed flag update fail or change the revocation", async () => {
       const harness = createHarness();
       harness.addLease("lease-1");
       harness.addLease("lease-2");
-      const redisError = new Error("redis unavailable");
-      vi.spyOn(harness.keyStore, "getItem").mockRejectedValue(redisError);
-      vi.spyOn(harness.keyStore, "setItemWithExpiryReturningPrevious").mockRejectedValue(redisError);
-
-      await expect(harness.runScheduled("lease-1")).resolves.toBeUndefined();
-
+      harness.dynamicSecretDAL.update.mockRejectedValue(new Error("db pool timeout"));
       harness.revoke.mockRejectedValueOnce(new Error("connection refused"));
-      await expect(harness.runScheduled("lease-2", MAX_ATTEMPTS)).rejects.toThrow("connection refused");
+
+      await expect(harness.runScheduled("lease-1", MAX_ATTEMPTS)).rejects.toThrow("connection refused");
+      expect(retryQueued(harness.queueService.queue)).toHaveLength(1);
+
+      harness.cfg.revocationFailing = true;
+      await expect(harness.runScheduled("lease-2")).resolves.toBeUndefined();
 
       expect(statusChangeCalls()).toEqual([]);
-      expect(outcomeCalls().map(({ outcome }) => outcome)).toEqual(["success", "failure"]);
-      expect(retryQueued(harness.queueService.queue)).toHaveLength(1);
+      expect(outcomeCalls().map(({ outcome }) => outcome)).toEqual(["failure", "success"]);
       expect(vi.mocked(logger.warn)).toHaveBeenCalledTimes(2);
     });
 
-    test("skips the status change entirely while telemetry is disabled", async () => {
-      vi.mocked(isTelemetryEnabled).mockReturnValue(false);
-      const harness = createHarness();
+    test("reports a flip once even when every lease loaded the config before it flipped", async () => {
+      const harness = createHarness({ staleFlag: false });
       harness.addLease("lease-1");
-      const setPrevious = vi.spyOn(harness.keyStore, "setItemWithExpiryReturningPrevious");
+      harness.addLease("lease-2");
       harness.revoke.mockRejectedValue(new Error("connection refused"));
 
       await expect(harness.runScheduled("lease-1", MAX_ATTEMPTS)).rejects.toThrow();
+      await expect(harness.runScheduled("lease-2", MAX_ATTEMPTS)).rejects.toThrow();
 
-      expect(setPrevious).not.toHaveBeenCalled();
+      expect(statusChangeCalls()).toEqual([{ provider: PROVIDER, newStatus: "failed" }]);
+    });
+
+    test("picks up a recovery a stale load skipped on the config's next revocation", async () => {
+      const harness = createHarness();
+      harness.addLease("lease-1");
+      harness.addLease("lease-2");
+      harness.cfg.revocationFailing = true;
+
+      const stale = createHarness({ staleFlag: false });
+      stale.addLease("lease-1");
+      stale.cfg.revocationFailing = true;
+      await stale.runScheduled("lease-1");
+      expect(statusChangeCalls()).toEqual([]);
+      expect(stale.cfg.revocationFailing).toBe(true);
+
+      await harness.runScheduled("lease-2");
+      expect(statusChangeCalls()).toEqual([{ provider: PROVIDER, newStatus: "healthy" }]);
+    });
+
+    test("hands off to the retry queue even when marking the lease failed throws", async () => {
+      const harness = createHarness();
+      harness.addLease("lease-1");
+      harness.revoke.mockRejectedValue(new Error("connection refused"));
+      harness.dynamicSecretLeaseDAL.updateById.mockRejectedValue(new Error("db pool timeout"));
+
+      await expect(harness.runScheduled("lease-1", MAX_ATTEMPTS)).rejects.toThrow("connection refused");
+
+      expect(retryQueued(harness.queueService.queue)).toHaveLength(1);
+      expect(vi.mocked(logger.error)).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "db pool timeout" }),
+        expect.stringContaining("lease-1")
+      );
     });
 
     test("records nothing when the lease no longer exists", async () => {
@@ -270,7 +312,18 @@ describe("dynamic secret lease revocation metrics", () => {
     });
   });
 
-  describe("retry phase", () => {
+  describe("retry revocation", () => {
+    test("clears a failing config's flag and records the recovery when a retry succeeds", async () => {
+      const harness = createHarness();
+      harness.addLease("lease-1");
+      harness.cfg.revocationFailing = true;
+
+      await harness.runRetry("lease-1", 2);
+
+      expect(harness.cfg.revocationFailing).toBe(false);
+      expect(statusChangeCalls()).toEqual([{ provider: PROVIDER, newStatus: "healthy" }]);
+    });
+
     test("records every attempt, exhausted only on the last, and orphans the lease there", async () => {
       const harness = createHarness();
       harness.addLease("lease-1");
@@ -282,12 +335,28 @@ describe("dynamic secret lease revocation metrics", () => {
       }
 
       expect(outcomeCalls()).toEqual([
-        { provider: PROVIDER, phase: "retry", outcome: "failure", attemptsExhausted: false },
-        { provider: PROVIDER, phase: "retry", outcome: "failure", attemptsExhausted: false },
-        { provider: PROVIDER, phase: "retry", outcome: "failure", attemptsExhausted: true }
+        { provider: PROVIDER, trigger: "retry", outcome: "failure", attemptsExhausted: false },
+        { provider: PROVIDER, trigger: "retry", outcome: "failure", attemptsExhausted: false },
+        { provider: PROVIDER, trigger: "retry", outcome: "failure", attemptsExhausted: true }
       ]);
       expect(orphanedCalls()).toEqual([{ provider: PROVIDER }]);
       expect(statusChangeCalls()).toEqual([]);
+    });
+
+    test("still orphans the lease and emails admins when marking the lease failed throws", async () => {
+      const harness = createHarness();
+      harness.addLease("lease-1");
+      harness.revoke.mockRejectedValue(new Error("connection refused"));
+      harness.dynamicSecretLeaseDAL.updateById.mockRejectedValue(new Error("db pool timeout"));
+
+      await expect(harness.runRetry("lease-1", MAX_ATTEMPTS)).rejects.toThrow("connection refused");
+
+      expect(orphanedCalls()).toEqual([{ provider: PROVIDER }]);
+      expect(
+        harness.queueService.queue.mock.calls.filter(
+          (call) => (call as unknown[])[1] === QueueJobs.DynamicSecretLeaseRevocationFailedEmail
+        )
+      ).toHaveLength(1);
     });
   });
 
@@ -308,12 +377,34 @@ describe("dynamic secret lease revocation metrics", () => {
       await harness.runPruning(3);
 
       expect(outcomeCalls()).toEqual([
-        { provider: PROVIDER, phase: "pruning", outcome: "success", attemptsExhausted: true },
-        { provider: PROVIDER, phase: "pruning", outcome: "failure", attemptsExhausted: true },
-        { provider: PROVIDER, phase: "pruning", outcome: "success", attemptsExhausted: true }
+        { provider: PROVIDER, trigger: "pruning", outcome: "success", attemptsExhausted: true },
+        { provider: PROVIDER, trigger: "pruning", outcome: "failure", attemptsExhausted: true },
+        { provider: PROVIDER, trigger: "pruning", outcome: "success", attemptsExhausted: true }
       ]);
       expect(orphanedCalls()).toEqual([{ provider: PROVIDER, count: 1 }]);
       expect(harness.revoke).toHaveBeenCalledTimes(3);
+    });
+
+    test("still revokes and counts every lease when cancelling a scheduled job fails partway", async () => {
+      const harness = createHarness();
+      harness.addLease("lease-1");
+      harness.addLease("lease-2");
+      harness.queueService.stopJobById.mockImplementation(async (_queue: string, jobId: string) => {
+        if (jobId === "lease-2") throw new Error("redis timeout");
+      });
+      harness.revoke.mockImplementation(async (_inputs, entityId) => {
+        if (entityId === "entity-lease-1") throw new Error("permission denied");
+        return { entityId };
+      });
+
+      await expect(harness.runPruning(1)).rejects.toThrow("permission denied");
+
+      expect(harness.revoke).toHaveBeenCalledTimes(2);
+      expect(outcomeCalls()).toEqual([
+        { provider: PROVIDER, trigger: "pruning", outcome: "failure", attemptsExhausted: true },
+        { provider: PROVIDER, trigger: "pruning", outcome: "success", attemptsExhausted: true }
+      ]);
+      expect(orphanedCalls()).toEqual([{ provider: PROVIDER, count: 1 }]);
     });
 
     test("records a success per lease when every revoke succeeds", async () => {
@@ -324,8 +415,8 @@ describe("dynamic secret lease revocation metrics", () => {
       await harness.runPruning(1);
 
       expect(outcomeCalls()).toEqual([
-        { provider: PROVIDER, phase: "pruning", outcome: "success", attemptsExhausted: false },
-        { provider: PROVIDER, phase: "pruning", outcome: "success", attemptsExhausted: false }
+        { provider: PROVIDER, trigger: "pruning", outcome: "success", attemptsExhausted: false },
+        { provider: PROVIDER, trigger: "pruning", outcome: "success", attemptsExhausted: false }
       ]);
       expect(orphanedCalls()).toEqual([]);
     });

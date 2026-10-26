@@ -225,6 +225,12 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.GcpServiceAccountKey]: gcpServiceAccountKeyRotationFactory as TRotationFactoryImplementation
 };
 
+export class SecretRotationInProgressError extends BadRequestError {
+  constructor() {
+    super({ message: "A rotation is already in progress. Please try again shortly." });
+  }
+}
+
 export const secretRotationV2ServiceFactory = ({
   secretRotationV2DAL,
   folderDAL,
@@ -273,6 +279,17 @@ export const secretRotationV2ServiceFactory = ({
     if (!matched.ruleNames.length) return undefined;
     return matched;
   };
+
+  // Every writer that can move rotationStatus from Failed to Success goes through this, so recoveries balance failures.
+  // The conditional update makes only the run that actually moves it report the change, whatever it loaded earlier.
+  const $markRotationSucceeded = async (rotationId: string, tx: Knex) =>
+    (
+      await secretRotationV2DAL.update(
+        { id: rotationId, rotationStatus: SecretRotationStatus.Failed },
+        { rotationStatus: SecretRotationStatus.Success },
+        tx
+      )
+    ).length > 0;
 
   const $queueSendSecretRotationStatusNotification = async (secretRotation: TSecretRotationV2Raw) => {
     const appCfg = getConfig();
@@ -1313,18 +1330,14 @@ export const secretRotationV2ServiceFactory = ({
       secretsMapping
     } = secretRotation;
 
-    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
-    const previousRotationStatus = secretRotation.rotationStatus as SecretRotationStatus;
+    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>>;
+    try {
+      lock = await keyStore.acquireLock([KeyStorePrefixes.SecretRotationLock(rotationId)], 60 * 1000);
+    } catch (e) {
+      throw new SecretRotationInProgressError();
+    }
 
     try {
-      try {
-        lock = await keyStore.acquireLock([KeyStorePrefixes.SecretRotationLock(rotationId)], 60 * 1000);
-      } catch (e) {
-        throw new InternalServerError({
-          message: "Failed to acquire rotation lock."
-        });
-      }
-
       const appConnection = await decryptAppConnection(connection, kmsService);
 
       const generatedCredentials = await decryptSecretRotationCredentials({
@@ -1378,7 +1391,10 @@ export const secretRotationV2ServiceFactory = ({
           });
           const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: connection.orgId, kmsService });
 
-          return secretRotationV2DAL.transaction(async (tx) => {
+          let isRecovery = false;
+          const rotated = await secretRotationV2DAL.transaction(async (tx) => {
+            isRecovery = await $markRotationSucceeded(secretRotation.id, tx);
+
             const secretsPayload = rotationFactory.getSecretsPayload(newCredentials);
 
             // update mapped secrets with new credential values
@@ -1438,6 +1454,9 @@ export const secretRotationV2ServiceFactory = ({
               tx
             );
           });
+
+          if (isRecovery) recordSecretRotationStatusChangeMetric({ type, newStatus: "healthy" });
+          return rotated;
         },
         activeCredentials
       );
@@ -1478,9 +1497,6 @@ export const secretRotationV2ServiceFactory = ({
       });
 
       recordSecretRotationOutcomeMetric({ type, outcome: "success", attemptsExhausted: isFinalAttempt });
-      if (previousRotationStatus === SecretRotationStatus.Failed) {
-        recordSecretRotationStatusChangeMetric({ type, to: "healthy" });
-      }
 
       return updatedRotation;
     } catch (error) {
@@ -1502,6 +1518,14 @@ export const secretRotationV2ServiceFactory = ({
           plainText: Buffer.from(errorMessage)
         });
 
+        const isStatusChange =
+          (
+            await secretRotationV2DAL.update(
+              { id: secretRotation.id, rotationStatus: SecretRotationStatus.Success },
+              { rotationStatus: SecretRotationStatus.Failed }
+            )
+          ).length > 0;
+
         const updatedRotation = await secretRotationV2DAL.updateById(secretRotation.id, {
           rotationStatus: SecretRotationStatus.Failed,
           lastRotationJobId: jobId,
@@ -1510,10 +1534,7 @@ export const secretRotationV2ServiceFactory = ({
           nextRotationAt: getNextUtcRotationInterval(secretRotation.rotateAtUtc as TSecretRotationV2["rotateAtUtc"])
         });
 
-        // Without the lock another run of this rotation was in progress, which says nothing about the provider.
-        if (previousRotationStatus === SecretRotationStatus.Success && lock) {
-          recordSecretRotationStatusChangeMetric({ type, to: "failed" });
-        }
+        if (isStatusChange) recordSecretRotationStatusChangeMetric({ type, newStatus: "failed" });
 
         if (shouldSendNotification) {
           await $queueSendSecretRotationStatusNotification(updatedRotation);
@@ -1561,7 +1582,7 @@ export const secretRotationV2ServiceFactory = ({
 
       throw new BadRequestError({ message: errorMessage });
     } finally {
-      await lock?.release();
+      await lock.release();
     }
   };
 
@@ -1618,6 +1639,7 @@ export const secretRotationV2ServiceFactory = ({
 
       return await expandSecretRotation(updatedRotation, kmsService);
     } catch (err) {
+      if (err instanceof SecretRotationInProgressError) throw err;
       throw new InternalServerError({
         message: (err as Error).message ?? "Failed to rotate secrets: check Rotation status for details."
       });
@@ -2116,7 +2138,8 @@ export const secretRotationV2ServiceFactory = ({
         });
         const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService });
 
-        return secretRotationV2DAL.transaction(async (tx) => {
+        let isRecovery = false;
+        const reconciled = await secretRotationV2DAL.transaction(async (tx) => {
           // Update the password secret with the new value
           const secretsMapping = secretRotation.secretsMapping as TLocalAccountRotation["secretsMapping"];
           const passwordBuffer = Buffer.from(localAccountCredentials.password);
@@ -2150,6 +2173,7 @@ export const secretRotationV2ServiceFactory = ({
             resourceMetadataDAL
           });
 
+          isRecovery = await $markRotationSucceeded(rotationId, tx);
           return secretRotationV2DAL.updateById(
             rotationId,
             {
@@ -2160,6 +2184,8 @@ export const secretRotationV2ServiceFactory = ({
             tx
           );
         });
+        if (isRecovery) recordSecretRotationStatusChangeMetric({ type, newStatus: "healthy" });
+        return reconciled;
       },
       { password: activeCredentials.password }
     );

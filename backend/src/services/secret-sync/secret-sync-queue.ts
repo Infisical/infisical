@@ -90,20 +90,6 @@ const DEFAULT_SECRET_SYNC_RETRY_CONFIG = {
   backoff: { type: "exponential" as const, delay: 3000 }
 };
 
-const LOCK_FAILURE_MESSAGE =
-  "Failed to run job. This typically happens when a sync is already in progress. Please try again.";
-
-// syncStatus can't tell us how the previous run ended: every attempt overwrites it with Running first. lastSyncedAt
-// is only written on success, and lastSyncMessage is cleared on success and set on a final failure, so together they
-// hold the last finished result across retries. A lock-contention message says nothing about the destination.
-const getLastSyncResult = ({
-  lastSyncedAt,
-  lastSyncMessage
-}: Pick<TSecretSyncRaw, "lastSyncedAt" | "lastSyncMessage">): "succeeded" | "failed" | null => {
-  if (lastSyncMessage && lastSyncMessage !== LOCK_FAILURE_MESSAGE) return "failed";
-  return lastSyncedAt ? "succeeded" : null;
-};
-
 export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
 
 type TSecretSyncQueueFactoryDep = {
@@ -655,19 +641,34 @@ export const secretSyncQueueFactory = ({
       });
 
       if (isSynced || isFinalAttempt) {
+        // lastSyncResult is written only here, so lock and admission failures cannot overwrite the provider's result.
+        // The conditional update makes only the run that actually changes it report the change, whatever state this
+        // job loaded before taking the lock. A sync that never succeeded (null) failing is a new misconfiguration, not
+        // a breakage, so it is not counted.
+        const isStatusChange =
+          (
+            await secretSyncDAL.update(
+              {
+                id: secretSync.id,
+                lastSyncResult: isSynced ? SecretSyncStatus.Failed : SecretSyncStatus.Succeeded
+              },
+              { lastSyncResult: syncStatus }
+            )
+          ).length > 0;
+
         const updatedSecretSync = await secretSyncDAL.updateById(secretSync.id, {
           syncStatus,
           lastSyncJobId: job.id,
           lastSyncMessage: syncMessage,
-          lastSyncedAt: isSynced ? ranAt : undefined
+          lastSyncedAt: isSynced ? ranAt : undefined,
+          lastSyncResult: syncStatus
         });
 
-        const lastSyncResult = getLastSyncResult(secretSync);
-        if (isSynced && lastSyncResult === "failed") {
-          recordSecretSyncStatusChangeMetric({ destination: secretSync.destination, to: "healthy" });
-        } else if (!isSynced && lastSyncResult === "succeeded") {
-          // A sync that has never succeeded is a new misconfiguration, not a breakage, so it is not counted.
-          recordSecretSyncStatusChangeMetric({ destination: secretSync.destination, to: "failed" });
+        if (isStatusChange) {
+          recordSecretSyncStatusChangeMetric({
+            destination: secretSync.destination,
+            newStatus: isSynced ? "healthy" : "failed"
+          });
         }
 
         if (!isSynced) {
@@ -1135,7 +1136,8 @@ export const secretSyncQueueFactory = ({
 
         const secretSync = await secretSyncDAL.updateById(syncId, {
           syncStatus: SecretSyncStatus.Failed,
-          lastSyncMessage: LOCK_FAILURE_MESSAGE,
+          lastSyncMessage:
+            "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
           lastSyncJobId: job.id
         });
 
@@ -1158,7 +1160,8 @@ export const secretSyncQueueFactory = ({
       case QueueJobs.SecretSyncImportSecrets: {
         const secretSync = await secretSyncDAL.updateById(syncId, {
           importStatus: SecretSyncStatus.Failed,
-          lastImportMessage: LOCK_FAILURE_MESSAGE,
+          lastImportMessage:
+            "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
           lastImportJobId: job.id
         });
 
@@ -1180,7 +1183,8 @@ export const secretSyncQueueFactory = ({
       case QueueJobs.SecretSyncRemoveSecrets: {
         const secretSync = await secretSyncDAL.updateById(syncId, {
           removeStatus: SecretSyncStatus.Failed,
-          lastRemoveMessage: LOCK_FAILURE_MESSAGE,
+          lastRemoveMessage:
+            "Failed to run job. This typically happens when a sync is already in progress. Please try again.",
           lastRemoveJobId: job.id
         });
 

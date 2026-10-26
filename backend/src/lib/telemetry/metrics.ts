@@ -733,11 +733,14 @@ export const secretSyncStatusChangeCounter = infisicalCoreMeter.createCounter(
   }
 );
 
-export const recordSecretSyncStatusChangeMetric = (params: { destination: string; to: "failed" | "healthy" }) => {
+export const recordSecretSyncStatusChangeMetric = (params: {
+  destination: string;
+  newStatus: "failed" | "healthy";
+}) => {
   if (!isTelemetryEnabled()) return;
   secretSyncStatusChangeCounter.add(1, {
     destination: params.destination,
-    to: params.to
+    new_status: params.newStatus
   });
 };
 
@@ -773,11 +776,11 @@ export const secretRotationStatusChangeCounter = infisicalCoreMeter.createCounte
   }
 );
 
-export const recordSecretRotationStatusChangeMetric = (params: { type: string; to: "failed" | "healthy" }) => {
+export const recordSecretRotationStatusChangeMetric = (params: { type: string; newStatus: "failed" | "healthy" }) => {
   if (!isTelemetryEnabled()) return;
   secretRotationStatusChangeCounter.add(1, {
     type: params.type,
-    to: params.to
+    new_status: params.newStatus
   });
 };
 
@@ -802,21 +805,21 @@ export const dynamicSecretRevocationOutcomeCounter = infisicalCoreMeter.createCo
   "infisical.dynamic_secret.revocation.outcome.count",
   {
     description:
-      "Dynamic secret lease revocations by provider, phase, and outcome. The scheduled phase records exactly one outcome per expired lease; retry records every attempt, with attempts.exhausted=true on the last.",
+      "Dynamic secret lease revocations by provider, trigger, and outcome. A scheduled revocation (lease expiry) records exactly one outcome per lease; retry records every attempt, with attempts.exhausted=true on the last.",
     unit: "{revocation}"
   }
 );
 
 export const recordDynamicSecretRevocationOutcomeMetric = (params: {
   provider: string;
-  phase: "scheduled" | "retry" | "manual" | "pruning";
+  trigger: "scheduled" | "retry" | "manual" | "pruning";
   outcome: "success" | "failure";
   attemptsExhausted: boolean;
 }) => {
   if (!isTelemetryEnabled()) return;
   dynamicSecretRevocationOutcomeCounter.add(1, {
     provider: params.provider,
-    phase: params.phase,
+    trigger: params.trigger,
     outcome: params.outcome,
     "attempts.exhausted": String(params.attemptsExhausted)
   });
@@ -826,16 +829,19 @@ export const dynamicSecretStatusChangeCounter = infisicalCoreMeter.createCounter
   "infisical.dynamic_secret.status_change.count",
   {
     description:
-      "Dynamic secret configs whose scheduled lease revocations flipped between healthy and failed, by provider. Counts distinct configs breaking without a per-config label.",
+      "Dynamic secret configs whose lease revocations flipped between working and failing, by provider: failed when a scheduled revocation fails for good, healthy when any revocation succeeds again. Counts distinct configs breaking without a per-config label.",
     unit: "{change}"
   }
 );
 
-export const recordDynamicSecretStatusChangeMetric = (params: { provider: string; to: "failed" | "healthy" }) => {
+export const recordDynamicSecretStatusChangeMetric = (params: {
+  provider: string;
+  newStatus: "failed" | "healthy";
+}) => {
   if (!isTelemetryEnabled()) return;
   dynamicSecretStatusChangeCounter.add(1, {
     provider: params.provider,
-    to: params.to
+    new_status: params.newStatus
   });
 };
 

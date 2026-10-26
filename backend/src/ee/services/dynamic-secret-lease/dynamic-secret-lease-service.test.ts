@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import {
   recordDynamicSecretRevocationOutcomeMetric,
+  recordDynamicSecretStatusChangeMetric,
   recordDynamicSecretUnrecordedCredentialMetric
 } from "@app/lib/telemetry/metrics";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
@@ -22,6 +23,7 @@ vi.mock("@app/lib/logger", () => ({
 vi.mock("@app/lib/telemetry/metrics", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/telemetry/metrics")>()),
   recordDynamicSecretRevocationOutcomeMetric: vi.fn(),
+  recordDynamicSecretStatusChangeMetric: vi.fn(),
   recordDynamicSecretUnrecordedCredentialMetric: vi.fn()
 }));
 
@@ -38,7 +40,8 @@ const dynamicSecretCfg = {
   metadata: []
 };
 
-const createService = () => {
+const createService = ({ revocationFailing = false } = {}) => {
+  const cfg = { ...dynamicSecretCfg, revocationFailing };
   const provider = {
     create: vi.fn(async () => ({ entityId: "entity-1", data: {} })),
     revoke: vi.fn(async () => ({ entityId: "entity-1" }))
@@ -52,7 +55,7 @@ const createService = () => {
       externalEntityId: "entity-1",
       config: {},
       encryptedLeaseData: null,
-      dynamicSecret: dynamicSecretCfg
+      dynamicSecret: cfg
     })),
     updateById: vi.fn(async () => ({})),
     deleteById: vi.fn(async () => ({}))
@@ -60,7 +63,13 @@ const createService = () => {
 
   const service = dynamicSecretLeaseServiceFactory({
     dynamicSecretLeaseDAL: dynamicSecretLeaseDAL as never,
-    dynamicSecretDAL: { findOne: vi.fn(async () => dynamicSecretCfg) } as never,
+    dynamicSecretDAL: {
+      findOne: vi.fn(async () => ({ ...cfg })),
+      update: vi.fn(async (filter: { revocationFailing: boolean }, data: { revocationFailing: boolean }) => {
+        if (filter.revocationFailing !== cfg.revocationFailing) return [];
+        return [Object.assign(cfg, data)];
+      })
+    } as never,
     dynamicSecretProviders: { [PROVIDER]: provider } as never,
     dynamicSecretQueueService: {
       setLeaseRevocation: vi.fn(async () => undefined),
@@ -86,7 +95,7 @@ const createService = () => {
     secretValidationRuleService: { findConstraintsForGeneratedSecret: vi.fn(async () => ({ ruleNames: [] })) } as never
   });
 
-  return { service, provider, dynamicSecretLeaseDAL };
+  return { service, provider, dynamicSecretLeaseDAL, cfg };
 };
 
 const actor = {
@@ -113,7 +122,7 @@ describe("dynamic secret lease service metrics", () => {
       await service.revokeLease({ ...actor, leaseId: "lease-1" });
 
       expect(outcomeCalls()).toEqual([
-        { provider: PROVIDER, phase: "manual", outcome: "success", attemptsExhausted: true }
+        { provider: PROVIDER, trigger: "manual", outcome: "success", attemptsExhausted: true }
       ]);
     });
 
@@ -124,7 +133,7 @@ describe("dynamic secret lease service metrics", () => {
       await service.revokeLease({ ...actor, leaseId: "lease-1" });
 
       expect(outcomeCalls()).toEqual([
-        { provider: PROVIDER, phase: "manual", outcome: "failure", attemptsExhausted: true }
+        { provider: PROVIDER, trigger: "manual", outcome: "failure", attemptsExhausted: true }
       ]);
     });
 
@@ -137,13 +146,34 @@ describe("dynamic secret lease service metrics", () => {
       expect(outcomeCalls()).toEqual([]);
     });
 
+    test("clears a failing config's flag and records the recovery when a manual revoke succeeds", async () => {
+      const { service, cfg } = createService({ revocationFailing: true });
+
+      await service.revokeLease({ ...actor, leaseId: "lease-1" });
+
+      expect(cfg.revocationFailing).toBe(false);
+      expect(vi.mocked(recordDynamicSecretStatusChangeMetric).mock.calls).toEqual([
+        [{ provider: PROVIDER, newStatus: "healthy" }]
+      ]);
+    });
+
+    test("leaves a failing config's flag when a forced revoke swallowed the upstream error", async () => {
+      const { service, provider, cfg } = createService({ revocationFailing: true });
+      provider.revoke.mockRejectedValueOnce(new Error("connection refused"));
+
+      await service.revokeLease({ ...actor, leaseId: "lease-1", isForced: true });
+
+      expect(cfg.revocationFailing).toBe(true);
+      expect(vi.mocked(recordDynamicSecretStatusChangeMetric)).not.toHaveBeenCalled();
+    });
+
     test("records a forced revoke that succeeded upstream", async () => {
       const { service } = createService();
 
       await service.revokeLease({ ...actor, leaseId: "lease-1", isForced: true });
 
       expect(outcomeCalls()).toEqual([
-        { provider: PROVIDER, phase: "manual", outcome: "success", attemptsExhausted: true }
+        { provider: PROVIDER, trigger: "manual", outcome: "success", attemptsExhausted: true }
       ]);
     });
   });

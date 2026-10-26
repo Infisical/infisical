@@ -47,10 +47,12 @@ const ATTEMPTS = 5;
 const REQUEUE_LIMIT = 120;
 const LAST_SYNCED_AT = new Date("2026-10-01T00:00:00.000Z");
 
-type TSyncState = { lastSyncedAt: Date | null; lastSyncMessage: string | null };
+type TSyncState = { lastSyncedAt: Date | null; lastSyncMessage: string | null; lastSyncResult: string | null };
 type THandler = (job: unknown) => Promise<void>;
 
-const createHarness = (initial: TSyncState, { lockFails = false } = {}) => {
+// staleLoad: every attempt loads the sync as it was before the test, standing in for a job that read the row
+// before another job for the same sync finished.
+const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = false } = {}) => {
   const handlers = new Map<string, THandler>();
   const queueService = {
     start: vi.fn((name: string, fn: THandler) => {
@@ -73,9 +75,15 @@ const createHarness = (initial: TSyncState, { lockFails = false } = {}) => {
     destinationConfig: {},
     ...initial
   };
+  const snapshot = { ...state };
   const secretSyncDAL = {
     // Every attempt reloads the sync, as the real handler does.
-    findById: vi.fn(async () => ({ ...state })),
+    findById: vi.fn(async () => (staleLoad ? { ...snapshot } : { ...state })),
+    // A conditional UPDATE: only a row still matching the filter is changed and returned.
+    update: vi.fn(async (filter: Partial<typeof state>, data: Partial<typeof state>) => {
+      const matches = Object.entries(filter).every(([key, value]) => state[key as keyof typeof state] === value);
+      return matches ? [Object.assign(state, data)] : [];
+    }),
     updateById: vi.fn(async (_id: string, data: Partial<typeof state>) => {
       Object.entries(data).forEach(([key, value]) => {
         if (value !== undefined) Object.assign(state, { [key]: value });
@@ -116,10 +124,14 @@ const createHarness = (initial: TSyncState, { lockFails = false } = {}) => {
 const syncSecrets = vi.mocked(SecretSyncFns.syncSecrets);
 const statusChangeCalls = () => vi.mocked(recordSecretSyncStatusChangeMetric).mock.calls.map(([params]) => params);
 
-const healthy: TSyncState = { lastSyncedAt: LAST_SYNCED_AT, lastSyncMessage: null };
-const failed: TSyncState = { lastSyncedAt: LAST_SYNCED_AT, lastSyncMessage: "Railway disabled updates" };
-const neverSucceeded: TSyncState = { lastSyncedAt: null, lastSyncMessage: "Invalid token" };
-const brandNew: TSyncState = { lastSyncedAt: null, lastSyncMessage: null };
+const healthy: TSyncState = { lastSyncedAt: LAST_SYNCED_AT, lastSyncMessage: null, lastSyncResult: "succeeded" };
+const failed: TSyncState = {
+  lastSyncedAt: LAST_SYNCED_AT,
+  lastSyncMessage: "Railway disabled updates",
+  lastSyncResult: "failed"
+};
+const neverSucceeded: TSyncState = { lastSyncedAt: null, lastSyncMessage: "Invalid token", lastSyncResult: "failed" };
+const brandNew: TSyncState = { lastSyncedAt: null, lastSyncMessage: null, lastSyncResult: null };
 
 describe("secret sync status change", () => {
   beforeEach(() => {
@@ -132,7 +144,7 @@ describe("secret sync status change", () => {
 
     await expect(runSync(ATTEMPTS)).rejects.toThrow("upstream 500");
 
-    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, to: "failed" }]);
+    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, newStatus: "failed" }]);
   });
 
   test("uses the result before the job, not the Running status, across retries", async () => {
@@ -147,7 +159,7 @@ describe("secret sync status change", () => {
     expect(vi.mocked(recordSecretSyncOutcomeMetric)).toHaveBeenCalledTimes(ATTEMPTS - 1);
 
     await expect(runSync(ATTEMPTS)).rejects.toThrow();
-    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, to: "failed" }]);
+    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, newStatus: "failed" }]);
   });
 
   test("flips to failed when a non-retryable error ends a healthy sync early", async () => {
@@ -156,7 +168,7 @@ describe("secret sync status change", () => {
 
     await runSync(1);
 
-    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, to: "failed" }]);
+    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, newStatus: "failed" }]);
   });
 
   test("does not count a sync that has never succeeded", async () => {
@@ -184,7 +196,7 @@ describe("secret sync status change", () => {
     await runSync(1);
     await runSync(1);
 
-    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, to: "healthy" }]);
+    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, newStatus: "healthy" }]);
   });
 
   test("does not flip to healthy when a healthy sync succeeds", async () => {
@@ -212,10 +224,48 @@ describe("secret sync status change", () => {
     syncSecrets.mockRejectedValue(new Error("upstream 500"));
     const afterContention = createHarness({
       lastSyncedAt: contended.state.lastSyncedAt,
-      lastSyncMessage: contended.state.lastSyncMessage
+      lastSyncMessage: contended.state.lastSyncMessage,
+      lastSyncResult: contended.state.lastSyncResult
     });
     await expect(afterContention.runSync(ATTEMPTS)).rejects.toThrow();
 
-    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, to: "failed" }]);
+    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, newStatus: "failed" }]);
+  });
+
+  test("keeps a provider failure through later lock contention, so its recovery is still counted", async () => {
+    syncSecrets.mockRejectedValue(new Error("upstream 500"));
+    const broken = createHarness(healthy);
+    await expect(broken.runSync(ATTEMPTS)).rejects.toThrow();
+
+    const contended = createHarness(
+      { lastSyncedAt: broken.state.lastSyncedAt, lastSyncMessage: null, lastSyncResult: broken.state.lastSyncResult },
+      { lockFails: true }
+    );
+    await contended.runSync(1, { failedToAcquireLockCount: REQUEUE_LIMIT });
+    expect(contended.state.lastSyncResult).toBe("failed");
+
+    syncSecrets.mockResolvedValue({} as never);
+    const recovered = createHarness({
+      lastSyncedAt: contended.state.lastSyncedAt,
+      lastSyncMessage: contended.state.lastSyncMessage,
+      lastSyncResult: contended.state.lastSyncResult
+    });
+    await recovered.runSync(1);
+
+    expect(statusChangeCalls()).toEqual([
+      { destination: SecretSync.Railway, newStatus: "failed" },
+      { destination: SecretSync.Railway, newStatus: "healthy" }
+    ]);
+  });
+
+  test("reports a breakage once when two jobs loaded the same healthy sync", async () => {
+    syncSecrets.mockRejectedValue(new Error("upstream 500"));
+    const { runSync, state } = createHarness(healthy, { staleLoad: true });
+
+    await expect(runSync(ATTEMPTS)).rejects.toThrow();
+    await expect(runSync(ATTEMPTS)).rejects.toThrow();
+
+    expect(state.lastSyncResult).toBe("failed");
+    expect(statusChangeCalls()).toEqual([{ destination: SecretSync.Railway, newStatus: "failed" }]);
   });
 });

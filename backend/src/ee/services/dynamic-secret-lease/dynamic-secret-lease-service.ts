@@ -33,7 +33,11 @@ import { TDynamicSecretDALFactory } from "../dynamic-secret/dynamic-secret-dal";
 import { DynamicSecretProviders, TDynamicProviderFns } from "../dynamic-secret/providers/models";
 import { toSafeUsername } from "../dynamic-secret/providers/templateUtils";
 import { TDynamicSecretLeaseDALFactory } from "./dynamic-secret-lease-dal";
-import { decryptLeaseData, pickPersistedLeaseData } from "./dynamic-secret-lease-fns";
+import {
+  decryptLeaseData,
+  pickPersistedLeaseData,
+  recordDynamicSecretRevocationResult
+} from "./dynamic-secret-lease-fns";
 import { TDynamicSecretLeaseQueueServiceFactory } from "./dynamic-secret-lease-queue";
 import {
   DynamicSecretLeaseStatus,
@@ -43,7 +47,7 @@ import {
 
 type TDynamicSecretLeaseServiceFactoryDep = {
   dynamicSecretLeaseDAL: TDynamicSecretLeaseDALFactory;
-  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne">;
+  dynamicSecretDAL: Pick<TDynamicSecretDALFactory, "findOne" | "update">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
   dynamicSecretQueueService: TDynamicSecretLeaseQueueServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -432,7 +436,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     if (!isRevokeErrorSwallowed) {
       recordDynamicSecretRevocationOutcomeMetric({
         provider: dynamicSecretCfg.type,
-        phase: "manual",
+        trigger: "manual",
         outcome: (revokeResponse as { error?: Error })?.error ? "failure" : "success",
         attemptsExhausted: true
       });
@@ -454,6 +458,16 @@ export const dynamicSecretLeaseServiceFactory = ({
         environment: environmentSlug,
         secretPath: path
       };
+    }
+
+    if (!isRevokeErrorSwallowed) {
+      await recordDynamicSecretRevocationResult({
+        dynamicSecretDAL,
+        dynamicSecretId: dynamicSecretCfg.id,
+        provider: dynamicSecretCfg.type,
+        isRevoked: true,
+        wasFailing: dynamicSecretCfg.revocationFailing
+      });
     }
 
     await dynamicSecretQueueService.unsetLeaseRevocation(dynamicSecretLease.id);

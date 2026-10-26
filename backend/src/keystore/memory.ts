@@ -32,11 +32,6 @@ export const inMemoryKeyStore = (): TKeyStoreFactory => {
       store[key] = value;
       return "OK";
     },
-    setItemWithExpiryReturningPrevious: async (key, _expiryInSeconds, value) => {
-      const previous = store[key];
-      store[key] = value;
-      return previous === undefined ? null : previous.toString();
-    },
     deleteItem: async (key) => {
       delete store[key];
       delete hashStore[key];
