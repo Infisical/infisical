@@ -1146,7 +1146,7 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
 - **Read path.** A read counts when it reaches the secret through its folder, an import of it, a secret
   referencing it, or the source of a replication import (imports and references check the reader's own access
   to the source, so revoking it would break them). The card computes the whole project once and caches it
-  (`UNUSED_SECRET_ACCESS_CACHE_TTL_SECONDS`), grouping actors by identical rules so each rule set is checked once
+  (`KeyStoreTtls.InsightsUnusedAccessCacheInSeconds`), grouping actors by identical rules so each rule set is checked once
   per secret. The per-secret endpoint checks the caller's access to the secret before building its reach, which
   decrypts every secret that could reference it.
 - **The card judges a full window, or everything since tracking began.** Tracking starts at the later of the

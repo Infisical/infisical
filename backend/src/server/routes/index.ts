@@ -3527,6 +3527,7 @@ export const registerRoutes = async (
 
   const secretReadActivityService = secretReadActivityServiceFactory({
     permissionService,
+    licenseService,
     secretReadActivityDAL,
     secretReadActivityQueue,
     folderDAL,

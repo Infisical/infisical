@@ -31,7 +31,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { cn } from "@app/components/v3/utils";
-import { useProject, useSubscription } from "@app/context";
+import { useProject } from "@app/context";
 import { usePagination, useResetPageHelper } from "@app/hooks";
 import { TUnusedAccessActor, useGetUnusedAccess } from "@app/hooks/api/secretInsights";
 
@@ -47,14 +47,13 @@ import {
 
 export const UnusedAccessCard = () => {
   const { currentProject, projectId } = useProject();
-  const { subscription } = useSubscription();
   const { page, setPage, perPage, setPerPage, offset, limit, search, setSearch, debouncedSearch } =
     usePagination("", { initPerPage: 10 });
   const [selected, setSelected] = useState<TUnusedAccessActor | null>(null);
 
   const { data, isPending, error } = useGetUnusedAccess(
     { projectId, offset, limit, search: debouncedSearch || undefined },
-    { enabled: Boolean(subscription?.secretAccessInsights) }
+    { enabled: !!projectId }
   );
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset, setPage });
@@ -223,7 +222,7 @@ export const UnusedAccessCard = () => {
           </CardDescription>
           <CardAction>
             <InputGroup className="w-64">
-              <InputGroupAddon>
+              <InputGroupAddon align="inline-start">
                 <SearchIcon />
               </InputGroupAddon>
               <InputGroupInput

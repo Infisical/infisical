@@ -282,6 +282,7 @@ export const KeyStoreTtls = {
   InsightsDuplicationCacheInSeconds: 300, // 5 minutes
   InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
   InsightsOrgCacheInSeconds: 900, // 15 minutes
+  InsightsUnusedAccessCacheInSeconds: 86400, // 24 hours
   AdminConfigInSeconds: 60,
   UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job

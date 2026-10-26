@@ -1,23 +1,20 @@
 import { setImmediate } from "node:timers/promises";
 
-import { createMongoAbility, ForbiddenError } from "@casl/ability";
+import { createMongoAbility } from "@casl/ability";
 
-import { ActionProjectType, SecretFolderRole, SecretType, TableName } from "@app/db/schemas";
+import { SecretFolderRole, SecretType, TableName } from "@app/db/schemas";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { checkInsightsPermission } from "@app/ee/services/insights/insights-service";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   buildFolderScopedPrivilegeRules,
   hasSecretReadValueOrDescribePermission,
   throwIfMissingSecretReadValueOrDescribePermission
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import {
-  ProjectPermissionInsightsActions,
-  ProjectPermissionSecretActions,
-  ProjectPermissionSet,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
-import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { ProjectPermissionSecretActions, ProjectPermissionSet } from "@app/ee/services/permission/project-permission";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getCacheTtl, withCache } from "@app/lib/cache/with-cache";
 import { conditionsMatcher } from "@app/lib/casl";
 import { NotFoundError } from "@app/lib/errors";
@@ -67,7 +64,6 @@ import {
   TUnusedSecret
 } from "./secret-read-activity-types";
 
-const UNUSED_ACCESS_CACHE_TTL_SECONDS = 24 * 60 * 60;
 const REACH_YIELD_INTERVAL = 100;
 // Longer than a computation can take, so the lock is not lost mid-scan; waiters give up well before a request times out.
 const UNUSED_ACCESS_COMPUTE_LOCK_TTL_MS = 5 * 60 * 1000;
@@ -87,6 +83,7 @@ const once = <T>(build: () => T) => {
 
 type TSecretReadActivityServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissions">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   secretReadActivityDAL: Pick<
     TSecretReadActivityDALFactory,
     "findLastReads" | "findTrackingStartedAt" | "findAccessSourceDates" | "findAdminActorIds"
@@ -110,6 +107,7 @@ export type TSecretReadActivityServiceFactory = ReturnType<typeof secretReadActi
 
 export const secretReadActivityServiceFactory = ({
   permissionService,
+  licenseService,
   secretReadActivityDAL,
   secretReadActivityQueue,
   folderDAL,
@@ -125,23 +123,6 @@ export const secretReadActivityServiceFactory = ({
   kmsService,
   keyStore
 }: TSecretReadActivityServiceFactoryDep) => {
-  // The permission alone, not the plan: a downgrade must not hide reads already collected.
-  const $getInsightsPermission = async (projectId: string, actor: OrgServiceActor) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      projectId,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionInsightsActions.Read,
-      ProjectPermissionSub.Insights
-    );
-    return permission;
-  };
-
   let instanceTrackingStartedAt: Promise<Date | undefined> | undefined;
   const $getTrackingStartedAt = () => {
     instanceTrackingStartedAt ??= secretReadActivityDAL.findTrackingStartedAt().catch((error) => {
@@ -492,7 +473,7 @@ export const secretReadActivityServiceFactory = ({
     { projectId, environment, secretPath, secretName }: TGetSecretReadActivityDTO,
     actor: OrgServiceActor
   ) => {
-    const permission = await $getInsightsPermission(projectId, actor);
+    const { permission } = await checkInsightsPermission(permissionService, licenseService, projectId, actor);
 
     // The secret is checked before the reach is built, which decrypts every secret that could reference it.
     const tree = await loadProjectFolderTree({ folderDAL, projectEnvDAL }, projectId);
@@ -648,7 +629,7 @@ export const secretReadActivityServiceFactory = ({
     const summary = await withCache({
       keyStore,
       key: cacheKey,
-      ttlSeconds: UNUSED_ACCESS_CACHE_TTL_SECONDS,
+      ttlSeconds: KeyStoreTtls.InsightsUnusedAccessCacheInSeconds,
       // Requests on a cold cache, on any instance, wait for the one computing the project and read what it cached
       // instead of each scanning the project. If the wait runs out, the request computes it itself.
       fetcher: async () => {
@@ -670,7 +651,7 @@ export const secretReadActivityServiceFactory = ({
           // Written before the lock is released, so the next request in line finds it. A failed write only costs
           // the next request a recomputation, so it never fails this one.
           await keyStore
-            .setItemWithExpiry(cacheKey, UNUSED_ACCESS_CACHE_TTL_SECONDS, JSON.stringify(result))
+            .setItemWithExpiry(cacheKey, KeyStoreTtls.InsightsUnusedAccessCacheInSeconds, JSON.stringify(result))
             .catch((error) => {
               logger.warn(error, `unused-access: failed to cache the project computation [projectId=${projectId}]`);
             });
@@ -680,33 +661,22 @@ export const secretReadActivityServiceFactory = ({
         }
       }
     });
-    const [remainingTTL, project] = await Promise.all([
-      getCacheTtl(keyStore, cacheKey),
-      projectDAL.findById(projectId)
-    ]);
-    return {
-      ...summary,
-      // Dates come back from the cache as strings.
-      periodStart: new Date(summary.periodStart),
-      remainingTTL,
-      projectName: project?.name ?? ""
-    };
+    const remainingTTL = await getCacheTtl(keyStore, cacheKey);
+    // Dates come back from the cache as strings.
+    return { ...summary, periodStart: new Date(summary.periodStart), remainingTTL };
   };
 
   const listUnusedAccess = async (
     { projectId, offset, limit, search }: TListUnusedAccessDTO,
     actor: OrgServiceActor
   ) => {
-    await $getInsightsPermission(projectId, actor);
-    const { rows, ...tracking } = await $getCachedUnusedAccess(projectId, actor.orgId);
+    await checkInsightsPermission(permissionService, licenseService, projectId, actor);
+    const { rows, periodStart, remainingTTL } = await $getCachedUnusedAccess(projectId, actor.orgId);
     const needle = search?.trim().toLowerCase();
     const matching = needle ? rows.filter((row) => row.name.toLowerCase().includes(needle)) : rows;
     return {
-      actors: matching.slice(offset, offset + limit),
-      totalCount: matching.length,
-      projectName: tracking.projectName,
-      periodStart: tracking.periodStart,
-      remainingTTL: tracking.remainingTTL
+      result: { actors: matching.slice(offset, offset + limit), totalCount: matching.length, periodStart },
+      remainingTTL
     };
   };
 
@@ -714,8 +684,8 @@ export const secretReadActivityServiceFactory = ({
     { projectId, actorType, actorId }: TGetUnusedAccessActorDTO,
     actor: OrgServiceActor
   ) => {
-    const permission = await $getInsightsPermission(projectId, actor);
-    const { rows, details, ...tracking } = await $getCachedUnusedAccess(projectId, actor.orgId);
+    const { permission } = await checkInsightsPermission(permissionService, licenseService, projectId, actor);
+    const { rows, details, periodStart, remainingTTL } = await $getCachedUnusedAccess(projectId, actor.orgId);
     const unusedAccessActor = rows.find((row) => row.actorType === actorType && row.actorId === actorId);
     if (!unusedAccessActor) {
       throw new NotFoundError({
@@ -728,7 +698,7 @@ export const secretReadActivityServiceFactory = ({
       (await withCache({
         keyStore,
         key: KeyStorePrefixes.InsightsCache(projectId, `unused-access:${actorType}:${actorId}`),
-        ttlSeconds: UNUSED_ACCESS_CACHE_TTL_SECONDS,
+        ttlSeconds: KeyStoreTtls.InsightsUnusedAccessCacheInSeconds,
         fetcher: async () =>
           (await $tallyUnusedAccess(projectId, actor.orgId)).tallies.get(actorId)?.unusedSecretIds ?? []
       }));
@@ -758,13 +728,7 @@ export const secretReadActivityServiceFactory = ({
           a.secretPath.localeCompare(b.secretPath) ||
           a.secretKey.localeCompare(b.secretKey)
       );
-    return {
-      actor: unusedAccessActor,
-      secrets,
-      projectName: tracking.projectName,
-      periodStart: tracking.periodStart,
-      remainingTTL: tracking.remainingTTL
-    };
+    return { result: { actor: unusedAccessActor, secrets, periodStart }, remainingTTL };
   };
 
   return {

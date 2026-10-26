@@ -5982,7 +5982,6 @@ interface ViewSecretManagementInsightsUnusedAccessEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS;
   metadata: {
     projectId: string;
-    projectName: string;
     // Set when one principal's unused secrets were viewed rather than the project list.
     principalType?: string;
     principalId?: string;

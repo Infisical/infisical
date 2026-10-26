@@ -495,21 +495,21 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { projectId } = req.params;
-      const { actors, totalCount, periodStart, remainingTTL, projectName } =
-        await server.services.secretReadActivity.listUnusedAccess({ projectId, ...req.query }, req.permission);
+      const { result, remainingTTL } = await server.services.secretReadActivity.listUnusedAccess(
+        { projectId, ...req.query },
+        req.permission
+      );
       await server.services.auditLog.createAuditLog({
         projectId,
-        event: {
-          type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS,
-          metadata: { projectId, projectName }
-        },
+        event: { type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS, metadata: { projectId } },
         ...req.auditLogInfo
       });
 
       if (remainingTTL && remainingTTL >= 0) {
         void reply.header("X-Cache-TTL", remainingTTL);
       }
-      return { actors, totalCount, periodStart };
+
+      return result;
     }
   });
 
@@ -533,22 +533,15 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req, reply) => {
       const { projectId, actorType, actorId } = req.params;
-      const { actor, secrets, periodStart, remainingTTL, projectName } =
-        await server.services.secretReadActivity.getUnusedAccessActor(
-          { projectId, actorType, actorId },
-          req.permission
-        );
+      const { result, remainingTTL } = await server.services.secretReadActivity.getUnusedAccessActor(
+        { projectId, actorType, actorId },
+        req.permission
+      );
       await server.services.auditLog.createAuditLog({
         projectId,
         event: {
           type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS,
-          metadata: {
-            projectId,
-            projectName,
-            principalType: actorType,
-            principalId: actorId,
-            principalName: actor.name
-          }
+          metadata: { projectId, principalType: actorType, principalId: actorId, principalName: result.actor.name }
         },
         ...req.auditLogInfo
       });
@@ -556,7 +549,8 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
       if (remainingTTL && remainingTTL >= 0) {
         void reply.header("X-Cache-TTL", remainingTTL);
       }
-      return { actor, secrets, periodStart };
+
+      return result;
     }
   });
 

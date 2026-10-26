@@ -80,10 +80,6 @@ export const secretInsightsKeys = {
 
 const INSIGHTS_STALE_TIME = 5 * 60 * 1000; // 5 minutes
 
-// Fresh until the server's cached copy expires, then refetched, so an open card picks up the recomputed list.
-const cachedInsightsRefreshMs = (data?: { remainingTtl: number }) =>
-  data && data.remainingTtl > 0 ? data.remainingTtl * 1000 : INSIGHTS_STALE_TIME;
-
 export const useGetCalendarInsights = (
   params: TGetCalendarInsightsDTO,
   options?: Omit<
@@ -159,8 +155,7 @@ export const useGetUnusedAccess = (
       const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
       return { ...res.data, remainingTtl };
     },
-    staleTime: (query) => cachedInsightsRefreshMs(query.state.data),
-    refetchInterval: (query) => cachedInsightsRefreshMs(query.state.data),
+    staleTime: INSIGHTS_STALE_TIME,
     placeholderData: (previousData) => previousData,
     ...options
   });
@@ -187,7 +182,7 @@ export const useGetUnusedAccessActor = (
       const remainingTtl = Number(res.headers["x-cache-ttl"] ?? -1);
       return { ...res.data, remainingTtl };
     },
-    staleTime: (query) => cachedInsightsRefreshMs(query.state.data),
+    staleTime: INSIGHTS_STALE_TIME,
     ...options
   });
 };
