@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -217,7 +218,7 @@ export const GroupDetailsByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
+      <PageTitle title={t("page-titles.group")} />
       <link rel="icon" href="/infisical.ico" />
       <OrgPermissionCan
         passThrough={false}

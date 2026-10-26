@@ -7,6 +7,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -159,7 +160,7 @@ export const AzureAppConfigurationConfigurePage = () => {
       onSubmit={handleSubmit(handleIntegrationSubmit)}
       className="flex h-full w-full flex-col items-center justify-center"
     >
-      <title>Set Up Azure App Configuration Integration</title>
+      <PageTitle title="Set Up Azure App Configuration Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
@@ -391,6 +392,9 @@ export const AzureAppConfigurationConfigurePage = () => {
       </Card>
     </form>
   ) : (
-    <div />
+    <>
+      <PageTitle title="Set Up Azure App Configuration Integration" />
+      <div />
+    </>
   );
 };

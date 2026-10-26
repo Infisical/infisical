@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v3";
 import { ConfirmationAlertDialog } from "@app/components/v3/platform";
@@ -194,7 +195,7 @@ const Page = () => {
 export const CertificatePolicyDetailsByIDPage = () => {
   return (
     <>
-      <title>Certificate Policy</title>
+      <PageTitle title="Certificate Policy" />
       <link rel="icon" href="/infisical.ico" />
       <Page />
     </>

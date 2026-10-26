@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -18,6 +17,7 @@ import { twMerge } from "tailwind-merge";
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
 import { ServiceIconStack } from "@app/components/agent-vault/ServiceIconStack";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
   AlertAction,
@@ -82,7 +82,6 @@ enum SortColumn {
 }
 
 export const AgentVaultAccessBundlesPage = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
@@ -159,7 +158,7 @@ export const AgentVaultAccessBundlesPage = () => {
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <title>{t("common.head-title", { title: "Access Bundles" })}</title>
+      <PageTitle title="Access Bundles" />
       <PageHeader
         scope={ProjectType.AgentVault}
         icon={PackageIcon}

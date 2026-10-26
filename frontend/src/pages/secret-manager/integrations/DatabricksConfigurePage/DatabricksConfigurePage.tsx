@@ -9,6 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -108,7 +109,7 @@ export const DatabricksConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthScopes ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
-      <title>Set Up Databricks Integration</title>
+      <PageTitle title="Set Up Databricks Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
@@ -233,7 +234,7 @@ export const DatabricksConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <title>Set Up Databricks Integration</title>
+      <PageTitle title="Set Up Databricks Integration" />
       {isIntegrationAuthScopesLoading || isintegrationAuthLoading ? (
         <img
           src="/images/loading/loading.gif"

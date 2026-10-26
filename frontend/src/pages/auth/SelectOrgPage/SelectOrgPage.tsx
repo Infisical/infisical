@@ -18,6 +18,7 @@ import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   Breadcrumb,
@@ -448,16 +449,19 @@ export const SelectOrgPage = () => {
 
   if (userLoading || !user) {
     return (
-      <div className="h-screen w-screen bg-page">
-        <PageLoader />
-      </div>
+      <>
+        <PageTitle title={t("page-titles.select-organization")} />
+        <div className="h-screen w-screen bg-page">
+          <PageLoader />
+        </div>
+      </>
     );
   }
 
   if (shouldShowMfa) {
     return (
       <>
-        <title>{t("common.head-title", { title: t("login.title") })}</title>
+        <PageTitle title={t("page-titles.select-organization")} />
         <link rel="icon" href="/infisical.ico" />
         <meta property="og:image" content="/images/message.png" />
         <meta property="og:title" content={t("login.og-title") ?? ""} />
@@ -483,7 +487,7 @@ export const SelectOrgPage = () => {
 
   return (
     <AuthPageLayout variant="focused" showFooter={false}>
-      <title>{t("common.head-title", { title: t("login.title") })}</title>
+      <PageTitle title={t("page-titles.select-organization")} />
       <link rel="icon" href="/infisical.ico" />
       <meta property="og:image" content="/images/message.png" />
       <meta property="og:title" content={t("login.og-title") ?? ""} />

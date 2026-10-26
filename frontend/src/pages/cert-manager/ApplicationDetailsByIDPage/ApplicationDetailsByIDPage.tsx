@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   AccessRestrictedDialog,
   Button,
@@ -163,7 +164,12 @@ export const ApplicationDetailsByIDPage = () => {
   };
 
   if (isPending) {
-    return <PageLoader />;
+    return (
+      <>
+        <PageTitle title="Application" />
+        <PageLoader />
+      </>
+    );
   }
 
   const isAccessForbidden =
@@ -174,21 +180,34 @@ export const ApplicationDetailsByIDPage = () => {
 
   if (isAccessForbidden) {
     return (
-      <AccessRestrictedDialog description="You don't have access to this application. An administrator can grant it." />
+      <>
+        <PageTitle title="Application" />
+        <AccessRestrictedDialog description="You don't have access to this application. An administrator can grant it." />
+      </>
     );
   }
 
   if (!application) {
-    return <div className="p-12 text-muted">Application not found.</div>;
+    return (
+      <>
+        <PageTitle title="Application" />
+        <div className="p-12 text-muted">Application not found.</div>
+      </>
+    );
   }
 
   if (isPermissionsPending) {
-    return <PageLoader />;
+    return (
+      <>
+        <PageTitle title="Application" />
+        <PageLoader />
+      </>
+    );
   }
 
   return (
     <>
-      <title>{application.name}</title>
+      <PageTitle title={application.name || "Application"} />
       <div className="h-full bg-page">
         <div className="mx-auto flex flex-col text-foreground-inverse">
           <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">

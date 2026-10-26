@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router"
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import {
   AccessRestrictedDialog,
@@ -554,7 +555,7 @@ const Page = () => {
 export const CertificateDetailsByIDPage = () => {
   return (
     <>
-      <title>Certificate Details</title>
+      <PageTitle title="Certificate Details" />
       <link rel="icon" href="/infisical.ico" />
       <Page />
     </>

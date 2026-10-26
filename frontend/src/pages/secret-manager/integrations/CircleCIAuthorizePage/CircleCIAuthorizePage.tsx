@@ -3,6 +3,7 @@ import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-sv
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -65,7 +66,7 @@ export const CircleCIAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <title>Authorize CircleCI Integration</title>
+      <PageTitle title="Authorize CircleCI Integration" />
       <Card className="mb-12 w-full max-w-lg">
         <CardHeader>
           <CardTitle>

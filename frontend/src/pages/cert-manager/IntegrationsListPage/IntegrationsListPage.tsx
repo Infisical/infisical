@@ -1,6 +1,6 @@
-import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tabs, TabsContent } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -14,7 +14,6 @@ import { AppConnectionsTab, PkiSyncsTab } from "./components";
 export const IntegrationsListPage = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
-  const { t } = useTranslation();
 
   const { selectedTab } = useSearch({
     from: ROUTE_PATHS.CertManager.IntegrationsListPage.id
@@ -36,7 +35,7 @@ export const IntegrationsListPage = () => {
 
   return (
     <>
-      <title>{t("common.head-title", { title: "Integrations" })}</title>
+      <PageTitle title="Integrations" />
       <meta property="og:image" content="/images/message.png" />
       <meta property="og:title" content="Manage your certificates in seconds" />
       <meta name="og:description" content="Sync and manage PKI certificates across services" />
