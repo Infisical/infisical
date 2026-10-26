@@ -83,7 +83,7 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
     if (op.actorType === SigningActorType.User && op.actorMembershipId) {
       return (
         <Link
-          {...getCertManagerLink(currentProject, `members/${op.actorMembershipId}`)}
+          {...getCertManagerLink(currentProject, `members/${op.actorId}`)}
           className={linkClassName}
         >
           {actorName}
