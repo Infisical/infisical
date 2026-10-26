@@ -1503,50 +1503,6 @@ export const scimServiceFactory = ({
         });
       }
 
-      if (group.name !== displayName) {
-        const previousName = group.name;
-        // The group lock is per group, so two renames onto one name can race; the unique index
-        // on (orgId, name) is what decides, and its violation is the conflict.
-        const [modifiedGroup] = await groupDAL
-          .update(
-            {
-              id: groupId,
-              orgId
-            },
-            {
-              name: displayName
-            },
-            tx
-          )
-          .catch((err: unknown) => {
-            if (
-              err instanceof DatabaseError &&
-              (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
-            ) {
-              throw new ScimRequestError({
-                detail: `Group with name '${displayName}' already exists in the organization`,
-                status: 409,
-                scimType: "uniqueness",
-                error: err
-              });
-            }
-            throw err;
-          });
-
-        await externalGroupOrgRoleMappingDAL.update(
-          {
-            groupName: previousName,
-            orgId
-          },
-          {
-            groupName: displayName
-          },
-          tx
-        );
-
-        group = modifiedGroup;
-      }
-
       const orgMemberships = members.length
         ? await membershipUserDAL.find(
             {
@@ -1614,6 +1570,48 @@ export const scimServiceFactory = ({
           tx,
           shouldFailOnMissingMembers
         });
+      }
+
+      if (group.name !== displayName) {
+        const previousName = group.name;
+        const [modifiedGroup] = await groupDAL
+          .update(
+            {
+              id: groupId,
+              orgId
+            },
+            {
+              name: displayName
+            },
+            tx
+          )
+          .catch((err: unknown) => {
+            if (
+              err instanceof DatabaseError &&
+              (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
+            ) {
+              throw new ScimRequestError({
+                detail: `Group with name '${displayName}' already exists in the organization`,
+                status: 409,
+                scimType: "uniqueness",
+                error: err
+              });
+            }
+            throw err;
+          });
+
+        await externalGroupOrgRoleMappingDAL.update(
+          {
+            groupName: previousName,
+            orgId
+          },
+          {
+            groupName: displayName
+          },
+          tx
+        );
+
+        group = modifiedGroup;
       }
 
       return group;
