@@ -158,7 +158,7 @@ export const AssignAccessModal = ({
       .map((g) => ({ value: g.id, label: g.name, kind: PamMemberKind.Group, subtitle: "Group" }));
 
     const users: AssigneeOption[] = productUsers
-      .filter((u) => !existingUserIds.has(u.id))
+      .filter((u) => !u.isGroupMember && !existingUserIds.has(u.id))
       .map((u) => ({ value: u.id, label: u.name, kind: PamMemberKind.User, subtitle: u.email }));
 
     const existingIds = existingIdentityIds ?? new Set<string>();
