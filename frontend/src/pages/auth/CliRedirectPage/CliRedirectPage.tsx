@@ -74,6 +74,8 @@ export const CliRedirectPage = () => {
             </p>
             <InputGroup>
               <SecretInput
+                aria-label="CLI login token"
+                readOnly
                 variant="plain"
                 value={cliToken as string}
                 isVisible={isTokenVisible}
