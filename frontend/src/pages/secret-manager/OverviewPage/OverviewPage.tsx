@@ -1331,6 +1331,7 @@ const OverviewPageContent = () => {
     // The value cache keys carry no user, so a batch that lands after logout must not write a
     // value that the next person to sign in on this tab would read.
     const authSession = getAuthSessionMarker();
+    const startedAt = Date.now();
     const visibleAtStart = visibleSecretRows;
     const identities = keys.map((key) => [key, getSecretRowIdentity(key)] as const);
 
@@ -1371,16 +1372,21 @@ const OverviewPageContent = () => {
         fetchedSecrets.forEach(({ secretKey, secretValue, secretValueHidden, type }) => {
           if (secretValueHidden || secretValue === undefined) return;
           const isOverride = type === SecretType.Personal;
+          const valueKey = dashboardKeys.getSecretValue({
+            projectId,
+            environment,
+            secretPath,
+            secretKey,
+            // shared value cells omit isOverride, so it must be undefined rather than false
+            // for the keys to match
+            isOverride: isOverride || undefined
+          });
+          // A save during the bulk read invalidates or rewrites this value, and this response
+          // may predate it, so leave the newer cache entry alone.
+          const cached = queryClient.getQueryState(valueKey);
+          if (cached && (cached.isInvalidated || cached.dataUpdatedAt > startedAt)) return;
           queryClient.setQueryData(
-            dashboardKeys.getSecretValue({
-              projectId,
-              environment,
-              secretPath,
-              secretKey,
-              // shared value cells omit isOverride, so it must be undefined rather than false
-              // for the keys to match
-              isOverride: isOverride || undefined
-            }),
+            valueKey,
             isOverride ? { valueOverride: secretValue } : { value: secretValue }
           );
         });
