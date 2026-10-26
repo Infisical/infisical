@@ -156,10 +156,12 @@ export const secretReadActivityServiceFactory = ({
       ? [requestedFolderId]
       : folders.filter((folder) => !folder.isReserved).map((folder) => folder.id);
 
-    // Each reference row is a secret (secretId, folderId) that references a key in another folder.
+    // Each reference row is a secret (secretId, folderId) that references a key in another folder. Only shared secrets
+    // are referencers: a personal one is returned only to its owner, by a read with overrides, which records the
+    // secrets its references resolved to. Otherwise a folder read without overrides would credit what it references.
     const references = (await secretV2BridgeDAL.findSecretReferencesByProjectId(projectId)).flatMap((reference) => {
       const targetFolderId = folderIdByLocation.get(toLocationKey(reference));
-      return targetFolderId ? [{ ...reference, targetFolderId }] : [];
+      return targetFolderId && reference.type === SecretType.Shared ? [{ ...reference, targetFolderId }] : [];
     });
     const referencesByTargetFolderId = groupBy(references, (reference) => reference.targetFolderId);
 
@@ -199,7 +201,7 @@ export const secretReadActivityServiceFactory = ({
         await setImmediate();
       }
       const secret = loadedSecrets[index];
-      if (secret.encryptedValue) {
+      if (secret.type === SecretType.Shared && secret.encryptedValue) {
         const { localReferences } = getAllSecretReferences(
           decryptor({ cipherTextBlob: secret.encryptedValue }).toString()
         );

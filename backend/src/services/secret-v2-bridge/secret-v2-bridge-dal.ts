@@ -1123,7 +1123,8 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
         .where("projectId", projectId)
         .whereNull(`${TableName.Environment}.deleteAfter`)
         .select(selectAllTableCols(TableName.SecretReferenceV2))
-        .select("folderId");
+        .select("folderId")
+        .select(db.ref("type").withSchema(TableName.SecretV2));
 
       return docs;
     } catch (error) {
