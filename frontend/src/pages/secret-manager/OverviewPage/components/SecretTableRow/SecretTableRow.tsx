@@ -676,15 +676,14 @@ export const SecretTableRow = ({
                         {isSecretVisible ? (
                           <>
                             <EyeOffIcon />
-                            Hide
+                            Hide Values
                           </>
                         ) : (
                           <>
                             <EyeIcon />
-                            Reveal
+                            Show Values
                           </>
-                        )}{" "}
-                        Values
+                        )}
                       </Button>
                     </TableHead>
                   </TableRow>
