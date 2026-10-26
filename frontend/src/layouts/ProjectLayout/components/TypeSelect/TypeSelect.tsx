@@ -53,10 +53,12 @@ const ORG_PRODUCT_PAGE_PATH_RE = /^\/organizations\/[^/]+\/projects\/([^/]+)\//;
 
 const TypeSelectInner = ({
   currentType,
-  currentProjectName
+  currentProjectName,
+  currentProjectId
 }: {
   currentType: ProjectType;
   currentProjectName?: string;
+  currentProjectId?: string;
 }) => {
   const [open, setOpen] = useState(false);
   const [isCertManagerSetupOpen, setIsCertManagerSetupOpen] = useState(false);
@@ -87,6 +89,11 @@ const TypeSelectInner = ({
 
   const getProductLink = (type: ProjectType) => {
     const orgId = currentOrg?.id || "";
+    if (type === currentType && currentProjectId) {
+      const pinnedPath = type === ProjectType.CertificateManager ? "overview" : "data-sources";
+      const pinnedLink = getInstancePinningLink(orgId, { id: currentProjectId, type }, pinnedPath);
+      if (pinnedLink) return pinnedLink;
+    }
     if (type === ProjectType.CertificateManager) {
       if (!certManagerTargetProjectId) return null;
       return getInstancePinningLink(orgId, { id: certManagerTargetProjectId, type }, "overview");
@@ -252,6 +259,7 @@ export const TypeSelect = () => {
       <TypeSelectInner
         currentType={ProjectType.CertificateManager}
         currentProjectName={isLegacyCertManagerProject ? project?.name : undefined}
+        currentProjectId={isLegacyCertManagerProject ? project?.id : undefined}
       />
     );
   }
@@ -266,6 +274,7 @@ export const TypeSelect = () => {
       <TypeSelectInner
         currentType={ProjectType.SecretScanning}
         currentProjectName={isLegacySecretScanningProject ? project?.name : undefined}
+        currentProjectId={isLegacySecretScanningProject ? project?.id : undefined}
       />
     );
   }

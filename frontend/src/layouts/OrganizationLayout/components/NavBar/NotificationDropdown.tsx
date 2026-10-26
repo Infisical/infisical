@@ -48,8 +48,12 @@ export const NotificationDropdown = () => {
   // straight to `to` would resolve them against the current path and swallow the search params, so normalize to a
   // path + search + hash and let the router parse it via `href`.
   const getNotificationHref = (link: string) => {
-    const { pathname, search, hash } = new URL(link, window.location.origin);
-    return `${pathname}${search}${hash}`;
+    try {
+      const { pathname, search, hash } = new URL(link, window.location.origin);
+      return `${pathname}${search}${hash}`;
+    } catch {
+      return undefined;
+    }
   };
 
   const markNotificationRead = (notification: TUserNotification) => {
