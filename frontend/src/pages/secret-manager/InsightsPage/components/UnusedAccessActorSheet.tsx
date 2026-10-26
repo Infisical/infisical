@@ -29,7 +29,7 @@ import {
   useGetUnusedAccessActor
 } from "@app/hooks/api/secretInsights";
 
-import { ACTOR_TYPE_CONFIG, describeReadPeriod } from "./unusedAccessHelpers";
+import { ACTOR_TYPE_CONFIG } from "./unusedAccessHelpers";
 
 // Rows shown per environment before "N more" opens the rest.
 const PREVIEW_ROWS = 5;
@@ -182,8 +182,8 @@ export const UnusedAccessActorSheet = ({ actor, onClose }: Props) => {
             </SheetTitle>
             <SheetDescription>
               Has not read {actor.unusedSecretCount} of the {actor.accessibleSecretCount}{" "}
-              {actor.accessibleSecretCount === 1 ? "secret" : "secrets"} it can access{" "}
-              {data ? describeReadPeriod(data.periodStart) : "in the last 30 days"}.
+              {actor.accessibleSecretCount === 1 ? "secret" : "secrets"} it can access in the last
+              30 days.
             </SheetDescription>
           </SheetHeader>
         )}

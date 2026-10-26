@@ -41,6 +41,10 @@ export const SECRET_READ_ACTIVITY_WINDOW_DAYS = 30;
 
 export const getReadActivityWindowStart = () => new Date(Date.now() - SECRET_READ_ACTIVITY_WINDOW_DAYS * DAY_IN_MS);
 
+// Reads from before tracking began are unknown, so unused access is only judged once a whole window has been tracked.
+export const getUnusedAccessFrom = (trackingStartedAt: Date) =>
+  new Date(trackingStartedAt.getTime() + SECRET_READ_ACTIVITY_WINDOW_DAYS * DAY_IN_MS);
+
 export const loadProjectFolderTree = async (
   {
     folderDAL,
@@ -256,18 +260,21 @@ export const getReadStatus = ({
   isUnused,
   isProjectAdmin,
   accessSince,
-  judgedFrom
+  judgedFrom,
+  trackingStartedAt
 }: {
   lastReadAt: Date | null;
   isUnused: boolean;
   isProjectAdmin: boolean;
   accessSince: Date;
   judgedFrom: Date;
+  trackingStartedAt: Date;
 }) => {
   if (lastReadAt) return { readStatus: SecretReadStatus.Read, notJudgedReason: null };
   if (isUnused) return { readStatus: SecretReadStatus.Unused, notJudgedReason: null };
   let notJudgedReason = SecretReadNotJudgedReason.SecretTooNew;
   if (isProjectAdmin) notJudgedReason = SecretReadNotJudgedReason.ProjectAdmin;
+  else if (trackingStartedAt > judgedFrom) notJudgedReason = SecretReadNotJudgedReason.TrackingTooNew;
   else if (accessSince > judgedFrom) notJudgedReason = SecretReadNotJudgedReason.AccessTooNew;
   return { readStatus: SecretReadStatus.NotJudged, notJudgedReason };
 };

@@ -953,13 +953,13 @@ export const INSIGHTS = {
     limit: "The maximum number of actors to return per page.",
     search: "Only actors whose name contains this text, ignoring case.",
     actors:
-      "The users and machine identities that can read secrets they have not read in the last 30 days (since tracking began, in a project tracked for less), those with the most such secrets first. Project admins are left out: they can read everything by design.",
+      "The users and machine identities that can read secrets they have not read in the last 30 days, those with the most such secrets first. Project admins are left out: they can read everything by design. Empty until unusedAccessFrom.",
     actorType: "Whether the actor is a user or a machine identity.",
     actorId: "The ID of the user or machine identity.",
     name: "The username of the user, or the name of the machine identity.",
     accessibleSecretCount: "How many secrets the actor can read the value of today.",
     unusedSecretCount:
-      "How many of those it has not read, or an import or reference of, since periodStart. A secret only counts once it and the actor's access both predate periodStart.",
+      "How many of those it has not read, or an import or reference of, in the last 30 days. A secret only counts once it and the actor's access are both older than that.",
     environments: "The slugs of the environments holding the unread secrets.",
     accessPaths: "How the actor has its access to the project's secrets.",
     roles: "The project roles the actor holds directly, not through a group.",
@@ -982,15 +982,15 @@ export const INSIGHTS = {
     folderSecretPath: "The path of the folder.",
     folderRole: "The access level granted on the folder: list, read, edit, manage or full-access.",
     totalCount: "The number of actors the caller can page through.",
-    periodStart:
-      "Unused means no read since this date: 30 days before the results were computed, or when reads started being tracked for the project if that is later. Results are recomputed once a day."
+    unusedAccessFrom:
+      "When unused access starts being judged for the project: 30 days after reads started being tracked for it. Nothing is listed before then, since reads from before tracking began are unknown. Results are recomputed once a day."
   },
   GET_UNUSED_ACCESS_ACTOR: {
     projectId: "The ID of the project.",
     actorType: "Whether the actor is a user or a machine identity.",
     actorId: "The ID of the user or machine identity.",
     secrets:
-      "The secrets the actor can read but has not read since periodStart, ordered by environment and path. The list can be shorter than the actor's unusedSecretCount: it holds at most 200, only those the caller can see, and none deleted since the results were computed.",
+      "The secrets the actor can read but has not read in the last 30 days, ordered by environment and path. The list can be shorter than the actor's unusedSecretCount: it holds at most 200, only those the caller can see, and none deleted since the results were computed.",
     secretKey: "The key of the secret.",
     environment: "The slug of the environment the secret is in.",
     secretPath: "The path of the folder the secret is in."
@@ -1002,8 +1002,8 @@ export const INSIGHTS = {
     secretPath: "The folder path where the secret is located.",
     readsTrackedSince:
       "Reads are reported from this date: the latest of 30 days ago, when reads started being tracked for the project, and when the secret and its folder were created.",
-    unusedAccessJudgedFrom:
-      "Unused access is judged from this date: the later of 30 days ago and when reads started being tracked for the project. An actor without a read only counts as unused access once the secret and their access both predate it.",
+    unusedAccessFrom:
+      "When unused access starts being judged for the project: 30 days after reads started being tracked for it. Before then no actor counts as unused access.",
     actors:
       "One entry for each user or machine identity that can read the secret's value today, directly or through a group, ordered by name. Project admins are included so their reads show.",
     actorType: "Whether the actor is a user or a machine identity.",
@@ -1016,9 +1016,9 @@ export const INSIGHTS = {
     accessSince:
       "When the actor got access to this secret: the oldest of their roles, groups, privileges and folder grants that gives it on its own, from when it was last created or changed. An edit to a custom role's rules counts for every secret the role gives, since which secrets an edit opened is not recorded.",
     readStatus:
-      "read: the actor read the secret since readsTrackedSince. unused: no read, and the secret and their access both predate unusedAccessJudgedFrom, so it counts as unused access. not-judged: no read, but it does not count yet; notJudgedReason says why.",
+      "read: the actor read the secret since readsTrackedSince. unused: no read, and the secret and their access are both older than 30 days, so it counts as unused access. not-judged: no read, but it does not count yet; notJudgedReason says why.",
     notJudgedReason:
-      "Why an actor without a read is not counted as unused access. project-admin: admins are never counted. access-too-new: they got access to the secret after unusedAccessJudgedFrom. secret-too-new: the secret is newer than unusedAccessJudgedFrom. Null unless readStatus is not-judged."
+      "Why an actor without a read is not counted as unused access. project-admin: admins are never counted. tracking-too-new: reads have been tracked for less than 30 days, until unusedAccessFrom. access-too-new: they got access to the secret in the last 30 days. secret-too-new: the secret is newer than 30 days. Null unless readStatus is not-judged."
   },
   GET_SECRETS_ACCESS_VOLUME: {
     days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",

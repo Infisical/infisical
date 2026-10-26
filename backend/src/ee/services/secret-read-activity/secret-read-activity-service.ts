@@ -41,6 +41,7 @@ import {
   createAccessDating,
   getReadActivityWindowStart,
   getReadStatus,
+  getUnusedAccessFrom,
   indexSecretReads,
   loadProjectFolderTree,
   summarizeSecretAccess,
@@ -461,7 +462,10 @@ export const secretReadActivityServiceFactory = ({
         sourceDates.folderReopenedAt,
         accessReopenedAt
       ),
-      judgedFrom: trackingStartedAt > windowStart ? trackingStartedAt : windowStart,
+      // A secret's tracked period starts no earlier than tracking did, so until a whole window has been tracked no
+      // secret covers it and nobody counts as unused access.
+      judgedFrom: windowStart,
+      trackingStartedAt,
       nameOf,
       directMembers,
       groupMembershipsByActorId,
@@ -527,14 +531,15 @@ export const secretReadActivityServiceFactory = ({
           isUnused: unusedActorIds.has(reader.actorId),
           isProjectAdmin,
           accessSince,
-          judgedFrom: access.judgedFrom
+          judgedFrom: access.judgedFrom,
+          trackingStartedAt: access.trackingStartedAt
         })
       };
     });
 
     return {
       readsTrackedSince: activity.trackedSince,
-      unusedAccessJudgedFrom: access.judgedFrom,
+      unusedAccessFrom: getUnusedAccessFrom(access.trackingStartedAt),
       actors: actors.sort((a, b) => a.name.localeCompare(b.name))
     };
   };
@@ -620,11 +625,19 @@ export const secretReadActivityServiceFactory = ({
     const details = Object.fromEntries(
       ranked.slice(0, UNUSED_ACCESS_DETAIL_MAX_ACTORS).map((tally) => [tally.actorId, tally.unusedSecretIds])
     );
-    return { rows, details, periodStart: access.judgedFrom };
+    return { rows, details };
   };
 
   // The whole project is computed once a day and cached, so paging through it is cheap.
   const $getCachedUnusedAccess = async (projectId: string, orgId: string) => {
+    const unusedAccessFrom = getUnusedAccessFrom((await $getProjectTrackingStartedAt(projectId)).trackingStartedAt);
+    // Before then nobody can count as unused access, so the project is not scanned, and no empty result is cached to
+    // outlive the wait.
+    if (unusedAccessFrom > new Date()) {
+      const summary: TUnusedAccessSummary = { rows: [], details: {} };
+      return { ...summary, unusedAccessFrom, remainingTTL: -1 };
+    }
+
     const cacheKey = KeyStorePrefixes.InsightsCache(projectId, "unused-access");
     const summary = await withCache({
       keyStore,
@@ -662,8 +675,7 @@ export const secretReadActivityServiceFactory = ({
       }
     });
     const remainingTTL = await getCacheTtl(keyStore, cacheKey);
-    // Dates come back from the cache as strings.
-    return { ...summary, periodStart: new Date(summary.periodStart), remainingTTL };
+    return { ...summary, unusedAccessFrom, remainingTTL };
   };
 
   const listUnusedAccess = async (
@@ -671,11 +683,11 @@ export const secretReadActivityServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     await checkInsightsPermission(permissionService, licenseService, projectId, actor);
-    const { rows, periodStart, remainingTTL } = await $getCachedUnusedAccess(projectId, actor.orgId);
+    const { rows, unusedAccessFrom, remainingTTL } = await $getCachedUnusedAccess(projectId, actor.orgId);
     const needle = search?.trim().toLowerCase();
     const matching = needle ? rows.filter((row) => row.name.toLowerCase().includes(needle)) : rows;
     return {
-      result: { actors: matching.slice(offset, offset + limit), totalCount: matching.length, periodStart },
+      result: { actors: matching.slice(offset, offset + limit), totalCount: matching.length, unusedAccessFrom },
       remainingTTL
     };
   };
@@ -685,7 +697,7 @@ export const secretReadActivityServiceFactory = ({
     actor: OrgServiceActor
   ) => {
     const { permission } = await checkInsightsPermission(permissionService, licenseService, projectId, actor);
-    const { rows, details, periodStart, remainingTTL } = await $getCachedUnusedAccess(projectId, actor.orgId);
+    const { rows, details, unusedAccessFrom, remainingTTL } = await $getCachedUnusedAccess(projectId, actor.orgId);
     const unusedAccessActor = rows.find((row) => row.actorType === actorType && row.actorId === actorId);
     if (!unusedAccessActor) {
       throw new NotFoundError({
@@ -728,7 +740,7 @@ export const secretReadActivityServiceFactory = ({
           a.secretPath.localeCompare(b.secretPath) ||
           a.secretKey.localeCompare(b.secretKey)
       );
-    return { result: { actor: unusedAccessActor, secrets, periodStart }, remainingTTL };
+    return { result: { actor: unusedAccessActor, secrets, unusedAccessFrom }, remainingTTL };
   };
 
   return {

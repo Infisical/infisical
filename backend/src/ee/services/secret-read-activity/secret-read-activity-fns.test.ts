@@ -208,6 +208,7 @@ describe("getReadStatus", () => {
       isProjectAdmin: false,
       accessSince: sept,
       judgedFrom: day("2026-09-15"),
+      trackingStartedAt: day("2026-08-01"),
       ...overrides
     });
   const notJudged = (notJudgedReason: SecretReadNotJudgedReason) => ({
@@ -215,7 +216,7 @@ describe("getReadStatus", () => {
     notJudgedReason
   });
 
-  test("is read, unused, or not judged for one of three reasons", () => {
+  test("is read, unused, or not judged for one of four reasons", () => {
     expect(status({ lastReadAt: oct, isProjectAdmin: true })).toEqual({
       readStatus: SecretReadStatus.Read,
       notJudgedReason: null
@@ -223,6 +224,9 @@ describe("getReadStatus", () => {
     expect(status({ isUnused: true })).toEqual({ readStatus: SecretReadStatus.Unused, notJudgedReason: null });
     expect(status({ isProjectAdmin: true, accessSince: oct })).toEqual(
       notJudged(SecretReadNotJudgedReason.ProjectAdmin)
+    );
+    expect(status({ trackingStartedAt: oct, accessSince: oct })).toEqual(
+      notJudged(SecretReadNotJudgedReason.TrackingTooNew)
     );
     expect(status({ accessSince: oct })).toEqual(notJudged(SecretReadNotJudgedReason.AccessTooNew));
     expect(status()).toEqual(notJudged(SecretReadNotJudgedReason.SecretTooNew));

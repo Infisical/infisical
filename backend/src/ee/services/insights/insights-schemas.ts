@@ -118,13 +118,13 @@ const UnusedAccessActorRowSchema = z.object({
 
 export const UnusedAccessSchema = z.object({
   totalCount: z.number().int().describe(INSIGHTS.GET_UNUSED_ACCESS.totalCount),
-  periodStart: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.periodStart),
+  unusedAccessFrom: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.unusedAccessFrom),
   actors: UnusedAccessActorRowSchema.array().describe(INSIGHTS.GET_UNUSED_ACCESS.actors)
 });
 
 export const UnusedAccessActorSchema = z.object({
   actor: UnusedAccessActorRowSchema,
-  periodStart: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.periodStart),
+  unusedAccessFrom: z.date().describe(INSIGHTS.GET_UNUSED_ACCESS.unusedAccessFrom),
   secrets: z
     .object({
       secretKey: z.string().describe(INSIGHTS.GET_UNUSED_ACCESS_ACTOR.secretKey),
@@ -137,7 +137,7 @@ export const UnusedAccessActorSchema = z.object({
 
 export const SecretReadActivitySchema = z.object({
   readsTrackedSince: z.date().describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.readsTrackedSince),
-  unusedAccessJudgedFrom: z.date().describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.unusedAccessJudgedFrom),
+  unusedAccessFrom: z.date().describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.unusedAccessFrom),
   actors: z
     .object({
       actorType: z.enum([ActorType.USER, ActorType.IDENTITY]).describe(INSIGHTS.GET_SECRET_READ_ACTIVITY.actorType),

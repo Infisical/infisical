@@ -166,6 +166,7 @@ export enum SecretReadStatus {
 
 export enum SecretReadNotJudgedReason {
   ProjectAdmin = "project-admin",
+  TrackingTooNew = "tracking-too-new",
   AccessTooNew = "access-too-new",
   SecretTooNew = "secret-too-new"
 }
@@ -221,8 +222,6 @@ export type TUnusedAccessSummary = {
   rows: TUnusedAccessActor[];
   // The unused secret ids of the top actors, by actor id.
   details: Record<string, string[]>;
-  // Unused means no read since this date: 30 days before the computation, or when tracking began if later.
-  periodStart: Date;
 };
 
 export type TUnusedSecret = TSecretLocation & { secretKey: string };

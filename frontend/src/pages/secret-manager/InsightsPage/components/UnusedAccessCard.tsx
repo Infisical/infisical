@@ -1,5 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
+import { format } from "date-fns";
 import { ChevronRightIcon, InfoIcon, SearchIcon } from "lucide-react";
 
 import {
@@ -39,7 +40,6 @@ import { UnusedAccessActorSheet } from "./UnusedAccessActorSheet";
 import {
   accessPathBadges,
   ACTOR_TYPE_CONFIG,
-  describeReadPeriod,
   formatRemainingTtl,
   unusedSharePercent,
   unusedShareTone
@@ -63,7 +63,8 @@ export const UnusedAccessCard = () => {
       ? formatRemainingTtl(data.remainingTtl)
       : null;
   const environmentNames = new Map(currentProject.environments.map((env) => [env.slug, env.name]));
-  const readPeriod = data ? describeReadPeriod(data.periodStart) : "in the last 30 days";
+  // Nothing is judged until the project has 30 days of reads.
+  const isJudging = !data || new Date(data.unusedAccessFrom) <= new Date();
 
   const renderBody = () => {
     if (isPending) return <Skeleton className="h-[200px] w-full" />;
@@ -85,15 +86,19 @@ export const UnusedAccessCard = () => {
 
     if (totalCount === 0) {
       // Recent access and new secrets are not judged yet, so this cannot claim everything was read.
-      const description = debouncedSearch
-        ? "No overprivileged user or machine identity matches your search."
-        : `No identity has left a secret it can access unread ${readPeriod}.`;
+      let title = "No overprivileged access found";
+      let description = "No identity has left a secret it can access unread in the last 30 days.";
+      if (debouncedSearch) {
+        title = "No matching identity";
+        description = "No overprivileged user or machine identity matches your search.";
+      } else if (!isJudging) {
+        title = "Not enough read history yet";
+        description = `Results will show on ${format(new Date(data.unusedAccessFrom), "PP")}, once secret reads have been tracked for 30 days.`;
+      }
       return (
         <Empty className="border">
           <EmptyHeader>
-            <EmptyTitle>
-              {debouncedSearch ? "No matching identity" : "No overprivileged access found"}
-            </EmptyTitle>
+            <EmptyTitle>{title}</EmptyTitle>
             <EmptyDescription>{description}</EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -115,7 +120,8 @@ export const UnusedAccessCard = () => {
                       <InfoIcon className="size-3.5 text-muted" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-64">
-                      Of the secrets each identity can read, how many it has not read {readPeriod}.
+                      Of the secrets each identity can read, how many it has not read in the last 30
+                      days.
                     </TooltipContent>
                   </Tooltip>
                 </span>
@@ -217,8 +223,8 @@ export const UnusedAccessCard = () => {
             )}
           </CardTitle>
           <CardDescription>
-            Users and machine identities with access to secrets they have not read {readPeriod}.
-            Select one to see those secrets.
+            Users and machine identities with access to secrets they have not read in the last 30
+            days. Select one to see those secrets.
           </CardDescription>
           <CardAction>
             <InputGroup className="w-64">

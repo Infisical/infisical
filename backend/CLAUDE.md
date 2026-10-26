@@ -1149,10 +1149,12 @@ owns the two read endpoints and hands `recordRead` / `recordBulkRead` through to
   (`KeyStoreTtls.InsightsUnusedAccessCacheInSeconds`), grouping actors by identical rules so each rule set is checked once
   per secret. The per-secret endpoint checks the caller's access to the secret before building its reach, which
   decrypts every secret that could reference it.
-- **The card judges a full window, or everything since tracking began.** Tracking starts at the later of the
-  migration that created the table and the project's creation. In a project tracked for less than 30 days, the
-  window starts when tracking did (`judgedFrom`). The card's responses carry it as `periodStart`, stored with the
-  cached computation, so the UI words the period "since <date>" while it is under 30 days old. The card leaves out project admins (users
+- **Only a full window is judged.** Tracking starts at the later of the migration that created the table and the
+  project's creation, and reads from before it are unknown, so nothing counts as unused access until tracking has run
+  30 days (`getUnusedAccessFrom`). `judgedFrom` is always the start of the last 30 days, and a secret's `trackedSince`
+  starts no earlier than tracking did, so before then no secret covers the window; the card skips the scan and
+  caches nothing, and the access sheet gives the `tracking-too-new` reason. Every response carries `unusedAccessFrom`
+  so the UI can say when results start. The card leaves out project admins (users
   and identities with the Admin role, directly or through a group, from `findAdminActorIds`): they can read
   everything by design. Their reads are still recorded, so the access sheet's Last Read stays true for them. A
   pair is listed once the secret (`trackedSince`) and the actor's access to that secret both predate `judgedFrom`.

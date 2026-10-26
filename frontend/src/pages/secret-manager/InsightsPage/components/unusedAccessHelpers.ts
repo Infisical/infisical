@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { HardDriveIcon, UserIcon } from "lucide-react";
 
 import { TUnusedAccessPaths, UnusedAccessActorType } from "@app/hooks/api/secretInsights";
@@ -35,14 +34,6 @@ export const accessPathBadges = (
     label: `Folder: ${environmentName(access.environment)} ${access.secretPath} (${FOLDER_ROLE_TIER_LABELS[access.role] ?? access.role})`
   }))
 ];
-
-const WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
-
-// The period reads are judged on: the last 30 days once tracking has run that long, else since it began.
-export const describeReadPeriod = (periodStart: string) =>
-  new Date(periodStart).getTime() > Date.now() - WINDOW_MS
-    ? `since ${format(new Date(periodStart), "PP")}`
-    : "in the last 30 days";
 
 // The share of the secrets an actor can read that it has not read, as a whole percentage that only reads 0
 // or 100 when it is exactly that.

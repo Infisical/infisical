@@ -98,8 +98,8 @@ export type TGetUnusedAccessDTO = {
 export type TGetUnusedAccessResponse = {
   actors: TUnusedAccessActor[];
   totalCount: number;
-  // Unused means no read since this date: 30 days ago, or when tracking began if later.
-  periodStart: string;
+  // Nothing is judged before this date: 30 days after tracking began.
+  unusedAccessFrom: string;
   remainingTtl: number;
 };
 
@@ -118,7 +118,7 @@ export type TUnusedSecret = {
 export type TGetUnusedAccessActorResponse = {
   actor: TUnusedAccessActor;
   secrets: TUnusedSecret[];
-  periodStart: string;
+  unusedAccessFrom: string;
   remainingTtl: number;
 };
 
@@ -130,6 +130,7 @@ export enum SecretReadStatus {
 
 export enum SecretReadNotJudgedReason {
   ProjectAdmin = "project-admin",
+  TrackingTooNew = "tracking-too-new",
   AccessTooNew = "access-too-new",
   SecretTooNew = "secret-too-new"
 }
@@ -155,7 +156,7 @@ export type TSecretReadActivityActor = {
 
 export type TSecretReadActivity = {
   readsTrackedSince: string;
-  unusedAccessJudgedFrom: string;
+  unusedAccessFrom: string;
   actors: TSecretReadActivityActor[];
 };
 

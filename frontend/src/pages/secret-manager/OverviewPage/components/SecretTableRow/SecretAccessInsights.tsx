@@ -518,7 +518,6 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
     if (actor?.readStatus === SecretReadStatus.Unused) {
       return { kind: "unread", since: readActivity.readsTrackedSince };
     }
-    const judgedFrom = format(new Date(readActivity.unusedAccessJudgedFrom), "PP");
     if (actor?.notJudgedReason === SecretReadNotJudgedReason.ProjectAdmin) {
       return {
         kind: "pending",
@@ -526,16 +525,22 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
           "Project admins can read everything by design, so they are not counted as unused access."
       };
     }
+    if (actor?.notJudgedReason === SecretReadNotJudgedReason.TrackingTooNew) {
+      return {
+        kind: "pending",
+        reason: `Reads have only been tracked since ${format(new Date(readActivity.readsTrackedSince), "PP")}. Unused access will show on ${format(new Date(readActivity.unusedAccessFrom), "PP")}, once reads have been tracked for 30 days.`
+      };
+    }
     if (actor?.notJudgedReason === SecretReadNotJudgedReason.AccessTooNew) {
       return {
         kind: "pending",
-        reason: `They got access to this secret on ${format(new Date(actor.accessSince), "PP")}, after reads started being counted on ${judgedFrom}, so they have not had the whole period to read it.`
+        reason: `They got access to this secret on ${format(new Date(actor.accessSince), "PP")}, so they have not had 30 days to read it.`
       };
     }
     if (actor?.notJudgedReason === SecretReadNotJudgedReason.SecretTooNew) {
       return {
         kind: "pending",
-        reason: `The secret is newer than ${judgedFrom}, when reads started being counted, so nobody has had the whole period to read it.`
+        reason: "The secret is newer than 30 days, so nobody has had 30 days to read it."
       };
     }
     return { kind: "pending", reason: "Not counted as unused access." };
