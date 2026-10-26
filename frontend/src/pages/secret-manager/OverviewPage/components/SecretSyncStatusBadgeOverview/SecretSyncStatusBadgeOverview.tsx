@@ -156,11 +156,13 @@ export const SecretSyncStatusBadgeOverview = ({ environmentSlugs }: Props) => {
                 </TableCell>
                 <TableCell>
                   {sync.syncStatus && (
-                    <SecretSyncStatusBadge
-                      status={sync.syncStatus}
-                      lastSyncedAt={sync.lastSyncedAt}
-                      lastSyncMessage={sync.lastSyncMessage}
-                    />
+                    <span data-row-interactive>
+                      <SecretSyncStatusBadge
+                        status={sync.syncStatus}
+                        lastSyncedAt={sync.lastSyncedAt}
+                        lastSyncMessage={sync.lastSyncMessage}
+                      />
+                    </span>
                   )}
                 </TableCell>
               </TableRow>

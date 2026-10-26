@@ -206,11 +206,13 @@ export const SecretSyncRow = ({
       <TableCell>
         <div className="flex items-center gap-1">
           {syncStatus && (
-            <SecretSyncStatusBadge
-              status={syncStatus}
-              lastSyncedAt={lastSyncedAt}
-              lastSyncMessage={lastSyncMessage}
-            />
+            <span data-row-interactive>
+              <SecretSyncStatusBadge
+                status={syncStatus}
+                lastSyncedAt={lastSyncedAt}
+                lastSyncMessage={lastSyncMessage}
+              />
+            </span>
           )}
           {!isAutoSyncEnabled && (
             <Tooltip>
