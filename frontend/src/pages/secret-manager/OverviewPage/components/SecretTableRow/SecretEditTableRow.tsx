@@ -361,6 +361,7 @@ export const SecretEditTableRow = ({
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCommentOpen, setIsCommentOpen] = useState(false);
   const [commentDragOffset, setCommentDragOffset] = useState({ x: 0, y: 0 });
+  const [commentSide, setCommentSide] = useState<"top" | "right" | "bottom" | "left">();
   const commentDragStart = useRef<{ pointerX: number; pointerY: number; x: number; y: number }>(
     undefined
   );
@@ -439,12 +440,14 @@ export const SecretEditTableRow = ({
       })) ?? [];
   }, [comment, tags, secretMetadata, isSingleEnvView, hasPendingChange]);
 
-  // Stable callbacks for child components to avoid resetting their debounce timers on re-render
   useLayoutEffect(() => {
     commentDragStart.current = undefined;
-    if (isCommentOpen) setCommentDragOffset({ x: 0, y: 0 });
+    if (!isCommentOpen) return;
+    setCommentDragOffset({ x: 0, y: 0 });
+    setCommentSide(undefined);
   }, [isCommentOpen]);
 
+  // Stable callbacks for child components to avoid resetting their debounce timers on re-render
   const handleCommentChange = useCallback(
     (newComment: string) => setValue("comment", newComment),
     [setValue]
@@ -1254,12 +1257,19 @@ export const SecretEditTableRow = ({
     }
   };
 
+  const lockCommentSide = (handle: HTMLElement) => {
+    if (commentSide) return;
+    const side = handle.closest("[data-side]")?.getAttribute("data-side");
+    setCommentSide(side === "top" || side === "left" || side === "right" ? side : "bottom");
+  };
+
   const commentPopoverContent = (
     <PopoverContent
       onCloseAutoFocus={(e) => e.preventDefault()}
       className="w-80"
       align="end"
-      avoidCollisions={commentDragOffset.x === 0 && commentDragOffset.y === 0}
+      side={commentSide ?? "bottom"}
+      avoidCollisions={!commentSide}
       style={{ translate: `${commentDragOffset.x}px ${commentDragOffset.y}px` }}
     >
       <SecretCommentForm
@@ -1268,6 +1278,7 @@ export const SecretEditTableRow = ({
             if (e.button !== 0) return;
             e.preventDefault();
             e.currentTarget.setPointerCapture(e.pointerId);
+            lockCommentSide(e.currentTarget);
             commentDragStart.current = {
               pointerX: e.clientX,
               pointerY: e.clientY,
@@ -1290,14 +1301,16 @@ export const SecretEditTableRow = ({
           },
           onKeyDown: (e) => {
             const step = e.shiftKey ? 64 : 16;
-            const delta = {
+            const deltas: Record<string, { x: number; y: number } | undefined> = {
               ArrowLeft: { x: -step, y: 0 },
               ArrowRight: { x: step, y: 0 },
               ArrowUp: { x: 0, y: -step },
               ArrowDown: { x: 0, y: step }
-            }[e.key];
+            };
+            const delta = deltas[e.key];
             if (!delta) return;
             e.preventDefault();
+            lockCommentSide(e.currentTarget);
             setCommentDragOffset((prev) => ({ x: prev.x + delta.x, y: prev.y + delta.y }));
           }
         }}
