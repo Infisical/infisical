@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
   ChevronLeftIcon,
@@ -16,6 +14,7 @@ import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundle
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
 import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
 import { ServiceSheet } from "@app/components/agent-vault/service-sheet";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
   AlertAction,
@@ -42,7 +41,6 @@ import { DeleteAccessBundleDialog } from "@app/pages/agent-vault/AgentVaultAcces
 import { ServicesCard } from "./components/ServicesCard";
 
 export const AgentVaultAccessBundleDetailPage = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
@@ -65,33 +63,40 @@ export const AgentVaultAccessBundleDetailPage = () => {
   const [isServiceSheetOpen, setIsServiceSheetOpen] = useState(false);
   const [serviceToEdit, setServiceToEdit] = useState<TAgentVaultService | null>(null);
 
-  if (isPending) return <PageLoader />;
+  if (isPending)
+    return (
+      <>
+        <PageTitle title="Access Bundle" />
+        <PageLoader />
+      </>
+    );
   if (!accessBundle) {
     return (
-      <div className="mx-auto mb-6 w-full max-w-8xl">
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>Access bundle not found</EmptyTitle>
-            <EmptyDescription>It was deleted or is no longer granted to you.</EmptyDescription>
-          </EmptyHeader>
-          <Button variant="av" asChild>
-            <Link
-              to="/organizations/$orgId/agent-vault/access-bundles"
-              params={{ orgId: currentOrg.id }}
-            >
-              Back to Access Bundles
-            </Link>
-          </Button>
-        </Empty>
-      </div>
+      <>
+        <PageTitle title="Access Bundle" />
+        <div className="mx-auto mb-6 w-full max-w-8xl">
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>Access bundle not found</EmptyTitle>
+              <EmptyDescription>It was deleted or is no longer granted to you.</EmptyDescription>
+            </EmptyHeader>
+            <Button variant="av" asChild>
+              <Link
+                to="/organizations/$orgId/agent-vault/access-bundles"
+                params={{ orgId: currentOrg.id }}
+              >
+                Back to Access Bundles
+              </Link>
+            </Button>
+          </Empty>
+        </div>
+      </>
     );
   }
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: accessBundle.name })}</title>
-      </Helmet>
+      <PageTitle title={accessBundle.name || "Access Bundle"} />
 
       <PageHeader
         scope={ProjectType.AgentVault}

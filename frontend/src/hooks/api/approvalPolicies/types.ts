@@ -1,3 +1,5 @@
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+
 export enum ApprovalPolicyType {
   PamAccess = "pam-access",
   CertRequest = "cert-request",
@@ -6,7 +8,8 @@ export enum ApprovalPolicyType {
 
 export enum ApprovalPolicyScope {
   Project = "project",
-  PkiApplication = "pki-application"
+  PkiApplication = "pki-application",
+  PamFolder = "pam-folder"
 }
 
 export enum ApproverType {
@@ -59,6 +62,100 @@ export type CodeSigningPolicyConstraints = {
   maxSignings?: number;
 };
 
+// Conditions on the requester's own account in a service carry this subject and no input
+export const AUTO_APPROVAL_REQUESTER_SUBJECT = "requester";
+
+export enum AutoApprovalConstraintValue {
+  None = "none",
+  One = "one",
+  Many = "many"
+}
+
+export type TAutoApprovalInput = { connectionId: string; subject: string };
+
+export type TAutoApprovalCondition = {
+  connectionId: string;
+  subject: string;
+  constraint: string;
+  values: string[];
+};
+
+export type TAutoApprovalConfig = {
+  inputs: TAutoApprovalInput[];
+  rules: { name: string; conditions: TAutoApprovalCondition[] }[];
+};
+
+export type TAutoApprovalConfigResponse = {
+  inputs: (TAutoApprovalInput & { id: string })[];
+  rules: { id: string; name: string; conditions: (TAutoApprovalCondition & { id: string })[] }[];
+};
+
+export type TAutoApprovalCatalogConstraint = {
+  id: string;
+  label: string;
+  value: AutoApprovalConstraintValue;
+  hasOptions: boolean;
+};
+
+export type TAutoApprovalCatalogSubject = {
+  id: string;
+  label: string;
+  input: { label: string; placeholder: string } | null;
+  constraints: TAutoApprovalCatalogConstraint[];
+};
+
+export type TAutoApprovalCatalogConnection = {
+  id: string;
+  name: string;
+  app: string;
+  subjects: TAutoApprovalCatalogSubject[];
+};
+
+export type TAutoApprovalOption = { value: string; label: string };
+
+// A field the request form shows for one of the policy's inputs
+export type TAutoApprovalInputDetails = {
+  connectionId: string;
+  connectionName: string;
+  subject: string;
+  label: string;
+  placeholder: string;
+};
+
+export type TAutoApprovalInputValue = { connectionId: string; subject: string; value: string };
+
+export type TAutoApprovalOutcome = {
+  approvedAt: string | null;
+  approvedByRuleId: string | null;
+  inputs: { label: string; value: string; url: string | null }[];
+  rules: {
+    id: string;
+    name: string;
+    passed: boolean;
+    conditions: { id: string; description: string; passed: boolean; reason: string | null }[];
+  }[];
+};
+
+export type TAutoApprovalCatalog = {
+  // Apps a connection can be created for to use in rules
+  apps: AppConnection[];
+  connections: TAutoApprovalCatalogConnection[];
+};
+
+export type TGetAutoApprovalCatalogDTO = {
+  policyType: ApprovalPolicyType;
+  scope: ApprovalPolicyScope;
+  scopeId: string;
+};
+
+export type TListAutoApprovalOptionsDTO = TGetAutoApprovalCatalogDTO & {
+  connectionId: string;
+  subject: string;
+  constraint: string;
+  search?: string;
+  siblings?: Record<string, string[]>;
+};
+
 export type TApprovalPolicy = {
   id: string;
   projectId: string;
@@ -83,6 +180,7 @@ export type TApprovalPolicy = {
   bypassForMachineIdentities?: boolean;
   enforcementLevel: EnforcementLevel;
   bypassers: PolicyBypasser[];
+  autoApproval?: TAutoApprovalConfigResponse;
   scopeType?: ApprovalPolicyScope | string | null;
   scopeId?: string | null;
   createdAt: string;
@@ -104,6 +202,7 @@ export type TCreateApprovalPolicyDTO = {
   bypassForMachineIdentities?: boolean;
   enforcementLevel?: EnforcementLevel;
   bypassers?: PolicyBypasser[];
+  autoApproval?: TAutoApprovalConfig;
 };
 
 export type TUpdateApprovalPolicyDTO = {
@@ -123,6 +222,7 @@ export type TUpdateApprovalPolicyDTO = {
   bypassForMachineIdentities?: boolean;
   enforcementLevel?: EnforcementLevel;
   bypassers?: PolicyBypasser[];
+  autoApproval?: TAutoApprovalConfig;
 };
 
 export type TGetApprovalPolicyByIdDTO = {
@@ -153,4 +253,5 @@ export type TCheckPolicyMatchResult = {
   constraints?: {
     accessDuration: { max: string };
   };
+  autoApprovalInputs?: TAutoApprovalInputDetails[];
 };

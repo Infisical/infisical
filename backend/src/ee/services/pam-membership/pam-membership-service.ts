@@ -22,6 +22,7 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { assertWillRetainProjectAdmin } from "@app/services/membership/membership-fns";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectAccessRequestDALFactory } from "@app/services/project/project-access-request-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -71,7 +72,7 @@ type TPamMembershipServiceFactoryDep = {
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "update">;
   userDAL: Pick<TUserDALFactory, "findById" | "find">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess" | "lockActorsForOrgAccess">;
   groupDAL: Pick<TGroupDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById" | "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
@@ -196,6 +197,17 @@ export const pamMembershipServiceFactory = ({
     return account;
   };
 
+  const lockActorForGrant = (kind: PamMemberKind, id: string, orgId: string, tx: Knex) =>
+    lockAndAssertActiveOrgAccess(
+      {
+        orgDAL,
+        orgId,
+        userIds: kind === PamMemberKind.User ? [id] : [],
+        identityIds: kind === PamMemberKind.Identity ? [id] : []
+      },
+      tx
+    );
+
   const validateActorExists = async (
     dto: { userId?: string; groupId?: string; identityId?: string },
     orgId: string,
@@ -207,19 +219,22 @@ export const pamMembershipServiceFactory = ({
       const user = await userDAL.findById(id);
       if (!user) throw new NotFoundError({ message: `User with ID '${id}' not found` });
 
-      const orgMemberships = await membershipDAL.find({
-        scope: AccessScope.Organization,
-        scopeOrgId: orgId,
-        actorUserId: id,
-        isActive: true
-      });
-      if (orgMemberships.length === 0) {
+      const withOrgAccess = await orgDAL.findActorsWithActiveOrgAccess({ orgId, userIds: [id], identityIds: [] });
+      if (!withOrgAccess.userIds.has(id)) {
         throw new BadRequestError({ message: "User must be an active member of this organization" });
       }
     } else if (kind === PamMemberKind.Group) {
       const group = await groupDAL.findById(id);
       if (!group) throw new NotFoundError({ message: `Group with ID '${id}' not found` });
-      if (group.orgId !== orgId) throw new BadRequestError({ message: "Group does not belong to this organization" });
+      const groupOrgMemberships = await membershipDAL.find({
+        scope: AccessScope.Organization,
+        scopeOrgId: orgId,
+        actorGroupId: id,
+        isActive: true
+      });
+      if (groupOrgMemberships.length === 0) {
+        throw new BadRequestError({ message: "Group does not belong to this organization" });
+      }
     } else {
       const identity = await identityDAL.findById(id);
       if (!identity) throw new NotFoundError({ message: `Identity with ID '${id}' not found` });
@@ -231,13 +246,8 @@ export const pamMembershipServiceFactory = ({
         });
       }
 
-      const orgMemberships = await membershipDAL.find({
-        scope: AccessScope.Organization,
-        scopeOrgId: orgId,
-        actorIdentityId: id,
-        isActive: true
-      });
-      if (orgMemberships.length === 0) {
+      const withOrgAccess = await orgDAL.findActorsWithActiveOrgAccess({ orgId, userIds: [], identityIds: [id] });
+      if (!withOrgAccess.identityIds.has(id)) {
         throw new BadRequestError({ message: "Identity must be an active member of this organization" });
       }
     }
@@ -390,6 +400,7 @@ export const pamMembershipServiceFactory = ({
     const { column, id, kind } = await validateActorExists(dto, dto.actorOrgId, projectId);
 
     const result = await membershipDAL.transaction(async (tx) => {
+      await lockActorForGrant(kind, id, dto.actorOrgId, tx);
       const existing = await membershipDAL.find(
         { scope: AccessScope.Project, scopeProjectId: projectId, [column]: id },
         { tx }
@@ -503,15 +514,11 @@ export const pamMembershipServiceFactory = ({
     const alreadyAttached = new Set(existing.map((m) => m.actorUserId).filter((v): v is string => Boolean(v)));
     const skipped: string[] = [];
 
-    const orgMemberships = candidates.length
-      ? await membershipDAL.find({
-          scope: AccessScope.Organization,
-          scopeOrgId: ctx.actorOrgId,
-          isActive: true,
-          $in: { actorUserId: candidates.map((c) => c.userId) }
-        })
-      : [];
-    const orgMemberIds = new Set(orgMemberships.map((m) => m.actorUserId));
+    const { userIds: orgMemberIds } = await orgDAL.findActorsWithActiveOrgAccess({
+      orgId: ctx.actorOrgId,
+      userIds: candidates.map((c) => c.userId),
+      identityIds: []
+    });
 
     const toCreate = candidates.filter((c) => {
       if (!orgMemberIds.has(c.userId)) {
@@ -533,6 +540,10 @@ export const pamMembershipServiceFactory = ({
     }
 
     const memberships = await membershipDAL.transaction(async (tx) => {
+      await lockAndAssertActiveOrgAccess(
+        { orgDAL, orgId: ctx.actorOrgId, userIds: toCreate.map((candidate) => candidate.userId) },
+        tx
+      );
       const results: { membershipId: string; userId: string; role: string; createdAt: Date }[] = [];
       for (const { userId } of toCreate) {
         // eslint-disable-next-line no-await-in-loop
@@ -748,6 +759,7 @@ export const pamMembershipServiceFactory = ({
     await validateProductMember(projectId, dto);
 
     return membershipDAL.transaction(async (tx) => {
+      await lockActorForGrant(kind, id, dto.actorOrgId, tx);
       const existing = await membershipDAL.find(
         { ...resourceScope(projectId, resourceType, resourceId), [column]: id },
         { tx }

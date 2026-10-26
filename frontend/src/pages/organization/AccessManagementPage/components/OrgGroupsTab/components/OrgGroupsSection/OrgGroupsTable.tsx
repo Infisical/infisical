@@ -32,6 +32,7 @@ import {
   InputGroupInput,
   OrgIcon,
   Pagination,
+  RowLink,
   Select,
   SelectContent,
   SelectItem,
@@ -310,20 +311,15 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                   const isLinkedGroup = currentOrg ? groupOrgId !== currentOrg.id : false;
                   const isManagedBySubOrg = currentOrg ? groupOrgId === currentOrg.id : false;
                   return (
-                    <TableRow
-                      key={`org-group-${id}`}
-                      className="cursor-pointer"
-                      onClick={() =>
-                        navigate({
-                          to: "/organizations/$orgId/groups/$groupId",
-                          params: {
-                            orgId,
-                            groupId: id
-                          }
-                        })
-                      }
-                    >
-                      <TableCell isTruncatable>{name}</TableCell>
+                    <TableRow key={`org-group-${id}`} linked>
+                      <TableCell isTruncatable>
+                        <RowLink
+                          to="/organizations/$orgId/groups/$groupId"
+                          params={{ orgId, groupId: id }}
+                        >
+                          {name}
+                        </RowLink>
+                      </TableCell>
                       <TableCell isTruncatable>{slug}</TableCell>
                       <TableCell>
                         <OrgPermissionCan

@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { Link, linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -20,6 +18,7 @@ import {
 
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
   AlertAction,
@@ -103,7 +102,6 @@ const STATUS_OPTIONS = [
 ];
 
 export const AgentVaultSessionsPage = () => {
-  const { t } = useTranslation();
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
@@ -182,9 +180,7 @@ export const AgentVaultSessionsPage = () => {
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Sessions" })}</title>
-      </Helmet>
+      <PageTitle title="Sessions" />
       <PageHeader
         scope={ProjectType.AgentVault}
         icon={IdCardIcon}

@@ -17,6 +17,17 @@ export const isMfaSessionError = (
   return error?.response?.data?.name === "SESSION_MFA_REQUIRED";
 };
 
+export type TMfaStepUpChallenge = { mfaSessionId: string; mfaMethod: MfaMethod };
+
+export const getMfaStepUpChallenge = (error: unknown): TMfaStepUpChallenge | null => {
+  if (!axios.isAxiosError(error) || error.response?.data?.error !== "SESSION_MFA_REQUIRED") {
+    return null;
+  }
+  const details = error.response.data.details as Partial<TMfaStepUpChallenge> | undefined;
+  if (!details?.mfaSessionId || !details.mfaMethod) return null;
+  return { mfaSessionId: details.mfaSessionId, mfaMethod: details.mfaMethod };
+};
+
 export const isMfaLockoutError = (
   error: any
 ): error is { response: { data: { message: string } } } =>
