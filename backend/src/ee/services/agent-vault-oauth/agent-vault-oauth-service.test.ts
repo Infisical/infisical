@@ -10,6 +10,7 @@ import {
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
+import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
 import {
   AgentVaultCredentialType,
@@ -328,7 +329,7 @@ const authorize = async (env: ReturnType<typeof setup>) => {
 
 const oauthConfig = (overrides: Partial<TAgentVaultOauthConfig> = {}): TAgentVaultOauthConfig => ({
   type: AgentVaultCredentialType.OAuth,
-  grantType: "authorization_code",
+  grantType: OauthGrantType.AuthorizationCode,
   serverUrl: SERVER_URL,
   issuer: "https://mcp.linear.app",
   authorizationEndpoint: "https://mcp.linear.app/authorize",
@@ -417,18 +418,27 @@ describe("starting an authorization", () => {
     );
   });
 
-  test("a registration endpoint that can't be reached is logged without the error text", async () => {
+  test("a registration endpoint that can't be reached asks to try again, logged without the error text", async () => {
     vi.mocked(logger.warn).mockClear();
     const env = setup();
     env.onRegister(() => {
       throw new Error("connect ECONNREFUSED https://mcp.linear.app/register?token=abc");
     });
-    const result = await createAuthorization(env);
-    expect(result.registrationRequired).toBe(true);
+    await expect(createAuthorization(env)).rejects.toThrow(
+      "Couldn't set up OAuth for 'mcp.linear.app': its registration endpoint couldn't be reached. Try again in a few minutes."
+    );
     expect(logger.warn).toHaveBeenCalledWith(
       `agentVaultOauth: client registration failed [projectId=${PROJECT_ID}] [server=mcp.linear.app] [error=its registration endpoint couldn't be reached.]`
     );
     expect(vi.mocked(logger.warn).mock.calls.flat().join()).not.toContain("ECONNREFUSED");
+  });
+
+  test("a registration endpoint that is down asks to try again instead of for a client", async () => {
+    const env = setup();
+    env.onRegister(() => json(503, { error: "temporarily_unavailable" }));
+    await expect(createAuthorization(env)).rejects.toThrow(
+      /\(temporarily_unavailable\)\. Try again in a few minutes\.$/
+    );
   });
 
   test("an admin-entered client is used as is, with no registration", async () => {
@@ -1085,7 +1095,9 @@ describe("refreshing a service's token", () => {
     { error: "incorrect_client_credentials", status: 200, why: "GitHub's invalid_client, with a 200" },
     { error: "invalid_refresh_token", status: 200, why: "Slack, with ok: false" },
     { error: "token_revoked", status: 200, why: "Slack" },
-    { error: "token_expired", status: 200, why: "Slack" }
+    { error: "token_expired", status: 200, why: "Slack" },
+    { error: "bad_client_secret", status: 200, why: "Slack's invalid_client" },
+    { error: "invalid_client_id", status: 200, why: "Slack's invalid_client" }
   ])("$error marks the service as needing reauthorization ($why)", async ({ error, status }) => {
     env.onToken(() => json(status, { ok: false, error }));
     const result = await env.service.refreshServiceToken({

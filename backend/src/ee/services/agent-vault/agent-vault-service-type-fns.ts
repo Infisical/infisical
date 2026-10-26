@@ -2,6 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { BadRequestError } from "@app/lib/errors";
+import { shake } from "@app/lib/fn";
 
 import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
@@ -77,14 +78,14 @@ export const deriveMcpHostPattern = (serverUrl: string): string => {
   return url.port && url.port !== AGENT_VAULT_DEFAULT_PORT ? `${host}:${url.port}` : host;
 };
 
-export const AgentVaultHttpServiceConfigSchema = z.object({});
+const AgentVaultHttpServiceConfigSchema = z.object({});
 
-export const AgentVaultMcpServiceConfigSchema = z.object({
+const AgentVaultMcpServiceConfigSchema = z.object({
   serverUrl: agentVaultMcpServerUrlSchema,
   transport: z.nativeEnum(AgentVaultMcpTransport)
 });
 
-export type TAgentVaultMcpServiceConfig = z.infer<typeof AgentVaultMcpServiceConfigSchema>;
+type TAgentVaultMcpServiceConfig = z.infer<typeof AgentVaultMcpServiceConfigSchema>;
 
 export type TAgentVaultServiceConfig =
   | TAgentVaultMcpServiceConfig
@@ -232,7 +233,7 @@ export const buildServiceConfig = (
   incoming: Record<string, unknown>,
   stored: unknown = {}
 ): TAgentVaultServiceConfig => {
-  const sent = Object.fromEntries(Object.entries(incoming).filter(([, value]) => value !== undefined));
+  const sent = shake(incoming, (value) => value === undefined);
   const parsed = definition.configSchema.safeParse({ ...((stored ?? {}) as Record<string, unknown>), ...sent });
   if (!parsed.success) {
     const [issue] = parsed.error.issues;

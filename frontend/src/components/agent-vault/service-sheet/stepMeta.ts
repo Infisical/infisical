@@ -17,6 +17,8 @@ type StepMeta = {
 
 const VARIABLE_TIP =
   "To use a global variable, type {{ in any value and pick it from the list. The proxy puts the variable's value in its place. For a member-provided field, each member sets their own value, and can use their personal variables there.";
+const MCP_VARIABLE_TIP =
+  "To use a global variable in the token or a custom header value, type {{ and pick it from the list. The proxy puts the variable's value in its place. For OAuth, paste the client ID and client secret themselves.";
 
 const TEMPLATE_STEP: StepMeta = { step: ServiceStep.Template, name: "Template" };
 
@@ -77,7 +79,7 @@ export const MCP_SERVICE_STEPS: StepMeta[] = [
     rightLabel: "CREDENTIAL",
     rightDescription:
       "The proxy authenticates to the MCP server for the agent. The agent can call any tool the server exposes to this credential.",
-    rightTip: VARIABLE_TIP
+    rightTip: MCP_VARIABLE_TIP
   },
   REVIEW_STEP
 ];

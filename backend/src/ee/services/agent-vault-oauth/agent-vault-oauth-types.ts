@@ -1,4 +1,5 @@
 import { TGenericPermission } from "@app/lib/types";
+import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
 import {
   AgentVaultCredentialType,
@@ -31,15 +32,13 @@ export enum AgentVaultOauthCompatibility {
   ScopeCommaSeparated = "scope-comma-separated"
 }
 
-export const AGENT_VAULT_OAUTH_GRANT_TYPE = "authorization_code";
-
 // The MCP authorization spec puts the access token in `Authorization: Bearer`, so it isn't configurable.
 export const AGENT_VAULT_OAUTH_HEADER_NAME = "Authorization";
 export const AGENT_VAULT_OAUTH_HEADER_PREFIX = "Bearer";
 
 export type TAgentVaultOauthConfig = {
   type: AgentVaultCredentialType.OAuth;
-  grantType: typeof AGENT_VAULT_OAUTH_GRANT_TYPE;
+  grantType: OauthGrantType.AuthorizationCode;
   // The server URL the tokens were authorized for.
   serverUrl: string;
   issuer: string;

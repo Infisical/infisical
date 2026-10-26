@@ -114,14 +114,20 @@ const parseJsonObject = (response: TOauthHttpResponse): Record<string, unknown> 
   }
 };
 
-type TFetchedJson = { answered: boolean; json: Record<string, unknown> | null };
+// `temporary` separates an outage (no answer, 429 or 5xx) from metadata the server doesn't have.
+type TFetchedJson = { answered: boolean; temporary: boolean; json: Record<string, unknown> | null };
 
 const fetchJson = async (http: TOauthHttpClient, url: string): Promise<TFetchedJson> => {
   try {
-    return { answered: true, json: parseJsonObject(await http.get(url)) };
+    const response = await http.get(url);
+    return {
+      answered: true,
+      temporary: response.status === 429 || response.status >= 500,
+      json: parseJsonObject(response)
+    };
   } catch {
     logger.info(`agentVaultOauth: metadata fetch failed [url=${sanitizeUrlForLog(url)}]`);
-    return { answered: false, json: null };
+    return { answered: false, temporary: true, json: null };
   }
 };
 
@@ -295,13 +301,14 @@ const discover = async (http: TOauthHttpClient, serverUrl: string): Promise<TOau
     compatibility.add(AgentVaultOauthCompatibility.NoProtectedResourceMetadata);
   }
 
-  const metadata =
-    (
-      await firstUsableInOrder(
-        authorizationServerMetadataUrls(issuer).map((url) => fetchJson(http, url)),
-        (result) => Boolean(result.json)
-      )
-    )?.json ?? null;
+  const metadataFetches = authorizationServerMetadataUrls(issuer).map((url) => fetchJson(http, url));
+  const metadata = (await firstUsableInOrder(metadataFetches, (result) => Boolean(result.json)))?.json ?? null;
+  // Guessed endpoints are for servers without metadata; during an outage they would send sign-in to the wrong URL.
+  if (!metadata && (await Promise.all(metadataFetches)).every((result) => result.temporary)) {
+    throw new BadRequestError({
+      message: `Couldn't reach the authorization server '${describeServer(issuer)}'. Try again in a few minutes.`
+    });
+  }
 
   const scopes = selectScopes({
     challengeScope: challenge?.scope,

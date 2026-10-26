@@ -15,6 +15,7 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
+import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
 import {
   AgentVaultCredentialType,
@@ -32,7 +33,12 @@ import {
   registerOauthClient,
   TOauthClient
 } from "./agent-vault-oauth-client-fns";
-import { describeServer, discoverOauthServer, OFFLINE_ACCESS_SCOPE } from "./agent-vault-oauth-discovery-fns";
+import {
+  describeServer,
+  discoverOauthServer,
+  oauthSetupError,
+  OFFLINE_ACCESS_SCOPE
+} from "./agent-vault-oauth-discovery-fns";
 import { agentVaultOauthHttpClient, TOauthHttpClient } from "./agent-vault-oauth-http-fns";
 import {
   buildAuthorizeUrl,
@@ -52,7 +58,6 @@ import {
   withTokenCompatibility
 } from "./agent-vault-oauth-token-fns";
 import {
-  AGENT_VAULT_OAUTH_GRANT_TYPE,
   AgentVaultOauthRegistration,
   TAgentVaultOauthAuthorization,
   TAgentVaultOauthAuthorizationView,
@@ -336,6 +341,7 @@ export const agentVaultOauthServiceFactory = ({
 
     let client: TOauthClient | null = null;
     let registration: AgentVaultOauthRegistration | null = null;
+    let temporaryRegistrationError: OauthRegistrationError | null = null;
     if (clientId) {
       client = manualOauthClient({
         clientId,
@@ -370,6 +376,8 @@ export const agentVaultOauthServiceFactory = ({
           logger.warn(
             `agentVaultOauth: client registration failed [projectId=${projectId}] [server=${describeServer(serverUrl)}] [error=${error.message}]`
           );
+          // An outage at an advertised endpoint says nothing about needing an admin-entered client.
+          if (error.status === null || error.status === 429 || error.status >= 500) temporaryRegistrationError = error;
         }
       }
     }
@@ -381,6 +389,9 @@ export const agentVaultOauthServiceFactory = ({
         tokenEndpointAuthMethod: reusableStored.config.tokenEndpointAuthMethod
       };
       registration = reusableStored.config.registration;
+    }
+    if (!client && temporaryRegistrationError) {
+      throw oauthSetupError(serverUrl, `${temporaryRegistrationError.message} Try again in a few minutes.`);
     }
     if (!client || !registration) {
       return {
@@ -643,7 +654,7 @@ export const agentVaultOauthServiceFactory = ({
     return {
       config: {
         type: AgentVaultCredentialType.OAuth,
-        grantType: AGENT_VAULT_OAUTH_GRANT_TYPE,
+        grantType: OauthGrantType.AuthorizationCode,
         serverUrl: record.serverUrl,
         issuer: record.issuer,
         authorizationEndpoint: record.authorizationEndpoint,

@@ -263,6 +263,20 @@ describe("token requests", () => {
     expect((await requestToken({ http, ...tokenArgs })).ok).toBe(false);
   });
 
+  test("a long secret echoed in the error code is redacted before it is truncated", async () => {
+    const refreshToken = `rt-${"x".repeat(160)}`;
+    const { http } = stubPosts([json(400, { error: `Refused ${refreshToken}` })]);
+    const result = await requestToken({
+      http,
+      ...tokenArgs,
+      params: { grant_type: "refresh_token", refresh_token: refreshToken }
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).not.toContain("xxxxxxxx");
+    expect(result.errorCode).not.toContain("xxxxxxxx");
+  });
+
   test("provider refusals cannot expose request secrets or their Basic authorization header", async () => {
     const clientSecret = "client +/secret-with_.*";
     const encoded = new URLSearchParams({ value: clientSecret }).toString().slice("value=".length);
@@ -509,6 +523,15 @@ describe("token types", () => {
 
   test.each(["DPoP", "mac", "PoP"])("a %s token is refused, since it needs proof the proxy can't give", (tokenType) => {
     expect(parseTokenResponse({ access_token: "at", token_type: tokenType })).toBeNull();
+  });
+
+  test("a Slack user token reports the scopes granted under authed_user, not every scope requested", () => {
+    const tokens = parseTokenResponse(
+      { ok: true, access_token: "xoxp-1", token_type: "user", authed_user: { id: "U123", scope: "openid,email" } },
+      ["openid", "email", "profile"]
+    );
+    expect(tokens?.scopes).toEqual(["openid", "email"]);
+    expect(tokens?.scopesCommaSeparated).toBe(true);
   });
 });
 

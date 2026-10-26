@@ -524,6 +524,27 @@ describe("discovering an MCP server's authorization server", () => {
     );
   });
 
+  test("an authorization server that is down is reported instead of guessing its endpoints", async () => {
+    const { http } = stubHttp({
+      json: {
+        "https://mcp.example.com/.well-known/oauth-protected-resource/mcp": {
+          resource: "https://mcp.example.com/mcp",
+          authorization_servers: ["https://login.example.com/tenant"]
+        }
+      }
+    });
+    const outage: TOauthHttpClient = {
+      ...http,
+      get: async (url) =>
+        url.startsWith("https://login.example.com")
+          ? { status: 503, contentType: "text/plain", body: "unavailable" }
+          : http.get(url)
+    };
+    await expect(discoverOauthServer(outage, "https://mcp.example.com/mcp")).rejects.toThrow(
+      "Couldn't reach the authorization server 'login.example.com'. Try again in a few minutes."
+    );
+  });
+
   test("a server that answers without any OAuth signal is not advertised, but still gets guessed endpoints", async () => {
     const { http } = stubHttp({ challenge: null, json: {} });
     const discovery = await discoverOauthServer(http, "https://mcp.example.com/mcp");

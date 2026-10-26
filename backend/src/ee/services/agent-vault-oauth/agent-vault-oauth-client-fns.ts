@@ -1,20 +1,20 @@
 import { logger } from "@app/lib/logger";
+import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
 import { describeServer } from "./agent-vault-oauth-discovery-fns";
-import { TOauthHttpClient } from "./agent-vault-oauth-http-fns";
+import { TOauthHttpClient, withTimeout } from "./agent-vault-oauth-http-fns";
 import {
   MAX_ERROR_CODE_LENGTH,
   MAX_ERROR_DESCRIPTION_LENGTH,
   normalizeProviderText,
   OAUTH_VSCHAR_PATTERN
 } from "./agent-vault-oauth-token-fns";
-import {
-  AGENT_VAULT_OAUTH_GRANT_TYPE,
-  AgentVaultOauthClientAuthMethod,
-  AgentVaultOauthCompatibility
-} from "./agent-vault-oauth-types";
+import { AgentVaultOauthClientAuthMethod, AgentVaultOauthCompatibility } from "./agent-vault-oauth-types";
 
-export const AGENT_VAULT_OAUTH_CLIENT_NAME = "Infisical Agent Vault";
+const AGENT_VAULT_OAUTH_CLIENT_NAME = "Infisical Agent Vault";
+
+// Shared by both registration attempts, so authorization creation answers well inside the gateway timeout.
+const REGISTRATION_BUDGET_MS = 15_000;
 
 export type TOauthClient = {
   clientId: string;
@@ -101,7 +101,7 @@ export const registerOauthClient = async ({
   grantTypesSupported: string[] | null;
   tokenEndpointAuthMethodsSupported: string[] | null;
 }): Promise<{ client: TOauthClient; compatibility: AgentVaultOauthCompatibility[] }> => {
-  const refreshSupported = !grantTypesSupported || grantTypesSupported.includes("refresh_token");
+  const refreshSupported = !grantTypesSupported || grantTypesSupported.includes(OauthGrantType.RefreshToken);
   const publicClientSupported =
     !tokenEndpointAuthMethodsSupported ||
     tokenEndpointAuthMethodsSupported.includes(AgentVaultOauthClientAuthMethod.None);
@@ -111,11 +111,14 @@ export const registerOauthClient = async ({
     token_endpoint_auth_method: publicClientSupported
       ? AgentVaultOauthClientAuthMethod.None
       : secretAuthMethod(tokenEndpointAuthMethodsSupported),
-    grant_types: refreshSupported ? [AGENT_VAULT_OAUTH_GRANT_TYPE, "refresh_token"] : [AGENT_VAULT_OAUTH_GRANT_TYPE],
+    grant_types: refreshSupported
+      ? [OauthGrantType.AuthorizationCode, OauthGrantType.RefreshToken]
+      : [OauthGrantType.AuthorizationCode],
     response_types: ["code"]
   };
   const full = { ...minimal, application_type: "web" };
 
+  const deadline = Date.now() + REGISTRATION_BUDGET_MS;
   let lastStatus: number | null = null;
   let lastReason = "";
   // eslint-disable-next-line no-restricted-syntax
@@ -123,7 +126,7 @@ export const registerOauthClient = async ({
     let response;
     try {
       // eslint-disable-next-line no-await-in-loop
-      response = await http.postJson(registrationEndpoint, body);
+      response = await withTimeout(http.postJson(registrationEndpoint, body), Math.max(1, deadline - Date.now()));
     } catch {
       logger.info(`agentVaultOauth: client registration unreachable [server=${describeServer(serverUrl)}]`);
       throw new OauthRegistrationError("its registration endpoint couldn't be reached.", null);

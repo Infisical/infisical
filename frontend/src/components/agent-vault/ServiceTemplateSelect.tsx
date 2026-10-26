@@ -21,21 +21,17 @@ import {
 } from "@app/helpers/agentVaultTemplates";
 import { AgentVaultServiceType } from "@app/hooks/api/agentVault";
 
-enum TypeFilter {
-  All = "all",
-  Http = "http",
-  Mcp = "mcp"
-}
+type TTypeFilter = AgentVaultServiceType | "all";
 
 const MCP_SECTION_DESCRIPTION =
   "Remote MCP servers. The proxy attaches the credential to requests for them.";
 const HTTP_SECTION_DESCRIPTION =
   "Web APIs your agent calls directly. The proxy attaches the credential to requests for their hosts.";
 
-const TYPE_FILTERS: { value: TypeFilter; label: string }[] = [
-  { value: TypeFilter.All, label: "All Types" },
-  { value: TypeFilter.Mcp, label: "MCP Servers" },
-  { value: TypeFilter.Http, label: "HTTP APIs" }
+const TYPE_FILTERS: { value: TTypeFilter; label: string }[] = [
+  { value: "all", label: "All Types" },
+  { value: AgentVaultServiceType.Mcp, label: "MCP Servers" },
+  { value: AgentVaultServiceType.Http, label: "HTTP APIs" }
 ];
 
 // MCP cards sit under the "MCP Servers" heading, so a tag would only repeat it.
@@ -150,10 +146,10 @@ type Props = {
 
 export const ServiceTemplateSelect = ({ onSelect }: Props) => {
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState(TypeFilter.All);
+  const [typeFilter, setTypeFilter] = useState<TTypeFilter>("all");
 
-  const showsHttp = typeFilter !== TypeFilter.Mcp;
-  const showsMcp = typeFilter !== TypeFilter.Http;
+  const showsHttp = typeFilter !== AgentVaultServiceType.Mcp;
+  const showsMcp = typeFilter !== AgentVaultServiceType.Http;
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -278,7 +274,7 @@ export const ServiceTemplateSelect = ({ onSelect }: Props) => {
         <Tabs
           orientation="vertical"
           value={typeFilter}
-          onValueChange={(value) => setTypeFilter(value as TypeFilter)}
+          onValueChange={(value) => setTypeFilter(value as TTypeFilter)}
         >
           <TabsList variant="av" aria-label="Service types">
             {TYPE_FILTERS.map((filter) => (

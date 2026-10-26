@@ -72,13 +72,11 @@ const RemoveRowButton = ({
 export const TransformationsFields = ({
   openItem,
   onOpenChange,
-  label = "Advanced Options",
   hasSubstitutions = true,
   children
 }: {
   openItem: string;
   onOpenChange: (item: string) => void;
-  label?: string;
   hasSubstitutions?: boolean;
   children?: ReactNode;
 }) => {
@@ -96,7 +94,7 @@ export const TransformationsFields = ({
       onValueChange={onOpenChange}
     >
       <AccordionItem value={ADVANCED_ITEM}>
-        <AccordionTrigger>{label}</AccordionTrigger>
+        <AccordionTrigger>Advanced Options</AccordionTrigger>
         <AccordionContent>
           <div className="flex flex-col gap-5">
             {children}

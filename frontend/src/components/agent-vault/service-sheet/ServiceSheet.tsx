@@ -107,6 +107,7 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   oauthAuthorizationRejection: "",
   oauthClientId: "",
   oauthClientSecret: "",
+  oauthAutomaticSetup: false,
   memberProvidedFields: [],
   methods: [...HTTP_METHODS],
   pathPrefixes: [],
@@ -284,7 +285,7 @@ const rejectedAuthorizationMessage = (error: unknown) => {
   const message = error.response?.data?.message;
   if (typeof message !== "string") return null;
   const isRejected =
-    (status === 400 && /authoriz/i.test(message)) ||
+    (status === 400 && message.startsWith("This authorization ")) ||
     (status === 404 && message.startsWith("Authorization with ID")) ||
     (status === 409 && message.includes("already used by another save"));
   return isRejected ? message : null;

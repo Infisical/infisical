@@ -23,6 +23,17 @@ export type TOauthHttpClient = {
 };
 
 const TIMEOUT_MS = 10_000;
+
+// Also bounds what the HTTP client's own timeout doesn't cover, such as resolving and validating the host.
+export const withTimeout = <T>(promise: Promise<T>, ms: number) => {
+  let timer: NodeJS.Timeout | undefined;
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error("OAuth request timed out")), ms);
+    })
+  ]).finally(() => clearTimeout(timer));
+};
 const MAX_BODY_BYTES = 1024 * 1024;
 
 const headerValue = (value: unknown): string => {

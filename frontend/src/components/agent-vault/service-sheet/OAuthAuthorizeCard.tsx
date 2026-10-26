@@ -152,7 +152,8 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
     scopes,
     clientId = "",
     clientSecret = "",
-    rejection = ""
+    rejection = "",
+    isAutomaticSetupChosen = false
   ] = useWatch({
     control,
     name: [
@@ -162,7 +163,8 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
       "oauthScopes",
       "oauthClientId",
       "oauthClientSecret",
-      "oauthAuthorizationRejection"
+      "oauthAuthorizationRejection",
+      "oauthAutomaticSetup"
     ]
   });
   const clientIdInputId = useId();
@@ -172,7 +174,6 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
   const [isUsingOwnApp, setIsUsingOwnApp] = useState(() =>
     Boolean(getValues("oauthClientId") || getValues("oauthClientSecret"))
   );
-  const [isAutomaticSetupChosen, setIsAutomaticSetupChosen] = useState(false);
 
   const trimmedUrl = serverUrl.trim();
   const host = hostOf(trimmedUrl);
@@ -210,9 +211,14 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
   const isOwnApp = wantsOwnApp && !isNewlyAuthorized;
   const hasAuthorization = isNewlyAuthorized || Boolean(stored);
 
+  const switchToOwnApp = () => {
+    setIsUsingOwnApp(true);
+    setValue("oauthAutomaticSetup", false);
+  };
+
   const switchToAutomaticSetup = () => {
     setIsUsingOwnApp(false);
-    setIsAutomaticSetupChosen(true);
+    setValue("oauthAutomaticSetup", true);
     setValue("oauthClientId", "");
     setValue("oauthClientSecret", "");
   };
@@ -457,7 +463,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
                 type="button"
                 variant="link"
                 size="sm"
-                onClick={isUsingOwnApp ? switchToAutomaticSetup : () => setIsUsingOwnApp(true)}
+                onClick={isUsingOwnApp ? switchToAutomaticSetup : switchToOwnApp}
               >
                 {isUsingOwnApp ? "Use automatic setup" : "Use your own OAuth app"}
               </Button>

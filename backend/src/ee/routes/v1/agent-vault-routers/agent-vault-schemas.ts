@@ -77,9 +77,17 @@ const MEMBER_FIELD_OF_INPUT: Record<"value" | "username" | "password", TAgentVau
 
 // Discriminated union options must be plain objects, so the checks that read two fields run on the union.
 const checkCredentialFields =
-  ({ requireValues }: { requireValues: boolean }) =>
+  ({ requireValues, mcp }: { requireValues: boolean; mcp: boolean }) =>
   (data: TCredentialShape, ctx: z.RefinementCtx) => {
     const memberProvided = new Set(data.memberProvidedFields ?? []);
+
+    if (mcp && memberProvided.size) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["memberProvidedFields"],
+        message: "MCP services don't support member-provided credentials yet. Leave memberProvidedFields out."
+      });
+    }
 
     // A member-provided field has no admin value: each member sends their own.
     (["value", "username", "password"] as const).forEach((field) => {
@@ -160,7 +168,7 @@ const credentialInputSchema = ({ mcp }: { mcp: boolean }) =>
       passthroughCredentialInput.describe(docsTitle("Pass-through", mcp)),
       oauthCredentialInput.describe(docsTitle("OAuth", true))
     ])
-    .superRefine(checkCredentialFields({ requireValues: true }));
+    .superRefine(checkCredentialFields({ requireValues: true, mcp }));
 
 export const AgentVaultCredentialInputSchema = credentialInputSchema({ mcp: false });
 export const AgentVaultMcpCredentialInputSchema = credentialInputSchema({ mcp: true });
@@ -207,7 +215,7 @@ const credentialUpdateSchema = ({ mcp }: { mcp: boolean }) =>
         .describe(docsTitle("OAuth", true))
     ])
     .superRefine((data, ctx) => {
-      checkCredentialFields({ requireValues: false })(data, ctx);
+      checkCredentialFields({ requireValues: false, mcp })(data, ctx);
       // A full basic update must still leave a half to send. A partial one is checked against what is stored.
       if (
         data.type === AgentVaultCredentialType.Basic &&
@@ -285,9 +293,7 @@ export const AgentVaultCustomHeadersInputSchema = AgentVaultCustomHeaderInputSch
 
 export const AgentVaultServerUrlSchema = agentVaultMcpServerUrlSchema.describe(AGENT_VAULT.SERVICE.serverUrl);
 
-export const AgentVaultMcpTransportSchema = z
-  .nativeEnum(AgentVaultMcpTransport)
-  .describe(AGENT_VAULT.SERVICE.transport);
+const AgentVaultMcpTransportSchema = z.nativeEnum(AgentVaultMcpTransport).describe(AGENT_VAULT.SERVICE.transport);
 
 export const AgentVaultCustomHeadersUpdateSchema = AgentVaultCustomHeaderUpdateSchema.array()
   .max(AGENT_VAULT_MAX_CUSTOM_HEADERS)

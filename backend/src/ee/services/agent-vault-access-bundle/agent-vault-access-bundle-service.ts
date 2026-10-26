@@ -21,6 +21,7 @@ import {
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresConstraintViolation, hasPostgresErrorCode } from "@app/lib/errors/postgres";
+import { shake } from "@app/lib/fn";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -1176,9 +1177,7 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
 
     // The fields of the type's config this request sent. Ones left out keep their stored value, so the config
     // is merged here for the fast checks and again under the lock against the row read there.
-    const configUpdate = Object.fromEntries(
-      Object.entries({ serverUrl, transport }).filter(([, value]) => value !== undefined)
-    );
+    const configUpdate = shake({ serverUrl, transport }, (value) => value === undefined);
     const hasConfigUpdate = Object.keys(configUpdate).length > 0;
     const deriveHostPattern = (config: TAgentVaultServiceConfig) =>
       resolveServiceHostPattern(serviceType, config, requestedHostPattern);

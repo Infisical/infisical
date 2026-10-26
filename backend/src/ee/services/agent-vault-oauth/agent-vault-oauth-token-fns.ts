@@ -6,6 +6,8 @@ import RE2 from "re2";
 import { BadRequestError } from "@app/lib/errors";
 import { logger, sanitizeUrlForLog } from "@app/lib/logger";
 import { PRIVATE_ADDRESS_REFUSED_MESSAGE } from "@app/lib/validator";
+import { computePkceChallenge } from "@app/services/oauth-client/oauth-client-fns";
+import { OauthGrantType } from "@app/services/oauth-client/oauth-client-types";
 
 import { AgentVaultCredentialType, AgentVaultOauthStatus } from "../agent-vault/agent-vault-enums";
 import {
@@ -15,9 +17,8 @@ import {
   splitScopes,
   stripTrailingSlash
 } from "./agent-vault-oauth-discovery-fns";
-import { TOauthHttpClient } from "./agent-vault-oauth-http-fns";
+import { TOauthHttpClient, withTimeout } from "./agent-vault-oauth-http-fns";
 import {
-  AGENT_VAULT_OAUTH_GRANT_TYPE,
   AGENT_VAULT_OAUTH_HEADER_NAME,
   AGENT_VAULT_OAUTH_HEADER_PREFIX,
   AgentVaultOauthClientAuthMethod,
@@ -32,7 +33,7 @@ export const hashAccessToken = (accessToken: string) => crypto.createHash("sha25
 
 export const generatePkce = () => {
   const codeVerifier = base64Url(crypto.randomBytes(32));
-  const codeChallenge = base64Url(crypto.createHash("sha256").update(codeVerifier).digest());
+  const codeChallenge = computePkceChallenge(codeVerifier);
   return { codeVerifier, codeChallenge };
 };
 
@@ -186,7 +187,13 @@ export const parseTokenResponse = (
   }
 
   const refreshToken = isUsableToken(body.refresh_token) ? body.refresh_token : undefined;
-  const { scopes, commaSeparated } = parseGrantedScopes(body.scope, requestedScopes);
+  // Slack's user-token response puts the granted scopes under authed_user rather than at the top level.
+  const authedUser = body.authed_user;
+  const scope =
+    typeof body.scope !== "string" && authedUser && typeof authedUser === "object"
+      ? (authedUser as Record<string, unknown>).scope
+      : body.scope;
+  const { scopes, commaSeparated } = parseGrantedScopes(scope, requestedScopes);
   return {
     accessToken,
     refreshToken,
@@ -257,17 +264,6 @@ export const normalizeProviderText = (
 // inside its own 15 second timeout, lock wait and database reads included.
 export const TOKEN_REQUEST_BUDGET_MS = 7_000;
 const MIN_RETRY_BUDGET_MS = 500;
-
-// Also bounds what the HTTP client's own timeout doesn't cover, such as resolving and validating the host.
-const withTimeout = <T>(promise: Promise<T>, ms: number) => {
-  let timer: NodeJS.Timeout | undefined;
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error("Token request timed out")), ms);
-    })
-  ]).finally(() => clearTimeout(timer));
-};
 
 export const requestToken = async ({
   http,
@@ -384,9 +380,10 @@ export const requestToken = async ({
       };
     }
 
-    const errorCode = normalizeProviderText(body?.error, MAX_ERROR_CODE_LENGTH) || null;
+    // Redacted before the cut, since a secret split by truncation would no longer match.
+    const errorCode = normalizeProviderText(body?.error, MAX_ERROR_CODE_LENGTH, requestSecrets) || null;
     const description = normalizeProviderText(body?.error_description, MAX_ERROR_DESCRIPTION_LENGTH, requestSecrets);
-    const detail = description || normalizeProviderText(errorCode, MAX_ERROR_CODE_LENGTH, requestSecrets);
+    const detail = description || errorCode;
     // A bare 5xx is an outage, not a refusal, and the refresh keeps retrying it.
     const message =
       !detail && response.status >= 500
@@ -413,7 +410,9 @@ const DEAD_LOGIN_ERROR_CODES = new Set([
   "bad_refresh_token", // GitHub
   "invalid_refresh_token", // Slack
   "token_revoked", // Slack
-  "token_expired" // Slack
+  "token_expired", // Slack
+  "bad_client_secret", // Slack's invalid_client
+  "invalid_client_id" // Slack's invalid_client
 ]);
 
 export const isDeadLoginError = (errorCode: string | null) =>
@@ -425,7 +424,7 @@ export const exchangeAuthorizationCode = (
   requestToken({
     ...args,
     params: {
-      grant_type: AGENT_VAULT_OAUTH_GRANT_TYPE,
+      grant_type: OauthGrantType.AuthorizationCode,
       code: args.code,
       code_verifier: args.codeVerifier,
       redirect_uri: args.redirectUri
@@ -434,7 +433,7 @@ export const exchangeAuthorizationCode = (
 
 export const refreshAccessToken = (
   args: Omit<Parameters<typeof requestToken>[0], "params"> & { refreshToken: string }
-) => requestToken({ ...args, params: { grant_type: "refresh_token", refresh_token: args.refreshToken } });
+) => requestToken({ ...args, params: { grant_type: OauthGrantType.RefreshToken, refresh_token: args.refreshToken } });
 
 export const withTokenCompatibility = (
   compatibility: AgentVaultOauthCompatibility[],

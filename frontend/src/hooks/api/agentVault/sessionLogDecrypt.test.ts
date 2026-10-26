@@ -114,7 +114,8 @@ describe("decryptSessionLogPage", () => {
   };
   const key = sessionLogChunkKey(page.chunks[0]);
 
-  // The same object Go's TestSealMatchesTheBrowserVector seals: the IV, then the ciphertext and tag.
+  // Laid out like the object Go's TestSealMatchesTheBrowserVector seals (the IV, then the ciphertext and tag), but
+  // with an MCP record the Go vector doesn't have yet, so it isn't byte-for-byte the CLI's output.
   const sealed = Uint8Array.from(
     atob(
       "qrvM3e7/ABEiM0RVPLRwxBbgu+W68Br1N9gY1oUy8wjJxQClAtBh0NfJS1UcWOCPn3laS615sIqwFONhPIPNWRI3CA+a5tUJ7aoim0sQkE4d9gzou2mc/AWiCdToVBJPtdumA9jIzh3yAI81YPwcoDXEVnq2+7ooNNJShGdLX95itbrna/t4nFKRKSSgNzbH23eMtSMcSo72puk/2iwh4sVbTKzC2kwvbf1U6Mgd21zkIq2jDKKwhcT6mTfjPivW4FzmmkspQVMoWwANRX+QVyXzrMipZfoq5N/UcUI6/VTBSsIZvF08UTnPeIW+yM1I5hHColwnfZxQ749XdRSAGhFTIDZG4lkYWxDX+Nw+CUFLdEVwfS/W3qlckKhvB9kyNebTACDUjP8tKYDzi23/ps2hEVcDroDq1EvaoBVV9GPqSbOHiIWDQPpWJ/UJG7anF0NIYtFusQI+WW7KbaPlvoSMs7sALLQLLtM2UjlPalynrTcnH+BREzDa3WqOfHlvTdKfUzsTGp7PmtxOGbE5rHzM5ll+kWvixiwSnGPjBJMy7WeEWCPdnnpTIf1NM4mwikgPH3YPsUCLOauO/GcOoAKaMYxeisSZ6C9V/2ifRbLGOFTaPMmwHEzpeHtQiR8wqd2TKpR7PEBSiSTYpaDJKrzJQgr91cpoPgFakuDptDRaJ4eAcxulJ/ICFC8IkH5cRF2hiDJwdFgy17wdNpFGek87ZB+ZXG8IbS/ONkM8KJrszUHvY9PamV46"

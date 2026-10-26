@@ -307,6 +307,8 @@ export const buildServiceSchema = (
       // Checked in the refine below, only while OAuth is selected: switching to Bearer keeps these values.
       oauthClientId: z.string().optional(),
       oauthClientSecret: z.string().optional(),
+      // The admin chose automatic setup over the service's own OAuth app. Kept in the form so it survives Back.
+      oauthAutomaticSetup: z.boolean().optional(),
       // Each member sets these for themselves, so the form holds no value for them.
       memberProvidedFields: z.array(
         z.enum([

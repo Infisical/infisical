@@ -891,6 +891,27 @@ describe("Agent Vault V1 Router", async () => {
       expect(JSON.parse(moved.payload).service.hostPattern).toBe("mcp.linear.dev");
     });
 
+    test("an MCP service refuses member-provided credentials, on create and update", async () => {
+      const bundle = await createAccessBundle("mcp-member-provided");
+      const created = await inject("POST", servicesUrl(bundle.id), {
+        type: "mcp",
+        name: "linear",
+        serverUrl: "https://mcp.linear.app/mcp",
+        transport: "streamable-http",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+      expect(created.statusCode).toBe(422);
+      expect(created.payload).toContain("MCP services don't support member-provided credentials yet");
+
+      const service = await createMcpService(bundle.id, "linear", "https://mcp.linear.app/mcp");
+      const updated = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        type: "mcp",
+        credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
+      });
+      expect(updated.statusCode).toBe(422);
+      expect(updated.payload).toContain("MCP services don't support member-provided credentials yet");
+    });
+
     test("a field that belongs to the other type is refused by name, on create and update", async () => {
       const bundle = await createAccessBundle("mcp-wrong-fields");
       const mcp = {
@@ -976,7 +997,9 @@ describe("Agent Vault V1 Router", async () => {
           const res = await inject("PATCH", `${servicesUrl(bundle.id)}/${id}`, fields);
           expect(res.statusCode).toBe(200);
           const { service } = res.json() as { service: TReadService };
-          expect(service).toMatchObject(fields);
+          // Only the bundle read carries the caller's own personal values, so the update doesn't echo them.
+          const { personalValues, ...written } = fields;
+          expect(service).toMatchObject(written);
         })
       );
     });
@@ -2272,7 +2295,7 @@ describe("Agent Vault V1 Router", async () => {
     };
 
     const createService = async (accessBundleId: string, body: Record<string, unknown>) => {
-      const res = await inject("POST", servicesUrl(accessBundleId), body);
+      const res = await inject("POST", servicesUrl(accessBundleId), { type: "http", ...body });
       expect(res.statusCode).toBe(200);
       return (
         JSON.parse(res.payload) as {
@@ -2326,6 +2349,7 @@ describe("Agent Vault V1 Router", async () => {
       expect(service.credential.memberProvidedFields).toEqual(["credential-value"]);
 
       const both = await inject("POST", servicesUrl(bundle.id), {
+        type: "http",
         name: "datadog-both",
         hostPattern: "api.us5.datadoghq.com",
         credential: { type: "bearer", value: "admin_value", memberProvidedFields: ["credential-value"] }
@@ -2334,6 +2358,7 @@ describe("Agent Vault V1 Router", async () => {
 
       // A PATCH that leaves the list out keeps it, so a token sent alongside is refused rather than dropped.
       const dropped = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+        type: "http",
         credential: { type: "bearer", value: "admin_value" }
       });
       expect(dropped.statusCode).toBe(400);
@@ -2523,7 +2548,7 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(service.credential.memberProvidedFields).toEqual(["credential-username"]);
       const patchService = (credential: Record<string, unknown>) =>
-        inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, { credential });
+        inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, { type: "http", credential });
       // Which fields a member has saved for the service, read directly since no response lists them all at once.
       const storedFields = async () =>
         (await testDb("agent_vault_personal_values").where({ serviceId: service.id }).select("field"))
@@ -3071,6 +3096,7 @@ describe("Agent Vault V1 Router", async () => {
         ).toBe(200);
 
         const takeBack = await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+          type: "http",
           credential: { type: "basic", username: "admin-u", password: "admin-p", memberProvidedFields: [] }
         });
         expect(takeBack.statusCode).toBe(200);
@@ -3143,6 +3169,7 @@ describe("Agent Vault V1 Router", async () => {
         expect(
           (
             await inject("PATCH", `${servicesUrl(bundle.id)}/${service.id}`, {
+              type: "http",
               credential: { type: "bearer", memberProvidedFields: ["credential-value"] }
             })
           ).statusCode

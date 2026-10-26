@@ -133,7 +133,7 @@ export const sessionLogMcpCalls = (
 export const sessionLogMcpCallsTruncated = (record: TAgentVaultSessionLogRecord) =>
   sessionLogMcpCalls(record).length > 0 && record.mcp?.truncated === true;
 
-export const mcpCallLabel = (call: TAgentVaultSessionLogMcpCall) =>
+const mcpCallLabel = (call: TAgentVaultSessionLogMcpCall) =>
   call.tool ? `${call.tool} (${call.method})` : call.method;
 
 // Only neighbours are merged, so the list still reads in the order the agent sent the calls.

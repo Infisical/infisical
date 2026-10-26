@@ -11,7 +11,7 @@ You add the MCP server to your agent with its real URL and no credentials. When 
 
 - The [Admin role](/documentation/platform/agent-vault/access-control) in Agent Vault
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) to add the MCP server to
-- An enrolled [proxy](/documentation/platform/agent-vault/proxies#create-and-enroll-a-proxy) that your agent can reach
+- A running [proxy](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it) that your agent can reach
 - An account with the MCP server's provider, or a token the server accepts
 
 ## Add an MCP server
@@ -47,7 +47,7 @@ The service covers every request to the server URL's host, whatever the path. If
 
 ### OAuth
 
-With OAuth, you sign in to the provider once from Infisical. Infisical stores the tokens the provider returns and refreshes the access token before it expires. The proxy only receives the access token, and the agent never receives any token.
+With OAuth, you sign in to the provider from Infisical, and Infisical stores the tokens the provider returns. If the provider also returns a refresh token, Infisical renews the access token before the token expires. If the provider doesn't return one, [reauthorize the service](#troubleshooting) when the access token expires or the server rejects it. The proxy only receives the access token, and the agent never receives any token.
 
 <Steps>
   <Step>
@@ -115,6 +115,8 @@ Infisical won't save a custom header with the same name as the credential's head
         url = "https://mcp.linear.app/mcp"
         ```
 
+        Codex connects to remote MCP servers only over Streamable HTTP. If the service uses the SSE transport, use an agent that supports SSE, such as Claude Code.
+
         Don't use `codex mcp add`, which starts the server's OAuth sign-in from the agent, and don't run `codex mcp login` for the server.
       </Tab>
       <Tab title="OpenCode">
@@ -143,7 +145,7 @@ Infisical won't save a custom header with the same name as the credential's head
     ```
   </Step>
   <Step>
-    Ask the agent to use one of the server's tools, such as listing your Linear issues. If you've [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs), the call appears in the session's logs with the [tool name](/documentation/platform/agent-vault/session-logs#mcp-tool-calls).
+    Ask the agent to use one of the server's tools, such as listing your Linear issues. The call appears in the [session's logs](/documentation/platform/agent-vault/session-logs#viewing-session-logs) with the [tool name](/documentation/platform/agent-vault/session-logs#mcp-tool-calls).
   </Step>
 </Steps>
 
