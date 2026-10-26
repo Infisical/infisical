@@ -101,6 +101,7 @@ const SecretPathInputBase = ({
       handleSuggestionSelect(highlightedIndex);
     }
     onKeyDown?.(e);
+    if (e.key === "Enter") e.preventDefault();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
