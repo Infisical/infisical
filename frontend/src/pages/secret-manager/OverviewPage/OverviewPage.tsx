@@ -4542,9 +4542,10 @@ const OverviewPageContent = () => {
                               saveLabel={quickAddSaveLabel}
                               onCreateSecret={(environment, key, value, comment, isDirectSave) => {
                                 if (isSingleEnvView)
-                                  setRecentQuickAddKeys((prev) =>
-                                    prev.includes(key) ? prev : [key, ...prev]
-                                  );
+                                  setRecentQuickAddKeys((prev) => [
+                                    key,
+                                    ...prev.filter((recentKey) => recentKey !== key)
+                                  ]);
                                 return handleSecretCreate(
                                   environment,
                                   key,
