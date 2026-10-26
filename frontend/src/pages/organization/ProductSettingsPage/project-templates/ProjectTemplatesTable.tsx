@@ -131,17 +131,17 @@ export const ProjectTemplatesTable = ({ projectType, getTemplateLink }: Props) =
               return (
                 <TableRow linked key={id}>
                   <TableCell>
-                    <RowLink {...getTemplateLink(template)} className="inline">
-                      {name}
-                    </RowLink>
-                    {description && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <InfoIcon className="mb-0.5 ml-2 inline-block size-3.5! text-muted" />
-                        </TooltipTrigger>
-                        <TooltipContent>{description}</TooltipContent>
-                      </Tooltip>
-                    )}
+                    <div className="flex items-center">
+                      <RowLink {...getTemplateLink(template)}>{name}</RowLink>
+                      {description && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <InfoIcon className="mb-0.5 ml-2 inline-block size-3.5! shrink-0 text-muted" />
+                          </TooltipTrigger>
+                          <TooltipContent>{description}</TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {roles.length}
