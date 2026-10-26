@@ -294,7 +294,7 @@ export const AgentVaultAccessBundlesPage = () => {
                         params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
                         className="flex items-center gap-2.5"
                       >
-                        <span className="truncate" title={bundle.name}>
+                        <span className="truncate" title={bundle.name} data-row-interactive>
                           {bundle.name}
                         </span>
                         {bundle.description && (
