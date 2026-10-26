@@ -56,7 +56,7 @@ import {
   useProjectPermission,
   useUser
 } from "@app/context";
-import { getProjectBaseURL, hidesProjects } from "@app/helpers/project";
+import { getInstancePinningLink, getProjectBaseURL, hidesProjects } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
@@ -236,6 +236,19 @@ export const MemberRoleDetailsSection = ({
                       }
                     }
 
+                    const roleSlug =
+                      roleDetails.role === "custom" ? roleDetails.customRoleSlug : roleDetails.role;
+                    const roleLink =
+                      getInstancePinningLink(currentOrg.id, currentProject, `roles/${roleSlug}`) ??
+                      ({
+                        to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                        params: {
+                          orgId: currentOrg.id,
+                          projectId: currentProject.id,
+                          roleSlug
+                        }
+                      } as const);
+
                     return (
                       <TableRow
                         className="group h-10"
@@ -243,18 +256,7 @@ export const MemberRoleDetailsSection = ({
                         linked={!isCertManager}
                       >
                         <TableCell className="max-w-0 truncate">
-                          <RowLink
-                            to={`${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`}
-                            params={{
-                              orgId: currentOrg.id,
-                              projectId: currentProject.id,
-                              roleSlug:
-                                roleDetails.role === "custom"
-                                  ? roleDetails.customRoleSlug
-                                  : roleDetails.role
-                            }}
-                            disabled={isCertManager}
-                          >
+                          <RowLink {...roleLink} disabled={isCertManager}>
                             {roleDetails.role === "custom"
                               ? roleDetails.customRoleName
                               : formatProjectRoleName(roleDetails.role)}

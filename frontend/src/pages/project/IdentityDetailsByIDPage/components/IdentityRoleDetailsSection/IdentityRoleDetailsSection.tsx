@@ -53,7 +53,7 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getInstancePinningLink, getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
@@ -241,21 +241,24 @@ export const IdentityRoleDetailsSection = ({
                       }
                     }
 
+                    const roleLink =
+                      getInstancePinningLink(currentOrg.id, currentProject, `roles/${roleSlug}`) ??
+                      ({
+                        to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                        params: {
+                          orgId: currentOrg.id,
+                          projectId: currentProject.id,
+                          roleSlug
+                        }
+                      } as const);
+
                     return (
                       <TableRow
                         key={`user-project-identity-${roleDetails?.id}`}
                         linked={!isStandaloneProduct}
                       >
                         <TableCell className="max-w-0 truncate">
-                          <RowLink
-                            to={`${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`}
-                            params={{
-                              orgId: currentOrg.id,
-                              projectId: currentProject.id,
-                              roleSlug
-                            }}
-                            disabled={isStandaloneProduct}
-                          >
+                          <RowLink {...roleLink} disabled={isStandaloneProduct}>
                             {roleDetails.role === "custom"
                               ? roleDetails.customRoleName
                               : formatProjectRoleName(roleDetails.role)}
