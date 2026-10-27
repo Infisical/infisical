@@ -106,10 +106,9 @@ vi.mock("@app/services/app-connection/imperva/imperva-connection-fns", async (im
 describe("Imperva upload failures", () => {
   test("explains what Imperva rejects when it answers a bare 400", async () => {
     const { describeImpervaUploadFailure } = await import("./imperva-pki-sync-fns");
-    const { AxiosError } = await import("axios");
+    const { ImpervaRequestError } = await import("@app/services/app-connection/imperva/imperva-connection-fns");
 
-    const rejected = new AxiosError("Request failed");
-    rejected.response = { status: 400, data: { message: "Invalid input" } } as never;
+    const rejected = new ImpervaRequestError({ message: "Invalid input", status: 400 });
 
     expect(describeImpervaUploadFailure(rejected)).toBe(
       "Invalid input. Imperva rejected the certificate. It has to cover every domain the website serves, and its chain has to be complete and ordered leaf first"
@@ -118,10 +117,12 @@ describe("Imperva upload failures", () => {
 
   test("leaves a message that is not a rejection alone", async () => {
     const { describeImpervaUploadFailure } = await import("./imperva-pki-sync-fns");
-    const { AxiosError } = await import("axios");
+    const { ImpervaRequestError } = await import("@app/services/app-connection/imperva/imperva-connection-fns");
 
-    const rateLimited = new AxiosError("Request failed");
-    rateLimited.response = { status: 429, data: {} } as never;
+    const rateLimited = new ImpervaRequestError({
+      message: "Imperva rate limited the request, try again shortly",
+      status: 429
+    });
 
     expect(describeImpervaUploadFailure(rateLimited)).toBe("Imperva rate limited the request, try again shortly");
   });

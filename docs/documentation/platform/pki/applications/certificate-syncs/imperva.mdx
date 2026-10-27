@@ -32,17 +32,17 @@ Imperva stores one custom certificate per website for each key type, so a sync t
         2. Select the **Imperva** option.
 
         3. Configure the **Destination**:
-            - **Imperva Connection**: The connection to authenticate with.
-            - **Website**: The website that receives the certificate, selected from the websites in the Imperva account.
+            - **Imperva Connection**: the connection to authenticate with
+            - **Website**: the website that receives the certificate, chosen from the websites in the Imperva account
 
         4. Configure the **Sync Options**:
-            - **Remove certificates from destination**: Remove the custom certificate from the website once this sync stops holding it. The website then falls back to whichever certificate Imperva would otherwise serve.
-            - **Include root CA in certificate chain**: Leave this off. Imperva recommends uploading trusted certificates without the root for a faster TLS handshake.
-            - **Auto-sync on change**: Automatically sync certificates when changes occur.
+            - **Remove certificates from destination**: remove the custom certificate from the website once this sync stops holding it
+            - **Include root CA in certificate chain**: leave this off, since Imperva recommends uploading trusted certificates without the root
+            - **Auto-sync on change**: sync certificates automatically when they change
 
         5. Configure the **Details**:
-            - **Name**: The name of your sync (slug-friendly).
-            - **Description**: Optional description.
+            - **Name**: the name of your sync, slug-friendly
+            - **Description**: an optional description
 
         6. Select the certificate to sync.
 
@@ -115,10 +115,10 @@ Imperva stores one custom certificate per website for each key type, so a sync t
 
 Infisical uploads the certificate and its private key to the website as a custom certificate:
 
-- The leaf certificate and its intermediate CA certificates are sent as one chain, so visitors receive a complete trust path.
-- The key type is read from the certificate, and Imperva stores it in the matching RSA or ECDSA slot on the website.
-- A renewal overwrites the certificate in that slot, so the website keeps serving without a binding step.
-- Imperva serves a custom certificate to clients that support SNI. To cover clients that don't, add the domain to an Imperva SAN certificate as well.
+- The leaf certificate and its intermediate CA certificates are sent as one chain, giving visitors a complete trust path
+- The key type is read from the certificate, and Imperva stores it in the matching RSA or ECDSA slot
+- A renewal overwrites the certificate in that slot, and the website keeps serving without a binding step
+- Imperva serves a custom certificate to clients that support SNI, so cover other clients by adding the domain to an Imperva SAN certificate
 
 ## Removing certificates
 

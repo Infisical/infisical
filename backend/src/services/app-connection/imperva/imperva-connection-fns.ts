@@ -1,4 +1,5 @@
 import { AxiosError, AxiosRequestConfig } from "axios";
+import https from "https";
 
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getConfig } from "@app/lib/config/env";
@@ -9,7 +10,6 @@ import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
-import { getSharedHttpsAgent } from "@app/lib/validator/safe-request";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { ImpervaConnectionMethod } from "./imperva-connection-enums";
@@ -169,6 +169,12 @@ export const withImpervaOperation = async <T>(
   // withGatewayV2Proxy replaces the thrown error with one of its own, so Imperva's status and
   // message are kept here and rethrown once the proxies have been torn down.
   let impervaError: Error | undefined;
+  // Pooled per host for the operation, then destroyed: the proxy's port goes away with it, so a
+  // socket kept alive past the teardown points at nothing.
+  const agents: Record<string, https.Agent> = {
+    [IMPERVA_PROV_HOST]: new https.Agent({ keepAlive: true, servername: IMPERVA_PROV_HOST }),
+    [IMPERVA_REST_HOST]: new https.Agent({ keepAlive: true, servername: IMPERVA_REST_HOST })
+  };
 
   try {
     return await withGatewayV2Proxy(
@@ -181,7 +187,7 @@ export const withImpervaOperation = async <T>(
                   ...requestCfg,
                   headers: { ...getImpervaAuthHeaders(credentials), ...requestCfg.headers, Host: host },
                   url: `https://localhost:${host === IMPERVA_PROV_HOST ? provPort : restPort}${path}`,
-                  httpsAgent: getSharedHttpsAgent({ servername: host, rejectUnauthorized: true }),
+                  httpsAgent: agents[host],
                   timeout: IMPERVA_REQUEST_TIMEOUT_MS,
                   maxContentLength: IMPERVA_MAX_RESPONSE_BYTES,
                   maxBodyLength: IMPERVA_MAX_RESPONSE_BYTES
@@ -202,6 +208,8 @@ export const withImpervaOperation = async <T>(
   } catch (error) {
     if (impervaError) throw impervaError;
     throw error;
+  } finally {
+    Object.values(agents).forEach((agent) => agent.destroy());
   }
 };
 

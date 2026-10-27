@@ -1,6 +1,4 @@
 /* eslint-disable no-await-in-loop */
-import { AxiosError } from "axios";
-
 import { TCertificateSyncs } from "@app/db/schemas";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -62,7 +60,7 @@ const IMPERVA_UPLOAD_REJECTION_HINT =
 
 export const describeImpervaUploadFailure = (error: unknown): string => {
   const message = extractImpervaErrorMessage(error, "Unknown error");
-  const status = error instanceof AxiosError ? error.response?.status : undefined;
+  const status = error instanceof ImpervaRequestError ? error.status : undefined;
   return status === 400 ? `${message}. ${IMPERVA_UPLOAD_REJECTION_HINT}` : message;
 };
 
@@ -566,12 +564,12 @@ export const impervaPkiSyncFactory = ({
                 `Imperva PKI sync [syncId=${pkiSync.id}]: removed ${authType} custom certificate from site ${recordSiteLabel}`
               );
             } catch (error: unknown) {
-              // A slot Imperva no longer has is already in the state the caller asked for. Decided on
-              // the status, since the message is Imperva's own prose.
+              // Deleting an empty slot on a reachable site answers 200, so a 404 means the website
+              // is gone or the key lost access, and the certificate may still be installed.
               if (error instanceof ImpervaRequestError && error.status === 404) {
-                certificateIdsToClean.push(...certificateIds);
-                // eslint-disable-next-line no-continue
-                continue;
+                throw new PkiSyncError({
+                  message: `Imperva website ${recordSiteLabel} is unknown to this connection, so its ${authType} custom certificate was left in place. Check that the website still exists and that the API key can reach its account.`
+                });
               }
 
               throw new PkiSyncError({
