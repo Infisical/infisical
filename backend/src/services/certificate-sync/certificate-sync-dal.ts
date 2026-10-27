@@ -72,29 +72,18 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
 
   const findExternalIdentifiersInUse = async (
     externalIdentifiers: string[],
-    {
-      excludePkiSyncId,
-      destination,
-      projectId
-    }: { excludePkiSyncId: string; destination: string | string[]; projectId?: string },
+    { excludePkiSyncId, destination }: { excludePkiSyncId: string; destination: string | string[] },
     tx?: Knex
   ): Promise<Set<string>> => {
     try {
       if (externalIdentifiers.length === 0) return new Set();
       const destinations = Array.isArray(destination) ? destination : [destination];
-      const query = (tx || db)(TableName.CertificateSync)
+      const docs = (await (tx || db)(TableName.CertificateSync)
         .join(TableName.PkiSync, `${TableName.PkiSync}.id`, `${TableName.CertificateSync}.pkiSyncId`)
         .whereIn(`${TableName.CertificateSync}.externalIdentifier`, externalIdentifiers)
         .whereIn(`${TableName.PkiSync}.destination`, destinations)
-        .whereNot(`${TableName.CertificateSync}.pkiSyncId`, excludePkiSyncId);
-
-      // An identifier is only another sync's to hold inside the same project. Without this, anyone
-      // able to create a sync could claim a name belonging to another tenant and stop its cleanup.
-      if (projectId) void query.where(`${TableName.PkiSync}.projectId`, projectId);
-
-      const docs = (await query.select(`${TableName.CertificateSync}.externalIdentifier`)) as Array<{
-        externalIdentifier: string | null;
-      }>;
+        .whereNot(`${TableName.CertificateSync}.pkiSyncId`, excludePkiSyncId)
+        .select(`${TableName.CertificateSync}.externalIdentifier`)) as Array<{ externalIdentifier: string | null }>;
       return new Set(docs.map((doc) => doc.externalIdentifier).filter((v): v is string => Boolean(v)));
     } catch (error) {
       throw new DatabaseError({ error, name: "FindExternalIdentifiersInUse" });
