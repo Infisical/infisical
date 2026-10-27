@@ -17,6 +17,7 @@ import {
   TProjects
 } from "@app/db/schemas";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
+import { THoneyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
@@ -201,6 +202,7 @@ type TProjectServiceFactoryDep = {
     "upsertPendingRequest" | "findPendingForRequesterInOrg"
   >;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  honeyTokenCleanupService: Pick<THoneyTokenCleanupServiceFactory, "revokeProjectHoneyTokens">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -251,7 +253,8 @@ export const projectServiceFactory = ({
   roleDAL,
   groupDAL,
   projectAccessRequestDAL,
-  usageMeteringService
+  usageMeteringService,
+  honeyTokenCleanupService
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -854,6 +857,10 @@ export const projectServiceFactory = ({
     }
 
     try {
+      // Once soft-deleted the project's KMS key no longer resolves, so the honey token credentials can only
+      // be decrypted, and their provider users revoked, before this point.
+      await honeyTokenCleanupService.revokeProjectHoneyTokens(project.id);
+
       // "Real delete" from the caller's perspective: this returns immediately (one UPDATE) and the
       // project disappears from every read, but the expensive cascade runs asynchronously in the
       // hard-delete worker. deleteAfter = now marks it immediately eligible for the next worker tick

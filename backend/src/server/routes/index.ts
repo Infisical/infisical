@@ -92,6 +92,7 @@ import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { identityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
+import { honeyTokenCleanupServiceFactory } from "@app/ee/services/honey-token/honey-token-cleanup-service";
 import { honeyTokenDALFactory } from "@app/ee/services/honey-token/honey-token-dal";
 import { honeyTokenEventDALFactory } from "@app/ee/services/honey-token/honey-token-event-dal";
 import { honeyTokenServiceFactory } from "@app/ee/services/honey-token/honey-token-service";
@@ -1077,6 +1078,14 @@ export const registerRoutes = async (
     envConfig
   });
 
+  const honeyTokenCleanupService = honeyTokenCleanupServiceFactory({
+    honeyTokenDAL,
+    honeyTokenConfigDAL,
+    appConnectionDAL,
+    kmsService,
+    queueService
+  });
+
   const encryptionKeyRotationService = encryptionKeyRotationServiceFactory({
     kmsService,
     kmsRootConfigDAL,
@@ -1736,7 +1745,8 @@ export const registerRoutes = async (
     usageMeteringService,
     pamSessionDAL,
     gatewayV2Service: deferredGatewayV2Service,
-    eventEmitter: eventOutboxService
+    eventEmitter: eventOutboxService,
+    honeyTokenCleanupService
   });
 
   const subOrgService = subOrgServiceFactory({
@@ -2477,7 +2487,8 @@ export const registerRoutes = async (
     roleDAL,
     groupDAL,
     projectAccessRequestDAL,
-    usageMeteringService
+    usageMeteringService,
+    honeyTokenCleanupService
   });
 
   const projectEnvQueue = projectEnvQueueFactory({
@@ -3245,7 +3256,8 @@ export const registerRoutes = async (
     approvalRequestDAL,
     approvalRequestGrantsDAL,
     certificateRequestDAL,
-    scepTransactionDAL
+    scepTransactionDAL,
+    honeyTokenCleanupService
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -4711,6 +4723,7 @@ export const registerRoutes = async (
   dailyResourceCleanUp.init();
   projectEnvQueue.init();
   projectCleanupQueue.init();
+  honeyTokenCleanupService.init();
   usageEventQueue.init();
   healthAlert.init();
   alertQueue.init();

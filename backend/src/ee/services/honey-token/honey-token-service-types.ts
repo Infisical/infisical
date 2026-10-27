@@ -11,6 +11,8 @@ import { HoneyTokenType } from "./honey-token-enums";
 import { THoneyTokenConfigByType, THoneyTokenDisplayCredentialsByType } from "./honey-token-provider-types";
 import type { THoneyTokenServiceFactoryDep } from "./honey-token-service";
 
+export type THoneyTokenProviderHooksDep = Pick<THoneyTokenServiceFactoryDep, "kmsService" | "appConnectionDAL">;
+
 export type THoneyTokenDeploymentStatus = { deployed: boolean; status: string | null };
 
 export type THoneyTokenProviderHooks = {
@@ -40,7 +42,7 @@ export type THoneyTokenProviderDefinition<T extends HoneyTokenType = HoneyTokenT
     type: T;
     credentials: THoneyTokenDisplayCredentialsByType[T];
   }>;
-  serviceHooksFactory: (deps: THoneyTokenServiceFactoryDep) => THoneyTokenProviderHooks;
+  serviceHooksFactory: (deps: THoneyTokenProviderHooksDep) => THoneyTokenProviderHooks;
   configProviderFactory: (deps: THoneyTokenConfigServiceFactoryDep) => THoneyTokenConfigProvider<T>;
   registerRouter?: (server: FastifyZodProvider) => Promise<void>;
 };
