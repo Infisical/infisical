@@ -207,8 +207,8 @@ const HoneyTokenDetailsContent = ({
             <Badge variant="shaded" iconPosition="left">
               <CloudIcon size={13} />
               {honeyToken.config.hosting === HoneyTokenHosting.InfisicalManaged
-                ? "Infisical-managed"
-                : "Your AWS account"}
+                ? "Infisical Managed"
+                : "Self hosted"}
             </Badge>
             <Badge variant="shaded" iconPosition="left">
               <HexagonIcon size={13} />

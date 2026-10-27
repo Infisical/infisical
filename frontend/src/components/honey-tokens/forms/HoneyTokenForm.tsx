@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, SheetFooter, Stepper, StepperList, StepperStep } from "@app/components/v3";
-import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { HONEY_TOKEN_DEFAULT_SECRET_NAMES, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   useCreateHoneyToken,
   useGetHoneyTokenHostingOptions,
@@ -30,7 +30,6 @@ import { HoneyTokenFormSchema, THoneyTokenForm } from "./schemas";
 type Props = {
   onComplete: () => void;
   type: HoneyTokenType;
-  hosting: HoneyTokenHosting;
   onCancel: () => void;
   secretPath: string;
   environment?: string;
@@ -51,9 +50,10 @@ const FORM_TABS: FormTab[] = [
   {
     name: "Configuration",
     key: "configuration",
-    shortDescription: "Environment",
+    shortDescription: "AWS account and environment",
     title: "Choose where to plant it",
-    subtitle: "Choose the environment where Infisical stores the decoy credentials.",
+    subtitle:
+      "Choose the AWS account that holds the decoy credentials and the environment where Infisical stores them.",
     fields: ["hosting", "environment"]
   },
   {
@@ -76,7 +76,6 @@ const FORM_TABS: FormTab[] = [
 
 export const HoneyTokenForm = ({
   type,
-  hosting,
   onComplete,
   onCancel,
   environment: envSlug,
@@ -110,7 +109,7 @@ export const HoneyTokenForm = ({
     defaultValues: honeyToken
       ? {
           ...honeyToken,
-          hosting,
+          hosting: honeyToken.config.hosting,
           environment: currentProject?.environments.find(
             (env) => env.slug === honeyToken.environment.slug
           ),
@@ -118,7 +117,6 @@ export const HoneyTokenForm = ({
         }
       : {
           type,
-          hosting,
           environment: currentProject?.environments.find((env) => env.slug === envSlug),
           secretPath,
           secretsMapping: HONEY_TOKEN_DEFAULT_SECRET_NAMES[type]
@@ -126,7 +124,21 @@ export const HoneyTokenForm = ({
     reValidateMode: "onChange"
   });
 
-  const onSubmit = async ({ environment, hosting: formHosting, ...formData }: THoneyTokenForm) => {
+  useEffect(() => {
+    if (!hostingOptions) return;
+    formMethods.clearErrors("hosting");
+    if (formMethods.getFieldState("hosting").isDirty) return;
+
+    // An org that connected its own account most likely wants its tokens there. An unusable option is
+    // left unselected, so the user opens the list and finds why it is disabled and how to set it up.
+    if (hostingOptions.customerAccount.configStatus === HoneyTokenConfigStatus.Complete) {
+      formMethods.setValue("hosting", HoneyTokenHosting.CustomerAccount);
+    } else if (isInfisicalCloud() && hostingOptions.infisicalManaged.isAvailable) {
+      formMethods.setValue("hosting", HoneyTokenHosting.InfisicalManaged);
+    }
+  }, [hostingOptions]);
+
+  const onSubmit = async ({ environment, hosting, ...formData }: THoneyTokenForm) => {
     if (honeyToken) {
       await updateHoneyToken.mutateAsync({
         honeyTokenId: honeyToken.id,
@@ -143,7 +155,7 @@ export const HoneyTokenForm = ({
     } else {
       const { stackDeployment } = await createHoneyToken.mutateAsync({
         ...formData,
-        config: { hosting: formHosting },
+        config: { hosting },
         environment: environment.slug,
         projectId: currentProject.id
       });
@@ -157,9 +169,8 @@ export const HoneyTokenForm = ({
           callToAction: (
             <Link
               className="inline-flex h-7 items-center rounded border border-border px-2 text-xs text-foreground transition-colors hover:bg-container-hover"
-              to={ROUTE_PATHS.Organization.SettingsPage.path}
+              to="/organizations/$orgId/projects/secret-management/product-settings"
               params={{ orgId: currentOrg.id }}
-              search={{ selectedTab: "product-settings" }}
             >
               Go to settings
             </Link>
@@ -193,13 +204,9 @@ export const HoneyTokenForm = ({
 
   const isStepValid = async (index: number) => {
     const isValid = await trigger(formTabs[index].fields);
-    if (
-      !isValid ||
-      formTabs[index].key !== "configuration" ||
-      hosting !== HoneyTokenHosting.CustomerAccount
-    )
-      return isValid;
+    if (!isValid || formTabs[index].key !== "configuration") return isValid;
 
+    // Without the options the form cannot tell whether the selected AWS account is usable.
     if (!hostingOptions) {
       formMethods.setError("hosting", {
         message: isHostingOptionsError
@@ -209,9 +216,15 @@ export const HoneyTokenForm = ({
       return false;
     }
 
-    if (hostingOptions.customerAccount.configStatus !== HoneyTokenConfigStatus.Complete) {
+    if (
+      formMethods.getValues("hosting") === HoneyTokenHosting.CustomerAccount &&
+      hostingOptions?.customerAccount.configStatus !== HoneyTokenConfigStatus.Complete
+    ) {
       formMethods.setError("hosting", {
-        message: "Finish connecting your AWS account to create a self hosted honey token."
+        message:
+          isInfisicalCloud() && hostingOptions?.infisicalManaged.isAvailable
+            ? "Finish connecting your AWS account, or choose Infisical Managed."
+            : "Finish connecting your AWS account to create a honey token."
       });
       return false;
     }
@@ -310,7 +323,6 @@ export const HoneyTokenForm = ({
     <>
       {currentStep.key === "configuration" && (
         <HoneyTokenConfigurationFields
-          hosting={hosting}
           environments={environments}
           hostingOptions={hostingOptions}
           isHostingOptionsError={isHostingOptionsError}

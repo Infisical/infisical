@@ -17,18 +17,13 @@ export const EditHoneyTokenModal = ({ isOpen, onOpenChange, honeyToken }: Props)
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-5xl">
         <SheetHeader className="border-b">
-          <HoneyTokenModalHeader
-            type={honeyToken.type as HoneyTokenType}
-            hosting={honeyToken.config.hosting}
-            isEdit
-          />
+          <HoneyTokenModalHeader type={honeyToken.type as HoneyTokenType} isEdit />
         </SheetHeader>
         <HoneyTokenForm
           onComplete={() => onOpenChange(false)}
           onCancel={() => onOpenChange(false)}
           honeyToken={honeyToken}
           type={honeyToken.type as HoneyTokenType}
-          hosting={honeyToken.config.hosting}
           secretPath={honeyToken.folder.path}
           environment={honeyToken.environment.slug}
         />

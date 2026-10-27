@@ -4907,7 +4907,7 @@ export const HONEY_TOKENS = {
   HOSTING_OPTIONS: {
     projectId: "The ID of the project the honey token will be created in.",
     type: "The honey token type to list hosting options for.",
-    infisicalManagedAvailable: "Whether this instance can create honey tokens in Infisical's AWS account.",
+    infisicalManagedAvailable: "Whether this instance can create honey tokens in an Infisical-managed AWS account.",
     infisicalManagedUnavailableReason:
       "Why Infisical-managed honey tokens are unavailable, or null when they are available. `not-configured` means the instance has no managed signing key; `incomplete-aws-credentials` means only one of the managed AWS access key ID and secret access key is set; `invalid-role-arn` means the managed role ARN is not an IAM role ARN.",
     customerAccountConfigStatus:

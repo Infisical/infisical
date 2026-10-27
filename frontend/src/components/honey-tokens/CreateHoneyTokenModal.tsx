@@ -2,10 +2,7 @@ import { useState } from "react";
 
 import { HoneyTokenForm } from "@app/components/honey-tokens/forms";
 import { HoneyTokenModalHeader } from "@app/components/honey-tokens/HoneyTokenModalHeader";
-import {
-  HoneyTokenSelect,
-  THoneyTokenSelection
-} from "@app/components/honey-tokens/HoneyTokenSelect";
+import { HoneyTokenSelect } from "@app/components/honey-tokens/HoneyTokenSelect";
 import {
   DocumentationLinkBadge,
   Sheet,
@@ -14,6 +11,7 @@ import {
   SheetHeader,
   SheetTitle
 } from "@app/components/v3";
+import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 
 type SharedProps = {
@@ -29,32 +27,41 @@ type Props = {
 
 type ContentProps = {
   onComplete: () => void;
-  selection: THoneyTokenSelection | null;
-  setSelection: (selection: THoneyTokenSelection | null) => void;
+  selectedType: HoneyTokenType | null;
+  setSelectedType: (type: HoneyTokenType | null) => void;
   onCancel: () => void;
 } & SharedProps;
 
-const Content = ({ setSelection, selection, onCancel, ...props }: ContentProps) => {
-  if (selection) {
-    return (
-      <HoneyTokenForm
-        onCancel={onCancel}
-        type={selection.type}
-        hosting={selection.hosting}
-        {...props}
-      />
-    );
+const HONEY_TOKEN_TYPES = Object.values(HoneyTokenType);
+const DEFAULT_HONEY_TOKEN_TYPE = HONEY_TOKEN_TYPES.length === 1 ? HONEY_TOKEN_TYPES[0] : null;
+
+const Content = ({ setSelectedType, selectedType, onCancel, ...props }: ContentProps) => {
+  if (selectedType) {
+    return <HoneyTokenForm onCancel={onCancel} type={selectedType} {...props} />;
   }
 
-  return <HoneyTokenSelect onSelect={setSelection} />;
+  return <HoneyTokenSelect onSelect={setSelectedType} />;
 };
 
 export const CreateHoneyTokenModal = ({ onOpenChange, isOpen, ...props }: Props) => {
-  const [selection, setSelection] = useState<THoneyTokenSelection | null>(null);
+  const [selectedType, setSelectedType] = useState<HoneyTokenType | null>(DEFAULT_HONEY_TOKEN_TYPE);
+
+  const handleReset = () => {
+    setSelectedType(DEFAULT_HONEY_TOKEN_TYPE);
+  };
 
   const closeSheet = () => {
-    setSelection(null);
+    handleReset();
     onOpenChange(false);
+  };
+
+  const handleCancel = () => {
+    if (DEFAULT_HONEY_TOKEN_TYPE) {
+      closeSheet();
+      return;
+    }
+
+    handleReset();
   };
 
   const handleSheetOpenChange = (open: boolean) => {
@@ -70,8 +77,8 @@ export const CreateHoneyTokenModal = ({ onOpenChange, isOpen, ...props }: Props)
     <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
       <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-5xl">
         <SheetHeader className="border-b">
-          {selection ? (
-            <HoneyTokenModalHeader type={selection.type} hosting={selection.hosting} />
+          {selectedType ? (
+            <HoneyTokenModalHeader type={selectedType} />
           ) : (
             <SheetTitle>
               <div className="flex items-center gap-x-2">
@@ -80,19 +87,17 @@ export const CreateHoneyTokenModal = ({ onOpenChange, isOpen, ...props }: Props)
               </div>
             </SheetTitle>
           )}
-          {!selection && (
-            <SheetDescription>
-              Choose where Infisical creates the decoy credentials.
-            </SheetDescription>
+          {!selectedType && (
+            <SheetDescription>Select a provider to create a honey token for.</SheetDescription>
           )}
         </SheetHeader>
-        {selection ? (
+        {selectedType ? (
           <div className="flex min-h-0 flex-1 flex-col">
             <Content
               onComplete={closeSheet}
-              onCancel={() => setSelection(null)}
-              selection={selection}
-              setSelection={setSelection}
+              onCancel={handleCancel}
+              selectedType={selectedType}
+              setSelectedType={setSelectedType}
               {...props}
             />
           </div>
@@ -100,9 +105,9 @@ export const CreateHoneyTokenModal = ({ onOpenChange, isOpen, ...props }: Props)
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
             <Content
               onComplete={closeSheet}
-              onCancel={() => setSelection(null)}
-              selection={selection}
-              setSelection={setSelection}
+              onCancel={handleCancel}
+              selectedType={selectedType}
+              setSelectedType={setSelectedType}
               {...props}
             />
           </div>
