@@ -14,17 +14,17 @@ import { getSecretsV2 } from "e2e-test/testUtils/secrets";
 
 import { SecretRotationStatus } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-enums";
 
-// What is under test is which credential the provider is handed to retire, and what survives a
+// What is under test is the credential a replace-in-place provider is handed, and what survives a
 // failure after the new credential is published. The rest of the rotation plumbing is covered on
-// PostgreSQL by tests/suites/secretmanager/rotations. The provider is AWS IAM user secrets, faked for the whole run
+// PostgreSQL by tests/suites/secretmanager/rotations, and the real AWS IAM provider, which runs two
+// credentials, by tests/suites/secretmanager/rotations/aws_iam_test.go. Neither shape here exists
+// on a provider the Go suite can reach, so the provider stays faked for the whole run
 // (e2e-test/fakes/aws-iam-user-secret-rotation-fns.ts and the alias block in
-// vitest.e2e.config.mts), so none of this reaches IAM.
+// vitest.e2e.config.mts), and none of this reaches IAM.
 //
 // Every assertion is on state a user or an operator could see: the secrets at the path, the keys
 // on the IAM user, the rotation's own status. Nothing asserts that the factory was called, or
-// with what. The two rotation shapes are covered by running the same lifecycle against a fake in
-// each mode, and because each mode retires a different one of the two credentials the service
-// offers it, the surviving keys are what say the service offered the right ones.
+// with what.
 
 const ENV = "dev";
 
@@ -145,29 +145,6 @@ describe("Secret rotations", async () => {
       expect(await secretsAt("/services")).toEqual(secretsHolding(3));
       expect(fakeIamUserSecret.keys()).toEqual(liveKeys(3));
       // Back to the first slot: two slots, alternating.
-      expect(second.secretRotation!.activeIndex).toBe(0);
-    });
-
-    test("A provider that runs two credentials keeps the previous one live and retires the one before it", async () => {
-      fakeIamUserSecret.setMode(FakeIamRotationMode.IssueAndDisplace);
-
-      const { secretRotation } = await newRotation("issue-and-displace");
-      const rotationId = secretRotation!.id;
-
-      // Nothing is displaced on the first rotation, because only one slot has ever been filled,
-      // so the credential creating the rotation issued stays live alongside the new one.
-      const first = await rotateSecretRotation({ rotationId, authToken });
-
-      expect(await secretsAt("/services")).toEqual(secretsHolding(2));
-      expect(fakeIamUserSecret.keys()).toEqual(liveKeys(1, 2));
-      expect(first.secretRotation!.activeIndex).toBe(1);
-
-      // The second rotation displaces the first credential, never the one the mapped secrets are
-      // publishing.
-      const second = await rotateSecretRotation({ rotationId, authToken });
-
-      expect(await secretsAt("/services")).toEqual(secretsHolding(3));
-      expect(fakeIamUserSecret.keys()).toEqual(liveKeys(2, 3));
       expect(second.secretRotation!.activeIndex).toBe(0);
     });
   });
