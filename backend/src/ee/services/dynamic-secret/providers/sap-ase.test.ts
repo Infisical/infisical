@@ -10,15 +10,18 @@ const mockedConnect = vi.mocked(odbc.connect);
 
 const metadata = { projectId: "proj-1" };
 
-const inputs = (password: string) => ({
+const inputs = (overrides: { password?: string; database?: string }) => ({
   host: "db.example.com",
   port: 5000,
   database: "app",
   username: "sa",
-  password,
+  password: "plain",
   creationStatement: "sp_addlogin '{{username}}', '{{password}}'",
-  revocationStatement: "sp_droplogin '{{username}}'"
+  revocationStatement: "sp_droplogin '{{username}}'",
+  ...overrides
 });
+
+const connectionStrings = () => mockedConnect.mock.calls.map(([value]) => value as unknown as string);
 
 describe("SapAseProvider connection string", () => {
   beforeEach(() => {
@@ -29,15 +32,28 @@ describe("SapAseProvider connection string", () => {
     } as unknown as Awaited<ReturnType<typeof odbc.connect>>);
   });
 
-  test("wraps a value containing ';' in braces and leaves plain values as they are", async () => {
-    await SapAseProvider().validateConnection(inputs("pa;ss"), metadata);
+  test.each([
+    ["plain", "PWD=plain;"],
+    ["pa;ss", "PWD={pa;ss};"],
+    ["{abc", "PWD={{abc};"],
+    ["{pa;ss}", "PWD={pa;ss};"]
+  ])("formats password %s as %s", async (password, expected) => {
+    await SapAseProvider().validateConnection(inputs({ password }), metadata);
 
-    const connectionString = mockedConnect.mock.calls[0][0] as unknown as string;
-    expect(connectionString).toContain("UID=sa;PWD={pa;ss};");
+    expect(connectionStrings()[0]).toContain(`UID=sa;${expected}`);
   });
 
-  test("refuses a value containing both ';' and '}'", async () => {
-    await expect(SapAseProvider().validateConnection(inputs("pa;ss}"), metadata)).rejects.toThrow('cannot contain "}"');
+  test("braces the database on the non-master connection", async () => {
+    await SapAseProvider().validateConnection(inputs({ database: "a;b" }), metadata);
+
+    expect(connectionStrings()[1]).toContain("DATABASE={a;b};");
+  });
+
+  test.each([
+    ["pa;ss}", 'SAP ASE password cannot contain "}"'],
+    ["pa\0ss", "SAP ASE password cannot contain a null character"]
+  ])("refuses password %j before connecting", async (password, message) => {
+    await expect(SapAseProvider().validateConnection(inputs({ password }), metadata)).rejects.toThrow(message);
     expect(mockedConnect).not.toHaveBeenCalled();
   });
 });

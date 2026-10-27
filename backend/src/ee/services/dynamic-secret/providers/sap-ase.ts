@@ -25,7 +25,11 @@ enum SapCommands {
 
 // values with ";" or a leading "{" go in braces; unixODBC and FreeTDS disagree on escaping "}" inside them
 const formatConnectionValue = (field: string, value: string) => {
-  if (!value.includes(";") && !value.startsWith("{")) return value;
+  if (value.includes("\0")) {
+    throw new BadRequestError({ message: `SAP ASE ${field} cannot contain a null character` });
+  }
+  const isAlreadyBraced = value.startsWith("{") && value.indexOf("}") === value.length - 1;
+  if (isAlreadyBraced || (!value.includes(";") && !value.startsWith("{"))) return value;
   if (!value.includes("}")) return `{${value}}`;
   throw new BadRequestError({
     message: `SAP ASE ${field} cannot contain "}" together with ";" or a leading "{"`
@@ -35,6 +39,10 @@ const formatConnectionValue = (field: string, value: string) => {
 export const SapAseProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSapAseSchema.parseAsync(inputs);
+    formatConnectionValue("host", providerInputs.host);
+    formatConnectionValue("database", providerInputs.database);
+    formatConnectionValue("username", providerInputs.username);
+    formatConnectionValue("password", providerInputs.password);
 
     await verifyHostInputValidity({ host: providerInputs.host, isDynamicSecret: true });
     validateHandlebarTemplate("SAP ASE creation", providerInputs.creationStatement, {
