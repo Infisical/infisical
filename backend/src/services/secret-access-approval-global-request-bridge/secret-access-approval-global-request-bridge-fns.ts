@@ -16,6 +16,7 @@ import {
   ApproverType,
   EnforcementLevel
 } from "@app/services/approval-policy/approval-policy-enums";
+import { isApprovalRequestExpired } from "@app/services/approval-policy/approval-policy-service";
 import { ApprovalPolicyStep } from "@app/services/approval-policy/approval-policy-types";
 import { resolveStepApproverUserIds } from "@app/services/approval-policy/approval-request-fns";
 import {
@@ -601,4 +602,4 @@ export const isPendingSecretAccessRequestItem = (
   !item.policy.deletedAt &&
   item.status === ApprovalStatus.PENDING &&
   !item.reviewers.some((reviewer) => reviewer.status === ApprovalRequestApprovalDecision.Rejected) &&
-  !(item.expiresAt && new Date(item.expiresAt) < now);
+  !isApprovalRequestExpired(item, now);

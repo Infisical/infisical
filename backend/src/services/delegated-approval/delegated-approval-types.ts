@@ -61,8 +61,6 @@ export type TRetryDelegatedApprovalRequestDispatchDTO = {
   approvalRequest: Pick<TApprovalRequests, "id" | "policyId" | "status" | "expiresAt">;
 };
 
-export type TApprovalRequestExpiry = { expiresAt?: Date | string | null };
-
 export type TLoadDelegatedApprovalContextDeps = {
   delegatedApprovalRequestDAL: Pick<TDelegatedApprovalRequestDALFactory, "findById" | "primaryNode">;
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findById">;

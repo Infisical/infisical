@@ -4,16 +4,14 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { logger } from "@app/lib/logger";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
+import { isApprovalRequestExpired } from "@app/services/approval-policy/approval-policy-service";
 import { TApprovalRequest, TApprovalResource } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import {
   DelegatedApprovalPolicyType,
   DelegatedApprovalRequestStatus
 } from "@app/services/delegated-approval/delegated-approval-enums";
-import {
-  isApprovalRequestExpired,
-  requireDelegatedApprovalConnection
-} from "@app/services/delegated-approval/delegated-approval-guards";
+import { requireDelegatedApprovalConnection } from "@app/services/delegated-approval/delegated-approval-guards";
 import {
   DELEGATED_APPROVAL_FINAL_STATE,
   DELEGATED_APPROVAL_NAME_MAP,

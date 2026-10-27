@@ -25,6 +25,7 @@ import {
   ApprovalRequestStatus,
   ApprovalRequestStepStatus
 } from "@app/services/approval-policy/approval-policy-enums";
+import { isApprovalRequestExpired } from "@app/services/approval-policy/approval-policy-service";
 import { TApprovalRequest } from "@app/services/approval-policy/approval-policy-types";
 import { createApprovalRequestWithSteps } from "@app/services/approval-policy/approval-request-fns";
 import {
@@ -35,7 +36,6 @@ import {
 } from "@app/services/approval-policy/secret-access/secret-access-policy-fns";
 import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { isApprovalRequestExpired } from "@app/services/delegated-approval/delegated-approval-guards";
 import { AccessRequestWebhookAction, WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { externallyReviewedAccessRequestMessage } from "./secret-access-approval-global-request-bridge-constants";
