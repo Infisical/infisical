@@ -102,4 +102,23 @@ describe("AWS Secrets Manager PKI sync destination ownership", () => {
 
     expect(events).toEqual([`claim:${SECRET_NAME}`, `UpdateSecretCommand:${SECRET_NAME}`]);
   });
+
+  test("removes the pre-renewal secret when preserve on renewal is off", async () => {
+    const renewedCertId = "660e8400-e29b-41d4-a716-446655440000";
+    const renewedSecretName = "infisical-660e8400e29b41d4a716446655440000";
+    existingSecretNames.push(SECRET_NAME);
+
+    await makeFactory([], {
+      certificate: { id: renewedCertId, renewedFromCertificateId: CERT_ID },
+      syncRecords: [{ certificateId: renewedCertId, externalIdentifier: SECRET_NAME }]
+    }).syncCertificates({ ...pkiSync, syncOptions: { ...pkiSync.syncOptions, preserveSecretOnRenewal: false } }, {
+      [renewedSecretName]: { cert: "CERT", privateKey: "KEY", certificateId: renewedCertId }
+    } as never);
+
+    expect(events).toEqual([
+      `claim:${renewedSecretName}`,
+      `CreateSecretCommand:${renewedSecretName}`,
+      `DeleteSecretCommand:${SECRET_NAME}`
+    ]);
+  });
 });

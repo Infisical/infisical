@@ -423,9 +423,8 @@ export const netScalerPkiSyncFactory = ({
 
             if (typeof certificateId === "string") {
               const existingSyncRecord =
-                (certificate?.renewedFromCertificateId &&
-                  syncRecordsByCertId.get(certificate.renewedFromCertificateId)) ||
-                syncRecordsByCertId.get(certificateId);
+                syncRecordsByCertId.get(certificate?.renewedFromCertificateId || certificateId) ??
+                (preserveItemOnRenewal ? syncRecordsByCertId.get(certificateId) : undefined);
 
               if (
                 certificate?.renewedFromCertificateId &&

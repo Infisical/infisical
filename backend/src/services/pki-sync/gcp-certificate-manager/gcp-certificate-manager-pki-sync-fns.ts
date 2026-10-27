@@ -405,9 +405,10 @@ export const gcpCertificateManagerPkiSyncFactory = ({
       return { skipReason: error instanceof Error ? error.message : "Unsupported key algorithm" };
     }
 
+    const syncRecordLookupId = renewedFromCertificateId || certificateId;
     const existingSyncRecord =
-      (renewedFromCertificateId && syncRecordsByCertId.get(renewedFromCertificateId)) ||
-      (typeof certificateId === "string" ? syncRecordsByCertId.get(certificateId) : undefined);
+      (typeof syncRecordLookupId === "string" ? syncRecordsByCertId.get(syncRecordLookupId) : undefined) ??
+      (preserveItemOnRenewal && typeof certificateId === "string" ? syncRecordsByCertId.get(certificateId) : undefined);
     const reusableResourceName =
       preserveItemOnRenewal &&
       existingSyncRecord?.externalIdentifier &&

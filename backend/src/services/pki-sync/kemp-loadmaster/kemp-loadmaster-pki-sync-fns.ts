@@ -398,8 +398,8 @@ export const kempLoadMasterPkiSyncFactory = ({
 
       if (typeof certificateId === "string") {
         const existingSyncRecord =
-          (certificate?.renewedFromCertificateId && syncRecordsByCertId.get(certificate.renewedFromCertificateId)) ||
-          syncRecordsByCertId.get(certificateId);
+          syncRecordsByCertId.get(certificate?.renewedFromCertificateId || certificateId) ??
+          (preserveItemOnRenewal ? syncRecordsByCertId.get(certificateId) : undefined);
 
         if (certificate?.renewedFromCertificateId && preserveItemOnRenewal && existingSyncRecord?.externalIdentifier) {
           targetIdentifier = existingSyncRecord.externalIdentifier;

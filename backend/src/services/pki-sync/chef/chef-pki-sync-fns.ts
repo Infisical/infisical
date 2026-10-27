@@ -233,8 +233,8 @@ export const chefPkiSyncFactory = ({
       }
 
       const existingSyncRecord =
-        (certificate?.renewedFromCertificateId && syncRecordsByCertId.get(certificate.renewedFromCertificateId)) ||
-        syncRecordsByCertId.get(certificateId);
+        syncRecordsByCertId.get(certificate?.renewedFromCertificateId || certificateId) ??
+        (preserveItemOnRenewal ? syncRecordsByCertId.get(certificateId) : undefined);
 
       let shouldProcess = true;
       let isUpdate = false;

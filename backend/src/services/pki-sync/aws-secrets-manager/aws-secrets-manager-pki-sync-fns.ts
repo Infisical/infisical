@@ -281,8 +281,8 @@ export const awsSecretsManagerPkiSyncFactory = ({
       }
 
       const existingRecord =
-        (certificate?.renewedFromCertificateId && syncRecordsByCertId.get(certificate.renewedFromCertificateId)) ||
-        syncRecordsByCertId.get(certificateId);
+        syncRecordsByCertId.get(certificate?.renewedFromCertificateId || certificateId) ??
+        (preserveSecretOnRenewal ? syncRecordsByCertId.get(certificateId) : undefined);
 
       let shouldProcess = true;
       let isUpdate = false;
