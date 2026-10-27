@@ -252,7 +252,7 @@ const CertificateActions = ({
 }) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
-      <Button variant="ghost" size="icon-sm" icon="more" iconOnly>
+      <Button variant="ghost" size="icon-row" icon="more" iconOnly>
         {`Actions for ${cert.cn}`}
       </Button>
     </DropdownMenuTrigger>

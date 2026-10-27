@@ -9,7 +9,8 @@ export const tableDefinition = {
     "src/components/v4/ui/table.tsx",
     "src/components/v4/ui/data-table.tsx",
     "src/components/v4/ui/data.module.css",
-    "src/components/v4/ui/frame.module.css"
+    "src/components/v4/ui/frame.module.css",
+    "src/components/v4/tokens.json"
   ],
   exports: [
     "DataTable",
@@ -21,6 +22,9 @@ export const tableDefinition = {
     "TableCell",
     "TableFooter",
     "TableCaption",
+    "TableRowActions",
+    "TableRowActionsSeparator",
+    "TableRowIndicators",
     "DataTableColumn",
     "EnvMark"
   ],
@@ -32,6 +36,10 @@ export const tableDefinition = {
     "Basic/striped/bordered, controlled sorting, stable selection, empty and load-more.",
     "Sortable headers show the direction with a custom-set arrow: up for ascending and down for descending, always visible on the sorted column. An unsorted column shows the up arrow it would apply only while its header is hovered or focused. The sorted header steps up to ink.",
     "Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization.",
+    "Rows are size-row (40px) through one variable, --v4-table-row-height, which falls back to the token; DataTable reads size-row at runtime as its default virtual metric, so the CSS row and the scroll model never disagree. Cells pad by space-row-inline (12px), the content edge text and glyphs share.",
+    "TableRowActions owns row action layout: targets touch (space-row-actions-gap, 0), and a trailing icon-row target pulls into the cell padding by (size-target-row - size-glyph) / 2, so its 16px glyph lands on the 12px content edge. With reveal, the actions rest visually hidden but stay in the tab order, show while their leaf row is hovered or holds focus, and stay shown while a menu or popover they opened is open (aria-expanded true, or open on the slot). A row that hosts a nested table never reveals the nested rows' actions. TableRowActionsSeparator divides groups of actions with a glyph-tall line.",
+    "TableRowIndicators lays standalone row marks in size-target-row slots with size-glyph glyphs and the same pull, so a mark and an action share one glyph size and one end edge. With swap, the indicators hide while the row's reveal actions show, for marks the actions repeat; without it they stay beside the actions.",
+    "Responsibilities: tokens own the numbers (size-row, size-target-row, size-glyph, space-row-inline, space-row-actions-gap); Button icon-row, TableRowActions and TableRowIndicators own geometry and reveal behavior; a composite chooses which actions and indicators a row shows and their order, and sets no sizes, gaps or offsets.",
     "With a fixed height, load-more sits in flow after the last loaded row, inside the scroll frame, so nothing covers readable rows; the outline button morphs to its loading state in place. Once loadMore is undefined, the optional end message takes the same slot."
   ],
   accessibility: [
@@ -42,7 +50,7 @@ export const tableDefinition = {
   ],
   limitations: [
     "The host sorts data and owns pagination and cross-page selection policy. Header select-all touches eligible loaded rows only.",
-    "Virtual tables use one uniform effective row height. rowHeight defaults to a requested 48px minimum; observed enlarged content can raise the shared metric used by rows, slices and spacers. This does not support arbitrary variable-height rows. Supply width/maxWidth for variable columns.",
+    "Virtual tables use one uniform effective row height. rowHeight defaults to the size-row token (40px) as a requested minimum; observed enlarged content can raise the shared metric used by rows, slices and spacers. This does not support arbitrary variable-height rows. Supply width/maxWidth for variable columns.",
     "Only a final column may be pinned. Prefer one or two actions per row. Use grow for a flexible resource column; an explicit numeric width takes precedence.",
     "Use text(row) for full hover text when render returns truncated complex content.",
     "The host owns how many rows load and how tall the frame grows; pass a larger height as rows arrive, leave loadMore undefined once every row is loaded and pass end to say so. Remount or reset scroll when a filter replaces the rows."
@@ -84,6 +92,12 @@ export const tableDefinition = {
       title: "Virtual rows, load more",
       module: "./examples/table/load-more.tsx",
       states: ["default", "loading", "keyboard"]
+    },
+    {
+      id: "row-actions",
+      title: "Row actions and indicators",
+      module: "./examples/table/row-actions.tsx",
+      states: ["default", "keyboard"]
     }
   ],
   coverage: [
@@ -168,6 +182,16 @@ export const tableDefinition = {
         { value: "pin", exampleId: "variants", label: "Open" },
         { value: "hideHeader", exampleId: "variants", label: "Actions" }
       ]
+    },
+    {
+      axis: "row actions",
+      expected: ["reveal", "persistent", "indicators", "separator"],
+      shown: [
+        { value: "reveal", exampleId: "row-actions", label: "DATABASE_URL" },
+        { value: "persistent", exampleId: "row-actions", label: "JWT_SIGNING_KEY override" },
+        { value: "indicators", exampleId: "row-actions", label: "DATABASE_URL" },
+        { value: "separator", exampleId: "row-actions", label: "DATABASE_URL" }
+      ]
     }
   ],
   guidance: {
@@ -225,9 +249,32 @@ export const tableDefinition = {
           "src/components/v4/ui/table.tsx",
           "src/pages/design-system/examples/table/data-table.tsx"
         ]
+      },
+      {
+        id: "table-row-action-geometry",
+        when: "A table row shows icon actions, standalone indicator marks or both.",
+        do: "Put the actions in TableRowActions as Button size icon-row and the marks in TableRowIndicators. Choose which actions and marks a row shows and their order; leave target, glyph, gap, inset and reveal to the primitives and tokens.",
+        avoid:
+          "Use icon-xs or icon-sm for row actions, size marks with Icon size, add a local gap or negative margin, or hide resting actions with display none.",
+        reason:
+          "One owner keeps glyphs 16px at rest and on hover, lands them on the 12px content edge, keeps 28px targets from overlapping and keeps hidden actions in the tab order.",
+        evidence: [
+          "src/components/v4/ui/table.tsx",
+          "src/components/v4/ui/data.module.css",
+          "src/pages/design-system/examples/table/row-actions.tsx"
+        ],
+        detect: {
+          by: "review",
+          how: "Measure a row at rest, on hover and with keyboard focus: row 40, targets 28 that touch without overlapping, glyphs 16 with the last glyph 12px from the cell edge, and a 36px focus box fully inside the row. Tab reaches every action, and an open menu keeps its actions shown."
+        }
       }
     ],
     states: [
+      {
+        state: "hover and focus",
+        guidance:
+          "Reveal actions appear on hover and on keyboard focus with no change in glyph size or row height. Tab reaches every action while it rests hidden, and an open menu keeps its actions shown and anchored to its trigger."
+      },
       {
         state: "empty",
         guidance:

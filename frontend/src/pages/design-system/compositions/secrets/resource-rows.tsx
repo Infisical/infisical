@@ -29,7 +29,9 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  TableRowActions,
+  TableRowIndicators
 } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
@@ -42,7 +44,6 @@ import {
 } from "../secrets-model";
 import { canReconcile } from "./row-actions/rotation-actions";
 import {
-  ActionBar,
   ActionButton,
   ExpandToggle,
   PendingActions,
@@ -285,7 +286,7 @@ const specs: Record<Exclude<ResourceKind, "secret" | "folder" | "import">, Spec>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    size="icon-xs"
+                    size="icon-row"
                     iconOnly
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -430,7 +431,7 @@ export function KindRow({
     <div className={styles.nameLine}>
       {withName && <span className={styles.truncate}>{spec.label(entry)}</span>}
       {spec.details(entry)}
-      <ActionBar>{spec.actions(entry, ctx)}</ActionBar>
+      <TableRowActions reveal>{spec.actions(entry, ctx)}</TableRowActions>
     </div>
   );
   if (ctx.single)
@@ -525,7 +526,7 @@ export function FolderRow({
             {first.name}
           </span>
           {first.description && <InfoHint text={first.description} />}
-          <ActionBar>
+          <TableRowActions reveal>
             <PendingActions id={first.id} ctx={ctx} />
             <ActionButton
               label="Move folder"
@@ -557,7 +558,7 @@ export function FolderRow({
               disabledReason={ctx.writeBlock}
               onClick={() => onDelete(first)}
             />
-          </ActionBar>
+          </TableRowActions>
         </div>
       </TableCell>
       {!ctx.single &&
@@ -614,7 +615,7 @@ export function ImportRow({
       </Tooltip>
     );
   const actions = (entry: Of<"import">) => (
-    <ActionBar>
+    <TableRowActions reveal>
       {entry.replicated && (
         <ActionButton
           label="Resync"
@@ -629,7 +630,7 @@ export function ImportRow({
         disabledReason={ctx.writeBlock}
         onClick={() => ctx.onAction({ kind: "import", action: "delete", entry })}
       />
-    </ActionBar>
+    </TableRowActions>
   );
   const toggle = (
     <ExpandToggle
@@ -667,7 +668,7 @@ export function ImportRow({
                 </Badge>
               </span>
             )}
-            {ctx.single && <span className={styles.push}>{replication(first)}</span>}
+            {ctx.single && <TableRowIndicators>{replication(first)}</TableRowIndicators>}
             {ctx.single && actions(first)}
           </div>
         </TableCell>

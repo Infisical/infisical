@@ -62,8 +62,28 @@ Source evidence:
 - src/components/v4/ui/table.tsx
 - src/pages/design-system/examples/table/data-table.tsx
 
+### table-row-action-geometry
+
+Owner: table.
+
+When a table row shows icon actions, standalone indicator marks or both.
+
+Do: Put the actions in TableRowActions as Button size icon-row and the marks in TableRowIndicators. Choose which actions and marks a row shows and their order; leave target, glyph, gap, inset and reveal to the primitives and tokens.
+
+Avoid: Use icon-xs or icon-sm for row actions, size marks with Icon size, add a local gap or negative margin, or hide resting actions with display none.
+
+Why: One owner keeps glyphs 16px at rest and on hover, lands them on the 12px content edge, keeps 28px targets from overlapping and keeps hidden actions in the tab order.
+
+Checked by: review only. Look for: Measure a row at rest, on hover and with keyboard focus: row 40, targets 28 that touch without overlapping, glyphs 16 with the last glyph 12px from the cell edge, and a 36px focus box fully inside the row. Tab reaches every action, and an open menu keeps its actions shown.
+
+Source evidence:
+- src/components/v4/ui/table.tsx
+- src/components/v4/ui/data.module.css
+- src/pages/design-system/examples/table/row-actions.tsx
+
 ## State guidance
 
+- hover and focus: Reveal actions appear on hover and on keyboard focus with no change in glyph size or row height. Tab reaches every action while it rests hidden, and an open menu keeps its actions shown and anchored to its trigger.
 - empty: Show an explanation spanning the table's columns while retaining relevant filters.
 - virtual: Keep every row one height and set explicit column widths when the table is virtualized. Larger content raises all rows above the requested rowHeight.
 
@@ -81,8 +101,9 @@ Why: Stable lanes support comparison. Counts must describe actual loaded rows an
 - src/components/v4/ui/data-table.tsx
 - src/components/v4/ui/data.module.css
 - src/components/v4/ui/frame.module.css
+- src/components/v4/tokens.json
 
-Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter, TableCaption, DataTableColumn, EnvMark. Source TypeScript defines the API.
+Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableFooter, TableCaption, TableRowActions, TableRowActionsSeparator, TableRowIndicators, DataTableColumn, EnvMark. Source TypeScript defines the API.
 
 ## Behavior
 
@@ -92,6 +113,10 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 - Basic/striped/bordered, controlled sorting, stable selection, empty and load-more.
 - Sortable headers show the direction with a custom-set arrow: up for ascending and down for descending, always visible on the sorted column. An unsorted column shows the up arrow it would apply only while its header is hovered or focused. The sorted header steps up to ink.
 - Content sizing floors, capped values, pinned action column and optional fixed-height row virtualization.
+- Rows are size-row (40px) through one variable, --v4-table-row-height, which falls back to the token; DataTable reads size-row at runtime as its default virtual metric, so the CSS row and the scroll model never disagree. Cells pad by space-row-inline (12px), the content edge text and glyphs share.
+- TableRowActions owns row action layout: targets touch (space-row-actions-gap, 0), and a trailing icon-row target pulls into the cell padding by (size-target-row - size-glyph) / 2, so its 16px glyph lands on the 12px content edge. With reveal, the actions rest visually hidden but stay in the tab order, show while their leaf row is hovered or holds focus, and stay shown while a menu or popover they opened is open (aria-expanded true, or open on the slot). A row that hosts a nested table never reveals the nested rows' actions. TableRowActionsSeparator divides groups of actions with a glyph-tall line.
+- TableRowIndicators lays standalone row marks in size-target-row slots with size-glyph glyphs and the same pull, so a mark and an action share one glyph size and one end edge. With swap, the indicators hide while the row's reveal actions show, for marks the actions repeat; without it they stay beside the actions.
+- Responsibilities: tokens own the numbers (size-row, size-target-row, size-glyph, space-row-inline, space-row-actions-gap); Button icon-row, TableRowActions and TableRowIndicators own geometry and reveal behavior; a composite chooses which actions and indicators a row shows and their order, and sets no sizes, gaps or offsets.
 - With a fixed height, load-more sits in flow after the last loaded row, inside the scroll frame, so nothing covers readable rows; the outline button morphs to its loading state in place. Once loadMore is undefined, the optional end message takes the same slot.
 
 ## Accessibility
@@ -108,7 +133,7 @@ Exports: DataTable, Table, TableHeader, TableBody, TableRow, TableHead, TableCel
 ## Limits
 
 - The host sorts data and owns pagination and cross-page selection policy. Header select-all touches eligible loaded rows only.
-- Virtual tables use one uniform effective row height. rowHeight defaults to a requested 48px minimum; observed enlarged content can raise the shared metric used by rows, slices and spacers. This does not support arbitrary variable-height rows. Supply width/maxWidth for variable columns.
+- Virtual tables use one uniform effective row height. rowHeight defaults to the size-row token (40px) as a requested minimum; observed enlarged content can raise the shared metric used by rows, slices and spacers. This does not support arbitrary variable-height rows. Supply width/maxWidth for variable columns.
 - Only a final column may be pinned. Prefer one or two actions per row. Use grow for a flexible resource column; an explicit numeric width takes precedence.
 - Use text(row) for full hover text when render returns truncated complex content.
 - The host owns how many rows load and how tall the frame grows; pass a larger height as rows arrive, leave loadMore undefined once every row is loaded and pass end to say so. Remount or reset scroll when a filter replaces the rows.
@@ -142,6 +167,13 @@ Source declarations and review criteria only. Generation checks references and c
 - grow: example `variants`, visible label "Environment".
 - pin: example `variants`, visible label "Open".
 - hideHeader: example `variants`, visible label "Actions".
+
+### row actions
+
+- reveal: example `row-actions`, visible label "DATABASE_URL".
+- persistent: example `row-actions`, visible label "JWT_SIGNING_KEY override".
+- indicators: example `row-actions`, visible label "DATABASE_URL".
+- separator: example `row-actions`, visible label "DATABASE_URL".
 
 ## Executable examples
 
@@ -457,6 +489,149 @@ export default function Example() {
             : undefined} end="End of events" footer={`Showing ${rows.length} of ${total} events`}/>
       </div>
     </div><figcaption className="text-muted-foreground text-xs">{"Load more after the last row, focus lands on the first new row"}</figcaption></figure>);
+}
+```
+
+### Row actions and indicators
+
+Save this example at `src/pages/design-system/examples/table/row-actions.tsx`; its relative imports are generated for that exact path. States: default, keyboard.
+
+Registry items used: @infisical/button, @infisical/dropdown-menu, @infisical/icon, @infisical/layout, @infisical/table. Additional packages: lucide-react@^0.544.0. Install every listed item before compiling this example.
+
+```tsx
+import * as React from "react";
+import { BellIcon, CodeXmlIcon } from "lucide-react";
+
+import { Button } from "../../../../components/v4/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "../../../../components/v4/ui/dropdown-menu";
+import { Icon } from "../../../../components/v4/ui/icon";
+import { Inline } from "../../../../components/v4/ui/layout";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowActions,
+  TableRowActionsSeparator,
+  TableRowIndicators
+} from "../../../../components/v4/ui/table";
+
+const rows = [
+  { id: "database-url", name: "DATABASE_URL", annotated: true },
+  { id: "log-level", name: "LOG_LEVEL", annotated: false }
+];
+
+export default function RowActions() {
+  const [status, setStatus] = React.useState("");
+  return (
+    <>
+      <Table aria-label="Example secrets with row actions">
+        <TableHeader>
+          <TableRow>
+            <TableHead scope="col">Name</TableHead>
+            <TableHead scope="col">Value</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <TableRow key={row.id}>
+              <TableCell>{row.name}</TableCell>
+              <TableCell>
+                <Inline gap={8} wrap={false}>
+                  <code>••••••••••••</code>
+                  {row.annotated && (
+                    <TableRowIndicators swap>
+                      <span>
+                        <Icon icon={BellIcon} label="Has reminder" />
+                      </span>
+                      <span>
+                        <Icon icon={CodeXmlIcon} label="Has metadata" />
+                      </span>
+                    </TableRowIndicators>
+                  )}
+                  <TableRowActions reveal>
+                    {row.annotated && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon-row"
+                          icon="bell"
+                          iconOnly
+                          onClick={() => setStatus(`Opened the reminder for ${row.name}.`)}
+                        >
+                          {`View reminder for ${row.name}`}
+                        </Button>
+                        <TableRowActionsSeparator />
+                      </>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon-row"
+                      icon="copy"
+                      iconOnly
+                      onClick={() => setStatus(`Copied the fabricated value of ${row.name}.`)}
+                    >
+                      {`Copy ${row.name}`}
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon-row" icon="more" iconOnly>
+                          {`More actions for ${row.name}`}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={() => setStatus(`Opened ${row.name}.`)}>
+                          Open secret
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableRowActions>
+                </Inline>
+              </TableCell>
+            </TableRow>
+          ))}
+          <TableRow>
+            <TableCell>JWT_SIGNING_KEY override</TableCell>
+            <TableCell>
+              <Inline gap={8} wrap={false}>
+                <code>••••••••••••</code>
+                <TableRowActions>
+                  <Button
+                    variant="ghost"
+                    size="icon-row"
+                    icon="copy"
+                    iconOnly
+                    onClick={() => setStatus("Copied the fabricated override.")}
+                  >
+                    Copy override
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-row"
+                    icon="trash"
+                    iconOnly
+                    onClick={() => setStatus("Removed the fabricated override.")}
+                  >
+                    Remove override
+                  </Button>
+                </TableRowActions>
+              </Inline>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+      <p role="status" className="sr-only">
+        {status}
+      </p>
+    </>
+  );
 }
 ```
 

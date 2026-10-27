@@ -291,7 +291,7 @@ const makeColumns = (onOpen: (entry: AuditEvent) => void): DataTableColumn<Row>[
       isPlaceholder(row) ? null : (
         <Button
           variant="ghost"
-          size="icon-sm"
+          size="icon-row"
           icon="chev-right"
           iconOnly
           onClick={() => onOpen(row)}

@@ -31,7 +31,7 @@ import { TableCell, TableRow } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import type { ResourceKind } from "../secrets-model";
-import { ActionButton, KindIcon, NEXT_PHASE } from "./overview-cells";
+import { KindIcon, NEXT_PHASE } from "./overview-cells";
 
 import styles from "./overview.module.css";
 
@@ -293,18 +293,26 @@ export function FolderBreadcrumbBar({
         />
       </span>
       <span className={styles.pathActions}>
-        <ActionButton
-          label="Copy path"
-          name="copy"
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(path);
-              report("Folder path copied to clipboard.");
-            } catch {
-              report("Failed to copy folder path to clipboard.");
-            }
-          }}
-        />
+        <Tooltip content="Copy path">
+          <span className={styles.actionSlot}>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              icon="copy"
+              iconOnly
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(path);
+                  report("Folder path copied to clipboard.");
+                } catch {
+                  report("Failed to copy folder path to clipboard.");
+                }
+              }}
+            >
+              Copy path
+            </Button>
+          </span>
+        </Tooltip>
         {single && (
           <Tooltip content={NEXT_PHASE}>
             <span className={styles.actionSlot}>
@@ -375,7 +383,7 @@ export function QuickAddRow({
         <span className={styles.iconSlot}>
           <Tooltip content={NEXT_PHASE}>
             <span className={styles.actionSlot}>
-              <Button variant="ghost" size="icon-xs" iconOnly icon="plus" disabled>
+              <Button variant="ghost" size="icon-row" iconOnly icon="plus" disabled>
                 Add another resource type
               </Button>
             </span>

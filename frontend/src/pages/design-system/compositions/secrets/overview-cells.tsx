@@ -1,4 +1,4 @@
-import type { ReactNode, Ref } from "react";
+import type { ReactNode } from "react";
 import {
   BanIcon,
   ChevronsLeftRightEllipsisIcon,
@@ -103,22 +103,6 @@ export function StatusCell({
 export const presenceOf = (entries: Resource[], environment: string): EnvironmentStatus =>
   entries.some((entry) => entry.environment === environment) ? "present" : "missing";
 
-export function ActionBar({
-  children,
-  open,
-  ref
-}: {
-  children: ReactNode;
-  open?: boolean;
-  ref?: Ref<HTMLDivElement>;
-}) {
-  return (
-    <div ref={ref} className={styles.actionBar} data-open={open || undefined}>
-      {children}
-    </div>
-  );
-}
-
 export function ActionButton({
   label,
   name,
@@ -135,7 +119,7 @@ export function ActionButton({
       <span className={styles.actionSlot}>
         <Button
           variant="ghost"
-          size="icon-xs"
+          size="icon-row"
           iconOnly
           disabled={Boolean(disabledReason)}
           onClick={(event) => {
@@ -225,7 +209,7 @@ export function ExpandToggle({
   return (
     <Button
       variant="ghost"
-      size="icon-xs"
+      size="icon-row"
       iconOnly
       onClick={(event) => {
         event.stopPropagation();

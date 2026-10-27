@@ -352,10 +352,10 @@ export default function SecretScanning() {
       actions: true,
       hideHeader: true,
       render: (row) => (
-        <Inline gap={4} align="center">
+        <>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" icon="more" iconOnly>
+              <Button variant="ghost" size="icon-row" icon="more" iconOnly>
                 {`Status actions for ${row.rule} in ${row.repo}`}
               </Button>
             </DropdownMenuTrigger>
@@ -377,14 +377,14 @@ export default function SecretScanning() {
           </DropdownMenu>
           <Button
             variant="ghost"
-            size="icon-sm"
+            size="icon-row"
             icon="chev-right"
             iconOnly
             onClick={() => setOpened(row.id)}
           >
             {`Open ${row.rule} in ${row.repo}`}
           </Button>
-        </Inline>
+        </>
       )
     }
   ];

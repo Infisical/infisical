@@ -861,14 +861,14 @@ button.rowTitle::after {
 }
 .tableScroll td,
 .tableScroll th {
-  padding: 0 var(--v4-space-surface-inset-sm);
+  padding: 0 var(--v4-space-row-inline);
   border-bottom: var(--v4-size-control-border) solid var(--v4-line-soft);
 }
 .tableScroll th {
   border-bottom: 0;
 }
 .tableScroll td {
-  height: var(--v4-size-control-lg);
+  height: var(--v4-table-row-height, var(--v4-size-row));
 }
 .tableScroll tbody tr:last-child > td {
   border-bottom: 0;
@@ -939,13 +939,6 @@ button.rowTitle::after {
 .tableSort:focus-visible {
   outline: var(--v4-size-focus-ring) solid var(--v4-ink);
   outline-offset: var(--v4-size-focus-ring);
-}
-.tableActions {
-  align-items: center;
-  display: flex;
-  gap: var(--v4-space-4);
-  justify-content: flex-end;
-  width: max-content;
 }
 .tableValue,
 .tablePrimary {
@@ -1032,9 +1025,9 @@ button.rowTitle::after {
 }
 .tableScroll[data-virtual] .tableValue,
 .tableScroll[data-virtual] .tablePrimary,
-.tableScroll[data-virtual] .tableActions,
+.tableScroll[data-virtual] .tableRowActions,
 .tableScroll[data-virtual] .tableSelection {
-  min-height: calc(var(--v4-table-row-height) - var(--v4-size-control-border));
+  min-height: calc(var(--v4-table-row-height, var(--v4-size-row)) - var(--v4-size-control-border));
   display: flex;
   align-items: center;
 }
@@ -1045,6 +1038,7 @@ button.rowTitle::after {
 }
 
 .nativeTable {
+  --v4-row-glyph-pull: calc((var(--v4-size-glyph) - var(--v4-size-target-row)) / 2);
   font-family: var(--v4-type-body-font-family);
   font-size: var(--v4-type-body-font-size);
   line-height: var(--v4-type-body-line-height);
@@ -1056,13 +1050,13 @@ button.rowTitle::after {
 }
 .nativeTableHead,
 .nativeTableCell {
-  padding: 0 var(--v4-space-surface-inset-sm);
+  padding: 0 var(--v4-space-row-inline);
   text-align: start;
   vertical-align: middle;
   white-space: nowrap;
 }
 .nativeTableCell {
-  height: var(--v4-size-control-lg);
+  height: var(--v4-table-row-height, var(--v4-size-row));
 }
 .nativeTableHead {
   height: var(--v4-size-control-md);
@@ -1079,6 +1073,101 @@ button.rowTitle::after {
   font-family: var(--v4-type-small-font-family);
   font-size: var(--v4-type-small-font-size);
   line-height: var(--v4-type-small-line-height);
+}
+
+.tableRowActions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--v4-space-row-actions-gap);
+  width: max-content;
+  margin-inline-start: auto;
+}
+/* Pull a trailing icon-row target into the cell padding so its glyph, not its box, sits on the content edge. */
+.tableRowActions:has(> :last-child [data-size="icon-row"], > [data-size="icon-row"]:last-child) {
+  margin-inline-end: var(--v4-row-glyph-pull);
+}
+/* Resting reveal actions stay focusable: visually hidden, never display none or visibility hidden. */
+.tableRowActions[data-reveal] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Only a leaf row reveals, so a row hosting a nested table never reveals every nested row at once. */
+[data-slot="table-row"]:not(:has([data-slot="table-row"])):is(
+    :hover,
+    :focus-within,
+    :has([aria-expanded="true"])
+  )
+  .tableRowActions[data-reveal],
+.tableRowActions[data-reveal][data-open] {
+  position: static;
+  width: max-content;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+}
+.tableRowActionsSeparator {
+  flex: none;
+  width: var(--v4-size-control-border);
+  height: var(--v4-size-glyph);
+  margin-inline: var(--v4-space-2);
+  background: var(--v4-line);
+}
+.tableRowIndicators {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--v4-space-row-actions-gap);
+  margin-inline: auto var(--v4-row-glyph-pull);
+  color: var(--v4-muted);
+}
+.tableRowIndicators > * {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--v4-size-target-row);
+  height: var(--v4-size-target-row);
+}
+.tableRowIndicators svg {
+  width: var(--v4-size-glyph);
+  height: var(--v4-size-glyph);
+}
+.tableRowIndicators ~ .tableRowActions {
+  margin-inline-start: 0;
+}
+.tableRowIndicators:has(~ .tableRowActions:not([data-reveal])),
+[data-slot="table-row"]:not(:has([data-slot="table-row"])):is(
+    :hover,
+    :focus-within,
+    :has([aria-expanded="true"]),
+    :has(.tableRowActions[data-open])
+  )
+  .tableRowIndicators:has(~ .tableRowActions[data-reveal]) {
+  margin-inline-end: 0;
+}
+[data-slot="table-row"]:not(:has([data-slot="table-row"])):is(
+    :hover,
+    :focus-within,
+    :has([aria-expanded="true"]),
+    :has(.tableRowActions[data-open])
+  )
+  .tableRowIndicators[data-swap]:has(~ .tableRowActions[data-reveal]) {
+  display: none;
+}
+[data-slot="table-row"]:not(:has([data-slot="table-row"])):is(
+    :hover,
+    :focus-within,
+    :has([aria-expanded="true"]),
+    :has(.tableRowActions[data-open])
+  )
+  .tableRowIndicators[data-swap]
+  ~ .tableRowActions[data-reveal] {
+  margin-inline-start: auto;
 }
 
 /* v4-check-ignore scroll-fade -- the edge fade comes from data-scroll-fade on this element */

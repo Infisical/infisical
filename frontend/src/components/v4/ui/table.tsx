@@ -118,4 +118,67 @@ function TableCaption({ className, ref, ...props }: React.ComponentProps<"captio
 }
 TableCaption.displayName = "TableCaption";
 
-export { Table, TableBody, TableCaption, TableCell, TableFooter, TableHead, TableHeader, TableRow };
+function TableRowActions({
+  reveal = false,
+  open = false,
+  className,
+  ref,
+  ...props
+}: React.ComponentProps<"div"> & { reveal?: boolean; open?: boolean }) {
+  return (
+    <div
+      ref={ref}
+      {...props}
+      data-slot="table-row-actions"
+      data-reveal={reveal || undefined}
+      data-open={open || undefined}
+      className={cn(styles.tableRowActions, className)}
+    />
+  );
+}
+TableRowActions.displayName = "TableRowActions";
+
+function TableRowActionsSeparator({ className, ref, ...props }: React.ComponentProps<"span">) {
+  return (
+    <span
+      ref={ref}
+      aria-hidden
+      data-slot="table-row-actions-separator"
+      className={cn(styles.tableRowActionsSeparator, className)}
+      {...props}
+    />
+  );
+}
+TableRowActionsSeparator.displayName = "TableRowActionsSeparator";
+
+function TableRowIndicators({
+  swap = false,
+  className,
+  ref,
+  ...props
+}: React.ComponentProps<"span"> & { swap?: boolean }) {
+  return (
+    <span
+      ref={ref}
+      {...props}
+      data-slot="table-row-indicators"
+      data-swap={swap || undefined}
+      className={cn(styles.tableRowIndicators, className)}
+    />
+  );
+}
+TableRowIndicators.displayName = "TableRowIndicators";
+
+export {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowActions,
+  TableRowActionsSeparator,
+  TableRowIndicators
+};

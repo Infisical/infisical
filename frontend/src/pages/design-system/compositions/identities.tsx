@@ -340,7 +340,7 @@ const Detail = ({ identity, onBack }: { identity: Identity; onBack: () => void }
       actions: true,
       hideHeader: true,
       render: (r) => (
-        <Button variant="ghost" size="icon-sm" icon="more" iconOnly>
+        <Button variant="ghost" size="icon-row" icon="more" iconOnly>
           {`Actions for ${r.project}`}
         </Button>
       )
@@ -599,7 +599,7 @@ export default function Identities() {
       render: (r) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" icon="more" iconOnly>
+            <Button variant="ghost" size="icon-row" icon="more" iconOnly>
               {`Actions for ${r.name}`}
             </Button>
           </DropdownMenuTrigger>

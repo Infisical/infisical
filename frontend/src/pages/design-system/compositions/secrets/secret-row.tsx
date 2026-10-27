@@ -49,7 +49,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  TableRowActions,
+  TableRowActionsSeparator,
+  TableRowIndicators
 } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
@@ -63,7 +66,6 @@ import { ShareSecretSheet } from "./row-actions/share-secret-sheet";
 import type { SecretUpdate } from "./row-actions/types";
 import { VersionHistorySheet } from "./row-actions/version-history-sheet";
 import {
-  ActionBar,
   ActionButton,
   type EnvironmentStatus,
   ExpandToggle,
@@ -228,7 +230,7 @@ function Indicators({ secret }: { secret: Secret }) {
   ].filter(Boolean) as { icon: typeof TagsIcon; label: string }[];
   if (!marks.length) return null;
   return (
-    <span className={styles.indicators}>
+    <TableRowIndicators swap>
       {marks.map((mark) => (
         <Tooltip key={mark.label} content={mark.label}>
           <span className={styles.hint}>
@@ -236,7 +238,7 @@ function Indicators({ secret }: { secret: Secret }) {
           </span>
         </Tooltip>
       ))}
-    </span>
+    </TableRowIndicators>
   );
 }
 
@@ -301,7 +303,7 @@ function SecretActions({
         }}
       >
         <PopoverAnchor asChild>
-          <ActionBar open={Boolean(popover)}>
+          <TableRowActions reveal open={Boolean(popover)}>
             <PendingActions id={secret.id} ctx={ctx} />
             {!ctx.single && secret.comment && (
               <ActionButton
@@ -327,7 +329,7 @@ function SecretActions({
                 onClick={() => setOpen("metadata")}
               />
             )}
-            {annotated && <span className={styles.actionDivider} aria-hidden />}
+            {annotated && <TableRowActionsSeparator />}
             <ActionButton
               label="Edit value"
               icon={EditIcon}
@@ -360,7 +362,7 @@ function SecretActions({
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    size="icon-xs"
+                    size="icon-row"
                     iconOnly
                     onClick={(event) => event.stopPropagation()}
                   >
@@ -475,7 +477,7 @@ function SecretActions({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </ActionBar>
+          </TableRowActions>
         </PopoverAnchor>
         <PopoverContent
           align="end"
@@ -658,7 +660,7 @@ function OverrideValue({
       >
         {visible ? value || " " : mask}
       </span>
-      <span className={styles.persistentActions}>
+      <TableRowActions>
         <ActionButton
           label="Copy override"
           name="copy"
@@ -672,7 +674,7 @@ function OverrideValue({
           }
         />
         <ActionButton label="Remove override" name="trash" onClick={() => setRemoving(true)} />
-      </span>
+      </TableRowActions>
       <AlertDialog open={removing} onOpenChange={setRemoving}>
         <AlertDialogContent tone="danger">
           <AlertDialogHeader>
@@ -775,9 +777,7 @@ export function SecretRow({
           <TableCell className={styles.valueCell}>
             <div className={styles.nameLine}>
               <SecretValue secret={first} visible={revealAll} />
-              <span className={styles.push}>
-                <Indicators secret={first} />
-              </span>
+              <Indicators secret={first} />
               <SecretActions
                 secret={first}
                 ctx={ctx}
@@ -846,7 +846,7 @@ export function SecretRow({
             <span className={styles.truncate} title={name}>
               {name}
             </span>
-            <ActionBar>
+            <TableRowActions reveal>
               <ActionButton
                 label="Copy secret name"
                 name="copy"
@@ -860,7 +860,7 @@ export function SecretRow({
                 }
               />
               <ActionButton label="Edit secret name" icon={EditIcon} disabledReason={NEXT_PHASE} />
-            </ActionBar>
+            </TableRowActions>
           </div>
         </TableCell>
         {ctx.environments.map((environment) =>
@@ -939,11 +939,7 @@ export function SecretRow({
                         ) : (
                           <div className={styles.nameLine}>
                             <SecretValue secret={secret} visible={rowVisible} />
-                            {secret && (
-                              <span className={styles.push}>
-                                <Indicators secret={secret} />
-                              </span>
-                            )}
+                            {secret && <Indicators secret={secret} />}
                             {secret ? (
                               <SecretActions
                                 secret={secret}
@@ -953,14 +949,14 @@ export function SecretRow({
                                 onAddOverride={() => startCreating(environment.value)}
                               />
                             ) : (
-                              <ActionBar>
+                              <TableRowActions reveal>
                                 <ActionButton
                                   label="Add value"
                                   icon={EditIcon}
                                   disabledReason={ctx.writeBlock}
                                   onClick={() => handlers.onCreateIn(environment.value, name)}
                                 />
-                              </ActionBar>
+                              </TableRowActions>
                             )}
                           </div>
                         )}

@@ -61,12 +61,13 @@ Why: Repeated emphasis removes the distinction between ordinary metadata and an 
 
 - src/components/v4/ui/badge.tsx
 - src/components/v4/ui/helpers.module.css
+- src/components/v4/tokens.json
 
 Exports: Badge, badgeVariants, Count. Source TypeScript defines the API.
 
 ## Behavior
 
-- tone is the one paint axis: outline, soft, solid and accent for metadata and emphasis; ok, warn, bad and info for status. variant is deprecated and maps to a tone (default solid, secondary soft, destructive bad, the rest outline). Badges are 20px (md) or 16px (sm) with square corners and one weight, and take an optional dot and mono content. Count is a separate 20px number chip: accent for attention, ink for weight and neutral for counts inside tabs and lists.
+- tone is the one paint axis: outline, soft, solid and accent for metadata and emphasis; ok, warn, bad and info for status. variant is deprecated and maps to a tone (default solid, secondary soft, destructive bad, the rest outline). Badges are 20px (md) or 16px (sm) with square corners and one weight, and take an optional dot and mono content. A leading or trailing glyph is size-glyph-sm (14px) at both sizes, set by Badge; callers pass the Icon without a size. Count is a separate 20px number chip: accent for attention, ink for weight and neutral for counts inside tabs and lists.
 
 ## Accessibility
 

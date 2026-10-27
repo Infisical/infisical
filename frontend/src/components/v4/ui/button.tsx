@@ -48,7 +48,8 @@ const buttonVariants = cva(
         icon: geometry.icon,
         "icon-xs": geometry.iconExtraSmall,
         "icon-sm": geometry.iconSmall,
-        "icon-lg": geometry.iconLarge
+        "icon-lg": geometry.iconLarge,
+        "icon-row": geometry.iconRow
       }
     },
     compoundVariants: [
@@ -125,8 +126,10 @@ function Button({
       data-active={loading || undefined}
     />
   );
-  const iconSize =
-    size === "xs" || size === "icon-xs" ? 12 : size === "md" || size === "lg" ? 16 : 14;
+  let iconSize: number | undefined = 14;
+  if (size === "xs" || size === "icon-xs") iconSize = 12;
+  else if (size === "md" || size === "lg") iconSize = 16;
+  else if (size === "icon-row") iconSize = undefined;
   const content = (label: React.ReactNode) => {
     const labelGroup = (
       <>

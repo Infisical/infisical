@@ -44,6 +44,24 @@ Source evidence:
 - src/components/v4/ui/button.tsx
 - src/pages/design-system/examples/button/default.tsx
 
+### button-row-icon-size
+
+Owner: button.
+
+When an icon-only action sits in a table row, a field or a toolbar.
+
+Do: Use icon-row for actions in a Table or DataTable row, inside TableRowActions. Keep icon-xs and icon-sm for actions nested in a field or block (InputGroup reveal and copy, Code and Snippet copy, a combobox clear) and for overlay chrome, and icon for a standalone toolbar action.
+
+Avoid: Put icon-xs or icon-sm in a table row, or icon-row in a field slot, a toolbar or a dialog header.
+
+Why: Row actions share one glyph with the row's indicators and one target that fits the 40px row; field actions must fit their host slot, so resizing one must not move the other.
+
+Checked by: review only. Look for: Measure a row action and a field action on the same page: the row action is a 28px box with a 16px glyph, the field action keeps its 24 or 28px box with a 12 or 14px glyph.
+
+Source evidence:
+- src/components/v4/ui/button.tsx
+- src/components/v4/ui/button-geometry.module.css
+
 ## State guidance
 
 - pending: Pass loading={pending}. The spinner overlays the button, so its width and padding stay the same whether loading is absent, false or true. With a leading icon the spinner replaces the icon and the label stays readable. Report success only after the actual operation completes.
@@ -61,6 +79,7 @@ Why: Variant names belong in comparison captions. Product action labels identify
 
 - src/components/v4/ui/button.tsx
 - src/components/v4/ui/button-material.module.css
+- src/components/v4/ui/button-geometry.module.css
 - src/components/v4/tokens.json
 
 Exports: Button, buttonVariants. Source TypeScript defines the API.
@@ -68,7 +87,7 @@ Exports: Button, buttonVariants. Source TypeScript defines the API.
 ## Behavior
 
 - Primary (and default, its alias) is the ink fill with an on-ink label at 600 for the one main action in a view or dialog; hover moves to text2. Accent keeps the bright lime face with owned inset illumination, for approval and grant moments only, never as a second primary. Ghost hover is ink at opacity-hover (6% light, 12% dark), so it shows on raised surfaces. destructive is the solid danger recipe: bad fill and border, on-bad label at 600, bad-hover on hover, and the neutral disabled control (line-soft fill, faint label) when disabled. link is ink text with a 1px underline at a 3px offset; hover moves to text2 with a 2px underline and never adds a background. Loading morphs the label into the spinner inside the same box: with loading set, the whole label group (icons included) fades, shrinks and blurs out on duration-moderate while the pixel Spinner fades in centered over it, and the reverse when loading ends. The idle spinner is absolutely positioned, so a button with loading={false} lays out exactly like one without it and never shifts or resizes; the spinner never sits beside an icon. While loading the accessible name stays, aria-busy is set and activation is inert. Reduced motion is a short opacity fade. Pressing never moves or resizes the box: the label and its icons scale to 0.97 inside it and spring back, the pressed fill stays on the box, and reduced motion keeps the fill only. link has no control height or padding: its box is its text, it sits on the surrounding baseline, and only the focus ring extends past it. Native button and slot composition preserve interaction semantics.
-- The text sizes are 32px (default, with sm as its alias), 36px (md) and 40px (lg), with 10, 14 and 16px insets and the shared 14px label. icon matches default at 32px and icon-lg matches lg at 40px; iconOnly makes any text size square. xs, icon-xs (24px) and icon-sm (28px) are nested and chrome sizes. Nested control actions consume the host slot instead of inheriting a standalone action's geometry. Size names do not guarantee a touch target.
+- The text sizes are 32px (default, with sm as its alias), 36px (md) and 40px (lg), with 10, 14 and 16px insets and the shared 14px label. icon matches default at 32px and icon-lg matches lg at 40px; iconOnly makes any text size square. xs, icon-xs (24px) and icon-sm (28px) are nested and chrome sizes. icon-row is the table row action: a size-target-row (28px) box with a size-glyph (16px) glyph, separate from icon-sm so field and nested actions keep their 12 and 14px glyphs. Nested control actions consume the host slot instead of inheriting a standalone action's geometry. Size names do not guarantee a touch target.
 
 ## Accessibility
 
@@ -110,6 +129,7 @@ Source declarations and review criteria only. Generation checks references and c
 - xs: omitted. 24px, below the 32/36/40 control scale. Reserved for actions nested inside another control, such as a chip or a field slot.
 - icon-xs: omitted. 24px nested icon action, the icon partner of xs. Same reason as xs.
 - icon-sm: omitted. 28px icon action for overlay chrome such as a dialog or sheet close. It sits inside a header, never beside text Buttons.
+- icon-row: omitted. 28px target with a 16px glyph for table row actions. It only makes sense inside TableRowActions, so the Table row actions example shows it.
 
 ### icon placement
 

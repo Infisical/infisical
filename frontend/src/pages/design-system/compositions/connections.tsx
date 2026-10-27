@@ -212,7 +212,7 @@ const seed: Connection[] = [
 const RowActions = ({ row, onDelete }: { row: Connection; onDelete: () => void }) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
-      <Button variant="ghost" size="icon-sm" icon="more" iconOnly>
+      <Button variant="ghost" size="icon-row" icon="more" iconOnly>
         {`Actions for ${row.name}`}
       </Button>
     </DropdownMenuTrigger>

@@ -4,7 +4,15 @@ import { cn } from "../lib/utils";
 import { Button } from "./button";
 import { Checkbox } from "./checkbox";
 import { Icon } from "./icon";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowActions
+} from "./table";
 
 import styles from "./data.module.css";
 import frame from "./frame.module.css";
@@ -64,7 +72,7 @@ export function DataTable<Row>({
   empty = "No rows",
   height,
   virtual = false,
-  rowHeight = 40,
+  rowHeight,
   loadMore,
   end,
   footer
@@ -75,8 +83,14 @@ export function DataTable<Row>({
   const [landing, setLanding] = React.useState<number | null>(null);
   const [focusRow, setFocusRow] = React.useState<number | null>(null);
   const focusPending = React.useRef(false);
-  const [measuredRow, setMeasuredRow] = React.useState({ requested: rowHeight, height: rowHeight });
-  const effectiveRowHeight = measuredRow.requested === rowHeight ? measuredRow.height : rowHeight;
+  const [tokenRowHeight, setTokenRowHeight] = React.useState<number>();
+  const requestedRowHeight = rowHeight ?? tokenRowHeight;
+  const [measuredRow, setMeasuredRow] = React.useState({
+    requested: requestedRowHeight,
+    height: requestedRowHeight
+  });
+  const effectiveRowHeight =
+    measuredRow.requested === requestedRowHeight ? measuredRow.height : requestedRowHeight;
   const selected = selectedIds ?? ownSelected;
   const eligible = rows.filter(isSelectable).map(getRowId);
   const checked = eligible.filter((id) => selected.includes(id)).length;
@@ -84,34 +98,49 @@ export function DataTable<Row>({
     if (selectedIds === undefined) setOwnSelected(next);
     onSelectionChange?.(next);
   };
-  const windowSize = height ? Math.ceil(height / effectiveRowHeight) + 8 : rows.length;
+  const windowed = Boolean(height && virtual);
+  const windowSize =
+    height && effectiveRowHeight ? Math.ceil(height / effectiveRowHeight) + 8 : rows.length;
   const start =
-    height && virtual
+    windowed && effectiveRowHeight
       ? Math.max(0, Math.min(Math.floor(top / effectiveRowHeight) - 4, rows.length - windowSize))
       : 0;
-  const stop = height && virtual ? Math.min(rows.length, start + windowSize) : rows.length;
+  let stop = rows.length;
+  if (windowed) stop = effectiveRowHeight ? Math.min(rows.length, start + windowSize) : 0;
+  React.useLayoutEffect(() => {
+    if (rowHeight !== undefined || !scroll.current) return;
+    const token = parseFloat(getComputedStyle(scroll.current).getPropertyValue("--v4-size-row"));
+    if (token > 0) setTokenRowHeight(token);
+  }, [rowHeight]);
   React.useLayoutEffect(() => {
     const container = scroll.current;
-    if (!container || !height || !virtual) return;
+    if (!container || !windowed || !requestedRowHeight || !effectiveRowHeight) return;
     const visibleRows = Array.from(
       container.querySelectorAll<HTMLElement>("tbody tr[aria-rowindex]")
     );
     const measure = () => {
       const actual = Math.max(
-        rowHeight,
+        requestedRowHeight,
         ...visibleRows.map((row) => row.getBoundingClientRect().height)
       );
       if (actual > effectiveRowHeight + 0.5)
-        setMeasuredRow({ requested: rowHeight, height: actual });
+        setMeasuredRow({ requested: requestedRowHeight, height: actual });
     };
     measure();
     const observer = new ResizeObserver(measure);
     visibleRows.forEach((row) => observer.observe(row));
     return () => observer.disconnect();
-  }, [rowHeight, effectiveRowHeight, height, virtual, start, stop, rows, columns]);
+  }, [requestedRowHeight, effectiveRowHeight, windowed, start, stop, rows, columns]);
   React.useLayoutEffect(() => {
     const container = scroll.current;
-    if (landing === null || !container || loadMore?.loading || rows.length <= landing) return;
+    if (
+      landing === null ||
+      !container ||
+      !effectiveRowHeight ||
+      loadMore?.loading ||
+      rows.length <= landing
+    )
+      return;
     container.scrollTop = Math.max(0, (landing - 1) * effectiveRowHeight);
     setTop(container.scrollTop);
     focusPending.current = true;
@@ -135,9 +164,9 @@ export function DataTable<Row>({
     maxWidth: column.maxWidth,
     textAlign: column.align
   });
-  const tableStyle: React.CSSProperties & { "--v4-table-row-height": string } = {
+  const tableStyle: React.CSSProperties & { "--v4-table-row-height"?: string } = {
     maxHeight: height,
-    "--v4-table-row-height": `${effectiveRowHeight}px`
+    "--v4-table-row-height": effectiveRowHeight ? `${effectiveRowHeight}px` : undefined
   };
   const more = loadMore ? (
     <Button
@@ -159,7 +188,7 @@ export function DataTable<Row>({
       ref={scroll}
       data-scroll-fade="x"
       className={cn(frame.frame, styles.tableScroll)}
-      data-virtual={Boolean(height && virtual) || undefined}
+      data-virtual={windowed || undefined}
       style={tableStyle}
       onScroll={(event) => setTop(event.currentTarget.scrollTop)}
     >
@@ -237,7 +266,7 @@ export function DataTable<Row>({
             <TableRow aria-hidden data-spacer>
               <TableCell
                 colSpan={span}
-                style={{ height: start * effectiveRowHeight, padding: 0 }}
+                style={{ height: start * (effectiveRowHeight ?? 0), padding: 0 }}
               />
             </TableRow>
           )}
@@ -275,19 +304,19 @@ export function DataTable<Row>({
                   data-actions={column.actions || undefined}
                   data-pin={column.pin ?? column.actions}
                 >
-                  <div
-                    className={
-                      column.actions
-                        ? styles.tableActions
-                        : column.primary
-                          ? styles.tablePrimary
-                          : styles.tableValue
-                    }
-                    style={{ maxWidth: column.maxWidth }}
-                    title={column.actions ? undefined : column.text?.(row)}
-                  >
-                    {column.render(row, start + i)}
-                  </div>
+                  {column.actions ? (
+                    <TableRowActions style={{ maxWidth: column.maxWidth }}>
+                      {column.render(row, start + i)}
+                    </TableRowActions>
+                  ) : (
+                    <div
+                      className={column.primary ? styles.tablePrimary : styles.tableValue}
+                      style={{ maxWidth: column.maxWidth }}
+                      title={column.text?.(row)}
+                    >
+                      {column.render(row, start + i)}
+                    </div>
+                  )}
                 </TableCell>
               ))}
             </TableRow>
@@ -296,7 +325,7 @@ export function DataTable<Row>({
             <TableRow aria-hidden data-spacer>
               <TableCell
                 colSpan={span}
-                style={{ height: (rows.length - stop) * effectiveRowHeight, padding: 0 }}
+                style={{ height: (rows.length - stop) * (effectiveRowHeight ?? 0), padding: 0 }}
               />
             </TableRow>
           )}

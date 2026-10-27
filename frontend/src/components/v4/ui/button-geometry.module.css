@@ -51,10 +51,15 @@
 .iconLarge {
   --v4-action-requested-height: var(--v4-size-control-lg);
 }
+.iconRow {
+  --v4-action-requested-height: var(--v4-size-target-row);
+  --v4-action-icon-size: var(--v4-size-glyph);
+}
 .icon,
 .iconExtraSmall,
 .iconSmall,
 .iconLarge,
+.iconRow,
 .iconOnly {
   width: var(--v4-action-height);
   min-width: var(--v4-action-height);
