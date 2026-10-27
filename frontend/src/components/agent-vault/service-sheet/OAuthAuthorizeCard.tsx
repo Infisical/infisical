@@ -246,7 +246,7 @@ export const OAuthAuthorizeCard = ({ accessBundleId, service, onSignInChange }: 
     authorize({
       accessBundleId,
       serverUrl: trimmedUrl,
-      ...(stored && service ? { serviceId: service.id } : {}),
+      ...(service ? { serviceId: service.id } : {}),
       ...(wantsOwnApp
         ? { clientId: clientId.trim(), clientSecret: clientSecret || undefined }
         : {}),

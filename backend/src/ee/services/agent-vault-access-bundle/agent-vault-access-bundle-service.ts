@@ -1161,6 +1161,11 @@ export const agentVaultAccessBundleServiceFactory = (deps: TAgentVaultAccessBund
       },
       service.hostPattern
     );
+    // The schema's check sees the read-back fields too, so a request holding only those reaches here with nothing to
+    // change.
+    if ([name, credential, customHeaders, ...Object.values(sentFields)].every((value) => value === undefined)) {
+      throw new BadRequestError({ message: "Provide at least one field besides 'type' to update" });
+    }
     const { hostPattern: requestedHostPattern, allowedMethods, allowedPathPrefixes, substitutions } = sentFields;
     const serverUrl = sentFields.serverUrl ?? undefined;
     const transport = sentFields.transport ?? undefined;

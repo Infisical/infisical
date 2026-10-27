@@ -7,7 +7,6 @@ import { useOrganization } from "@app/context";
 import { VARIABLE_KEY_MAX_LENGTH, VARIABLE_KEY_RE } from "@app/helpers/agentVaultVariables";
 
 import {
-  AgentVaultCredentialType,
   AgentVaultMemberType,
   AgentVaultOauthAuthorizationStatus,
   AgentVaultVariableScope
@@ -286,14 +285,7 @@ export const useGetAgentVaultAccessBundle = (accessBundleId: string) => {
       );
       return data.accessBundle;
     },
-    enabled: Boolean(accessBundleId),
-    // Token refreshes and missing-scope reports change OAuth status in the background, so the badges would go stale.
-    refetchInterval: (query) =>
-      query.state.data?.services.some(
-        (service) => service.credential.type === AgentVaultCredentialType.OAuth
-      )
-        ? 30_000
-        : false
+    enabled: Boolean(accessBundleId)
   });
 };
 
