@@ -15,20 +15,20 @@ Create an [access bundle](/documentation/platform/agent-vault/access-bundles) th
     Select the access bundle you just created, then select **Add Service**.
   </Step>
   <Step>
-    On the **Choose a template** panel, pick the template for the API, such as **Anthropic** for Claude Code, or select **Custom**.
+    On the **Choose a template** panel, pick the template for the API, such as **Anthropic** for Claude Code, or select **Custom HTTP API**.
   </Step>
   <Step>
-    On the **Details** step, check the hosts the service covers, or enter the API's host if you selected **Custom**, then select **Continue**.
+    On the **Details** step, check the hosts the service covers, or enter the API's host if you selected **Custom HTTP API**, then select **Continue**.
   </Step>
   <Step>
-    On the **Credential** step, paste the real API key.
+    On the **Credential** step, paste the real API key, then select **Continue**.
 
     <Note>
       If the API expects the key somewhere other than a header, such as in the URL, [add a substitution](/documentation/platform/agent-vault/http-apis#add-a-substitution) instead, and have the agent send the placeholder you enter in **Replace**.
     </Note>
   </Step>
   <Step>
-    Select **Add Service**. Repeat from the third step for each remaining API.
+    On the **Review** step, select **Add Service**. Repeat from the third step for each remaining API.
   </Step>
 </Steps>
 

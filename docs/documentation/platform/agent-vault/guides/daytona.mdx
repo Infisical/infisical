@@ -223,7 +223,6 @@ GET_LINK_ADDRESS = (
     "sleep 0.5; done; exit 1"
 )
 
-# Stops the proxy and waits for it to exit.
 STOP_PROXY = (
     "pid=$(cat /tmp/proxy.pid); kill -TERM $pid; "
     "for i in $(seq 30); do kill -0 $pid 2>/dev/null || exit 0; sleep 0.5; done; exit 1"
@@ -321,7 +320,6 @@ def run_agent(daytona: Daytona, prompt: str) -> str:
             raise RuntimeError(f"The agent failed:\n{agent.result}")
         return agent.result
     finally:
-        # If the proxy doesn't stop, its last session logs are lost, but the cleanup continues.
         try:
             if proxy_sandbox:
                 proxy_sandbox.process.exec(STOP_PROXY)
@@ -355,7 +353,6 @@ const GET_LINK_ADDRESS =
   "ip -4 -o addr show eth1 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | grep . && exit 0; " +
   "sleep 0.5; done; exit 1";
 
-// Stops the proxy and waits for it to exit.
 const STOP_PROXY =
   "pid=$(cat /tmp/proxy.pid); kill -TERM $pid; " +
   "for i in $(seq 30); do kill -0 $pid 2>/dev/null || exit 0; sleep 0.5; done; exit 1";
@@ -454,7 +451,6 @@ export async function runAgent(daytona: Daytona, prompt: string): Promise<string
     if (agent.exitCode !== 0) throw new Error(`The agent failed:\n${agent.result}`);
     return agent.result;
   } finally {
-    // If the proxy doesn't stop, its last session logs are lost, but the cleanup continues.
     await proxySandbox?.process.executeCommand(STOP_PROXY).catch(() => {});
     // Revoke first, so the session ends even if deleting fails.
     try {
@@ -499,7 +495,6 @@ const getLinkAddress = "for i in $(seq 60); do " +
 	"ip -4 -o addr show eth1 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | grep . && exit 0; " +
 	"sleep 0.5; done; exit 1"
 
-// Stops the proxy and waits for it to exit.
 const stopProxy = "pid=$(cat /tmp/proxy.pid); kill -TERM $pid; " +
 	"for i in $(seq 30); do kill -0 $pid 2>/dev/null || exit 0; sleep 0.5; done; exit 1"
 
@@ -580,8 +575,7 @@ func runAgent(ctx context.Context, client *daytona.Client, prompt string) (outpu
 	session := created.Session
 
 	var proxySandbox *daytona.Sandbox
-	// Deferred calls run last-in, first-out, so the proxy stops first, then the
-	// session is revoked, and the session ends even if deleting fails.
+	// Deferred calls run in reverse order: stop the proxy, revoke the session, then delete the sandbox.
 	defer func() {
 		if proxySandbox != nil {
 			err = errors.Join(err, proxySandbox.Delete(context.Background()))
@@ -701,7 +695,6 @@ GET_LINK_ADDRESS = "for i in $(seq 60); do " \
                    "ip -4 -o addr show eth1 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | grep . && exit 0; " \
                    "sleep 0.5; done; exit 1"
 
-# Stops the proxy and waits for it to exit.
 STOP_PROXY = "pid=$(cat /tmp/proxy.pid); kill -TERM $pid; " \
              "for i in $(seq 30); do kill -0 $pid 2>/dev/null || exit 0; sleep 0.5; done; exit 1"
 
@@ -805,7 +798,6 @@ def run_agent(daytona, prompt)
 
     agent.result
   ensure
-    # If the proxy doesn't stop, its last session logs are lost, but the cleanup continues.
     begin
       proxy_sandbox&.process&.exec(command: STOP_PROXY)
     rescue StandardError
@@ -829,7 +821,6 @@ import io.daytona.api.client.model.UpdateSandboxNetworkSettings;
 import io.daytona.sdk.Daytona;
 import io.daytona.sdk.Sandbox;
 import io.daytona.sdk.model.CreateSandboxFromSnapshotParams;
-import io.daytona.sdk.model.ExecuteResponse;
 import io.daytona.sdk.model.SessionExecuteRequest;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -840,6 +831,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class RunAgent {
     static final String INFISICAL_URL = "https://app.infisical.com";
@@ -851,7 +843,6 @@ public class RunAgent {
         + "ip -4 -o addr show eth1 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | grep . && exit 0; "
         + "sleep 0.5; done; exit 1";
 
-    // Stops the proxy and waits for it to exit.
     static final String STOP_PROXY = "pid=$(cat /tmp/proxy.pid); kill -TERM $pid; "
         + "for i in $(seq 30); do kill -0 $pid 2>/dev/null || exit 0; sleep 0.5; done; exit 1";
 
@@ -882,6 +873,29 @@ public class RunAgent {
             throw new RuntimeException("Infisical returned " + response.statusCode() + ": " + response.body());
         }
         return response.body().isEmpty() ? null : JSON.readTree(response.body());
+    }
+
+    record CommandResult(Integer exitCode, String output) {
+        boolean succeeded() {
+            return exitCode != null && exitCode == 0;
+        }
+    }
+
+    // The Java SDK gives up on executeCommand after 10 seconds, so longer commands run in the background.
+    static CommandResult run(Sandbox sandbox, String command, Duration timeout) throws InterruptedException {
+        String id = UUID.randomUUID().toString();
+        sandbox.getFs().uploadFile(command.getBytes(StandardCharsets.UTF_8), "/tmp/" + id + ".sh");
+        sandbox.getProcess().createSession(id);
+        String commandId = sandbox.getProcess()
+            .executeSessionCommand(id, new SessionExecuteRequest("sh /tmp/" + id + ".sh", true))
+            .getCmdId();
+        Integer exitCode = null;
+        for (long deadline = System.nanoTime() + timeout.toNanos();
+                exitCode == null && System.nanoTime() < deadline; Thread.sleep(1_000)) {
+            exitCode = sandbox.getProcess().getSessionCommand(id, commandId).getExitCode();
+        }
+        String output = sandbox.getProcess().getSessionCommandLogs(id, commandId).getOutput();
+        return new CommandResult(exitCode, output == null ? "" : output);
     }
 
     public static String runAgent(Daytona daytona, String prompt) throws Exception {
@@ -918,21 +932,22 @@ public class RunAgent {
             agentParams.setNetworkBlockAll(true);
             Sandbox agentSandbox = daytona.create(agentParams);
 
-            ExecuteResponse link = proxySandbox.getProcess().executeCommand(GET_LINK_ADDRESS);
-            if (link.getExitCode() != 0) {
+            CommandResult link = run(proxySandbox, GET_LINK_ADDRESS, Duration.ofSeconds(45));
+            if (!link.succeeded()) {
                 throw new RuntimeException("The proxy's sandbox didn't get an address on the linked network.");
             }
-            String proxyIp = link.getResult().trim();
+            String proxyIp = link.output().trim();
             // Blocking all traffic also blocks the proxy, so allow only the proxy's address.
             agentSandbox.updateNetworkSettings(new UpdateSandboxNetworkSettings().networkAllowList(proxyIp + "/32"));
             String proxyAddress = proxyIp + ":17323";
 
             // The proxy serves only after it has loaded its settings from Infisical.
-            ExecuteResponse wait = agentSandbox.getProcess().executeCommand(
+            CommandResult wait = run(agentSandbox,
                 "for i in $(seq 60); do "
                     + "curl -fs http://" + proxyAddress + "/_agent-vault/ca > /dev/null && exit 0; "
-                    + "sleep 0.5; done; exit 1");
-            if (wait.getExitCode() != 0) {
+                    + "sleep 0.5; done; exit 1",
+                Duration.ofSeconds(45));
+            if (!wait.succeeded()) {
                 String log = proxySandbox.getProcess().executeCommand("cat /tmp/proxy.log").getResult();
                 throw new RuntimeException("The Agent Vault proxy didn't start:\n" + log);
             }
@@ -943,32 +958,21 @@ public class RunAgent {
             StringBuilder envFile = new StringBuilder();
             env.forEach((key, value) -> envFile.append("export ").append(key).append("='").append(value).append("'\n"));
             agentSandbox.getFs().uploadFile(envFile.toString().getBytes(StandardCharsets.UTF_8), "/tmp/agent.env");
-
-            // The Java SDK stops waiting for executeCommand after 10 seconds, so the agent
-            // runs in the background and this code checks every 2 seconds whether it exited.
-            agentSandbox.getProcess().createSession("agent");
             // Claude Code won't skip its permission prompts as root, so the agent
             // runs as the image's node user.
-            String commandId = agentSandbox.getProcess().executeSessionCommand("agent", new SessionExecuteRequest(
+            CommandResult agent = run(agentSandbox,
                 "cd /home/node && . /tmp/agent.env && runuser -u node -- sh -c '"
                     + "infisical agent-vault run --telemetry=false --proxy " + proxyAddress
                     + " -- claude -p --permission-mode bypassPermissions < /tmp/prompt.txt'",
-                true)).getCmdId();
-            Integer exitCode = null;
-            for (long deadline = System.nanoTime() + Duration.ofMinutes(14).toNanos();
-                    exitCode == null && System.nanoTime() < deadline; Thread.sleep(2_000)) {
-                exitCode = agentSandbox.getProcess().getSessionCommand("agent", commandId).getExitCode();
+                Duration.ofMinutes(14));
+            if (!agent.succeeded()) {
+                throw new RuntimeException("The agent failed:\n" + agent.output());
             }
-            String output = agentSandbox.getProcess().getSessionCommandLogs("agent", commandId).getOutput();
-            if (exitCode == null || exitCode != 0) {
-                throw new RuntimeException("The agent failed:\n" + output);
-            }
-            return output;
+            return agent.output();
         } finally {
-            // If the proxy doesn't stop, its last session logs are lost, but the cleanup continues.
             try {
-                if (proxySandbox != null) proxySandbox.getProcess().executeCommand(STOP_PROXY);
-            } catch (RuntimeException e) {
+                if (proxySandbox != null) run(proxySandbox, STOP_PROXY, Duration.ofSeconds(30));
+            } catch (Exception e) {
             }
             // Revoke first, so the session ends even if deleting fails.
             try {
