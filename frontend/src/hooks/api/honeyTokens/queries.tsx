@@ -36,7 +36,7 @@ export const useGetHoneyTokenHostingOptions = ({
       return data.hostingOptions;
     },
     // The setup page opens in a new tab, so returning here has to pick up the new setup status.
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: "always",
     enabled
   });
 
