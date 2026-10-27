@@ -8,7 +8,7 @@ import SelfHostedInstance from "/snippets/app-connections/aws/self-hosted-instan
 import CreateIamRole from "/snippets/app-connections/aws/create-iam-role.mdx";
 import AgentVaultSessionLogsCorsRule from "/snippets/app-connections/aws/agent-vault-session-logs-cors-rule.mdx";
 
-A session log is a record of every request an agent makes during a [session](/documentation/platform/agent-vault/sessions): the method, host, path, status code, and whether the proxy attached a credential. The [proxy](/documentation/platform/agent-vault/proxies) adds every request it receives to the session log, including requests to hosts that no [access bundle](/documentation/platform/agent-vault/access-bundles) covers.
+A session log is a record of every request an agent makes during a [session](/documentation/platform/agent-vault/sessions): the method, host, path, status code, whether the proxy attached a credential, and for an [MCP server](/documentation/platform/agent-vault/mcp-servers), the tool the agent called. The [proxy](/documentation/platform/agent-vault/proxies) adds every request it receives to the session log, including requests to hosts that no [access bundle](/documentation/platform/agent-vault/access-bundles) covers.
 
 The proxy encrypts the records before they leave your network, and Infisical stores them for you. If you self-host Infisical, your server administrator [sets up where Infisical stores them](/self-hosting/guides/session-log-storage).
 
@@ -18,7 +18,7 @@ You can view a session's logs if you created the session or you're an Agent Vaul
 
 <Tabs>
 <Tab title="In Infisical">
-  Go to **Sessions** and select **View Session Logs** on the session's row. You can filter and search the requests, and while the session is active, new requests appear as the proxy uploads them.
+  Go to **Sessions** and select **View Session Logs** on the session's row. You can filter the requests by outcome and search them by host, path, method, tool, or service. While the session is active, new requests appear as the proxy uploads them.
 
   <Frame>
     <img src="/images/platform/agent-vault/session-logs-view.png" alt="The Session Logs sheet for an active session, listing each request's time, method, host, path, upstream status, and outcome" />
@@ -59,6 +59,23 @@ You can view a session's logs if you created the session or you're an Agent Vaul
         "accessBundle": "code-review"
       }
       ```
+
+      If a request matched an MCP service, its record has `serviceType` set to `mcp`. If the request was a JSON `POST`, the record also has an `mcp` object with the [calls](#mcp-tool-calls) in the request:
+
+      ```json
+      {
+        "serviceType": "mcp",
+        "mcp": {
+          "calls": [{ "method": "tools/call", "tool": "create_issue" }],
+          "parsed": true
+        }
+      }
+      ```
+
+      - `serviceType`: `http` or `mcp`, or `null` if no service matched the request
+      - `mcp`: left out for other requests to an MCP service, such as the `GET` that opens an event stream
+      - `mcp.parsed`: `false` if the proxy couldn't read the calls from the request body, such as a compressed body
+      - `mcp.truncated`: `true` if the request held more than 8 calls and the rest weren't recorded (left out otherwise)
     </Step>
   </Steps>
 
@@ -123,7 +140,18 @@ The outcome is one of four:
 | **Blocked** | The proxy refused the request, for one of the reasons in [Blocked requests](/documentation/platform/agent-vault/proxies#blocked-requests) |
 | **Error** | The proxy couldn't reach the destination host |
 
-Request and response bodies, headers, and query strings aren't recorded.
+Request and response bodies, headers, and query strings aren't recorded. For a request to an MCP server, the proxy reads only the method and tool name of each call from the request body.
+
+### MCP tool calls
+
+If a request matched an MCP service, its row shows an **MCP** badge and the call the agent made, in place of the path:
+
+- For a tool call, the tool's name, such as `create_issue`
+- For any other call, the method, such as `initialize` or `tools/list`
+
+The proxy never records a tool's arguments or results.
+
+If the agent sent several calls in one request, the row shows the first one. If the proxy can't read the calls, such as from a compressed body, the row shows the request path.
 
 ## Storing session logs in your own S3 bucket
 

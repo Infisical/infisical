@@ -23,6 +23,8 @@ export const projectKeys = {
     includeGroupMembers: boolean = false,
     roles: string[] = []
   ) => [{ projectId, includeGroupMembers, roles }, "project-users"] as const,
+  getAvailableProjectUsers: (projectId: string) =>
+    [{ projectId }, "project-available-users"] as const,
   getProjectUserDetails: (projectId: string, membershipId: string) =>
     [{ projectId, membershipId }, "project-user-details"] as const,
   // the flag is a trailing element so two-argument calls prefix-match both variants

@@ -199,7 +199,9 @@ describe("identity credential alert provider", () => {
   // place the two get checked against each other.
   test("the emitted payload is accepted by the delivery schema", async () => {
     const emitted: unknown[] = [];
-    const emitter = { emit: async (event: { payload: unknown }) => void emitted.push(event.payload) };
+    const emitter = {
+      emit: async (events: { data: unknown }[]) => void emitted.push(...events.map((event) => event.data))
+    };
     const membership = { identity: { id: "ident-1", projectId: null }, scopeOrgId: "org-1" };
 
     await emitIdentityAuthMethodChanged(

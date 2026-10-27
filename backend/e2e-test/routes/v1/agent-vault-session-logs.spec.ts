@@ -688,6 +688,7 @@ describe("Agent Vault session logs", async () => {
       await configure();
       const bundle = await createAccessBundle(`session-logs-resolve-badkey-${Date.now()}`);
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "datadog",
         hostPattern: "api.datadoghq.com",
         credential: { type: "bearer", headerName: "DD-API-KEY", headerPrefix: "", value: "abc123" }

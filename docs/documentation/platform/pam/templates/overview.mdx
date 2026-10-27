@@ -42,13 +42,14 @@ To use the template, choose it when you [add an account](/documentation/platform
 | Policy | What it does |
 | --- | --- |
 | **Require Approval** | Users must request access, and an approver must approve the request, before they can launch a session or view the account's credentials (see [Access requests](/documentation/platform/pam/access-requests/overview)) |
+| **Allow Auto-Approval** | Requests that pass one of the folder's rules are approved as soon as they're submitted (see [Auto-approval](/documentation/platform/pam/access-requests/auto-approval)) |
 | **Allow Break-Glass** | Named responders can approve their own access requests in an emergency (see [Break-glass access](/documentation/platform/pam/access-requests/break-glass)) |
 | **Require MFA** | Users must complete an MFA challenge before they connect |
 | **Require Reason** | Users must give a reason before they connect |
 | **Max Session Duration** | Infisical ends the session after this many seconds (60 to 86,400, or 900 to 3,600 for AWS IAM) |
 | **Command Blocking** | Infisical rejects commands or SQL statements that match one of these regular expressions (SSH, Snowflake, and ClickHouse only) |
 
-**Allow Break-Glass** only works together with **Require Approval**. If you turn off **Require Approval**, Infisical also turns off **Allow Break-Glass**.
+**Allow Auto-Approval** and **Allow Break-Glass** only work together with **Require Approval**. If you turn off **Require Approval**, Infisical also turns off **Allow Break-Glass**.
 
 Machine identities and [AI agents](/documentation/platform/pam/ai-agents/overview) can't complete an MFA challenge, so they can't connect to accounts whose template has **Require MFA** on. If an agent needs an account, use **Require Approval** instead.
 

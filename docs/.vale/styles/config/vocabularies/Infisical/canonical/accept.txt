@@ -370,6 +370,8 @@ OpenClaw
 OpenCode
 Perplexity
 xAI
+# The MCP transport, always written "Streamable HTTP"
+Streamable
 
 # --- Communication and messaging ---
 Discord

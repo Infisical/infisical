@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
 import { InfoIcon, PlusIcon, TrashIcon } from "lucide-react";
 
@@ -70,10 +71,14 @@ const RemoveRowButton = ({
 
 export const TransformationsFields = ({
   openItem,
-  onOpenChange
+  onOpenChange,
+  hasSubstitutions = true,
+  children
 }: {
   openItem: string;
   onOpenChange: (item: string) => void;
+  hasSubstitutions?: boolean;
+  children?: ReactNode;
 }) => {
   const { control, getValues } = useFormContext<TServiceForm>();
   const { storedKeys } = useServiceVariables();
@@ -92,6 +97,7 @@ export const TransformationsFields = ({
         <AccordionTrigger>Advanced Options</AccordionTrigger>
         <AccordionContent>
           <div className="flex flex-col gap-5">
+            {children}
             <div className="flex flex-col gap-3">
               <div>
                 <p className="text-sm font-medium">Custom headers</p>
@@ -195,154 +201,158 @@ export const TransformationsFields = ({
               />
             </div>
 
-            <div className="flex flex-col gap-3">
-              <div>
-                <p className="text-sm font-medium">Substitutions</p>
-                <p className="mt-1 text-xs text-muted">
-                  Your agent sends a placeholder. The proxy swaps it for the real value before
-                  forwarding.
-                </p>
-              </div>
+            {hasSubstitutions && (
               <div className="flex flex-col gap-3">
-                {substitutions.fields.map((row, index) => (
-                  <div
-                    key={row.id}
-                    className="flex flex-col gap-3 rounded-md border border-border bg-container/50 p-4"
-                  >
-                    <div className="flex items-start gap-2">
-                      <Controller
-                        control={control}
-                        name={`substitutions.${index}.placeholder`}
-                        render={({ field, fieldState }) => (
-                          <Field className="flex-1">
-                            <FieldContent>
-                              <FieldLabel className="text-xs">Replace</FieldLabel>
-                              <InputGroup>
-                                <InputGroupInput
-                                  {...field}
-                                  aria-label="Placeholder"
-                                  placeholder="__API_TOKEN__"
+                <div>
+                  <p className="text-sm font-medium">Substitutions</p>
+                  <p className="mt-1 text-xs text-muted">
+                    Your agent sends a placeholder. The proxy swaps it for the real value before
+                    forwarding.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {substitutions.fields.map((row, index) => (
+                    <div
+                      key={row.id}
+                      className="flex flex-col gap-3 rounded-md border border-border bg-container/50 p-4"
+                    >
+                      <div className="flex items-start gap-2">
+                        <Controller
+                          control={control}
+                          name={`substitutions.${index}.placeholder`}
+                          render={({ field, fieldState }) => (
+                            <Field className="flex-1">
+                              <FieldContent>
+                                <FieldLabel className="text-xs">Replace</FieldLabel>
+                                <InputGroup>
+                                  <InputGroupInput
+                                    {...field}
+                                    aria-label="Placeholder"
+                                    placeholder="__API_TOKEN__"
+                                    isError={Boolean(fieldState.error)}
+                                  />
+                                  {Boolean(field.value) && (
+                                    <InputGroupAddon align="inline-end">
+                                      <CopyButton
+                                        value={field.value}
+                                        ariaLabel="Copy placeholder"
+                                        size="xs"
+                                      />
+                                    </InputGroupAddon>
+                                  )}
+                                </InputGroup>
+                                <FieldError>{fieldState.error?.message}</FieldError>
+                              </FieldContent>
+                            </Field>
+                          )}
+                        />
+                        <Controller
+                          control={control}
+                          name={`substitutions.${index}.value`}
+                          render={({ field, fieldState }) => (
+                            <Field className="flex-1">
+                              <FieldContent>
+                                <FieldLabel className="text-xs">With</FieldLabel>
+                                <SecretInput
+                                  field={field}
+                                  label="Substitution value"
+                                  ariaLabel="Substitution value"
+                                  placeholder="Enter the real value, or type {{"
                                   isError={Boolean(fieldState.error)}
+                                  isUntouched={field.value === UNCHANGED_SECRET}
+                                  hasStoredSecret={Boolean(getValues(`substitutions.${index}.id`))}
+                                  canBeCleared={false}
+                                  storedKeys={
+                                    storedKeys.substitutions[
+                                      getValues(`substitutions.${index}.id`) ?? ""
+                                    ]
+                                  }
                                 />
-                                {Boolean(field.value) && (
-                                  <InputGroupAddon align="inline-end">
-                                    <CopyButton
-                                      value={field.value}
-                                      ariaLabel="Copy placeholder"
-                                      size="xs"
-                                    />
-                                  </InputGroupAddon>
-                                )}
-                              </InputGroup>
-                              <FieldError>{fieldState.error?.message}</FieldError>
-                            </FieldContent>
-                          </Field>
-                        )}
-                      />
+                                <FieldError>{fieldState.error?.message}</FieldError>
+                              </FieldContent>
+                            </Field>
+                          )}
+                        />
+                        <RemoveRowButton
+                          ariaLabel={`Remove substitution ${index + 1}`}
+                          hasLabelRow
+                          onClick={() => substitutions.remove(index)}
+                        />
+                      </div>
+
                       <Controller
                         control={control}
-                        name={`substitutions.${index}.value`}
+                        name={`substitutions.${index}.surfaces`}
                         render={({ field, fieldState }) => (
-                          <Field className="flex-1">
+                          <Field>
                             <FieldContent>
-                              <FieldLabel className="text-xs">With</FieldLabel>
-                              <SecretInput
-                                field={field}
-                                label="Substitution value"
-                                ariaLabel="Substitution value"
-                                placeholder="Enter the real value, or type {{"
-                                isError={Boolean(fieldState.error)}
-                                isUntouched={field.value === UNCHANGED_SECRET}
-                                hasStoredSecret={Boolean(getValues(`substitutions.${index}.id`))}
-                                canBeCleared={false}
-                                storedKeys={
-                                  storedKeys.substitutions[
-                                    getValues(`substitutions.${index}.id`) ?? ""
-                                  ]
-                                }
-                              />
+                              <FieldLabel className="text-xs">
+                                Replace In
+                                <HoverCard openDelay={200} closeDelay={150}>
+                                  <HoverCardTrigger asChild>
+                                    <InfoIcon />
+                                  </HoverCardTrigger>
+                                  <HoverCardContent className="w-96" side="top" align="start">
+                                    <SubstitutionExample />
+                                  </HoverCardContent>
+                                </HoverCard>
+                              </FieldLabel>
+                              <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
+                                {SURFACES.map((surface) => (
+                                  <Field key={surface} orientation="horizontal" className="w-auto">
+                                    <Checkbox
+                                      id={`surface-${index}-${surface}`}
+                                      isChecked={field.value.includes(surface)}
+                                      onCheckedChange={(checked) =>
+                                        field.onChange(
+                                          checked === true
+                                            ? [...field.value, surface]
+                                            : field.value.filter((value) => value !== surface)
+                                        )
+                                      }
+                                    />
+                                    <FieldLabel htmlFor={`surface-${index}-${surface}`}>
+                                      {SURFACE_LABELS[surface]}
+                                    </FieldLabel>
+                                  </Field>
+                                ))}
+                              </div>
                               <FieldError>{fieldState.error?.message}</FieldError>
                             </FieldContent>
                           </Field>
                         )}
-                      />
-                      <RemoveRowButton
-                        ariaLabel={`Remove substitution ${index + 1}`}
-                        hasLabelRow
-                        onClick={() => substitutions.remove(index)}
                       />
                     </div>
+                  ))}
 
-                    <Controller
-                      control={control}
-                      name={`substitutions.${index}.surfaces`}
-                      render={({ field, fieldState }) => (
-                        <Field>
-                          <FieldContent>
-                            <FieldLabel className="text-xs">
-                              Replace In
-                              <HoverCard openDelay={200} closeDelay={150}>
-                                <HoverCardTrigger asChild>
-                                  <InfoIcon />
-                                </HoverCardTrigger>
-                                <HoverCardContent className="w-96" side="top" align="start">
-                                  <SubstitutionExample />
-                                </HoverCardContent>
-                              </HoverCard>
-                            </FieldLabel>
-                            <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2">
-                              {SURFACES.map((surface) => (
-                                <Field key={surface} orientation="horizontal" className="w-auto">
-                                  <Checkbox
-                                    id={`surface-${index}-${surface}`}
-                                    isChecked={field.value.includes(surface)}
-                                    onCheckedChange={(checked) =>
-                                      field.onChange(
-                                        checked === true
-                                          ? [...field.value, surface]
-                                          : field.value.filter((value) => value !== surface)
-                                      )
-                                    }
-                                  />
-                                  <FieldLabel htmlFor={`surface-${index}-${surface}`}>
-                                    {SURFACE_LABELS[surface]}
-                                  </FieldLabel>
-                                </Field>
-                              ))}
-                            </div>
-                            <FieldError>{fieldState.error?.message}</FieldError>
-                          </FieldContent>
-                        </Field>
-                      )}
-                    />
-                  </div>
-                ))}
+                  {substitutions.fields.length < MAX_SUBSTITUTIONS && (
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      className="self-start"
+                      onClick={() =>
+                        substitutions.append({
+                          placeholder: "",
+                          value: "",
+                          surfaces: [AgentVaultSubstitutionSurface.Header]
+                        })
+                      }
+                    >
+                      <PlusIcon className="mr-1 size-4" />
+                      Add Substitution
+                    </Button>
+                  )}
 
-                {substitutions.fields.length < MAX_SUBSTITUTIONS && (
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    className="self-start"
-                    onClick={() =>
-                      substitutions.append({
-                        placeholder: "",
-                        value: "",
-                        surfaces: [AgentVaultSubstitutionSurface.Header]
-                      })
-                    }
-                  >
-                    <PlusIcon className="mr-1 size-4" />
-                    Add Substitution
-                  </Button>
-                )}
-
-                <Controller
-                  control={control}
-                  name="substitutions"
-                  render={({ fieldState }) => <FieldError>{fieldState.error?.message}</FieldError>}
-                />
+                  <Controller
+                    control={control}
+                    name="substitutions"
+                    render={({ fieldState }) => (
+                      <FieldError>{fieldState.error?.message}</FieldError>
+                    )}
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </AccordionContent>
       </AccordionItem>

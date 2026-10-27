@@ -42,6 +42,8 @@ export const PgSqlLock = {
   KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),
   KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`),
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
+  OrgAccessReconcile: (actorId: string) => pgAdvisoryLockHashText(`org-access-reconcile:${actorId}`),
+  OrgAccessReconcileScope: (rootOrgId: string) => pgAdvisoryLockHashText(`org-access-reconcile-scope:${rootOrgId}`),
   LastAdminGuard: (scope: "org" | "project", scopeId: string) =>
     pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
   AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
@@ -175,6 +177,11 @@ export const KeyStorePrefixes = {
   AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
   // The live view's Redis stream for a session: the newest chunk file names, with their bucket and size.
   AgentVaultSessionLogFeed: (sessionId: string) => `agent-vault-session-log-feed:${sessionId}` as const,
+  AgentVaultOauthAuthorization: (authorizationId: string) =>
+    `agent-vault-oauth-authorization:${authorizationId}` as const,
+  AgentVaultOauthAuthorizationCompleteLock: (authorizationId: string) =>
+    `agent-vault-oauth-authorization:${authorizationId}:complete` as const,
+  AgentVaultOauthRefreshLock: (serviceId: string) => `agent-vault-oauth-refresh-lock:${serviceId}` as const,
   // Bytes an org has been allowed to upload to object storage on one UTC day (YYYY-MM-DD).
   ObjectStorageDailyBytes: (orgId: string, day: string) => `object-storage:daily-bytes:${orgId}:${day}` as const,
 

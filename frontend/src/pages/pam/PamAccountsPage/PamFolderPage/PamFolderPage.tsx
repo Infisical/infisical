@@ -1,10 +1,9 @@
 import { useRef, useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { Filter, FolderOpen, MoreHorizontal, Plus, Search, Settings, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -78,7 +77,6 @@ import { ViewCredentialsModal } from "../components/ViewCredentialsModal";
 const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
 
 export const PamFolderPage = () => {
-  const { t } = useTranslation();
   const { orgId, folderId } = useParams({ from: ROUTE_PATHS.Pam.FolderPage.id });
   const navigate = useNavigate();
 
@@ -192,29 +190,30 @@ export const PamFolderPage = () => {
 
   if (!isLoadingFolders && !folder) {
     return (
-      <div className="mx-auto mb-6 w-full max-w-8xl">
-        <Empty className="mt-4 border">
-          <EmptyHeader>
-            <EmptyTitle>Folder not found</EmptyTitle>
-            <EmptyDescription>
-              This folder no longer exists, or you don&apos;t have access to it.
-            </EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <Button variant="outline" size="sm" asChild>
-              <Link {...accountsRoute}>Back to Accounts</Link>
-            </Button>
-          </EmptyContent>
-        </Empty>
-      </div>
+      <>
+        <PageTitle title="Folder" />
+        <div className="mx-auto mb-6 w-full max-w-8xl">
+          <Empty className="mt-4 border">
+            <EmptyHeader>
+              <EmptyTitle>Folder not found</EmptyTitle>
+              <EmptyDescription>
+                This folder no longer exists, or you don&apos;t have access to it.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button variant="outline" size="sm" asChild>
+                <Link {...accountsRoute}>Back to Accounts</Link>
+              </Button>
+            </EmptyContent>
+          </Empty>
+        </div>
+      </>
     );
   }
 
   return (
     <div className="mx-auto mb-6 w-full max-w-8xl">
-      <Helmet>
-        <title>{t("common.head-title", { title: folder?.name ?? "Folder" })}</title>
-      </Helmet>
+      <PageTitle title={folder?.name ?? "Folder"} />
 
       <PageHeader
         title="Accounts"

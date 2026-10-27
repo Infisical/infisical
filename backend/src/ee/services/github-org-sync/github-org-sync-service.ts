@@ -12,12 +12,15 @@ import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { retryWithBackoff } from "@app/lib/retry";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { emitGroupMembershipRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
@@ -369,7 +372,7 @@ type TGithubOrgSyncServiceFactoryDep = {
     TUserGroupMembershipDALFactory,
     "find" | "findGroupMembershipsByUserIdInOrg" | "findGroupMembershipsByGroupIdInOrg" | "insertMany" | "delete"
   >;
-  groupDAL: Pick<TGroupDALFactory, "insertMany" | "transaction" | "find">;
+  groupDAL: Pick<TGroupDALFactory, "insertMany" | "transaction" | "find" | "findGroupOrgIds">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -378,6 +381,8 @@ type TGithubOrgSyncServiceFactoryDep = {
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess">;
+  eventEmitter: TEventEmitter;
 };
 
 export type TGithubOrgSyncServiceFactory = ReturnType<typeof githubOrgSyncServiceFactory>;
@@ -395,7 +400,9 @@ export const githubOrgSyncServiceFactory = ({
   membershipGroupDAL,
   usageMeteringService,
   alertChannelRecipientDAL,
-  auditLogService
+  auditLogService,
+  orgDAL,
+  eventEmitter
 }: TGithubOrgSyncServiceFactoryDep) => {
   const createGithubOrgSync = async ({
     githubOrgName,
@@ -697,6 +704,7 @@ export const githubOrgSyncServiceFactory = ({
             tx
           );
 
+          await orgDAL.lockActorsForOrgAccess({ orgId, actorIds: [userId] }, tx);
           await userGroupMembershipDAL.insertMany(
             insertedGroups.map((el) => ({
               groupId: el.id,
@@ -727,6 +735,7 @@ export const githubOrgSyncServiceFactory = ({
       if (updateTeams.length) {
         const groupsToUpdate = updateTeams.map((teamName) => githubUserTeamOnInfisicalGroupByName[teamName][0]);
         await groupDAL.transaction(async (tx) => {
+          await orgDAL.lockActorsForOrgAccess({ orgId, actorIds: [userId] }, tx);
           await userGroupMembershipDAL.insertMany(
             groupsToUpdate.map((group) => ({
               groupId: group.id,
@@ -760,6 +769,18 @@ export const githubOrgSyncServiceFactory = ({
           );
 
           await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [userId] }, tx);
+
+          for await (const { groupId } of removeFromTeams) {
+            await emitGroupMembershipRemoved(
+              eventEmitter,
+              {
+                groupId,
+                orgIds: await groupDAL.findGroupOrgIds(groupId, tx),
+                actors: toOrgMembershipActors({ userIds: [userId] })
+              },
+              tx
+            );
+          }
         });
 
         await createGithubOrgSyncAuditLogs({
@@ -1120,6 +1141,7 @@ export const githubOrgSyncServiceFactory = ({
           const { usersToAdd, membershipsToRemove } = resolveMembershipChanges(latestMemberships);
 
           if (usersToAdd.length > 0) {
+            await orgDAL.lockActorsForOrgAccess({ orgId: orgPermission.orgId, actorIds: usersToAdd }, tx);
             await userGroupMembershipDAL.insertMany(
               usersToAdd.map((userId) => ({
                 userId,
@@ -1144,6 +1166,15 @@ export const githubOrgSyncServiceFactory = ({
               .map((membership) => activeMembersById.get(membership.orgMembershipId)?.user?.id)
               .filter(Boolean) as string[];
             await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: removedUserIds }, tx);
+            await emitGroupMembershipRemoved(
+              eventEmitter,
+              {
+                groupId: team.id,
+                orgIds: await groupDAL.findGroupOrgIds(team.id, tx),
+                actors: toOrgMembershipActors({ userIds: removedUserIds })
+              },
+              tx
+            );
 
             updatedTeams.add(teamName);
           }

@@ -3,7 +3,7 @@ title: "Access bundles"
 description: "Lists of services that AI agents can access during a session."
 ---
 
-An access bundle defines the list of [services](/documentation/platform/agent-vault/services) (external APIs) that an AI agent can access during a [session](/documentation/platform/agent-vault/sessions).
+An access bundle defines the list of [services](/documentation/platform/agent-vault/services) (external APIs or MCP servers) that an AI agent can access during a [session](/documentation/platform/agent-vault/sessions).
 
 You can reuse access bundles across as many sessions as you like. This makes them useful for scoping what services an agent can access depending on its task. For example, you might have:
 
@@ -31,7 +31,7 @@ To create a new access bundle:
   </Step>
 </Steps>
 
-Now you can [add services](/documentation/platform/agent-vault/services#add-a-service) to the access bundle so agents using it can make authenticated requests.
+Now you can [add services](/documentation/platform/agent-vault/services) to the access bundle so agents using it can make authenticated requests.
 
 ## Manage access to access bundles
 
@@ -59,7 +59,7 @@ To revoke access from a user, group, or machine identity, open the bundle and se
 
 ## Set up your personal values
 
-Some services ask you for part of their credential, such as your own API key (see [member-provided values](/documentation/platform/agent-vault/services#member-provided-values)). Until you set up your personal values for one of these services, your sessions can't use it, and the service shows **Requires Setup**. This applies to admins too.
+Some services ask you for part of their credential, such as your own API key (see [member-provided values](/documentation/platform/agent-vault/http-apis#member-provided-values)). Until you set up your personal values for one of these services, your sessions can't use it, and the service shows **Requires Setup**. This applies to admins too.
 
 To set up your personal values:
 

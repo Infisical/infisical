@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import { SecretType, TSecrets, TSecretsV2 } from "@app/db/schemas";
 import { shouldApplyPolicy } from "@app/ee/services/secret-approval-policy/secret-approval-policy-fns";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
@@ -8,6 +10,8 @@ import { NotFoundError } from "@app/lib/errors";
 import { groupBy, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { QueueName, TQueueServiceFactory } from "@app/queue";
+import { EventModificationType } from "@app/services/event-outbox/event-definition";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -23,11 +27,13 @@ import { SecretOperations } from "@app/services/secret/secret-types";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { FolderModifiedEventV1 } from "@app/services/secret-folder/secret-folder-events";
 import { ReservedFolders } from "@app/services/secret-folder/secret-folder-types";
 import { TSecretImportDALFactory } from "@app/services/secret-import/secret-import-dal";
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "@app/services/secret-import/secret-import-fns";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
+import { emitSecretsModified } from "@app/services/secret-v2-bridge/secret-events";
 import { getAllSecretReferences } from "@app/services/secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import {
@@ -64,7 +70,7 @@ type TSecretReplicationServiceFactoryDep = {
   secretImportDAL: Pick<TSecretImportDALFactory, "find" | "updateById" | "findByFolderIds" | "findByIds">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
-    "findSecretPathByFolderIds" | "findBySecretPath" | "create" | "findOne" | "findByManySecretPath"
+    "findSecretPathByFolderIds" | "findBySecretPath" | "create" | "findOne" | "findByManySecretPath" | "transaction"
   >;
   secretVersionTagDAL: Pick<TSecretVersionTagDALFactory, "find" | "insertMany">;
   secretVersionV2TagBridgeDAL: Pick<TSecretVersionV2TagDALFactory, "find" | "insertMany">;
@@ -90,6 +96,7 @@ type TSecretReplicationServiceFactoryDep = {
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   projectFolderGrantDAL: Pick<TProjectFolderGrantDALFactory, "find">;
   orgDAL: Pick<TOrgDALFactory, "findOrgById">;
 };
@@ -138,6 +145,7 @@ export const secretReplicationServiceFactory = ({
   secretV2BridgeDAL,
   kmsService,
   folderCommitService,
+  eventEmitter,
   projectFolderGrantDAL,
   orgDAL,
   resourceMetadataDAL
@@ -184,7 +192,7 @@ export const secretReplicationServiceFactory = ({
       })[];
     }[]
   ) => {
-    const deDupe = new Set<string>();
+    const deDupe = new Set<string>(localSecrets.map(({ key }) => key));
     const secrets = [...localSecrets];
 
     for (let i = importedSecrets.length - 1; i >= 0; i = -1) {
@@ -362,20 +370,48 @@ export const secretReplicationServiceFactory = ({
                 message: `Imported folder with ID '${destinationSecretImport.folderId}' not found in project with ID ${projectId}`
               });
 
+            const destinationReplicationFolderName = getReplicationFolderName(destinationSecretImport.id);
+            const destinationReplicationFolderPath = path.posix.join(
+              destinationFolder.path,
+              destinationReplicationFolderName
+            );
             let destinationReplicationFolder = await folderDAL.findOne({
               parentId: destinationFolder.id,
-              name: getReplicationFolderName(destinationSecretImport.id),
+              name: destinationReplicationFolderName,
               isReserved: true
             });
             if (!destinationReplicationFolder) {
-              destinationReplicationFolder = await folderDAL.create({
-                parentId: destinationFolder.id,
-                name: getReplicationFolderName(destinationSecretImport.id),
-                envId: destinationFolder.envId,
-                isReserved: true
+              // Same transaction, otherwise a retry finds the folder already there and never emits.
+              destinationReplicationFolder = await folderDAL.transaction(async (tx) => {
+                const createdFolder = await folderDAL.create(
+                  {
+                    parentId: destinationFolder.id,
+                    name: destinationReplicationFolderName,
+                    envId: destinationFolder.envId,
+                    isReserved: true
+                  },
+                  tx
+                );
+                await FolderModifiedEventV1.emit(
+                  eventEmitter,
+                  {
+                    folderId: createdFolder.id,
+                    projectId,
+                    environment: destinationFolder.environmentSlug,
+                    secretPath: destinationReplicationFolderPath,
+                    modificationType: EventModificationType.Created
+                  },
+                  tx
+                );
+                return createdFolder;
               });
             }
             const destinationReplicationFolderId = destinationReplicationFolder.id;
+            const replicationEventScope = {
+              projectId,
+              environment: destinationFolder.environmentSlug,
+              secretPath: destinationReplicationFolderPath
+            };
 
             const destinationLocalSecretsFromDB = await secretV2BridgeDAL.find({
               folderId: destinationReplicationFolderId
@@ -491,6 +527,8 @@ export const secretReplicationServiceFactory = ({
                 if (locallyCreatedSecrets.length) {
                   await fnSecretV2BridgeBulkInsert({
                     folderId: destinationReplicationFolderId,
+                    eventEmitter,
+                    eventScope: replicationEventScope,
                     orgId,
                     secretVersionDAL: secretVersionV2BridgeDAL,
                     secretDAL: secretV2BridgeDAL,
@@ -523,6 +561,8 @@ export const secretReplicationServiceFactory = ({
                   await fnSecretV2BridgeBulkUpdate({
                     orgId,
                     folderId: destinationReplicationFolderId,
+                    eventEmitter,
+                    eventScope: replicationEventScope,
                     secretVersionDAL: secretVersionV2BridgeDAL,
                     folderCommitService,
                     secretDAL: secretV2BridgeDAL,
@@ -564,6 +604,12 @@ export const secretReplicationServiceFactory = ({
                       },
                       folderId: destinationReplicationFolderId
                     },
+                    tx
+                  );
+                  await emitSecretsModified(
+                    eventEmitter,
+                    { ...replicationEventScope, modificationType: EventModificationType.Deleted },
+                    locallyDeletedSecrets,
                     tx
                   );
                 }
