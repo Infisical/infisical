@@ -1,5 +1,5 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+import { HoneyTokenHosting, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
 
 export const HONEY_TOKEN_MAP: Record<
   HoneyTokenType,
@@ -9,6 +9,21 @@ export const HONEY_TOKEN_MAP: Record<
     name: "AWS",
     image: "Amazon Web Services.png",
     size: 50
+  }
+};
+
+export const HONEY_TOKEN_HOSTING_MAP: Record<
+  HoneyTokenHosting,
+  { name: string; description: string }
+> = {
+  [HoneyTokenHosting.InfisicalManaged]: {
+    name: "Infisical Managed",
+    description: "Infisical creates the decoy credentials in its own AWS account. No setup needed."
+  },
+  [HoneyTokenHosting.CustomerAccount]: {
+    name: "Self hosted",
+    description:
+      "Infisical creates the decoy credentials in the AWS account your organization connected."
   }
 };
 

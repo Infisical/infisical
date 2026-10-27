@@ -1,4 +1,5 @@
 import { NotFoundError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn/array";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -15,6 +16,8 @@ import { getHoneyTokenHosting } from "./honey-token-types";
 const FOLDERLESS_CLEANUP_BATCH = 100;
 const MAX_CLEANUP_ATTEMPTS = 3;
 const CLEANUP_WORKER_CONCURRENCY = 3;
+// Managed tokens all live in one shared AWS account, so an org deletion must not burst its IAM rate limit.
+const REVOKE_BATCH_SIZE = 5;
 
 type THoneyTokenCleanupServiceFactoryDep = {
   honeyTokenDAL: Pick<
@@ -103,15 +106,18 @@ export const honeyTokenCleanupServiceFactory = ({
     if (!honeyTokens.length) return;
 
     const revoke = $createRevoker();
-    const results = await Promise.allSettled(honeyTokens.map((honeyToken) => revoke(honeyToken)));
-    results.forEach((result, i) => {
-      if (result.status === "rejected") {
-        logger.error(
-          { err: result.reason as unknown },
-          `honey-token-cleanup: could not clean up honey token on ${reason} ${$logContext(honeyTokens[i])}`
-        );
-      }
-    });
+    for (const batch of chunkArray(honeyTokens, REVOKE_BATCH_SIZE)) {
+      // eslint-disable-next-line no-await-in-loop
+      const results = await Promise.allSettled(batch.map((honeyToken) => revoke(honeyToken)));
+      results.forEach((result, i) => {
+        if (result.status === "rejected") {
+          logger.error(
+            { err: result.reason as unknown },
+            `honey-token-cleanup: could not clean up honey token on ${reason} ${$logContext(batch[i])}`
+          );
+        }
+      });
+    }
 
     await honeyTokenDAL.delete({ $in: { id: honeyTokens.map((honeyToken) => honeyToken.id) } });
   };

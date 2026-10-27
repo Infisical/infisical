@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -30,6 +30,7 @@ import { HoneyTokenFormSchema, THoneyTokenForm } from "./schemas";
 type Props = {
   onComplete: () => void;
   type: HoneyTokenType;
+  hosting: HoneyTokenHosting;
   onCancel: () => void;
   secretPath: string;
   environment?: string;
@@ -50,10 +51,9 @@ const FORM_TABS: FormTab[] = [
   {
     name: "Configuration",
     key: "configuration",
-    shortDescription: "AWS account and environment",
+    shortDescription: "Environment",
     title: "Choose where to plant it",
-    subtitle:
-      "Choose the AWS account that holds the decoy credentials and the environment where Infisical stores them.",
+    subtitle: "Choose the environment where Infisical stores the decoy credentials.",
     fields: ["hosting", "environment"]
   },
   {
@@ -76,6 +76,7 @@ const FORM_TABS: FormTab[] = [
 
 export const HoneyTokenForm = ({
   type,
+  hosting,
   onComplete,
   onCancel,
   environment: envSlug,
@@ -109,7 +110,7 @@ export const HoneyTokenForm = ({
     defaultValues: honeyToken
       ? {
           ...honeyToken,
-          hosting: honeyToken.config.hosting,
+          hosting,
           environment: currentProject?.environments.find(
             (env) => env.slug === honeyToken.environment.slug
           ),
@@ -117,7 +118,7 @@ export const HoneyTokenForm = ({
         }
       : {
           type,
-          hosting: HoneyTokenHosting.InfisicalManaged,
+          hosting,
           environment: currentProject?.environments.find((env) => env.slug === envSlug),
           secretPath,
           secretsMapping: HONEY_TOKEN_DEFAULT_SECRET_NAMES[type]
@@ -125,23 +126,7 @@ export const HoneyTokenForm = ({
     reValidateMode: "onChange"
   });
 
-  useEffect(() => {
-    if (!hostingOptions) return;
-    formMethods.clearErrors("hosting");
-    if (formMethods.getFieldState("hosting").isDirty) return;
-
-    // An org that connected its own account most likely wants its tokens there.
-    const preferCustomerAccount =
-      !hostingOptions.infisicalManaged.isAvailable ||
-      hostingOptions.customerAccount.configStatus === HoneyTokenConfigStatus.Complete;
-
-    formMethods.setValue(
-      "hosting",
-      preferCustomerAccount ? HoneyTokenHosting.CustomerAccount : HoneyTokenHosting.InfisicalManaged
-    );
-  }, [hostingOptions]);
-
-  const onSubmit = async ({ environment, hosting, ...formData }: THoneyTokenForm) => {
+  const onSubmit = async ({ environment, hosting: formHosting, ...formData }: THoneyTokenForm) => {
     if (honeyToken) {
       await updateHoneyToken.mutateAsync({
         honeyTokenId: honeyToken.id,
@@ -158,7 +143,7 @@ export const HoneyTokenForm = ({
     } else {
       const { stackDeployment } = await createHoneyToken.mutateAsync({
         ...formData,
-        config: { hosting },
+        config: { hosting: formHosting },
         environment: environment.slug,
         projectId: currentProject.id
       });
@@ -208,9 +193,13 @@ export const HoneyTokenForm = ({
 
   const isStepValid = async (index: number) => {
     const isValid = await trigger(formTabs[index].fields);
-    if (!isValid || formTabs[index].key !== "configuration") return isValid;
+    if (
+      !isValid ||
+      formTabs[index].key !== "configuration" ||
+      hosting !== HoneyTokenHosting.CustomerAccount
+    )
+      return isValid;
 
-    // Without the options the form would keep its Infisical-managed default, which this instance may not offer.
     if (!hostingOptions) {
       formMethods.setError("hosting", {
         message: isHostingOptionsError
@@ -220,14 +209,9 @@ export const HoneyTokenForm = ({
       return false;
     }
 
-    if (
-      formMethods.getValues("hosting") === HoneyTokenHosting.CustomerAccount &&
-      hostingOptions?.customerAccount.configStatus !== HoneyTokenConfigStatus.Complete
-    ) {
+    if (hostingOptions.customerAccount.configStatus !== HoneyTokenConfigStatus.Complete) {
       formMethods.setError("hosting", {
-        message: hostingOptions?.infisicalManaged.isAvailable
-          ? "Finish connecting your AWS account, or choose Infisical-managed."
-          : "Finish connecting your AWS account to create a honey token."
+        message: "Finish connecting your AWS account to create a self hosted honey token."
       });
       return false;
     }
@@ -326,6 +310,7 @@ export const HoneyTokenForm = ({
     <>
       {currentStep.key === "configuration" && (
         <HoneyTokenConfigurationFields
+          hosting={hosting}
           environments={environments}
           hostingOptions={hostingOptions}
           isHostingOptionsError={isHostingOptionsError}

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
+import { honeyTokenKeys as honeyTokensKeys } from "@app/hooks/api/honeyTokens/queries";
 
 import { honeyTokenKeys } from "./queries";
 import { HoneyTokenType, TUpsertHoneyTokenConfigDTO } from "./types";
@@ -18,6 +19,8 @@ export const useUpsertHoneyTokenConfig = () => {
     },
     onSuccess: (_, dto) => {
       queryClient.invalidateQueries({ queryKey: honeyTokenKeys.config(dto.type) });
+      // the token creation form reads the setup status from here
+      queryClient.invalidateQueries({ queryKey: honeyTokensKeys.allHostingOptions() });
     }
   });
 };
@@ -36,6 +39,7 @@ export const useTestHoneyTokenConnection = () => {
     },
     onSettled: (_, __, type) => {
       queryClient.invalidateQueries({ queryKey: honeyTokenKeys.config(type) });
+      queryClient.invalidateQueries({ queryKey: honeyTokensKeys.allHostingOptions() });
     }
   });
 };

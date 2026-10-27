@@ -12,8 +12,9 @@ export const honeyTokenKeys = {
   events: (honeyTokenId: string) => [...honeyTokenKeys.all, "events", honeyTokenId] as const,
   credentials: (honeyTokenId: string) =>
     [...honeyTokenKeys.all, "credentials", honeyTokenId] as const,
+  allHostingOptions: () => [...honeyTokenKeys.all, "hosting-options"] as const,
   hostingOptions: (projectId: string, type: HoneyTokenType) =>
-    [...honeyTokenKeys.all, "hosting-options", projectId, type] as const
+    [...honeyTokenKeys.allHostingOptions(), projectId, type] as const
 };
 
 export const useGetHoneyTokenHostingOptions = ({

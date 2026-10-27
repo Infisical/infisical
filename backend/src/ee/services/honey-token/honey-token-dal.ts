@@ -75,18 +75,6 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     return Number(result?.count ?? 0);
   };
 
-  const findOneByTokenIdentifierAndOrgId = async (tokenIdentifier: string, orgId: string, tx?: Knex) => {
-    const row = await (tx || db.replicaNode())(TableName.HoneyToken)
-      .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
-      .where(`${TableName.HoneyToken}.tokenIdentifier`, tokenIdentifier)
-      .andWhere(`${TableName.Project}.orgId`, orgId)
-      .whereNotNull(`${TableName.HoneyToken}.folderId`)
-      .select(selectAllTableCols(TableName.HoneyToken))
-      .first();
-
-    return row ?? null;
-  };
-
   const findOneByTokenIdentifier = async (tokenIdentifier: string, tx?: Knex) => {
     const row = await (tx || db.replicaNode())(TableName.HoneyToken)
       .join(TableName.Project, `${TableName.HoneyToken}.projectId`, `${TableName.Project}.id`)
@@ -222,7 +210,6 @@ export const honeyTokenDALFactory = (db: TDbClient) => {
     ...orm,
     findByFolderIds,
     countByFolderIds,
-    findOneByTokenIdentifierAndOrgId,
     findOneByTokenIdentifier,
     countByOrgId,
     countByProjectId,

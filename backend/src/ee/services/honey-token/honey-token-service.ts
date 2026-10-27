@@ -1262,7 +1262,12 @@ export const honeyTokenServiceFactory = ({
       $isValidSignature({ signingKey: key, timestamp, rawBody, signatureHash })
     );
 
-    const honeyTokenWithOrg = await honeyTokenDAL.findOneByTokenIdentifier(eventMetadata.accessKeyId);
+    // A managed trigger is already authenticated by the instance key, and acknowledging an untracked key stops
+    // AWS from retrying, so it reads the primary: a replica behind a new token would drop the alert. Customer
+    // account triggers are looked up before they are authenticated, so they stay on the replica.
+    const honeyTokenWithOrg = isManagedTrigger
+      ? await honeyTokenDAL.transaction((tx) => honeyTokenDAL.findOneByTokenIdentifier(eventMetadata.accessKeyId, tx))
+      : await honeyTokenDAL.findOneByTokenIdentifier(eventMetadata.accessKeyId);
 
     if (isManagedTrigger) {
       if (!honeyTokenWithOrg || getHoneyTokenHosting(honeyTokenWithOrg) !== HoneyTokenHosting.InfisicalManaged) {
@@ -1285,10 +1290,7 @@ export const honeyTokenServiceFactory = ({
       }
     }
 
-    const honeyToken = await honeyTokenDAL.findOneByTokenIdentifierAndOrgId(
-      eventMetadata.accessKeyId,
-      honeyTokenWithOrg.orgId
-    );
+    const honeyToken = honeyTokenWithOrg;
     if (!honeyToken?.folderId || !honeyToken.projectId || honeyToken.status === HoneyTokenStatus.Revoked) {
       return { acknowledged: true };
     }
