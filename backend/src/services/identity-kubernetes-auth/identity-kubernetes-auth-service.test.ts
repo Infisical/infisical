@@ -51,11 +51,13 @@ const createService = ({
     allowedAudience: ""
   },
   templateGatewayColumns = NO_GATEWAY,
-  identityAuthMethods = [] as string[]
+  identityAuthMethods = [] as string[],
+  storedAuthOverrides = {} as Record<string, unknown>
 }: {
   templateBlobFields?: TKubernetesTemplateFields;
   templateGatewayColumns?: typeof NO_GATEWAY;
   identityAuthMethods?: string[];
+  storedAuthOverrides?: Record<string, unknown>;
 } = {}) => {
   const templateRow = {
     id: TEMPLATE_ID,
@@ -88,7 +90,8 @@ const createService = ({
     verifyTlsCertificate: false,
     encryptedKubernetesCaCertificate: null,
     encryptedKubernetesTokenReviewerJwt: null,
-    ...NO_GATEWAY
+    ...NO_GATEWAY,
+    ...storedAuthOverrides
   };
 
   const identityKubernetesAuthDAL = {
@@ -310,5 +313,40 @@ describe("identityKubernetesAuthServiceFactory template lock", () => {
     } as unknown as Parameters<typeof service.updateKubernetesAuth>[0]);
 
     expect(identityAuthTemplateDAL.findByIdForShare).not.toHaveBeenCalled();
+  });
+});
+
+describe("identityKubernetesAuthServiceFactory stored reviewer JWT", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const withStoredJwt = () =>
+    createService({
+      identityAuthMethods: [IdentityAuthMethod.KUBERNETES_AUTH],
+      storedAuthOverrides: { encryptedKubernetesTokenReviewerJwt: Buffer.from("stored-reviewer-jwt") }
+    });
+
+  it("reports a stored JWT without returning it", async () => {
+    const { service } = withStoredJwt();
+
+    const config = await service.getKubernetesAuth({
+      ...baseActor,
+      identityId: IDENTITY_ID
+    } as unknown as Parameters<typeof service.getKubernetesAuth>[0]);
+
+    expect(config.tokenReviewerJwt).toBe("");
+    expect(config.hasTokenReviewerJwt).toBe(true);
+  });
+
+  it("rejects a host change that does not resupply the stored JWT", async () => {
+    const { service, identityKubernetesAuthDAL } = withStoredJwt();
+
+    await expect(
+      service.updateKubernetesAuth({
+        ...baseActor,
+        identityId: IDENTITY_ID,
+        kubernetesHost: "https://1.1.1.1"
+      } as unknown as Parameters<typeof service.updateKubernetesAuth>[0])
+    ).rejects.toThrow("requires supplying tokenReviewerJwt");
+    expect(identityKubernetesAuthDAL.updateById).not.toHaveBeenCalled();
   });
 });
