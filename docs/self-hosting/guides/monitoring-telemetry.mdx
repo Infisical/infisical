@@ -772,7 +772,7 @@ The status change counters record a change only when a sync, rotation, or dynami
 
     **Unit**: `{attempt}`
 
-    **Description**: Secret rotation attempts by rotation type and outcome. If a user selects **Rotate Secrets** or calls the rotate endpoint, the rotation runs once without retries, so its outcome always has `attempts.exhausted="true"`.
+    **Description**: Secret rotation attempts by rotation type and outcome. If a user selects **Rotate Secrets** or calls the rotate secrets endpoint for the rotation type (such as [the one for PostgreSQL credentials](/api-reference/endpoints/secret-rotations/postgres-credentials/rotate-secrets)), the rotation runs once without retries, so its outcome always has `attempts.exhausted="true"`.
 
     **Attributes**:
       - `type` (string): the rotation type, e.g. `postgres-credentials`, `mysql-credentials`
