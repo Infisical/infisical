@@ -37,7 +37,7 @@
 
 ## Introduction
 
-**[Infisical](https://infisical.com)** is the open source security infrastructure platform that teams use for secrets, certificates, privileged access management, and AI agent access.
+**[Infisical](https://infisical.com)** is the open-source security infrastructure platform that teams use for secrets, certificates, privileged access management, and AI agent access.
 
 We're on a mission to make security tooling more accessible to everyone, not just security teams, and that means redesigning the entire developer experience from ground up.
 
