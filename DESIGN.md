@@ -161,9 +161,8 @@ labels, and dropdown menu items. See §8 for voice rules on copy itself.
 ## 4. Component Stylings
 
 Use v3 components from [`frontend/src/components/v3/`](frontend/src/components/v3)
-for all UI. The v2 library has been removed; see the
-[lifecycle ledger](frontend/src/components/COMPONENT_LIFECYCLE.md) for
-deprecated v3 components and their replacements.
+for all UI. A deprecated API carries an `@deprecated` tag that names its
+replacement.
 
 For exact tokens, classes, and supported variants, read component source and
 the story when present; stories may not enumerate every implemented variant.
@@ -215,7 +214,7 @@ specialized primitives not listed here (for example `CodeBlock`, `CopyButton`,
 | [`Toggle`](frontend/src/components/v3/generic/Toggle/Toggle.tsx) / [`Checkbox`](frontend/src/components/v3/generic/Checkbox/Checkbox.tsx) | Boolean toggle / multi-select boolean.                                                                      |
 | [`Calendar`](frontend/src/components/v3/generic/Calendar/Calendar.tsx)                                                                    | Date / multi-date / range picker primitive.                                                                 |
 | [`DateRangeFilter`](frontend/src/components/v3/platform/DateRangeFilter/DateRangeFilter.tsx)                                               | Platform date-range filter with presets — for filter bars.                                                  |
-| [`SecretInput`](frontend/src/components/v3/platform/SecretInput/SecretInput.tsx)                                                           | Platform secret-value editor with mask toggle and `${var}` highlighting.                                    |
+| [`SecretInput`](frontend/src/components/v3/platform/SecretInput/SecretInput.tsx)                                                           | Platform secret-value editor with masking and `${var}` highlighting; callers own any reveal toggle.          |
 | [`PasswordGenerator`](frontend/src/components/v3/platform/PasswordGenerator/PasswordGenerator.tsx)                                         | Platform password generator against project secret-validation rules.                                        |
 | [`EmailInput`](frontend/src/components/v3/platform/EmailInput/EmailInput.tsx)                                                              | Platform chip field for one or more free-text email addresses. Validate it with `emailListSchema` from `@app/helpers/email`; check single addresses or picker-created invitees with `isValidEmail` rather than a local regex or `z.string().email()`. |
 
@@ -469,7 +468,7 @@ Pasteable prompt fragments for AI coding agents producing new UI.
 4. **Adding a variant** — extend the `cva()` block in the component and add
    a story when appropriate. Match the existing variant family rather than
    imposing a tint recipe on neutral, outline, or product variants.
-5. **Use v3.** The v2 library has been removed. Check the lifecycle ledger
-   before reaching for a deprecated v3 component.
+5. **Use v3.** Don't reach for an API marked `@deprecated`; use the
+   replacement it names.
 6. **Before merging** — `make reviewable-ui` (lint + type-check).
 7. **When in doubt** — mirror `OverviewPage`.
