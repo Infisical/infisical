@@ -37,6 +37,7 @@ Middleware pages in `src/pages/middlewares/`: `authenticate.tsx` (auth guard + r
 - **`src/pages/`** — Route-level components organized by product feature (secret-manager, cert-manager, kms, pam, secret-scanning, organization, project, admin, auth). Each has `route.tsx` + page component + local `components/`.
 - **`src/views/`** — Reusable page-level UI composed into multiple pages. Pages import views with configuration props.
 - **`src/components/v3/`** — Latest shared UI component library (preferred). Contains `generic/` (Accordion, Alert, Button, Dialog, Select, Table, etc.) and `platform/` (domain-specific components such as `PageHeader`, scope icons, `ProjectPermissionSubjects`, and `SecretManagerResources`). **Always use v3 components.** The v2 library has been removed. Policy group tiles look up `getProjectPermissionSubjectPresentation`. Secret Manager overview resources (name/slug/icon/color) come from `SecretManagerResources`, which points at that subject catalog.
+- **Navigable rows and cards** — A table row, card or command item that opens a page is a real link, so cmd/ctrl+click, middle-click and "Open link in new tab" work: set `linked` on `TableRow` or `Card` and put a `RowLink` in the main cell (`CommandItemLink` inside a `CommandItem`). Never navigate from a row's `onClick`. Controls inside a linked row are lifted above the link automatically; mark a non-interactive tooltip anchor (a badge) with `data-row-interactive`. Certificate Manager and Secret Scanning URLs have no project id, so links into a specific instance go through `getInstancePinningLink` (`helpers/project.ts`), whose legacy URL redirect pins the instance in the new tab.
 
 ### API Layer (React Query + Axios)
 
@@ -112,6 +113,7 @@ Secret Scanning has one active project per org (see the root `AGENTS.md`). Membe
 
 ## Conventions
 
+- App browser titles use `PageTitle` from `@app/components/PageTitle`, which applies the localized `common.head-title` format (`Page | Infisical`) without suspending loading/error fallbacks. Pass a page label, not an already branded string. Keep one title mounted per screen, including loading, empty, and denied states; place it outside permission guards when necessary. The static HTML title is handed off before React mounts, preserving a no-JS fallback without duplicates. Custom-branded public sharing keeps its existing native, unbranded title; its loading title must not assume Infisical branding before configuration resolves. Use resource names only, never secret values or tokens.
 - ESLint flat config (ESLint 9+) with airbnb-typescript + prettier. Double quotes enforced.
 - Import ordering via `simple-import-sort`: node builtins → react/external packages → `@app/` → internal → relative → styles.
 - Forms use `react-hook-form` with `@hookform/resolvers` (Zod schemas).

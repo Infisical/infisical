@@ -18,7 +18,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
-  Pagination
+  Pagination,
+  RowLink
 } from "@app/components/v3/generic";
 
 import { cn } from "../../utils";
@@ -674,6 +675,56 @@ export const WithActions: Story = {
                   <DropdownMenuItem variant="danger">
                     <TrashIcon />
                     Delete identity
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+};
+
+export const LinkedRows: Story = {
+  name: "Example: Linked Rows",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "For rows that open a detail page, set `linked` on the row and render a `RowLink` in its main cell. The link's overlay covers the row, so a plain click, cmd/ctrl+click, middle-click and right-click \"Open link in new tab\" all work. Buttons, inputs, selects, checkboxes, other links, tooltip triggers and `variant=action` cells are lifted above the overlay automatically; mark any other control (a badge used as a tooltip anchor) with `data-row-interactive`. `RowLink disabled` renders plain text for rows the user cannot open (the last row here); leave `linked` off for that row too. To keep a whole cell clickable for its own controls, including the padding around them, put `data-row-interactive` on the cell. `Card` takes the same `linked` prop, and `CommandItemLink` covers `CommandItem` rows. Never navigate from a row's `onClick`."
+      }
+    }
+  },
+  render: () => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead variant="action" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {identities.slice(0, 4).map((id, index) => (
+          <TableRow key={id.name} linked={index !== 3}>
+            <TableCell isTruncatable>
+              <RowLink to="." disabled={index === 3}>
+                {id.name}
+              </RowLink>
+            </TableCell>
+            <TableCell>{id.role}</TableCell>
+            <TableCell variant="action">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton variant="ghost" size="xs" aria-label={`${id.name} actions`}>
+                    <MoreHorizontalIcon />
+                  </IconButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-36">
+                  <DropdownMenuItem>
+                    <CopyIcon />
+                    Copy ID
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

@@ -41,3 +41,51 @@ export const addUsersToGroup = async (groupId: string, userIds: string[]) => {
   if (userIds.length === 0) return;
   await testDb(TableName.UserGroupMembership).insert(userIds.map((userId) => ({ userId, groupId })));
 };
+
+export const deleteGroups = async (groupIds: string[]) => {
+  if (groupIds.length === 0) return;
+  await testDb(TableName.UserGroupMembership).whereIn("groupId", groupIds).delete();
+  await testDb(TableName.IdentityGroupMembership).whereIn("groupId", groupIds).delete();
+  const membershipIds = await testDb(TableName.Membership).whereIn("actorGroupId", groupIds).pluck("id");
+  await testDb(TableName.MembershipRole).whereIn("membershipId", membershipIds).delete();
+  await testDb(TableName.Membership).whereIn("id", membershipIds).delete();
+  await testDb(TableName.Groups).whereIn("id", groupIds).delete();
+};
+
+// `authToken` has to be scoped to the sub-org, the route reads the org from it.
+export const linkGroupToOrg = async (dto: { groupId: string; authToken: string }) => {
+  const res = await testServer.inject({
+    method: "POST",
+    url: `/api/v1/organizations/memberships/groups/${dto.groupId}`,
+    headers: { authorization: `Bearer ${dto.authToken}` },
+    body: { roles: [{ role: OrgMembershipRole.Member }] }
+  });
+  expect(res.statusCode).toBe(200);
+};
+
+export const unlinkGroupFromOrg = async (dto: { groupId: string; authToken: string }) => {
+  const res = await testServer.inject({
+    method: "DELETE",
+    url: `/api/v1/organizations/memberships/groups/${dto.groupId}`,
+    headers: { authorization: `Bearer ${dto.authToken}` }
+  });
+  expect(res.statusCode).toBe(200);
+};
+
+export const removeUserFromGroup = async (dto: { groupId: string; username: string; authToken: string }) => {
+  const res = await testServer.inject({
+    method: "DELETE",
+    url: `/api/v1/groups/${dto.groupId}/users/${encodeURIComponent(dto.username)}`,
+    headers: { authorization: `Bearer ${dto.authToken}` }
+  });
+  expect(res.statusCode).toBe(200);
+};
+
+export const removeIdentityFromGroup = async (dto: { groupId: string; identityId: string; authToken: string }) => {
+  const res = await testServer.inject({
+    method: "DELETE",
+    url: `/api/v1/groups/${dto.groupId}/machine-identities/${dto.identityId}`,
+    headers: { authorization: `Bearer ${dto.authToken}` }
+  });
+  expect(res.statusCode).toBe(200);
+};

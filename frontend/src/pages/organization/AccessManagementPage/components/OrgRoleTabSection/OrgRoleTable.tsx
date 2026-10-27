@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -42,6 +42,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -79,7 +80,6 @@ enum RolesOrderBy {
 }
 
 export const OrgRoleTable = () => {
-  const navigate = useNavigate();
   const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -321,25 +321,18 @@ export const OrgRoleTable = () => {
                         ? id === currentOrg?.defaultMembershipRole
                         : slug === currentOrg?.defaultMembershipRole;
                       return (
-                        <TableRow
-                          key={`role-list-${id}`}
-                          className="cursor-pointer"
-                          onClick={() =>
-                            navigate({
-                              to: "/organizations/$orgId/roles/$roleId",
-                              params: {
-                                roleId: id,
-                                orgId
-                              }
-                            })
-                          }
-                        >
+                        <TableRow key={`role-list-${id}`} linked>
                           <TableCell isTruncatable>
                             <div className="flex gap-x-1.5">
-                              <p className="truncate">{name}</p>
+                              <RowLink
+                                to="/organizations/$orgId/roles/$roleId"
+                                params={{ roleId: id, orgId }}
+                              >
+                                {name}
+                              </RowLink>
                               {isDefaultOrgRole && (
                                 <Tooltip>
-                                  <TooltipTrigger asChild>
+                                  <TooltipTrigger asChild data-row-interactive>
                                     <Badge variant="info">Default</Badge>
                                   </TooltipTrigger>
                                   <TooltipContent>
@@ -383,21 +376,17 @@ export const OrgRoleTable = () => {
                                   a={OrgPermissionSubjects.Role}
                                 >
                                   {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigate({
-                                          to: "/organizations/$orgId/roles/$roleId",
-                                          params: {
-                                            roleId: id,
-                                            orgId
-                                          }
-                                        });
-                                      }}
-                                      isDisabled={!isAllowed}
-                                    >
-                                      {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
-                                      {`${isNonMutatable ? "View" : "Edit"} Role`}
+                                    <DropdownMenuItem asChild isDisabled={!isAllowed}>
+                                      <Link
+                                        to="/organizations/$orgId/roles/$roleId"
+                                        params={{
+                                          roleId: id,
+                                          orgId
+                                        }}
+                                      >
+                                        {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
+                                        {`${isNonMutatable ? "View" : "Edit"} Role`}
+                                      </Link>
                                     </DropdownMenuItem>
                                   )}
                                 </OrgPermissionCan>

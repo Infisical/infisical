@@ -112,6 +112,12 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
     case SecretSync.Qovery:
       AdditionalSyncOptionsFieldsComponent = <QoverySyncOptionsFields />;
       break;
+    case SecretSync.CloudflareWorkers:
+      AdditionalSyncOptionsFieldsComponent = <CloudflareWorkersSyncOptionsFields />;
+      break;
+    case SecretSync.CloudflarePages:
+      AdditionalSyncOptionsFieldsComponent = <CloudflarePagesSyncOptionsFields />;
+      break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
     case SecretSync.AzureAppConfiguration:
@@ -128,12 +134,6 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
     case SecretSync.OCIVault:
     case SecretSync.Heroku:
     case SecretSync.GitLab:
-    case SecretSync.CloudflareWorkers:
-      AdditionalSyncOptionsFieldsComponent = <CloudflareWorkersSyncOptionsFields />;
-      break;
-    case SecretSync.CloudflarePages:
-      AdditionalSyncOptionsFieldsComponent = <CloudflarePagesSyncOptionsFields />;
-      break;
     case SecretSync.CloudflareSecretsStore:
     case SecretSync.Zabbix:
     case SecretSync.Railway:

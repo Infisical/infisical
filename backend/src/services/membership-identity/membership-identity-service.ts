@@ -7,9 +7,12 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
+import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
+import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity/identity-fns";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -20,7 +23,9 @@ import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/ide
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
 import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { lockAndAssertActiveOrgAccess } from "../org/org-access-fns";
 import { TOrgDALFactory } from "../org/org-dal";
+import { emitOrgMembershipRemoved, toOrgMembershipActors } from "../org/org-membership-events";
 import { ApplicationMemberKind } from "../pki-application/pki-application-types";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TRoleDALFactory } from "../role/role-dal";
@@ -43,7 +48,7 @@ type TMembershipIdentityServiceFactoryDep = {
     TPermissionServiceFactory,
     "getOrgPermission" | "getProjectPermission" | "getProjectPermissionByRoles" | "getOrgPermissionByRoles"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "findEffectiveOrgMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess" | "lockActorsForOrgAccess">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -59,6 +64,7 @@ type TMembershipIdentityServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "insertOrgMembershipRevocationMarker" | "removeOrgMembershipRevocationMarkers" | "bumpIdentityRevocationVersion"
   >;
+  eventEmitter: TEventEmitter;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -77,7 +83,8 @@ export const membershipIdentityServiceFactory = ({
   keyStore,
   usageMeteringService,
   alertService,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventEmitter
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
@@ -156,6 +163,9 @@ export const membershipIdentityServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membership = await membershipIdentityDAL.transaction(async (tx) => {
+      if (scopeData.scope === AccessScope.Project) {
+        await lockAndAssertActiveOrgAccess({ orgDAL, orgId: scopeData.orgId, identityIds: [dto.data.identityId] }, tx);
+      }
       const existingMembership = await membershipIdentityDAL.findOne(
         {
           scope: scopeData.scope,
@@ -405,6 +415,7 @@ export const membershipIdentityServiceFactory = ({
     return { membership: membershipDoc };
   };
 
+  // On org removal the identity's project rows in the org and its sub-orgs are left to the reconcile consumer.
   const deleteMembership = async (dto: TDeleteMembershipIdentityDTO, externalTx?: Knex) => {
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
@@ -468,6 +479,11 @@ export const membershipIdentityServiceFactory = ({
           orgId: scopeData.orgId,
           tx
         });
+        await emitOrgMembershipRemoved(
+          eventEmitter,
+          { orgId: scopeData.orgId, actors: toOrgMembershipActors({ identityIds: [dto.selector.identityId] }) },
+          tx
+        );
       }
 
       await alertService.deleteAlertsForResource(
@@ -565,11 +581,25 @@ export const membershipIdentityServiceFactory = ({
     return membership;
   };
 
+  // It's a list of org identities, so at project scope only org identity read gates it, plus a check that
+  // the project is in the org.
   const listAvailableIdentities = async (dto: TListMembershipIdentityDTO) => {
     const { scopeData } = dto;
-    const factory = scopeFactory[scopeData.scope];
 
-    await factory.onListMembershipIdentityGuard(dto);
+    if (scopeData.scope === AccessScope.Project) {
+      await scopeFactory[AccessScope.Organization].onListMembershipIdentityGuard({
+        ...dto,
+        scopeData: { scope: AccessScope.Organization, orgId: scopeData.orgId }
+      });
+      const project = await requestMemoize(requestMemoKeys.projectFindById(scopeData.projectId), () =>
+        projectDAL.findById(scopeData.projectId)
+      );
+      if (project?.orgId !== scopeData.orgId) {
+        throw new NotFoundError({ message: `Project with ID '${scopeData.projectId}' not found` });
+      }
+    } else {
+      await scopeFactory[scopeData.scope].onListMembershipIdentityGuard(dto);
+    }
 
     if (scopeData.scope !== AccessScope.Project && dto.permission.rootOrgId === dto.permission.orgId)
       return { identities: [] };

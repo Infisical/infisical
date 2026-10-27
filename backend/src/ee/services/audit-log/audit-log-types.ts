@@ -60,6 +60,7 @@ import {
 } from "@app/services/identity-access-token/identity-access-token-types";
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
+import { OrgAccessRemovalCause } from "@app/services/org/org-membership-events";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 import { THealthCheckCommandResult } from "@app/services/pki-sync/pki-sync-health-check-command-fns";
@@ -595,6 +596,7 @@ export enum EventType {
   ADD_GROUP_TO_PROJECT = "add-group-to-project",
   UPDATE_GROUP_PROJECT_MEMBERSHIP = "update-group-project-membership",
   REMOVE_GROUP_FROM_PROJECT = "remove-group-from-project",
+  REVOKE_ORG_PROJECT_ACCESS = "revoke-org-project-access",
 
   GET_PROJECT_TEMPLATES = "get-project-templates",
   GET_PROJECT_TEMPLATE = "get-project-template",
@@ -2938,6 +2940,22 @@ interface UnlinkGroupFromSubOrgEvent {
   metadata: {
     groupId: string;
     groupName: string;
+  };
+}
+
+// Written by the reconcile consumer and by direct org removals, so the actor is the platform and `reason` /
+// `groupId` say why.
+// `resources` are resource-level grants (PAM, Agent Vault, PKI apps, signers), including ones in projects
+// only reached through a group.
+interface RevokeOrgProjectAccessEvent {
+  type: EventType.REVOKE_ORG_PROJECT_ACCESS;
+  metadata: {
+    userId?: string;
+    identityId?: string;
+    projectIds: string[];
+    resources: { projectId: string; resourceType: string; resourceId: string }[];
+    reason: OrgAccessRemovalCause;
+    groupId?: string;
   };
 }
 
@@ -5727,6 +5745,7 @@ interface PitProcessNewCommitRawEvent {
     secretPath: string;
     message: string;
     approvalId?: string;
+    approvalSlug?: string;
     commitId?: string;
   };
 }
@@ -8858,6 +8877,7 @@ export type Event =
   | LinkGroupToSubOrgEvent
   | UpdateGroupOrgMembershipEvent
   | UnlinkGroupFromSubOrgEvent
+  | RevokeOrgProjectAccessEvent
   | AddUserToGroupEvent
   | RemoveUserFromGroupEvent
   | AddIdentityToGroupEvent

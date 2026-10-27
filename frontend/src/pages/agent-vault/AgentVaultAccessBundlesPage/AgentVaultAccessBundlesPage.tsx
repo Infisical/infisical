@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -19,6 +17,7 @@ import { twMerge } from "tailwind-merge";
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
 import { ServiceIconStack } from "@app/components/agent-vault/ServiceIconStack";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
   AlertAction,
@@ -46,6 +45,7 @@ import {
   InputGroupInput,
   PageHeader,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -83,7 +83,6 @@ enum SortColumn {
 }
 
 export const AgentVaultAccessBundlesPage = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
@@ -160,9 +159,7 @@ export const AgentVaultAccessBundlesPage = () => {
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Access Bundles" })}</title>
-      </Helmet>
+      <PageTitle title="Access Bundles" />
       <PageHeader
         scope={ProjectType.AgentVault}
         icon={PackageIcon}
@@ -289,29 +286,26 @@ export const AgentVaultAccessBundlesPage = () => {
                 ))}
               {!isPending &&
                 displayedBundles.map((bundle) => (
-                  <TableRow
-                    key={bundle.id}
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
-                        params: { orgId: currentOrg.id, accessBundleId: bundle.id }
-                      })
-                    }
-                  >
+                  <TableRow key={bundle.id} linked>
                     <TableCell isTruncatable className="min-w-64">
-                      <div className="flex items-center gap-2.5">
-                        <span className="truncate" title={bundle.name}>
+                      <RowLink
+                        to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
+                        params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
+                        className="flex items-center gap-2.5"
+                      >
+                        <span className="truncate" title={bundle.name} data-row-interactive>
                           {bundle.name}
                         </span>
                         {bundle.description && (
                           <span
                             className="min-w-0 flex-1 truncate text-sm text-muted"
                             title={bundle.description}
+                            data-row-interactive
                           >
                             {bundle.description}
                           </span>
                         )}
-                      </div>
+                      </RowLink>
                     </TableCell>
                     <TableCell>
                       <ServiceIconStack hostPatterns={bundle.hostPatterns} />
@@ -351,7 +345,7 @@ export const AgentVaultAccessBundlesPage = () => {
                         {bundle.servicesRequiringSetup.length > 0 && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Badge variant="warning">
+                              <Badge variant="warning" data-row-interactive>
                                 <TriangleAlertIcon />
                                 Requires Setup
                               </Badge>

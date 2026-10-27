@@ -1,5 +1,6 @@
 import { createFileRoute, linkOptions, redirect } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { hasProjectTemplates, urlSlugToProjectType } from "@app/helpers/project";
 import { withPermission } from "@app/hoc";
@@ -16,7 +17,12 @@ const RouteComponent = withPermission(() => <ProjectTemplatePage />, {
 export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/product-settings/$type/project-templates/$templateId"
 )({
-  component: RouteComponent,
+  component: () => (
+    <>
+      <PageTitle title="Project Template" />
+      <RouteComponent />
+    </>
+  ),
   context: ({ params }) => ({
     breadcrumbs: [
       {

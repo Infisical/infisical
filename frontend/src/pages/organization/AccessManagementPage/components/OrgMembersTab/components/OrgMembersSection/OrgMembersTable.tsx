@@ -37,6 +37,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Select,
   SelectContent,
   SelectItem,
@@ -526,24 +527,14 @@ export const OrgMembersTable = ({
                   const isSelected = Boolean(
                     membership && selectedMemberIds.includes(membership.id)
                   );
-                  const openMemberPage = membership
-                    ? () =>
-                        navigate({
-                          to: "/organizations/$orgId/members/$membershipId" as const,
-                          params: {
-                            membershipId: membership.id,
-                            orgId
-                          }
-                        })
-                    : undefined;
 
                   return (
                     <TableRow
                       key={membership ? `org-membership-${membership.id}` : `org-user-${u.id}`}
-                      className={twMerge("group", membership && "cursor-pointer")}
-                      onClick={openMemberPage}
+                      linked={Boolean(membership)}
+                      className="group"
                     >
-                      <TableCell>
+                      <TableCell data-row-interactive>
                         {membership ? (
                           <Checkbox
                             id={`select-member-${membership.id}`}
@@ -582,7 +573,7 @@ export const OrgMembersTable = ({
                           </p>
                           {u.superAdmin && (
                             <Tooltip>
-                              <TooltipTrigger asChild>
+                              <TooltipTrigger asChild data-row-interactive>
                                 <Badge variant="info">
                                   <UserCogIcon />
                                   <span className="hidden 2xl:inline">Server Admin</span>
@@ -607,7 +598,16 @@ export const OrgMembersTable = ({
                         </div>
                       </TableCell>
                       <TableCell isTruncatable className={twMerge(!isActive && "text-muted")}>
-                        <p className="truncate">{username}</p>
+                        {membership ? (
+                          <RowLink
+                            to="/organizations/$orgId/members/$membershipId"
+                            params={{ membershipId: membership.id, orgId }}
+                          >
+                            {username}
+                          </RowLink>
+                        ) : (
+                          <p className="truncate">{username}</p>
+                        )}
                       </TableCell>
                       <TableCell>
                         {groups.length ? (
@@ -720,7 +720,10 @@ export const OrgMembersTable = ({
                                       <DropdownMenuItem
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          openMemberPage?.();
+                                          navigate({
+                                            to: "/organizations/$orgId/members/$membershipId",
+                                            params: { membershipId: membership.id, orgId }
+                                          });
                                         }}
                                         isDisabled={!isAllowed}
                                       >

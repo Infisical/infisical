@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -91,6 +92,7 @@ export const WindmillConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps && targetApp ? (
     <div className="flex h-full w-full items-center justify-center">
+      <PageTitle title="Set Up Windmill Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Windmill Integration</CardTitle>
@@ -177,6 +179,9 @@ export const WindmillConfigurePage = () => {
       </Card>
     </div>
   ) : (
-    <div />
+    <>
+      <PageTitle title="Set Up Windmill Integration" />
+      <div />
+    </>
   );
 };

@@ -18,6 +18,7 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
@@ -128,6 +129,7 @@ type TSecretSyncQueueFactoryDep = {
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -182,6 +184,7 @@ export const secretSyncQueueFactory = ({
   secretVersionTagV2BridgeDAL,
   resourceMetadataDAL,
   folderCommitService,
+  eventEmitter,
   licenseService,
   gatewayV2Service,
   gatewayPoolService,
@@ -223,7 +226,8 @@ export const secretSyncQueueFactory = ({
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
-    folderCommitService
+    folderCommitService,
+    eventEmitter
   });
 
   const $updateManySecretsRawFn = updateManySecretsRawFnFactory({
@@ -240,7 +244,8 @@ export const secretSyncQueueFactory = ({
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
-    folderCommitService
+    folderCommitService,
+    eventEmitter
   });
 
   // INCR + cap check + EXPIRE happen atomically inside a Lua script. TTL is refreshed

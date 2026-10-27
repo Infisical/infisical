@@ -99,9 +99,10 @@ const PathAdder = ({ environment, existingPaths, onAdd, canCreateGrant }: PathAd
           value={value}
           onChange={setValue}
           environment={environment}
+          aria-label="Folder path to share"
           placeholder="Add a folder path..."
           onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-            if (e.key === "Enter") {
+            if (e.key === "Enter" && !e.defaultPrevented) {
               e.preventDefault();
               handleAdd();
             }

@@ -12,6 +12,7 @@ import {
   TemporaryPermissionMode
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { reapDeletedGroupFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
 import { identityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
@@ -1102,9 +1103,11 @@ describe("User folder access CRUD", () => {
         userDAL: userDALFactory(testDb),
         userGroupMembershipDAL: userGroupMembershipDALFactory(testDb),
         membershipGroupDAL: membershipGroupDALFactory(testDb),
+        groupDAL: groupDALFactory(testDb),
         projectKeyDAL: projectKeyDALFactory(testDb),
         additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
-        alertChannelRecipientDAL: alertChannelRecipientDALFactory(testDb)
+        alertChannelRecipientDAL: alertChannelRecipientDALFactory(testDb),
+        eventEmitter: { emit: async () => {} }
       };
 
       const username = `folder-reap-${alphaNumericNanoId(8)}@example.com`;
