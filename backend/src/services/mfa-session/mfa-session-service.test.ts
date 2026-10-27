@@ -200,7 +200,15 @@ describe("mfaSessionService completing a challenge from another login session", 
           orgDAL: { findOrgById: vi.fn().mockResolvedValue({ enforceMfa: false }) } as never,
           userDAL: { findById: vi.fn().mockResolvedValue({ isMfaEnabled: false }) } as never
         },
-        { userId: USER_ID, orgId: "org-1", actorEmail: "", accountId: ACCOUNT_ID, mfaSessionId, tokenVersionId }
+        {
+          userId: USER_ID,
+          orgId: "org-1",
+          actorEmail: "",
+          accountId: ACCOUNT_ID,
+          mfaSessionId,
+          tokenVersionId,
+          allowCliHandoff: true
+        }
       );
 
     const challenge = (await enforce(TOKEN_VERSION).catch((err: unknown) => err)) as BadRequestError;

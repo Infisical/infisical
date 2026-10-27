@@ -23,7 +23,8 @@ export const enforceMfa = async (
     actorEmail,
     accountId,
     mfaSessionId,
-    tokenVersionId
+    tokenVersionId,
+    allowCliHandoff
   }: {
     userId: string;
     orgId: string;
@@ -31,6 +32,7 @@ export const enforceMfa = async (
     accountId: string;
     mfaSessionId?: string;
     tokenVersionId?: string;
+    allowCliHandoff?: boolean;
   }
 ) => {
   if (!mfaSessionId) {
@@ -47,7 +49,7 @@ export const enforceMfa = async (
       accountId,
       mfaMethod,
       tokenVersionId,
-      true
+      allowCliHandoff
     );
 
     if (mfaMethod === MfaMethod.EMAIL && actorEmail) {

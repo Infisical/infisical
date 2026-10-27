@@ -509,7 +509,8 @@ export const pamSessionServiceFactory = ({
           actorEmail,
           accountId: account.id,
           mfaSessionId,
-          tokenVersionId
+          tokenVersionId,
+          allowCliHandoff: accessMethod === PamAccessMethod.Cli
         }
       );
     }
