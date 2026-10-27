@@ -28,7 +28,7 @@ import {
   TQueueSecretScanningSendNotification
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
-import { buildRedisFromConfig, TRedisConfigKeys } from "@app/lib/config/redis";
+import { buildRedisFromConfig, createThrottledRedisErrorLogger, TRedisConfigKeys } from "@app/lib/config/redis";
 import { crypto } from "@app/lib/crypto";
 import { classifyError } from "@app/lib/errors/classify";
 import { logger } from "@app/lib/logger";
@@ -753,6 +753,9 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     Record<QueueName, Worker<TQueueJobTypes[QueueName]["payload"], void, TQueueJobTypes[QueueName]["name"]>>
   > = {};
 
+  // One logger for every worker, so an outage hitting all of them still logs one line per error per window.
+  const workerErrorLogger = createThrottledRedisErrorLogger("queue-workers", "Queue worker error");
+
   // Observable gauge for queue depth. The SDK invokes the callback on each export (every 30s for OTLP
   // push, on each scrape for Prometheus). Iterates only initialized queues in queueContainer; one
   // snapshot covers all ~30 named queues. Failures are swallowed because metrics must never crash the app.
@@ -952,6 +955,10 @@ export const queueServiceFactory = (redisCfg: TRedisConfigKeys): TQueueServiceFa
     worker.on("active", (job) => {
       logger.debug({ queue: name, job: job.name, jobId: job.id }, "Queue job picked up by a worker");
     });
+
+    // The worker's own blocking connection is a duplicate with no listeners, and BullMQ only reports its
+    // errors (and run-loop errors) through this event.
+    worker.on("error", (err) => workerErrorLogger.log(err, undefined, { queue: name }));
 
     workerContainer[name] = worker;
   };
