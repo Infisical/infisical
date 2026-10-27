@@ -11,6 +11,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/stretchr/testify/require"
 )
@@ -468,6 +469,161 @@ func TestSecretReference_CrossProject(t *testing.T) {
 		// Assert
 		require.Equal(t, "from-source", secretmanager.GetSecret(t, target, "dev", "REF").Value,
 			"a license check must never change what an existing reference reads")
+	})
+}
+
+func TestSecretReference_Rewrite(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should rewrite local and nested references in other secrets when the referenced secret is renamed", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateFolder(t, proj, "dev", "/app")
+		secretmanager.CreateSecret(t, proj, "dev", "OLD", "value")
+		secretmanager.CreateSecret(t, proj, "dev", "LOCAL", "x-${OLD}")
+		secretmanager.CreateSecret(t, proj, "dev", "NESTED", "y-${dev.OLD}", secretmanager.WithPath("/app"))
+
+		// Action
+		res, err := tn.Admin.API.UpdateSecretV4WithResponse(t.Context(), "OLD",
+			api.UpdateSecretV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", NewSecretName: new("NEW")})
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "renaming returned %s", apierr.Body(res.Body))
+
+		// Assert
+		require.Equal(t, "x-${NEW}", rawValue(t, proj, "dev", "/", "LOCAL"))
+		require.Equal(t, "y-${dev.NEW}", rawValue(t, proj, "dev", "/app", "NESTED"))
+		require.Equal(t, "y-value", secretmanager.GetSecret(t, proj, "dev", "NESTED", secretmanager.WithPath("/app")).Value)
+	})
+
+	t.Run("should rewrite a local reference into a nested one when the referenced secret is moved", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateFolder(t, proj, "prod", "/app")
+		moved := secretmanager.CreateSecret(t, proj, "dev", "DB_PASS", "value")
+		secretmanager.CreateSecret(t, proj, "dev", "DSN", "user:${DB_PASS}")
+
+		// Action
+		res, err := tn.Admin.API.MoveSecretsV4WithResponse(t.Context(), api.MoveSecretsV4JSONRequestBody{
+			ProjectId:              proj.ID,
+			SourceEnvironment:      "dev",
+			DestinationEnvironment: "prod",
+			DestinationSecretPath:  new("/app"),
+			SecretIds:              []string{moved.ID},
+		})
+		require.NoError(t, err)
+		require.NotNilf(t, res.JSON200, "moving returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+
+		// Assert
+		require.Equal(t, "user:${prod.app.DB_PASS}", rawValue(t, proj, "dev", "/", "DSN"))
+		require.Equal(t, "user:value", secretmanager.GetSecret(t, proj, "dev", "DSN").Value)
+	})
+
+	t.Run("should keep a reference unchanged and unresolved when the folder it names is renamed", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, "a folder rename does not rewrite references today, unlike a secret rename or move")
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateFolder(t, proj, "dev", "/app")
+		secretmanager.CreateSecret(t, proj, "dev", "KEY", "value", secretmanager.WithPath("/app"))
+		secretmanager.CreateSecret(t, proj, "dev", "REF", "${dev.app.KEY}")
+
+		// Action
+		res, err := tn.Admin.API.UpdateSecretFolderWithResponse(t.Context(), folderID(t, proj, "dev", "/", "app"),
+			api.UpdateSecretFolderJSONRequestBody{ProjectId: proj.ID, Environment: "dev", Path: new("/"), Name: "svc"})
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "renaming the folder returned %s", apierr.Body(res.Body))
+
+		// Assert
+		require.Equal(t, "${dev.app.KEY}", rawValue(t, proj, "dev", "/", "REF"))
+		require.Equal(t, "${dev.app.KEY}", secretmanager.GetSecret(t, proj, "dev", "REF").Value)
+		require.Equal(t, "value", secretmanager.GetSecret(t, proj, "dev", "KEY", secretmanager.WithPath("/svc")).Value)
+	})
+}
+
+func TestSecretReference_Tree(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should return the expanded value and each referenced secret as a child", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateSecret(t, proj, "dev", "HOST", "db")
+		secretmanager.CreateSecret(t, proj, "prod", "PORT", "5432")
+		secretmanager.CreateSecret(t, proj, "dev", "URL", "${HOST}:${prod.PORT}")
+
+		// Action
+		res, err := tn.Admin.API.GetSecretReferenceTreeV4WithResponse(t.Context(), "URL",
+			&api.GetSecretReferenceTreeV4Params{ProjectId: proj.ID, Environment: "dev"})
+
+		// Assert
+		require.NoError(t, err)
+		require.NotNilf(t, res.JSON200, "reading the tree returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+		require.NotNil(t, res.JSON200.Value)
+		require.Equal(t, "db:5432", *res.JSON200.Value)
+		require.ElementsMatch(t, []string{"dev:/:HOST", "prod:/:PORT"}, childLocations(decodeReferenceTree(t, res.Body)))
+	})
+
+	t.Run("should refuse the reference tree and reveal nothing when the actor cannot read values", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		describer := describeOnlyUser(t, proj, "describer")
+		secretmanager.CreateSecret(t, proj, "dev", "HOST", "db-host")
+		secretmanager.CreateSecret(t, proj, "dev", "URL", "${HOST}")
+
+		// Action
+		res, err := describer.API.GetSecretReferenceTreeV4WithResponse(t.Context(), "URL",
+			&api.GetSecretReferenceTreeV4Params{ProjectId: proj.ID, Environment: "dev"})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusForbidden, res.StatusCode())
+		require.Equal(t,
+			"Unable to get secret reference tree for secret with key 'URL', because you don't have permission to view secret value.",
+			res.JSON403.Message)
+		require.NotContains(t, string(res.Body), "db-host")
+	})
+
+	t.Run("should list the secrets that reference a secret, locally, from another folder and through a chain", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateFolder(t, proj, "dev", "/app")
+		secretmanager.CreateSecret(t, proj, "dev", "BASE", "value")
+		secretmanager.CreateSecret(t, proj, "dev", "UNRELATED", "value")
+		secretmanager.CreateSecret(t, proj, "dev", "LOCAL", "${BASE}")
+		secretmanager.CreateSecret(t, proj, "dev", "CHAINED", "${LOCAL}")
+		secretmanager.CreateSecret(t, proj, "dev", "NESTED", "${dev.BASE}", secretmanager.WithPath("/app"))
+
+		// Action
+		res, err := tn.Admin.API.GetSecretReferencesV4WithResponse(t.Context(), "BASE",
+			&api.GetSecretReferencesV4Params{ProjectId: proj.ID, Environment: "dev"})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "reading dependents returned %s", apierr.Body(res.Body))
+		tree := decodeReferenceTree(t, res.Body)
+		require.ElementsMatch(t, []string{"dev:/:LOCAL", "dev:/app:NESTED"}, childLocations(tree))
+		for _, child := range tree.Children {
+			if child.Key == "LOCAL" {
+				require.Equal(t, []string{"dev:/:CHAINED"}, childLocations(child))
+			}
+		}
 	})
 }
 
