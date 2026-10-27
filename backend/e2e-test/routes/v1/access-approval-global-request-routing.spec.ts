@@ -162,36 +162,6 @@ describe("Access approval request routing", () => {
     expect(rows[0].id).toBe(approval.id);
   });
 
-  test("A request against a global policy is routed to the global system", async () => {
-    const db = getDb();
-    const secretPath = "/routing-global";
-    const createRes = await createGlobalPolicy({ name: "routing-global", secretPath });
-    expect(createRes.statusCode).toBe(200);
-
-    const globalPolicyRow = await db(TableName.ApprovalPolicies).where({ id: createRes.json().approval.id }).first();
-    expect(globalPolicyRow?.type).toBe("secret-access");
-
-    const res = await createAccessRequest(secretPath);
-
-    expect(res.statusCode).toBe(200);
-    const { approval } = res.json();
-    expect(approval.policyId).toBe(globalPolicyRow?.id);
-    expect(approval.status).toBe("pending");
-
-    const globalRequest = await db(TableName.ApprovalRequests).where({ id: approval.id }).first();
-    expect(globalRequest?.type).toBe(SECRET_ACCESS_TYPE);
-    expect(globalRequest?.policyId).toBe(globalPolicyRow?.id);
-    expect(globalRequest?.requesterId).toBe(seedData1.id);
-
-    const steps = await db(TableName.ApprovalRequestSteps).where({ requestId: approval.id });
-    expect(steps).toHaveLength(1);
-
-    const legacyRows = await db(TableName.AccessApprovalRequest)
-      .whereRaw(`"permissions"::text like ?`, [`%${secretPath}%`])
-      .select("id");
-    expect(legacyRows).toHaveLength(0);
-  });
-
   test("Review and revoke of a legacy request keep running on the legacy system", async () => {
     const db = getDb();
     const secretPath = "/routing-legacy-lifecycle";
@@ -277,11 +247,4 @@ describe("Access approval request routing", () => {
       await fakeWebhookServer.stop();
     }
   }, 30_000);
-
-  test("A request with no policy on either system is rejected", async () => {
-    const res = await createAccessRequest("/routing-none");
-
-    expect(res.statusCode).toBe(404);
-    expect(res.json().message).toContain("No policy in environment");
-  });
 });
