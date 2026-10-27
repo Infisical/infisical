@@ -113,10 +113,9 @@ const awsRegionFromAuthorizationHeader = (authorizationHeader: string): string |
   return credentialParts && credentialParts.length >= 3 ? credentialParts[2] : null;
 };
 
-// Left to the HTTP client, which derives them from the STS URL and the body it sends; forwarding them lets the
-// caller pick the server (Host) or leave bytes on a pooled connection for the next request (framing headers)
+// Left to the HTTP client, which derives them from the body it sends; forwarding them lets the caller leave bytes on a
+// pooled connection that the next request on it would pick up
 const STRIPPED_STS_HEADERS = new Set([
-  "host",
   "content-length",
   "transfer-encoding",
   "connection",
@@ -127,6 +126,9 @@ const STRIPPED_STS_HEADERS = new Set([
   "upgrade",
   "expect"
 ]);
+
+const GLOBAL_STS_HOST = "sts.amazonaws.com";
+const GLOBAL_STS_SIGNING_REGION = "us-east-1";
 
 // The caller's input is replayed to STS and the answer is trusted, so it is narrowed to the one request STS must answer
 export const parseSignedGetCallerIdentityRequest = ({
@@ -155,8 +157,17 @@ export const parseSignedGetCallerIdentityRequest = ({
   }
 
   const headers: Record<string, string> = {};
+  let signedHost: string | undefined;
   Object.entries(rawHeaders).forEach(([name, value]) => {
-    const headerName = name.toLowerCase();
+    // The HTTP client trims names too, so " Host " would otherwise slip past the checks below and still be sent
+    const headerName = name.trim().toLowerCase();
+    if (headerName === "host") {
+      if (signedHost !== undefined || typeof value !== "string") {
+        throw new BadRequestError({ message: "Signed STS request has an invalid host header" });
+      }
+      signedHost = value.trim().toLowerCase();
+      return;
+    }
     if (STRIPPED_STS_HEADERS.has(headerName)) return;
     // A second spelling of a name would let the value that is validated differ from the one that is sent
     if (headerName in headers || typeof value !== "string") {
@@ -170,5 +181,16 @@ export const parseSignedGetCallerIdentityRequest = ({
     throw new BadRequestError({ message: "Invalid AWS region" });
   }
 
-  return { url: `https://sts.${region}.amazonaws.com`, headers, body };
+  // SigV4 always signs Host, so the URL is built from the signed value; only the two names STS answers on are allowed
+  const regionalStsHost = `sts.${region}.amazonaws.com`;
+  let stsHost: string;
+  if (signedHost === undefined || signedHost === regionalStsHost) {
+    stsHost = regionalStsHost;
+  } else if (signedHost === GLOBAL_STS_HOST && region === GLOBAL_STS_SIGNING_REGION) {
+    stsHost = GLOBAL_STS_HOST;
+  } else {
+    throw new BadRequestError({ message: "Signed STS request has an invalid host header" });
+  }
+
+  return { url: `https://${stsHost}`, headers, body };
 };

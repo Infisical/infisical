@@ -77,6 +77,47 @@ describe("parseSignedGetCallerIdentityRequest", () => {
     expect(parse({ headers: { ...signedHeaders, "Content-Length": 43 } }).headers).not.toHaveProperty("content-length");
   });
 
+  test("targets the global STS endpoint when the request was signed for it", () => {
+    expect(parse({ headers: { ...signedHeaders, Host: "STS.amazonaws.com" } })).toMatchObject({
+      url: "https://sts.amazonaws.com"
+    });
+  });
+
+  test("rejects the global STS host signed for a region other than us-east-1", () => {
+    expect(() =>
+      parse({ headers: { Authorization: authorizationFor("eu-west-1"), Host: "sts.amazonaws.com" } })
+    ).toThrow("invalid host header");
+  });
+
+  test.each([
+    "attacker-bucket.s3.amazonaws.com",
+    "sts.us-west-2.amazonaws.com",
+    "sts.us-east-1.amazonaws.com.evil.com",
+    "sts.us-east-1.amazonaws.com:443",
+    ""
+  ])("rejects host %j", (host) => {
+    expect(() => parse({ headers: { ...signedHeaders, Host: host } })).toThrow("invalid host header");
+  });
+
+  test("rejects a second spelling or a non-string host", () => {
+    expect(() => parse({ headers: { ...signedHeaders, host: "attacker-bucket.s3.amazonaws.com" } })).toThrow(
+      "invalid host header"
+    );
+    expect(() => parse({ headers: { ...signedHeaders, Host: null } })).toThrow("invalid host header");
+  });
+
+  test("normalizes space-padded header names the way the HTTP client does", () => {
+    expect(() => parse({ headers: { ...signedHeaders, " Host ": "attacker-bucket.s3.amazonaws.com" } })).toThrow(
+      "invalid host header"
+    );
+    expect(() => parse({ headers: { ...signedHeaders, " authorization": authorizationFor("us-west-2") } })).toThrow(
+      "invalid authorization header"
+    );
+    expect(parse({ headers: { ...signedHeaders, " Content-Length ": "0" } }).headers).not.toHaveProperty(
+      " content-length "
+    );
+  });
+
   test.each(["us-east-1", "us-gov-west-1", "eu-central-2", "ap-southeast-4"])("accepts region %s", (region) => {
     expect(parse({ headers: { Authorization: authorizationFor(region) } }).url).toBe(
       `https://sts.${region}.amazonaws.com`
