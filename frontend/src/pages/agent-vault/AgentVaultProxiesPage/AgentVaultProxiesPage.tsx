@@ -310,7 +310,21 @@ export const AgentVaultProxiesPage = () => {
               {!isPending &&
                 displayed.map((proxy) => (
                   <TableRow key={proxy.id}>
-                    <TableCell>{proxy.name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2.5">
+                        <span className="truncate" title={proxy.name}>
+                          {proxy.name}
+                        </span>
+                        {proxy.description && (
+                          <span
+                            className="min-w-0 flex-1 truncate text-sm text-muted"
+                            title={proxy.description}
+                          >
+                            {proxy.description}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <ProxyStatusBadge proxy={proxy} />
                     </TableCell>

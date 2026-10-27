@@ -2,10 +2,6 @@ import { z } from "zod";
 
 import { AgentVaultAccessBundlesSchema } from "@app/db/schemas";
 import { auditActorFields } from "@app/ee/services/agent-vault/agent-vault-actor-name-fns";
-import {
-  AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
-  AGENT_VAULT_NO_CONTROL_CHARS_RE
-} from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
 import { AgentVaultCredentialType } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { parseHostPatterns } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
@@ -27,6 +23,7 @@ import {
   AgentVaultCredentialUpdateSchema,
   AgentVaultCustomHeadersInputSchema,
   AgentVaultCustomHeadersUpdateSchema,
+  AgentVaultDescriptionSchema,
   AgentVaultHostPatternSchema,
   agentVaultListQuery,
   AgentVaultMemberIdsSchema,
@@ -41,12 +38,7 @@ import {
   AgentVaultSubstitutionsUpdateSchema
 } from "./agent-vault-schemas";
 
-const AccessBundleDescriptionSchema = z
-  .string()
-  .trim()
-  .max(256, "A description can be at most 256 characters")
-  .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-  .describe(AGENT_VAULT.ACCESS_BUNDLE.description);
+const AccessBundleDescriptionSchema = AgentVaultDescriptionSchema.describe(AGENT_VAULT.ACCESS_BUNDLE.description);
 
 const AccessBundleSchema = AgentVaultAccessBundlesSchema.pick({
   id: true,

@@ -6493,6 +6493,7 @@ interface AgentVaultProxyUpdateEvent {
   metadata: {
     proxyId: string;
     name?: string;
+    description?: string | null;
     trafficPolicy?: string;
     allowedHosts?: string | null;
     pollInterval?: number;

@@ -62,7 +62,12 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
 
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query.where({ projectId });
-        if (search) void query.whereILike("name", `%${sanitizeSqlLikeString(search)}%`);
+        if (search) {
+          const term = `%${sanitizeSqlLikeString(search)}%`;
+          void query.where((qb) => {
+            void qb.whereILike("name", term).orWhereILike("description", term);
+          });
+        }
         return query;
       };
 

@@ -4306,6 +4306,25 @@ describe("Agent Vault V1 Router", async () => {
       expect(proxy.pollInterval).toBe(60);
     });
 
+    test("a proxy's description is stored, searchable, and can be cleared", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", {
+        name: "described-proxy",
+        description: "Egress for staging"
+      });
+      expect(created.statusCode).toBe(200);
+      const { proxy } = JSON.parse(created.payload) as { proxy: { id: string; description: string | null } };
+      expect(proxy.description).toBe("Egress for staging");
+
+      const listed = await inject("GET", "/api/v1/agent-vault/proxies?search=staging");
+      expect(listed.statusCode).toBe(200);
+      const { proxies } = JSON.parse(listed.payload) as { proxies: { id: string }[] };
+      expect(proxies.map((p) => p.id)).toContain(proxy.id);
+
+      const cleared = await inject("PATCH", `/api/v1/agent-vault/proxies/${proxy.id}`, { description: null });
+      expect(cleared.statusCode).toBe(200);
+      expect((JSON.parse(cleared.payload) as { proxy: { description: string | null } }).proxy.description).toBeNull();
+    });
+
     test("create and rotate both hand back the proxy token at the top level", async () => {
       const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "flat-token-shape" });
       expect(created.statusCode).toBe(200);
