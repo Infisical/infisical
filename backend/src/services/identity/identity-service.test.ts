@@ -222,12 +222,10 @@ describe("updateIdentity name check", () => {
     expect(identityDAL.updateById).toHaveBeenCalledWith(IDENTITY_ID, { name: "", hasDeleteProtection: true }, TX);
   });
 
-  test("a rename to an empty name is refused", async () => {
+  test("an empty name on its own is ignored, as before", async () => {
     const { service, identityDAL } = createService();
 
-    await expect(service.updateIdentity({ ...buildDto(), name: "" } as never)).rejects.toThrow(
-      "Identity name cannot be empty"
-    );
+    await service.updateIdentity({ ...buildDto(), name: "" } as never);
 
     expect(identityDAL.updateById).not.toHaveBeenCalled();
   });

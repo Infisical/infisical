@@ -47,7 +47,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        name: auditSafeText(z.string().trim().min(1).max(255)).describe(IDENTITIES.CREATE.name),
+        name: auditSafeText(z.string().trim().max(255)).describe(IDENTITIES.CREATE.name),
         organizationId: z.string().trim().describe(IDENTITIES.CREATE.organizationId),
         role: z.string().trim().min(1).default(OrgMembershipRole.NoAccess).describe(IDENTITIES.CREATE.role),
         hasDeleteProtection: z.boolean().default(false).describe(IDENTITIES.CREATE.hasDeleteProtection),

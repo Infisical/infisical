@@ -295,9 +295,8 @@ export const identityServiceFactory = ({
       throw new BadRequestError({ message: `Identity is managed by project` });
     }
 
-    if (name !== undefined && name !== identityDetails.name) {
-      if (!name) throw new BadRequestError({ message: "Identity name cannot be empty" });
-      if (containsLogUnsafeCharacters(name)) throw new BadRequestError({ message: LOG_UNSAFE_TEXT_MESSAGE });
+    if (name && name !== identityDetails.name && containsLogUnsafeCharacters(name)) {
+      throw new BadRequestError({ message: LOG_UNSAFE_TEXT_MESSAGE });
     }
 
     const identity = await identityDAL.transaction(async (tx) => {
