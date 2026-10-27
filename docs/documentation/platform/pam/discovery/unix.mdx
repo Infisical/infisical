@@ -4,85 +4,81 @@ sidebarTitle: "Linux/Unix"
 description: "Scan Linux and Unix hosts over SSH for local accounts and import them into PAM."
 ---
 
-Linux/Unix discovery scans a set of Linux and Unix hosts over SSH, enumerates their local accounts, stages them for review, and lets you import them into PAM as [SSH accounts](/documentation/platform/pam/accounts/ssh). Because there is no central directory to read from, you point a source at the hosts to scan and the [SSH accounts](/documentation/platform/pam/accounts/ssh) to scan with.
+Linux/Unix discovery finds the local accounts on your Linux and Unix hosts, so you can import them into PAM as [SSH accounts](/documentation/platform/pam/accounts/ssh). For how discovery works across every source type, see [Discovery](/documentation/platform/pam/discovery/overview).
 
-All scan traffic is tunneled through an Infisical [Gateway](/documentation/platform/gateways/overview).
+You give the source a list of hosts and one or more SSH accounts to sign in with. Infisical connects to each host over SSH through a [Gateway](/documentation/platform/gateways/overview).
 
-## How it works
+<Accordion title="How a scan works">
+  1. Infisical expands each CIDR range into its hosts
+  2. For each host, Infisical first tries the SSH account whose host matches, then tries the other accounts until one signs in
+  3. Infisical reads the host's accounts from `/etc/passwd` and stages each account that has a login shell as an SSH account for that host
 
-A Linux/Unix scan connects entirely through the Gateway:
-
-1. Each **CIDR range** is expanded into a list of target hosts; individual IPs and hostnames are used as-is (hostnames are resolved by the gateway in the target network).
-2. For each host, discovery picks a credential account: it first tries an account whose stored host matches the target, otherwise it tries each account in turn until one authenticates.
-3. It reads the host's local accounts from `/etc/passwd` (via `getent passwd`) over SSH.
-4. Each login-capable account is staged as an **SSH** account scoped to that host. `root` on two hosts becomes two separate staged accounts.
-
-Hosts that no credential can reach or authenticate to are reported on the run and skipped; the rest of the scan still completes.
+  If `root` exists on two hosts, Infisical stages two separate accounts. If no account can sign in to a host, the scan reports the host and continues with the others.
+</Accordion>
 
 ## Prerequisites
 
-Before creating a Linux/Unix discovery source, make sure you have:
+- A [Gateway](/documentation/platform/gateways/overview) that can reach the hosts you want to scan
+- One or more [SSH accounts](/documentation/platform/pam/accounts/ssh) that can sign in to those hosts, using a password, a private key, or a certificate
+- The [Product Admin role](/documentation/platform/pam/concepts/access-control#product-membership) in PAM
+- The Connector, Operator, or Admin [role](/documentation/platform/pam/concepts/access-control#folder-and-account-memberships) on those SSH accounts (Operator or Admin for an account that uses a password)
 
-- A [Gateway](/documentation/platform/gateways/overview) (or Gateway pool) with network access to the hosts you want to scan.
-- One or more [SSH accounts](/documentation/platform/pam/accounts/ssh) in PAM to use as **credential accounts**. Discovery authenticates to each host as one of these accounts, using its port. Password, private-key, and certificate (SSH CA) auth are all supported for scanning; certificate accounts are brokered through the gateway and require the target hosts to trust the account's CA.
-- The **Product Admin** role. See [Access Control](/documentation/platform/pam/concepts/access-control).
+To scan many hosts, use one SSH account whose key or certificate authority every host trusts.
 
-<Note>
-A scanning identity is typically provisioned uniformly across the fleet, most reliably as a key-based [SSH account](/documentation/platform/pam/accounts/ssh) whose key is trusted on every host.
-</Note>
+<Warning>
+  If an SSH account uses a password, Infisical sends the password to every host that the source scans, including hosts in a CIDR range that you don't control. Use a key or certificate account for scanning.
+</Warning>
 
-## Creating a source
+## Step 1: Create a source
 
 <Steps>
-  <Step title="Start adding a source">
-    Go to **Privileged Access Manager → Discovery** and select **Add Source**, then choose **Linux/Unix**.
+  <Step>
+    Go to **Privileged Access Management** > **Discovery** and select **Add Source**.
   </Step>
-  <Step title="Configure the source">
+  <Step>
+    Select **Linux/Unix**, then select **Next**.
+  </Step>
+  <Step>
+    Configure the source:
+
     | Field | Description |
     |-------|-------------|
-    | **Name** | A descriptive name (e.g., `corp-servers`) |
-    | **Credential Accounts** | One or more [SSH accounts](/documentation/platform/pam/accounts/ssh) used to authenticate and scan |
-    | **Gateway** | The [Gateway](/documentation/platform/gateways/overview) or Gateway pool that scan traffic tunnels through |
-    | **Scan Schedule** | How often to scan automatically: **Manual**, **Daily**, or **Weekly** |
-    | **Targets** | IP addresses, IPv4 CIDR ranges, or hostnames to scan, one per line or comma-separated. Hostnames are resolved by the gateway in the target network |
+    | **Name** | A name for the source, such as `corp-servers` |
+    | **Credential Accounts** | The SSH accounts to sign in to the hosts with |
+    | **Gateway** | The Gateway or Gateway pool to connect through |
+    | **Scan Schedule** | **Manual**, **Daily**, or **Weekly** (see [scan schedules](/documentation/platform/pam/discovery/overview#scan-schedules)) |
+    | **Targets** | IP addresses, IPv4 CIDR ranges, or hostnames to scan, one per line or separated by commas (the Gateway resolves hostnames) |
+
+    Infisical connects to each host on the port of the SSH account it signs in with.
   </Step>
-  <Step title="Save">
-    Select **Add Source**. The source appears in the Discovery table.
+  <Step>
+    Select **Add Source**.
   </Step>
 </Steps>
 
-## Account filtering
+## Step 2: Run a scan
 
-Discovery surfaces only accounts that can be logged into. Because it reads only `/etc/passwd`, login-capability is inferred from each account's shell: accounts with a real login shell are kept (regular users, `root`, and service accounts such as `postgres`), while accounts with a `nologin`/`false` (or similar non-interactive) shell are dropped. This keeps daemon and system accounts that can never open a session out of the results.
+On the **Discovery Sources** table, select the options menu on the source's row, then select **Scan Now**. A source can run one scan at a time.
 
-## Running a scan
+The scan stages only accounts that can sign in. It skips accounts whose shell is `nologin`, `false`, or another shell that doesn't allow a login, which leaves out most system and daemon accounts.
 
-Trigger a scan manually with **Scan Now** from the source's row menu or its detail panel. Scans run in the background, and a source can only have one scan running at a time.
+## Step 3: Import accounts
 
-If the source is on a **Daily** or **Weekly** schedule, Infisical also scans it automatically when its interval has elapsed. **Manual** sources are only scanned when you trigger them.
+<Steps>
+  <Step>
+    On the **Discovery Sources** table, select the source.
+  </Step>
+  <Step>
+    On the **Staged Accounts** tab, select the accounts you want, then select **Import Accounts**.
+  </Step>
+  <Step>
+    Select a **Destination Folder** and an **SSH Template**, then select **Import**.
+  </Step>
+  <Step>
+    Go to **Privileged Access Management** > **Accounts**. For each imported account, open the options menu on its row, select **Configure**, and enter its credential on the **Configuration** tab. The scan doesn't read credentials, so you can't connect to an imported account until you enter its credential.
+  </Step>
+</Steps>
 
-## Importing accounts
-
-From the **Staged Accounts** tab, select the accounts you want and select **Import Accounts**. Then choose:
-
-| Field | Description |
-|-------|-------------|
-| **Destination Folder** | The [folder](/documentation/platform/pam/folders/overview) to import the accounts into |
-| **Template** | An [SSH account template](/documentation/platform/pam/templates/overview) to apply |
-
-Once imported, the accounts become regular PAM SSH accounts in the chosen folder and inherit their template's rules.
-
-<Warning>
-Imported accounts arrive without a credential because discovery finds accounts with a username but no password. Open each imported account and add a credential before connecting.
-</Warning>
-
-## Next steps
-
-<CardGroup cols={2}>
-  <Card title="Discovery Overview" icon="radar" href="/documentation/platform/pam/discovery/overview">
-    Understand staging, importing, and schedules.
-  </Card>
-  <Card title="SSH Accounts" icon="terminal" href="/documentation/platform/pam/accounts/ssh">
-    Learn about the account type used to authenticate scans.
-  </Card>
-</CardGroup>
+<Check>
+  Your Unix accounts are in PAM. Anyone with access to the destination folder can launch sessions on them, and each scan of the source stages any new accounts it finds.
+</Check>

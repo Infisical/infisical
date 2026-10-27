@@ -417,8 +417,13 @@ const SettingsTab = ({
   const typeName = accountTypeMap[template.type]?.name ?? template.type;
   const isRotatableTemplateType = isRotatablePamAccountType(template.type);
   const requiresApproval = policies[PamPolicyType.RequiresApproval] === true;
+  // These only change how an approval is reached, so they follow Require Approval
+  const approvalDependentPolicies = [
+    PamPolicyType.AllowAutoApproval,
+    PamPolicyType.AllowBreakGlass
+  ];
   const applicablePolicies = (accountTypeMap[template.type]?.applicablePolicies ?? []).filter(
-    (p) => POLICY_EDITORS[p.key] && (p.key !== PamPolicyType.AllowBreakGlass || requiresApproval)
+    (p) => POLICY_EDITORS[p.key] && (!approvalDependentPolicies.includes(p.key) || requiresApproval)
   );
 
   const onSubmit = (data: SettingsForm) => {
@@ -577,7 +582,7 @@ const SettingsTab = ({
                   if (value === null || value === undefined) delete next[p.key];
                   else next[p.key] = value;
                   if (p.key === PamPolicyType.RequiresApproval && value !== true) {
-                    delete next[PamPolicyType.AllowBreakGlass];
+                    approvalDependentPolicies.forEach((key) => delete next[key]);
                   }
                   setValue("policies", next, { shouldDirty: true });
                 }}

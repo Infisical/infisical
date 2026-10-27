@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import { Knex } from "knex";
 
 import { logger } from "@app/lib/logger";
@@ -49,8 +51,9 @@ export const certificateAlertEventEmitterFactory = ({ eventEmitter, projectDAL }
     if (!resolvedOrgId) return;
 
     const event = {
-      eventType,
-      payload: {
+      id: crypto.randomUUID(),
+      type: eventType,
+      data: {
         orgId: resolvedOrgId,
         projectId,
         resourceType: CERT_MANAGER_APPLICATION_RESOURCE_TYPE,
@@ -59,7 +62,7 @@ export const certificateAlertEventEmitterFactory = ({ eventEmitter, projectDAL }
       }
     };
 
-    await eventEmitter.emit(event, tx);
+    await eventEmitter.emit([event], tx);
   };
 
   const emit = (input: TCertificateAlertEventInput, tx: Knex) => $emit(input, tx);

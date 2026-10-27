@@ -580,40 +580,26 @@
             "pages": [
               "documentation/platform/pam/overview",
               {
-                "group": "Privileged access manager",
+                "group": "Get started",
                 "pages": [
-                  {
-                    "group": "Quickstarts",
-                    "pages": [
-                      "documentation/platform/pam/quick-starts/launch-first-session"
-                    ]
-                  },
-                  {
-                    "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/pam/concepts/pam-components",
-                      "documentation/platform/pam/concepts/session-lifecycle",
-                      "documentation/platform/pam/concepts/access-control"
-                    ]
-                  },
-                  {
-                    "group": "Guides",
-                    "pages": [
-                      "documentation/platform/pam/guides/team-access",
-                      "documentation/platform/pam/guides/ssh-certificate-auth"
-                    ]
-                  }
+                  "documentation/platform/pam/quick-starts/launch-first-session",
+                  "documentation/platform/pam/concepts/overview",
+                  "documentation/platform/pam/concepts/session-lifecycle",
+                  "documentation/platform/pam/architecture"
                 ]
               },
               {
-                "group": "Product reference",
+                "group": "Accounts",
                 "pages": [
-                  "documentation/platform/pam/folders/overview",
-                  "documentation/platform/pam/templates/overview",
+                  "documentation/platform/pam/accounts/overview",
+                  "documentation/platform/pam/accounts/add",
+                  "documentation/platform/pam/accounts/connect",
+                  "documentation/platform/pam/accounts/view-credentials",
+                  "documentation/platform/pam/accounts/manage",
                   {
-                    "group": "Accounts",
+                    "group": "Account types",
+                    "root": "documentation/platform/pam/accounts/account-types",
                     "pages": [
-                      "documentation/platform/pam/accounts/overview",
                       "documentation/platform/pam/accounts/postgresql",
                       "documentation/platform/pam/accounts/mysql",
                       "documentation/platform/pam/accounts/mssql",
@@ -622,7 +608,13 @@
                       "documentation/platform/pam/accounts/redis",
                       "documentation/platform/pam/accounts/snowflake",
                       "documentation/platform/pam/accounts/clickhouse",
-                      "documentation/platform/pam/accounts/ssh",
+                      {
+                        "group": "SSH",
+                        "root": "documentation/platform/pam/accounts/ssh",
+                        "pages": [
+                          "documentation/platform/pam/guides/ssh-certificate-auth"
+                        ]
+                      },
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
                       "documentation/platform/pam/accounts/gcp-service-account",
@@ -630,47 +622,64 @@
                       "documentation/platform/pam/accounts/windows",
                       "documentation/platform/pam/accounts/windows-ad"
                     ]
-                  },
+                  }
+                ]
+              },
+              {
+                "group": "Access control",
+                "pages": [
+                  "documentation/platform/pam/concepts/access-control",
+                  "documentation/platform/pam/folders/overview",
+                  "documentation/platform/pam/templates/overview",
                   "documentation/platform/pam/access-requests/overview",
+                  "documentation/platform/pam/access-requests/auto-approval",
+                  "documentation/platform/pam/access-requests/break-glass"
+                ]
+              },
+              {
+                "group": "AI agents",
+                "pages": [
                   "documentation/platform/pam/ai-agents/overview",
-                  {
-                    "group": "Credential rotation",
-                    "pages": [
-                      "documentation/platform/pam/product-reference/credential-rotation/overview",
-                      "documentation/platform/pam/product-reference/credential-rotation/postgresql",
-                      "documentation/platform/pam/product-reference/credential-rotation/mysql",
-                      "documentation/platform/pam/product-reference/credential-rotation/mssql",
-                      "documentation/platform/pam/product-reference/credential-rotation/oracledb",
-                      "documentation/platform/pam/product-reference/credential-rotation/windows"
-                    ]
-                  },
-                  "documentation/platform/pam/product-reference/credential-health/overview",
-                  {
-                    "group": "Discovery",
-                    "pages": [
-                      "documentation/platform/pam/discovery/overview",
-                      "documentation/platform/pam/discovery/active-directory",
-                      "documentation/platform/pam/discovery/unix",
-                      "documentation/platform/pam/discovery/postgres",
-                      "documentation/platform/pam/discovery/mssql"
-                    ]
-                  },
-                  {
-                    "group": "Dependencies",
-                    "pages": [
-                      "documentation/platform/pam/dependencies/overview"
-                    ]
-                  },
+                  "documentation/platform/pam/ai-agents/run",
+                  "documentation/platform/pam/ai-agents/instructions",
+                  "documentation/platform/pam/ai-agents/unattended",
+                  "documentation/platform/pam/ai-agents/review"
+                ]
+              },
+              {
+                "group": "Credential rotation",
+                "pages": [
+                  "documentation/platform/pam/credential-rotation/overview",
+                  "documentation/platform/pam/credential-rotation/postgresql",
+                  "documentation/platform/pam/credential-rotation/mysql",
+                  "documentation/platform/pam/credential-rotation/mssql",
+                  "documentation/platform/pam/credential-rotation/oracledb",
+                  "documentation/platform/pam/credential-rotation/windows"
+                ]
+              },
+              {
+                "group": "Monitoring",
+                "pages": [
                   {
                     "group": "Sessions",
+                    "root": "documentation/platform/pam/sessions/overview",
                     "pages": [
-                      "documentation/platform/pam/sessions/overview",
                       "documentation/platform/pam/sessions/session-recording",
                       "documentation/platform/pam/sessions/external-storage"
                     ]
                   },
                   "documentation/platform/pam/auditing",
-                  "documentation/platform/pam/architecture"
+                  "documentation/platform/pam/credential-health/overview",
+                  {
+                    "group": "Discovery",
+                    "root": "documentation/platform/pam/discovery/overview",
+                    "pages": [
+                      "documentation/platform/pam/discovery/active-directory",
+                      "documentation/platform/pam/discovery/unix",
+                      "documentation/platform/pam/discovery/postgres",
+                      "documentation/platform/pam/discovery/mssql"
+                    ]
+                  }
                 ]
               }
             ]
@@ -711,6 +720,7 @@
                     ]
                   },
                   "documentation/platform/agent-vault/guides/custom-agent",
+                  "documentation/platform/agent-vault/guides/modal",
                   "documentation/platform/agent-vault/guides/daytona"
                 ]
               },
@@ -718,7 +728,14 @@
                 "group": "Concepts",
                 "pages": [
                   "documentation/platform/agent-vault/access-bundles",
-                  "documentation/platform/agent-vault/services",
+                  {
+                    "group": "Services",
+                    "root": "documentation/platform/agent-vault/services",
+                    "pages": [
+                      "documentation/platform/agent-vault/http-apis",
+                      "documentation/platform/agent-vault/mcp-servers"
+                    ]
+                  },
                   "documentation/platform/agent-vault/variables",
                   {
                     "group": "Sessions",
@@ -1070,6 +1087,7 @@
                   "integrations/app-connections/heroku",
                   "integrations/app-connections/hpe-ilo",
                   "integrations/app-connections/humanitec",
+                  "integrations/app-connections/jira",
                   "integrations/app-connections/keeper",
                   "integrations/app-connections/kemp-loadmaster",
                   "integrations/app-connections/external-infisical",
@@ -1496,7 +1514,6 @@
                       "api-reference/endpoints/projects/get-project",
                       "api-reference/endpoints/projects/list-projects",
                       "api-reference/endpoints/projects/update-project",
-                      "api-reference/endpoints/projects/secret-snapshots",
                       {
                         "group": "Legacy",
                         "pages": [
@@ -2109,6 +2126,18 @@
                           "api-reference/endpoints/app-connections/external-infisical/create",
                           "api-reference/endpoints/app-connections/external-infisical/update",
                           "api-reference/endpoints/app-connections/external-infisical/delete"
+                        ]
+                      },
+                      {
+                        "group": "Jira",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/jira/list",
+                          "api-reference/endpoints/app-connections/jira/available",
+                          "api-reference/endpoints/app-connections/jira/get-by-id",
+                          "api-reference/endpoints/app-connections/jira/get-by-name",
+                          "api-reference/endpoints/app-connections/jira/create",
+                          "api-reference/endpoints/app-connections/jira/update",
+                          "api-reference/endpoints/app-connections/jira/delete"
                         ]
                       },
                       {
@@ -3350,9 +3379,7 @@
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/create",
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/update",
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/delete",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/import-secrets",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/remove-secrets"
+                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets"
                         ]
                       },
                       {
@@ -4498,7 +4525,9 @@
                     "pages": [
                       "api-reference/endpoints/agent-vault-services/create",
                       "api-reference/endpoints/agent-vault-services/update",
-                      "api-reference/endpoints/agent-vault-services/delete"
+                      "api-reference/endpoints/agent-vault-services/delete",
+                      "api-reference/endpoints/agent-vault-services/set-personal-values",
+                      "api-reference/endpoints/agent-vault-services/delete-personal-values"
                     ]
                   },
                   {
@@ -5230,7 +5259,35 @@
     },
     {
       "source": "/documentation/platform/pam/product-reference/credential-rotation",
-      "destination": "/documentation/platform/pam/product-reference/credential-rotation/overview"
+      "destination": "/documentation/platform/pam/credential-rotation/overview"
+    },
+    {
+      "source": "/documentation/platform/pam/product-reference/credential-rotation/:slug*",
+      "destination": "/documentation/platform/pam/credential-rotation/:slug*"
+    },
+    {
+      "source": "/documentation/platform/pam/product-reference/credential-health/overview",
+      "destination": "/documentation/platform/pam/credential-health/overview"
+    },
+    {
+      "source": "/documentation/platform/pam/concepts/pam-components",
+      "destination": "/documentation/platform/pam/concepts/overview"
+    },
+    {
+      "source": "/documentation/platform/pam/guides/team-access",
+      "destination": "/documentation/platform/pam/quick-starts/launch-first-session"
+    },
+    {
+      "source": "/documentation/platform/pam/ai-agents/sandbox",
+      "destination": "/documentation/platform/pam/ai-agents/run#sandbox"
+    },
+    {
+      "source": "/documentation/platform/pam/dependencies/overview",
+      "destination": "/documentation/platform/pam/credential-rotation/windows#dependencies"
+    },
+    {
+      "source": "/documentation/platform/pam/recording-storage",
+      "destination": "/documentation/platform/pam/sessions/external-storage"
     },
     {
       "source": "/documentation/platform/pki/guides/applications/k8s-cert-manager",

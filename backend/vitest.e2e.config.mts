@@ -105,6 +105,11 @@ export default defineConfig({
         find: /^@app\/services\/event-outbox\/event-outbox-queue$/,
         replacement: path.resolve(__dirname, "./e2e-test/fakes/event-outbox-queue")
       },
+      // Adds a consumer that records the secret events so specs can read them.
+      {
+        find: /^@app\/services\/event-outbox\/event-outbox-registry$/,
+        replacement: path.resolve(__dirname, "./e2e-test/fakes/event-outbox-registry")
+      },
       // Only audit-log-stream-outbox-service.ts imports this specifier.
       {
         find: "./audit-log-stream-outbox-constants",

@@ -4,7 +4,7 @@ import { GlobeIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { cn } from "@app/components/v3/utils";
-import { findTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
+import { findAnyTemplateForHostPattern } from "@app/helpers/agentVaultTemplates";
 
 type TServiceIcon = {
   label: string;
@@ -21,7 +21,7 @@ const labelOf = (pattern: string) => {
 };
 
 const iconFromHostPattern = (hostPattern: string): TServiceIcon => {
-  const template = findTemplateForHostPattern(hostPattern);
+  const template = findAnyTemplateForHostPattern(hostPattern);
   return { label: template?.name ?? labelOf(hostPattern), image: template?.image };
 };
 

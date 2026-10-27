@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
@@ -15,6 +14,7 @@ import {
 import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Alert,
@@ -379,10 +379,8 @@ export const MemberDetailsByIDPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={t("page-titles.user")} />
+      <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         passThrough
         renderGuardBanner

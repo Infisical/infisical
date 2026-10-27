@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
 import { format } from "date-fns";
 import { MoreHorizontal, Plus, Radar, Search, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Button,
@@ -98,9 +98,7 @@ export const PamDiscoveryPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Discovery</title>
-      </Helmet>
+      <PageTitle title="Discovery" />
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.PAM}

@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { Link, linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -20,6 +18,11 @@ import {
 
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
+import {
+  useAgentVaultSetupProgress,
+  useOpenAgentVaultSetupStep
+} from "@app/components/agent-vault/SetupChecklist";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
   AlertAction,
@@ -85,12 +88,14 @@ import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums
 import { TAgentVaultMintedSession, TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSettingsPage/components/SessionLogReadAccessAlert";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
+import { SampleSessionSheet, SampleSessionTable } from "./components/SampleSessionSheet";
 import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
@@ -103,7 +108,6 @@ const STATUS_OPTIONS = [
 ];
 
 export const AgentVaultSessionsPage = () => {
-  const { t } = useTranslation();
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
@@ -128,6 +132,7 @@ export const AgentVaultSessionsPage = () => {
   const [sessionToRevoke, setSessionToRevoke] = useState<TAgentVaultSession | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [mintedSession, setMintedSession] = useState<TAgentVaultMintedSession | null>(null);
+  const [isSampleOpen, setIsSampleOpen] = useState(false);
   const { sessionId: openSessionId, openSheet } = useAgentVaultSheetState();
 
   const { data, isPending } = useListAgentVaultSessions({
@@ -164,6 +169,23 @@ export const AgentVaultSessionsPage = () => {
   // off the live input would caption a stale result set.
   const isFiltered = Boolean(debouncedSearch.trim()) || statuses.length > 0;
   const hasReachableBundles = (accessBundles?.totalCount ?? 0) > 0;
+  useAgentVaultCreateIntent(() => setIsCreateDialogOpen(true), hasReachableBundles);
+
+  const setupProgress = useAgentVaultSetupProgress();
+  const openSetupStep = useOpenAgentVaultSetupStep(setupProgress);
+  // An admin sees the sample only while the org has no session at all. A member can't list the org's
+  // sessions, so they see it while they have none of their own.
+  const isSampleShown =
+    !isFiltered && (!isAdmin || (setupProgress.isSessionCountLoaded && !setupProgress.hasSession));
+  // Offered only once the next step is known; until then there's nowhere to send the admin.
+  const { nextStep } = setupProgress;
+  const startSetup = nextStep
+    ? () => {
+        setupProgress.restore();
+        setIsSampleOpen(false);
+        openSetupStep(nextStep);
+      }
+    : undefined;
 
   let emptyTitle: string;
   let emptyDescription: string;
@@ -180,11 +202,49 @@ export const AgentVaultSessionsPage = () => {
     emptyDescription = "Create a session to get a token an agent can run with.";
   }
 
+  const emptyState = !isSampleShown ? (
+    <CardContent>
+      <Empty className="border">
+        <EmptyHeader>
+          <EmptyTitle>{emptyTitle}</EmptyTitle>
+          <EmptyDescription>{emptyDescription}</EmptyDescription>
+        </EmptyHeader>
+        {!isFiltered && !hasReachableBundles && isAdmin && (
+          <Button variant="av" asChild>
+            <Link
+              to="/organizations/$orgId/agent-vault/access-bundles"
+              params={{ orgId: currentOrg.id }}
+            >
+              Go to Access Bundles
+            </Link>
+          </Button>
+        )}
+      </Empty>
+    </CardContent>
+  ) : (
+    <>
+      <SampleSessionTable onOpen={() => setIsSampleOpen(true)} />
+      <CardContent className="flex items-center justify-between gap-4">
+        <span className="text-sm text-muted">
+          {emptyDescription} Open the sample to see what a session records.
+        </span>
+        {!hasReachableBundles && isAdmin && (
+          <Button variant="av" size="sm" asChild>
+            <Link
+              to="/organizations/$orgId/agent-vault/access-bundles"
+              params={{ orgId: currentOrg.id }}
+            >
+              Go to Access Bundles
+            </Link>
+          </Button>
+        )}
+      </CardContent>
+    </>
+  );
+
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Sessions" })}</title>
-      </Helmet>
+      <PageTitle title="Sessions" />
       <PageHeader
         scope={ProjectType.AgentVault}
         icon={IdCardIcon}
@@ -347,24 +407,7 @@ export const AgentVaultSessionsPage = () => {
           </CardContent>
 
           {!isPending && sessions.length === 0 ? (
-            <CardContent>
-              <Empty className="border">
-                <EmptyHeader>
-                  <EmptyTitle>{emptyTitle}</EmptyTitle>
-                  <EmptyDescription>{emptyDescription}</EmptyDescription>
-                </EmptyHeader>
-                {!isFiltered && !hasReachableBundles && isAdmin && (
-                  <Button variant="av" asChild>
-                    <Link
-                      to="/organizations/$orgId/agent-vault/access-bundles"
-                      params={{ orgId: currentOrg.id }}
-                    >
-                      Go to Access Bundles
-                    </Link>
-                  </Button>
-                )}
-              </Empty>
-            </CardContent>
+            emptyState
           ) : (
             <Table>
               <TableHeader>
@@ -543,6 +586,12 @@ export const AgentVaultSessionsPage = () => {
         onOpenChange={(isOpen) => {
           if (!isOpen) setSessionToRevoke(null);
         }}
+      />
+
+      <SampleSessionSheet
+        isOpen={isSampleOpen}
+        onOpenChange={setIsSampleOpen}
+        onSetUp={isAdmin ? startSetup : undefined}
       />
 
       <SessionDetailSheet

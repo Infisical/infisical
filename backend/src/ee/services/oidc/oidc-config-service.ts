@@ -41,6 +41,7 @@ import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
@@ -94,7 +95,14 @@ type TOidcConfigServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   orgDAL: Pick<
     TOrgDALFactory,
-    "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "find" | "updateById"
+    | "createMembership"
+    | "updateMembershipById"
+    | "findMembership"
+    | "findOrgById"
+    | "findOne"
+    | "find"
+    | "updateById"
+    | "lockActorsForOrgAccess"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
@@ -104,7 +112,7 @@ type TOidcConfigServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create">;
-  groupDAL: Pick<TGroupDALFactory, "findByOrgId">;
+  groupDAL: Pick<TGroupDALFactory, "findByOrgId" | "findGroupOrgIds">;
   userGroupMembershipDAL: Pick<
     TUserGroupMembershipDALFactory,
     | "find"
@@ -116,6 +124,7 @@ type TOidcConfigServiceFactoryDep = {
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  eventEmitter: TEventEmitter;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -144,6 +153,7 @@ export const oidcConfigServiceFactory = ({
   membershipRoleDAL,
   projectKeyDAL,
   alertChannelRecipientDAL,
+  eventEmitter,
   projectDAL,
   projectBotDAL,
   auditLogService,
@@ -501,10 +511,12 @@ export const oidcConfigServiceFactory = ({
           userDAL,
           userGroupMembershipDAL,
           membershipGroupDAL,
+          groupDAL,
           projectKeyDAL,
           additionalPrivilegeDAL,
           usageMeteringService,
-          alertChannelRecipientDAL
+          alertChannelRecipientDAL,
+          eventEmitter
         });
       }
 

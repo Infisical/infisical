@@ -2,8 +2,6 @@ import { Knex } from "knex";
 import RE2 from "re2";
 import { z } from "zod";
 
-import { TEventOutbox } from "@app/db/schemas";
-
 export enum EventOutboxStatus {
   Pending = "pending",
   Processing = "processing",
@@ -48,21 +46,29 @@ const keySchema = z
     "Must be lowercase and dot-namespaced, e.g. 'pki.certificate.issued'"
   );
 
+// `id` is set when the event is built, so every consumer's row for it shares the same one.
 export const EventInputSchema = z.object({
-  eventType: keySchema,
-  payload: z.record(z.unknown()),
-  idempotencyKey: z.string().trim().min(1).max(MAX_OUTBOX_KEY_LENGTH).optional(),
-  occurredAt: z.date().optional()
+  id: z.string().uuid(),
+  type: keySchema,
+  data: z.record(z.unknown()),
+  time: z.date().optional()
 });
 
 export type TEventInput = z.input<typeof EventInputSchema>;
 
 export type TEventEmitter = {
-  emit: (event: TEventInput, tx?: Knex) => Promise<void>;
+  emit: (events: TEventInput[], tx?: Knex) => Promise<void>;
 };
 
-// What a consumer sees. Lock, attempt and status columns are the outbox's business.
-export type TEvent = Pick<TEventOutbox, "id" | "eventType" | "payload" | "occurredAt">;
+// What a consumer sees: the CloudEvents 1.0 envelope. Lock, attempt and status columns stay inside the outbox.
+export type TEvent<TData = unknown> = {
+  specversion: "1.0";
+  id: string;
+  source: string;
+  type: string;
+  time: string;
+  data: TData;
+};
 
 export enum EventResultStatus {
   Delivered = "delivered",
@@ -70,6 +76,7 @@ export enum EventResultStatus {
   Failed = "failed"
 }
 
+// `id` is the event id, not the outbox row id.
 export type TEventConsumerResult = {
   id: string;
   status: EventResultStatus;
@@ -80,19 +87,19 @@ export type TOutboxFlushKey = {
   consumer: string;
 };
 
-export interface IEventConsumer<TPayload = unknown> {
+export interface IEventConsumer<TData = unknown> {
   // Stored on every row and part of the flush job id, so renaming it orphans in-flight rows.
   name: string;
 
   // Checked at emit. Don't make it `.strict()`: one event can feed several consumers, so each schema
   // has to tolerate fields it doesn't care about.
-  payloadSchema: z.ZodType<TPayload>;
+  dataSchema: z.ZodType<TData>;
 
   // Runs on the request path for every emit, so keep it pure and in-memory. Whether anyone actually
   // wants the event is decided later, in handle().
-  subscribesTo(eventType: string): boolean;
+  subscribesTo(type: string): boolean;
 
-  // Events arrive oldest first by id and one flush runs per consumer at a time, so a batch is ordered
-  // but nothing is promised across flushes. Must return one result per event.
+  // Events arrive in the order they were written and one flush runs per consumer at a time, so a batch
+  // is ordered but nothing is promised across flushes. Must return one result per event.
   handle(events: TEvent[]): Promise<TEventConsumerResult[]>;
 }

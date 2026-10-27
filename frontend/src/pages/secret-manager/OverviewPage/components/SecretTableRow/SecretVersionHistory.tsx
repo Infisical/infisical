@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { subject } from "@casl/ability";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   BanIcon,
@@ -93,8 +93,6 @@ function VersionItem({
   const isCurrentVersion = version.version === currentVersion;
   const canRestore = !isRotatedSecret && canReadValue && !isCurrentVersion;
 
-  const navigate = useNavigate();
-
   const getModifiedByName = (
     userType: string | undefined | null,
     userName: string | null | undefined
@@ -127,53 +125,36 @@ function VersionItem({
     }
   };
 
-  const getLinkToModifyHistoryEntity = (
-    actorId: string,
-    actorType: string,
-    membershipId: string | null = "",
-    groupId: string | null = "",
-    actorName: string | null = ""
-  ) => {
-    switch (actorType) {
-      case ActorType.USER:
-        if (groupId)
-          return `/projects/secret-management/${currentProject.id}/groups/${groupId}?username=${actorName}`;
-        return `/projects/secret-management/${currentProject.id}/members/${membershipId}`;
-      case ActorType.IDENTITY:
-        return `/projects/secret-management/${currentProject.id}/identities/${actorId}`;
-      default:
-        return null;
-    }
-  };
+  const getActorLink = (actor: NonNullable<SecretVersions["actor"]>) => {
+    if (!actor.membershipId || !actor.actorId) return null;
+    const params = { orgId: currentProject.orgId, projectId: currentProject.id };
 
-  const handleViewActor = (
-    actorId: string | undefined | null,
-    actorType: string | undefined | null,
-    membershipId: string | undefined | null,
-    groupId: string | undefined | null,
-    actorName: string | undefined | null
-  ) => {
-    if (!membershipId) {
-      createNotification({
-        type: "info",
-        text: `This ${actorType === ActorType.USER ? "user" : "identity"} is no longer a member of this project.`
+    if (actor.actorType === ActorType.USER && actor.groupId) {
+      return linkOptions({
+        to: "/organizations/$orgId/projects/secret-management/$projectId/groups/$groupId",
+        params: { ...params, groupId: actor.groupId },
+        search: { username: actor.name ?? undefined }
       });
-      return;
     }
-
-    if (actorType && actorId && actorType !== ActorType.PLATFORM) {
-      const redirectLink = getLinkToModifyHistoryEntity(
-        actorId,
-        actorType,
-        membershipId,
-        groupId,
-        actorName
-      );
-      if (redirectLink) {
-        navigate({ to: redirectLink });
-      }
+    if (actor.actorType === ActorType.USER) {
+      return linkOptions({
+        to: "/organizations/$orgId/projects/secret-management/$projectId/members/$membershipId",
+        params: { ...params, membershipId: actor.membershipId }
+      });
     }
+    if (actor.actorType === ActorType.IDENTITY) {
+      return linkOptions({
+        to: "/organizations/$orgId/projects/secret-management/$projectId/identities/$identityId",
+        params: { ...params, identityId: actor.actorId }
+      });
+    }
+    return null;
   };
+
+  const actorLink = version.actor ? getActorLink(version.actor) : null;
+  const actorName = version.actor
+    ? getModifiedByName(version.actor.actorType, version.actor.name)
+    : "";
 
   const handleToggleVisibility = async () => {
     if (!isValueVisible) {
@@ -469,27 +450,13 @@ function VersionItem({
             )}
             <span>
               {version.version === 1 ? "Created" : "Modified"} by{" "}
-              <button
-                type="button"
-                onClick={
-                  version.actor.membershipId
-                    ? () =>
-                        handleViewActor(
-                          version.actor!.actorId,
-                          version.actor!.actorType,
-                          version.actor!.membershipId,
-                          version.actor!.groupId,
-                          version.actor!.name
-                        )
-                    : undefined
-                }
-                className={twMerge(
-                  "font-medium text-accent",
-                  version.actor.membershipId && "cursor-pointer underline"
-                )}
-              >
-                {getModifiedByName(version.actor.actorType, version.actor.name)}
-              </button>
+              {actorLink ? (
+                <Link {...actorLink} className="font-medium text-accent underline">
+                  {actorName}
+                </Link>
+              ) : (
+                <span className="font-medium text-accent">{actorName}</span>
+              )}
             </span>
           </div>
         )}
