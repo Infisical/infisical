@@ -94,8 +94,7 @@ const outgoingRequestRedactPaths = [
   "request.path",
   "*.request.path",
   "*.*.request.path",
-  "*.*.response.config",
-  "*.*.*.response.config"
+  "*.*.*.config"
 ];
 
 // redact until depth of three
@@ -110,6 +109,76 @@ export const loggerRedactPaths = [
   }),
   ...outgoingRequestRedactPaths
 ];
+
+const LOG_WALK_DEPTH = 6;
+
+const isOutboundRequest = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === "object" && ("_redirectable" in value || "_header" in value);
+
+const omitLoggedNodeRequestsFrom = (value: unknown, depth: number, seen: WeakSet<object>): unknown => {
+  if (!value || typeof value !== "object") return value;
+  if (value instanceof Error) return value;
+  if (depth > LOG_WALK_DEPTH) return value;
+  if (seen.has(value)) return value;
+  seen.add(value);
+
+  if (Array.isArray(value)) {
+    let changed = false;
+    const next = value.map((item) => {
+      const visited = omitLoggedNodeRequestsFrom(item, depth + 1, seen);
+      if (visited !== item) changed = true;
+      return visited;
+    });
+    return changed ? next : value;
+  }
+
+  const record = value as Record<string, unknown>;
+  let copy: Record<string, unknown> | undefined;
+  for (const key of Object.keys(record)) {
+    const child = record[key];
+    if (key === "request" && isOutboundRequest(child)) {
+      copy ??= { ...record };
+      delete copy.request;
+    } else if (child && typeof child === "object") {
+      const visited = omitLoggedNodeRequestsFrom(child, depth + 1, seen);
+      if (visited !== child) {
+        copy ??= { ...record };
+        copy[key] = visited;
+      }
+    }
+  }
+  return copy ?? value;
+};
+
+export const omitLoggedNodeRequests = (object: Record<string, unknown>) =>
+  omitLoggedNodeRequestsFrom(object, 0, new WeakSet()) as Record<string, unknown>;
+
+// fast-redact cannot walk the circular ClientRequest, and redacting `request` beside the `_header` paths throws on restore.
+const stripOutboundRequest = (node: Record<string, unknown>, seen: WeakSet<object>): Record<string, unknown> => {
+  if (seen.has(node)) return node;
+  seen.add(node);
+  const next = { ...node };
+  delete next.request;
+  delete next.config;
+  if (next.response && typeof next.response === "object") {
+    const response = next.response as Record<string, unknown>;
+    next.response = {
+      status: response.status,
+      statusText: response.statusText,
+      data: response.data
+    };
+  }
+  if (next.error && typeof next.error === "object") {
+    next.error = stripOutboundRequest(next.error as Record<string, unknown>, seen);
+  }
+  return next;
+};
+
+export const errSerializer = (error: Error) => {
+  const serialized = pino.stdSerializers.err(error);
+  if (!serialized || typeof serialized !== "object") return serialized;
+  return stripOutboundRequest(serialized as Record<string, unknown>, new WeakSet());
+};
 
 const UNKNOWN_REQUEST_ID = "UNKNOWN_REQUEST_ID";
 
@@ -184,7 +253,11 @@ export const initLogger = () => {
           pid: bindings.pid,
           hostname: bindings.hostname
           // node_version: process.version
-        })
+        }),
+        log: omitLoggedNodeRequests
+      },
+      serializers: {
+        err: errSerializer
       },
       redact: loggerRedactPaths
     },

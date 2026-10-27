@@ -6,7 +6,7 @@ import pino from "pino";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createRequestClient } from "../config/request";
-import { loggerRedactPaths } from "./logger";
+import { errSerializer, loggerRedactPaths, omitLoggedNodeRequests } from "./logger";
 
 const BEARER_TOKEN = "eyJhbGciOiJSUzI1NiJ9.bearer-secret-payload.bearer-secret-signature";
 const SIGNED_QUERY = "AccessKeyId=ak-secret-value&Signature=signature-secret-value";
@@ -15,13 +15,16 @@ const REDACTED = "[Redacted]";
 const valueAt = (obj: unknown, path: string) =>
   path.split(".").reduce<unknown>((node, key) => (node as Record<string, unknown> | undefined)?.[key], obj);
 
-// From Node 26, ClientRequest.path is a prototype getter, so the serializer never emits it; older
-// Node versions emit it as an own property, which the redact paths must cover.
-const expectRedactedOrAbsent = (value: unknown) => expect([REDACTED, undefined]).toContain(value);
-
 const createTestLogger = () => {
   const lines: string[] = [];
-  const testLogger = pino({ redact: loggerRedactPaths }, { write: (line: string) => lines.push(line) });
+  const testLogger = pino(
+    {
+      redact: loggerRedactPaths,
+      serializers: { err: errSerializer },
+      formatters: { log: omitLoggedNodeRequests }
+    },
+    { write: (line: string) => lines.push(line) }
+  );
   return {
     testLogger,
     lastLine: () => ({ raw: lines[lines.length - 1], parsed: JSON.parse(lines[lines.length - 1]) as unknown })
@@ -72,14 +75,14 @@ describe("logger redaction of outgoing request internals", () => {
 
     expect(raw).not.toContain(BEARER_TOKEN);
     expect(raw).not.toContain("signature-secret-value");
-    expect(valueAt(parsed, "err.request._header")).toBe(REDACTED);
-    expectRedactedOrAbsent(valueAt(parsed, "err.request.path"));
-    expect(valueAt(parsed, "err.response.request._header")).toBe(REDACTED);
-    expectRedactedOrAbsent(valueAt(parsed, "err.response.request.path"));
+    expect(raw).not.toContain("Authorization");
+    expect(raw).not.toContain("_redirectable");
+    expect(valueAt(parsed, "err.request")).toBeUndefined();
+    expect(valueAt(parsed, "err.response.request")).toBeUndefined();
+    expect(valueAt(parsed, "err.response.config")).toBeUndefined();
     expect(valueAt(parsed, "err.code")).toBe("ERR_BAD_REQUEST");
     expect(valueAt(parsed, "err.response.status")).toBe(401);
-    expect(valueAt(parsed, "err.request.method")).toBe("GET");
-    expect(valueAt(parsed, "err.request.host")).toBe("127.0.0.1");
+    expect(valueAt(parsed, "err.response.data")).toEqual({ kind: "Status", reason: "Unauthorized" });
   });
 
   it("redacts the response nested under a key", () => {
@@ -89,8 +92,9 @@ describe("logger redaction of outgoing request internals", () => {
 
     expect(raw).not.toContain(BEARER_TOKEN);
     expect(raw).not.toContain("signature-secret-value");
-    expect(valueAt(parsed, "response.request._header")).toBe(REDACTED);
-    expectRedactedOrAbsent(valueAt(parsed, "response.request.path"));
+    expect(raw).not.toContain("Authorization");
+    expect(raw).not.toContain("_redirectable");
+    expect(valueAt(parsed, "response.request")).toBeUndefined();
     expect(valueAt(parsed, "response.status")).toBe(401);
     expect(valueAt(parsed, "response.data")).toEqual({ kind: "Status", reason: "Unauthorized" });
   });
@@ -102,8 +106,9 @@ describe("logger redaction of outgoing request internals", () => {
 
     expect(raw).not.toContain(BEARER_TOKEN);
     expect(raw).not.toContain("signature-secret-value");
-    expect(valueAt(parsed, "request._header")).toBe(REDACTED);
-    expectRedactedOrAbsent(valueAt(parsed, "request.path"));
+    expect(raw).not.toContain("Authorization");
+    expect(raw).not.toContain("_redirectable");
+    expect(valueAt(parsed, "request")).toBeUndefined();
     expect(valueAt(parsed, "status")).toBe(401);
   });
 
@@ -130,9 +135,25 @@ describe("logger redaction of outgoing request internals", () => {
     const { raw, parsed } = lastLine();
 
     expect(raw).not.toContain(BEARER_TOKEN);
-    expect(valueAt(parsed, "err.error.config")).toBe(REDACTED);
-    expect(valueAt(parsed, "err.error.response.config")).toBe(REDACTED);
+    expect(raw).not.toContain("signature-secret-value");
+    expect(raw).not.toContain("Authorization");
+    expect(raw).not.toContain("_redirectable");
+    expect(valueAt(parsed, "err.error.config")).toBeUndefined();
+    expect(valueAt(parsed, "err.error.request")).toBeUndefined();
+    expect(valueAt(parsed, "err.error.response.config")).toBeUndefined();
     expect(valueAt(parsed, "err.error.response.status")).toBe(401);
+    expect(axiosError.response?.config.headers.Authorization).toBe(`Bearer ${BEARER_TOKEN}`);
+  });
+
+  it("omits the node request when the error is nested under a job", () => {
+    const { testLogger, lastLine } = createTestLogger();
+    testLogger.error({ job: { err: Object.assign(new Error("sync failed"), { error: axiosError }) } }, "sync failed");
+    const { raw } = lastLine();
+
+    expect(raw).not.toContain(BEARER_TOKEN);
+    expect(raw).not.toContain("signature-secret-value");
+    expect(raw).not.toContain("Authorization");
+    expect(raw).not.toContain("_redirectable");
     expect(axiosError.response?.config.headers.Authorization).toBe(`Bearer ${BEARER_TOKEN}`);
   });
 
