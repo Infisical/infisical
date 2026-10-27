@@ -136,15 +136,21 @@ describe("validateSkillFiles paths", () => {
     );
   });
 
-  test.each(["CON", "con.txt", "docs/nul.md", "Aux", "PRN.tar.gz", "com1", "LPT9.log", "COM3/a.md"])(
-    "refuses the Windows device name in '%s'",
-    (path) => {
-      expectBadRequest(
-        () => validateSkillFiles([skillMd(), file(path, "x")]),
-        new RegExp(`^File path '${path.replace(/\./g, "\\.")}' uses '[^']+', which is a reserved name`)
-      );
-    }
-  );
+  test.each([
+    ["CON", "CON"],
+    ["con.txt", "con.txt"],
+    ["docs/nul.md", "nul.md"],
+    ["Aux", "Aux"],
+    ["PRN.tar.gz", "PRN.tar.gz"],
+    ["com1", "com1"],
+    ["LPT9.log", "LPT9.log"],
+    ["COM3/a.md", "COM3"]
+  ])("refuses the Windows device name in '%s'", (path, device) => {
+    expectBadRequest(
+      () => validateSkillFiles([skillMd(), file(path, "x")]),
+      `File path '${path}' uses '${device}', which is a reserved name.`
+    );
+  });
 
   test.each(["console.md", "com10", "lpt0.txt", "nullable.md", "docs/con-notes.md"])(
     "accepts '%s', which only looks like a device name",
