@@ -56,7 +56,7 @@ export type THoneyTokenProviderHooks = {
     orgConnection: { appConnection: TAppConnection; connectionId: string; encryptedConfig?: Buffer | null } | null;
   }>;
   getRevokeTarget: (input: {
-    honeyToken: { config: unknown };
+    honeyToken: { config?: unknown };
     orgId: string;
     getAppConnection: THoneyTokenGetAppConnection;
   }) => Promise<THoneyTokenCredentialTarget>;
