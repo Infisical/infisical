@@ -7,7 +7,6 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { getConfig as getAppConfig } from "@app/lib/config/env";
-import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
@@ -41,18 +40,10 @@ import { WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
-import { HoneyTokenConfigStatus } from "../honey-token-config/honey-token-config-enums";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { getManagedHoneyTokenUnavailableReason } from "./aws/honey-token-aws-fns";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
-import {
-  HoneyTokenEventType,
-  HoneyTokenHosting,
-  HoneyTokenManagedUnavailableReason,
-  HoneyTokenStatus,
-  HoneyTokenType
-} from "./honey-token-enums";
+import { HoneyTokenEventType, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { THoneyTokenEventDALFactory } from "./honey-token-event-dal";
 import {
   getHoneyTokenProviderDefinition,
@@ -65,25 +56,11 @@ import {
   THoneyTokenListInput,
   THoneyTokenUpdateInput
 } from "./honey-token-provider-types";
-import { THoneyTokenCredentialTarget, THoneyTokenDeploymentStatus } from "./honey-token-service-types";
-import {
-  AwsHoneyTokenConfigSchema,
-  getHoneyTokenConfig,
-  getHoneyTokenHosting,
-  THoneyTokenEventsInput,
-  THoneyTokenWebhookPayload
-} from "./honey-token-types";
+import { THoneyTokenDeploymentStatus } from "./honey-token-service-types";
+import { getHoneyTokenConfig, THoneyTokenEventsInput, THoneyTokenWebhookPayload } from "./honey-token-types";
 
 const TRIGGER_NOTIFICATION_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
-const MANAGED_UNAVAILABLE_MESSAGES: Record<HoneyTokenManagedUnavailableReason, string> = {
-  [HoneyTokenManagedUnavailableReason.NotConfigured]:
-    "the instance administrator has not set HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY.",
-  [HoneyTokenManagedUnavailableReason.IncompleteAwsCredentials]:
-    "HONEY_TOKEN_MANAGED_AWS_ACCESS_KEY_ID and HONEY_TOKEN_MANAGED_AWS_SECRET_ACCESS_KEY must be set together.",
-  [HoneyTokenManagedUnavailableReason.InvalidRoleArn]:
-    "HONEY_TOKEN_MANAGED_AWS_ROLE_ARN must be an IAM role ARN (arn:aws:iam::<account-id>:role/<name>)."
-};
 const SIGNATURE_TOLERANCE_MS = 5 * 60 * 1000;
 
 const assertSupportedHoneyTokenType = (type: string): HoneyTokenType => {
@@ -185,7 +162,12 @@ export const honeyTokenServiceFactory = ({
   telemetryService,
   auditLogService
 }: THoneyTokenServiceFactoryDep) => {
-  const honeyTokenProviderHooksByType = getHoneyTokenServiceHooksByType({ kmsService, appConnectionDAL });
+  const honeyTokenProviderHooksByType = getHoneyTokenServiceHooksByType({
+    kmsService,
+    appConnectionDAL,
+    honeyTokenDAL,
+    honeyTokenConfigDAL
+  });
 
   // A null folderId or projectId means the folder or project was deleted and the cleanup cron has not
   // reaped the row yet.
@@ -198,63 +180,30 @@ export const honeyTokenServiceFactory = ({
     return { ...honeyToken, folderId: honeyToken.folderId, projectId: honeyToken.projectId };
   };
 
-  const $getCompleteCustomerAccountConfig = async (orgId: string, type: HoneyTokenType) => {
-    const orgConfig = await honeyTokenConfigDAL.findOne({
-      orgId,
-      type,
-      status: HoneyTokenConfigStatus.Complete
-    });
+  const $getOrgAppConnection =
+    ({ type, projectId, actor }: { type: HoneyTokenType; projectId: string; actor: OrgServiceActor }) =>
+    async (connectionId: string) => {
+      const provider = getHoneyTokenProviderDefinition(type);
+      const appConnection = await appConnectionService.validateAppConnectionUsageById(
+        provider.connectionApp,
+        { connectionId, projectId },
+        actor
+      );
 
-    if (!orgConfig?.connectionId) {
-      const pendingConfig = await honeyTokenConfigDAL.findOne({
-        orgId,
-        type,
-        status: HoneyTokenConfigStatus.VerificationPending
-      });
+      if (appConnection.projectId) {
+        throw new BadRequestError({
+          message: `Honey token integrations only support organization-level app connections. Please use an organization-level app connection.`
+        });
+      }
+      assertHoneyTokenConnectionType(type, appConnection.app);
 
-      throw new BadRequestError({
-        message: pendingConfig
-          ? "Your AWS account is connected but stack verification is still pending. Deploy and verify the stack in Organization Settings before creating honey tokens in your own AWS account."
-          : "Your organization has not connected its own AWS account for honey tokens. Connect it in Organization Settings, or create an Infisical-managed honey token instead."
-      });
-    }
-
-    return { ...orgConfig, connectionId: orgConfig.connectionId };
-  };
-
-  const $getCustomerAccountAppConnection = async ({
-    type,
-    connectionId,
-    projectId,
-    actor
-  }: {
-    type: HoneyTokenType;
-    connectionId: string;
-    projectId: string;
-    actor: OrgServiceActor;
-  }) => {
-    const provider = getHoneyTokenProviderDefinition(type);
-    const appConnection = await appConnectionService.validateAppConnectionUsageById(
-      provider.connectionApp,
-      { connectionId, projectId },
-      actor
-    );
-
-    if (appConnection.projectId) {
-      throw new BadRequestError({
-        message: `Honey token integrations only support organization-level app connections. Please use an organization-level app connection.`
-      });
-    }
-    assertHoneyTokenConnectionType(type, appConnection.app);
-
-    return appConnection;
-  };
+      return appConnection;
+    };
 
   const create = async (
     { projectId, type, config, name, description, secretsMapping, environment, secretPath }: THoneyTokenCreateInput,
     actor: OrgServiceActor
   ) => {
-    const { hosting } = config;
     const canonicalPath = prefixWithSlash(removeTrailingSlash(secretPath));
 
     const { permission } = await permissionService.getProjectPermission({
@@ -308,18 +257,11 @@ export const honeyTokenServiceFactory = ({
       });
     }
 
-    const orgConfig =
-      hosting === HoneyTokenHosting.CustomerAccount
-        ? await $getCompleteCustomerAccountConfig(actor.orgId, providerType)
-        : null;
-
-    const managedUnavailableReason =
-      hosting === HoneyTokenHosting.InfisicalManaged ? getManagedHoneyTokenUnavailableReason() : null;
-    if (managedUnavailableReason) {
-      throw new BadRequestError({
-        message: `Infisical-managed honey tokens are not available on this instance: ${MANAGED_UNAVAILABLE_MESSAGES[managedUnavailableReason]} Create the honey token in your own AWS account instead.`
-      });
-    }
+    const { target, orgConnection } = await providerHooks.prepareCreate({
+      config,
+      orgId: actor.orgId,
+      getAppConnection: $getOrgAppConnection({ type: providerType, projectId, actor })
+    });
 
     const existingHoneyToken = await honeyTokenDAL.findOne({ name, folderId: folder.id });
 
@@ -353,26 +295,12 @@ export const honeyTokenServiceFactory = ({
       });
     }
 
-    let target: THoneyTokenCredentialTarget = { hosting: HoneyTokenHosting.InfisicalManaged };
     let stackDeployment: THoneyTokenDeploymentStatus | undefined;
 
-    if (orgConfig) {
-      const appConnection = await $getCustomerAccountAppConnection({
-        type: providerType,
-        connectionId: orgConfig.connectionId,
-        projectId,
-        actor
-      });
-      target = { hosting: HoneyTokenHosting.CustomerAccount, appConnection };
-
+    if (orgConnection) {
       // Checked before any credentials exist, so a stack that is not deployed never leaves an IAM user behind.
       stackDeployment = providerHooks.verifyDeployment
-        ? await providerHooks.verifyDeployment({
-            appConnection,
-            connectionId: orgConfig.connectionId,
-            orgId: actor.orgId,
-            encryptedConfig: orgConfig.encryptedConfig
-          })
+        ? await providerHooks.verifyDeployment({ ...orgConnection, orgId: actor.orgId })
         : undefined;
 
       if (stackDeployment && !stackDeployment.deployed) {
@@ -758,29 +686,11 @@ export const honeyTokenServiceFactory = ({
     const providerHooks = honeyTokenProviderHooksByType[type];
     if (!providerHooks) throw new BadRequestError({ message: "Unsupported honey token type" });
 
-    let target: THoneyTokenCredentialTarget = { hosting: HoneyTokenHosting.InfisicalManaged };
-    if (getHoneyTokenHosting(honeyToken) === HoneyTokenHosting.CustomerAccount) {
-      const orgConfig = await honeyTokenConfigDAL.findOne({
-        orgId: actor.orgId,
-        type,
-        status: HoneyTokenConfigStatus.Complete
-      });
-
-      if (!orgConfig?.connectionId) {
-        throw new BadRequestError({
-          message:
-            "This honey token lives in your own AWS account, but that account is no longer connected. Reconnect it in Organization Settings to revoke the honey token."
-        });
-      }
-
-      const appConnection = await $getCustomerAccountAppConnection({
-        type,
-        connectionId: orgConfig.connectionId,
-        projectId,
-        actor
-      });
-      target = { hosting: HoneyTokenHosting.CustomerAccount, appConnection };
-    }
+    const target = await providerHooks.getRevokeTarget({
+      honeyToken,
+      orgId: actor.orgId,
+      getAppConnection: $getOrgAppConnection({ type, projectId, actor })
+    });
 
     await providerHooks.revokeCredentials({
       target,
@@ -914,7 +824,7 @@ export const honeyTokenServiceFactory = ({
     return honeyTokenDAL.countByFolderIds(folderIds, search);
   };
 
-  const getHostingOptions = async (
+  const getCreationOptions = async (
     { projectId, type }: { projectId: string; type: HoneyTokenType },
     actor: OrgServiceActor
   ) => {
@@ -932,14 +842,7 @@ export const honeyTokenServiceFactory = ({
     );
 
     const providerType = assertSupportedHoneyTokenType(type);
-    const orgConfig = await honeyTokenConfigDAL.findOne({ orgId: actor.orgId, type: providerType });
-
-    const managedUnavailableReason = getManagedHoneyTokenUnavailableReason();
-
-    return {
-      infisicalManaged: { isAvailable: !managedUnavailableReason, unavailableReason: managedUnavailableReason },
-      customerAccount: { configStatus: orgConfig ? (orgConfig.status as HoneyTokenConfigStatus) : null }
-    };
+    return honeyTokenProviderHooksByType[providerType].getCreationOptions({ orgId: actor.orgId });
   };
 
   const getOrgHoneyTokenLimit = async ({ projectId }: { projectId: string }, actor: OrgServiceActor) => {
@@ -1145,67 +1048,6 @@ export const honeyTokenServiceFactory = ({
     }
   };
 
-  const $isValidSignature = ({
-    signingKey,
-    timestamp,
-    rawBody,
-    signatureHash
-  }: {
-    signingKey: string;
-    timestamp: string;
-    rawBody: string;
-    signatureHash: string;
-  }) => {
-    const expectedBuf = crypto.nativeCrypto.createHmac("sha256", signingKey).update(`${timestamp}.${rawBody}`).digest();
-    const receivedBuf = Buffer.from(signatureHash, "hex");
-
-    return (
-      expectedBuf.byteLength === receivedBuf.byteLength && crypto.nativeCrypto.timingSafeEqual(expectedBuf, receivedBuf)
-    );
-  };
-
-  const $isValidCustomerAccountSignature = async ({
-    honeyTokenWithOrg,
-    timestamp,
-    rawBody,
-    signatureHash
-  }: {
-    honeyTokenWithOrg: Awaited<ReturnType<THoneyTokenDALFactory["findOneByTokenIdentifier"]>>;
-    timestamp: string;
-    rawBody: string;
-    signatureHash: string;
-  }) => {
-    let webhookSigningKey: string | null = null;
-    if (honeyTokenWithOrg && getHoneyTokenHosting(honeyTokenWithOrg) === HoneyTokenHosting.CustomerAccount) {
-      const config = await honeyTokenConfigDAL.findOne({
-        orgId: honeyTokenWithOrg.orgId,
-        type: HoneyTokenType.AWS,
-        status: HoneyTokenConfigStatus.Complete
-      });
-
-      if (config?.encryptedConfig) {
-        const { decryptor } = await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.Organization,
-          orgId: honeyTokenWithOrg.orgId
-        });
-        const decrypted = decryptor({ cipherTextBlob: config.encryptedConfig });
-        const storedConfig = AwsHoneyTokenConfigSchema.parse(JSON.parse(decrypted.toString()) as unknown);
-        webhookSigningKey = storedConfig.webhookSigningKey;
-      }
-    }
-
-    // Always compute HMAC to prevent timing side-channel that reveals token existence
-    const dummySigningKey = "0".repeat(64);
-    const isValid = $isValidSignature({
-      signingKey: webhookSigningKey ?? dummySigningKey,
-      timestamp,
-      rawBody,
-      signatureHash
-    });
-
-    return Boolean(webhookSigningKey) && isValid;
-  };
-
   const handleTrigger = async ({ type, signature, rawBody, payload }: THandleTriggerInput) => {
     logger.info({ signature, type }, `Honey token trigger received [type=${type}]`);
 
@@ -1251,47 +1093,17 @@ export const honeyTokenServiceFactory = ({
       return rejectWithNormalizedTiming();
     }
 
-    const appCfg = getAppConfig();
-    const managedSigningKeys = [
-      appCfg.HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY,
-      appCfg.HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY_PREVIOUS
-    ].filter((key): key is string => Boolean(key));
-    // The instance key does not depend on which token fired, so it is checked before any lookup and
-    // a managed trigger reveals nothing about which access key IDs are registered.
-    const isManagedTrigger = managedSigningKeys.some((key) =>
-      $isValidSignature({ signingKey: key, timestamp, rawBody, signatureHash })
-    );
+    const trigger = await honeyTokenProviderHooksByType[providerType].authenticateTrigger({
+      tokenIdentifier: eventMetadata.accessKeyId,
+      timestamp,
+      signatureHash,
+      rawBody
+    });
+    if (trigger.outcome === "rejected") return rejectWithNormalizedTiming();
+    if (trigger.outcome === "ignored") return { acknowledged: true };
 
-    // A managed trigger is already authenticated by the instance key, and acknowledging an untracked key stops
-    // AWS from retrying, so it reads the primary: a replica behind a new token would drop the alert. Customer
-    // account triggers are looked up before they are authenticated, so they stay on the replica.
-    const honeyTokenWithOrg = isManagedTrigger
-      ? await honeyTokenDAL.transaction((tx) => honeyTokenDAL.findOneByTokenIdentifier(eventMetadata.accessKeyId, tx))
-      : await honeyTokenDAL.findOneByTokenIdentifier(eventMetadata.accessKeyId);
-
-    if (isManagedTrigger) {
-      if (!honeyTokenWithOrg || getHoneyTokenHosting(honeyTokenWithOrg) !== HoneyTokenHosting.InfisicalManaged) {
-        // Our own stack reported a key we no longer track (eg its project was deleted). Acknowledge so the
-        // queue stops retrying it.
-        logger.warn(
-          `Managed honey token trigger for an untracked access key [accessKeyId=${eventMetadata.accessKeyId}]`
-        );
-        return { acknowledged: true };
-      }
-    } else {
-      const isValid = await $isValidCustomerAccountSignature({
-        honeyTokenWithOrg,
-        timestamp,
-        rawBody,
-        signatureHash
-      });
-      if (!honeyTokenWithOrg || !isValid) {
-        return rejectWithNormalizedTiming();
-      }
-    }
-
-    const honeyToken = honeyTokenWithOrg;
-    if (!honeyToken?.folderId || !honeyToken.projectId || honeyToken.status === HoneyTokenStatus.Revoked) {
+    const { honeyToken } = trigger;
+    if (!honeyToken.folderId || !honeyToken.projectId || honeyToken.status === HoneyTokenStatus.Revoked) {
       return { acknowledged: true };
     }
     const honeyTokenWithFolder = { ...honeyToken, folderId: honeyToken.folderId, projectId: honeyToken.projectId };
@@ -1312,18 +1124,18 @@ export const honeyTokenServiceFactory = ({
         anonymous: true,
         properties: {
           type: honeyToken.type,
-          hosting: getHoneyTokenHosting(honeyToken)
+          ...trigger.telemetryProperties
         }
       })
       .catch(() => {});
     if (updatedToken) {
       void $sendTriggerNotification({
-        orgId: honeyTokenWithOrg.orgId,
+        orgId: honeyToken.orgId,
         honeyToken: honeyTokenWithFolder,
         eventMetadata
       });
       void $triggerWebhookNotification({
-        orgId: honeyTokenWithOrg.orgId,
+        orgId: honeyToken.orgId,
         honeyToken: honeyTokenWithFolder,
         eventMetadata
       });
@@ -1333,7 +1145,7 @@ export const honeyTokenServiceFactory = ({
           type: ActorType.UNKNOWN_USER,
           metadata: {}
         },
-        orgId: honeyTokenWithOrg.orgId,
+        orgId: honeyToken.orgId,
         projectId: honeyToken.projectId,
         event: {
           type: EventType.TRIGGER_HONEY_TOKEN,
@@ -1433,7 +1245,7 @@ export const honeyTokenServiceFactory = ({
     getHoneyTokenEvents,
     getDashboardHoneyTokenCount,
     getOrgHoneyTokenLimit,
-    getHostingOptions,
+    getCreationOptions,
     getDashboardHoneyTokens,
     handleTrigger
   };

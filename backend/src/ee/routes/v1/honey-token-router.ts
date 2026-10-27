@@ -138,7 +138,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
       }
     },
     handler: async (req) => {
-      const hostingOptions = await server.services.honeyToken.getHostingOptions(req.query, req.permission);
+      const hostingOptions = await server.services.honeyToken.getCreationOptions(req.query, req.permission);
       return { hostingOptions };
     }
   });

@@ -44,7 +44,12 @@ export const honeyTokenCleanupServiceFactory = ({
   appConnectionDAL,
   queueService
 }: THoneyTokenCleanupServiceFactoryDep) => {
-  const providerHooksByType = getHoneyTokenServiceHooksByType({ kmsService, appConnectionDAL });
+  const providerHooksByType = getHoneyTokenServiceHooksByType({
+    kmsService,
+    appConnectionDAL,
+    honeyTokenDAL,
+    honeyTokenConfigDAL
+  });
 
   const $logContext = (honeyToken: THoneyTokenCleanupRow) =>
     `[honeyTokenId=${honeyToken.id}] [projectId=${honeyToken.projectId}] [orgId=${honeyToken.orgId}]`;
