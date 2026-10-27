@@ -40,7 +40,7 @@ export const NetlifySyncFns = {
 
     const map = {} as TSecretMap;
 
-    for (const variable of variables) {
+    for (const variable of variables ?? []) {
       if (variable.is_secret) continue;
 
       const latest = variable.values.sort((a, b) => Number(b.created_at) - Number(a.created_at))[0];
@@ -73,7 +73,7 @@ export const NetlifySyncFns = {
     };
 
     const variables = await getNetlifyVariables(secretSync.connection, baseParams);
-    const existingInNetlify = Object.fromEntries(variables.map((variable) => [variable.key, variable]));
+    const existingInNetlify = Object.fromEntries(variables?.map((variable) => [variable.key, variable]) ?? []);
 
     const variablesToCreate = Object.keys(secretMap).filter((key) => !existingInNetlify[key]);
     const variablesToUpdate = Object.keys(secretMap).filter((key) => existingInNetlify[key]);
@@ -150,7 +150,7 @@ export const NetlifySyncFns = {
 
     const variables = await getNetlifyVariables(secretSync.connection, baseParams);
 
-    const existingSecrets = Object.fromEntries(variables.map((variable) => [variable.key, variable]));
+    const existingSecrets = Object.fromEntries(variables?.map((variable) => [variable.key, variable]) ?? []);
 
     for await (const secret of Object.keys(existingSecrets)) {
       try {
