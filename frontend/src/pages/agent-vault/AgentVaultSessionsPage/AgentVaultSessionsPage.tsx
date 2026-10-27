@@ -18,11 +18,11 @@ import {
 
 import { AgentVaultSessionLogUpgradeModal } from "@app/components/agent-vault/AgentVaultSessionLogUpgradeModal";
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
-import { PageTitle } from "@app/components/PageTitle";
 import {
   useAgentVaultSetupProgress,
   useOpenAgentVaultSetupStep
 } from "@app/components/agent-vault/SetupChecklist";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
   AlertAction,
