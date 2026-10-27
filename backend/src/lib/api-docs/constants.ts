@@ -4702,6 +4702,7 @@ export const AGENT_VAULT = {
     revokeGroupIds: "The IDs of the groups to revoke the access bundle from.",
     skipped: "The requested grantees who already had the access bundle and were left as they were.",
     revokeSkipped: "The requested grantees who did not have the access bundle, so nothing was revoked.",
+    actorTypeFilter: "List only users, only groups or only machine identities.",
     search: "Match members by name, username or email address.",
     limit: "The maximum number of members to return.",
     offset: "How many members to skip."
@@ -4731,6 +4732,7 @@ export const AGENT_VAULT = {
     offset: "How many candidates to skip."
   },
   AVAILABLE_GRANTEE: {
+    actorTypeFilter: "List only users, only groups or only machine identities.",
     search: "Match candidates by name, username or email address.",
     limit: "The maximum number of candidates to return.",
     offset: "How many candidates to skip."

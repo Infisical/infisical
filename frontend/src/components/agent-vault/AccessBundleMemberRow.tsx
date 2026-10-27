@@ -64,7 +64,13 @@ export const AccessBundleMemberRow = ({ member, isDisabled, onRevoke }: MemberRo
     <MemberIdentity member={member} />
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="shrink-0" isDisabled={isDisabled}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="shrink-0"
+          isDisabled={isDisabled}
+          aria-label={`Has Access: ${memberDisplayName(member)}`}
+        >
           Has Access
           <ChevronDownIcon />
         </Button>
@@ -99,7 +105,14 @@ export const AccessBundleGrantRow = ({ member, isDisabled, onGrant }: GrantRowPr
         />
       }
     />
-    <Button variant="av" size="sm" className="shrink-0" isDisabled={isDisabled} onClick={onGrant}>
+    <Button
+      variant="av"
+      size="sm"
+      className="shrink-0"
+      isDisabled={isDisabled}
+      aria-label={`Grant Access to ${memberDisplayName(member)}`}
+      onClick={onGrant}
+    >
       Grant Access
     </Button>
   </div>
