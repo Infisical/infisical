@@ -64,6 +64,7 @@ import {
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   CreateProxiedServiceModal,
@@ -3766,9 +3767,12 @@ const OverviewPageContent = () => {
 
   if (!isProjectV3)
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-foreground">
-        <SecretV2MigrationSection />
-      </div>
+      <>
+        <PageTitle title={t("dashboard.title")} />
+        <div className="flex h-full w-full flex-col items-center justify-center px-6 text-foreground">
+          <SecretV2MigrationSection />
+        </div>
+      </>
     );
 
   const dynamicSecretLeaseData = popUp.dynamicSecretLeases?.data as
@@ -3896,7 +3900,7 @@ const OverviewPageContent = () => {
   return withOverviewTelemetry(
     overviewTelemetry,
     <div className="mx-auto flex max-w-8xl flex-col">
-      <title>{t("common.head-title", { title: t("dashboard.title") })}</title>
+      <PageTitle title={t("dashboard.title")} />
       <meta property="og:title" content={String(t("dashboard.og-title"))} />
       <meta name="og:description" content={String(t("dashboard.og-description"))} />
       <PageHeader

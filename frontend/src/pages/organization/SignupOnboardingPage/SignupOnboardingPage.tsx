@@ -16,6 +16,7 @@ import {
   getSignupTrialProjectType
 } from "@app/components/auth/signupTrialIntent";
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
+import { PageTitle } from "@app/components/PageTitle";
 import { PageLoader } from "@app/components/v3";
 import { useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
@@ -196,7 +197,7 @@ export const SignupOnboardingPage = () => {
       bottomContent={section === OnboardingSection.OrgName ? <AuthTermsNotice /> : undefined}
       onDocumentationClick={analytics.captureOnboardingDocumentationClicked}
     >
-      <title>{t("common.head-title", { title: t("signup.title") })}</title>
+      <PageTitle title={t("page-titles.organization-setup")} />
       <link rel="icon" href="/infisical.ico" />
       <OnboardingStepTransition step={section}>{renderView()}</OnboardingStepTransition>
     </AuthPageLayout>

@@ -1,5 +1,6 @@
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
@@ -22,7 +23,7 @@ export const SettingsPage = () => {
 
   return (
     <div className="flex h-full w-full justify-center bg-page text-foreground-inverse">
-      <title>Settings</title>
+      <PageTitle title="Settings" />
       <div className="flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}

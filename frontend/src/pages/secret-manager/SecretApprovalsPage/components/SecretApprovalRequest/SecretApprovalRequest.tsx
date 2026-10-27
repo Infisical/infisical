@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import {
   BanIcon,
@@ -44,6 +44,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   SelectedActionBar,
   Skeleton,
   Table,
@@ -624,23 +625,9 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                   const failedRequestError = failedRequestErrors[reqId];
 
                   return (
-                    <TableRow
-                      key={reqId}
-                      tabIndex={0}
-                      data-state={isSelected ? "selected" : undefined}
-                      onClick={() =>
-                        navigate({ search: (prev) => ({ ...prev, requestId: reqId }) })
-                      }
-                      onKeyDown={(evt) => {
-                        if (evt.key === "Enter")
-                          navigate({ search: (prev) => ({ ...prev, requestId: reqId }) });
-                      }}
-                    >
+                    <TableRow key={reqId} linked data-state={isSelected ? "selected" : undefined}>
                       {isOpenTab && (
-                        <TableCell
-                          onClick={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => e.stopPropagation()}
-                        >
+                        <TableCell data-row-interactive>
                           <Checkbox
                             id={`select-change-request-${reqId}`}
                             aria-label="Select change request"
@@ -650,7 +637,15 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                           />
                         </TableCell>
                       )}
-                      <TableCell>{generateCommitText(commits, isReplicated, true)}</TableCell>
+                      <TableCell>
+                        <RowLink
+                          from={ROUTE_PATHS.SecretManager.ApprovalPage.path}
+                          to="."
+                          search={(prev) => ({ ...prev, requestId: reqId })}
+                        >
+                          {generateCommitText(commits, isReplicated, true)}
+                        </RowLink>
+                      </TableCell>
                       <TableCell title={environmentDisplayName}>{environmentDisplayName}</TableCell>
                       <TableCell title={secretPathDisplay}>
                         <span className="text-muted">{secretPathDisplay}</span>
@@ -716,11 +711,7 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell
-                        variant="action"
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => e.stopPropagation()}
-                      >
+                      <TableCell variant="action">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton variant="ghost" size="xs" aria-label="Request actions">
@@ -728,13 +719,15 @@ export const SecretApprovalRequest = ({ onConfigurePolicies }: Props) => {
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() =>
-                                navigate({ search: (prev) => ({ ...prev, requestId: reqId }) })
-                              }
-                            >
-                              <EyeIcon />
-                              View Request
+                            <DropdownMenuItem asChild>
+                              <Link
+                                from={ROUTE_PATHS.SecretManager.ApprovalPage.path}
+                                to="."
+                                search={(prev) => ({ ...prev, requestId: reqId })}
+                              >
+                                <EyeIcon />
+                                View Request
+                              </Link>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

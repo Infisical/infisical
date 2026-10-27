@@ -1,6 +1,6 @@
-import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader } from "@app/components/v3";
 
 import {
@@ -11,7 +11,6 @@ import {
 } from "./components";
 
 export const ResourceOverviewPage = () => {
-  const { t } = useTranslation();
   const { selectedTab } = useSearch({
     from: "/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview"
   });
@@ -20,7 +19,7 @@ export const ResourceOverviewPage = () => {
 
   return (
     <div className="h-full text-foreground">
-      <title>{t("common.head-title", { title: "Resource Overview" })}</title>
+      <PageTitle title="Resource Overview" />
       <div className="mx-auto flex flex-col justify-between">
         <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader

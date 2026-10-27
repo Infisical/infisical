@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -124,7 +125,7 @@ export const HerokuConfigurePage = () => {
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthApps ? (
     <div className="flex h-full w-full flex-col items-center justify-center">
-      <title>Set Up Heroku Integration</title>
+      <PageTitle title="Set Up Heroku Integration" />
       <form onSubmit={handleSubmit(onFormSubmit)} className="w-full max-w-lg">
         <Card>
           <CardHeader>
@@ -320,7 +321,7 @@ export const HerokuConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <title>Set Up Heroku Integration</title>
+      <PageTitle title="Set Up Heroku Integration" />
       {isIntegrationAuthAppsLoading ? (
         <img
           src="/images/loading/loading.gif"

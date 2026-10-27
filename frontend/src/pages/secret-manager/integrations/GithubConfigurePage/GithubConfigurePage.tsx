@@ -14,6 +14,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { motion } from "motion/react";
 import { z, ZodIssueCode } from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -304,7 +305,7 @@ export const GithubConfigurePage = () => {
 
   return integrationAuth && integrationAuthApps ? (
     <div className="flex h-full w-full flex-col items-center justify-center py-4">
-      <title>Set Up GitHub Integration</title>
+      <PageTitle title="Set Up GitHub Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
@@ -881,7 +882,7 @@ export const GithubConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <title>Set Up GitHub Integration</title>
+      <PageTitle title="Set Up GitHub Integration" />
       {isIntegrationAuthAppsLoading ? (
         <img
           src="/images/loading/loading.gif"

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { AccessRestrictedDialog, PageHeader, PageLoader } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
@@ -25,7 +25,6 @@ enum TabSections {
 }
 
 export const PoliciesPage = () => {
-  const { t } = useTranslation();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const navigate = useNavigate();
@@ -126,12 +125,17 @@ export const PoliciesPage = () => {
   };
 
   if (!currentProject) {
-    return <PageLoader />;
+    return (
+      <>
+        <PageTitle title="Certificate Manager" />
+        <PageLoader />
+      </>
+    );
   }
 
   return (
     <div className="mx-auto flex h-full flex-col justify-between bg-page text-foreground-inverse">
-      <title>{t("common.head-title", { title: "Certificate Manager" })}</title>
+      <PageTitle title="Certificate Manager" />
       <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
           scope={ProjectType.CertificateManager}

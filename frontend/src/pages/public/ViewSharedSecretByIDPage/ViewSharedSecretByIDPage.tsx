@@ -5,6 +5,7 @@ import { addSeconds, formatISO } from "date-fns";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { Card, CardContent, CardHeader, CardTitle, PageLoader } from "@app/components/v3";
 import { SessionStorageKeys } from "@app/const";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -207,9 +208,12 @@ export const ViewSharedSecretByIDPage = () => {
 
   if (isLoading || isLoadingBrandingConfig) {
     return (
-      <div className="h-screen w-screen bg-page">
-        <PageLoader lottieClassName="w-34" />
-      </div>
+      <>
+        <title>Securely Share Secrets</title>
+        <div className="h-screen w-screen bg-page">
+          <PageLoader lottieClassName="w-34" />
+        </div>
+      </>
     );
   }
 
@@ -266,7 +270,7 @@ export const ViewSharedSecretByIDPage = () => {
   // Default: Infisical auth page layout
   return (
     <>
-      <title>Securely Share Secrets | Infisical</title>
+      <PageTitle title="Securely Share Secrets" />
       <meta property="og:image" content="/images/message.png" />
       <AuthPageLayout variant="focused" contentClassName="max-w-xl">
         <div className="flex flex-col items-center">

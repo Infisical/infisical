@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { useCallback, useEffect } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -162,15 +163,18 @@ export const SelectIntegrationAuthPage = () => {
     (integrationAuths?.length === 0 && isLoadingIntegrationAuthsSuccess)
   ) {
     return (
-      <div className="container mx-auto flex h-screen w-full items-center justify-center px-8">
-        <Loader variant="brand" size="lg" className="h-32" />
-      </div>
+      <>
+        <PageTitle title="Select Connection" />
+        <div className="container mx-auto flex h-screen w-full items-center justify-center px-8">
+          <Loader variant="brand" size="lg" className="h-32" />
+        </div>
+      </>
     );
   }
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <title>Select Connection</title>
+      <PageTitle title="Select Connection" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>

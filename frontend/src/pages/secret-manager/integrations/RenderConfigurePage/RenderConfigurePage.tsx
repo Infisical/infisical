@@ -7,6 +7,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
   AlertDescription,
@@ -125,7 +126,7 @@ export const RenderConfigurePage = () => {
       onSubmit={handleSubmit(onFormSubmit)}
       className="flex h-full w-full flex-col items-center justify-center gap-6"
     >
-      <title>Set Up Render Integration</title>
+      <PageTitle title="Set Up Render Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
@@ -293,7 +294,7 @@ export const RenderConfigurePage = () => {
     </form>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <title>Set Up Render Integration</title>
+      <PageTitle title="Set Up Render Integration" />
       {isIntegrationAuthLoading || isIntegrationAuthAppsLoading ? (
         <img
           src="/images/loading/loading.gif"

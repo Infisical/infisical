@@ -5,6 +5,7 @@ import {
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Card,
@@ -76,7 +77,7 @@ export const ProductSettingsPage = () => {
 
   return (
     <>
-      <title>Product Settings | Infisical</title>
+      <PageTitle title="Product Settings" />
       <link rel="icon" href="/infisical.ico" />
       <div>
         <div className="mx-auto w-full max-w-8xl bg-page text-foreground-inverse">

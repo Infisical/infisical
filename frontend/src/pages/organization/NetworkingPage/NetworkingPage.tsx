@@ -1,3 +1,4 @@
+import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 
@@ -8,7 +9,7 @@ export const NetworkingPage = () => {
 
   return (
     <>
-      <title>Infisical | Networking</title>
+      <PageTitle title="Networking" />
       <meta property="og:image" content="/images/message.png" />
       <div className="flex w-full justify-center bg-page text-foreground-inverse">
         <div className="flex w-full max-w-8xl flex-col">

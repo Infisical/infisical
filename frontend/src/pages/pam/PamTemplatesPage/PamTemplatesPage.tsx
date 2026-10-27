@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { ClipboardList, Layers, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { HighlightText } from "@app/components/utilities/HighlightText";
 import {
   Button,
@@ -133,8 +133,6 @@ const TemplateRow = ({
 };
 
 export const PamTemplatesPage = () => {
-  const { t } = useTranslation();
-
   const [searchInput, setSearchInput] = useState("");
   const [selectedType, setSelectedType] = useState<string>("");
 
@@ -177,7 +175,7 @@ export const PamTemplatesPage = () => {
 
   return (
     <>
-      <title>{t("common.head-title", { title: "Account Templates" })}</title>
+      <PageTitle title="Account Templates" />
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.PAM}

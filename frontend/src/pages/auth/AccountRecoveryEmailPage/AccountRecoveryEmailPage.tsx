@@ -6,6 +6,7 @@ import { MailCheck } from "lucide-react";
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { EmailServiceSetupModal } from "@app/components/auth/EmailServiceSetupModal";
+import { PageTitle } from "@app/components/PageTitle";
 import { Button, CardContent, CardHeader, CardTitle, Input } from "@app/components/v3";
 import { envConfig } from "@app/config/env";
 import { usePopUp } from "@app/hooks";
@@ -55,7 +56,7 @@ export const AccountRecoveryEmailPage = () => {
 
   return (
     <AuthPageLayout variant="focused">
-      <title>Account Recovery</title>
+      <PageTitle title="Account Recovery" />
       <link rel="icon" href="/infisical.ico" />
       <meta property="og:image" content="/images/message.png" />
       <meta property="og:title" content="Account Recovery in Infisical" />

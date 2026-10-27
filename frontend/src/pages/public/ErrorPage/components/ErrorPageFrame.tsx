@@ -2,6 +2,7 @@ import { ReactNode, useLayoutEffect, useRef, useState } from "react";
 import { ActivityIcon, CheckIcon, CopyIcon, MonitorCheckIcon, ShieldCheckIcon } from "lucide-react";
 
 import { AuthPageBackground } from "@app/components/auth/AuthPageBackground";
+import { PageTitle } from "@app/components/PageTitle";
 import { Badge, Button, Card } from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
 
@@ -27,7 +28,7 @@ export const useErrorPageTimestamp = () => {
 };
 
 type Props = {
-  helmetTitle?: string;
+  pageTitle: string;
   badgeIcon: ReactNode;
   badgeText: string;
   heading: ReactNode;
@@ -44,7 +45,7 @@ type Props = {
 // ProjectAccessError): vault backdrop, two-column card, badge + heading + actions on the left,
 // "What We Know" status column on the right.
 export const ErrorPageFrame = ({
-  helmetTitle,
+  pageTitle,
   badgeIcon,
   badgeText,
   heading,
@@ -94,7 +95,7 @@ export const ErrorPageFrame = ({
         isFullScreen ? "min-h-screen bg-linear-to-tr from-card via-page-deep to-card" : "min-h-full"
       }`}
     >
-      {helmetTitle && <title>{helmetTitle}</title>}
+      <PageTitle title={pageTitle} />
       {isFullScreen && <AuthPageBackground />}
       <Card className="relative z-10 grid w-full max-w-5xl gap-0 overflow-hidden p-0 lg:grid-cols-[1fr_26rem]">
         <div className="flex flex-col p-8">

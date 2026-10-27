@@ -1,3 +1,4 @@
+import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { OrgOauthClientsTab } from "@app/pages/organization/SettingsPage/components/OrgOauthClientsTab";
@@ -7,7 +8,7 @@ export const OauthApplicationsPage = () => {
 
   return (
     <>
-      <title>Infisical | OAuth Applications</title>
+      <PageTitle title="OAuth Applications" />
       <link rel="icon" href="/infisical.ico" />
       <meta property="og:image" content="/images/message.png" />
       <div className="flex w-full justify-center bg-page text-foreground-inverse">

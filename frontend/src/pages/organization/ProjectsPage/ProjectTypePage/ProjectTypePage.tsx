@@ -18,6 +18,7 @@ import { twMerge } from "tailwind-merge";
 
 import { ProjectLimitUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
@@ -376,7 +377,7 @@ const ProjectTypeContent = ({
 
   return (
     <div className="mx-auto flex max-w-8xl flex-col">
-      <title>{`${typeTitle} Projects`}</title>
+      <PageTitle title={`${typeTitle} Projects`} />
       <link rel="icon" href="/infisical.ico" />
       <PageHeader
         title={typeTitle}

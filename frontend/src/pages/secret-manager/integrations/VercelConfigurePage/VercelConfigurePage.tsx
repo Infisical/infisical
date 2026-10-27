@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Alert,
   AlertDescription,
@@ -178,7 +179,7 @@ export const VercelConfigurePage = () => {
     targetAppId &&
     targetEnvironment ? (
     <div className="flex h-full w-full flex-col items-center justify-center gap-6">
-      <title>Set Up Vercel Integration</title>
+      <PageTitle title="Set Up Vercel Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
@@ -375,7 +376,7 @@ export const VercelConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <title>Set Up Vercel Integration</title>
+      <PageTitle title="Set Up Vercel Integration" />
       {isIntegrationAuthAppsLoading ? (
         <img
           src="/images/loading/loading.gif"

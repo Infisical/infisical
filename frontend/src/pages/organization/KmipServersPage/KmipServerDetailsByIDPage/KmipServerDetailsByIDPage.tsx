@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, ServerIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -93,7 +94,7 @@ export const KmipServerDetailsByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
+      <PageTitle title={t("page-titles.kmip-server")} />
       <link rel="icon" href="/infisical.ico" />
       <OrgPermissionCan
         passThrough={false}
