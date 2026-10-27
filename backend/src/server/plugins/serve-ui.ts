@@ -141,8 +141,6 @@ export const registerServeUI = async (
       }
     }
 
-    // locale files keep their name across deploys, so an immutable cache could pin a stale copy
-    // fetched from an old pod during a rolling update
     server.addHook("onSend", async (request, reply, payload) => {
       if (request.url.startsWith("/locales/")) {
         void reply.header("Cache-Control", "no-cache");

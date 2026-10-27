@@ -21,7 +21,6 @@ const virtualRouteFileChangeReloadPlugin: PluginOption = {
   }
 };
 
-// browsers may still hold an immutable copy of the unversioned locale URL, so the load path carries this hash
 const hashLocales = () => {
   const localesDir = join(process.cwd(), "public/locales");
   const hash = createHash("sha256");
