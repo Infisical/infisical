@@ -289,6 +289,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.CREATE_PROJECT]: "Create Project",
   [EventType.UPDATE_PROJECT]: "Update Project",
   [EventType.DELETE_PROJECT]: "Delete Project",
+  [EventType.RESTORE_PROJECT]: "Restore Project",
 
   [EventType.CREATE_SECRET_REMINDER]: "Create Secret Reminder",
   [EventType.GET_SECRET_REMINDER]: "Get Secret Reminder",

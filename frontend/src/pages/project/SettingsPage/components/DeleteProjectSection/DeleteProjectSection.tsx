@@ -245,9 +245,9 @@ export const DeleteProjectSection = () => {
         open={popUp.scheduleDeleteWorkspace.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("scheduleDeleteWorkspace", isOpen)}
       >
-        <AlertDialogContent className="sm:max-w-xl!">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Schedule deletion of {currentProject?.name}?</AlertDialogTitle>
+            <AlertDialogTitle>Schedule Deletion of {currentProject?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
               {currentProject?.name} will be inaccessible immediately, then permanently deleted on{" "}
               <span className="font-medium text-foreground">

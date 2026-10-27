@@ -1059,7 +1059,7 @@ export const projectDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.Users, `${TableName.Project}.deletedByActorId`, `${TableName.Users}.id`)
         .leftJoin(TableName.Identity, `${TableName.Project}.deletedByActorId`, `${TableName.Identity}.id`)
         .where(`${TableName.Project}.orgId`, orgId)
-        .whereNotNull(`${TableName.Project}.deleteAfter`)
+        .where(`${TableName.Project}.deleteAfter`, ">", new Date())
         .whereNotNull(`${TableName.Project}.softDeletedAt`)
         .select(
           `${TableName.Project}.id`,

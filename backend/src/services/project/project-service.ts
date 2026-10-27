@@ -973,8 +973,10 @@ export const projectServiceFactory = ({
           }
         }
 
-        // The original slug was freed on delete and may have been reused since.
-        return projectDAL.restoreById(project.id, slugify(`${project.name}-${alphaNumericNanoId(4)}`), tx);
+        // The original slug was freed on delete and may have been reused since. Slugifying the name can
+        // lengthen it, so it is cut after slugifying to stay within the 64-character slug limit.
+        const slug = slugify(`${slugify(project.name).slice(0, 59)}-${alphaNumericNanoId(4)}`);
+        return projectDAL.restoreById(project.id, slug, tx);
       });
 
       if (!restoredProject) {

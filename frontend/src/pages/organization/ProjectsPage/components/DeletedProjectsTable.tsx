@@ -91,7 +91,7 @@ export const DeletedProjectsTable = ({ projectType }: { projectType: ProjectType
               const remaining = formatRemainingDuration(deleteAfterDate);
 
               return (
-                <TableRow key={id} className="bg-warning/[0.025]">
+                <TableRow key={id}>
                   <TableCell className="text-warning/80 line-through">{name}</TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-2">
@@ -99,7 +99,7 @@ export const DeletedProjectsTable = ({ projectType }: { projectType: ProjectType
                         <TooltipTrigger asChild>
                           <Badge variant="warning">
                             <HourglassIcon />
-                            Pending deletion
+                            Pending Deletion
                           </Badge>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-xs">
@@ -136,7 +136,7 @@ export const DeletedProjectsTable = ({ projectType }: { projectType: ProjectType
                             onClick={() => handlePopUpOpen("restoreProject", { id, name })}
                           >
                             <RotateCcwIcon />
-                            Restore project
+                            Restore Project
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
