@@ -2,6 +2,8 @@ import { initReactI18next } from "react-i18next";
 import i18n from "i18next";
 import Backend from "i18next-http-backend";
 
+import enTranslations from "../public/locales/en/translations.json";
+
 i18n
   // load translation using http -> see /public/locales (i.e. https://github.com/i18next/react-i18next/tree/master/example/react/public/locales)
   // learn more: https://github.com/i18next/i18next-http-backend
@@ -17,6 +19,10 @@ i18n
   .init({
     lng: "en",
     fallbackLng: "en",
+    // Bundled into the hashed JS so English keys always match the deployed code. /locales is served
+    // with immutable 30d caching, so a fetched copy can predate new keys and render them raw.
+    resources: { en: { translations: enTranslations } },
+    partialBundledLanguages: true,
     // supportedLngs: ["en", "ko", "fr", "pt-BR", "pt-PT", "es"],
     debug: process.env.NODE_ENV === "development",
     detection: {
