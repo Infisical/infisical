@@ -16,6 +16,10 @@ import { TNotificationServiceFactory } from "@app/services/notification/notifica
 import { TPkiApplicationDALFactory } from "@app/services/pki-application/pki-application-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
+import {
+  releaseAppConnectionConcurrency,
+  tryAdmitAppConnectionConcurrency
+} from "../app-connection/app-connection-concurrency-fns";
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
@@ -23,7 +27,6 @@ import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { buildCertificateMap } from "./pki-sync-certificate-map-fns";
-import { releasePkiSyncConcurrency, tryAdmitPkiSyncConcurrency } from "./pki-sync-concurrency-fns";
 import { hydratePkiSyncCredentials } from "./pki-sync-credentials-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PKI_SYNC_CONNECTION_LOCK_RETRY, PkiSync, PkiSyncFailureKind, PkiSyncStatus } from "./pki-sync-enums";
@@ -161,7 +164,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
 
     let admittedSlot = false;
     try {
-      admittedSlot = await tryAdmitPkiSyncConcurrency(keyStore, connectionId, targetHost);
+      admittedSlot = await tryAdmitAppConnectionConcurrency(keyStore, connectionId, targetHost);
       if (!admittedSlot) {
         throw new HealthCheckBusyError("This connection is at its concurrency limit.");
       }
@@ -169,7 +172,7 @@ export const pkiSyncHealthCheckQueueFactory = ({
       return await run();
     } finally {
       await Promise.allSettled([
-        admittedSlot ? releasePkiSyncConcurrency(keyStore, connectionId, targetHost) : undefined,
+        admittedSlot ? releaseAppConnectionConcurrency(keyStore, connectionId, targetHost) : undefined,
         connectionLock.release()
       ]);
     }

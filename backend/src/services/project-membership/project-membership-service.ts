@@ -15,6 +15,7 @@ import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
+import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 
 import { TAccessApprovalPolicyApproverDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "../../ee/services/access-approval-policy/access-approval-policy-dal";
@@ -59,7 +60,7 @@ type TProjectMembershipServiceFactoryDep = {
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "find" | "delete" | "findRolesByMembershipIds">;
   userDAL: Pick<TUserDALFactory, "find">;
   userAliasDAL: Pick<TUserAliasDALFactory, "findBySsoExternalIds">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser" | "transaction" | "findProjectById">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "findLatestProjectKey" | "delete" | "insertMany">;
@@ -340,6 +341,16 @@ export const projectMembershipServiceFactory = ({
       }
     });
 
+    const deactivatedUserIds = new Set(orgMembers.filter((el) => !el.isActive).map((el) => el.actorUserId));
+    if (deactivatedUserIds.size) {
+      const deactivatedUsers = orgMembershipUsernames.filter((el) => deactivatedUserIds.has(el.id));
+      throw new BadRequestError({
+        message: `${deactivatedUsers.map((el) => `'${el.email || el.username}'`).join(", ")} ${
+          deactivatedUsers.length === 1 ? "is" : "are"
+        } deactivated in this organization. Reactivate them before adding them to this project.`
+      });
+    }
+
     const memberRolePermissions = await permissionService.getProjectPermissionByRoles(
       [ProjectMembershipRole.Member],
       projectId
@@ -367,6 +378,10 @@ export const projectMembershipServiceFactory = ({
     );
 
     await membershipUserDAL.transaction(async (tx) => {
+      await lockAndAssertActiveOrgAccess(
+        { orgDAL, orgId: actorOrgId, userIds: orgMembers.map(({ actorUserId }) => actorUserId as string) },
+        tx
+      );
       const projectMemberships = await membershipUserDAL.insertMany(
         orgMembers.map(({ actorUserId }) => ({
           scopeProjectId: projectId,

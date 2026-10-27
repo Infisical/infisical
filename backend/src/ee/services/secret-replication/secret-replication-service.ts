@@ -184,7 +184,7 @@ export const secretReplicationServiceFactory = ({
       })[];
     }[]
   ) => {
-    const deDupe = new Set<string>();
+    const deDupe = new Set<string>(localSecrets.map(({ key }) => key));
     const secrets = [...localSecrets];
 
     for (let i = importedSecrets.length - 1; i >= 0; i = -1) {

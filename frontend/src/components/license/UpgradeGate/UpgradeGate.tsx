@@ -266,7 +266,7 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
   const [selectedTier, setSelectedTier] = useState<string>();
   const [cadence, setCadence] = useState<BillingV2Cadence>("annual");
   const [startedTrial, setStartedTrial] = useState<BillingV2Plan | null>(null);
-  const refreshedReturn = useRef<string>();
+  const refreshedReturn = useRef<string>(undefined);
   const hasTrackedView = useRef(false);
   const queryClient = useQueryClient();
   const { currentOrg, isSubOrganization } = useOrganization();
@@ -370,14 +370,17 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
     select: (state) => state.matches.at(-1)?.routeId ?? "unknown"
   });
 
+  const orgPlan = subscription.slug ?? "free";
+
   const trackPaywallView = useCallback(() => {
     analytics.captureForOrganization(AnalyticsEvent.PaywallViewed, currentOrg.id, {
       paywallKey,
       paywallText: intent.description,
       route,
-      isEnterpriseFeature: (requiredTier ?? intent.planKey) === BillingPlan.Enterprise
+      isEnterpriseFeature: (requiredTier ?? intent.planKey) === BillingPlan.Enterprise,
+      plan: orgPlan
     });
-  }, [currentOrg.id, paywallKey, intent.description, intent.planKey, route, requiredTier]);
+  }, [currentOrg.id, paywallKey, intent.description, intent.planKey, route, requiredTier, orgPlan]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -406,7 +409,8 @@ const ProductUpgradeGate = ({ intent, paywallKey, isOpen, onOpenChange }: Props)
       paywallKey,
       paywallText: intent.description,
       route,
-      isEnterpriseFeature: (requiredTier ?? intent.planKey) === BillingPlan.Enterprise
+      isEnterpriseFeature: (requiredTier ?? intent.planKey) === BillingPlan.Enterprise,
+      plan: orgPlan
     });
   };
 

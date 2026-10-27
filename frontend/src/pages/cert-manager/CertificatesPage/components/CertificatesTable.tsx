@@ -306,10 +306,11 @@ export const CertificatesTable = ({
 
   const [applicationFilterSearch, setApplicationFilterSearch] = useState("");
   const [debouncedApplicationFilterSearch] = useDebounce(applicationFilterSearch);
-  const { data: applicationOptionsResponse } = useListPkiApplications(
-    { search: debouncedApplicationFilterSearch || undefined, limit: 20 },
-    { enabled: !applicationId }
-  );
+  const { data: applicationOptionsResponse, isFetching: isFetchingApplicationOptions } =
+    useListPkiApplications(
+      { search: debouncedApplicationFilterSearch || undefined, limit: 20 },
+      { enabled: !applicationId }
+    );
 
   const selectedApplicationIds = useMemo(() => {
     const ids = new Set<string>();
@@ -785,6 +786,11 @@ export const CertificatesTable = ({
               onSaveView={canCreateViews ? () => setIsSaveViewOpen(true) : undefined}
               dynamicFieldOptions={dynamicFieldOptions}
               onDynamicFieldSearch={{ applicationId: setApplicationFilterSearch }}
+              dynamicFieldLoading={{
+                applicationId:
+                  applicationFilterSearch !== debouncedApplicationFilterSearch ||
+                  isFetchingApplicationOptions
+              }}
               hiddenFieldKeys={applicationId ? ["applicationId"] : undefined}
             />
           </PopoverContent>

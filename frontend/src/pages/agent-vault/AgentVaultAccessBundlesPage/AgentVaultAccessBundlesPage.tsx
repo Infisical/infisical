@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -11,6 +9,7 @@ import {
   PlusIcon,
   SearchIcon,
   TrashIcon,
+  TriangleAlertIcon,
   UsersIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -18,7 +17,12 @@ import { twMerge } from "tailwind-merge";
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
 import { ServiceIconStack } from "@app/components/agent-vault/ServiceIconStack";
+import { PageTitle } from "@app/components/PageTitle";
 import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+  Badge,
   Button,
   Card,
   CardAction,
@@ -53,13 +57,17 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission } from "@app/context";
+import { nameList } from "@app/helpers/string";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, useResetPageHelper } from "@app/hooks";
-import { useListAgentVaultAccessBundles } from "@app/hooks/api/agentVault";
+import {
+  useListAgentVaultAccessBundles,
+  useListAgentVaultAccessBundlesRequiringSetup
+} from "@app/hooks/api/agentVault";
 import { TAgentVaultAccessBundleListItem } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -74,7 +82,6 @@ enum SortColumn {
 }
 
 export const AgentVaultAccessBundlesPage = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
@@ -106,6 +113,12 @@ export const AgentVaultAccessBundlesPage = () => {
   });
 
   const displayedBundles = data?.accessBundles ?? [];
+
+  // From its own query rather than the page shown, so a bundle on a later page is still called out.
+  const { data: requiringSetup } = useListAgentVaultAccessBundlesRequiringSetup();
+  const bundlesNeedingSetup = requiringSetup?.accessBundles ?? [];
+  // The query loads at most a page of them; the count comes from the server.
+  const bundlesNeedingSetupCount = requiringSetup?.totalCount ?? 0;
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
 
@@ -145,15 +158,41 @@ export const AgentVaultAccessBundlesPage = () => {
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Access Bundles" })}</title>
-      </Helmet>
+      <PageTitle title="Access Bundles" />
       <PageHeader
         scope={ProjectType.AgentVault}
         icon={PackageIcon}
         title="Access Bundles"
         description="Group the services an agent can reach through a session."
       />
+
+      {bundlesNeedingSetup.length > 0 && (
+        <Alert variant="warning" className="mb-6">
+          <TriangleAlertIcon />
+          <AlertDescription>
+            <p>
+              {bundlesNeedingSetupCount === 1
+                ? `${bundlesNeedingSetup[0].name} has services that require your personal values.`
+                : `${bundlesNeedingSetupCount} access bundles have services that require your personal values.`}{" "}
+              Sessions can&apos;t reach those services until you set them up.
+            </p>
+            <AlertAction>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  navigate({
+                    to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
+                    params: { orgId: currentOrg.id, accessBundleId: bundlesNeedingSetup[0].id }
+                  })
+                }
+              >
+                Open {bundlesNeedingSetup[0].name}
+              </Button>
+            </AlertAction>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>
@@ -227,6 +266,7 @@ export const AgentVaultAccessBundlesPage = () => {
                   Created
                   <ChevronDownIcon className={sortIconClassName(SortColumn.Created)} />
                 </TableHead>
+                <TableHead className="w-0" />
                 <TableHead variant="action" />
               </TableRow>
             </TableHeader>
@@ -301,6 +341,27 @@ export const AgentVaultAccessBundlesPage = () => {
                           {format(new Date(bundle.createdAt), "MMM d, yyyy h:mm a")}
                         </TooltipContent>
                       </Tooltip>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-center">
+                        {bundle.servicesRequiringSetup.length > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="warning">
+                                <TriangleAlertIcon />
+                                Requires Setup
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              Your personal values are missing for{" "}
+                              {nameList(
+                                bundle.servicesRequiringSetup.map((service) => service.name)
+                              )}
+                              .
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell variant="action">
                       {isAdmin && (

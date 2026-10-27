@@ -113,12 +113,10 @@ export const IdentityAuthRevokeDialog = ({
 
   return (
     <AlertDialog
+      isPending={isRemoving}
       open={open}
       confirmationValue="confirm"
-      onOpenChange={(isOpen) => {
-        if (!isOpen && isRemoving) return;
-        onOpenChange(isOpen);
-      }}
+      onOpenChange={onOpenChange}
     >
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -131,15 +129,11 @@ export const IdentityAuthRevokeDialog = ({
             later.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogConfirmationField
-          inputProps={{ disabled: isRemoving }}
-          onConfirm={() => handleDelete().catch(() => undefined)}
-        />
+        <AlertDialogConfirmationField onConfirm={() => handleDelete().catch(() => undefined)} />
         <AlertDialogFooter>
-          <AlertDialogCancel isDisabled={isRemoving}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="danger"
-            isPending={isRemoving}
             onClick={(event) => {
               event.preventDefault();
               handleDelete().catch(() => undefined);

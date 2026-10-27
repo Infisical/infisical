@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { ChevronLeft, Pencil, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -54,10 +53,7 @@ export const ProjectTemplatePage = ({ templateId, projectType, onBack }: Props) 
 
   return (
     <>
-      <Helmet>
-        <title>Project Template | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <link rel="icon" href="/infisical.ico" />
       <div>
         <div className="mx-auto w-full max-w-8xl bg-page text-foreground-inverse">
           <Button

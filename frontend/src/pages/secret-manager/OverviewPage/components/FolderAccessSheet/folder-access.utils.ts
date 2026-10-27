@@ -6,6 +6,7 @@ import {
   TFolderAccessRole,
   TFolderAccessUser
 } from "@app/hooks/api/folderAccess";
+import { OrgUser } from "@app/hooks/api/users/types";
 import { ms } from "@app/lib/fn/time";
 
 export type TFolderAccessActor = {
@@ -60,6 +61,42 @@ export const toIdentityActor = (identity: TFolderAccessIdentity): TFolderAccessA
   access: identity.folderRBACAccess
 });
 
+// organization members outside the project have no membership, roles, or grant here yet
+export const toOrgUserActor = ({ user, inviteEmail, status }: OrgUser): TFolderAccessActor => {
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
+  const email = user.email || inviteEmail || user.username;
+  const name = fullName || email;
+  return {
+    type: "user",
+    id: user.id,
+    membershipId: null,
+    name,
+    subtitle: status === "invited" ? "Invite pending" : email,
+    initials: initialsOf(name),
+    isProjectAdmin: false,
+    roles: [],
+    access: null
+  };
+};
+
+export const toOrgIdentityActor = ({
+  id,
+  name
+}: {
+  id: string;
+  name: string;
+}): TFolderAccessActor => ({
+  type: "identity",
+  id,
+  membershipId: null,
+  name,
+  subtitle: "Machine identity",
+  initials: initialsOf(name),
+  isProjectAdmin: false,
+  roles: [],
+  access: null
+});
+
 export const byName = (a: TFolderAccessActor, b: TFolderAccessActor) =>
   a.name.localeCompare(b.name);
 
@@ -79,6 +116,14 @@ export const expiryOf = (access: TFolderAccess | null) =>
   access?.isTemporary && access.temporaryAccessEndTime
     ? new Date(access.temporaryAccessEndTime)
     : null;
+
+// how removing a grant plays out: an expired grant no longer applies, so removing it only cleans up,
+// while an active temporary grant is ended early
+export const grantStateOf = (access: TFolderAccess | null) => {
+  const expiresAt = expiryOf(access);
+  if (!expiresAt) return "permanent" as const;
+  return expiresAt.getTime() <= Date.now() ? ("expired" as const) : ("temporary" as const);
+};
 
 export const formatExpiryFull = (expiresAt: Date) => format(expiresAt, "MMM d, yyyy, h:mm a");
 

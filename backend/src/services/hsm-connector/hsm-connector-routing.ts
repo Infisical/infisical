@@ -2,7 +2,12 @@ import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gatewa
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
-import { callPkcs11Endpoint, isRetryablePkcs11RpcError, Pkcs11RpcEndpoint } from "@app/lib/gateway-v2/pkcs11-rpc";
+import {
+  callPkcs11Endpoint,
+  isRetryablePkcs11RpcError,
+  Pkcs11ErrorCode,
+  Pkcs11RpcEndpoint
+} from "@app/lib/gateway-v2/pkcs11-rpc";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 
@@ -126,7 +131,7 @@ export const hsmConnectorRoutingFactory = ({ gatewayV2Service, gatewayPoolServic
         );
       } catch (err) {
         lastError = {
-          code: "gateway_unreachable",
+          code: Pkcs11ErrorCode.GatewayUnreachable,
           message: err instanceof Error ? err.message : String(err)
         };
         if (!args.connector.gatewayPoolId) break;
@@ -153,7 +158,12 @@ export const hsmConnectorRoutingFactory = ({ gatewayV2Service, gatewayPoolServic
       targetPort: 0
     });
     if (!conn) {
-      return { gatewayId, ok: false, errorCode: "gateway_not_found", errorMessage: `Gateway ${gatewayId} not found.` };
+      return {
+        gatewayId,
+        ok: false,
+        errorCode: Pkcs11ErrorCode.GatewayNotFound,
+        errorMessage: `Gateway ${gatewayId} not found.`
+      };
     }
     try {
       const response = await withGatewayV2Proxy(
@@ -177,7 +187,7 @@ export const hsmConnectorRoutingFactory = ({ gatewayV2Service, gatewayPoolServic
       return {
         gatewayId,
         ok: false,
-        errorCode: "gateway_unreachable",
+        errorCode: Pkcs11ErrorCode.GatewayUnreachable,
         errorMessage: err instanceof Error ? err.message : String(err)
       };
     }

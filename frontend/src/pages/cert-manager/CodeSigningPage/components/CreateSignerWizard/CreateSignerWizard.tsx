@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { PenTool } from "lucide-react";
+import { AxiosError } from "axios";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  DiscardChangesAlertDialog,
   DocumentationLinkBadge,
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -28,10 +29,17 @@ import {
   CertKeySource,
   SignerKeyAlgorithm,
   SignerMemberRole,
+  TSignerExternalConfiguration,
+  useCheckSignerCertificateImport,
   useCreateSigner
 } from "@app/hooks/api/signers";
 import { useGetOrgUsers } from "@app/hooks/api/users";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
+import {
+  ExternalOrderMode,
+  isUsingExistingCertificate
+} from "../../../components/DigiCertExistingOrderField";
 import { SignerKeyStep } from "../../../components/SignerKeyStep";
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 import { ApprovalPolicyStep } from "./ApprovalPolicyStep";
@@ -76,6 +84,8 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
   });
 
   const createSigner = useCreateSigner();
+  const checkCertificateImport = useCheckSignerCertificateImport();
+  const [importCheckError, setImportCheckError] = useState<string>();
 
   const caOptions: CaOption[] = useMemo(() => {
     const list = cas.data ?? [];
@@ -158,12 +168,22 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       keyAlgorithm: state.keyAlgorithm,
       keySource: state.keySource,
       hsmConnectorId: state.hsmConnectorId,
-      reissueFromExternalOrderId: state.reissueFromExternalOrderId,
+      externalOrderId: state.externalOrderId,
+      externalOrderMode: state.externalOrderMode,
+      hsmKeyLabel: state.hsmKeyLabel,
+      hsmKeyId: state.hsmKeyId,
+      hsmKeyIdRequired: state.hsmKeyIdRequired,
+      hsmKeyUnresolved: state.hsmKeyUnresolved,
       adcsTemplate: state.adcsTemplate
     }
   });
 
   const selectedCaId = certificateForm.watch("caId");
+  const [watchedKeyLabel, watchedKeyId, watchedConnectorId, watchedOrderMode] =
+    certificateForm.watch(["hsmKeyLabel", "hsmKeyId", "hsmConnectorId", "externalOrderMode"]);
+  useEffect(() => {
+    setImportCheckError(undefined);
+  }, [watchedKeyLabel, watchedKeyId, watchedConnectorId, watchedOrderMode]);
   const selectedCa = caOptions.find((o) => o.id === selectedCaId) ?? null;
   const caCaps = getCaIssuanceCapabilities(selectedCa?.caType);
 
@@ -185,17 +205,18 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       keyAlgorithm: SignerKeyAlgorithm.RSA_2048,
       keySource: CertKeySource.Infisical,
       hsmConnectorId: null,
-      reissueFromExternalOrderId: null,
+      externalOrderId: null,
+      externalOrderMode: ExternalOrderMode.Reissue,
+      hsmKeyLabel: "",
+      hsmKeyId: "",
+      hsmKeyIdRequired: false,
+      hsmKeyUnresolved: false,
       adcsTemplate: ""
     });
   };
 
-  const handleClose = (open: boolean) => {
-    if (!open) reset();
-    onOpenChange(open);
-  };
-
   const onCreate = async () => {
+    if (submitting) return;
     setSubmitting(true);
     try {
       const approvalPolicy =
@@ -215,26 +236,25 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
             }
           : undefined;
 
+      const usingExistingCertificate = isUsingExistingCertificate(state);
       const certificate =
         state.keySource === CertKeySource.Hsm && state.hsmConnectorId
           ? {
               keySource: CertKeySource.Hsm,
-              hsmConnectorId: state.hsmConnectorId
+              hsmConnectorId: state.hsmConnectorId,
+              hsmKeyLabel: usingExistingCertificate ? state.hsmKeyLabel : undefined,
+              hsmKeyId: usingExistingCertificate && state.hsmKeyId ? state.hsmKeyId : undefined
             }
           : undefined;
 
       const selectedCaType = caOptions.find((o) => o.id === state.caId)?.caType;
-      let externalConfiguration;
-      if (state.reissueFromExternalOrderId) {
-        externalConfiguration = {
-          caType: CaType.DIGICERT,
-          reissueFromExternalOrderId: state.reissueFromExternalOrderId
-        } as const;
+      let externalConfiguration: TSignerExternalConfiguration | undefined;
+      if (state.externalOrderId) {
+        externalConfiguration = usingExistingCertificate
+          ? { importFromExternalOrderId: state.externalOrderId }
+          : { reissueFromExternalOrderId: state.externalOrderId };
       } else if (selectedCaType === CaType.ADCS && state.adcsTemplate.trim()) {
-        externalConfiguration = {
-          caType: CaType.ADCS,
-          template: state.adcsTemplate.trim()
-        } as const;
+        externalConfiguration = { template: state.adcsTemplate.trim() };
       }
 
       await createSigner.mutateAsync({
@@ -242,10 +262,10 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         name: state.name,
         description: state.description || undefined,
         caId: state.caId,
-        commonName: state.commonName,
-        certificateTtlDays: state.certificateTtlDays,
+        commonName: usingExistingCertificate ? undefined : state.commonName,
+        certificateTtlDays: usingExistingCertificate ? undefined : state.certificateTtlDays,
         certificateRenewBeforeDays: state.certificateRenewBeforeDays,
-        keyAlgorithm: state.keyAlgorithm,
+        keyAlgorithm: usingExistingCertificate ? undefined : state.keyAlgorithm,
         members: state.pendingMembers.map((m) => ({
           kind: m.kind,
           id: m.id,
@@ -256,12 +276,10 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         externalConfiguration
       });
 
-      handleClose(false);
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to create signer"
-      });
+      reset();
+      onOpenChange(false);
+      // eslint-disable-next-line no-empty
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -280,12 +298,18 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       keyAlgorithm: values.keyAlgorithm,
       keySource: values.keySource,
       hsmConnectorId: values.hsmConnectorId ?? null,
-      reissueFromExternalOrderId: values.reissueFromExternalOrderId ?? null,
+      externalOrderId: values.externalOrderId ?? null,
+      externalOrderMode: values.externalOrderMode,
+      hsmKeyLabel: values.hsmKeyLabel ?? "",
+      hsmKeyId: values.hsmKeyId ?? "",
+      hsmKeyIdRequired: values.hsmKeyIdRequired ?? false,
+      hsmKeyUnresolved: values.hsmKeyUnresolved ?? false,
       adcsTemplate: values.adcsTemplate ?? ""
     }));
   };
 
   const goNext = async () => {
+    if (submitting) return;
     if (step === 0) {
       const ok = await basicsForm.trigger();
       if (!ok) return;
@@ -300,7 +324,7 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
         "commonName",
         "certificateTtlDays",
         "certificateRenewBeforeDays",
-        "reissueFromExternalOrderId"
+        "externalOrderId"
       ]);
       if (!ok) return;
       if (
@@ -315,8 +339,37 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
       return;
     }
     if (step === 2) {
-      const ok = await certificateForm.trigger(["keySource", "keyAlgorithm", "hsmConnectorId"]);
+      const ok = await certificateForm.trigger([
+        "keySource",
+        "keyAlgorithm",
+        "hsmConnectorId",
+        "hsmKeyLabel",
+        "hsmKeyId"
+      ]);
       if (!ok) return;
+      const values = certificateForm.getValues();
+      if (isUsingExistingCertificate(values) && values.externalOrderId && values.hsmConnectorId) {
+        setSubmitting(true);
+        try {
+          await checkCertificateImport.mutateAsync({
+            caId: values.caId,
+            externalOrderId: values.externalOrderId,
+            certificate: {
+              hsmConnectorId: values.hsmConnectorId,
+              hsmKeyLabel: values.hsmKeyLabel,
+              hsmKeyId: values.hsmKeyId || undefined
+            }
+          });
+        } catch (err) {
+          setImportCheckError(
+            (err as AxiosError<{ message?: string }>)?.response?.data?.message ??
+              "Could not check the key against the certificate."
+          );
+          return;
+        } finally {
+          setSubmitting(false);
+        }
+      }
       persistCertificateForm();
       setStep(3);
       return;
@@ -331,15 +384,28 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
   };
 
   const goBack = () => {
+    if (submitting) return;
     if (step > 0) setStep((s) => s - 1);
   };
 
   const dirty =
     step > 0 ||
-    state.name !== "" ||
-    state.commonName !== "" ||
-    state.pendingMembers.length > 0 ||
-    state.policySteps.length > 0;
+    basicsForm.formState.isDirty ||
+    certificateForm.formState.isDirty ||
+    JSON.stringify(state) !== JSON.stringify(INITIAL_WIZARD_STATE);
+  const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
+    useDiscardChangesGuard({
+      isDirty: dirty,
+      onDiscard: () => {
+        reset();
+        onOpenChange(false);
+      }
+    });
+  const handleClose = (open: boolean) => {
+    if (submitting) return;
+    if (open) onOpenChange(true);
+    else requestDiscard();
+  };
 
   const currentStep = STEPS[step];
   const ctaLabel = isLast ? "Create Signer" : "Continue";
@@ -352,158 +418,169 @@ export const CreateSignerWizard = ({ isOpen, onOpenChange, projectId }: Props) =
   const ctaDisabled = isLast && (hasEmptyPolicyStep || missingConstraints);
 
   return (
-    <Sheet open={isOpen} onOpenChange={handleClose}>
-      <SheetContent size="workspace" className="flex h-full max-h-full flex-col gap-y-0">
-        <SheetHeader className="border-b">
-          <SheetTitle>
-            <div className="flex w-full items-start gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-project/10 text-project">
-                <PenTool className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-x-2 text-label">
-                  Create Signer
-                  <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.create} />
-                </div>
-                <p className="text-sm leading-4 text-muted">
-                  A code-signing certificate with the members and approval policy that govern its
-                  use.
-                </p>
-              </div>
-            </div>
-          </SheetTitle>
-        </SheetHeader>
+    <>
+      <Sheet open={isOpen} onOpenChange={handleClose}>
+        <SheetContent size="workspace" isPending={submitting}>
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              Create Signer
+              <DocumentationLinkBadge href={PkiDocsUrls.codeSigning.signers.create} />
+            </SheetTitle>
+            <SheetDescription>
+              A code-signing certificate with the members and approval policy that govern its use.
+            </SheetDescription>
+          </SheetHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 overflow-hidden">
-            <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
-              <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
-                Setup steps
-              </p>
-              <Stepper
-                activeStep={step}
-                orientation="vertical"
-                onStepChange={(i) => {
-                  if (i < step) setStep(i);
-                }}
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
+                <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
+                  Setup steps
+                </p>
+                <Stepper
+                  activeStep={step}
+                  orientation="vertical"
+                  onStepChange={(i) => {
+                    if (i < step && !submitting) setStep(i);
+                  }}
+                >
+                  <StepperList>
+                    {STEPS.map((s, i) => (
+                      <StepperStep
+                        key={s.name}
+                        index={i}
+                        title={s.name}
+                        description={s.shortDescription}
+                      />
+                    ))}
+                  </StepperList>
+                </Stepper>
+              </aside>
+
+              <fieldset
+                disabled={submitting}
+                className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6"
               >
-                <StepperList>
-                  {STEPS.map((s, i) => (
-                    <StepperStep
-                      key={s.name}
-                      index={i}
-                      title={s.name}
-                      description={s.shortDescription}
-                    />
-                  ))}
-                </StepperList>
-              </Stepper>
-            </aside>
+                <div className="mb-6">
+                  <h2 className="text-lg font-normal text-foreground">{currentStep.title}</h2>
+                  <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
+                </div>
 
-            <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
-              <div className="mb-6">
-                <h2 className="text-lg font-normal text-foreground">{currentStep.title}</h2>
-                <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
-              </div>
+                {step === 0 && <BasicsStep form={basicsForm} />}
+                {step === 1 && (
+                  <CertificateStep
+                    form={certificateForm}
+                    caOptions={caOptions}
+                    isCasLoading={cas.isPending}
+                  />
+                )}
+                {step === 2 && (
+                  <SignerKeyStep
+                    control={certificateForm.control}
+                    requiresHsm={caCaps.requiresHsm}
+                    minRsaKeyBits={caCaps.minRsaKeyBits}
+                    hsmConnectorOptions={hsmConnectorOptions}
+                    isHsmConnectorsLoading={isHsmConnectorsLoading}
+                    importCheckError={importCheckError}
+                  />
+                )}
+                {step === 3 && (
+                  <MembersStep
+                    userOptions={userOptions.filter((u) => u.value !== user.id)}
+                    identityOptions={identityOptions}
+                    groupOptions={groupOptions}
+                    state={state}
+                    setState={setState}
+                    isUsersLoading={usersQuery.isPending}
+                    isIdentitiesLoading={identitiesQuery.isPending}
+                    isGroupsLoading={groupsQuery.isPending}
+                    creator={{ id: user.id, label: creatorLabel }}
+                  />
+                )}
+                {step === 4 && (
+                  <ApprovalPolicyStep
+                    state={state}
+                    setState={setState}
+                    approverOptions={[
+                      { value: user.id, label: creatorLabel, kind: "user" as const },
+                      ...state.pendingMembers
+                        .filter((m) => m.role !== SignerMemberRole.Auditor)
+                        .filter((m) => m.kind === "user" || m.kind === "group")
+                        .map((m) => ({
+                          value: m.id,
+                          label: m.label,
+                          kind: m.kind as "user" | "group"
+                        }))
+                    ]}
+                  />
+                )}
+              </fieldset>
 
-              {step === 0 && <BasicsStep form={basicsForm} />}
-              {step === 1 && (
-                <CertificateStep
-                  form={certificateForm}
-                  caOptions={caOptions}
-                  isCasLoading={cas.isPending}
-                />
-              )}
-              {step === 2 && (
-                <SignerKeyStep
-                  control={certificateForm.control}
-                  requiresHsm={caCaps.requiresHsm}
-                  minRsaKeyBits={caCaps.minRsaKeyBits}
-                  hsmConnectorOptions={hsmConnectorOptions}
-                  isHsmConnectorsLoading={isHsmConnectorsLoading}
-                />
-              )}
-              {step === 3 && (
-                <MembersStep
-                  userOptions={userOptions.filter((u) => u.value !== user.id)}
-                  identityOptions={identityOptions}
-                  groupOptions={groupOptions}
-                  state={state}
-                  setState={setState}
-                  isUsersLoading={usersQuery.isPending}
-                  isIdentitiesLoading={identitiesQuery.isPending}
-                  isGroupsLoading={groupsQuery.isPending}
-                  creator={{ id: user.id, label: creatorLabel }}
-                />
-              )}
-              {step === 4 && (
-                <ApprovalPolicyStep
-                  state={state}
-                  setState={setState}
-                  approverOptions={[
-                    { value: user.id, label: creatorLabel, kind: "user" as const },
-                    ...state.pendingMembers
-                      .filter((m) => m.role !== SignerMemberRole.Auditor)
-                      .filter((m) => m.kind === "user" || m.kind === "group")
-                      .map((m) => ({
-                        value: m.id,
-                        label: m.label,
-                        kind: m.kind as "user" | "group"
-                      }))
-                  ]}
-                />
-              )}
+              <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
+                <div className="mb-auto">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
+                      Step {step + 1} · {currentStep.rightLabel}
+                    </p>
+                    <DocumentationLinkBadge href={currentStep.docsUrl} />
+                  </div>
+                  <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">
+                    {currentStep.rightDescription}
+                  </p>
+                </div>
+              </aside>
             </div>
 
-            <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
-              <div className="mb-auto">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
-                    Step {step + 1} · {currentStep.rightLabel}
-                  </p>
-                  <DocumentationLinkBadge href={currentStep.docsUrl} />
-                </div>
-                <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
-                <p className="mt-2 text-sm leading-relaxed text-muted">
-                  {currentStep.rightDescription}
-                </p>
-              </div>
-            </aside>
-          </div>
-
-          <SheetFooter className="shrink-0 items-center justify-between border-t">
-            <span className="text-xs text-muted">
-              {/* eslint-disable-next-line no-nested-ternary */}
-              {hasEmptyPolicyStep
-                ? `Step ${firstEmptyPolicyStepIndex + 1} needs at least one approver, or remove it.`
-                : // eslint-disable-next-line no-nested-ternary
-                  missingConstraints
-                  ? "Set at least one of 'signatures per approval' or 'signing window'."
-                  : dirty
-                    ? "Unsaved changes"
-                    : ""}
-            </span>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted">
-                Step {step + 1} of {STEPS.length}
-              </span>
+            <SheetFooter className="shrink-0 items-center justify-between border-t">
               {step > 0 && (
-                <Button variant="outline" onClick={goBack}>
+                <Button
+                  variant="outline"
+                  onClick={goBack}
+                  isDisabled={submitting}
+                  className="mr-auto"
+                >
                   Back
                 </Button>
               )}
-              <Button
-                variant="project"
-                onClick={goNext}
-                isPending={submitting}
-                isDisabled={ctaDisabled}
-              >
-                {ctaLabel}
-              </Button>
-            </div>
-          </SheetFooter>
-        </div>
-      </SheetContent>
-    </Sheet>
+              <span className="text-xs text-muted">
+                {/* eslint-disable-next-line no-nested-ternary */}
+                {hasEmptyPolicyStep
+                  ? `Step ${firstEmptyPolicyStepIndex + 1} needs at least one approver, or remove it.`
+                  : // eslint-disable-next-line no-nested-ternary
+                    missingConstraints
+                    ? "Set at least one of 'signatures per approval' or 'signing window'."
+                    : dirty
+                      ? "Unsaved changes"
+                      : ""}
+              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted">
+                  Step {step + 1} of {STEPS.length}
+                </span>
+                <Button variant="ghost" onClick={() => handleClose(false)} isDisabled={submitting}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="project"
+                  onClick={goNext}
+                  isPending={submitting}
+                  isDisabled={ctaDisabled}
+                >
+                  {ctaLabel}
+                </Button>
+              </div>
+            </SheetFooter>
+          </div>
+        </SheetContent>
+      </Sheet>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your signer setup progress will be lost."
+      />
+    </>
   );
 };

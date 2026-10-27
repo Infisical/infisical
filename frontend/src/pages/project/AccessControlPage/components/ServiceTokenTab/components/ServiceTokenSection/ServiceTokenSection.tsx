@@ -108,9 +108,9 @@ export const ServiceTokenSection = withProjectPermission(
         </Card>
         <AddServiceTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <AlertDialog
+          isPending={deleteServiceToken.isPending}
           open={popUp.deleteAPITokenConfirmation.isOpen}
           onOpenChange={(isOpen) => {
-            if (deleteServiceToken.isPending) return;
             if (!isOpen) setDeleteConfirmation("");
             handlePopUpToggle("deleteAPITokenConfirmation", isOpen);
           }}
@@ -143,12 +143,9 @@ export const ServiceTokenSection = withProjectPermission(
               </Field>
             </AlertDialogConfirmationField>
             <AlertDialogFooter>
-              <AlertDialogCancel isDisabled={deleteServiceToken.isPending}>
-                Cancel
-              </AlertDialogCancel>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 variant="danger"
-                isPending={deleteServiceToken.isPending}
                 isDisabled={!isDeleteConfirmed}
                 onClick={(event) => {
                   event.preventDefault();

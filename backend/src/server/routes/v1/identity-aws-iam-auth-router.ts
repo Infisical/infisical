@@ -13,7 +13,9 @@ import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
   validateAccountIds,
-  validatePrincipalArns
+  validateAccountIdsForUpdate,
+  validatePrincipalArns,
+  validatePrincipalArnsForUpdate
 } from "@app/services/identity-aws-auth/identity-aws-auth-validators";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
@@ -259,8 +261,8 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
       body: z
         .object({
           stsEndpoint: z.string().trim().min(1).optional().describe(AWS_AUTH.UPDATE.stsEndpoint),
-          allowedPrincipalArns: validatePrincipalArns.describe(AWS_AUTH.UPDATE.allowedPrincipalArns),
-          allowedAccountIds: validateAccountIds.describe(AWS_AUTH.UPDATE.allowedAccountIds),
+          allowedPrincipalArns: validatePrincipalArnsForUpdate.describe(AWS_AUTH.UPDATE.allowedPrincipalArns),
+          allowedAccountIds: validateAccountIdsForUpdate.describe(AWS_AUTH.UPDATE.allowedAccountIds),
           accessTokenTrustedIps: z
             .object({
               ipAddress: z.string().trim()

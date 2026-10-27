@@ -3,6 +3,7 @@ import RE2 from "re2";
 export const AGENT_VAULT_VARIABLE_KEY_MAX_LENGTH = 64;
 export const AGENT_VAULT_VARIABLE_VALUE_MAX_LENGTH = 8192;
 export const AGENT_VAULT_MAX_VARIABLES = 500;
+export const AGENT_VAULT_MAX_PERSONAL_VARIABLES = 100;
 // Counts every {{...}}, a repeat included: repeating one short reference is what would let a field fill in to
 // millions of characters. With the value limit this is the whole bound on a filled-in field, the text as typed
 // plus three values, so no save reads another row to hold a field to it and none can race another past it.

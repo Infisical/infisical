@@ -81,7 +81,16 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const isCrossProjectRefWithoutAccess =
       referenceContent.startsWith("@") && !canCrossProjectShare;
 
-    const isPopupOpen = openRefLeft !== -1 && isSuggestionActive && !isCrossProjectRefWithoutAccess;
+    const isPopupOpen =
+      openRefLeft !== -1 &&
+      isSuggestionActive &&
+      !isCrossProjectRefWithoutAccess &&
+      !props.readOnly &&
+      !props.isReadOnly &&
+      !props.disabled &&
+      !props.isDisabled &&
+      !props.isLoadingValue &&
+      !props.isErrorLoadingValue;
 
     const replaceReferenceContent = (content: string, shouldCloseReference: boolean) => {
       const left = openRefLeft + 1; // position right after ${
@@ -112,7 +121,6 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     const handleRef = useCallback(
       (el: HTMLTextAreaElement) => {
-        // @ts-expect-error multiple refs
         inputRef.current = el;
         if (ref) {
           if (typeof ref === "function") {
@@ -243,7 +251,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             ref={handleRef}
             value={value}
             onBlur={(evt) => {
-              if (!(evt.relatedTarget?.getAttribute("aria-label") === "suggestion-item"))
+              if (!evt.relatedTarget?.hasAttribute("data-secret-reference-item"))
                 setIsSuggestionActive(false);
               if (props.onBlur) props.onBlur(evt);
             }}
@@ -277,6 +285,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             style={{ width: "var(--radix-popover-trigger-width)", minWidth: "320px" }}
           >
             <SecretReferenceWizard
+              inputRef={inputRef}
               isEnabled={isPopupOpen}
               onSelect={handleWizardSelect}
               onNavigate={(content) => replaceReferenceContent(content, false)}

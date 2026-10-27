@@ -27,6 +27,7 @@ export enum CertKeySource {
 
 export enum HsmKeyAlgorithm {
   RSA_2048 = "RSA_2048",
+  RSA_3072 = "RSA_3072",
   RSA_4096 = "RSA_4096",
   ECC_P256 = "ECC_P256",
   ECC_P384 = "ECC_P384"

@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { groupMembershipsBase, userMembershipsBase } from "@app/hooks/api/certManagerAccess";
+import {
+  availableUsersUrl,
+  groupMembershipsBase,
+  userMembershipsBase
+} from "@app/hooks/api/certManagerAccess";
 
 import { CaStatus } from "../ca/enums";
 import { TCertificateAuthority } from "../ca/types";
@@ -14,7 +18,7 @@ import { pkiApplicationKeys } from "../pkiApplications/queries";
 import { TPkiCollection } from "../pkiCollections/types";
 import { TPkiSubscriber } from "../pkiSubscriber/types";
 import { userKeys } from "../users/query-keys";
-import { TWorkspaceUser } from "../users/types";
+import { TAvailableProjectUser, TWorkspaceUser } from "../users/types";
 import {
   ProjectWorkflowIntegrationConfig,
   WorkflowIntegrationPlatform
@@ -388,6 +392,18 @@ export const useRestoreEnvironment = () => {
   });
 };
 
+export const useGetAvailableProjectUsers = (projectId: string, projectType?: string) =>
+  useQuery({
+    queryKey: projectKeys.getAvailableProjectUsers(projectId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ users: TAvailableProjectUser[] }>(
+        availableUsersUrl(projectType, projectId)
+      );
+      return data.users;
+    },
+    enabled: Boolean(projectId)
+  });
+
 export const useGetWorkspaceUsers = (
   projectId: string,
   includeGroupMembers?: boolean,
@@ -500,6 +516,7 @@ export const useDeleteUserFromWorkspace = () => {
     },
     onSuccess: (_, { orgId, projectId }) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.getProjectUsers(projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAvailableProjectUsers(projectId) });
       queryClient.invalidateQueries({
         queryKey: userKeys.allOrgMembershipProjectMemberships(orgId)
       });

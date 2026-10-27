@@ -1,0 +1,114 @@
+---
+title: "PAM credential rotation"
+sidebarTitle: "Overview"
+description: "Change the passwords of your PAM accounts on a schedule."
+---
+
+Credential rotation changes the password of a PAM [account](/documentation/platform/pam/accounts/overview) on a schedule or on demand. If a password leaks, it stops working at the next rotation.
+
+You set up rotation in two places:
+
+- The [account template](/documentation/platform/pam/templates/overview) sets how often its accounts rotate and which passwords Infisical generates
+- Each account sets its rotation account, which is the account that Infisical signs in as to change the password
+
+An account rotates only after both are set.
+
+You can rotate PostgreSQL, MySQL, Microsoft SQL Server, Oracle, Windows, and Windows AD accounts. If an account doesn't store a password, it has nothing to rotate. For example, a PostgreSQL account that uses [AWS IAM authentication](/documentation/platform/pam/accounts/postgresql#aws-iam-authentication) can't rotate.
+
+## How it works
+
+When an account rotates, Infisical:
+
+1. Generates a password that meets the template's password requirements
+2. Signs in to the target as the rotation account and changes the account's password
+3. Signs in with the new password to check that it works
+4. Saves the new password as the account's credential
+
+If a step fails, the account's **Rotation** tab shows the error, and Infisical doesn't change the credential stored on the account. If the step failed after the password change, the target may already use the new password. Infisical keeps the new password and tries it first on the next rotation attempt.
+
+## Rotation accounts
+
+The rotation account is the account that Infisical signs in as to change the password. You can pick one of three options:
+
+- **The account itself:** The account changes its own password
+- **A different account:** A more privileged account changes the password, for an account that can't change its own password
+- **None:** The account doesn't rotate, even if its template has rotation turned on
+
+<Note>
+If you pick a different account, it must be on the same resource as the account it rotates:
+
+- For databases, the same host and port (for Oracle, also the same service name)
+- For Windows accounts, the same host
+- For Windows AD accounts, the same domain
+
+The page for each account type lists the privileges that the rotation account needs.
+</Note>
+
+## Turn on rotation for a template
+
+You need the [Product Admin role](/documentation/platform/pam/concepts/access-control#product-membership) to change a template.
+
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Account Templates** and select the template that your accounts use.
+  </Step>
+  <Step>
+    Under **Credential settings**, set the password requirements that the target system's password policy accepts: **Min length**, **Min uppercase**, **Min lowercase**, **Min numbers**, **Min symbols**, and **Allowed symbols**.
+  </Step>
+  <Step>
+    Turn on **Automatically rotate credentials** and set **Rotate every** to 1 hour, 12 hours, 24 hours, 7 days, or 30 days.
+  </Step>
+  <Step>
+    Select **Save Changes**.
+  </Step>
+</Steps>
+
+**Allowed symbols** can only include characters from `!@#$%^&*()-_=+[]{}|:,.<>/~`.
+
+The password requirements also apply when someone adds an account or changes its password, so Infisical rejects a password that doesn't meet them.
+
+If you leave **Automatically rotate credentials** off, the template's accounts rotate only when someone selects **Rotate now** on the account.
+
+## Set an account's rotation account
+
+You need the Admin [role](/documentation/platform/pam/concepts/access-control#folder-and-account-memberships) on the account or its folder. To pick a different account as the rotation account, you also need permission to view that account's credentials.
+
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Accounts**, open the options menu on the account's row, select **Configure**, and open the **Rotation** tab.
+  </Step>
+  <Step>
+    Under **Rotation account**, select the account that changes the password. To have the account change its own password, select the entry marked **(this account)**.
+  </Step>
+  <Step>
+    Select **Save Changes**.
+  </Step>
+</Steps>
+
+To rotate the password right away, select **Rotate now**. The next scheduled rotation then happens one full interval later.
+
+<Note>
+  If another PAM account stores the same credential, Infisical doesn't update it when this account rotates, so enter the new password on that account after each rotation.
+  
+  The **Rotation** tab lists some of these accounts under **Shared identity**, such as accounts that discovery imported, but not accounts that someone added by hand. Check for other copies of the credential before you rotate, even if the list is empty.
+</Note>
+
+## Supported account types
+
+<CardGroup cols={2}>
+  <Card title="PostgreSQL" icon="database" href="/documentation/platform/pam/credential-rotation/postgresql">
+    Rotate the passwords of PostgreSQL accounts.
+  </Card>
+  <Card title="MySQL" icon="database" href="/documentation/platform/pam/credential-rotation/mysql">
+    Rotate the passwords of MySQL accounts.
+  </Card>
+  <Card title="Microsoft SQL Server" icon="database" href="/documentation/platform/pam/credential-rotation/mssql">
+    Rotate the passwords of Microsoft SQL Server accounts.
+  </Card>
+  <Card title="Oracle" icon="database" href="/documentation/platform/pam/credential-rotation/oracledb">
+    Rotate the passwords of Oracle accounts.
+  </Card>
+  <Card title="Windows" icon="windows" iconType="brands" href="/documentation/platform/pam/credential-rotation/windows">
+    Rotate the passwords of local Windows and Active Directory accounts.
+  </Card>
+</CardGroup>

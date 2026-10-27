@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { organizationKeys } from "../organization/queries";
+import { userKeys } from "../users/query-keys";
 import {
   TCreateOrgGroupMembershipDTO,
   TDeleteOrgGroupMembershipDTO,
@@ -27,6 +28,7 @@ export const useCreateOrgGroupMembership = () => {
           predicate: (query) => query.queryKey[1] === "organization-groups"
         });
       }
+      queryClient.invalidateQueries({ queryKey: userKeys.allOrgUserAccess });
     }
   });
 };
@@ -48,6 +50,7 @@ export const useDeleteOrgGroupMembership = () => {
           predicate: (query) => query.queryKey[1] === "organization-groups"
         });
       }
+      queryClient.invalidateQueries({ queryKey: userKeys.allOrgUserAccess });
     }
   });
 };
