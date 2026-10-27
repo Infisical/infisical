@@ -29,6 +29,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --jq '.[].filename' > "$RUNNER_TEMP/changed-files.txt"
+          echo "count=$(wc -l < "$RUNNER_TEMP/changed-files.txt")" >> "$GITHUB_OUTPUT"
           if grep -q -v -E '^docs/|\.mdx?$' "$RUNNER_TEMP/changed-files.txt"; then
             echo "docs_only=false" >> "$GITHUB_OUTPUT"
           else
@@ -94,14 +95,15 @@ jobs:
           sed -i "s/^\( *\)'claude',$/\1'claude', '-p',/" github_action_audit.py
           # This hard-coded rule drops any finding that mentions a redirect, including SSRF through one
           sed -i 's/for pattern in cls\._OPEN_REDIRECT_PATTERNS:/for pattern in []:/' findings_filter.py
-          # GitHub refuses diffs above its size limit; fall back to the scanner's no-diff prompt
-          sed -i '/def get_pr_diff/,/return self\._filter_generated_files/ s/^\( *\)response\.raise_for_status()$/\1if response.status_code == 406:\n\1    return ""\n\1response.raise_for_status()/' github_action_audit.py
+          # GitHub refuses diffs above its size limit; fall back to the scanner's no-diff prompt. That prompt
+          # lists only the first 100 changed files, so larger PRs still fail.
+          sed -i '/def get_pr_diff/,/return self\._filter_generated_files/ s/^\( *\)response\.raise_for_status()$/\1if response.status_code == 406 and int(os.environ.get("CHANGED_FILE_COUNT", "0")) <= 100:\n\1    return ""\n\1response.raise_for_status()/' github_action_audit.py
           sed -i 's/elif pr_diff and not include_diff:/elif not (pr_diff and include_diff):/' prompts.py
 
           grep -q 'model=self.model,' claude_api_client.py \
             && grep -q "'claude', '-p'," github_action_audit.py \
             && grep -q 'for pattern in \[\]:' findings_filter.py \
-            && grep -q 'status_code == 406' github_action_audit.py \
+            && grep -q 'status_code == 406 and int(os.environ.get("CHANGED_FILE_COUNT"' github_action_audit.py \
             && grep -q 'elif not (pr_diff and include_diff):' prompts.py \
             || { echo "::error::A scanner patch did not apply"; exit 1; }
 
@@ -113,6 +115,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          CHANGED_FILE_COUNT: ${{ steps.changes.outputs.count }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           CLAUDE_MODEL: claude-opus-5-5
           ENABLE_CLAUDE_FILTERING: "true"
@@ -151,21 +154,25 @@ jobs:
           if ! jq -e '(.findings | type == "array") and ((.findings | length) + (.filtering_summary.excluded_findings // 0) > 0)' "$results" > /dev/null 2>&1; then
             exit 0
           fi
-          jq --arg pr "$PR_URL" '
+          # One message per finding keeps each under Slack's 40,000-character limit
+          jq -c --arg pr "$PR_URL" '
             def esc: tostring | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;");
             def where: "`\(.file // "?" | esc):\(.line // "?" | esc)`";
-            {text: (
-              ["*Security review* for \($pr)"]
-              + [.findings[] | "*\(.severity // "unknown" | esc)* \(.category // "unknown" | esc) at \(where)\n\(.description // "" | esc)\n_Exploit scenario:_ \(.exploit_scenario // "n/a" | esc)\n_Recommendation:_ \(.recommendation // "n/a" | esc)"]
+            ([.findings[] | "*\(.severity // "unknown" | esc)* \(.category // "unknown" | esc) at \(where)\n\(.description // "" | esc)\n_Exploit scenario:_ \(.exploit_scenario // "n/a" | esc)\n_Recommendation:_ \(.recommendation // "n/a" | esc)"]
               + (if (.filtering_summary.excluded_findings_details // []) | length > 0
                  then ["_Filtered out:_\n" + ([.filtering_summary.excluded_findings_details[] | (.finding // .) as $f | "• \($f.category // "unknown" | esc) at \($f | where): \(.exclusion_reason // "excluded directory" | esc)"] | join("\n"))]
-                 else [] end)
-              | join("\n\n") | .[0:39000])}
-          ' "$results" > "$RUNNER_TEMP/slack.json"
-          if curl -fsS -o /dev/null -X POST -H "Content-Type: application/json" --data @"$RUNNER_TEMP/slack.json" "$SLACK_WEBHOOK_URL"; then
+                 else [] end))
+            | .[] | {text: ("*Security review* for \($pr)\n" + .) | .[0:39000]}
+          ' "$results" > "$RUNNER_TEMP/slack.jsonl"
+          posted=true
+          while IFS= read -r payload; do
+            curl -fsS -o /dev/null -X POST -H "Content-Type: application/json" --data "$payload" "$SLACK_WEBHOOK_URL" || posted=false
+            sleep 1
+          done < "$RUNNER_TEMP/slack.jsonl"
+          if [ "$posted" = true ]; then
             echo "posted=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::Could not send finding details to Slack"
+            echo "::warning::Could not send all finding details to Slack"
           fi
 
       - name: 🚦 Check findings
