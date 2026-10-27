@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 import axios from "axios";
@@ -96,9 +95,7 @@ export const AgentVaultOAuthCallbackPage = () => {
 
   return (
     <AuthPageLayout variant="focused" showFooter={false}>
-      <Helmet>
-        <title>{t("common.head-title", { title: "Agent Vault Authorization" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Agent Vault Authorization" })}</title>
       <AuthPagePanel>
         <CardHeader>
           <CardTitle>{title}</CardTitle>

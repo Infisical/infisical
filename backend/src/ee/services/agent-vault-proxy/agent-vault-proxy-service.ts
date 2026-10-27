@@ -934,7 +934,7 @@ export const agentVaultProxyServiceFactory = ({
     if (!row) throw new NotFoundError({ message: `Service with ID '${serviceId}' not found in this session` });
     if (row.credentialType !== AgentVaultCredentialType.OAuth) {
       throw new BadRequestError({
-        message: `The service '${row.name}' doesn't use OAuth, so Infisical can't refresh its credential.`
+        message: `The service '${row.name}' doesn't use an OAuth credential.`
       });
     }
     // The proxy retries with whatever comes back against the host it cached, so a service that moved since must

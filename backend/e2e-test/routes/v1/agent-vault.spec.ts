@@ -1038,9 +1038,7 @@ describe("Agent Vault V1 Router", async () => {
 
         const bearer = await refresh(service.id, "mcp.linear.app");
         expect(bearer.statusCode).toBe(400);
-        expect(messageOf(bearer)).toBe(
-          "The service 'linear' doesn't use OAuth, so Infisical can't refresh its credential."
-        );
+        expect(messageOf(bearer)).toBe("The service 'linear' doesn't use an OAuth credential.");
       });
 
       test("a host pattern the service no longer has is a 409, so no token goes to the old host", async () => {
