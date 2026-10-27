@@ -27,7 +27,7 @@ import { ObjectStorageType } from "@app/services/object-storage/object-storage-t
 import { getAgentVaultPermission } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultProxyDALFactory } from "../agent-vault-proxy/agent-vault-proxy-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
-import { isOwnerlessSession, isSessionOwnedBy } from "../agent-vault-session/agent-vault-session-fns";
+import { isSessionOwnedBy } from "../agent-vault-session/agent-vault-session-fns";
 import { TAgentVaultSessionLogConfigDALFactory } from "./agent-vault-session-log-config-dal";
 import {
   AGENT_VAULT_SESSION_LOG_CHUNK_ID_TIME_TOLERANCE_MS,
@@ -185,12 +185,8 @@ export const agentVaultSessionLogServiceFactory = ({
     if (!session) throw sessionNotFound();
 
     const now = new Date();
-    // Deleting the owner nulls it through the FK, which fires the update trigger, so updatedAt is when it happened.
-    const retirements = [
-      session.revokedAt,
-      session.expiresAt && session.expiresAt <= now ? session.expiresAt : null,
-      isOwnerlessSession(session) ? session.updatedAt : null
-    ]
+    // A session that loses its owner is stamped revoked by a database trigger, so revokedAt covers that case too.
+    const retirements = [session.revokedAt, session.expiresAt && session.expiresAt <= now ? session.expiresAt : null]
       .filter((at): at is Date => Boolean(at))
       .map((at) => at.getTime());
     const retiredAt = retirements.length ? Math.min(...retirements) : null;
