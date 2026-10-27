@@ -255,6 +255,7 @@
   min-width: 0;
 }
 .badge {
+  --v4-badge-glyph: var(--v4-size-badge-glyph);
   font-family: var(--v4-type-caption-font-family);
   font-size: var(--v4-type-caption-font-size);
   line-height: var(--v4-type-caption-line-height);
@@ -274,6 +275,7 @@
   background: transparent;
 }
 .badge[data-size="sm"] {
+  --v4-badge-glyph: var(--v4-size-badge-glyph-sm);
   height: var(--v4-size-badge-sm);
   padding-inline: var(--v4-space-6);
   line-height: calc(var(--v4-size-badge-sm) - 2 * var(--v4-size-control-border));

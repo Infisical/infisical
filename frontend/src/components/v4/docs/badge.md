@@ -67,7 +67,7 @@ Exports: Badge, badgeVariants, Count. Source TypeScript defines the API.
 
 ## Behavior
 
-- tone is the one paint axis: outline, soft, solid and accent for metadata and emphasis; ok, warn, bad and info for status. variant is deprecated and maps to a tone (default solid, secondary soft, destructive bad, the rest outline). Badges are 20px (md) or 16px (sm) with square corners and one weight, and take an optional dot and mono content. A leading or trailing glyph is size-glyph-sm (14px) at both sizes, set by Badge; callers pass the Icon without a size. Count is a separate 20px number chip: accent for attention, ink for weight and neutral for counts inside tabs and lists.
+- tone is the one paint axis: outline, soft, solid and accent for metadata and emphasis; ok, warn, bad and info for status. variant is deprecated and maps to a tone (default solid, secondary soft, destructive bad, the rest outline). Badges are 20px (md) or 16px (sm) with square corners and one weight, and take an optional dot and mono content. A leading or trailing glyph is sized by Badge from its size: size-badge-glyph (14px) in the 20px md badge and size-badge-glyph-sm (12px) in the 16px sm badge, so a glyph never fills the space inside the border; callers pass the Icon without a size. Count is a separate 20px number chip: accent for attention, ink for weight and neutral for counts inside tabs and lists.
 
 ## Accessibility
 

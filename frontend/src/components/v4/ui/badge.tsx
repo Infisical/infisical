@@ -10,7 +10,7 @@ import helperStyles from "./helpers.module.css";
 const badgeVariants = cva([
   controlStyles.focusOutline,
   helperStyles.badge,
-  "group/badge inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:size-(--v4-size-glyph-sm)!"
+  "group/badge inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:size-(--v4-badge-glyph)!"
 ]);
 
 export type BadgeTone = "outline" | "soft" | "ok" | "warn" | "bad" | "info" | "solid" | "accent";
