@@ -1,5 +1,11 @@
 import { useMemo, useRef, useState } from "react";
-import { InfiniteData, useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  InfiniteData,
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+  UseQueryOptions
+} from "@tanstack/react-query";
 import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
@@ -250,19 +256,28 @@ export const useListAgentVaultAccessBundleMembers = (
   });
 };
 
-export const useListAgentVaultAccessBundles = (params: TListAgentVaultAccessBundlesDTO = {}) => {
+type TAgentVaultAccessBundleList = {
+  accessBundles: TAgentVaultAccessBundleListItem[];
+  totalCount: number;
+};
+
+export const useListAgentVaultAccessBundles = (
+  params: TListAgentVaultAccessBundlesDTO = {},
+  options?: Omit<UseQueryOptions<TAgentVaultAccessBundleList>, "queryKey" | "queryFn">
+) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
+    placeholderData: (prev) => prev,
+    ...options,
     queryKey: agentVaultKeys.accessBundleList(currentOrg.id, params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{
-        accessBundles: TAgentVaultAccessBundleListItem[];
-        totalCount: number;
-      }>("/api/v1/agent-vault/access-bundles", { params });
+      const { data } = await apiRequest.get<TAgentVaultAccessBundleList>(
+        "/api/v1/agent-vault/access-bundles",
+        { params }
+      );
       return data;
-    },
-    placeholderData: (prev) => prev
+    }
   });
 };
 
@@ -289,40 +304,49 @@ export const useGetAgentVaultAccessBundle = (accessBundleId: string) => {
   });
 };
 
-export const useListAgentVaultSessions = (params?: TListAgentVaultSessionsDTO) => {
+export type TAgentVaultSessionList = { sessions: TAgentVaultSession[]; totalCount: number };
+
+export const useListAgentVaultSessions = (
+  params?: TListAgentVaultSessionsDTO,
+  options?: Omit<UseQueryOptions<TAgentVaultSessionList>, "queryKey" | "queryFn">
+) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
+    refetchInterval: 30_000,
+    placeholderData: (prev) => prev,
+    ...options,
     queryKey: agentVaultKeys.sessionList(currentOrg.id, params),
     queryFn: async () => {
       const { statuses, ...rest } = params ?? {};
-      const { data } = await apiRequest.get<{
-        sessions: TAgentVaultSession[];
-        totalCount: number;
-      }>("/api/v1/agent-vault/sessions", {
-        params: { ...rest, status: statuses?.length ? statuses.join(",") : undefined }
-      });
+      const { data } = await apiRequest.get<TAgentVaultSessionList>(
+        "/api/v1/agent-vault/sessions",
+        { params: { ...rest, status: statuses?.length ? statuses.join(",") : undefined } }
+      );
       return data;
-    },
-    refetchInterval: 30_000,
-    placeholderData: (prev) => prev
+    }
   });
 };
 
-export const useListAgentVaultProxies = (params: TListAgentVaultProxiesDTO = {}) => {
+export type TAgentVaultProxyList = { proxies: TAgentVaultProxy[]; totalCount: number };
+
+export const useListAgentVaultProxies = (
+  params: TListAgentVaultProxiesDTO = {},
+  options?: Omit<UseQueryOptions<TAgentVaultProxyList>, "queryKey" | "queryFn">
+) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
+    refetchInterval: 30_000,
+    placeholderData: (prev) => prev,
+    ...options,
     queryKey: agentVaultKeys.proxyList(currentOrg.id, params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ proxies: TAgentVaultProxy[]; totalCount: number }>(
-        "/api/v1/agent-vault/proxies",
-        { params }
-      );
+      const { data } = await apiRequest.get<TAgentVaultProxyList>("/api/v1/agent-vault/proxies", {
+        params
+      });
       return data;
-    },
-    refetchInterval: 30_000,
-    placeholderData: (prev) => prev
+    }
   });
 };
 
