@@ -29,59 +29,43 @@ const LINE_BREAK_VARIANTS = new RE2("\\r\\n?|[\\u2028\\u2029]", "g");
 // VT and FF become a space so words don't run together.
 const VERTICAL_WHITESPACE = new RE2("[\\v\\f]", "g");
 
-const KEPT_WHITESPACE = new Set([0x09, 0x0a]);
-
-// What a multiline field may contain. U+2028/U+2029 split lines too, so single-line fields reject them.
-const LINE_BREAKS = new Set([0x09, 0x0a, 0x0d, 0x2028, 0x2029]);
-
-const isControlCharacter = (code: number) => code <= 0x1f || (code >= 0x7f && code <= 0x9f);
-
 // Lone surrogates. Postgres jsonb rejects them just like NUL, which fails the whole audit batch.
 const isSurrogate = (code: number) => code >= 0xd800 && code <= 0xdfff;
 
-// The whole Cf category instead of a hand-picked list, since Unicode keeps adding to it.
-const FORMAT_CATEGORY = new RE2("\\p{Cf}", "u");
+// "Cf except ZWNJ/ZWJ". The whole Cf category since Unicode keeps adding to it, but ZWNJ/ZWJ are real
+// text (emoji sequences, Persian, Arabic and Indic scripts). The patterns below add C0/C1 controls and
+// the invisible stuff Cf misses: U+2028/U+2029 and the tags block.
+const FORMAT_EXCEPT_JOINERS = "[^\\P{Cf}\\x{200C}\\x{200D}]";
 
-// ZWNJ/ZWJ are Cf but they're real text: emoji sequences and Persian, Arabic and Indic scripts need them.
-const TEXT_JOINERS = new Set([0x200c, 0x200d]);
+const UNSAFE_SINGLE_LINE = new RE2(
+  `${FORMAT_EXCEPT_JOINERS}|[\\x00-\\x1f\\x7f-\\x9f\\x{2028}\\x{2029}\\x{E0000}-\\x{E007F}]`,
+  "u"
+);
 
-// Invisible stuff Cf misses: the line/paragraph separators and the tags block.
-const isUncategorizedFormat = (code: number) =>
-  code === 0x2028 || code === 0x2029 || (code >= 0xe0000 && code <= 0xe007f);
+// Multiline fields allow tab, LF, CR and U+2028/U+2029. CR is allowed so CRLF input passes, the sink
+// turns it into LF.
+const UNSAFE_MULTILINE = new RE2(
+  `${FORMAT_EXCEPT_JOINERS}|[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f-\\x9f\\x{E0000}-\\x{E007F}]`,
+  "u"
+);
 
-// Cheap whole-string check before the per-char walk, which costs one RE2 call per char (~30x slower).
-// Audit text is almost always clean. It over-matches ZWNJ, ZWJ, LF and tab, so those just get walked.
-const UNSAFE_SCREEN = new RE2("[\\x00-\\x1f\\x7f-\\x9f\\x{2028}\\x{2029}]|[\\x{E0000}-\\x{E007F}]|\\p{Cf}", "u");
+// What the sink removes: everything except tab and LF, which stay as typed.
+const SINK_UNSAFE = `${FORMAT_EXCEPT_JOINERS}|[\\x00-\\x08\\x0b-\\x1f\\x7f-\\x9f\\x{2028}\\x{2029}\\x{E0000}-\\x{E007F}]`;
+const NEEDS_CLEANING = new RE2(SINK_UNSAFE, "u");
+const STRIPPED = new RE2(SINK_UNSAFE, "gu");
 
-// RE2 turns lone surrogates into U+FFFD before matching, so the screen can't see them. isWellFormed can.
-const passesScreen = (value: string) => value.isWellFormed() && !UNSAFE_SCREEN.test(value);
-
-// codePointAt, not charCodeAt: past U+FFFF charCodeAt only sees a surrogate half and never matches.
-const isUnsafeCharacter = (character: string) => {
-  const code = character.codePointAt(0) ?? 0;
-  if (TEXT_JOINERS.has(code)) return false;
-
-  return (
-    isControlCharacter(code) || isSurrogate(code) || isUncategorizedFormat(code) || FORMAT_CATEGORY.test(character)
-  );
-};
+// RE2 turns lone surrogates into U+FFFD before matching, so it can't see them. isWellFormed can.
+const isClean = (value: string) => value.isWellFormed() && !NEEDS_CLEANING.test(value);
 
 export const LOG_UNSAFE_TEXT_MESSAGE = "Value cannot contain control, escape, bidirectional or zero-width characters";
 
-// `allowMultiline` is for textarea fields. CR is allowed so CRLF input passes, the sink turns it into LF.
-export const containsLogUnsafeCharacters = (value: string, { allowMultiline = false } = {}): boolean => {
-  if (passesScreen(value)) return false;
-
-  return Array.from(value).some((character) => {
-    const code = character.codePointAt(0) ?? 0;
-    if (allowMultiline && LINE_BREAKS.has(code)) return false;
-    return isUnsafeCharacter(character);
-  });
-};
+// `allowMultiline` is for textarea fields.
+export const containsLogUnsafeCharacters = (value: string, { allowMultiline = false } = {}): boolean =>
+  !value.isWellFormed() || (allowMultiline ? UNSAFE_MULTILINE : UNSAFE_SINGLE_LINE).test(value);
 
 export const sanitizeLogText = <T extends string | null | undefined>(value: T): T => {
   if (typeof value !== "string") return value;
-  if (passesScreen(value)) return value;
+  if (isClean(value)) return value;
 
   // Lone surrogates go before any RE2 call, which would turn them into U+FFFD.
   const wellFormed = value.isWellFormed()
@@ -91,14 +75,11 @@ export const sanitizeLogText = <T extends string | null | undefined>(value: T): 
         .join("");
 
   // Whole sequences first, otherwise dropping ESC alone leaves the rest as visible text.
-  const normalized = wellFormed
+  return wellFormed
     .replace(ANSI_ESCAPE_PATTERN, "")
     .replace(LINE_BREAK_VARIANTS, "\n")
-    .replace(VERTICAL_WHITESPACE, " ");
-
-  return Array.from(normalized)
-    .filter((character) => KEPT_WHITESPACE.has(character.codePointAt(0) ?? 0) || !isUnsafeCharacter(character))
-    .join("") as T;
+    .replace(VERTICAL_WHITESPACE, " ")
+    .replace(STRIPPED, "") as T;
 };
 
 // Two keys can clean up to the same string, so suffix the second one instead of losing a field.
@@ -108,6 +89,27 @@ const disambiguate = (key: string, taken: Set<string>) => {
   let suffix = 2;
   while (taken.has(`${key}~${suffix}`)) suffix += 1;
   return `${key}~${suffix}`;
+};
+
+// Almost every payload is clean, so check first and only copy when something needs to change.
+const isPayloadClean = (payload: object) => {
+  const pending: unknown[] = [payload];
+  while (pending.length) {
+    const node = pending.pop();
+    if (typeof node === "string") {
+      if (!isClean(node)) return false;
+    } else if (node !== null && typeof node === "object") {
+      if (Array.isArray(node)) {
+        for (const item of node) pending.push(item);
+      } else {
+        for (const [key, value] of Object.entries(node)) {
+          if (!isClean(key)) return false;
+          pending.push(value);
+        }
+      }
+    }
+  }
+  return true;
 };
 
 const emptyLike = (node: object) => (Array.isArray(node) ? [] : {}) as Record<string, unknown> | unknown[];
@@ -122,6 +124,7 @@ const emptyLike = (node: object) => (Array.isArray(node) ? [] : {}) as Record<st
 export const sanitizeLogPayload = <T>(payload: T): T => {
   if (typeof payload === "string") return sanitizeLogText(payload) as T;
   if (payload === null || typeof payload !== "object") return payload;
+  if (isPayloadClean(payload)) return payload;
 
   const root = emptyLike(payload);
   const pending: [source: object, target: Record<string, unknown> | unknown[]][] = [[payload, root]];

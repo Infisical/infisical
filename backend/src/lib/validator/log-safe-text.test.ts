@@ -103,6 +103,20 @@ describe("lone surrogates", () => {
 });
 
 describe("sanitizeLogPayload", () => {
+  test("hands back the same object when nothing needs cleaning", () => {
+    const payload = { name: "deploy bot", reason: "line one\nline two\tok", tags: ["a", { b: 1 }], ok: null };
+    expect(sanitizeLogPayload(payload)).toBe(payload);
+  });
+
+  test("copies instead of mutating when something does", () => {
+    const payload = { clean: "x", nested: { dirty: `a${NUL}b` } };
+    const sanitized = sanitizeLogPayload(payload);
+
+    expect(sanitized).not.toBe(payload);
+    expect(sanitized).toEqual({ clean: "x", nested: { dirty: "ab" } });
+    expect(payload.nested.dirty).toBe(`a${NUL}b`);
+  });
+
   test("sanitizes nested values, keys and arrays", () => {
     expect(
       sanitizeLogPayload({
