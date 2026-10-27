@@ -156,12 +156,17 @@ export const delegatedApprovalServiceFactory = ({
     return (policy as TDelegatedApprovalPolicy | undefined) ?? null;
   };
 
-  const createRequest = async ({ approvalRequest }: TCreateDelegatedApprovalRequestDTO, tx?: Knex) => {
+  const createRequest = async ({ approvalRequest, delegatedPolicy }: TCreateDelegatedApprovalRequestDTO, tx?: Knex) => {
     assertPolicyTypeSupportsDelegatedApproval(approvalRequest.type);
 
     try {
       const request = await delegatedApprovalRequestDAL.create(
-        { requestId: approvalRequest.id, status: DelegatedApprovalRequestStatus.PendingDispatch, details: {} },
+        {
+          requestId: approvalRequest.id,
+          providerType: delegatedPolicy.type,
+          status: DelegatedApprovalRequestStatus.PendingDispatch,
+          details: {}
+        },
         tx
       );
       await emitDelegatedApprovalDispatchRequested(

@@ -5,7 +5,7 @@ import { TDelegatedApprovalRequests } from "@app/db/schemas";
 import { logger } from "@app/lib/logger";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 
-import { DelegatedApprovalRequestStatus } from "./delegated-approval-enums";
+import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "./delegated-approval-enums";
 import { DelegatedApprovalRequestDetailsSchema } from "./delegated-approval-schemas";
 import {
   TDelegatedApprovalRequest,
@@ -36,6 +36,7 @@ export const parseDelegatedApprovalRequestDetails = (
 
 export const toDelegatedApprovalRequest = (row: TDelegatedApprovalRequests): TDelegatedApprovalRequest => ({
   ...row,
+  providerType: row.providerType as DelegatedApprovalPolicyType,
   status: row.status as DelegatedApprovalRequestStatus,
   details: parseDelegatedApprovalRequestDetails(row)
 });

@@ -61,11 +61,23 @@ describe("delegatedApprovalService.createRequest", () => {
   test("records the dispatch event in the same transaction as the request row", async () => {
     const { service, emit, create } = createService();
 
-    const request = await service.createRequest({ approvalRequest: pendingApprovalRequest as never }, TX);
+    const request = await service.createRequest(
+      { approvalRequest: pendingApprovalRequest as never, delegatedPolicy: serviceNowPolicy },
+      TX
+    );
 
-    expect(request).toMatchObject({ id: "delegated-1", status: DelegatedApprovalRequestStatus.PendingDispatch });
+    expect(request).toMatchObject({
+      id: "delegated-1",
+      providerType: DelegatedApprovalPolicyType.ServiceNow,
+      status: DelegatedApprovalRequestStatus.PendingDispatch
+    });
     expect(create).toHaveBeenCalledWith(
-      { requestId: "req-1", status: DelegatedApprovalRequestStatus.PendingDispatch, details: {} },
+      {
+        requestId: "req-1",
+        providerType: DelegatedApprovalPolicyType.ServiceNow,
+        status: DelegatedApprovalRequestStatus.PendingDispatch,
+        details: {}
+      },
       TX
     );
     expect(emit).toHaveBeenCalledTimes(1);

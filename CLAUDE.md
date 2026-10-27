@@ -161,7 +161,8 @@ policies may opt in today: `assertPolicyTypeSupportsDelegatedApproval` refuses t
 policies return it as a 400 rather than dropping the field.
 
 Delivery to the delegated system is asynchronous and goes through the event outbox (see `backend/CLAUDE.md`).
-`delegatedApprovalService.createRequest` writes the `delegated_approval_requests` row and emits
+`delegatedApprovalService.createRequest` writes the `delegated_approval_requests` row, stamped with the policy's
+provider as `providerType` so `(providerRequestId, providerType)` can be unique, and emits
 `delegated-approval.request.dispatch-requested` (`delegated-approval-events.ts`) in the caller's transaction, so
 the dispatch is exactly as durable as the request; never enqueue it after commit. The
 `delegated-approval-dispatch` consumer (`delegated-approval/dispatch/delegated-approval-dispatch-consumer.ts`)

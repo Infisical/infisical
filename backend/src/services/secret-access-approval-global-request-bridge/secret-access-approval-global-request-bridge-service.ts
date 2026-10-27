@@ -386,7 +386,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
         tx
       );
       if (delegatedPolicy) {
-        await delegatedApprovalService.createRequest({ approvalRequest }, tx);
+        await delegatedApprovalService.createRequest({ approvalRequest, delegatedPolicy }, tx);
       }
       return { approvalRequest, policySteps: currentSteps };
     });

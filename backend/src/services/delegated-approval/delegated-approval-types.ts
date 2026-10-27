@@ -25,7 +25,8 @@ export type TDelegatedApprovalPolicy = Omit<TDelegatedApprovalPolicies, "type"> 
 
 export type { TDelegatedApprovalProviderDetails, TDelegatedApprovalRequestDetails };
 
-export type TDelegatedApprovalRequest = Omit<TDelegatedApprovalRequests, "status" | "details"> & {
+export type TDelegatedApprovalRequest = Omit<TDelegatedApprovalRequests, "providerType" | "status" | "details"> & {
+  providerType: DelegatedApprovalPolicyType;
   status: DelegatedApprovalRequestStatus;
   details: TDelegatedApprovalRequestDetails;
 };
@@ -53,6 +54,7 @@ export type TUpdateDelegatedApprovalPolicyDTO = {
 
 export type TCreateDelegatedApprovalRequestDTO = {
   approvalRequest: Pick<TApprovalRequests, "id" | "type">;
+  delegatedPolicy: Pick<TDelegatedApprovalPolicy, "type">;
 };
 
 export type TRetryDelegatedApprovalRequestDispatchDTO = {
