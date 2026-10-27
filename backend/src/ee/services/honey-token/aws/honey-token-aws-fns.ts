@@ -199,7 +199,9 @@ const getManagedIamClient = async () => {
       message: isMissingCredentials
         ? "Infisical-managed honey tokens are not fully set up on this instance: no AWS credentials were found. Ask your instance administrator to set HONEY_TOKEN_MANAGED_AWS_ACCESS_KEY_ID and HONEY_TOKEN_MANAGED_AWS_SECRET_ACCESS_KEY (or INF_APP_CONNECTION_AWS_ACCESS_KEY_ID and INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY), or to run Infisical with an AWS role."
         : `Infisical-managed honey tokens could not reach their AWS account${
-            appCfg.HONEY_TOKEN_MANAGED_AWS_ROLE_ARN ? " because HONEY_TOKEN_MANAGED_AWS_ROLE_ARN could not be assumed" : ""
+            appCfg.HONEY_TOKEN_MANAGED_AWS_ROLE_ARN
+              ? " because HONEY_TOKEN_MANAGED_AWS_ROLE_ARN could not be assumed"
+              : ""
           }. Ask your instance administrator to check the managed honey token AWS settings.`
     });
   }

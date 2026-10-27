@@ -89,7 +89,7 @@ export const HoneyTokenConfigurationFields = ({
       {isHostingOptionsError && !hostingOptions && (
         <Alert variant="danger">
           <AlertTriangle />
-          <AlertDescription className="text-xs">
+          <AlertDescription>
             <span>Couldn&apos;t load where this honey token can be created.</span>
             <AlertAction>
               <Button

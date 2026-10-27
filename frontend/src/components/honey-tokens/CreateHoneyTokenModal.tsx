@@ -81,7 +81,9 @@ export const CreateHoneyTokenModal = ({ onOpenChange, isOpen, ...props }: Props)
             </SheetTitle>
           )}
           {!selection && (
-            <SheetDescription>Choose where Infisical creates the decoy credentials.</SheetDescription>
+            <SheetDescription>
+              Choose where Infisical creates the decoy credentials.
+            </SheetDescription>
           )}
         </SheetHeader>
         {selection ? (
