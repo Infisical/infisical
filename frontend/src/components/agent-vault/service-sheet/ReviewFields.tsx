@@ -10,14 +10,18 @@ import {
 } from "@app/components/v3";
 import {
   AgentVaultCredentialType,
+  AgentVaultServiceType,
   AgentVaultVariableReferenceField,
   TAgentVaultMemberProvidedField
 } from "@app/hooks/api/agentVault";
+import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
 import {
   CREDENTIAL_LABELS,
   isAllMethods,
+  oauthStatusLabel,
   SURFACE_LABELS,
+  TRANSPORT_LABELS,
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
@@ -32,6 +36,8 @@ const credentialPreview = (form: {
 }): string | null => {
   if (form.credentialType === AgentVaultCredentialType.Passthrough) return null;
   if (form.credentialType === AgentVaultCredentialType.Basic) return `Authorization: Basic ${MASK}`;
+  if (form.credentialType === AgentVaultCredentialType.OAuth)
+    return `Authorization: Bearer ${MASK}`;
   const prefix = form.headerPrefix ? `${form.headerPrefix} ` : "";
   const value = form.memberProvidedFields.includes(AgentVaultVariableReferenceField.CredentialValue)
     ? "<member value>"
@@ -53,16 +59,19 @@ const alignColumns = (rows: string[][]) => {
 
 type Props = {
   isUpdate: boolean;
+  service?: TAgentVaultService | null;
   storedType?: AgentVaultCredentialType;
   /** The fields that were member-provided when the sheet opened, which have no stored value behind them. */
   storedMemberFields?: TAgentVaultMemberProvidedField[];
 };
 
-export const ReviewFields = ({ isUpdate, storedType, storedMemberFields = [] }: Props) => {
+export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields = [] }: Props) => {
   const { watch } = useFormContext<TServiceForm>();
   const form = watch();
 
+  const isMcp = form.serviceType === AgentVaultServiceType.Mcp;
   const isBasic = form.credentialType === AgentVaultCredentialType.Basic;
+  const isOAuth = form.credentialType === AgentVaultCredentialType.OAuth;
   const secretLabel = isBasic ? "Password" : "Token";
   const sends = credentialPreview(form);
 
@@ -100,28 +109,45 @@ export const ReviewFields = ({ isUpdate, storedType, storedMemberFields = [] }: 
     <div className="mb-4 flex flex-col gap-y-8">
       <DetailGroup>
         <DetailGroupHeader className="border-b border-border pb-2">Details</DetailGroupHeader>
-        <div className="flex flex-wrap gap-x-8 gap-y-4">
-          <Detail>
-            <DetailLabel>Name</DetailLabel>
-            <DetailValue>{form.name}</DetailValue>
-          </Detail>
-          <Detail>
-            <DetailLabel>Hosts</DetailLabel>
-            <DetailValue>{form.hosts.join(", ")}</DetailValue>
-          </Detail>
-          <Detail>
-            <DetailLabel>Methods</DetailLabel>
-            <DetailValue>
-              {isAllMethods(form.methods) ? "All" : form.methods.join(", ")}
-            </DetailValue>
-          </Detail>
-          <Detail>
-            <DetailLabel>Paths</DetailLabel>
-            <DetailValue>
-              {form.pathPrefixes.length ? form.pathPrefixes.join(", ") : "All"}
-            </DetailValue>
-          </Detail>
-        </div>
+        {isMcp ? (
+          <div className="flex flex-wrap gap-x-8 gap-y-4">
+            <Detail>
+              <DetailLabel>Name</DetailLabel>
+              <DetailValue>{form.name}</DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel>Server URL</DetailLabel>
+              <DetailValue className="break-all">{form.serverUrl.trim()}</DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel>Transport</DetailLabel>
+              <DetailValue>{TRANSPORT_LABELS[form.transport]}</DetailValue>
+            </Detail>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-x-8 gap-y-4">
+            <Detail>
+              <DetailLabel>Name</DetailLabel>
+              <DetailValue>{form.name}</DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel>Hosts</DetailLabel>
+              <DetailValue>{form.hosts.join(", ")}</DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel>Methods</DetailLabel>
+              <DetailValue>
+                {isAllMethods(form.methods) ? "All" : form.methods.join(", ")}
+              </DetailValue>
+            </Detail>
+            <Detail>
+              <DetailLabel>Paths</DetailLabel>
+              <DetailValue>
+                {form.pathPrefixes.length ? form.pathPrefixes.join(", ") : "All"}
+              </DetailValue>
+            </Detail>
+          </div>
+        )}
       </DetailGroup>
 
       <DetailGroup>
@@ -129,8 +155,16 @@ export const ReviewFields = ({ isUpdate, storedType, storedMemberFields = [] }: 
         <div className="flex flex-wrap gap-x-8 gap-y-4">
           <Detail>
             <DetailLabel>Type</DetailLabel>
-            <DetailValue>{CREDENTIAL_LABELS[form.credentialType]}</DetailValue>
+            <DetailValue>
+              {isMcp && !isOAuth ? "Bearer Token" : CREDENTIAL_LABELS[form.credentialType]}
+            </DetailValue>
           </Detail>
+          {isOAuth && (
+            <Detail>
+              <DetailLabel>Status</DetailLabel>
+              <DetailValue>{oauthStatusLabel(form, service)}</DetailValue>
+            </Detail>
+          )}
           {sends && (
             <Detail>
               <DetailLabel>Sends</DetailLabel>
@@ -145,7 +179,7 @@ export const ReviewFields = ({ isUpdate, storedType, storedMemberFields = [] }: 
               </DetailValue>
             </Detail>
           )}
-          {form.credentialType !== AgentVaultCredentialType.Passthrough && (
+          {form.credentialType !== AgentVaultCredentialType.Passthrough && !isOAuth && (
             <Detail>
               <DetailLabel>{secretLabel}</DetailLabel>
               <DetailValue>

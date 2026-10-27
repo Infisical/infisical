@@ -15,6 +15,7 @@ import {
   TAgentVaultGrantedMember,
   TAgentVaultMemberWriteResult,
   TAgentVaultMintedSession,
+  TAgentVaultOauthAuthorization,
   TAgentVaultPersonalValues,
   TAgentVaultProxy,
   TAgentVaultProxySettingsDTO,
@@ -23,7 +24,10 @@ import {
   TAgentVaultSessionLogSettingsState,
   TAgentVaultVariable,
   TAgentVaultWrittenMember,
+  TCompleteAgentVaultOauthAuthorizationDTO,
   TCreateAgentVaultAccessBundleDTO,
+  TCreateAgentVaultOauthAuthorizationDTO,
+  TCreateAgentVaultOauthAuthorizationResponse,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
   TCreateAgentVaultVariableDTO,
@@ -93,13 +97,19 @@ export const useDeleteAgentVaultAccessBundle = () => {
   });
 };
 
+// The service sheet renders these inline when it recognizes them (a host-pattern conflict, an authorization that
+// expired or was already used) and hands the rest back to onRequestError, so the global toast must not also fire.
+export const SERVICE_SAVE_HANDLED_ERROR_CODES: string[] = [
+  ApiErrorTypes.BadRequestError,
+  ApiErrorTypes.ConflictError,
+  ApiErrorTypes.NotFoundError
+];
+
 export const useCreateAgentVaultService = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    // The sheet renders a host-pattern conflict inline and hands anything else back to onRequestError,
-    // so the global toast must not also fire for it.
-    meta: { skipValidationToast: true, handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    meta: { skipValidationToast: true, handledErrorCodes: SERVICE_SAVE_HANDLED_ERROR_CODES },
     mutationFn: async ({ accessBundleId, ...params }: TCreateAgentVaultServiceDTO) => {
       const { data } = await apiRequest.post<{ service: TAgentVaultService }>(
         `/api/v1/agent-vault/access-bundles/${accessBundleId}/services`,
@@ -121,9 +131,7 @@ export const useUpdateAgentVaultService = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    // The sheet renders a host-pattern conflict inline and hands anything else back to onRequestError,
-    // so the global toast must not also fire for it.
-    meta: { skipValidationToast: true, handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    meta: { skipValidationToast: true, handledErrorCodes: SERVICE_SAVE_HANDLED_ERROR_CODES },
     mutationFn: async ({ accessBundleId, serviceId, ...params }: TUpdateAgentVaultServiceDTO) => {
       const { data } = await apiRequest.patch<{ service: TAgentVaultService }>(
         `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}`,
@@ -462,6 +470,35 @@ export const useRevealAgentVaultVariableValue = () =>
         `/api/v1/agent-vault/variables/${variableId}/value`
       );
       return data.value;
+    }
+  });
+
+export const useCreateAgentVaultOauthAuthorization = () =>
+  useMutation({
+    // The Authorize card shows every failure in place, discovery and registration ones naming the server.
+    meta: { skipErrorToast: true },
+    mutationFn: async (params: TCreateAgentVaultOauthAuthorizationDTO) => {
+      const { data } = await apiRequest.post<TCreateAgentVaultOauthAuthorizationResponse>(
+        "/api/v1/agent-vault/oauth/authorizations",
+        params
+      );
+      return data;
+    }
+  });
+
+export const useCompleteAgentVaultOauthAuthorization = () =>
+  useMutation({
+    // The callback page shows every outcome itself.
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError, ApiErrorTypes.NotFoundError] },
+    mutationFn: async ({
+      authorizationId,
+      ...params
+    }: TCompleteAgentVaultOauthAuthorizationDTO) => {
+      const { data } = await apiRequest.post<{ authorization: TAgentVaultOauthAuthorization }>(
+        `/api/v1/agent-vault/oauth/authorizations/${encodeURIComponent(authorizationId)}/complete`,
+        params
+      );
+      return data.authorization;
     }
   });
 

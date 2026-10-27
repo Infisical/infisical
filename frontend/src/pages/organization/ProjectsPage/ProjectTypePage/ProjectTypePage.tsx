@@ -299,7 +299,7 @@ export const ProjectTypePage = () => {
   useEffect(() => {
     if (projectType === ProjectType.AgentVault) {
       navigate({
-        to: "/organizations/$orgId/agent-vault/sessions",
+        to: "/organizations/$orgId/agent-vault",
         params: { orgId }
       });
     }

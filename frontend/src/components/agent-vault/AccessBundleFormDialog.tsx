@@ -38,9 +38,15 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   accessBundle?: TAgentVaultAccessBundle;
+  onCreated?: (accessBundle: TAgentVaultAccessBundle) => void;
 };
 
-export const AccessBundleFormDialog = ({ isOpen, onOpenChange, accessBundle }: Props) => {
+export const AccessBundleFormDialog = ({
+  isOpen,
+  onOpenChange,
+  accessBundle,
+  onCreated
+}: Props) => {
   const createAccessBundle = useCreateAgentVaultAccessBundle();
   const updateAccessBundle = useUpdateAgentVaultAccessBundle();
   const isUpdate = Boolean(accessBundle);
@@ -60,6 +66,7 @@ export const AccessBundleFormDialog = ({ isOpen, onOpenChange, accessBundle }: P
 
   const onSubmit = async ({ name, description }: FormData) => {
     try {
+      let createdAccessBundle: TAgentVaultAccessBundle | undefined;
       if (accessBundle) {
         await updateAccessBundle.mutateAsync({
           accessBundleId: accessBundle.id,
@@ -67,7 +74,10 @@ export const AccessBundleFormDialog = ({ isOpen, onOpenChange, accessBundle }: P
           description: description || null
         });
       } else {
-        await createAccessBundle.mutateAsync({ name, description: description || undefined });
+        createdAccessBundle = await createAccessBundle.mutateAsync({
+          name,
+          description: description || undefined
+        });
       }
 
       createNotification({
@@ -75,6 +85,7 @@ export const AccessBundleFormDialog = ({ isOpen, onOpenChange, accessBundle }: P
         type: "success"
       });
       onOpenChange(false);
+      if (createdAccessBundle) onCreated?.(createdAccessBundle);
     } catch {
       // A failed request returns a 4xx that the global request handler surfaces as a toast
     }
