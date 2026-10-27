@@ -4,6 +4,7 @@ import { IntegrationUrls } from "@app/services/integration-auth/integration-list
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { HumanitecSyncScope } from "./humanitec-sync-enums";
@@ -183,7 +184,8 @@ const updateSecret = async (
 };
 
 export const HumanitecSyncFns = {
-  syncSecrets: async (secretSync: THumanitecSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: THumanitecSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const humanitecSecrets = await getHumanitecSecrets(secretSync);
     const humanitecSecretsKeys = new Map(humanitecSecrets.map((s) => [s.key, s]));
 
@@ -213,7 +215,8 @@ export const HumanitecSyncFns = {
     throw new Error(`${SECRET_SYNC_NAME_MAP[secretSync.destination]} does not support importing secrets.`);
   },
 
-  removeSecrets: async (secretSync: THumanitecSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: THumanitecSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const encryptedSecrets = await getHumanitecSecrets(secretSync);
 
     for await (const encryptedSecret of encryptedSecrets) {

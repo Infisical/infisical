@@ -1,0 +1,83 @@
+---
+title: "Microsoft SQL Server discovery"
+sidebarTitle: "Microsoft SQL Server"
+description: "Scan Microsoft SQL Server instances for SQL logins and import them into PAM."
+---
+
+Microsoft SQL Server discovery finds the SQL logins on your SQL Server instances, so you can import them into PAM as [Microsoft SQL Server accounts](/documentation/platform/pam/accounts/mssql). For how discovery works across every source type, see [Discovery](/documentation/platform/pam/discovery/overview).
+
+You give the source a list of instances and one or more Microsoft SQL Server accounts to sign in with. Infisical connects to each instance through a [Gateway](/documentation/platform/gateways/overview).
+
+<Accordion title="How a scan works">
+  1. Infisical checks that each instance is reachable on the ports of the source's Microsoft SQL Server accounts, and skips the instances it can't reach
+  2. For each instance, Infisical first tries the account whose host and port match the instance, then tries the other accounts until one signs in
+  3. Infisical lists the enabled SQL logins on the instance, and stages each one as a Microsoft SQL Server account for that instance
+
+  If two instances each have a login named `sa`, Infisical stages two separate accounts. If no account can sign in to an instance, the scan reports the instance and continues with the others.
+</Accordion>
+
+## Prerequisites
+
+- A [Gateway](/documentation/platform/gateways/overview) that can reach the instances you want to scan
+- One or more [Microsoft SQL Server accounts](/documentation/platform/pam/accounts/mssql) that use SQL Server authentication, to sign in to the instances with
+- The `VIEW ANY DEFINITION` or `ALTER ANY LOGIN` server permission for those accounts' logins, so the scan can see every login (members of the `sysadmin` and `securityadmin` roles already have it)
+- The [Product Admin role](/documentation/platform/pam/concepts/access-control#product-membership) in PAM
+- The Operator or Admin [role](/documentation/platform/pam/concepts/access-control#folder-and-account-memberships) on those Microsoft SQL Server accounts, because the scan sends their passwords to every instance
+
+<Warning>
+  Infisical sends the Microsoft SQL Server account's password to every instance that the source scans, so only list instances you trust.
+</Warning>
+
+## Step 1: Create a source
+
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Discovery** and select **Add Source**.
+  </Step>
+  <Step>
+    Select **Microsoft SQL Server**, then select **Next**.
+  </Step>
+  <Step>
+    Configure the source:
+
+    | Field | Description |
+    |-------|-------------|
+    | **Name** | A name for the source, such as `prod-sql-servers` |
+    | **Credential Accounts** | The Microsoft SQL Server accounts to sign in to the instances with |
+    | **Gateway** | The Gateway or Gateway pool to connect through |
+    | **Scan Schedule** | **Manual**, **Daily**, or **Weekly** (see [scan schedules](/documentation/platform/pam/discovery/overview#scan-schedules)) |
+    | **Targets** | The IP addresses or hostnames of the instances to scan, one per line or separated by commas (the Gateway resolves hostnames) |
+
+    Infisical connects to each instance with the port, database, and TLS settings of the Microsoft SQL Server account it signs in with.
+  </Step>
+  <Step>
+    Select **Add Source**.
+  </Step>
+</Steps>
+
+## Step 2: Run a scan
+
+On the **Discovery Sources** table, select the options menu on the source's row, then select **Scan Now**. A source can run one scan at a time.
+
+The scan stages only enabled SQL logins. It skips Windows logins and SQL Server's internal logins.
+
+## Step 3: Import accounts
+
+<Steps>
+  <Step>
+    On the **Discovery Sources** table, select the source.
+  </Step>
+  <Step>
+    On the **Staged Accounts** tab, select the accounts you want, then select **Import Accounts**.
+  </Step>
+  <Step>
+    Select a **Destination Folder** and a **Microsoft SQL Server Template**, then select **Import**.
+  </Step>
+  <Step>
+    Go to **Privileged Access Management** > **Accounts**. For each imported account, open the options menu on its row, select **Configure**, and enter the password for its login on the **Configuration** tab. The scan doesn't read passwords, so you can't connect to an imported account until you enter its password.
+  </Step>
+</Steps>
+
+<Check>
+  Your SQL Server logins are in PAM. Anyone with access to the destination folder can launch sessions on them, and each scan of the source stages any new logins it finds.
+</Check>

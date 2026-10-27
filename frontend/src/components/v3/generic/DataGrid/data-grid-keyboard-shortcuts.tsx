@@ -280,7 +280,7 @@ function DataGridKeyboardShortcutsImpl({ enableSearch = false }: DataGridKeyboar
             <div className="flex flex-col gap-6">
               {filteredGroups.map((shortcutGroup) => (
                 <div key={shortcutGroup.title} className="flex flex-col gap-2">
-                  <h3 className="text-sm font-semibold text-foreground">{shortcutGroup.title}</h3>
+                  <h3 className="text-sm font-normal text-foreground">{shortcutGroup.title}</h3>
                   <div className="divide-y divide-border rounded-md border">
                     {shortcutGroup.shortcuts.map((shortcut, index) => (
                       // eslint-disable-next-line @typescript-eslint/no-use-before-define

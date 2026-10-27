@@ -3,12 +3,13 @@ import https from "node:https";
 import axios, { AxiosInstance, isAxiosError } from "axios";
 import { v4 as uuidv4 } from "uuid";
 
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { BadRequestError } from "@app/lib/errors";
-import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 import { blockLocalAndPrivateIpAddresses, isValidFolderName } from "@app/lib/validator";
 
 import { convertVaultValueToString, JsonValue } from "../../app-connection/hc-vault";
@@ -21,10 +22,7 @@ type VaultData = {
   secretData: Record<string, string>;
 };
 
-const vaultFactory = (
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
-) => {
+const vaultFactory = (gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">) => {
   const $gatewayProxyWrapper = async <T>(
     inputs: {
       gatewayId: string;
@@ -42,27 +40,21 @@ const vaultFactory = (
       targetPort
     });
 
-    if (gatewayV2Details) {
-      const isHttps = targetProtocol === "https";
-      const httpsAgent = isHttps ? new https.Agent({ servername: targetHostname }) : undefined;
-
-      return withGatewayV2Proxy(
-        async (port) => gatewayCallback(`${targetProtocol}://localhost`, port, httpsAgent, targetHostname),
-        {
-          protocol: GatewayProxyProtocol.Tcp,
-          ...gatewayV2Details
-        }
-      );
+    // Falling through here would silently bypass the gateway this migration is pinned to.
+    if (!gatewayV2Details) {
+      throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
     }
 
-    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
+    const isHttps = targetProtocol === "https";
+    const httpsAgent = isHttps ? new https.Agent(getTlsServerNameOptions(targetHostname)) : undefined;
 
-    return withGatewayProxy(async (port, httpsAgent) => gatewayCallback("http://localhost", port, httpsAgent), {
-      protocol: GatewayProxyProtocol.Http,
-      targetHost: `${targetProtocol}://${targetHostname}`,
-      targetPort,
-      relayDetails
-    });
+    return withGatewayV2Proxy(
+      async (port) => gatewayCallback(`${targetProtocol}://localhost`, port, httpsAgent, targetHostname),
+      {
+        protocol: GatewayProxyProtocol.Tcp,
+        ...gatewayV2Details
+      }
+    );
   };
 
   const getMounts = async (request: AxiosInstance) => {
@@ -558,10 +550,8 @@ export const importVaultDataFn = async (
     orgId: string;
   },
   {
-    gatewayService,
     gatewayV2Service
   }: {
-    gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
     gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   }
 ) => {
@@ -592,7 +582,7 @@ export const importVaultDataFn = async (
     `[importVaultDataFn]: Running ${orgId in vaultMigrationTransformMappings ? "custom" : "default"} transform`
   );
 
-  const vaultApi = vaultFactory(gatewayService, gatewayV2Service);
+  const vaultApi = vaultFactory(gatewayV2Service);
 
   const vaultData = await vaultApi.collectVaultData({
     accessToken: vaultAccessToken,

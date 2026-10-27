@@ -1,19 +1,20 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionGuardBanner } from "@app/components/permissions/OrgPermissionCan";
-import { Button, PageHeader } from "@app/components/v2";
 import {
+  Button,
   LookingForOrgPageLink,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,
@@ -105,10 +106,8 @@ export const AccessManagementPage = () => {
   const activeTab = selectedTabSection ? selectedTab : (visibleTabSections[0]?.key ?? selectedTab);
 
   return (
-    <div className="mx-auto flex flex-col justify-between text-white">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
-      </Helmet>
+    <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
+      <PageTitle title={t("page-titles.access-control")} />
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={isSubOrganization ? "namespace" : "org"}
@@ -118,20 +117,20 @@ export const AccessManagementPage = () => {
           <LookingForOrgPageLink page="accessControl" target="root" />
         </PageHeader>
         {!currentOrg.shouldUseNewPrivilegeSystem && (
-          <div className="mt-4 mb-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
+          <div className="mt-4 mb-4 flex flex-col rounded-r border-l-2 border-l-project bg-label/5 px-4 py-2.5">
             <div className="mb-1 flex items-center text-sm">
-              <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
+              <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-project" />
               Your organization is using legacy privilege management
             </div>
-            <p className="mt-1 mb-2 text-sm text-bunker-300">
+            <p className="mt-1 mb-2 text-sm text-label-secondary">
               We&apos;ve developed an improved privilege management system to better serve your
               security needs. Upgrade to our new permission-based approach that allows you to
               explicitly designate who can modify specific access levels, rather than relying on
               hierarchy comparisons.
             </p>
             <Button
-              colorSchema="primary"
-              className="mt-2 w-fit text-xs"
+              variant={isSubOrganization ? "sub-org" : "org"}
+              className="mt-2"
               onClick={() => setIsUpgradePrivilegeSystemModalOpen(true)}
             >
               Learn More & Upgrade

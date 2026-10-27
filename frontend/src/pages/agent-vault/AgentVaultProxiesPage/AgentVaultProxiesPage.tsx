@@ -1,6 +1,4 @@
-import { ReactNode, useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
+import { ReactNode, useState } from "react";
 import { format } from "date-fns";
 import {
   BanIcon,
@@ -9,13 +7,14 @@ import {
   PencilIcon,
   PlusIcon,
   RefreshCwIcon,
-  RouteIcon,
+  ServerIcon,
   TrashIcon,
   TriangleAlertIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,8 +32,8 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  ConfirmationAlertDialog,
   CopyButton,
-  DeleteConfirmDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -46,6 +45,7 @@ import {
   EmptyTitle,
   IconButton,
   PageHeader,
+  Pagination,
   Skeleton,
   Table,
   TableBody,
@@ -59,20 +59,27 @@ import {
 } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
 import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { useResetPageHelper } from "@app/hooks";
+import {
   AgentVaultTrafficPolicy,
   useDeleteAgentVaultProxy,
   useListAgentVaultProxies,
-  useReissueAgentVaultProxyEnrollmentToken,
-  useRevokeAgentVaultProxyAccess
+  useRevokeAgentVaultProxyAccess,
+  useRotateAgentVaultProxyToken
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultEnrollment, TAgentVaultProxy } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultProxy, TAgentVaultProxyToken } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
-import { ProxyEnrollmentDialog } from "./components/ProxyEnrollmentDialog";
 import { ProxyFormDialog } from "./components/ProxyFormDialog";
 import { ProxyStatusBadge } from "./components/ProxyStatusBadge";
+import { ProxyTokenDialog } from "./components/ProxyTokenDialog";
 
 const allowedHostsOf = (proxy: TAgentVaultProxy) =>
   proxy.allowedHosts
@@ -123,43 +130,47 @@ const HeadWithHint = ({ hint, children }: { hint: string; children: ReactNode })
 
 enum SortColumn {
   Name = "name",
-  Created = "created"
+  Created = "createdAt"
 }
-
-const SORT_COMPARATORS: Record<SortColumn, (a: TAgentVaultProxy, b: TAgentVaultProxy) => number> = {
-  [SortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
-  [SortColumn.Created]: (a, b) =>
-    new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime()
-};
 
 const truncateFingerprint = (fingerprint: string) =>
   `${fingerprint.split(":").slice(0, 5).join(":")}…`;
 
 export const AgentVaultProxiesPage = () => {
-  const { t } = useTranslation();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
-  const { data: proxies, isPending } = useListAgentVaultProxies();
+  const [sortColumn, setSortColumn] = useState(SortColumn.Created);
+  const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(() =>
+    getUserTablePreference("agentVaultProxiesTable", PreferenceKey.PerPage, 20)
+  );
+
+  const { data, isPending } = useListAgentVaultProxies({
+    orderBy: sortColumn,
+    orderDirection: sortDirection === "ascending" ? "asc" : "desc",
+    limit: perPage,
+    offset: (page - 1) * perPage
+  });
+
+  const displayed = data?.proxies ?? [];
+  const totalCount = data?.totalCount ?? 0;
+  useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
   const deleteProxy = useDeleteAgentVaultProxy();
   const revokeProxy = useRevokeAgentVaultProxyAccess();
-  const reissueToken = useReissueAgentVaultProxyEnrollmentToken();
+  const rotateProxyToken = useRotateAgentVaultProxyToken();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  useAgentVaultCreateIntent(() => setIsCreateOpen(true), isAdmin);
   const [proxyToEdit, setProxyToEdit] = useState<TAgentVaultProxy | null>(null);
   const [proxyToDelete, setProxyToDelete] = useState<TAgentVaultProxy | null>(null);
   const [proxyToRevoke, setProxyToRevoke] = useState<TAgentVaultProxy | null>(null);
-  const [proxyToReissue, setProxyToReissue] = useState<TAgentVaultProxy | null>(null);
-  const [enrollment, setEnrollment] = useState<TAgentVaultEnrollment | null>(null);
-  const [sortColumn, setSortColumn] = useState(SortColumn.Created);
-  const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
-
-  const displayed = useMemo(() => {
-    const ordered = [...(proxies ?? [])].sort(SORT_COMPARATORS[sortColumn]);
-    return sortDirection === "ascending" ? ordered : ordered.reverse();
-  }, [proxies, sortColumn, sortDirection]);
+  const [proxyToRotate, setProxyToRotate] = useState<TAgentVaultProxy | null>(null);
+  const [proxyToken, setProxyToken] = useState<TAgentVaultProxyToken | null>(null);
 
   const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
+    setPage(1);
     if (direction === "none") {
       setSortColumn(SortColumn.Created);
       setSortDirection("descending");
@@ -199,26 +210,24 @@ export const AgentVaultProxiesPage = () => {
     }
   };
 
-  const handleReissue = async () => {
-    if (!proxyToReissue) return;
+  const handleRotate = async () => {
+    if (!proxyToRotate) return;
 
     try {
-      const result = await reissueToken.mutateAsync(proxyToReissue.id);
-      setProxyToReissue(null);
-      setEnrollment(result);
+      const result = await rotateProxyToken.mutateAsync(proxyToRotate.id);
+      setProxyToRotate(null);
+      setProxyToken(result);
     } catch {
       // A failed request returns a 4xx that the global request handler surfaces as a toast
     }
   };
 
   return (
-    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Proxies" })}</title>
-      </Helmet>
+    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
+      <PageTitle title="Proxies" />
       <PageHeader
         scope={ProjectType.AgentVault}
-        icon={RouteIcon}
+        icon={ServerIcon}
         title="Proxies"
         description="Manage the proxies your agents route their requests through."
       />
@@ -240,13 +249,13 @@ export const AgentVaultProxiesPage = () => {
           )}
         </CardHeader>
 
-        {!isPending && (proxies?.length ?? 0) === 0 ? (
+        {!isPending && totalCount === 0 ? (
           <CardContent>
             <Empty className="border">
               <EmptyHeader>
                 <EmptyTitle>No proxies yet</EmptyTitle>
                 <EmptyDescription>
-                  Create a proxy and enroll it where agent traffic leaves your network.
+                  Create a proxy and start it where agent traffic leaves your network.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
@@ -365,9 +374,9 @@ export const AgentVaultProxiesPage = () => {
                               <PencilIcon />
                               Edit Settings
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setProxyToReissue(proxy)}>
+                            <DropdownMenuItem onClick={() => setProxyToRotate(proxy)}>
                               <RefreshCwIcon />
-                              New Enrollment Token
+                              Rotate Proxy Token
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="danger"
@@ -392,12 +401,28 @@ export const AgentVaultProxiesPage = () => {
             </TableBody>
           </Table>
         )}
+
+        {totalCount > 0 && (
+          <CardContent className="-mt-5 pt-0">
+            <Pagination
+              count={totalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={(newPerPage) => {
+                setPerPage(newPerPage);
+                setPage(1);
+                setUserTablePreference("agentVaultProxiesTable", PreferenceKey.PerPage, newPerPage);
+              }}
+            />
+          </CardContent>
+        )}
       </Card>
 
       <ProxyFormDialog
         isOpen={isCreateOpen}
         onOpenChange={setIsCreateOpen}
-        onCreated={setEnrollment}
+        onCreated={setProxyToken}
       />
 
       <ProxyFormDialog
@@ -408,17 +433,17 @@ export const AgentVaultProxiesPage = () => {
         proxy={proxyToEdit ?? undefined}
       />
 
-      <ProxyEnrollmentDialog
-        enrollment={enrollment}
+      <ProxyTokenDialog
+        proxyToken={proxyToken}
         onOpenChange={(isOpen) => {
-          if (!isOpen) setEnrollment(null);
+          if (!isOpen) setProxyToken(null);
         }}
       />
 
       <AlertDialog
-        open={Boolean(proxyToReissue)}
+        open={Boolean(proxyToRotate)}
         onOpenChange={(isOpen) => {
-          if (!isOpen) setProxyToReissue(null);
+          if (!isOpen) setProxyToRotate(null);
         }}
       >
         <AlertDialogContent>
@@ -426,51 +451,49 @@ export const AgentVaultProxiesPage = () => {
             <AlertDialogMedia>
               <TriangleAlertIcon />
             </AlertDialogMedia>
-            <AlertDialogTitle>
-              New enrollment token for &quot;{proxyToReissue?.name}&quot;
-            </AlertDialogTitle>
+            <AlertDialogTitle>Rotate Token for &quot;{proxyToRotate?.name}&quot;</AlertDialogTitle>
             <AlertDialogDescription>
-              The proxy keeps serving until it re-enrolls with the new token. Re-enrolling gives it
-              a new certificate authority, so every agent running through it has to trust the new
-              one before its requests work again.
+              The current token will stop working, and the proxy gets a new certificate authority.
+              Restart the proxy with the new token. Agents that pin the proxy&apos;s fingerprint
+              need the new one.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              variant="av"
-              isPending={reissueToken.isPending}
+              variant="danger"
+              isPending={rotateProxyToken.isPending}
               onClick={async (event) => {
                 event.preventDefault();
-                await handleReissue();
+                await handleRotate();
               }}
             >
-              Generate Token
+              Rotate
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={Boolean(proxyToRevoke)}
         onOpenChange={(isOpen) => {
           if (!isOpen) setProxyToRevoke(null);
         }}
         title={`Revoke "${proxyToRevoke?.name}"`}
-        description="Its token stops working at its next poll. Every agent routed through it loses its credentials until the proxy enrolls again."
+        description="The proxy will stop adding credentials to requests. To bring it back, rotate its token."
         confirmKey={proxyToRevoke?.name ?? ""}
         confirmLabel="Revoke Access"
         isPending={revokeProxy.isPending}
         onConfirm={handleRevoke}
       />
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={Boolean(proxyToDelete)}
         onOpenChange={(isOpen) => {
           if (!isOpen) setProxyToDelete(null);
         }}
         title={`Delete "${proxyToDelete?.name}"`}
-        description="Agents routed through it lose their credentials. This cannot be undone."
+        description="The proxy will stop adding credentials to requests. This cannot be undone."
         confirmKey={proxyToDelete?.name ?? ""}
         isPending={deleteProxy.isPending}
         onConfirm={handleDelete}

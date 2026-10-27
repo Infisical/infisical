@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
-import { FolderIcon, KeyIcon, TrashIcon, TriangleAlertIcon } from "lucide-react";
-import { twMerge } from "tailwind-merge";
+import { TriangleAlertIcon } from "lucide-react";
 
 import {
   Alert,
@@ -13,13 +12,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
+  AlertDialogTitle
 } from "@app/components/v3";
 import { ProjectSecretsImportedBy, UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
@@ -27,6 +20,7 @@ import { SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 
 import { EntryType } from "../../SelectionPanel";
+import { BulkSelectionTable } from "../BulkSelectionTable";
 
 const CONFIRMATION_KEYWORD = "delete";
 
@@ -34,6 +28,7 @@ type BulkDeleteDialogProps = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   title: string;
+  description: string;
   subTitle?: string;
   onDeleteApproved: () => Promise<void>;
   selectedEntries: {
@@ -48,6 +43,7 @@ type BulkDeleteDialogProps = {
 
 const BulkDeleteDialogContent = ({
   title,
+  description,
   subTitle,
   onDeleteApproved,
   selectedEntries,
@@ -56,8 +52,6 @@ const BulkDeleteDialogContent = ({
   secretsToDeleteKeys,
   usedBySecretSyncsFiltered
 }: Omit<BulkDeleteDialogProps, "isOpen">) => {
-  const [isDeleting, setIsDeleting] = useState(false);
-
   const hasAffectedResources =
     (usedBySecretSyncsFiltered && usedBySecretSyncsFiltered.length > 0) ||
     (importedBy &&
@@ -94,19 +88,11 @@ const BulkDeleteDialogContent = ({
     return items;
   }, [selectedEntries]);
 
-  const onConfirmDelete = async () => {
-    setIsDeleting(true);
-    try {
-      await onDeleteApproved();
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
   return (
     <AlertDialogContent className="max-w-3xl [&>*]:min-w-0">
       <AlertDialogHeader>
-        <AlertDialogTitle>{title}</AlertDialogTitle>
+        <AlertDialogTitle className="leading-none font-normal">{title}</AlertDialogTitle>
+        <AlertDialogDescription className="text-accent">{description}</AlertDialogDescription>
         {subTitle && (
           <Alert variant="warning">
             <TriangleAlertIcon />
@@ -118,60 +104,12 @@ const BulkDeleteDialogContent = ({
       </AlertDialogHeader>
 
       {selectedResources.length > 0 && (
-        <Table
-          containerClassName={twMerge(
-            "overflow-auto",
-            hasAffectedResources ? "max-h-[30vh]" : "max-h-[60vh]"
-          )}
-        >
-          <TableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
-            <TableRow>
-              <TableHead className="sticky left-0 z-20 w-10 max-w-10 min-w-10 border-b-0 bg-container shadow-[inset_0_-1px_0_var(--color-border)]">
-                Type
-              </TableHead>
-              <TableHead className="sticky left-10 z-20 w-32 max-w-32 min-w-32 border-b-0 bg-container shadow-[inset_-1px_0_0_var(--color-border),inset_0_-1px_0_var(--color-border)] sm:w-72 sm:max-w-72 sm:min-w-72">
-                Name
-              </TableHead>
-              {visibleEnvs.map((env) => (
-                <TableHead
-                  key={env.slug}
-                  className="w-32 max-w-32 border-r border-b-0 text-center shadow-[inset_0_-1px_0_var(--color-border)] last:border-r-0"
-                  isTruncatable
-                >
-                  {env.name}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {selectedResources.map((item) => (
-              <TableRow key={`${item.type}-${item.name}`} className="group">
-                <TableCell className="sticky left-0 z-10 bg-container transition-colors duration-75 group-hover:bg-container-hover">
-                  {item.type === "folder" ? (
-                    <FolderIcon className="size-4 text-folder" />
-                  ) : (
-                    <KeyIcon className="size-4 text-secret" />
-                  )}
-                </TableCell>
-                <TableCell
-                  className="sticky left-10 z-10 w-32 max-w-32 min-w-32 bg-container shadow-[inset_-1px_0_0_var(--color-border)] transition-colors duration-75 group-hover:bg-container-hover sm:w-72 sm:max-w-72 sm:min-w-72"
-                  isTruncatable
-                >
-                  {item.name}
-                </TableCell>
-                {visibleEnvs.map((env) => (
-                  <TableCell key={env.slug} className="border-r text-center last:border-r-0">
-                    {item.envSlugs.has(env.slug) ? (
-                      <TrashIcon className="inline-block size-4 text-danger" />
-                    ) : (
-                      <span className="text-muted">&mdash;</span>
-                    )}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <BulkSelectionTable
+          action="delete"
+          items={selectedResources}
+          environments={visibleEnvs}
+          containerClassName={hasAffectedResources ? "max-h-[30vh]" : undefined}
+        />
       )}
 
       {hasAffectedResources && (
@@ -185,13 +123,12 @@ const BulkDeleteDialogContent = ({
       <AlertDialogConfirmationField inputProps={{ placeholder: "Type delete here" }} />
 
       <AlertDialogFooter>
-        <AlertDialogCancel isDisabled={isDeleting}>Cancel</AlertDialogCancel>
+        <AlertDialogCancel>Cancel</AlertDialogCancel>
         <AlertDialogAction
           variant="danger"
-          isPending={isDeleting}
           onClick={(event) => {
             event.preventDefault();
-            onConfirmDelete();
+            onDeleteApproved();
           }}
         >
           Delete
@@ -201,10 +138,37 @@ const BulkDeleteDialogContent = ({
   );
 };
 
-export const BulkDeleteDialog = ({ isOpen, onOpenChange, ...props }: BulkDeleteDialogProps) => {
+export const BulkDeleteDialog = ({
+  isOpen,
+  onOpenChange,
+  onDeleteApproved,
+  ...props
+}: BulkDeleteDialogProps) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const onConfirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await onDeleteApproved();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
-    <AlertDialog open={isOpen} confirmationValue={CONFIRMATION_KEYWORD} onOpenChange={onOpenChange}>
-      {isOpen && <BulkDeleteDialogContent onOpenChange={onOpenChange} {...props} />}
+    <AlertDialog
+      open={isOpen}
+      isPending={isDeleting}
+      confirmationValue={CONFIRMATION_KEYWORD}
+      onOpenChange={onOpenChange}
+    >
+      {isOpen && (
+        <BulkDeleteDialogContent
+          onOpenChange={onOpenChange}
+          onDeleteApproved={onConfirmDelete}
+          {...props}
+        />
+      )}
     </AlertDialog>
   );
 };

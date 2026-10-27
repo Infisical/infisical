@@ -32,7 +32,7 @@ flowchart LR
   proxy -->|"fetches the credentials this session may use"| infisical
 ```
 
-With Agent Vault, agents like Claude Code or OpenClaw don't hold any credentials. Their outbound requests are intercepted by the Agent Vault proxy at the network boundary. The proxy authorizes the session against the access bundle, attaches the necessary authorization headers, and forwards the authenticated request to the upstream host.
+With Agent Vault, agents like Claude Code or Codex don't hold any credentials. Their outbound requests are intercepted by the Agent Vault proxy at the network boundary. The proxy authorizes the session against the access bundle, attaches the necessary authorization headers, and forwards the authenticated request to the upstream host.
 
 ## Example: Prompt injection attack
 

@@ -15,6 +15,7 @@ import { KempLoadMasterPkiSyncFields } from "./KempLoadMasterPkiSyncFields";
 import { LinuxServerPkiSyncFields } from "./LinuxServerPkiSyncFields";
 import { NetScalerPkiSyncFields } from "./NetScalerPkiSyncFields";
 import { NutanixPrismCentralPkiSyncFields } from "./NutanixPrismCentralPkiSyncFields";
+import { PaloAltoNetworksPkiSyncFields } from "./PaloAltoNetworksPkiSyncFields";
 import { WindowsServerPkiSyncFields } from "./WindowsServerPkiSyncFields";
 
 type Props = {
@@ -43,6 +44,10 @@ export const PkiSyncDestinationFields = ({ isUpdate }: Props) => {
       return <GcpCertificateManagerPkiSyncFields isUpdate={isUpdate} />;
     case PkiSync.NetScaler:
       return <NetScalerPkiSyncFields />;
+    case PkiSync.PaloAltoNetworks:
+      return <PaloAltoNetworksPkiSyncFields />;
+    case PkiSync.PaloAltoNetworksSslTlsProfile:
+      return <PaloAltoNetworksPkiSyncFields withSslTlsServiceProfile />;
     case PkiSync.F5BigIp:
       return <F5BigIpPkiSyncFields />;
     case PkiSync.KempLoadMaster:
@@ -55,7 +60,7 @@ export const PkiSyncDestinationFields = ({ isUpdate }: Props) => {
       return <NutanixPrismCentralPkiSyncFields />;
     default:
       return (
-        <div className="flex items-center justify-center rounded-md border border-red-500 bg-red-100 p-4 text-red-700">
+        <div className="flex items-center justify-center rounded-md border border-danger bg-danger/10 p-4 text-danger">
           <p>Unsupported destination: {destination}</p>
         </div>
       );

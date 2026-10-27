@@ -26,7 +26,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -62,13 +62,13 @@ import {
   useProjectPermission,
   useUser
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { getProjectLabel } from "@app/helpers/project";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import {
   useDeleteProjectUserAdditionalPrivilege,
   useListProjectUserPrivileges,
   useRevokeAccessRequest
 } from "@app/hooks/api";
-import { ProjectType } from "@app/hooks/api/projects/types";
 import { projectUserPrivilegeKeys } from "@app/hooks/api/projectUserAdditionalPrivilege/queries";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 import {
@@ -83,6 +83,7 @@ type Props = {
 };
 
 export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: Props) => {
+  const scopeVariant = useScopeVariant();
   const sheetContainerRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { user } = useUser();
@@ -149,16 +150,14 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
   };
 
   const hasAdditionalPrivileges = Boolean(userProjectPrivileges?.length);
-  const isCertManager = currentProject?.type === ProjectType.CertificateManager;
+  const projectLabel = getProjectLabel(currentProject?.type);
 
   return (
     <>
       <Card>
         <CardHeader>
           <CardTitle>
-            {isCertManager
-              ? "Certificate Manager Additional Privileges"
-              : "Project Additional Privileges"}
+            {`${projectLabel} Additional Privileges`}
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/additional-privileges#api" />
           </CardTitle>
           <CardDescription>Assign one-off policies to this user</CardDescription>
@@ -409,7 +408,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
                         const isEditDisabled = !isAllowed || !canModifyMemberPrivileges;
                         const button = (
                           <Button
-                            variant="project"
+                            variant={scopeVariant}
                             size="xs"
                             onClick={() => {
                               handlePopUpOpen("modifyPrivilege");
@@ -463,7 +462,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
           />
         </SheetContent>
       </Sheet>
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.deletePrivilege.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("deletePrivilege", isOpen);
@@ -483,7 +482,7 @@ export const MemberProjectAdditionalPrivilegeSection = ({ membershipDetails }: P
         isPending={deletePrivilegeMutation.isPending}
         onConfirm={handlePrivilegeDelete}
       />
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={popUp.revokeAccess.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("revokeAccess", isOpen);

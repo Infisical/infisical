@@ -1,19 +1,26 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { InfoIcon } from "lucide-react";
 
 import {
+  Checkbox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldLabel,
   Input,
-  TextArea
+  TagsInput,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
+import { hostError } from "@app/helpers/agentVaultHostPattern";
+import { pathPrefixError } from "@app/helpers/agentVaultPathPrefix";
 
-import { TServiceForm } from "./serviceSchema";
+import { HTTP_METHODS, isAllMethods, TServiceForm } from "./serviceSchema";
 
 export const DetailsFields = () => {
-  const { control } = useFormContext<TServiceForm>();
+  const { control, trigger, clearErrors } = useFormContext<TServiceForm>();
 
   return (
     <div className="flex flex-col gap-5">
@@ -34,21 +41,139 @@ export const DetailsFields = () => {
 
       <Controller
         control={control}
-        name="hostPattern"
+        name="hosts"
         render={({ field, fieldState }) => (
           <Field>
             <FieldLabel>Hosts</FieldLabel>
             <FieldContent>
-              <TextArea
-                {...field}
-                rows={3}
-                placeholder="api.datadoghq.com"
-                isError={Boolean(fieldState.error)}
+              <Controller
+                control={control}
+                name="hostDraft"
+                render={({ field: draft }) => (
+                  <TagsInput
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    inputValue={draft.value}
+                    onInputValueChange={(next) => {
+                      draft.onChange(next);
+                      if (fieldState.error) clearErrors("hosts");
+                    }}
+                    validateTag={hostError}
+                    onValidationError={(reason) =>
+                      reason ? trigger("hosts") : clearErrors("hosts")
+                    }
+                    isError={Boolean(fieldState.error)}
+                    aria-label="Hosts"
+                    placeholder="api.datadoghq.com"
+                  />
+                )}
               />
               <FieldDescription>
-                Separate multiple hosts with commas. Wildcards like *.example.com are allowed.
+                The credential is only sent to these hosts. Wildcards like *.example.com are
+                allowed.
               </FieldDescription>
+              <FieldError
+                errors={Array.isArray(fieldState.error) ? fieldState.error : [fieldState.error]}
+              />
+            </FieldContent>
+          </Field>
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="methods"
+        render={({ field, fieldState }) => (
+          <Field>
+            <FieldLabel>Methods</FieldLabel>
+            <FieldContent>
+              <Field orientation="horizontal">
+                <Checkbox
+                  id="all-methods"
+                  isChecked={isAllMethods(field.value)}
+                  onCheckedChange={(checked) =>
+                    field.onChange(checked === true ? [...HTTP_METHODS] : [])
+                  }
+                />
+                <FieldLabel htmlFor="all-methods">All Methods</FieldLabel>
+              </Field>
+
+              <div
+                role="group"
+                aria-label="Methods"
+                className="mt-2 ml-6 grid w-fit grid-cols-4 gap-x-8 gap-y-2"
+              >
+                {HTTP_METHODS.map((method) => (
+                  <Field key={method} orientation="horizontal" className="w-auto">
+                    <Checkbox
+                      id={`method-${method}`}
+                      isChecked={field.value.includes(method)}
+                      onCheckedChange={(checked) =>
+                        // Rebuilt from the canonical list so a rechecked method lands back in its
+                        // old slot rather than at the end.
+                        field.onChange(
+                          HTTP_METHODS.filter((candidate) =>
+                            candidate === method
+                              ? checked === true
+                              : field.value.includes(candidate)
+                          )
+                        )
+                      }
+                    />
+                    <FieldLabel htmlFor={`method-${method}`}>{method}</FieldLabel>
+                  </Field>
+                ))}
+              </div>
               <FieldError>{fieldState.error?.message}</FieldError>
+            </FieldContent>
+          </Field>
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="pathPrefixes"
+        render={({ field, fieldState }) => (
+          <Field>
+            <FieldLabel>
+              Paths
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InfoIcon />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  The routes this service allows on its hosts. A prefix matches whole segments, so
+                  /api/v1 covers /api/v1/users but not /api/v10.
+                </TooltipContent>
+              </Tooltip>
+            </FieldLabel>
+            <FieldContent>
+              <Controller
+                control={control}
+                name="pathDraft"
+                render={({ field: draft }) => (
+                  <TagsInput
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    inputValue={draft.value}
+                    onInputValueChange={(next) => {
+                      draft.onChange(next);
+                      if (fieldState.error) clearErrors("pathPrefixes");
+                    }}
+                    validateTag={pathPrefixError}
+                    onValidationError={(reason) =>
+                      reason ? trigger("pathPrefixes") : clearErrors("pathPrefixes")
+                    }
+                    isError={Boolean(fieldState.error)}
+                    aria-label="Path prefixes"
+                    placeholder="/api/v1"
+                  />
+                )}
+              />
+              <FieldDescription>Leave empty to allow every path.</FieldDescription>
+              <FieldError
+                errors={Array.isArray(fieldState.error) ? fieldState.error : [fieldState.error]}
+              />
             </FieldContent>
           </Field>
         )}

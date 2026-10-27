@@ -12,7 +12,7 @@ import { ChevronDownIcon, ClockIcon, PlusIcon, TrashIcon } from "lucide-react";
 import ms from "ms";
 
 import { TtlFormLabel } from "@app/components/features";
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -44,7 +44,7 @@ import {
   useSubscription
 } from "@app/context";
 import { isCustomProjectRole } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
 import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 
@@ -261,6 +261,7 @@ type Props = {
 };
 
 export const IdentityRoleModify = ({ identityProjectMembership, onClose }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { projectId, currentProject } = useProject();
   const { subscription } = useSubscription();
   const { filteredRoles, isRolesLoading, assignableRoleSlugs, getRolesForSelect, isEditDisabled } =
@@ -349,15 +350,7 @@ export const IdentityRoleModify = ({ identityProjectMembership, onClose }: Props
           )}
         </ProjectPermissionCan>
       </div>
-      <SheetFooter className="border-t">
-        <Button
-          type="submit"
-          variant="project"
-          isDisabled={!roleForm.formState.isDirty || isEditDisabled}
-          isPending={roleForm.formState.isSubmitting}
-        >
-          Save Roles
-        </Button>
+      <SheetFooter className="justify-end border-t">
         <Button
           type="button"
           variant="outline"
@@ -366,13 +359,23 @@ export const IdentityRoleModify = ({ identityProjectMembership, onClose }: Props
         >
           Cancel
         </Button>
+        <Button
+          type="submit"
+          variant={scopeVariant}
+          isDisabled={!roleForm.formState.isDirty || isEditDisabled}
+          isPending={roleForm.formState.isSubmitting}
+        >
+          Save Roles
+        </Button>
       </SheetFooter>
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="project.identity-role-modify"
         isOpen={upgradePlanPopUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handleUpgradePlanPopUpToggle("upgradePlan", isOpen)}
-        text="Assigning custom roles to machine identities can be unlocked if you upgrade to Infisical Enterprise plan."
-        isEnterpriseFeature
+        intent={{
+          ...CustomRolesUpgradeIntent,
+          isEnterpriseFeature: true
+        }}
       />
     </form>
   );

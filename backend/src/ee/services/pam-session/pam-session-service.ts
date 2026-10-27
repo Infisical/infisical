@@ -8,6 +8,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { ms } from "@app/lib/ms";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { createSshCert, createSshKeyPair, SshCertKeyAlgorithm, SshCertType } from "@app/lib/ssh";
+import { ApprovalAccessStatus } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -19,8 +20,8 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import {
+  accountTypeSupportsSessionLogMasking,
   PamAccessMethod,
-  PamAccessStatus,
   PamAccountType,
   PamPostgresAuthMethod,
   PamProductRole,
@@ -36,8 +37,8 @@ import {
   verifyProductMembership
 } from "../pam/pam-permission";
 import {
+  buildPamPolicyRules,
   PamPolicyType,
-  PamSettingType,
   policyAppliesTo,
   resolveAccessControls,
   resolvePolicy,
@@ -69,6 +70,7 @@ import {
 } from "./aws-iam/aws-iam-federation";
 import { getAzureAccessTokens } from "./azure/azure-federation";
 import { mintGcpAccessToken } from "./gcp/gcp-federation";
+import { assertUserStillActiveInOrg } from "./pam-session-access-fns";
 import { DEFAULT_SESSION_DURATION_MS } from "./pam-session-constants";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { TPamSessionExpirationServiceFactory } from "./pam-session-expiration-queue";
@@ -89,13 +91,14 @@ type TPamSessionServiceFactoryDep = {
     | "create"
     | "endSessionById"
     | "terminateSessionById"
+    | "transaction"
     | "updateById"
     | "claimRecordingSecrets"
     | "activateSession"
   >;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findByIdWithDetails" | "findOne">;
   pamFolderDAL: Pick<TPamFolderDALFactory, "findOne">;
-  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
+  membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor" | "lockOrgMembershipForUser">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -107,7 +110,7 @@ type TPamSessionServiceFactoryDep = {
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   pamAccessRequestService: Pick<
     TPamAccessRequestServiceFactory,
     "checkGrant" | "getAccessStatusBatch" | "getFolderPolicyConfigured"
@@ -374,19 +377,16 @@ export const pamSessionServiceFactory = ({
       : [];
 
     const parsedSettings = PamTemplateSettingsSchema.safeParse(account.templateSettings ?? {});
-    const maskingPatterns = parsedSettings.success
-      ? splitPatternString(parsedSettings.data.sessionLogMaskingPatterns)
-      : [];
 
-    const policyRules =
-      commandBlockingPatterns.length > 0 || maskingPatterns.length > 0
-        ? {
-            ...(commandBlockingPatterns.length > 0
-              ? { [PamPolicyType.CommandBlocking]: { patterns: commandBlockingPatterns } }
-              : {}),
-            ...(maskingPatterns.length > 0 ? { [PamSettingType.SessionLogMasking]: { patterns: maskingPatterns } } : {})
-          }
-        : null;
+    const policyRules = buildPamPolicyRules({
+      commandBlockingPatterns,
+      maskingPatterns: parsedSettings.success ? splitPatternString(parsedSettings.data.sessionLogMaskingPatterns) : [],
+      // Never send a rule the gateway has no way to honour.
+      maskingBuiltInDetection:
+        accountTypeSupportsSessionLogMasking(account.accountType as PamAccountType) &&
+        parsedSettings.success &&
+        parsedSettings.data.sessionLogMaskingBuiltInDetection
+    });
 
     const normalizedConnectionDetails = buildSessionGatewayConnectionDetails(
       account.accountType as PamAccountType,
@@ -509,7 +509,8 @@ export const pamSessionServiceFactory = ({
           actorEmail,
           accountId: account.id,
           mfaSessionId,
-          tokenVersionId
+          tokenVersionId,
+          allowCliHandoff: accessMethod === PamAccessMethod.Cli
         }
       );
     }
@@ -554,8 +555,10 @@ export const pamSessionServiceFactory = ({
           message: "Access request required",
           details: {
             requireReason: policy.requireReason,
-            hasPendingRequest: statusMap.get(account.id)?.accessStatus === PamAccessStatus.Pending,
-            hasApprovalPolicy: Boolean(account.folderId && foldersWithApprovalPolicy.has(account.folderId))
+            hasPendingRequest: statusMap.get(account.id)?.accessStatus === ApprovalAccessStatus.Pending,
+            hasApprovalPolicy: Boolean(
+              account.folderId && foldersWithApprovalPolicy.isConfiguredFor(account.folderId, policy.allowAutoApproval)
+            )
           }
         });
       }
@@ -638,24 +641,39 @@ export const pamSessionServiceFactory = ({
         }
       }
 
-      const session = await pamSessionDAL.create({
-        status: PamSessionStatus.Active,
-        accessMethod,
-        expiresAt,
-        startedAt: new Date(),
-        accountName: account.name,
-        accountType: account.accountType,
-        actorEmail,
-        actorIp,
-        actorName,
-        actorUserAgent,
-        projectId,
-        accountId: account.id,
-        // userId FKs users and identityId FKs identities; exactly one is set based on the actor type
-        userId: isUserActor ? actor.actorId : null,
-        identityId: isUserActor ? null : actor.actorId,
-        reason: trimmedReason,
-        folderName: account.folderName
+      const session = await pamSessionDAL.transaction(async (tx) => {
+        if (isUserActor) {
+          await assertUserStillActiveInOrg({
+            orgId: actor.actorOrgId,
+            userId: actor.actorId,
+            membershipDAL,
+            orgDAL,
+            tx
+          });
+        }
+
+        return pamSessionDAL.create(
+          {
+            status: PamSessionStatus.Active,
+            accessMethod,
+            expiresAt,
+            startedAt: new Date(),
+            accountName: account.name,
+            accountType: account.accountType,
+            actorEmail,
+            actorIp,
+            actorName,
+            actorUserAgent,
+            projectId,
+            accountId: account.id,
+            // userId FKs users and identityId FKs identities; exactly one is set based on the actor type
+            userId: isUserActor ? actor.actorId : null,
+            identityId: isUserActor ? null : actor.actorId,
+            reason: trimmedReason,
+            folderName: account.folderName
+          },
+          tx
+        );
       });
 
       await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
@@ -692,25 +710,34 @@ export const pamSessionServiceFactory = ({
     const user = isUserActor ? await userDAL.findById(actor.actorId) : null;
     const expiresAt = new Date(Date.now() + sessionDurationMs);
 
-    const session = await pamSessionDAL.create({
-      status: PamSessionStatus.Starting,
-      accessMethod: PamAccessMethod.Cli,
-      expiresAt,
-      accountName: account.name,
-      accountType: account.accountType,
-      actorEmail,
-      actorIp,
-      actorName,
-      actorUserAgent,
-      projectId,
-      accountId: account.id,
-      // userId FKs users and identityId FKs identities; exactly one is set based on the actor type
-      userId: isUserActor ? actor.actorId : null,
-      identityId: isUserActor ? null : actor.actorId,
-      gatewayId: effectiveGatewayId,
-      reason: trimmedReason,
-      folderName: account.folderName,
-      selectedHost: connectHost
+    const session = await pamSessionDAL.transaction(async (tx) => {
+      if (isUserActor) {
+        await assertUserStillActiveInOrg({ orgId: actor.actorOrgId, userId: actor.actorId, membershipDAL, orgDAL, tx });
+      }
+
+      return pamSessionDAL.create(
+        {
+          status: PamSessionStatus.Starting,
+          accessMethod: PamAccessMethod.Cli,
+          expiresAt,
+          accountName: account.name,
+          accountType: account.accountType,
+          actorEmail,
+          actorIp,
+          actorName,
+          actorUserAgent,
+          projectId,
+          accountId: account.id,
+          // userId FKs users and identityId FKs identities; exactly one is set based on the actor type
+          userId: isUserActor ? actor.actorId : null,
+          identityId: isUserActor ? null : actor.actorId,
+          gatewayId: effectiveGatewayId,
+          reason: trimmedReason,
+          folderName: account.folderName,
+          selectedHost: connectHost
+        },
+        tx
+      );
     });
 
     await pamSessionDAL.activateSession(session.id);
@@ -768,7 +795,8 @@ export const pamSessionServiceFactory = ({
           account.accountType === PamAccountType.MySQL ||
           account.accountType === PamAccountType.MongoDB ||
           account.accountType === PamAccountType.MsSQL ||
-          account.accountType === PamAccountType.OracleDB) &&
+          account.accountType === PamAccountType.OracleDB ||
+          account.accountType === PamAccountType.ClickHouse) &&
         rawConnectionDetails.database
       ) {
         metadata.database = rawConnectionDetails.database as string;
@@ -783,6 +811,7 @@ export const pamSessionServiceFactory = ({
       metadata,
       sessionDurationMs,
       accessMethod: PamAccessMethod.Cli,
+      gatewayId: certs.gatewayId,
       relayHost: certs.relayHost,
       directAddress: certs.directAddress,
       relayClientCertificate: certs.relay?.clientCertificate,

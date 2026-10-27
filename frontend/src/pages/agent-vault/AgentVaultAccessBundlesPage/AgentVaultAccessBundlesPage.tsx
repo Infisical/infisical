@@ -1,6 +1,4 @@
-import { useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -11,6 +9,7 @@ import {
   PlusIcon,
   SearchIcon,
   TrashIcon,
+  TriangleAlertIcon,
   UsersIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
@@ -18,7 +17,12 @@ import { twMerge } from "tailwind-merge";
 import { AccessBundleFormDialog } from "@app/components/agent-vault/AccessBundleFormDialog";
 import { ManageAccessSheet } from "@app/components/agent-vault/ManageAccessSheet";
 import { ServiceIconStack } from "@app/components/agent-vault/ServiceIconStack";
+import { PageTitle } from "@app/components/PageTitle";
 import {
+  Alert,
+  AlertAction,
+  AlertDescription,
+  Badge,
   Button,
   Card,
   CardAction,
@@ -40,6 +44,8 @@ import {
   InputGroupAddon,
   InputGroupInput,
   PageHeader,
+  Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -52,40 +58,47 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission } from "@app/context";
-import { useListAgentVaultAccessBundles } from "@app/hooks/api/agentVault";
+import { nameList } from "@app/helpers/string";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { useDebounce, useResetPageHelper } from "@app/hooks";
+import {
+  useListAgentVaultAccessBundles,
+  useListAgentVaultAccessBundlesRequiringSetup
+} from "@app/hooks/api/agentVault";
 import { TAgentVaultAccessBundleListItem } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { DeleteAccessBundleDialog } from "./components/DeleteAccessBundleDialog";
 
 enum SortColumn {
   Name = "name",
-  Services = "services",
-  Created = "created"
+  Services = "serviceCount",
+  Created = "createdAt"
 }
 
-const SORT_COMPARATORS: Record<
-  SortColumn,
-  (a: TAgentVaultAccessBundleListItem, b: TAgentVaultAccessBundleListItem) => number
-> = {
-  [SortColumn.Name]: (a, b) => a.name.localeCompare(b.name),
-  [SortColumn.Services]: (a, b) => a.serviceCount - b.serviceCount,
-  [SortColumn.Created]: (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-};
-
 export const AgentVaultAccessBundlesPage = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
   const [sortColumn, setSortColumn] = useState(SortColumn.Created);
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(() =>
+    getUserTablePreference("agentVaultAccessBundlesTable", PreferenceKey.PerPage, 20)
+  );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  useAgentVaultCreateIntent(() => setIsCreateOpen(true), isAdmin);
   const [bundleToEdit, setBundleToEdit] = useState<TAgentVaultAccessBundleListItem | null>(null);
   const [bundleToDelete, setBundleToDelete] = useState<TAgentVaultAccessBundleListItem | null>(
     null
@@ -94,22 +107,26 @@ export const AgentVaultAccessBundlesPage = () => {
     null
   );
 
-  const { data: accessBundles, isPending } = useListAgentVaultAccessBundles();
+  const { data, isPending } = useListAgentVaultAccessBundles({
+    search: debouncedSearch.trim() || undefined,
+    orderBy: sortColumn,
+    orderDirection: sortDirection === "ascending" ? "asc" : "desc",
+    limit: perPage,
+    offset: (page - 1) * perPage
+  });
 
-  const displayedBundles = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    const filtered = (accessBundles ?? []).filter(
-      (bundle) =>
-        bundle.name.toLowerCase().includes(term) ||
-        (bundle.description ?? "").toLowerCase().includes(term)
-    );
+  const displayedBundles = data?.accessBundles ?? [];
 
-    const ordered = [...filtered].sort(SORT_COMPARATORS[sortColumn]);
-
-    return sortDirection === "ascending" ? ordered : ordered.reverse();
-  }, [accessBundles, search, sortColumn, sortDirection]);
+  // From its own query rather than the page shown, so a bundle on a later page is still called out.
+  const { data: requiringSetup } = useListAgentVaultAccessBundlesRequiringSetup();
+  const bundlesNeedingSetup = requiringSetup?.accessBundles ?? [];
+  // The query loads at most a page of them; the count comes from the server.
+  const bundlesNeedingSetupCount = requiringSetup?.totalCount ?? 0;
+  const totalCount = data?.totalCount ?? 0;
+  useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
 
   const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
+    setPage(1);
     if (direction === "none") {
       setSortColumn(SortColumn.Created);
       setSortDirection("descending");
@@ -127,7 +144,7 @@ export const AgentVaultAccessBundlesPage = () => {
       sortColumn !== column && "opacity-30"
     );
 
-  const isFiltered = Boolean(search.trim());
+  const isFiltered = Boolean(debouncedSearch.trim());
 
   let emptyTitle: string;
   let emptyDescription: string;
@@ -143,16 +160,42 @@ export const AgentVaultAccessBundlesPage = () => {
   }
 
   return (
-    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Access Bundles" })}</title>
-      </Helmet>
+    <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
+      <PageTitle title="Access Bundles" />
       <PageHeader
         scope={ProjectType.AgentVault}
         icon={PackageIcon}
         title="Access Bundles"
         description="Group the services an agent can reach through a session."
       />
+
+      {bundlesNeedingSetup.length > 0 && (
+        <Alert variant="warning" className="mb-6">
+          <TriangleAlertIcon />
+          <AlertDescription>
+            <p>
+              {bundlesNeedingSetupCount === 1
+                ? `${bundlesNeedingSetup[0].name} has services that require your personal values.`
+                : `${bundlesNeedingSetupCount} access bundles have services that require your personal values.`}{" "}
+              Sessions can&apos;t reach those services until you set them up.
+            </p>
+            <AlertAction>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  navigate({
+                    to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
+                    params: { orgId: currentOrg.id, accessBundleId: bundlesNeedingSetup[0].id }
+                  })
+                }
+              >
+                Open {bundlesNeedingSetup[0].name}
+              </Button>
+            </AlertAction>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card>
         <CardHeader>
@@ -180,7 +223,10 @@ export const AgentVaultAccessBundlesPage = () => {
             </InputGroupAddon>
             <InputGroupInput
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               placeholder="Search access bundles..."
             />
           </InputGroup>
@@ -193,6 +239,12 @@ export const AgentVaultAccessBundlesPage = () => {
                 <EmptyTitle>{emptyTitle}</EmptyTitle>
                 <EmptyDescription>{emptyDescription}</EmptyDescription>
               </EmptyHeader>
+              {!isFiltered && isAdmin && (
+                <Button variant="av" onClick={() => setIsCreateOpen(true)}>
+                  <PlusIcon />
+                  Create Access Bundle
+                </Button>
+              )}
             </Empty>
           </CardContent>
         ) : (
@@ -223,6 +275,7 @@ export const AgentVaultAccessBundlesPage = () => {
                   Created
                   <ChevronDownIcon className={sortIconClassName(SortColumn.Created)} />
                 </TableHead>
+                <TableHead className="w-0" />
                 <TableHead variant="action" />
               </TableRow>
             </TableHeader>
@@ -241,29 +294,26 @@ export const AgentVaultAccessBundlesPage = () => {
                 ))}
               {!isPending &&
                 displayedBundles.map((bundle) => (
-                  <TableRow
-                    key={bundle.id}
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
-                        params: { orgId: currentOrg.id, accessBundleId: bundle.id }
-                      })
-                    }
-                  >
+                  <TableRow key={bundle.id} linked>
                     <TableCell isTruncatable className="min-w-64">
-                      <div className="flex items-center gap-2.5">
-                        <span className="truncate" title={bundle.name}>
+                      <RowLink
+                        to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
+                        params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
+                        className="flex items-center gap-2.5"
+                      >
+                        <span className="truncate" title={bundle.name} data-row-interactive>
                           {bundle.name}
                         </span>
                         {bundle.description && (
                           <span
                             className="min-w-0 flex-1 truncate text-sm text-muted"
                             title={bundle.description}
+                            data-row-interactive
                           >
                             {bundle.description}
                           </span>
                         )}
-                      </div>
+                      </RowLink>
                     </TableCell>
                     <TableCell>
                       <ServiceIconStack hostPatterns={bundle.hostPatterns} />
@@ -297,6 +347,27 @@ export const AgentVaultAccessBundlesPage = () => {
                           {format(new Date(bundle.createdAt), "MMM d, yyyy h:mm a")}
                         </TooltipContent>
                       </Tooltip>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-center">
+                        {bundle.servicesRequiringSetup.length > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="warning" data-row-interactive>
+                                <TriangleAlertIcon />
+                                Requires Setup
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              Your personal values are missing for{" "}
+                              {nameList(
+                                bundle.servicesRequiringSetup.map((service) => service.name)
+                              )}
+                              .
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell variant="action">
                       {isAdmin && (
@@ -349,9 +420,38 @@ export const AgentVaultAccessBundlesPage = () => {
             </TableBody>
           </Table>
         )}
+
+        {totalCount > 0 && (
+          <CardContent className="-mt-5 pt-0">
+            <Pagination
+              count={totalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={(newPerPage) => {
+                setPerPage(newPerPage);
+                setPage(1);
+                setUserTablePreference(
+                  "agentVaultAccessBundlesTable",
+                  PreferenceKey.PerPage,
+                  newPerPage
+                );
+              }}
+            />
+          </CardContent>
+        )}
       </Card>
 
-      <AccessBundleFormDialog isOpen={isCreateOpen} onOpenChange={setIsCreateOpen} />
+      <AccessBundleFormDialog
+        isOpen={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onCreated={(accessBundle) =>
+          navigate({
+            to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
+            params: { orgId: currentOrg.id, accessBundleId: accessBundle.id }
+          })
+        }
+      />
       <AccessBundleFormDialog
         isOpen={Boolean(bundleToEdit)}
         onOpenChange={(isOpen) => {

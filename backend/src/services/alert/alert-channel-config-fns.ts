@@ -11,13 +11,13 @@ export const getChannelDefinition = (channelType: string): TAlertChannelDefiniti
   return definition;
 };
 
-export const assertChannelConfigValid = (
+export const parseChannelConfig = (
   definition: Pick<TAlertChannelDefinition, "configSchema">,
   channelType: string,
   config: Record<string, unknown>
-) => {
+): Record<string, unknown> => {
   try {
-    definition.configSchema.parse(config);
+    return definition.configSchema.parse(config) as Record<string, unknown>;
   } catch (err) {
     const detail = err instanceof z.ZodError ? err.issues.map((i) => i.message).join(", ") : null;
     throw new BadRequestError({
@@ -33,6 +33,8 @@ export const mergeChannelConfigWithStored = (
 ): Record<string, unknown> => {
   const definition = ALERT_CHANNEL_REGISTRY[channelType as AlertChannelType];
   if (!definition) return incomingConfig;
+
+  definition.assertStoredSecretsReusable?.(incomingConfig, existingConfig);
 
   const merged: Record<string, unknown> = { ...incomingConfig };
   definition.secretFields.forEach((field) => {

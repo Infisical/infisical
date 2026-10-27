@@ -4,9 +4,15 @@ sidebarTitle: "Overview"
 description: "Give AI agents and untrusted code execution environments access without handing over your secrets."
 ---
 
+<Info>
+  For new setups, we recommend using [Agent Vault](/documentation/platform/agent-vault/overview). Like Agent Proxy, Agent Vault gives AI agents access to the services they call without handing the agents your credentials.
+  
+  Use Agent Proxy only if you need a sandboxed [local proxy](/documentation/platform/agent-proxy/local-agent-proxy) that runs on your own computer, or if you want the proxy to apply a [dynamic secret](/documentation/platform/dynamic-secrets/overview).
+</Info>
+
 The **Infisical Agent Proxy** is a credential broker for AI agents and untrusted code execution environments. It sits between your AI agents and the APIs they call including LLM providers, GitHub, Slack, and more.
 
-Agents like Claude Code or OpenClaw route HTTP requests through the proxy, which swaps dummy credentials for real ones (or replaces auth headers entirely), before forwarding the request to the target service.
+Agents like Claude Code or Codex route HTTP requests through the proxy, which swaps dummy credentials for real ones (or replaces auth headers entirely), before forwarding the request to the target service.
 
 ```text
             Your private network                                Public internet
@@ -54,7 +60,7 @@ The Quickstart starts with the parts both need, then hands you this choice at th
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Proxied service** | A config that maps a host to the secret the proxy applies, static or [dynamic](/documentation/platform/agent-proxy/proxied-services#using-dynamic-secrets). Defined next to your secrets in the dashboard. |
 | **Agent proxy**     | The forward proxy in the [Infisical CLI](/cli/overview) that attaches credentials to outbound requests. Runs on a host in your network, or on your own machine for the duration of a local run.            |
-| **Agent**           | Any program that respects `HTTPS_PROXY`: Claude Code, Codex, OpenClaw, Hermes, or any other untrusted workload.                                                                                            |
+| **Agent**           | Any program that respects `HTTPS_PROXY`: Claude Code, Codex, OpenCode, or any other untrusted workload.                                                                                                    |
 
 <Warning>
   The Agent Proxy is distinct from similarly named Infisical components:

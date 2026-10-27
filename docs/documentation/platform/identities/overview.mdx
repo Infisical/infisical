@@ -129,7 +129,7 @@ Agents follow the same rule as any other workload: **identities are permission-b
 </Note>
 
 <Tip>
-  A scoped machine identity can be narrower than the person operating the agent, which is why PAM recommends [running a sensitive or untrusted agent as its own identity](/documentation/platform/pam/ai-agents/overview#running-unattended) even when someone is watching it. That isolation is a deliberate least-privilege choice, and every identity you create for it counts.
+  A scoped machine identity can be narrower than the person operating the agent, which is why PAM recommends [running a sensitive or untrusted agent as its own identity](/documentation/platform/pam/ai-agents/unattended) even when someone is watching it. That isolation is a deliberate least-privilege choice, and every identity you create for it counts.
 </Tip>
 
 #### Scoping agent identities
@@ -148,7 +148,7 @@ For agents that authenticate as themselves, scope identities by purpose and perm
 </Info>
 
 <Accordion title="Example 6: Local coding agents">
-  **Scenario**: 40 engineers each run a coding agent on their laptop with `infisical secrets agent-proxy run`.
+  **Scenario**: 40 engineers each run a coding agent on their laptop with `infisical sm agent-proxy run`.
 
   **Machine identities needed**: **0**
 

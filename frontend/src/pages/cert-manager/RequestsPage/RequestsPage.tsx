@@ -1,10 +1,9 @@
 import { useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { FilterIcon, SearchIcon } from "lucide-react";
 
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Card,
@@ -25,13 +24,21 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  PageHeader,
+  RowLink,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
 } from "@app/components/v3";
+import { useProject } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useDebounce } from "@app/hooks";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
@@ -105,10 +112,9 @@ const getCodeSigningData = (data: unknown): CodeSigningRequestData | null => {
 };
 
 export const RequestsPage = () => {
-  const { projectId, orgId } = useParams({ strict: false }) as {
-    projectId?: string;
-    orgId?: string;
-  };
+  const { orgId } = useParams({ strict: false }) as { orgId?: string };
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const search = useSearch({ strict: false }) as { selectedTab?: string };
   const navigate = useNavigate();
   const selectedTab = search.selectedTab ?? "application-requests";
@@ -149,7 +155,7 @@ export const RequestsPage = () => {
     approvalRequestQuery.list({
       policyType: ApprovalPolicyType.CertRequest,
       scope: ApprovalPolicyScope.Project,
-      scopeId: projectId ?? ""
+      scopeId: projectId
     })
   );
 
@@ -157,7 +163,7 @@ export const RequestsPage = () => {
     approvalRequestQuery.list({
       policyType: ApprovalPolicyType.CertCodeSigning,
       scope: ApprovalPolicyScope.Project,
-      scopeId: projectId ?? ""
+      scopeId: projectId
     })
   );
 
@@ -238,14 +244,11 @@ export const RequestsPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Requests</title>
-      </Helmet>
-      <div className="h-full bg-bunker-800">
-        <div className="mx-auto flex flex-col text-white">
-          <div className="mx-auto mb-6 w-full max-w-8xl">
+      <PageTitle title="Requests" />
+      <div className="h-full bg-page">
+        <div className="mx-auto flex flex-col text-foreground-inverse">
+          <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
             <PageHeader
-              className="mb-6"
               scope={ProjectType.CertificateManager}
               title="Approval Requests"
               description="Review pending approval requests across your applications and signers"
@@ -255,32 +258,32 @@ export const RequestsPage = () => {
               value={selectedTab}
               onValueChange={(v) =>
                 navigate({
-                  to: "/organizations/$orgId/projects/cert-manager/$projectId/requests",
-                  params: { orgId: orgId ?? "", projectId: projectId ?? "" },
+                  to: "/organizations/$orgId/cert-manager/requests",
+                  params: { orgId: orgId ?? "" },
                   search: { selectedTab: v as "application-requests" | "signing-requests" }
                 })
               }
             >
-              <TabList>
-                <Tab variant="project" value="application-requests" className="gap-2">
+              <TabsList variant="project" aria-label="Approval request sections">
+                <TabsTrigger value="application-requests" className="gap-2">
                   Application Requests
                   {Boolean(pendingApplicationCount) && (
                     <Badge variant="warning" isSquare>
                       {pendingApplicationCount}
                     </Badge>
                   )}
-                </Tab>
-                <Tab variant="project" value="signing-requests" className="gap-2">
+                </TabsTrigger>
+                <TabsTrigger value="signing-requests" className="gap-2">
                   Signing Requests
                   {Boolean(pendingSigningCount) && (
                     <Badge variant="warning" isSquare>
                       {pendingSigningCount}
                     </Badge>
                   )}
-                </Tab>
-              </TabList>
+                </TabsTrigger>
+              </TabsList>
 
-              <TabPanel value="application-requests">
+              <TabsContent value="application-requests">
                 <Card>
                   <CardHeader>
                     <CardTitle>Application Requests</CardTitle>
@@ -376,39 +379,34 @@ export const RequestsPage = () => {
                             };
 
                             return (
-                              <TableRow
-                                key={r.id}
-                                className="cursor-pointer [&>td]:py-3"
-                                onClick={() =>
-                                  navigate({
-                                    to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
-                                    params: {
-                                      orgId: orgId ?? "",
-                                      projectId: projectId ?? "",
-                                      approvalRequestId: r.id
-                                    },
-                                    search: {
-                                      policyType: ApprovalPolicyType.CertRequest,
-                                      from: "root-requests"
-                                    }
-                                  })
-                                }
-                              >
+                              <TableRow key={r.id} className="[&>td]:py-3" linked>
                                 <TableCell isTruncatable className="font-mono">
-                                  {cn}
+                                  <RowLink
+                                    {...getInstancePinningLink(
+                                      currentProject.orgId,
+                                      currentProject,
+                                      `approvals/${r.id}`
+                                    )!}
+                                    search={
+                                      {
+                                        policyType: ApprovalPolicyType.CertRequest,
+                                        from: "root-requests"
+                                      } as never
+                                    }
+                                  >
+                                    {cn}
+                                  </RowLink>
                                 </TableCell>
                                 <TableCell className="font-mono text-xs">{profile}</TableCell>
                                 <TableCell className="font-mono text-xs">
                                   {app ? (
                                     <Link
-                                      to="/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName"
-                                      params={{
-                                        orgId: orgId ?? "",
-                                        projectId: projectId ?? "",
-                                        applicationName: app.name
-                                      }}
+                                      {...getInstancePinningLink(
+                                        currentProject.orgId,
+                                        currentProject,
+                                        `applications/${app.name}`
+                                      )!}
                                       className="text-foreground hover:text-project"
-                                      onClick={(e) => e.stopPropagation()}
                                     >
                                       {app.name}
                                     </Link>
@@ -436,9 +434,9 @@ export const RequestsPage = () => {
                     )}
                   </CardContent>
                 </Card>
-              </TabPanel>
+              </TabsContent>
 
-              <TabPanel value="signing-requests">
+              <TabsContent value="signing-requests">
                 <Card>
                   <CardHeader>
                     <CardTitle>Signing Requests</CardTitle>
@@ -526,26 +524,23 @@ export const RequestsPage = () => {
                             };
 
                             return (
-                              <TableRow
-                                key={r.id}
-                                className="cursor-pointer [&>td]:py-3"
-                                onClick={() =>
-                                  navigate({
-                                    to: "/organizations/$orgId/projects/cert-manager/$projectId/approvals/$approvalRequestId",
-                                    params: {
-                                      orgId: orgId ?? "",
-                                      projectId: projectId ?? "",
-                                      approvalRequestId: r.id
-                                    },
-                                    search: {
-                                      policyType: ApprovalPolicyType.CertCodeSigning,
-                                      from: "root-requests"
-                                    }
-                                  })
-                                }
-                              >
+                              <TableRow key={r.id} className="[&>td]:py-3" linked>
                                 <TableCell isTruncatable className="font-mono">
-                                  {signerName}
+                                  <RowLink
+                                    {...getInstancePinningLink(
+                                      currentProject.orgId,
+                                      currentProject,
+                                      `approvals/${r.id}`
+                                    )!}
+                                    search={
+                                      {
+                                        policyType: ApprovalPolicyType.CertCodeSigning,
+                                        from: "root-requests"
+                                      } as never
+                                    }
+                                  >
+                                    {signerName}
+                                  </RowLink>
                                 </TableCell>
                                 <TableCell>{r.requesterName || r.requesterEmail || "—"}</TableCell>
                                 <TableCell>
@@ -562,7 +557,7 @@ export const RequestsPage = () => {
                     )}
                   </CardContent>
                 </Card>
-              </TabPanel>
+              </TabsContent>
             </Tabs>
           </div>
         </div>

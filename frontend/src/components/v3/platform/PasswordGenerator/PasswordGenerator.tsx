@@ -1,5 +1,4 @@
-import { cloneElement, type ReactElement, useEffect, useMemo, useState } from "react";
-import { components, OptionProps } from "react-select";
+import { cloneElement, type ReactElement, useEffect, useId, useMemo, useState } from "react";
 import {
   CheckIcon,
   CopyIcon,
@@ -8,7 +7,7 @@ import {
   ShieldCheckIcon,
   TriangleAlertIcon
 } from "lucide-react";
-import RandExp from "randexp";
+import type RandExp from "randexp";
 import { twMerge } from "tailwind-merge";
 
 import { useTimedReset } from "@app/hooks";
@@ -23,11 +22,12 @@ import {
 import { Badge } from "../../generic/Badge";
 import { Button } from "../../generic/Button";
 import { Checkbox } from "../../generic/Checkbox";
+import { Combobox } from "../../generic/Combobox";
 import { IconButton } from "../../generic/IconButton";
 import { Label } from "../../generic/Label";
 import { Popover, PopoverContent, PopoverTrigger } from "../../generic/Popover";
-import { FilterableSelect } from "../../generic/ReactSelect";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../generic/Tooltip";
+import { buildSecureRandExp } from "./secure-randexp";
 
 type PasswordOptionsType = {
   length: number;
@@ -68,11 +68,13 @@ const generateFromConstraints = (constraints: TValueConstraints): string => {
 
   if (regexValue) {
     // Regex takes full precedence over min/max length constraints
+    let generator: RandExp | undefined;
     try {
-      middle = new RandExp(new RegExp(regexValue)).gen();
+      generator = buildSecureRandExp(new RegExp(regexValue));
     } catch {
       // Fall through to manual generation if regex is invalid
     }
+    middle = generator?.gen();
   }
 
   if (middle === undefined) {
@@ -112,35 +114,33 @@ const describeConstraints = (constraints: TValueConstraints) => {
   add("minLength", "Min length", constraints.minLength);
   add("maxLength", "Max length", constraints.maxLength);
 
-  if (constraints.reusePrevention?.previousVersions !== undefined) {
-    chips.push({ key: "reusePrevention", label: "Prevent reuse of previous secret values" });
+  if (constraints.uniqueAcrossLastVersions !== undefined) {
+    chips.push({
+      key: "uniqueAcrossLastVersions",
+      label: "Prevent reuse of previous secret values"
+    });
   }
 
   return chips;
 };
 
-const RuleOptionComponent = ({ isSelected, children, ...props }: OptionProps<RuleOption>) => (
-  <components.Option isSelected={isSelected} {...props}>
-    <div className="flex cursor-pointer flex-row items-center justify-between">
-      <div className="flex items-center gap-2 truncate">
-        <p className="truncate">{children}</p>
-        {props.data.matchesCurrentScope && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant="project">
-                <ShieldCheckIcon className="size-3" />
-                Current scope
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              This validation rule applies to the current environment and folder
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </div>
-      {isSelected && <CheckIcon className="ml-2 size-4 shrink-0" />}
-    </div>
-  </components.Option>
+const RuleOptionContent = ({ option }: { option: RuleOption }) => (
+  <div className="flex items-center gap-2 truncate">
+    <p className="truncate">{option.label}</p>
+    {option.matchesCurrentScope && (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant="project">
+            <ShieldCheckIcon className="size-3" />
+            Current scope
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          This validation rule applies to the current environment and folder
+        </TooltipContent>
+      </Tooltip>
+    )}
+  </div>
 );
 
 export type PasswordGeneratorProps = {
@@ -164,6 +164,7 @@ export const PasswordGenerator = ({
   selectedEnvironments,
   trigger
 }: PasswordGeneratorProps) => {
+  const ruleSelectId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [, isCopying, setCopyText] = useTimedReset<string>({
     initialState: "Copy"
@@ -302,7 +303,12 @@ export const PasswordGenerator = ({
         {trigger ? (
           cloneElement(trigger, { disabled: isDisabled })
         ) : (
-          <IconButton variant="outline" size="md" isDisabled={isDisabled}>
+          <IconButton
+            aria-label="Generate random value"
+            variant="outline"
+            size="md"
+            isDisabled={isDisabled}
+          >
             <KeyRoundIcon />
           </IconButton>
         )}
@@ -316,22 +322,25 @@ export const PasswordGenerator = ({
 
           {showRuleSelector && (
             <div>
-              <Label className="mb-1.5 flex items-center gap-1.5 text-xs text-accent">
+              <Label
+                htmlFor={ruleSelectId}
+                className="mb-1.5 flex items-center gap-1.5 text-xs text-accent"
+              >
                 <ShieldCheckIcon className="size-3" />
                 Conform to Validation Rule
               </Label>
-              <FilterableSelect<RuleOption>
+              <Combobox
+                id={ruleSelectId}
                 options={ruleOptions}
                 value={selectedRuleOption}
-                onChange={(option) => {
-                  setSelectedRuleId((option as RuleOption | null)?.value || "");
+                onValueChange={(option) => {
+                  setSelectedRuleId(option.value);
                   setRefresh((prev) => !prev);
                 }}
                 getOptionLabel={(o) => o.label}
                 getOptionValue={(o) => o.value}
                 isClearable={false}
-                isSearchable={false}
-                components={{ Option: RuleOptionComponent }}
+                renderOption={(option) => <RuleOptionContent option={option} />}
               />
             </div>
           )}
@@ -340,10 +349,20 @@ export const PasswordGenerator = ({
             <div className="flex items-center justify-between gap-2">
               <p className="flex-1 font-mono text-sm break-all select-all">{password}</p>
               <div className="flex shrink-0 gap-1">
-                <IconButton variant="ghost" size="xs" onClick={() => setRefresh((prev) => !prev)}>
+                <IconButton
+                  aria-label="Generate another value"
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => setRefresh((prev) => !prev)}
+                >
                   <RefreshCwIcon />
                 </IconButton>
-                <IconButton variant="ghost" size="xs" onClick={copyToClipboard}>
+                <IconButton
+                  aria-label="Copy generated value"
+                  variant="ghost"
+                  size="xs"
+                  onClick={copyToClipboard}
+                >
                   {isCopying ? <CheckIcon /> : <CopyIcon />}
                 </IconButton>
               </div>

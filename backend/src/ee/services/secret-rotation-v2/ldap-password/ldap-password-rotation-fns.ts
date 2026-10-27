@@ -115,9 +115,9 @@ export const ldapPasswordRotationFactory: TRotationFactory<
   secretRotation,
   appConnectionDAL,
   kmsService,
-  gatewayService,
   gatewayV2Service,
   gatewayPoolService,
+  _keyStore,
   passwordValidationContext
 ) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;

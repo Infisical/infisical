@@ -31,6 +31,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  ProviderIcon,
   Skeleton,
   Table,
   TableBody,
@@ -343,9 +344,9 @@ export const SecretSyncsTable = ({ secretSyncs, isPending }: Props) => {
                           }));
                         }}
                       >
-                        <img
+                        <ProviderIcon
                           alt={`${name} integration`}
-                          src={`/images/integrations/${image}`}
+                          icon={image}
                           className="h-4 w-4"
                         />
                         <span>{name}</span>

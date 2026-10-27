@@ -8,6 +8,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -19,7 +20,6 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Item,
   ItemContent,
   ItemDescription,
@@ -202,18 +202,18 @@ export const CreateSecretImportForm = ({
           const selectedItem = environments.find((e) => e.slug === field.value?.slug);
           return (
             <Field>
-              <FieldLabel>Environment</FieldLabel>
+              <FieldLabel htmlFor="secret-import-environment">Environment</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
+                  id="secret-import-environment"
+                  isClearable={false}
                   options={environments}
                   getOptionLabel={(option) => option.name}
                   getOptionValue={(option) => option.slug}
+                  getOptionKeywords={(option) => [option.slug]}
                   placeholder="Select environment..."
                   value={selectedItem || null}
-                  onChange={(newValue) => {
-                    const single = Array.isArray(newValue) ? newValue[0] : newValue;
-                    field.onChange(single || null);
-                  }}
+                  onValueChange={field.onChange}
                 />
               </FieldContent>
               <FieldError>{errors.environment?.message}</FieldError>
@@ -293,9 +293,11 @@ export const CreateSecretImportForm = ({
     return (
       <div className="space-y-4">
         <Field>
-          <FieldLabel>Project</FieldLabel>
+          <FieldLabel htmlFor="secret-import-source-project">Project</FieldLabel>
           <FieldContent>
-            <FilterableSelect
+            <Combobox
+              id="secret-import-source-project"
+              isClearable={false}
               options={sourceProjectOptions}
               getOptionLabel={(o) => o.label}
               getOptionValue={(o) => o.value}
@@ -305,9 +307,8 @@ export const CreateSecretImportForm = ({
                   ? (sourceProjectOptions.find((o) => o.value === selectedSourceProjectId) ?? null)
                   : null
               }
-              onChange={(newValue) => {
-                const single = Array.isArray(newValue) ? newValue[0] : newValue;
-                setSelectedSourceProjectId(single && "value" in single ? single.value : null);
+              onValueChange={(option) => {
+                setSelectedSourceProjectId(option.value);
                 setSelectedEnvironmentSlug(null);
                 setSelectedSecretPath(null);
               }}
@@ -316,12 +317,15 @@ export const CreateSecretImportForm = ({
         </Field>
 
         <Field>
-          <FieldLabel>Environment</FieldLabel>
+          <FieldLabel htmlFor="secret-import-source-environment">Environment</FieldLabel>
           <FieldContent>
-            <FilterableSelect
+            <Combobox
+              id="secret-import-source-environment"
+              isClearable={false}
               options={environmentOptions}
               getOptionLabel={(o) => o.label}
               getOptionValue={(o) => o.value}
+              getOptionKeywords={(o) => [o.value]}
               placeholder="Select environment..."
               isDisabled={!selectedSourceProjectId}
               value={
@@ -329,9 +333,8 @@ export const CreateSecretImportForm = ({
                   ? (environmentOptions.find((o) => o.value === selectedEnvironmentSlug) ?? null)
                   : null
               }
-              onChange={(newValue) => {
-                const single = Array.isArray(newValue) ? newValue[0] : newValue;
-                setSelectedEnvironmentSlug(single && "value" in single ? single.value : null);
+              onValueChange={(option) => {
+                setSelectedEnvironmentSlug(option.value);
                 setSelectedSecretPath(null);
               }}
             />
@@ -339,9 +342,11 @@ export const CreateSecretImportForm = ({
         </Field>
 
         <Field>
-          <FieldLabel>Folder path</FieldLabel>
+          <FieldLabel htmlFor="secret-import-source-folder">Folder path</FieldLabel>
           <FieldContent>
-            <FilterableSelect
+            <Combobox
+              id="secret-import-source-folder"
+              isClearable={false}
               options={folderOptions}
               getOptionLabel={(o) => o.label}
               getOptionValue={(o) => o.value}
@@ -352,22 +357,19 @@ export const CreateSecretImportForm = ({
                   ? (folderOptions.find((o) => o.value === selectedSecretPath) ?? null)
                   : null
               }
-              onChange={(newValue) => {
-                const single = Array.isArray(newValue) ? newValue[0] : newValue;
-                setSelectedSecretPath(single && "value" in single ? single.value : null);
-              }}
+              onValueChange={(option) => setSelectedSecretPath(option.value)}
             />
           </FieldContent>
         </Field>
 
         {selectedGrant && (
           <Item variant="outline">
-            <ItemMedia className="flex h-9 w-9 items-center justify-center rounded-md bg-mineshaft-700">
-              <Key className="size-4 text-yellow-400" />
+            <ItemMedia className="flex h-9 w-9 items-center justify-center rounded-md bg-surface-hover">
+              <Key className="size-4 text-warning" />
             </ItemMedia>
             <ItemContent>
               <ItemTitle>
-                <span className="text-yellow-400">{selectedGrant.secretCount} secrets</span> will be
+                <span className="text-warning">{selectedGrant.secretCount} secrets</span> will be
                 imported
               </ItemTitle>
               <ItemDescription>
@@ -448,18 +450,18 @@ export const CreateSecretImportForm = ({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="flex cursor-default items-center">
-                    <InfoIcon size={16} className="text-mineshaft-400" />
+                    <InfoIcon size={16} className="text-muted" />
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="right" align="start" className="max-w-sm">
-                  <p className="mb-2 text-mineshaft-300">
+                  <p className="mb-2 text-label">
                     You can import secrets into your project in one of two ways:
                   </p>
                   <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
-                    <li className="text-mineshaft-200">
-                      <strong className="font-medium text-mineshaft-100">This Project</strong> —
+                    <li className="text-foreground-secondary">
+                      <strong className="font-medium text-foreground">This Project</strong> —
                       Inherit secrets from another environment or folder within{" "}
-                      <strong className="font-medium text-mineshaft-100">
+                      <strong className="font-medium text-foreground">
                         {currentProject?.name ?? "this project"}
                       </strong>
                       .
@@ -468,8 +470,8 @@ export const CreateSecretImportForm = ({
                         the same project.
                       </p>
                     </li>
-                    <li className="text-mineshaft-200">
-                      <strong className="font-medium text-mineshaft-100">Another Project</strong> —
+                    <li className="text-foreground-secondary">
+                      <strong className="font-medium text-foreground">Another Project</strong> —
                       Import a folder or environment from a different project that has granted
                       access to this one.
                       <p className="mt-2">

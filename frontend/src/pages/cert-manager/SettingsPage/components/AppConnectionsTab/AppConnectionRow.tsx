@@ -29,6 +29,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
@@ -82,13 +83,13 @@ export const AppConnectionRow = ({
       <TableCell>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <img
+            <ProviderIcon
               alt={`${connectionDetails.name} integration`}
-              src={`/images/integrations/${connectionDetails.image}`}
+              icon={connectionDetails.image}
               className="mr-0.5 w-5"
             />
             {ConnectionIcon && (
-              <ConnectionIcon className="absolute -right-0.5 -bottom-0.5 size-3 text-primary-700" />
+              <ConnectionIcon className="absolute -right-0.5 -bottom-0.5 size-3 text-project" />
             )}
           </div>
           <span>{connectionDetails.name}</span>

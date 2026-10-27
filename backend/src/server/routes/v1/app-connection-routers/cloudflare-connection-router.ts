@@ -82,6 +82,35 @@ export const registerCloudflareConnectionRouter = async (server: FastifyZodProvi
 
   server.route({
     method: "GET",
+    url: `/:connectionId/cloudflare-secrets-stores`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      operationId: "listCloudflareSecretsStores",
+      params: z.object({
+        connectionId: z.string().uuid()
+      }),
+      response: {
+        200: z
+          .object({
+            id: z.string(),
+            name: z.string()
+          })
+          .array()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { connectionId } = req.params;
+
+      const stores = await server.services.appConnection.cloudflare.listSecretsStores(connectionId, req.permission);
+      return stores;
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: `/:connectionId/cloudflare-zones`,
     config: {
       rateLimit: readLimit

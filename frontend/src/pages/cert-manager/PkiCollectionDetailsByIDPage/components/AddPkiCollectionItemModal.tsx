@@ -1,9 +1,26 @@
+import { useId } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@app/components/v3";
 import { useProject } from "@app/context";
 import { CaStatus, useAddItemToPkiCollection, useListWorkspaceCas } from "@app/hooks/api";
 import { PkiItemType, pkiItemTypeToNameMap } from "@app/hooks/api/pkiCollections/constants";
@@ -13,7 +30,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 const schema = z
   .object({
     // type: z.nativeEnum(PkiItemType),
-    itemId: z.string()
+    itemId: z.string().min(1, "Select an item to add")
   })
   .required();
 
@@ -38,6 +55,7 @@ export const AddPkiCollectionItemModal = ({
   handlePopUpToggle
 }: Props) => {
   const { currentProject } = useProject();
+  const itemInputId = useId();
 
   const { data: cas } = useListWorkspaceCas({
     projectId: currentProject?.id || "",
@@ -45,7 +63,7 @@ export const AddPkiCollectionItemModal = ({
   });
 
   const { data } = useListWorkspaceCertificates({
-    projectId: currentProject?.slug || "",
+    projectId: currentProject?.id || "",
     offset: 0,
     limit: 25
   });
@@ -87,62 +105,46 @@ export const AddPkiCollectionItemModal = ({
   };
 
   return (
-    <Modal
-      isOpen={popUp?.addPkiCollectionItem?.isOpen}
+    <Dialog
+      open={popUp?.addPkiCollectionItem?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("addPkiCollectionItem", isOpen);
         reset();
       }}
     >
-      <ModalContent title={`Add ${pkiItemTypeToNameMap[type]} to Collection`}>
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          {/* <Controller
-            control={control}
-            name="type"
-            defaultValue={PkiItemType.CA}
-            render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl label="Item Type" errorText={error?.message} isError={Boolean(error)}>
-                <Select
-                  defaultValue={field.value}
-                  {...field}
-                  onValueChange={(e) => onChange(e)}
-                  className="w-full"
-                >
-                  <SelectItem value={PkiItemType.CA} key="pki-item-type-ca">
-                    Certificate Authority
-                  </SelectItem>
-                  <SelectItem value={PkiItemType.CERTIFICATE} key="pki-item-type-ca">
-                    Certificate
-                  </SelectItem>
-                </Select>
-              </FormControl>
-            )}
-          /> */}
+      <DialogContent isPending={isSubmitting}>
+        <DialogHeader>
+          <DialogTitle>{`Add ${pkiItemTypeToNameMap[type]} to Collection`}</DialogTitle>
+        </DialogHeader>
+        <form className="flex flex-col gap-6" onSubmit={handleSubmit(onFormSubmit)}>
           {type === PkiItemType.CA && (
             <Controller
               control={control}
               name="itemId"
               defaultValue=""
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  label={pkiItemTypeToNameMap[type]}
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  // className="mt-4"
-                >
-                  <Select
-                    defaultValue={field.value}
-                    {...field}
-                    onValueChange={(e) => onChange(e)}
-                    className="w-full"
-                  >
-                    {(cas || []).map(({ id, dn }) => (
-                      <SelectItem value={id} key={`pki-item-cert-${id}`}>
-                        {dn}
-                      </SelectItem>
-                    ))}
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor={itemInputId}>{pkiItemTypeToNameMap[type]}</FieldLabel>
+                  <Select value={field.value} onValueChange={field.onChange} name={field.name}>
+                    <SelectTrigger
+                      id={itemInputId}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      className="w-full"
+                      isError={Boolean(error)}
+                    >
+                      <SelectValue placeholder="Select a certificate authority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(cas || []).map(({ id, dn }) => (
+                        <SelectItem value={id} key={`pki-item-cert-${id}`}>
+                          {dn}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
-                </FormControl>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
           )}
@@ -151,49 +153,42 @@ export const AddPkiCollectionItemModal = ({
               control={control}
               name="itemId"
               defaultValue=""
-              render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-                <FormControl
-                  label="Certificate"
-                  errorText={error?.message}
-                  isError={Boolean(error)}
-                  // className="mt-4"
-                >
-                  <Select
-                    defaultValue={field.value}
-                    {...field}
-                    onValueChange={(e) => onChange(e)}
-                    className="w-full"
-                  >
-                    {(data?.certificates || []).map(({ id, commonName }) => (
-                      <SelectItem value={id} key={`pki-item-cert-${id}`}>
-                        {`CN=${commonName}`}
-                      </SelectItem>
-                    ))}
+              render={({ field, fieldState: { error } }) => (
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor={itemInputId}>Certificate</FieldLabel>
+                  <Select value={field.value} onValueChange={field.onChange} name={field.name}>
+                    <SelectTrigger
+                      id={itemInputId}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      className="w-full"
+                      isError={Boolean(error)}
+                    >
+                      <SelectValue placeholder="Select a certificate" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(data?.certificates || []).map(({ id, commonName }) => (
+                        <SelectItem value={id} key={`pki-item-cert-${id}`}>
+                          {`CN=${commonName}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
-                </FormControl>
+                  <FieldError>{error?.message}</FieldError>
+                </Field>
               )}
             />
           )}
-          <div className="flex items-center">
-            <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-            >
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="ghost">Cancel</Button>
+            </DialogClose>
+            <Button variant="project" size="sm" type="submit" isPending={isSubmitting}>
               Add
             </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpToggle("addPkiCollectionItem", false)}
-            >
-              Cancel
-            </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

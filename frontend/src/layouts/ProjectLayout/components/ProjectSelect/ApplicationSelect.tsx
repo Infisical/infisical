@@ -9,41 +9,24 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandItemLink,
   CommandList,
   ResourceIcon
 } from "@app/components/v3";
 import { useListPkiApplications } from "@app/hooks/api/pkiApplications";
 import { useDebounce } from "@app/hooks/useDebounce";
 import {
+  NavbarBlock,
   NavbarSwitcher,
   NavbarSwitcherContent,
   NavbarSwitcherTrigger
 } from "@app/layouts/NavbarSwitcher";
 
-// Modified and middle clicks belong to the browser: it opens the row's href in a new tab
-// or window, so we neither preventDefault nor navigate programmatically on those paths.
-const isBrowserHandledClick = (event: React.MouseEvent) =>
-  event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0;
-
-// The row's anchor exists for its href (new-tab, copy link, status bar preview) while cmdk
-// owns activation via onSelect. A plain primary click therefore suppresses the anchor's own
-// navigation and bubbles up to cmdk; a browser-handled click is kept away from cmdk instead,
-// so the current tab stays put while the new one opens.
-const handleRowAnchorClick = (event: React.MouseEvent) => {
-  if (isBrowserHandledClick(event)) {
-    event.stopPropagation();
-    return;
-  }
-  event.preventDefault();
-};
-
 const ApplicationSelectInner = ({
   applicationName,
-  projectId,
   orgId
 }: {
   applicationName: string;
-  projectId: string;
   orgId: string;
 }) => {
   const [open, setOpen] = useState(false);
@@ -62,12 +45,12 @@ const ApplicationSelectInner = ({
     setOpen(false);
     if (nextName === applicationName) return;
     navigate({
-      to: `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${nextName}` as never
+      to: `/organizations/${orgId}/cert-manager/applications/${nextName}` as never
     } as never);
   };
 
   return (
-    <div className="mr-2 flex min-w-16 items-center gap-1 pr-1 pl-1">
+    <NavbarBlock className="min-w-16">
       <NavbarSwitcher
         open={open}
         onOpenChange={(nextOpen) => {
@@ -79,10 +62,8 @@ const ApplicationSelectInner = ({
         }}
       >
         <Link
-          to={
-            `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${applicationName}` as never
-          }
-          className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-white"
+          to={`/organizations/${orgId}/cert-manager/applications/${applicationName}` as never}
+          className="group flex cursor-pointer items-center gap-x-2 overflow-hidden text-sm text-foreground-inverse"
         >
           <ResourceIcon className="size-[14px] shrink-0 text-project" />
           <span className="truncate">{displayName}</span>
@@ -117,16 +98,14 @@ const ApplicationSelectInner = ({
                           row it has marked aria-selected, never against the focused element, so
                           without this onFocus a tabbed-to row would activate whichever row the
                           arrow keys last selected and switch the user to the wrong application. */}
-                      <Link
+                      <CommandItemLink
                         to={
-                          `/organizations/${orgId}/projects/cert-manager/${projectId}/applications/${app.name}` as never
+                          `/organizations/${orgId}/cert-manager/applications/${app.name}` as never
                         }
-                        className="truncate rounded-sm text-sm outline-0 after:absolute after:inset-0 after:rounded-sm after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                         onFocus={() => setSelectedValue(app.name)}
-                        onClick={handleRowAnchorClick}
                       >
                         {app.name}
-                      </Link>
+                      </CommandItemLink>
                       <span className="truncate text-[11px] text-muted">
                         {app.description || "No description"}
                       </span>
@@ -138,22 +117,19 @@ const ApplicationSelectInner = ({
           </Command>
         </NavbarSwitcherContent>
       </NavbarSwitcher>
-    </div>
+    </NavbarBlock>
   );
 };
 
 export const ApplicationSelect = () => {
   const params = useParams({ strict: false }) as {
     applicationName?: string;
-    projectId?: string;
     orgId?: string;
   };
   const search = useSearch({ strict: false }) as { fromApplication?: string };
-  const { projectId, orgId } = params;
+  const { orgId } = params;
   const applicationName = params.applicationName ?? search.fromApplication;
-  if (!applicationName || !projectId || !orgId) return null;
+  if (!applicationName || !orgId) return null;
 
-  return (
-    <ApplicationSelectInner applicationName={applicationName} projectId={projectId} orgId={orgId} />
-  );
+  return <ApplicationSelectInner applicationName={applicationName} orgId={orgId} />;
 };

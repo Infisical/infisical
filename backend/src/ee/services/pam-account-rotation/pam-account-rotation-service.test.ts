@@ -84,7 +84,6 @@ const buildService = (
     membershipRoleDAL: { find: vi.fn() },
     kmsService: { createCipherPairWithDataKey: vi.fn(async () => identityCipher) },
     keyStore: { acquireLock: vi.fn(async () => ({ release: vi.fn(async () => undefined) })) },
-    gatewayService: { fnGetGatewayClientTlsByGatewayId: vi.fn() },
     gatewayV2Service: { getPlatformConnectionDetailsByGatewayId: vi.fn() },
     gatewayPoolService: { resolveEffectiveGatewayId: vi.fn() },
     pamAccountDependencyDAL: { findByAccountId: vi.fn(async () => []), updateById: vi.fn(async () => undefined) },

@@ -88,7 +88,7 @@ export const hsmConnectorDALFactory = (db: TDbClient) => {
               db.ref("status").withSchema(TableName.CertificateAuthority).as("status"),
               db.ref("type").withSchema(TableName.InternalCertificateAuthority).as("type"),
               db.ref("commonName").withSchema(TableName.InternalCertificateAuthority).as("commonName"),
-              db.ref("hsmKeyLabel").withSchema(TableName.CertificateAuthoritySecret).as("hsmKeyLabel"),
+              db.ref("externalKeyId").withSchema(TableName.CertificateAuthoritySecret).as("hsmKeyLabel"),
               db.ref("createdAt").withSchema(TableName.CertificateAuthority).as("createdAt")
             )
             .orderBy(`${TableName.CertificateAuthority}.createdAt`, "desc")

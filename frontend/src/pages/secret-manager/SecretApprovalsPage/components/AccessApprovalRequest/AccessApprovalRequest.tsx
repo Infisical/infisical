@@ -1,7 +1,7 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable react/jsx-no-useless-fragment */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import {
   BanIcon,
@@ -19,7 +19,10 @@ import {
   TimerIcon
 } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import {
+  SecretAccessRequestsUpgradeIntent,
+  useUpgradeGate
+} from "@app/components/license/UpgradeGate";
 import {
   Badge,
   Button,
@@ -38,6 +41,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
   Empty,
+  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
@@ -46,6 +50,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -64,6 +69,7 @@ import {
 import { cn } from "@app/components/v3/utils";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
+  ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
   useProject,
@@ -117,10 +123,12 @@ const CLOSED_REQUEST_FILTERS: { label: string; value: ClosedRequestFilter }[] = 
 
 export const AccessApprovalRequest = ({
   projectSlug,
-  projectId
+  projectId,
+  onConfigurePolicies
 }: {
   projectSlug: string;
   projectId: string;
+  onConfigurePolicies: () => void;
 }) => {
   const [selectedRequest, setSelectedRequest] = useState<
     | (TAccessApprovalRequest & {
@@ -135,13 +143,13 @@ export const AccessApprovalRequest = ({
 
   const { handlePopUpOpen, popUp, handlePopUpClose } = usePopUp([
     "requestAccess",
-    "reviewRequest",
-    "upgradePlan"
+    "reviewRequest"
   ] as const);
   const { permission } = useProjectPermission();
   const { user } = useUser();
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
+  const { openUpgradeGate, upgradeGate } = useUpgradeGate();
   const canReadMembers = permission.can(
     ProjectPermissionMemberActions.Read,
     ProjectPermissionSub.Member
@@ -210,9 +218,15 @@ export const AccessApprovalRequest = ({
     projectSlug
   });
 
-  const { data: policies, isPending: policiesLoading } = useGetAccessApprovalPolicies({
-    projectSlug
-  });
+  const {
+    data: policies,
+    isPending: policiesLoading,
+    isSuccess: arePoliciesLoaded
+  } = useGetAccessApprovalPolicies({ projectSlug });
+  const canCreatePolicies = permission.can(
+    ProjectPermissionActions.Create,
+    ProjectPermissionSub.SecretApproval
+  );
 
   const {
     data: requests,
@@ -383,8 +397,9 @@ export const AccessApprovalRequest = ({
       const isRequestedByCurrentUser = request.requestedByUserId === user.id;
       const isSelfApproveAllowed = request.policy.allowedSelfApprovals;
       const userReviewStatus = request.reviewers.find(({ userId }) => userId === user.id)?.status;
-      const canBypass =
-        !request.policy.bypassers.length || request.policy.bypassers.includes(user.id);
+      const canBypass = request.policy.bypassers.length
+        ? request.policy.bypassers.includes(user.id)
+        : request.policy.allowedSelfApprovals;
 
       let displayData: {
         label: string;
@@ -540,8 +555,9 @@ export const AccessApprovalRequest = ({
                 <Button
                   onClick={() => {
                     if (subscription && !subscription?.secretApproval) {
-                      handlePopUpOpen("upgradePlan", {
-                        text: "Access requests feature can be unlocked if you upgrade to Infisical Pro plan."
+                      openUpgradeGate({
+                        intent: SecretAccessRequestsUpgradeIntent,
+                        paywallKey: "secret-manager.access-approval-request"
                       });
                       return;
                     }
@@ -690,6 +706,14 @@ export const AccessApprovalRequest = ({
                     : "Approved, rejected, revoked, or expired access requests will appear here."}
                 </EmptyDescription>
               </EmptyHeader>
+              {canCreatePolicies && arePoliciesLoaded && !policies?.length && (
+                <EmptyContent>
+                  <Button variant="project" size="sm" onClick={onConfigurePolicies}>
+                    <PlusIcon />
+                    Configure Policy
+                  </Button>
+                </EmptyContent>
+              )}
             </Empty>
           )}
           {Boolean(!filteredRequests?.length && isFiltered && !areRequestsPending) && (
@@ -809,14 +833,7 @@ export const AccessApprovalRequest = ({
                     environmentNamesBySlug[request.environmentName] ?? request.environmentName;
 
                   return (
-                    <TableRow
-                      key={request.id}
-                      tabIndex={0}
-                      onClick={() => handleSelectRequest(request)}
-                      onKeyDown={(evt) => {
-                        if (evt.key === "Enter") handleSelectRequest(request);
-                      }}
-                    >
+                    <TableRow key={request.id} linked>
                       <TableCell>
                         {request.isTemporary ? (
                           <Badge variant="info">
@@ -832,7 +849,15 @@ export const AccessApprovalRequest = ({
                           <Badge variant="neutral">Permanent</Badge>
                         )}
                       </TableCell>
-                      <TableCell title={environmentDisplayName}>{environmentDisplayName}</TableCell>
+                      <TableCell>
+                        <RowLink
+                          from={ROUTE_PATHS.SecretManager.ApprovalPage.path}
+                          to="."
+                          search={(prev) => ({ ...prev, requestId: request.id })}
+                        >
+                          {environmentDisplayName}
+                        </RowLink>
+                      </TableCell>
                       <TableCell title={request.policy.secretPath ?? undefined}>
                         {request.policy.secretPath}
                       </TableCell>
@@ -902,11 +927,7 @@ export const AccessApprovalRequest = ({
                           )}
                         </div>
                       </TableCell>
-                      <TableCell
-                        variant="action"
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => e.stopPropagation()}
-                      >
+                      <TableCell variant="action">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton variant="ghost" size="xs" aria-label="Request actions">
@@ -914,9 +935,15 @@ export const AccessApprovalRequest = ({
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleSelectRequest(request)}>
-                              <EyeIcon />
-                              View Request
+                            <DropdownMenuItem asChild>
+                              <Link
+                                from={ROUTE_PATHS.SecretManager.ApprovalPage.path}
+                                to="."
+                                search={(prev) => ({ ...prev, requestId: request.id })}
+                              >
+                                <EyeIcon />
+                                View Request
+                              </Link>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -971,26 +998,11 @@ export const AccessApprovalRequest = ({
             setSelectedRequest(null);
             refetchRequests();
           }}
-          onUpdate={(request) => {
-            // scott: this isn't ideal but our current use of state makes this complicated...
-            // we shouldn't be using state like this...
-            handleSelectRequest({
-              ...selectedRequest,
-              isTemporary: request.isTemporary,
-              temporaryRange: request.temporaryRange,
-              reviewers: []
-            });
-          }}
           canBypass={generateRequestDetails(selectedRequest).canBypass}
         />
       )}
 
-      <UpgradePlanModal
-        paywallKey="secret-manager.access-approval-request"
-        text={popUp.upgradePlan.data?.text}
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={() => handlePopUpClose("upgradePlan")}
-      />
+      {upgradeGate}
     </>
   );
 };

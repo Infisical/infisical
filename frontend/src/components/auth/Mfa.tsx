@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { useNavigate } from "@tanstack/react-router";
 import { t } from "i18next";
+import { CircleXIcon } from "lucide-react";
 
-import Error from "@app/components/basic/Error";
 import { MfaEnrollment } from "@app/components/mfa/MfaEnrollment";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
+  Alert,
+  AlertDescription,
   Button,
   CardContent,
   Tooltip,
@@ -31,7 +33,7 @@ import { getMfaTempToken } from "@app/hooks/api/reactQuery";
 import { fetchUserDetails } from "@app/hooks/api/users/queries";
 import { useGenerateAuthenticationOptions, useVerifyAuthentication } from "@app/hooks/api/webauthn";
 
-import { RecoveryCodesStep } from "../mfa/setup";
+import { MFA_METHOD_LABELS, RecoveryCodesStep } from "../mfa/setup";
 import { AuthPageLayout } from "./AuthPageLayout";
 import { AuthPagePanel } from "./AuthPagePanel";
 import { waitForMinimumAuthVerificationLoading } from "./authTiming";
@@ -40,7 +42,10 @@ const MAX_MFA_ATTEMPTS = 5;
 const CLIENT_RESEND_DELAY_SECONDS = 20;
 
 type Props = {
-  successCallback: () => void | Promise<void>;
+  // needsFactorSetup: the user got in with a recovery code instead of setting up the
+  // method their org requires. The caller picks where they go, e.g. a CLI login must
+  // still finish its token handoff first.
+  successCallback: (options?: { needsFactorSetup?: boolean }) => void | Promise<void>;
   closeMfa?: () => void;
   email: string;
   method: MfaMethod;
@@ -62,6 +67,10 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
   const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[] | null>(null);
   const [hasSavedRecoveryCodes, setHasSavedRecoveryCodes] = useState(false);
   const wasMfaEnabledRef = useRef(true);
+  // Factor setup clears the MFA token so its calls run on the access token; a recovery-code
+  // login out of setup needs it back.
+  const mfaTokenRef = useRef(getMfaTempToken());
+  const [isRecoveringFromSetup, setIsRecoveringFromSetup] = useState(false);
   const { mutateAsync: activateMfa } = useActivateMfa();
   const logout = useLogoutUser();
 
@@ -104,7 +113,21 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
 
   const isCodeComplete = mfaCode.length === getExpectedCodeLength();
 
+  const showFactorSetup = () => {
+    if (method === MfaMethod.TOTP) setShouldShowTotpRegistration(true);
+    else setShouldShowWebAuthnRegistration(true);
+  };
+
+  const switchToRecoveryCode = () => {
+    SecurityClient.setMfaToken(mfaTokenRef.current);
+    setShouldShowTotpRegistration(false);
+    setShouldShowWebAuthnRegistration(false);
+    setShowRecoveryCodeInput(true);
+    setIsRecoveringFromSetup(true);
+  };
+
   const getRecoveryToggleLabel = () => {
+    if (isRecoveringFromSetup) return "Back to setup";
     if (!showRecoveryCodeInput) return "Use a recovery code";
     if (method === MfaMethod.WEBAUTHN) return "Use passkey instead";
     if (method === MfaMethod.EMAIL) return "Use email code";
@@ -112,9 +135,15 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
   };
 
   const completeLogin = async () => {
-    await successCallback();
+    await successCallback({ needsFactorSetup: isRecoveringFromSetup });
     if (closeMfa) {
       closeMfa();
+    }
+    if (isRecoveringFromSetup) {
+      createNotification({
+        text: `Set up your ${MFA_METHOD_LABELS[method].toLowerCase()} in Personal Settings. Your organization requires it to sign in.`,
+        type: "info"
+      });
     }
   };
 
@@ -300,10 +329,14 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
               onAcknowledgedChange: setHasSavedRecoveryCodes,
               confirmLabel: "Continue",
               isConfirmPending: isLoading,
-              labelClassName: "text-bunker-200",
+              labelClassName: "text-foreground-soft",
               onConfirm: async () => {
                 setIsLoading(true);
-                await completeLogin();
+                try {
+                  await completeLogin();
+                } finally {
+                  setIsLoading(false);
+                }
               }
             }}
           />
@@ -322,6 +355,7 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
             setShouldShowWebAuthnRegistration(false);
             await successCallback();
           }}
+          onUseRecoveryCode={switchToRecoveryCode}
         />
       </AuthPageLayout>
     );
@@ -386,8 +420,15 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
       <button
         type="button"
         onClick={() => {
-          setShowRecoveryCodeInput(!showRecoveryCodeInput);
           setMfaCode("");
+          if (isRecoveringFromSetup) {
+            SecurityClient.setMfaToken("");
+            setShowRecoveryCodeInput(false);
+            setIsRecoveringFromSetup(false);
+            showFactorSetup();
+            return;
+          }
+          setShowRecoveryCodeInput(!showRecoveryCodeInput);
         }}
         className="ml-auto cursor-pointer text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
       >
@@ -420,9 +461,12 @@ export const Mfa = ({ successCallback, closeMfa, email, method, onChangeAccount 
           {method === MfaMethod.WEBAUTHN && !showRecoveryCodeInput ? (
             <div className="flex flex-col gap-5">
               {typeof triesLeft === "number" && (
-                <Error
-                  text={`Failed authentication. You have ${triesLeft} attempt(s) remaining.`}
-                />
+                <Alert variant="danger">
+                  <CircleXIcon />
+                  <AlertDescription>
+                    {`Failed authentication. You have ${triesLeft} attempt(s) remaining.`}
+                  </AlertDescription>
+                </Alert>
               )}
               <Button
                 size="lg"

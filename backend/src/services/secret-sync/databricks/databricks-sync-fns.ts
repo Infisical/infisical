@@ -14,7 +14,7 @@ import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
-import { TSecretMap } from "../secret-sync-types";
+import { TSecretSyncPayload } from "../secret-sync-payload";
 
 type TDatabricksSecretSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "updateById">;
@@ -72,7 +72,8 @@ const deleteDatabricksSecrets = async ({ workspaceUrl, scope, key, accessToken }
   );
 
 export const databricksSyncFactory = ({ kmsService, appConnectionDAL }: TDatabricksSecretSyncFactoryDeps) => {
-  const syncSecrets = async (secretSync: TDatabricksSyncWithCredentials, secretMap: TSecretMap) => {
+  const syncSecrets = async (secretSync: TDatabricksSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     if (Object.keys(secretSync).length > DATABRICKS_SCOPE_SECRET_LIMIT) {
       throw new Error(
         `Databricks does not support storing more than ${DATABRICKS_SCOPE_SECRET_LIMIT} secrets per scope.`
@@ -130,7 +131,8 @@ export const databricksSyncFactory = ({ kmsService, appConnectionDAL }: TDatabri
     }
   };
 
-  const removeSecrets = async (secretSync: TDatabricksSyncWithCredentials, secretMap: TSecretMap) => {
+  const removeSecrets = async (secretSync: TDatabricksSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       destinationConfig: { scope },
       connection

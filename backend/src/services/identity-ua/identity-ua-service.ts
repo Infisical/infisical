@@ -27,6 +27,11 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import {
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange
+} from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
 import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
@@ -85,6 +90,7 @@ type TIdentityUaServiceFactoryDep = {
     | "sortedSetMembersPrimary"
     | "acquireLock"
   >;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityUaServiceFactory = ReturnType<typeof identityUaServiceFactory>;
@@ -101,7 +107,8 @@ export const identityUaServiceFactory = ({
   orgDAL,
   keyStore,
   identityDAL,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventEmitter
 }: TIdentityUaServiceFactoryDep) => {
   const login = async ({ clientId, clientSecret, ip, organizationSlug }: TLoginUaDTO) => {
     const authMetricStartTime = performance.now();
@@ -268,7 +275,7 @@ export const identityUaServiceFactory = ({
         }
       }
 
-      if (clientSecretNumUsesLimit > 0 && clientSecretNumUses >= clientSecretNumUsesLimit) {
+      if (Number(clientSecretNumUsesLimit) > 0 && Number(clientSecretNumUses) >= Number(clientSecretNumUsesLimit)) {
         // number of times client secret can be used for
         // a login operation reached
         await identityUaClientSecretDAL.updateById(validClientSecretInfo.id, {
@@ -460,36 +467,6 @@ export const identityUaServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
@@ -559,6 +536,17 @@ export const identityUaServiceFactory = ({
         },
         tx
       );
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+          change: IdentityAuthMethodChange.Added,
+          actor,
+          actorId
+        },
+        tx
+      );
       return doc;
     });
     await identityAccessTokenService.invalidateTrustedIpsCache(
@@ -617,35 +605,6 @@ export const identityUaServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
@@ -697,21 +656,39 @@ export const identityUaServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const updatedUaAuth = await identityUaDAL.updateById(uaIdentityAuth.id, {
-      clientSecretTrustedIps: reformattedClientSecretTrustedIps
-        ? JSON.stringify(reformattedClientSecretTrustedIps)
-        : undefined,
-      accessTokenMaxTTL,
-      accessTokenTTL,
-      accessTokenNumUsesLimit,
-      accessTokenPeriod,
-      accessTokenTrustedIps: reformattedAccessTokenTrustedIps
-        ? JSON.stringify(reformattedAccessTokenTrustedIps)
-        : undefined,
-      lockoutEnabled,
-      lockoutThreshold,
-      lockoutDurationSeconds,
-      lockoutCounterResetSeconds
+    const updatedUaAuth = await identityUaDAL.transaction(async (tx) => {
+      const doc = await identityUaDAL.updateById(
+        uaIdentityAuth.id,
+        {
+          clientSecretTrustedIps: reformattedClientSecretTrustedIps
+            ? JSON.stringify(reformattedClientSecretTrustedIps)
+            : undefined,
+          accessTokenMaxTTL,
+          accessTokenTTL,
+          accessTokenNumUsesLimit,
+          accessTokenPeriod,
+          accessTokenTrustedIps: reformattedAccessTokenTrustedIps
+            ? JSON.stringify(reformattedAccessTokenTrustedIps)
+            : undefined,
+          lockoutEnabled,
+          lockoutThreshold,
+          lockoutDurationSeconds,
+          lockoutCounterResetSeconds
+        },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actor,
+          actorId
+        },
+        tx
+      );
+      return doc;
     });
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.UNIVERSAL_AUTH);
     return { ...updatedUaAuth, orgId: identityMembershipOrg.scopeOrgId };
@@ -795,32 +772,6 @@ export const identityUaServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.RevokeAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
@@ -839,6 +790,17 @@ export const identityUaServiceFactory = ({
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
     const revokedIdentityUniversalAuth = await identityUaDAL.transaction(async (tx) => {
       const deletedUniversalAuth = await identityUaDAL.delete({ identityId }, tx);
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+          change: IdentityAuthMethodChange.Removed,
+          actor,
+          actorId
+        },
+        tx
+      );
       return { ...deletedUniversalAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
 
@@ -883,35 +845,6 @@ export const identityUaServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.CreateToken,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.Create,
-        OrgPermissionSubjects.Identity
-      );
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
@@ -936,15 +869,33 @@ export const identityUaServiceFactory = ({
     const identityUaAuth = await identityUaDAL.findOne({ identityId: identityMembershipOrg.identity.id });
     if (!identityUaAuth) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
-    const identityUaClientSecret = await identityUaClientSecretDAL.create({
-      identityUAId: identityUaAuth.id,
-      description,
-      clientSecretPrefix: clientSecret.slice(0, 4),
-      clientSecretHash,
-      clientSecretNumUses: 0,
-      clientSecretNumUsesLimit: numUsesLimit,
-      clientSecretTTL: ttl,
-      isClientSecretRevoked: false
+    const identityUaClientSecret = await identityUaDAL.transaction(async (tx) => {
+      const doc = await identityUaClientSecretDAL.create(
+        {
+          identityUAId: identityUaAuth.id,
+          description,
+          clientSecretPrefix: clientSecret.slice(0, 4),
+          clientSecretHash,
+          clientSecretNumUses: 0,
+          clientSecretNumUsesLimit: numUsesLimit,
+          clientSecretTTL: ttl,
+          isClientSecretRevoked: false
+        },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+          change: IdentityAuthMethodChange.CredentialAdded,
+          actor,
+          actorId,
+          credential: { id: doc.id, name: doc.description || doc.clientSecretPrefix }
+        },
+        tx
+      );
+      return doc;
     });
     return {
       clientSecret,
@@ -976,32 +927,6 @@ export const identityUaServiceFactory = ({
     }
     if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
-    }
-
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.GetToken,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
     }
 
     await assertIdentityAuthAccessAllowed(
@@ -1062,32 +987,6 @@ export const identityUaServiceFactory = ({
     const clientSecret = await identityUaClientSecretDAL.findOne({ id: clientSecretId, identityUAId: identityUa.id });
     if (!clientSecret) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.GetToken,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
@@ -1139,35 +1038,6 @@ export const identityUaServiceFactory = ({
     const clientSecret = await identityUaClientSecretDAL.findOne({ id: clientSecretId, identityUAId: identityUa.id });
     if (!clientSecret) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.DeleteToken,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.Delete,
-        OrgPermissionSubjects.Identity
-      );
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
@@ -1193,8 +1063,21 @@ export const identityUaServiceFactory = ({
       clientSecretId
     });
 
-    const updatedClientSecret = await identityUaClientSecretDAL.updateById(clientSecretId, {
-      isClientSecretRevoked: true
+    const updatedClientSecret = await identityUaDAL.transaction(async (tx) => {
+      const doc = await identityUaClientSecretDAL.updateById(clientSecretId, { isClientSecretRevoked: true }, tx);
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+          change: IdentityAuthMethodChange.CredentialRevoked,
+          actor,
+          actorId,
+          credential: { id: doc.id, name: doc.description || doc.clientSecretPrefix }
+        },
+        tx
+      );
+      return doc;
     });
 
     return { ...updatedClientSecret, identityId, orgId: identityMembershipOrg.scopeOrgId };

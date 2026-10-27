@@ -7,15 +7,27 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  GenericFieldLabel,
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
   IconButton,
-  Modal,
-  ModalContent,
-  Tooltip
-} from "@app/components/v2";
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission
 } from "@app/context";
 import { useTimedReset } from "@app/hooks";
@@ -44,6 +56,7 @@ type TCertificateDetails = {
 
 export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }: Props) => {
   const { permission } = useProjectPermission();
+  const { currentProject } = useProject();
   const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
@@ -52,7 +65,8 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
 
   const { data: pkiSubscriber } = useGetPkiSubscriber(
     {
-      subscriberName
+      subscriberName,
+      projectId: currentProject.id
     },
     {
       refetchInterval: 30_000
@@ -100,107 +114,120 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
   );
 
   return pkiSubscriber ? (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">PKI Subscriber Details</h3>
-        <ProjectPermissionCan
-          I={ProjectPermissionPkiSubscriberActions.Edit}
-          a={ProjectPermissionSub.PkiSubscribers}
-        >
-          {(isAllowed) => {
-            return (
-              <Tooltip content="Edit PKI Subscriber">
-                <IconButton
-                  isDisabled={!isAllowed}
-                  ariaLabel="edit icon"
-                  variant="plain"
-                  className="group relative"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePopUpOpen("pkiSubscriber", {
-                      subscriberName: pkiSubscriber.name
-                    });
-                  }}
-                >
-                  <FontAwesomeIcon icon={faPencil} />
-                </IconButton>
-              </Tooltip>
-            );
-          }}
-        </ProjectPermissionCan>
-      </div>
-      <div className="pt-4">
+    <Card>
+      <CardHeader>
+        <CardTitle>PKI Subscriber Details</CardTitle>
+        <CardAction>
+          <ProjectPermissionCan
+            I={ProjectPermissionPkiSubscriberActions.Edit}
+            a={ProjectPermissionSub.PkiSubscribers}
+          >
+            {(isAllowed) => {
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <IconButton
+                        isDisabled={!isAllowed}
+                        aria-label="edit icon"
+                        variant="ghost"
+                        className="group relative"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handlePopUpOpen("pkiSubscriber", {
+                            subscriberName: pkiSubscriber.name
+                          });
+                        }}
+                      >
+                        <FontAwesomeIcon icon={faPencil} />
+                      </IconButton>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit PKI Subscriber</TooltipContent>
+                </Tooltip>
+              );
+            }}
+          </ProjectPermissionCan>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">PKI Subscriber ID</p>
+          <p className="text-sm font-medium text-label">PKI Subscriber ID</p>
           <div className="group flex align-top">
-            <p className="text-sm text-mineshaft-300">{pkiSubscriber.id}</p>
+            <p className="text-sm text-label">{pkiSubscriber.id}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-              <Tooltip content={copyTextId}>
-                <IconButton
-                  ariaLabel="copy icon"
-                  variant="plain"
-                  className="group relative ml-2"
-                  onClick={() => {
-                    navigator.clipboard.writeText(pkiSubscriber.id);
-                    setCopyTextId("Copied");
-                  }}
-                >
-                  <FontAwesomeIcon icon={isCopyingId ? faCheck : faCopy} />
-                </IconButton>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex">
+                    <IconButton
+                      aria-label="copy icon"
+                      variant="ghost"
+                      className="group relative ml-2"
+                      onClick={() => {
+                        navigator.clipboard.writeText(pkiSubscriber.id);
+                        setCopyTextId("Copied");
+                      }}
+                    >
+                      <FontAwesomeIcon icon={isCopyingId ? faCheck : faCopy} />
+                    </IconButton>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{copyTextId}</TooltipContent>
               </Tooltip>
             </div>
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Name</p>
-          <p className="text-sm text-mineshaft-300">{pkiSubscriber.name}</p>
+          <p className="text-sm font-medium text-label">Name</p>
+          <p className="text-sm text-label">{pkiSubscriber.name}</p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Status</p>
-          <p className="text-sm text-mineshaft-300">
-            {pkiSubscriberStatusToNameMap[pkiSubscriber.status]}
-          </p>
+          <p className="text-sm font-medium text-label">Status</p>
+          <p className="text-sm text-label">{pkiSubscriberStatusToNameMap[pkiSubscriber.status]}</p>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Common Name</p>
-          <p className="text-sm text-mineshaft-300">{pkiSubscriber.commonName}</p>
+          <p className="text-sm font-medium text-label">Common Name</p>
+          <p className="text-sm text-label">{pkiSubscriber.commonName}</p>
         </div>
         {pkiSubscriber.lastOperationAt && (
           <div className="mb-4">
-            <p className="text-sm font-medium text-mineshaft-300">Last Operation (Local Time)</p>
-            <p className="text-sm text-mineshaft-300">
+            <p className="text-sm font-medium text-label">Last Operation (Local Time)</p>
+            <p className="text-sm text-label">
               {new Date(pkiSubscriber.lastOperationAt).toLocaleString()}
             </p>
           </div>
         )}
         {pkiSubscriber.lastOperationStatus === SubscriberOperationStatus.FAILED && (
           <div className="mb-4">
-            <GenericFieldLabel labelClassName="text-red" label="Last Operation Status">
-              <p className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">
-                {pkiSubscriber.lastOperationMessage}
-              </p>
-            </GenericFieldLabel>
+            <div>
+              <p className="text-danger">Last Operation Status</p>
+              <div className="text-sm text-foreground">
+                <p className="rounded-sm bg-surface-active p-2 text-xs break-words">
+                  {pkiSubscriber.lastOperationMessage}
+                </p>
+              </div>
+            </div>
           </div>
         )}
         {canIssuePkiSubscriberCert && (
           <Button
             className="mt-2 w-full"
-            colorSchema="primary"
             type="button"
-            isLoading={isIssuingCert || isOrderingCert}
+            isPending={isIssuingCert || isOrderingCert}
             onClick={() => {
               onIssuePkiSubscriberCert();
             }}
+            variant="project"
           >
             {pkiSubscriber?.supportsImmediateCertIssuance
               ? "Issue Certificate"
               : "Order Certificate"}
           </Button>
         )}
-      </div>
+      </CardContent>
 
-      <Modal
-        isOpen={isModalOpen}
+      <Sheet
+        open={isModalOpen}
         onOpenChange={(isOpen) => {
           setIsModalOpen(isOpen);
           if (!isOpen) {
@@ -208,18 +235,29 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
           }
         }}
       >
-        <ModalContent title="Certificate Details">
-          {certificateDetails && (
-            <CertificateContent
-              serialNumber={certificateDetails.serialNumber}
-              certificate={certificateDetails.certificate}
-              certificateChain={certificateDetails.certificateChain}
-              privateKey={certificateDetails.privateKey}
-            />
-          )}
-        </ModalContent>
-      </Modal>
-    </div>
+        <SheetContent size="form">
+          <SheetHeader>
+            <SheetTitle>Certificate Details</SheetTitle>
+            <SheetDescription>View certificate details.</SheetDescription>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            {certificateDetails && (
+              <CertificateContent
+                serialNumber={certificateDetails.serialNumber}
+                certificate={certificateDetails.certificate}
+                certificateChain={certificateDetails.certificateChain}
+                privateKey={certificateDetails.privateKey}
+              />
+            )}
+          </div>
+          <SheetFooter className="justify-end border-t">
+            <SheetClose asChild>
+              <Button variant="ghost">Close</Button>
+            </SheetClose>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    </Card>
   ) : (
     <div />
   );

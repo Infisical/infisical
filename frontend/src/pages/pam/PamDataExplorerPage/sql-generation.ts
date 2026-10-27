@@ -1,7 +1,18 @@
 // Client-side SQL generation for the Data Explorer.
 // All identifiers are properly quoted to prevent SQL injection.
 
-export type SqlDialect = "postgres" | "mysql" | "snowflake";
+export type SqlDialect = "postgres" | "mysql" | "snowflake" | "clickhouse";
+
+export function supportsRowEditing(dialect: SqlDialect): boolean {
+  return dialect !== "clickhouse";
+}
+
+function assertRowEditingSupported(dialect: SqlDialect): void {
+  if (supportsRowEditing(dialect)) return;
+  throw new Error(
+    "ClickHouse rows can't be edited from the grid. Use the SQL editor with ALTER TABLE ... UPDATE or DELETE FROM."
+  );
+}
 
 function quoteIdent(name: string, dialect: SqlDialect = "postgres"): string {
   if (dialect === "mysql") return `\`${name.replace(/`/g, "``")}\``;
@@ -141,6 +152,7 @@ export function buildInsertQuery(params: {
   dialect?: SqlDialect;
 }): string {
   const { schema, table, row, dialect = "postgres" } = params;
+  assertRowEditingSupported(dialect);
   const tableName = `${quoteIdent(schema, dialect)}.${quoteIdent(table, dialect)}`;
   const entries = Object.entries(row).filter(([, v]) => v !== undefined && v !== "");
   if (entries.length === 0) {
@@ -164,6 +176,7 @@ export function buildUpdateQuery(params: {
   dialect?: SqlDialect;
 }): string {
   const { schema, table, changes, primaryKeyMatch, dialect = "postgres" } = params;
+  assertRowEditingSupported(dialect);
   if (Object.keys(primaryKeyMatch).length === 0) {
     throw new Error("UPDATE requires at least one primary key condition");
   }
@@ -185,6 +198,7 @@ export function buildDeleteQuery(params: {
   dialect?: SqlDialect;
 }): string {
   const { schema, table, primaryKeyMatch, dialect = "postgres" } = params;
+  assertRowEditingSupported(dialect);
   if (Object.keys(primaryKeyMatch).length === 0) {
     throw new Error("DELETE requires at least one primary key condition");
   }

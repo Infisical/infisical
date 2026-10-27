@@ -1,16 +1,9 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useOrganization,
-  useProject
-} from "@app/context";
+import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
+import { ProjectPermissionActions, ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { ExternalCaSection } from "./components/ExternalCaSection";
@@ -22,10 +15,8 @@ export enum CertificateAuthorityTab {
 }
 
 export const CertificateAuthoritiesPage = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
 
   const selectedTab = useSearch({
     strict: false,
@@ -34,23 +25,19 @@ export const CertificateAuthoritiesPage = () => {
 
   const updateSelectedTab = (tab: CertificateAuthorityTab) => {
     navigate({
-      to: "/organizations/$orgId/projects/cert-manager/$projectId/certificate-authorities",
+      to: "/organizations/$orgId/cert-manager/certificate-authorities",
       params: {
-        orgId: currentOrg.id,
-        projectId: currentProject.id
+        orgId: currentOrg.id
       },
       search: (prev) => ({ ...prev, selectedTab: tab })
     });
   };
 
   return (
-    <div className="mx-auto flex h-full flex-col justify-between text-white">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Certificate Authorities" })}</title>
-      </Helmet>
-      <div className="mx-auto mb-6 w-full max-w-8xl">
+    <div className="mx-auto flex h-full flex-col justify-between bg-page text-foreground-inverse">
+      <PageTitle title="Certificate Authorities" />
+      <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
         <PageHeader
-          className="mb-6"
           scope={ProjectType.CertificateManager}
           title="Certificate Authorities"
           description="Define the trust anchors that sign your certificates: internal CAs you operate, plus external CAs you connect to."

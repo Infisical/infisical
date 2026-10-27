@@ -20,10 +20,10 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TProjectPermission } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
-import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
+import { TApprovalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { TCertRequestPolicy } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
+import type { TCaKeySourceServiceFactory } from "@app/services/certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -38,7 +38,6 @@ import { TAcmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config
 import { TApiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
-import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -113,12 +112,12 @@ type TPkiApplicationEnrollmentServiceFactoryDep = {
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "create" | "updateById" | "deleteById" | "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findByProjectId">;
+  approvalPolicyService: Pick<TApprovalPolicyServiceFactory, "matchPolicy">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthoritySecretDAL: Pick<TCertificateAuthoritySecretDALFactory, "findOne">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find">;
-  hsmConnectorService: THsmConnectorServiceFactory;
+  caKeySourceService: Pick<TCaKeySourceServiceFactory, "buildSigner">;
   kmsService: Pick<
     TKmsServiceFactory,
     "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey" | "createCipherPairWithDataKey"
@@ -138,12 +137,12 @@ export const pkiApplicationEnrollmentServiceFactory = ({
   scepEnrollmentConfigDAL,
   appConnectionService,
   licenseService,
-  approvalPolicyDAL,
+  approvalPolicyService,
   certificateProfileDAL,
   certificateAuthorityDAL,
   certificateAuthoritySecretDAL,
   certificateAuthorityCertDAL,
-  hsmConnectorService,
+  caKeySourceService,
   kmsService,
   projectDAL,
   permissionService
@@ -751,13 +750,13 @@ export const pkiApplicationEnrollmentServiceFactory = ({
     }
 
     if (isIntune && profile) {
-      const certRequestApprovalFactory = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.CertRequest](
-        ApprovalPolicyType.CertRequest
-      );
-      const matchedApprovalPolicy = (await certRequestApprovalFactory.matchPolicy(
-        approvalPolicyDAL as TApprovalPolicyDALFactory,
+      const matchedApprovalPolicy = (await approvalPolicyService.matchPolicy(
+        ApprovalPolicyType.CertRequest,
         projectId,
-        { profileName: profile.slug, applicationId }
+        {
+          profileName: profile.slug,
+          applicationId
+        }
       )) as TCertRequestPolicy | null;
 
       if (matchedApprovalPolicy) {
@@ -805,7 +804,7 @@ export const pkiApplicationEnrollmentServiceFactory = ({
           certificateAuthorityCertDAL,
           projectDAL,
           kmsService,
-          hsmConnectorService
+          caKeySourceService
         }
       });
     }

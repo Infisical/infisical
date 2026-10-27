@@ -38,7 +38,15 @@ export const secretKeys = {
     secretPath,
     viewSecretValue
   }: TGetProjectSecretsKey) =>
-    [{ projectId, environment, secretPath, viewSecretValue }, "secrets"] as const,
+    [
+      {
+        projectId,
+        environment,
+        secretPath,
+        ...(viewSecretValue === undefined ? {} : { viewSecretValue })
+      },
+      "secrets"
+    ] as const,
   getProjectSecretExportPreflight: ({
     projectId,
     environment,
@@ -124,7 +132,6 @@ export const mergePersonalSecrets = (rawSecrets: SecretV3Raw[]) => {
       comment: el.secretComment || "",
       reminderRepeatDays: el.secretReminderRepeatDays,
       reminderNote: el.secretReminderNote,
-      secretReminderRecipients: el.secretReminderRecipients,
       createdAt: el.createdAt,
       updatedAt: el.updatedAt,
       version: el.version,

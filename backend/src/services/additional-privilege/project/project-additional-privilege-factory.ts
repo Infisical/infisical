@@ -1,4 +1,4 @@
-import { ForbiddenError, MongoAbility, RawRule } from "@casl/ability";
+import { ForbiddenError, MongoAbility, RawRule, subject } from "@casl/ability";
 
 import { AccessScope, ActionProjectType } from "@app/db/schemas";
 import {
@@ -66,7 +66,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
     throw new BadRequestError({ message: "Invalid scope provided for the factory" });
   };
 
-  type ConditionCheckType = "unrestricted" | "hasSubjectOrAction" | "hasAction";
+  type ConditionCheckType = "unrestricted" | "hasSubjectOrAction" | "hasAction" | "conditionalForbid";
 
   const checkPermissionConditions = (
     actorPermission: MongoAbility,
@@ -99,14 +99,20 @@ export const newProjectAdditionalPrivilegesFactory = ({
           );
         case "hasAction":
           return Boolean(conditions) && "assignableAction" in (conditions as object);
+        case "conditionalForbid":
+          return Boolean(conditions) && Object.keys(conditions as object).length > 0;
         default:
           return false;
       }
     };
 
+    const matchInverted = checkType === "conditionalForbid";
     return actorPermission.rules.some(
       (rule) =>
-        !rule.inverted && actionMatches(rule.action) && subjectMatches(rule.subject) && conditionCheck(rule.conditions)
+        Boolean(rule.inverted) === matchInverted &&
+        actionMatches(rule.action) &&
+        subjectMatches(rule.subject) &&
+        conditionCheck(rule.conditions)
     );
   };
 
@@ -156,6 +162,35 @@ export const newProjectAdditionalPrivilegesFactory = ({
     return actorPermission.can(permissionAction, permissionSubject);
   };
 
+  const validatePrivilegeChange = (
+    shouldUseNewPrivilegeSystem: boolean,
+    actions: ProjectPermissionSet[0][],
+    permissionSubject: PrivilegeValidationSubject,
+    actorPermission: MongoAbility,
+    targetUserPermission: MongoAbility,
+    subjectFields: Record<string, string | undefined>
+  ) => {
+    if (shouldUseNewPrivilegeSystem) {
+      const subjectToCheck = subject(permissionSubject, subjectFields);
+      const isConditionallyForbidden = actions.some((action) => {
+        const rule = actorPermission.relevantRuleFor(action, subjectToCheck);
+        return Boolean(rule?.inverted && rule.conditions);
+      });
+      if (isConditionallyForbidden) {
+        return { isValid: false, missingPermissions: [{ action: actions[0], subject: permissionSubject }] };
+      }
+    }
+
+    return validatePrivilegeChangeOperation(
+      shouldUseNewPrivilegeSystem,
+      actions,
+      permissionSubject,
+      actorPermission,
+      targetUserPermission,
+      subjectFields
+    );
+  };
+
   const hasSubjectOrActionConditions = (
     actorPermission: MongoAbility,
     permissionAction: string,
@@ -181,24 +216,14 @@ export const newProjectAdditionalPrivilegesFactory = ({
     targetIdentifier: string | undefined,
     permissions: unknown
   ) => {
-    if (hasUnrestrictedGrantPrivileges(actorPermission, permissionAction, permissionSubject)) {
-      return;
-    }
+    const actionsToTry = getActionsToTryForPrivilegeValidation(permissionAction, permissionSubject);
 
-    // Also check legacy action if new action is being used
+    const hasConditionalForbid = actionsToTry.some((action) =>
+      checkPermissionConditions(actorPermission, action, permissionSubject, "conditionalForbid")
+    );
     if (
-      (permissionAction === ProjectPermissionMemberActions.AssignAdditionalPrivileges &&
-        hasUnrestrictedGrantPrivileges(
-          actorPermission,
-          ProjectPermissionMemberActions.GrantPrivileges,
-          permissionSubject
-        )) ||
-      (permissionAction === ProjectPermissionIdentityActions.AssignAdditionalPrivileges &&
-        hasUnrestrictedGrantPrivileges(
-          actorPermission,
-          ProjectPermissionIdentityActions.GrantPrivileges,
-          permissionSubject
-        ))
+      !hasConditionalForbid &&
+      actionsToTry.some((action) => hasUnrestrictedGrantPrivileges(actorPermission, action, permissionSubject))
     ) {
       return;
     }
@@ -233,9 +258,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
               ? { userEmail: targetIdentifier, assignableSubject: ruleSubject }
               : { identityId: targetIdentifier, assignableSubject: ruleSubject };
 
-          const actionsToTry = getActionsToTryForPrivilegeValidation(permissionAction, permissionSubject);
-
-          const subjectBoundary = validatePrivilegeChangeOperation(
+          const subjectBoundary = validatePrivilegeChange(
             shouldUseNewPrivilegeSystem,
             actionsToTry,
             permissionSubject,
@@ -261,9 +284,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
                 ? { userEmail: targetIdentifier, assignableSubject: ruleSubject, assignableAction: subjectActionKey }
                 : { identityId: targetIdentifier, assignableSubject: ruleSubject, assignableAction: subjectActionKey };
 
-            const actionsToTry = getActionsToTryForPrivilegeValidation(permissionAction, permissionSubject);
-
-            const subjectActionBoundary = validatePrivilegeChangeOperation(
+            const subjectActionBoundary = validatePrivilegeChange(
               shouldUseNewPrivilegeSystem,
               actionsToTry,
               permissionSubject,
@@ -339,7 +360,7 @@ export const newProjectAdditionalPrivilegesFactory = ({
           ? ProjectPermissionMemberActions.GrantPrivileges
           : ProjectPermissionIdentityActions.GrantPrivileges;
 
-      const permissionBoundary = validatePrivilegeChangeOperation(
+      const permissionBoundary = validatePrivilegeChange(
         shouldUseNewPrivilegeSystem,
         [permissionAction, legacyAction],
         permissionSubject,

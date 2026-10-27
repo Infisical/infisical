@@ -49,8 +49,8 @@ export const buildPagerDutyEvent = (
   event_action: "trigger",
   dedup_key: `${payload.alert.id}:${item.id}`,
   payload: {
-    summary: `${payload.summary} — ${item.title}`.slice(0, PAGERDUTY_SUMMARY_MAX_LENGTH),
-    severity: payload.severity,
+    summary: (item.summary ?? `${payload.summary} — ${item.title}`).slice(0, PAGERDUTY_SUMMARY_MAX_LENGTH),
+    severity: item.severity ?? payload.severity,
     source: `infisical-${payload.alert.resourceType}`,
     timestamp: new Date().toISOString(),
     component: payload.resourceKind,

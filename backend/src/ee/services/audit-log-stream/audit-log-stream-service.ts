@@ -57,7 +57,7 @@ export const auditLogStreamServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
     const totalStreams = await auditLogStreamDAL.find({ orgId: actor.orgId });
-    if (totalStreams.length >= plan.auditLogStreamLimit) {
+    if (plan.auditLogStreamLimit !== null && totalStreams.length >= plan.auditLogStreamLimit) {
       throw new BadRequestError({
         message: "Failed to create Audit Log Stream: Plan limit reached. Contact Infisical to increase quota."
       });
@@ -199,6 +199,10 @@ export const auditLogStreamServiceFactory = ({
 
     const updatedLogStream = await auditLogStreamDAL.updateById(logStreamId, {
       encryptedCredentials,
+      // The credentials just passed validateCredentials, so start health tracking over. A stream that
+      // is still broken then alerts again instead of staying silent behind its old failingSince.
+      failingSince: null,
+      lastDeliveryError: null,
       // Only persist a mode change when provided (the validated single -> batch upgrade).
       ...(streamMode ? { streamMode } : {}),
       // `undefined` leaves the existing filter untouched; `null`/empty clears it (stream all).

@@ -15,11 +15,11 @@ import {
   AccordionTrigger,
   Button,
   ButtonGroup,
+  Combobox,
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   IconButton,
   Input,
   Sheet,
@@ -76,8 +76,8 @@ type Props = {
 
 export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
   const [isTokenVisible, setIsTokenVisible] = useToggle(false);
-  const [, isTokenCopied, setTokenCopied] = useTimedReset({ initialState: false });
-  const [, isCommandCopied, setCommandCopied] = useTimedReset({ initialState: false });
+  const [, isTokenCopied, setTokenCopied] = useTimedReset<boolean>({ initialState: false });
+  const [, isCommandCopied, setCommandCopied] = useTimedReset<boolean>({ initialState: false });
 
   const { data: appConnections = [], isPending: isLoadingConnections } = useListAppConnections();
   const { data: existingConfig } = useGetHoneyTokenConfig(HoneyTokenType.AWS, {
@@ -229,23 +229,19 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
 
                   return (
                     <Field>
-                      <FieldLabel>App Connection</FieldLabel>
-                      <FilterableSelect
+                      <FieldLabel htmlFor="honey-token-app-connection">App Connection</FieldLabel>
+                      <Combobox
+                        id="honey-token-app-connection"
                         value={selectedConnection || null}
-                        onChange={(newValue) => {
-                          const singleValue = Array.isArray(newValue) ? newValue[0] : newValue;
-                          if (singleValue && "id" in singleValue) {
-                            field.onChange(singleValue.id);
-                          } else {
-                            field.onChange("");
-                          }
-                        }}
+                        isClearable={false}
+                        onValueChange={(connection) => field.onChange(connection.id)}
                         isError={Boolean(error)}
                         isLoading={isLoadingConnections}
                         options={awsConnections}
                         placeholder="Select an AWS App Connection..."
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
+                        getOptionKeywords={(option) => [option.id]}
                       />
                       <FieldError errors={[error]} />
                     </Field>
@@ -366,7 +362,10 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
             )}
           </div>
 
-          <SheetFooter className="border-t">
+          <SheetFooter className="justify-end border-t">
+            <Button variant="ghost" onClick={() => onOpenChange(false)} type="button">
+              Cancel
+            </Button>
             <OrgPermissionCan
               I={OrgPermissionHoneyTokenActions.Setup}
               a={OrgPermissionSubjects.HoneyTokens}
@@ -382,9 +381,6 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
                 </Button>
               )}
             </OrgPermissionCan>
-            <Button variant="ghost" onClick={() => onOpenChange(false)} type="button">
-              Cancel
-            </Button>
           </SheetFooter>
         </form>
       </SheetContent>

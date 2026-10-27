@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useParams } from "@tanstack/react-router";
 import { HelpCircleIcon, InfoIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -14,13 +13,13 @@ import {
   AlertDescription,
   Button,
   Checkbox,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   GatewayPicker,
   Input,
   Select,
@@ -52,7 +51,7 @@ import {
   superRefineKubernetesConnectionFields,
   trustedIpsSchema
 } from "@app/helpers/identityAuthSchemas";
-import { useScopeVariant } from "@app/hooks";
+import { useRouteProjectId, useScopeVariant } from "@app/hooks";
 import {
   useAddIdentityKubernetesAuth,
   useGetIdentityKubernetesAuth,
@@ -148,9 +147,7 @@ export const IdentityKubernetesAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
-  const { projectId } = useParams({
-    strict: false
-  });
+  const projectId = useRouteProjectId();
   const scopeVariant = useScopeVariant();
   const { mutateAsync: addMutateAsync } = useAddIdentityKubernetesAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityKubernetesAuth();
@@ -548,20 +545,20 @@ export const IdentityKubernetesAuthForm = ({
                 render={({ field: { onChange }, fieldState: { error } }) => (
                   <Field>
                     <FieldLabel htmlFor="kubernetes-configuration">Configuration</FieldLabel>
-                    <FilterableSelect<ConfigurationOption>
-                      inputId="kubernetes-configuration"
+                    <Combobox<ConfigurationOption>
+                      id="kubernetes-configuration"
                       value={selectedConfiguration}
                       options={configurationOptions}
-                      groupBy="group"
+                      includeMissingSelectedOptions={false}
+                      getOptionGroup={(option) => option.group}
                       getOptionLabel={(option) => option.label}
                       getOptionValue={(option) => option.value}
                       placeholder="Select or search configurations..."
+                      searchAriaLabel="Search configurations"
                       isLoading={isTemplatesLoading}
                       isError={Boolean(error || errors.templateId)}
-                      onChange={(option) => {
-                        const selectedOption = option as ConfigurationOption | null;
-                        if (!selectedOption) return;
-
+                      isClearable={false}
+                      onValueChange={(selectedOption) => {
                         if (selectedOption.value === "custom") {
                           onChange("custom");
                           setValue("templateId", "");

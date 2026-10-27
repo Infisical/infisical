@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Spinner } from "@app/components/v2";
 import { Button } from "@app/components/v3/generic/Button";
+import { Spinner } from "@app/components/v3/generic/Spinner";
 import { cn } from "@app/components/v3/utils";
 import { PamAccountType, useGetPamAccountById } from "@app/hooks/api/pam";
 
@@ -28,7 +28,8 @@ import { useQueryTabs } from "./use-query-tabs";
 
 const DIALECT_BY_ACCOUNT_TYPE: Partial<Record<PamAccountType, SqlDialect>> = {
   [PamAccountType.MySQL]: "mysql",
-  [PamAccountType.Snowflake]: "snowflake"
+  [PamAccountType.Snowflake]: "snowflake",
+  [PamAccountType.ClickHouse]: "clickhouse"
 };
 
 type Props = {
@@ -55,6 +56,8 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
     defaultSchema = connectionDetails?.database ?? "";
   } else if (dialect === "snowflake") {
     defaultSchema = connectionDetails?.schema ?? "PUBLIC";
+  } else if (dialect === "clickhouse") {
+    defaultSchema = connectionDetails?.database ?? "default";
   } else {
     defaultSchema = "public";
   }
@@ -299,7 +302,7 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
   if (isConnecting && !isConnected) {
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center gap-4 bg-background">
-        <Spinner className="h-8 w-8" />
+        <Spinner label="Connecting to database" />
         <p className="text-sm text-muted">Connecting to database...</p>
       </div>
     );
@@ -314,7 +317,7 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
       >
         {mfaState.verifying ? (
           <div className="flex items-center justify-center gap-2 text-xs text-muted">
-            <Spinner className="h-4 w-4" />
+            <Spinner size="xs" label="Waiting for MFA verification" />
             Waiting for verification...
           </div>
         ) : (
@@ -423,7 +426,7 @@ export const PamDataExplorerPage = ({ reason, mfaSessionId }: Props = {}) => {
                 openQueryTab().catch(() => {});
               }}
               disabled={tabOpeningDisabled}
-              className="ml-1 flex shrink-0 items-center gap-1.5 rounded border border-border px-2 py-1 text-xs text-muted transition-colors first:ml-0 hover:border-border hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-muted"
+              className="ml-1 flex shrink-0 items-center gap-1.5 rounded border border-border px-2 py-1 text-xs text-muted transition-colors first:ml-0 hover:border-foreground/20 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-border disabled:hover:text-muted"
               aria-label="New query tab"
               title={atTabLimit ? `Tab limit (${MAX_TABS}) reached` : "New query tab"}
             >

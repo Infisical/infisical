@@ -11,11 +11,12 @@ import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync
 import { TPkiApplicationDALFactory } from "../pki-application/pki-application-dal";
 import { PkiSync } from "./pki-sync-enums";
 import { hasAnyPkiSyncFilter } from "./pki-sync-filter-fns";
-import { assertPkiSyncCanHoldCertificateCount } from "./pki-sync-fns";
+import { assertPkiSyncCanHoldCertificateCount, getPkiSyncUnlinkAssertion } from "./pki-sync-fns";
 import {
   TPkiSyncCertificateDiff,
   TPkiSyncCertificateRef,
   TPkiSyncFilters,
+  TPkiSyncRemovalOptions,
   TQueuePkiSyncRemoveCertificatesByIdDTO,
   TQueuePkiSyncSyncCertificatesByIdDTO
 } from "./pki-sync-types";
@@ -86,6 +87,53 @@ const getPkiSyncLinkDestinationTargets = (record: {
   return [...(record.externalIdentifier ? [record.externalIdentifier] : []), ...files];
 };
 
+export const findPkiSyncUnlinkIdsAtDestination = async (
+  pkiSyncId: string,
+  unlinkIds: Set<string>,
+  certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findByPkiSyncId" | "primaryNode">
+) => {
+  if (!unlinkIds.size) return [];
+
+  const linkRecords = await certificateSyncDAL.findByPkiSyncId(pkiSyncId, certificateSyncDAL.primaryNode());
+
+  const destinationTargetsStillHeld = new Set(
+    linkRecords
+      .filter((record) => record.certificateId && !unlinkIds.has(record.certificateId))
+      .flatMap((record) => getPkiSyncLinkDestinationTargets(record))
+  );
+
+  return linkRecords
+    .filter((record) => {
+      if (!record.certificateId || !unlinkIds.has(record.certificateId)) return false;
+
+      const targets = getPkiSyncLinkDestinationTargets(record);
+      return targets.length > 0 && targets.every((target) => !destinationTargetsStillHeld.has(target));
+    })
+    .map((record) => record.certificateId);
+};
+
+export const assertPkiSyncUnlinkAllowed = async (
+  pkiSync: TPkiSyncReconcileTarget,
+  diff: TPkiSyncCertificateDiff,
+  certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findByPkiSyncId" | "primaryNode">,
+  removalOptions?: TPkiSyncRemovalOptions
+) => {
+  const assertion = getPkiSyncUnlinkAssertion(pkiSync.destination as PkiSync);
+  if (!assertion || !diff.toUnlink.length) return;
+
+  const idsAtDestination = await findPkiSyncUnlinkIdsAtDestination(
+    pkiSync.id,
+    new Set(diff.toUnlink.map((certificate) => certificate.id)),
+    certificateSyncDAL
+  );
+  assertion({
+    pkiSync,
+    remainingCertificateCount: diff.matched.length,
+    unlinkedAtDestinationCount: idsAtDestination.length,
+    removalOptions
+  });
+};
+
 export const describePkiSyncApplication = async (
   applicationId: string | null | undefined,
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">
@@ -142,7 +190,8 @@ export const applyPkiSyncCertificateDiff = async (
   diff: TPkiSyncCertificateDiff,
   deps: TPkiSyncFilterReconcileDeps,
   auditLogInfo?: AuditLogInfo,
-  writeFilters?: (tx: Knex) => Promise<void>
+  writeFilters?: (tx: Knex) => Promise<void>,
+  removalOptions?: TPkiSyncRemovalOptions
 ): Promise<{ linked: TPkiSyncCertificateRef[]; unlinked: TPkiSyncCertificateRef[] }> => {
   const { certificateSyncDAL, pkiSyncQueue, auditLogService, pkiApplicationDAL } = deps;
   const { toLink, toUnlink } = diff;
@@ -152,25 +201,9 @@ export const applyPkiSyncCertificateDiff = async (
     (pkiSync.syncOptions as { canRemoveCertificates?: boolean } | undefined)?.canRemoveCertificates
   );
 
-  const linkRecords =
-    canRemoveCertificates && unlinkIds.size
-      ? await certificateSyncDAL.findByPkiSyncId(pkiSync.id, certificateSyncDAL.primaryNode())
-      : [];
-
-  const destinationTargetsStillHeld = new Set(
-    linkRecords
-      .filter((record) => record.certificateId && !unlinkIds.has(record.certificateId))
-      .flatMap((record) => getPkiSyncLinkDestinationTargets(record))
-  );
-
-  const idsAtDestination = linkRecords
-    .filter((record) => {
-      if (!record.certificateId || !unlinkIds.has(record.certificateId)) return false;
-
-      const targets = getPkiSyncLinkDestinationTargets(record);
-      return targets.length > 0 && targets.every((target) => !destinationTargetsStillHeld.has(target));
-    })
-    .map((record) => record.certificateId);
+  const idsAtDestination = canRemoveCertificates
+    ? await findPkiSyncUnlinkIdsAtDestination(pkiSync.id, unlinkIds, certificateSyncDAL)
+    : [];
 
   const idsOnlyLinked = [...unlinkIds].filter((id) => !idsAtDestination.includes(id));
 
@@ -216,7 +249,8 @@ export const applyPkiSyncCertificateDiff = async (
     if (idsAtDestination.length > 0) {
       await pkiSyncQueue.queuePkiSyncRemoveCertificatesById({
         syncId: pkiSync.id,
-        certificateIds: idsAtDestination
+        certificateIds: idsAtDestination,
+        removalOptions
       });
     }
 

@@ -1,0 +1,59 @@
+---
+title: "Pagination"
+description: "Learn how to paginate through responses returned by the Infisical API."
+---
+
+Endpoints that return multiple items paginate their responses. Each response contains one page of items and a `totalCount` field with the total number of matching items across all pages.
+
+## Parameters
+
+Paginated endpoints accept two parameters:
+
+- `offset`: the number of items to skip before returning results (defaults to `0`)
+- `limit`: the maximum number of items to return in one page (defaults vary by endpoint, commonly `20` or `50`, with a maximum typically of `100`)
+
+Depending on the endpoint, `offset` and `limit` are either passed as query string parameters on a `GET` request or included in the request body of a `POST` request. Each endpoint's reference page lists the accepted range and the exact location for both parameters.
+
+## Ordering
+
+Endpoints that support ordering accept two additional parameters:
+
+- `orderBy`: the field to sort by (accepted values are listed on the endpoint's reference page)
+- `orderDirection`: `asc` for ascending or `desc` for descending (defaults to `asc`)
+
+## Response format
+
+A paginated response contains a `totalCount` field with the total number of matching items across all pages, and an array of items for the current page. The array is nested under a field named after the resource (for example, `identities`, `groups`, or `certificates`):
+
+```json
+{
+  "identities": [
+    { "id": "...", "name": "..." }
+  ],
+  "totalCount": 132
+}
+```
+
+To read every page, start at `offset = 0` and increase `offset` by `limit` on each following request. Stop when the running count of items read reaches `totalCount`.
+
+## Example
+
+The following request reads machine identities in an organization, 50 at a time, sorted by name:
+
+```bash
+curl -X POST https://app.infisical.com/api/v2/identities/search \
+  -H "Authorization: Bearer <your-access-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "limit": 50,
+    "offset": 0,
+    "orderBy": "name",
+    "orderDirection": "asc"
+  }'
+```
+
+To read the second page, send the same request with `offset` set to `50`.
+
+## Endpoints without pagination
+
+Some endpoints return their entire result in a single response without paginating. For example, `GET /api/v4/secrets` returns all secrets in the specified project, environment, and folder path. Each endpoint's reference page indicates whether pagination applies.

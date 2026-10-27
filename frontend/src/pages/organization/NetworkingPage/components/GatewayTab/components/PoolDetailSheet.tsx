@@ -19,11 +19,11 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Combobox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  FilterableSelect,
   IconButton,
   Sheet,
   SheetContent,
@@ -35,10 +35,7 @@ import {
   TableHead,
   TableHeader,
   TableHeadLabel,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger
+  TableRow
 } from "@app/components/v3";
 import {
   OrgGatewayPoolPermissionActions,
@@ -47,7 +44,7 @@ import {
 import { usePopUp } from "@app/hooks";
 import { useAddGatewayToPool, useRemoveGatewayFromPool } from "@app/hooks/api/gateway-pools";
 import { TGatewayPool } from "@app/hooks/api/gateway-pools/types";
-import { gatewaysQueryKeys, isListedGatewayV2 } from "@app/hooks/api/gateways/queries";
+import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { useTriggerGatewayV2Heartbeat } from "@app/hooks/api/gateways-v2";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
 
@@ -82,7 +79,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
   );
 
   const availableGateways = useMemo(
-    () => allGateways?.filter((g) => !g.isV1 && !pool?.memberGatewayIds.includes(g.id)) ?? [],
+    () => allGateways?.filter((g) => !pool?.memberGatewayIds.includes(g.id)) ?? [],
     [allGateways, pool?.memberGatewayIds]
   );
 
@@ -170,7 +167,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
 
           <div>
             <div className="mb-3 flex items-start justify-between gap-3">
-              <h4 className="pt-2 text-sm font-medium text-foreground">Member Gateways</h4>
+              <h4 className="pt-2 text-sm font-normal text-foreground">Member Gateways</h4>
               <OrgPermissionCan
                 I={OrgGatewayPoolPermissionActions.EditGatewayPools}
                 a={OrgPermissionSubjects.GatewayPool}
@@ -179,18 +176,20 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                   const isDisabled = !isAllowed || availableGateways.length === 0;
                   return (
                     <div className="flex min-w-0 items-start gap-2">
-                      <FilterableSelect<GatewayOption>
-                        isMulti
-                        value={selectedGateways}
-                        onChange={(value) =>
-                          setSelectedGateways(Array.isArray(value) ? [...value] : [])
-                        }
-                        options={gatewayOptions}
-                        placeholder="Select gateways..."
-                        isDisabled={isDisabled || addGateway.isPending}
-                        menuPosition="fixed"
-                        className="w-64"
-                      />
+                      <div className="w-64">
+                        <Combobox
+                          multiple
+                          value={selectedGateways}
+                          onValueChange={setSelectedGateways}
+                          options={gatewayOptions}
+                          placeholder="Select gateways..."
+                          searchAriaLabel="Select gateways"
+                          isDisabled={isDisabled || addGateway.isPending}
+                          getOptionLabel={(option) => option.label}
+                          getOptionValue={(option) => option.value}
+                          getOptionKeywords={(option) => [option.value]}
+                        />
+                      </div>
                       <Button
                         variant="outline"
                         size="sm"
@@ -228,23 +227,13 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                   </TableRow>
                 )}
                 {memberGateways.map((gw) => {
-                  const isOnline = isListedGatewayV2(gw) && isGatewayHealthy(gw);
+                  const isOnline = isGatewayHealthy(gw);
 
                   return (
                     <TableRow key={gw.id}>
                       <TableCell>
                         <div className="flex min-w-0 items-center gap-2">
                           <span className="min-w-0 flex-1 truncate">{gw.name}</span>
-                          {gw.isV1 && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Badge variant="neutral" className="shrink-0">
-                                  V1
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent>Legacy</TooltipContent>
-                            </Tooltip>
-                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -265,12 +254,10 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="z-[60] min-w-[180px]">
-                            {!gw.isV1 && (
-                              <DropdownMenuItem onSelect={() => handleHealthCheck(gw.id)}>
-                                <FontAwesomeIcon icon={faHeartPulse} />
-                                Trigger health check
-                              </DropdownMenuItem>
-                            )}
+                            <DropdownMenuItem onSelect={() => handleHealthCheck(gw.id)}>
+                              <FontAwesomeIcon icon={faHeartPulse} />
+                              Trigger health check
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               variant="danger"
                               onSelect={() =>
@@ -292,6 +279,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
         </div>
 
         <AlertDialog
+          isPending={removeGateway.isPending}
           open={popUp.removeGateway.isOpen}
           confirmationValue={(popUp.removeGateway.data as { name: string } | undefined)?.name}
           onOpenChange={(open) => handlePopUpToggle("removeGateway", open)}
@@ -314,10 +302,9 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
               </Alert>
             </AlertDialogDescription>
             <AlertDialogFooter>
-              <AlertDialogCancel isDisabled={removeGateway.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 variant="danger"
-                isPending={removeGateway.isPending}
                 onClick={(event) => {
                   event.preventDefault();
                   handleRemove();

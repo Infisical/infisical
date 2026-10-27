@@ -69,7 +69,7 @@ export const WindmillSyncFields = () => {
                 isLoading={isWorkspacesLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={workspaces?.find((workspace) => workspace.name === value) ?? null}
-                onValueChange={(option) => onChange(option.name ?? null)}
+                onValueChange={(option) => onChange(option?.name ?? null)}
                 options={workspaces}
                 placeholder="Select a workspace..."
                 getOptionLabel={(option) => option.name}
@@ -99,7 +99,7 @@ export const WindmillSyncFields = () => {
                     rel="noopener noreferrer"
                     href="https://www.windmill.dev/docs/core_concepts/roles_and_permissions#path"
                   >
-                    <span className="cursor-pointer underline decoration-accent underline-offset-2 hover:text-foreground/80">
+                    <span className="cursor-pointer underline decoration-project underline-offset-2 hover:text-foreground-secondary">
                       owner path convention
                     </span>
                     .

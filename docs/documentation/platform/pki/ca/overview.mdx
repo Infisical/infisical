@@ -4,36 +4,33 @@ sidebarTitle: "Overview"
 description: "Set up Certificate Authorities to issue certificates across your organization."
 ---
 
-A Certificate Authority (CA) is the entity that signs and issues X.509 certificates. Before teams can issue certificates through Applications, product admins need to configure at least one CA.
-
-Certificate Manager supports two types of CAs:
+A Certificate Authority (CA) signs and issues X.509 certificates. Before teams can issue certificates through applications, an admin needs to set up at least one CA, either in Infisical or by connecting one you already use.
 
 <CardGroup cols={2}>
-  <Card title="Private CA" icon="lock" href="/documentation/platform/pki/ca/private-ca">
-    **Managed by Infisical**
-    
-    Create root and intermediate CAs directly in Infisical. Ideal for internal services, mTLS, and private networks where public trust isn't required.
+  <Card title="Internal CA" icon="lock" href="/documentation/platform/pki/ca/private-ca">
+    Create root and intermediate CAs in Infisical for internal services, mTLS, and private networks.
   </Card>
   <Card title="External CA" icon="landmark" href="/documentation/platform/pki/ca/external-ca">
-    **Integrated with Infisical**
-    
-    Connect to public CAs (Let's Encrypt, DigiCert) or enterprise PKI (AWS PCA, Microsoft ADCS, Venafi). Use existing infrastructure or issue publicly trusted certificates.
+    Issue from a public CA such as Let's Encrypt or DigiCert, or from enterprise PKI such as AWS Private CA, Microsoft ADCS, or Venafi.
+  </Card>
+  <Card title="HSM connectors" icon="shield-half" href="/documentation/platform/pki/settings/hsm-connectors">
+    Keep internal CA and signer keys in your own HSM.
   </Card>
 </CardGroup>
 
 ## Which should I use?
 
-| Use Case | Recommended CA |
+| Use case | Recommended CA |
 |----------|----------------|
-| Internal services, mTLS between microservices | Private CA |
+| Internal services, mTLS between microservices | Internal CA |
 | Public-facing websites needing browser trust | External CA (Let's Encrypt, DigiCert) |
-| Enterprise with existing PKI infrastructure | External CA (AWS PCA, Microsoft ADCS, Venafi) |
-| IoT devices, internal device fleet | Private CA |
+| Enterprise with existing PKI infrastructure | External CA (AWS Private CA, Microsoft ADCS, Venafi) |
+| IoT devices, internal device fleet | Internal CA |
 | Regulated environments with specific CA requirements | External CA (your approved provider) |
 
-## Private CA hierarchy
+## Internal CA hierarchy
 
-When using Private CAs, you typically create a hierarchy:
+When you use internal CAs, you typically create a hierarchy:
 
 ```
 Root CA (offline, long-lived)
@@ -42,53 +39,19 @@ Root CA (offline, long-lived)
 ```
 
 <Info>
-  Best practice: Keep your Root CA offline or with minimal usage. Create one or more Intermediate CAs to issue day-to-day certificates. This limits exposure if an Intermediate CA is compromised.
+  Keep your root CA offline or use it as little as possible. Create one or more intermediate CAs to issue day-to-day certificates, so a compromised intermediate CA doesn't expose the root.
 </Info>
-
-## External CA integrations
-
-Infisical integrates with major public and private CA providers:
-
-<CardGroup cols={3}>
-  <Card title="Let's Encrypt" icon="lock" href="/documentation/platform/pki/ca/lets-encrypt">
-    Free, automated, publicly trusted certificates.
-  </Card>
-  <Card title="DigiCert" icon="shield-check" href="/documentation/platform/pki/ca/digicert">
-    Enterprise-grade public and private certificates.
-  </Card>
-  <Card title="AWS PCA" icon="aws" iconType="brands" href="/documentation/platform/pki/ca/aws-pca">
-    Private CA managed in AWS.
-  </Card>
-  <Card title="Microsoft ADCS" icon="microsoft" iconType="brands" href="/documentation/platform/pki/ca/adcs">
-    Active Directory Certificate Services over the Gateway.
-  </Card>
-  <Card title="Azure ADCS (Web Enrollment)" icon="microsoft" iconType="brands" href="/documentation/platform/pki/ca/azure-adcs">
-    Active Directory Certificate Services over HTTPS web enrollment.
-  </Card>
-  <Card title="Venafi" icon="building" href="/documentation/platform/pki/ca/venafi">
-    Enterprise certificate lifecycle management.
-  </Card>
-  <Card title="ACME CAs" icon="bot" href="/documentation/platform/pki/ca/acme-ca">
-    Any ACME-compatible CA.
-  </Card>
-</CardGroup>
-
-[View all External CA integrations →](/documentation/platform/pki/ca/external-ca)
 
 ## Next steps
 
 <Steps>
-  <Step title="Create or connect a CA">
-    Set up a [Private CA](/documentation/platform/pki/ca/private-ca) or connect an [External CA](/documentation/platform/pki/ca/external-ca).
+  <Step>
+    Set up an [internal CA](/documentation/platform/pki/ca/private-ca) or connect an [external CA](/documentation/platform/pki/ca/external-ca).
   </Step>
-  <Step title="Create a Certificate Policy">
-    Define the rules for certificates — allowed domains, validity periods, key algorithms.
-    
-    [Certificate Policies →](/documentation/platform/pki/settings/policies)
+  <Step>
+    Create a [certificate policy](/documentation/platform/pki/settings/policies) to set the domains, validity periods, and key algorithms that certificates can use.
   </Step>
-  <Step title="Create a Certificate Profile">
-    Combine your CA with a policy to create a reusable profile that teams can consume.
-    
-    [Certificate Profiles →](/documentation/platform/pki/settings/profiles)
+  <Step>
+    Create a [certificate profile](/documentation/platform/pki/settings/profiles) that pairs your CA with the policy, so applications can issue from it.
   </Step>
 </Steps>

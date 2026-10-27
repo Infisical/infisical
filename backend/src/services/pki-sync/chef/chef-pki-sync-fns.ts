@@ -73,6 +73,8 @@ type TChefPkiSyncFactoryDeps = {
     | "updateById"
     | "findByPkiSyncId"
     | "updateSyncStatus"
+    | "findExternalIdentifiersInUse"
+    | "claimExternalIdentifier"
   >;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
@@ -230,8 +232,9 @@ export const chefPkiSyncFactory = ({
         continue;
       }
 
-      const syncRecordLookupId = certificate?.renewedFromCertificateId || certificateId;
-      const existingSyncRecord = syncRecordsByCertId.get(syncRecordLookupId);
+      const existingSyncRecord =
+        syncRecordsByCertId.get(certificate?.renewedFromCertificateId || certificateId) ??
+        (preserveItemOnRenewal ? syncRecordsByCertId.get(certificateId) : undefined);
 
       let shouldProcess = true;
       let isUpdate = false;
@@ -295,6 +298,8 @@ export const chefPkiSyncFactory = ({
           ...(certificateChain && { [fieldMappings.certificateChain]: certificateChain }),
           ...(caCertificate && { [fieldMappings.caCertificate]: caCertificate })
         };
+
+        await certificateSyncDAL.claimExternalIdentifier(pkiSync.id, certificateId, targetItemName);
 
         const itemExists = chefDataBagItems[targetItemName] === true;
 
@@ -375,20 +380,22 @@ export const chefPkiSyncFactory = ({
     let failedRemovals: Array<{ name: string; error: string }> = [];
 
     if (canRemoveCertificates) {
-      const itemsToRemove: string[] = [];
-
       const trackedExternalIds = new Set(
         existingSyncRecords.map((record) => record.externalIdentifier).filter((id): id is string => Boolean(id))
       );
       const allowPatternCleanup = !certificateNameSchemaHasFreeTextPlaceholder(syncOptions?.certificateNameSchema);
 
-      Object.keys(chefDataBagItems).forEach((itemName) => {
-        if (activeExternalIdentifiers.has(itemName)) return;
-        const isTracked = trackedExternalIds.has(itemName);
-        if (isTracked || (allowPatternCleanup && isInfisicalManagedCertificate(itemName, pkiSync))) {
-          itemsToRemove.push(itemName);
-        }
+      const removalCandidates = Object.keys(chefDataBagItems).filter(
+        (itemName) =>
+          !activeExternalIdentifiers.has(itemName) &&
+          (trackedExternalIds.has(itemName) ||
+            (allowPatternCleanup && isInfisicalManagedCertificate(itemName, pkiSync)))
+      );
+      const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(removalCandidates, {
+        excludePkiSyncId: pkiSync.id,
+        destination: pkiSync.destination
       });
+      const itemsToRemove = removalCandidates.filter((itemName) => !ownedByOtherSync.has(itemName));
 
       if (itemsToRemove.length > 0) {
         const removalPromises = itemsToRemove.map(async (itemName) => {
@@ -516,15 +523,12 @@ export const chefPkiSyncFactory = ({
         certificateId = certificate.certificateId;
         errorMessage = error instanceof Error ? error.message : String(error);
 
-        const existingSyncRecord = syncRecordsByCertId.get(certificateId);
-        if (existingSyncRecord) {
-          await certificateSyncDAL.updateSyncStatus(
-            pkiSync.id,
-            certificateId,
-            CertificateSyncStatus.Failed,
-            errorMessage
-          );
-        }
+        await certificateSyncDAL.updateSyncStatus(
+          pkiSync.id,
+          certificateId,
+          CertificateSyncStatus.Failed,
+          errorMessage
+        );
       })
     );
 

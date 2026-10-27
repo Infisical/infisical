@@ -71,8 +71,8 @@ export const CamundaSyncFields = () => {
                 isDisabled={!connectionId}
                 value={clusters?.find((cluster) => cluster.uuid === value) ?? null}
                 onValueChange={(option) => {
-                  onChange(option.uuid ?? null);
-                  setValue("destinationConfig.clusterName", option.name ?? "");
+                  onChange(option?.uuid ?? null);
+                  setValue("destinationConfig.clusterName", option?.name ?? "");
                 }}
                 options={clusters}
                 placeholder="Select a cluster..."

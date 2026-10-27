@@ -1,12 +1,11 @@
 import { randomUUID } from "crypto";
 import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns";
-import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
+import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
 import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
+import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
 import { createSecretImport } from "e2e-test/testUtils/secret-imports";
 import {
-  createAwsAppConnection,
   createSecretSync,
-  deleteAppConnection,
   deleteSecretSync,
   expectDestinationUnchanged,
   importSecretsForSync,
@@ -124,7 +123,7 @@ describe("Secret syncs", async () => {
       await deleteSecretSync({ syncId, authToken });
     }
 
-    await deleteAppConnection({ connectionId, authToken });
+    await deleteAwsAppConnection({ connectionId, authToken });
     await cleanupOrg();
   });
 
@@ -448,7 +447,7 @@ describe("Secret syncs", async () => {
     });
   });
 
-  describe("Automatic syncing is triggered by changes at the source secret path only", () => {
+  describe("Automatic syncing is triggered by changes at the source secret path", () => {
     test("Creating a secret at the source secret path triggers a sync run", async () => {
       const destinationPath = pathFor("auto-sync-source");
       // Auto sync is enabled after creation, and only once the destination has gone quiet, so
@@ -467,37 +466,6 @@ describe("Secret syncs", async () => {
         region: REGION,
         destinationPath,
         expected: { NEW_KEY: "new-value" }
-      });
-    });
-
-    // The second pin for recursive syncing: today a child folder write reaches nothing.
-    test("Creating a secret in a child secret path does not trigger a sync run", async () => {
-      const destinationPath = pathFor("auto-sync-child");
-      // Written before auto sync is on, so it cannot queue a run that lands later and looks
-      // like the child write's doing.
-      const { secretSync } = await newSync("auto-sync-child", {
-        secretPath: "/services",
-        isAutoSyncEnabled: false
-      });
-      await addSecret("/services", "PARENT_KEY", "parent-value");
-
-      // Enabling auto sync queues a run; wait for the parent's secret to arrive.
-      await setAutoSync({ syncId: secretSync!.id, isAutoSyncEnabled: true, authToken });
-      await waitForDestinationSecrets({
-        region: REGION,
-        destinationPath,
-        expected: { PARENT_KEY: "parent-value" }
-      });
-
-      await addSecret("/services/api", "CHILD_KEY", "child-value");
-
-      // The child's secret must not reach the destination. Whether the parent's sync happens to
-      // run again is not asserted: the queue requeues on lock contention, so run counts are not
-      // stable, while what arrives is.
-      await expectDestinationUnchanged({
-        region: REGION,
-        destinationPath,
-        expected: { PARENT_KEY: "parent-value" }
       });
     });
 

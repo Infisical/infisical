@@ -1,12 +1,11 @@
 import { Client, ConnectConfig } from "ssh2";
 
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { BadRequestError, InternalServerError } from "@app/lib/errors";
-import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { callSshExec, SshExecAuthMethod, SshExecCredentials, SshExecResult } from "@app/lib/gateway-v2/ssh-rpc";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -274,7 +273,7 @@ type TSshGatewayServices = {
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
-const toSshExecCredentials = (config: TSshConnectionConfig): SshExecCredentials => {
+export const toSshExecCredentials = (config: TSshConnectionConfig): SshExecCredentials => {
   switch (config.method) {
     case SshConnectionMethod.Password:
       return {
@@ -357,7 +356,7 @@ export const executeSshCommandViaGateway = async (
 
 const MAX_SSH_COMMAND_OUTPUT_BYTES = 16 * 1024 * 1024;
 
-const execOverSshClient = (client: Client, command: string, timeoutMs: number): Promise<SshExecResult> =>
+export const execOverSshClient = (client: Client, command: string, timeoutMs: number): Promise<SshExecResult> =>
   new Promise((resolve, reject) => {
     let settled = false;
     let timer: NodeJS.Timeout;
@@ -416,7 +415,6 @@ export const executeSshCommand = async (
 
 export const validateSshConnectionCredentials = async (
   config: TSshConnectionConfig,
-  _gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   const { credentials } = config;

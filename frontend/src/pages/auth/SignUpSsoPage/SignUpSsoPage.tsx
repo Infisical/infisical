@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { jwtDecode } from "jwt-decode";
 
+import { captureSignupCompleted } from "@app/components/analytics/experiments/signupFlow/signupExperiment";
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import Telemetry from "@app/components/utilities/telemetry/Telemetry";
 import {
@@ -31,6 +32,7 @@ export const SignupSsoPage = () => {
   const navigate = useNavigate();
   const search = useSearch({ from: ROUTE_PATHS.Auth.SignUpSsoPage.id });
   const token = search.token as string;
+  const callbackPort = search.callback_port;
 
   const [code, setCode] = useState("");
 
@@ -70,11 +72,6 @@ export const SignupSsoPage = () => {
       telemetry.identify(signupEmail, signupEmail);
     }
 
-    if (isInfisicalCloud()) {
-      window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push({ event: "signup_completed" });
-    }
-
     createNotification({
       text: "Successfully verified",
       type: "success"
@@ -84,7 +81,12 @@ export const SignupSsoPage = () => {
     // workspace, so org setup doesn't apply; keep sending them straight in.
     const userOrgs = await fetchOrganizations();
     if (userOrgs.length > 0) {
-      if (organizationId) {
+      if (callbackPort) {
+        navigate({
+          to: "/login/select-organization",
+          search: { org_id: organizationId, callback_port: callbackPort }
+        });
+      } else if (organizationId) {
         navigate({
           to: "/organizations/$orgId/projects",
           params: { orgId: organizationId }
@@ -95,7 +97,13 @@ export const SignupSsoPage = () => {
       return;
     }
 
-    navigate({ to: "/organizations/onboarding" });
+    if (isInfisicalCloud()) {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ event: "signup_completed" });
+    }
+    captureSignupCompleted("sso");
+
+    navigate({ to: "/organizations/onboarding", search: { callback_port: callbackPort } });
   };
 
   const handleResendCode = async () => {
@@ -118,17 +126,17 @@ export const SignupSsoPage = () => {
     <AuthPageLayout
       headerAction={
         <Button asChild variant="outline" size="sm">
-          <Link to="/login">Log In</Link>
+          <Link to="/login" search={{ callback_port: callbackPort }}>
+            Log In
+          </Link>
         </Button>
       }
     >
-      <Helmet>
-        <title>{t("common.head-title", { title: t("signup.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t("signup.og-title") as string} />
-        <meta name="og:description" content={t("signup.og-description") as string} />
-      </Helmet>
+      <PageTitle title={t("signup.title")} />
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
+      <meta property="og:title" content={t("signup.og-title") as string} />
+      <meta name="og:description" content={t("signup.og-description") as string} />
       <div className="mx-auto flex w-full flex-col items-center justify-center">
         <AuthPagePanel>
           <VerificationCodeHeader

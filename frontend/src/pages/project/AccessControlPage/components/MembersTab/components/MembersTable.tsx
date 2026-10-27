@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { subject } from "@casl/ability";
 import {
   ChevronDownIcon,
   CircleAlertIcon,
@@ -39,6 +39,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -54,17 +55,23 @@ import {
   ProjectPermissionActions,
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useUser
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import {
+  getInstancePinningLink,
+  getProjectBaseURL,
+  getProjectLabel,
+  hidesProjects
+} from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, useResetPageHelper } from "@app/hooks";
+import { usePagination, useResetPageHelper, useScopeVariant } from "@app/hooks";
 import { useGetProjectRoles, useGetWorkspaceUsers } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -89,16 +96,18 @@ type Filter = {
 };
 
 export const MembersTable = ({ handlePopUpOpen }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { currentProject } = useProject();
   const { user } = useUser();
-  const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const [filter, setFilter] = useState<Filter>({
     roles: []
   });
   const filterRoles = useMemo(() => filter.roles, [filter.roles]);
 
   const isCertManager = currentProject?.type === ProjectType.CertificateManager;
-  const productLabel = isCertManager ? "Certificate Manager" : "Project";
+  const productLabel = getProjectLabel(currentProject?.type);
+  const projectsHidden = hidesProjects(currentProject?.type);
   const userId = user?.id || "";
   const projectId = currentProject?.id || "";
   const {
@@ -217,13 +226,13 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
           <InputGroupInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={isCertManager ? "Search users..." : "Search project users..."}
+            placeholder={projectsHidden ? "Search users..." : "Search project users..."}
           />
         </InputGroup>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
-              variant={isTableFiltered ? "project" : "outline"}
+              variant={isTableFiltered ? scopeVariant : "outline"}
               aria-label={isProjectRolesLoading ? "Loading role filters" : "Filter users by role"}
               isDisabled={isProjectRolesLoading || isProjectRolesError}
             >
@@ -232,7 +241,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>
-              {isCertManager ? "Filter by Role" : `Filter by ${productLabel} Role`}
+              {projectsHidden ? "Filter by Role" : `Filter by ${productLabel} Role`}
             </DropdownMenuLabel>
             {projectRoles?.map(({ id, slug, name }) => (
               <DropdownMenuCheckboxItem
@@ -291,10 +300,10 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
               <EmptyTitle>
                 {/* eslint-disable-next-line no-nested-ternary */}
                 {search || isTableFiltered
-                  ? isCertManager
+                  ? projectsHidden
                     ? "No users match search"
                     : "No project users match search"
-                  : isCertManager
+                  : projectsHidden
                     ? "No users found"
                     : "No project users found"}
               </EmptyTitle>
@@ -342,7 +351,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                       )}
                     />
                   </TableHead>
-                  <TableHead>{isCertManager ? "Role" : `${productLabel} Role`}</TableHead>
+                  <TableHead>{projectsHidden ? "Role" : `${productLabel} Role`}</TableHead>
                   <TableHead variant="action" />
                 </TableRow>
               </TableHeader>
@@ -373,36 +382,30 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                     const detailKey = isCertManager ? u.id : membershipId;
 
                     return (
-                      <TableRow
-                        key={`membership-${membershipId}`}
-                        className="group cursor-pointer"
-                        role="link"
-                        tabIndex={0}
-                        onKeyDown={(evt) => {
-                          if (evt.key === "Enter") {
-                            navigate({
-                              to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
-                              params: {
-                                projectId,
-                                membershipId: detailKey
-                              }
-                            });
-                          }
-                        }}
-                        onClick={() =>
-                          navigate({
-                            to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
-                            params: {
-                              projectId,
-                              membershipId: detailKey
-                            }
-                          })
-                        }
-                      >
+                      <TableRow key={`membership-${membershipId}`} linked>
                         <TableCell isTruncatable>
                           {name ?? <span className="text-muted">&mdash;</span>}
                         </TableCell>
-                        <TableCell isTruncatable>{email}</TableCell>
+                        <TableCell isTruncatable>
+                          <RowLink
+                            {...(getInstancePinningLink(
+                              currentOrg.id,
+                              currentProject,
+                              `members/${detailKey}`
+                            ) ??
+                              ({
+                                to: `${getProjectBaseURL(currentProject.type)}/members/$membershipId`,
+                                params: {
+                                  orgId: currentOrg.id,
+                                  projectId,
+                                  membershipId: detailKey
+                                }
+                              } as const))}
+                            aria-label={email ? undefined : (name ?? u.username)}
+                          >
+                            {email}
+                          </RowLink>
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">
                             {roles
@@ -525,7 +528,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                               {!isCertManager && (
                                 <ProjectPermissionCan
                                   I={ProjectPermissionMemberActions.AssumePrivileges}
-                                  a={ProjectPermissionSub.Member}
+                                  a={subject(ProjectPermissionSub.Member, { userEmail: u?.email })}
                                 >
                                   {(isAllowed) => (
                                     <Tooltip>

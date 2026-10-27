@@ -1,10 +1,13 @@
+import { useId, useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { CheckIcon, InfoIcon, PencilIcon } from "lucide-react";
+import { CheckIcon, FilterIcon, InfoIcon, PencilIcon } from "lucide-react";
 
 import { Button } from "../Button";
+import { Combobox } from "../Combobox";
 import { Field, FieldDescription, FieldLabel } from "../Field";
 import { IconButton } from "../IconButton";
 import { Input } from "../Input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../Select";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "./Popover";
 
 /**
@@ -268,4 +271,70 @@ export const WithAnchor: Story = {
       </PopoverContent>
     </Popover>
   )
+};
+
+const STATUSES = [
+  { value: "active", label: "Active" },
+  { value: "expired", label: "Expired" },
+  { value: "revoked", label: "Revoked" }
+];
+
+const WithNestedPickersRender = () => {
+  const [statuses, setStatuses] = useState<(typeof STATUSES)[number][]>([]);
+  const [operator, setOperator] = useState("is");
+  const statusId = useId();
+  const operatorId = useId();
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline">
+          <FilterIcon />
+          Add Filter
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80" align="start">
+        <div className="flex flex-col gap-3">
+          <Field>
+            <FieldLabel htmlFor={operatorId}>Operator</FieldLabel>
+            <Select value={operator} onValueChange={setOperator}>
+              <SelectTrigger id={operatorId} className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                <SelectItem value="is">Is</SelectItem>
+                <SelectItem value="is-not">Is Not</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor={statusId}>Status</FieldLabel>
+            <Combobox
+              id={statusId}
+              multiple
+              options={STATUSES}
+              value={statuses}
+              onValueChange={setStatuses}
+              getOptionValue={(status) => status.value}
+              getOptionLabel={(status) => status.label}
+              placeholder="Select statuses..."
+            />
+          </Field>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+export const WithNestedPickers: Story = {
+  name: "Example: With Nested Pickers",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "`Combobox`, `Select`, and `DropdownMenu` popups inside `PopoverContent` own the first Escape or outside click, so the panel and its draft stay open. The next Escape or outside click closes the `Popover`."
+      }
+    }
+  },
+  render: () => <WithNestedPickersRender />
 };

@@ -24,6 +24,7 @@ import {
   Skeleton
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import {
   TGatewayConnectedResources,
   useGetGatewayConnectedResources
@@ -36,7 +37,9 @@ const totalCountOf = (r: TGatewayConnectedResources | undefined) =>
     ? r.appConnections.length +
       r.dynamicSecrets.length +
       r.kubernetesAuths.length +
-      r.pkiDiscoveryConfigs.length
+      r.pkiDiscoveryConfigs.length +
+      (r.pamAccounts?.length ?? 0) +
+      (r.pamAccountTemplates?.length ?? 0)
     : 0;
 
 const ResourceRow = ({
@@ -56,9 +59,9 @@ const ResourceRow = ({
     <Link to={to as "/"} params={params} search={search as never}>
       <ItemContent>
         <ItemTitle>{name}</ItemTitle>
-        <ItemDescription className="text-mineshaft-400">{subtitle}</ItemDescription>
+        <ItemDescription className="text-muted">{subtitle}</ItemDescription>
       </ItemContent>
-      <ExternalLinkIcon className="size-3.5 text-mineshaft-400" />
+      <ExternalLinkIcon className="size-3.5 text-muted" />
     </Link>
   </Item>
 );
@@ -66,6 +69,7 @@ const ResourceRow = ({
 export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
   const { currentOrg } = useOrganization();
   const { data: resources, isPending } = useGetGatewayConnectedResources(gatewayId);
+  const { data: certManagerInstance } = useCertManagerInstanceState();
 
   const total = totalCountOf(resources);
 
@@ -169,6 +173,54 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
               </AccordionItem>
             )}
 
+            {(resources?.pamAccounts?.length ?? 0) > 0 && (
+              <AccordionItem value="pam-accounts">
+                <AccordionTrigger>
+                  <span className="flex-1">PAM Accounts</span>
+                  <Badge variant="neutral">{resources?.pamAccounts?.length}</Badge>
+                </AccordionTrigger>
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
+                  <ItemGroup>
+                    {resources?.pamAccounts?.map((a) => (
+                      <ResourceRow
+                        key={a.id}
+                        name={a.name}
+                        subtitle={
+                          a.folderName ? `${a.accountType} · ${a.folderName}` : a.accountType
+                        }
+                        to="/organizations/$orgId/pam/accounts"
+                        params={{ orgId: currentOrg.id }}
+                        search={{ accountId: a.id }}
+                      />
+                    ))}
+                  </ItemGroup>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
+            {(resources?.pamAccountTemplates?.length ?? 0) > 0 && (
+              <AccordionItem value="pam-account-templates">
+                <AccordionTrigger>
+                  <span className="flex-1">PAM Account Templates</span>
+                  <Badge variant="neutral">{resources?.pamAccountTemplates?.length}</Badge>
+                </AccordionTrigger>
+                <AccordionContent className="group-data-[variant=default]/accordion:p-3">
+                  <ItemGroup>
+                    {resources?.pamAccountTemplates?.map((t) => (
+                      <ResourceRow
+                        key={t.id}
+                        name={t.name}
+                        subtitle={t.type}
+                        to="/organizations/$orgId/pam/templates"
+                        params={{ orgId: currentOrg.id }}
+                        search={{ templateId: t.id }}
+                      />
+                    ))}
+                  </ItemGroup>
+                </AccordionContent>
+              </AccordionItem>
+            )}
+
             {(resources?.pkiDiscoveryConfigs.length ?? 0) > 0 && (
               <AccordionItem value="pki-discovery">
                 <AccordionTrigger>
@@ -181,9 +233,17 @@ export const GatewayConnectedResourcesSection = ({ gatewayId }: Props) => {
                       <ResourceRow
                         key={c.id}
                         name={c.name}
-                        subtitle={c.projectName}
-                        to="/organizations/$orgId/projects/cert-manager/$projectId/discovery/$discoveryId"
-                        params={{ orgId: currentOrg.id, projectId: c.projectId, discoveryId: c.id }}
+                        subtitle={
+                          certManagerInstance?.isMultiInstance
+                            ? c.projectName
+                            : "Certificate Manager"
+                        }
+                        to="/organizations/$orgId/projects/cert-manager/$projectId/$"
+                        params={{
+                          orgId: currentOrg.id,
+                          projectId: c.projectId,
+                          _splat: `discovery/${c.id}`
+                        }}
                       />
                     ))}
                   </ItemGroup>

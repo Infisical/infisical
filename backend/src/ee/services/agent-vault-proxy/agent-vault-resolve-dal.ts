@@ -10,10 +10,15 @@ export type TResolveServiceRow = {
   id: string;
   name: string;
   accessBundleName: string;
+  type: string;
   hostPattern: string;
+  config: unknown;
   credentialType: string;
   credentialConfig: unknown;
   encryptedCredential: Buffer | null;
+  allowedMethods: string[] | null;
+  allowedPathPrefixes: string[] | null;
+  memberProvidedFields: string[] | null;
   position: number;
 };
 
@@ -28,11 +33,14 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
     {
       sessionId,
       projectId,
-      accessBundleIds
+      accessBundleIds,
+      serviceId
     }: {
       sessionId: string;
       projectId: string;
       accessBundleIds: string[] | null;
+      // Narrows to one service, for a credential refresh that must stay inside the session's resolved set.
+      serviceId?: string;
     },
     tx?: Knex
   ): Promise<TResolveServiceRow[]> => {
@@ -56,15 +64,21 @@ export const agentVaultResolveDALFactory = (db: TDbClient) => {
         );
 
       if (accessBundleIds) void query.whereIn(`${TableName.AgentVaultAccessBundle}.id`, accessBundleIds);
+      if (serviceId) void query.where(`${TableName.AgentVaultService}.id`, serviceId);
 
       return (await query
         .select(
           db.ref("id").withSchema(TableName.AgentVaultService),
           db.ref("name").withSchema(TableName.AgentVaultService),
+          db.ref("type").withSchema(TableName.AgentVaultService),
           db.ref("hostPattern").withSchema(TableName.AgentVaultService),
+          db.ref("config").withSchema(TableName.AgentVaultService),
           db.ref("credentialType").withSchema(TableName.AgentVaultService),
           db.ref("credentialConfig").withSchema(TableName.AgentVaultService),
           db.ref("encryptedCredential").withSchema(TableName.AgentVaultService),
+          db.ref("allowedMethods").withSchema(TableName.AgentVaultService),
+          db.ref("allowedPathPrefixes").withSchema(TableName.AgentVaultService),
+          db.ref("memberProvidedFields").withSchema(TableName.AgentVaultService),
           // Resolve only reaches live bundles, so the current name is always the truthful one here.
           db.ref("name").withSchema(TableName.AgentVaultAccessBundle).as("accessBundleName"),
           db.ref("position").withSchema(TableName.AgentVaultSessionAccessBundle)

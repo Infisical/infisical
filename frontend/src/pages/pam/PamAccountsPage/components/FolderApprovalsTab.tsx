@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { components, OptionProps } from "react-select";
+import { useQuery } from "@tanstack/react-query";
 import {
   Ban,
   FilterIcon,
   ShieldAlert,
   Trash2,
   User as UserIcon,
-  Users as UsersIcon
+  Users as UsersIcon,
+  Zap
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { PamEnterpriseAlertingUpgradeIntent } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   Badge,
   Button,
@@ -21,12 +22,13 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Combobox,
+  ConfirmationAlertDialog,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  FilterableSelect,
   IconButton,
   Pagination,
   Table,
@@ -40,12 +42,18 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
-import { useOrganization, useSubscription } from "@app/context";
+import { useOrganization, useProject, useSubscription } from "@app/context";
 import {
   getUserTablePreference,
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
+import { AlertChannelType, AlertResourceType } from "@app/hooks/api/alerts";
+import {
+  approvalPolicyQuery,
+  ApprovalPolicyScope,
+  ApprovalPolicyType
+} from "@app/hooks/api/approvalPolicies";
 import { useGetOrganizationGroups } from "@app/hooks/api/organization/queries";
 import {
   PamAccessRequestStatus,
@@ -60,12 +68,22 @@ import {
   useSetPamApprovalConfig
 } from "@app/hooks/api/pam";
 import { TPamAccessRequest, TPamNotificationConfig } from "@app/hooks/api/pam/types";
-import { useGetOrgUsers } from "@app/hooks/api/users/queries";
+import { AlertAction } from "@app/views/Alerts";
 
 import { AccessTypeBadge } from "../../components/AccessTypeBadge";
 import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
 import { getRequestStatusInfo, isGrantActive } from "../../components/approvalRequestStatus";
+import { AutoApprovalCard } from "../../components/auto-approval/AutoApprovalCard";
+import {
+  EMPTY_AUTO_APPROVAL_DRAFT,
+  isRuleComplete,
+  serializeAutoApprovalDraft,
+  TAutoApprovalDraft,
+  toAutoApprovalConfig,
+  toAutoApprovalDraft
+} from "../../components/auto-approval/autoApprovalDraft";
 import { getRequesterSubtitle } from "../../components/requesterDisplay";
+import { usePamProductUsers } from "../../components/usePamProductUsers";
 import { FolderNotificationsSection } from "./FolderNotificationsSection";
 
 type ApproverEntry = { type: PamApproverType; id: string };
@@ -82,20 +100,18 @@ const KIND_ICON: Record<PamApproverType, typeof UserIcon> = {
   [PamApproverType.Group]: UsersIcon
 };
 
-const ApproverSelectOption = ({ children, ...props }: OptionProps<ApproverOption>) => {
-  const Icon = KIND_ICON[props.data.kind];
+const renderApproverOption = (option: ApproverOption) => {
+  const Icon = KIND_ICON[option.kind];
   return (
-    <components.Option {...props}>
-      <div className="flex items-center gap-2.5">
-        <Icon className="size-4 shrink-0 text-muted" />
-        <div className="min-w-0">
-          <p className="truncate">{children}</p>
-          {props.data.subtitle && (
-            <p className="truncate text-xs leading-4 text-muted">{props.data.subtitle}</p>
-          )}
-        </div>
+    <div className="flex items-center gap-2.5">
+      <Icon className="size-4 shrink-0 text-muted" />
+      <div className="min-w-0">
+        <p className="truncate">{option.label}</p>
+        {option.subtitle && (
+          <p className="truncate text-xs leading-4 text-muted">{option.subtitle}</p>
+        )}
       </div>
-    </components.Option>
+    </div>
   );
 };
 
@@ -106,10 +122,10 @@ type Props = {
 
 export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const { subscription } = useSubscription();
-  const isPamSlackEnabled = Boolean(subscription?.pamSlackNotifications);
   const { data: config, isLoading } = useGetPamApprovalConfig(folderId);
-  const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
+  const { users: productUsers, userMap: productUserMap } = usePamProductUsers();
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
   const { data: folderMembers } = useListFolderMembers(folderId);
   const setConfig = useSetPamApprovalConfig();
@@ -138,7 +154,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
 
   const confirmRevoke = async () => {
     if (!requestToRevoke) return;
-    await revokeMutation.mutateAsync({ requestId: requestToRevoke.id });
+    await revokeMutation.mutateAsync({ grantId: requestToRevoke.grantId! });
     createNotification({ text: "Access revoked", type: "success" });
     setRequestToRevoke(null);
   };
@@ -147,6 +163,19 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   const [breakGlassUsers, setBreakGlassApprovers] = useState<ApproverEntry[]>([]);
   const [isDirty, setIsDirty] = useState(false);
   const [notificationConfigs, setNotificationConfigs] = useState<TPamNotificationConfig[]>([]);
+  const [autoApprovalDraft, setAutoApprovalDraft] =
+    useState<TAutoApprovalDraft>(EMPTY_AUTO_APPROVAL_DRAFT);
+  const [showAutoApprovalErrors, setShowAutoApprovalErrors] = useState(false);
+
+  const autoApprovalScope = {
+    policyType: ApprovalPolicyType.PamAccess,
+    scope: ApprovalPolicyScope.PamFolder,
+    scopeId: folderId
+  };
+  const { data: autoApprovalCatalogData } = useQuery(
+    approvalPolicyQuery.autoApprovalCatalog(autoApprovalScope)
+  );
+  const autoApprovalCatalog = autoApprovalCatalogData?.connections;
 
   const savedApprovers = useMemo(() => {
     if (!config?.steps?.[0]) return [];
@@ -167,6 +196,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       })),
     [config]
   );
+
+  const savedAutoApprovalDraft = useMemo(() => toAutoApprovalDraft(config?.autoApproval), [config]);
 
   const integrationSlugById = useMemo(
     () =>
@@ -189,6 +220,11 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     setNotificationConfigs(savedNotificationConfigs);
   }, [savedNotificationConfigs]);
 
+  useEffect(() => {
+    setAutoApprovalDraft(savedAutoApprovalDraft);
+    setShowAutoApprovalErrors(false);
+  }, [savedAutoApprovalDraft]);
+
   const isNotifDirty = useMemo(
     () => JSON.stringify(notificationConfigs) !== JSON.stringify(savedNotificationConfigs),
     [notificationConfigs, savedNotificationConfigs]
@@ -197,7 +233,13 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     () => JSON.stringify(breakGlassUsers) !== JSON.stringify(savedBreakGlassUsers),
     [breakGlassUsers, savedBreakGlassUsers]
   );
-  const isAnyDirty = isDirty || isNotifDirty || isBreakGlassDirty;
+  const isAutoApprovalDirty = useMemo(
+    () =>
+      serializeAutoApprovalDraft(autoApprovalDraft) !==
+      serializeAutoApprovalDraft(savedAutoApprovalDraft),
+    [autoApprovalDraft, savedAutoApprovalDraft]
+  );
+  const isAnyDirty = isDirty || isNotifDirty || isBreakGlassDirty || isAutoApprovalDirty;
 
   useEffect(() => {
     onDirtyChange?.(isAnyDirty);
@@ -215,18 +257,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   );
 
   const userMap = useMemo(
-    () =>
-      new Map(
-        (orgUsers ?? []).map((ou) => [
-          ou.user.id,
-          {
-            label:
-              [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ") || ou.user.username,
-            email: ou.user.email ?? ou.inviteEmail ?? ou.user.username
-          }
-        ])
-      ),
-    [orgUsers]
+    () => new Map([...productUserMap].map(([id, u]) => [id, { label: u.name, email: u.email }])),
+    [productUserMap]
   );
 
   const groupMap = useMemo(
@@ -249,48 +281,24 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
       .filter((g) => memberGroupIds.has(g.id) && !selectedIds.has(`group:${g.id}`))
       .map((g) => ({ value: g.id, label: g.name, kind: PamApproverType.Group, subtitle: "Group" }));
 
-    const users: ApproverOption[] = (orgUsers ?? [])
-      .filter(
-        (ou) =>
-          ou.user.id && memberUserIds.has(ou.user.id) && !selectedIds.has(`user:${ou.user.id}`)
-      )
-      .map((ou) => {
-        const name = [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ");
-        return {
-          value: ou.user.id,
-          label: name || ou.user.email || ou.inviteEmail || ou.user.username,
-          kind: PamApproverType.User,
-          subtitle: ou.user.email ?? ou.inviteEmail ?? ""
-        };
-      });
+    const users: ApproverOption[] = productUsers
+      .filter((u) => memberUserIds.has(u.id) && !selectedIds.has(`user:${u.id}`))
+      .map((u) => ({ value: u.id, label: u.name, kind: PamApproverType.User, subtitle: u.email }));
 
     return [...groups, ...users];
-  }, [orgGroups, orgUsers, selectedIds, memberUserIds, memberGroupIds]);
+  }, [orgGroups, productUsers, selectedIds, memberUserIds, memberGroupIds]);
 
   const breakGlassOptions = useMemo<ApproverOption[]>(() => {
     const groups: ApproverOption[] = (orgGroups ?? [])
       .filter((g) => memberGroupIds.has(g.id) && !selectedBreakGlassIds.has(`group:${g.id}`))
       .map((g) => ({ value: g.id, label: g.name, kind: PamApproverType.Group, subtitle: "Group" }));
 
-    const users: ApproverOption[] = (orgUsers ?? [])
-      .filter(
-        (ou) =>
-          ou.user.id &&
-          memberUserIds.has(ou.user.id) &&
-          !selectedBreakGlassIds.has(`user:${ou.user.id}`)
-      )
-      .map((ou) => {
-        const name = [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ");
-        return {
-          value: ou.user.id,
-          label: name || ou.user.email || ou.inviteEmail || ou.user.username,
-          kind: PamApproverType.User,
-          subtitle: ou.user.email ?? ou.inviteEmail ?? ""
-        };
-      });
+    const users: ApproverOption[] = productUsers
+      .filter((u) => memberUserIds.has(u.id) && !selectedBreakGlassIds.has(`user:${u.id}`))
+      .map((u) => ({ value: u.id, label: u.name, kind: PamApproverType.User, subtitle: u.email }));
 
     return [...groups, ...users];
-  }, [orgGroups, orgUsers, selectedBreakGlassIds, memberUserIds, memberGroupIds]);
+  }, [orgGroups, productUsers, selectedBreakGlassIds, memberUserIds, memberGroupIds]);
 
   const addApprover = (opt: ApproverOption | null) => {
     if (!opt) return;
@@ -313,24 +321,21 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
   };
 
   const handleSave = () => {
-    const hasIncompleteConfig =
-      isPamSlackEnabled &&
-      notificationConfigs.some(
-        (c) => !c.workflowIntegrationId || c.channels.length === 0 || c.events.length === 0
-      );
-    if (hasIncompleteConfig) {
+    if (
+      breakGlassUsers.length > 0 &&
+      approvers.length === 0 &&
+      autoApprovalDraft.rules.length === 0
+    ) {
       createNotification({
         type: "error",
-        text: "Each notification needs a Slack workspace, at least one channel, and at least one event"
+        text: "Break-glass users need approvers or auto-approval rules to skip"
       });
       return;
     }
 
-    if (breakGlassUsers.length > 0 && approvers.length === 0) {
-      createNotification({
-        type: "error",
-        text: "Break-glass users need at least one approver to skip"
-      });
+    if (autoApprovalDraft.rules.some((rule) => !isRuleComplete(rule, autoApprovalCatalog))) {
+      setShowAutoApprovalErrors(true);
+      createNotification({ type: "error", text: "Finish the auto-approval rules before saving" });
       return;
     }
 
@@ -339,8 +344,9 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         folderId,
         steps: [{ approvers }],
         breakGlassUsers,
-        // undefined leaves server-side configs untouched when the plan doesn't include the feature
-        notificationConfigs: isPamSlackEnabled ? notificationConfigs : undefined
+        // Legacy Slack configs can only be removed, so they're sent only when one was.
+        notificationConfigs: isNotifDirty ? notificationConfigs : undefined,
+        autoApproval: isAutoApprovalDirty ? toAutoApprovalConfig(autoApprovalDraft) : undefined
       },
       {
         onSuccess: () => {
@@ -358,6 +364,8 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
     setApprovers(savedApprovers);
     setBreakGlassApprovers(savedBreakGlassUsers);
     setNotificationConfigs(savedNotificationConfigs);
+    setAutoApprovalDraft(savedAutoApprovalDraft);
+    setShowAutoApprovalErrors(false);
     setIsDirty(false);
   };
 
@@ -372,6 +380,14 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4">
+      <AutoApprovalCard
+        {...autoApprovalScope}
+        draft={autoApprovalDraft}
+        onChange={setAutoApprovalDraft}
+        showErrors={showAutoApprovalErrors}
+        hasApprovers={approvers.length > 0}
+      />
+
       <Card>
         <CardHeader className="border-b">
           <CardTitle className="text-base">
@@ -384,17 +400,16 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <FilterableSelect
+          <Combobox
+            isClearable={false}
             value={null}
             options={approverOptions}
-            onChange={(opt) => addApprover(opt as ApproverOption | null)}
+            onValueChange={addApprover}
             getOptionValue={(opt) => `${opt.kind}:${opt.value}`}
             getOptionLabel={(opt) => opt.label}
-            components={{ Option: ApproverSelectOption }}
+            renderOption={renderApproverOption}
             placeholder="Add a user or group..."
-            noOptionsMessage={() =>
-              "No eligible folder members left. Add users or groups to this folder under the Permissions tab first."
-            }
+            emptyMessage="No eligible folder members left. Add users or groups to this folder under the Permissions tab first."
           />
 
           {approvers.length === 0 ? (
@@ -472,17 +487,16 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <FilterableSelect
+          <Combobox
+            isClearable={false}
             value={null}
             options={breakGlassOptions}
-            onChange={(opt) => addBreakGlassUser(opt as ApproverOption | null)}
+            onValueChange={addBreakGlassUser}
             getOptionValue={(opt) => `${opt.kind}:${opt.value}`}
             getOptionLabel={(opt) => opt.label}
-            components={{ Option: ApproverSelectOption }}
+            renderOption={renderApproverOption}
             placeholder="Add a user or group..."
-            noOptionsMessage={() =>
-              "No eligible folder members left. Add users or groups to this folder under the Permissions tab first."
-            }
+            emptyMessage="No eligible folder members left. Add users or groups to this folder under the Permissions tab first."
           />
 
           {breakGlassUsers.length === 0 ? (
@@ -546,7 +560,37 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         </CardContent>
       </Card>
 
-      {isPamSlackEnabled && (
+      <Card>
+        <CardHeader>
+          <CardTitle>Alerts</CardTitle>
+          <CardDescription>
+            Notify email, Slack, webhook, or PagerDuty channels about access request activity for
+            accounts in this folder.
+          </CardDescription>
+          <CardAction>
+            <AlertAction
+              resourceType={AlertResourceType.PamFolder}
+              resourceId={folderId}
+              projectId={currentProject.id}
+              channelPaywall={
+                subscription?.pamEnterpriseAlerting
+                  ? undefined
+                  : {
+                      lockedChannelTypes: [
+                        AlertChannelType.Slack,
+                        AlertChannelType.Webhook,
+                        AlertChannelType.PagerDuty
+                      ],
+                      intent: PamEnterpriseAlertingUpgradeIntent,
+                      paywallKey: "pam.folder-alert-channels"
+                    }
+              }
+            />
+          </CardAction>
+        </CardHeader>
+      </Card>
+
+      {savedNotificationConfigs.length > 0 && (
         <FolderNotificationsSection
           configs={notificationConfigs}
           integrationSlugById={integrationSlugById}
@@ -569,7 +613,7 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                 <IconButton
                   aria-label="Filter requests"
                   variant={requestsStatusFilter !== "all" ? "project" : "outline"}
-                  className={twMerge(requestsStatusFilter !== "all" && "text-primary")}
+                  className={twMerge(requestsStatusFilter !== "all" && "text-project")}
                 >
                   <FilterIcon />
                 </IconButton>
@@ -641,7 +685,25 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">
-                            <Badge variant={status.variant}>{status.label}</Badge>
+                            {status.isAutoApproved ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant={status.variant}>
+                                    <Zap className="mr-1 size-3" />
+                                    {status.label}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {`Approved by the rule "${
+                                    request.autoApproval?.rules.find(
+                                      (rule) => rule.id === request.autoApproval?.approvedByRuleId
+                                    )?.name ?? "auto-approval"
+                                  }"`}
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <Badge variant={status.variant}>{status.label}</Badge>
+                            )}
                             {request.isBreakGlass && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -704,16 +766,16 @@ export const FolderApprovalsTab = ({ folderId, onDirtyChange }: Props) => {
         </CardContent>
       </Card>
 
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={!!requestToRevoke}
-        onChange={(open) => {
+        onOpenChange={(open) => {
           if (!open) setRequestToRevoke(null);
         }}
         title="Revoke Access"
-        subTitle="Are you sure you want to revoke this user's approved access?"
-        deleteKey="revoke"
-        buttonText="Revoke"
-        onDeleteApproved={confirmRevoke}
+        description="Are you sure you want to revoke this user's approved access?"
+        confirmKey="revoke"
+        confirmLabel="Revoke"
+        onConfirm={confirmRevoke}
       />
 
       <div aria-hidden className="h-8 shrink-0" />

@@ -3,15 +3,14 @@ import RE2 from "re2";
 
 import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
-import {
-  SecretScanningFindingSeverity,
-  SecretScanningResource
-} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import { SecretScanningFindingSeverity } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
   assertProviderRepositorySizeWithinLimit,
   cloneRepository,
   convertPatchLineToFileLineNumber,
-  replaceNonChangesWithNewlines
+  isDataSourceWebhookRequired,
+  replaceNonChangesWithNewlines,
+  toFindingDetails
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
   TSecretScanningFactoryGetDiffScanFindingsPayload,
@@ -20,12 +19,12 @@ import {
   TSecretScanningFactoryInitialize,
   TSecretScanningFactoryListRawResources,
   TSecretScanningFactoryPostInitialization,
+  TSecretScanningFactorySetupWebhook,
   TSecretScanningFactoryTeardown,
   TSecretScanningFactoryValidateConfigUpdate
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { titleCaseToCamelCase } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { BasicRepositoryRegex } from "@app/lib/regex";
@@ -52,6 +51,8 @@ export const BitbucketSecretScanningFactory = () => {
     TBitbucketConnection,
     TBitbucketDataSourceCredentials
   > = async ({ connection, payload }, callback) => {
+    if (!isDataSourceWebhookRequired(payload)) return callback({});
+
     const cfg = getConfig();
 
     const { email, apiToken } = connection.credentials;
@@ -83,6 +84,8 @@ export const BitbucketSecretScanningFactory = () => {
     TBitbucketConnection,
     TBitbucketDataSourceCredentials
   > = async ({ dataSourceId, credentials, connection, payload }) => {
+    if (!credentials) return;
+
     const { email, apiToken } = connection.credentials;
     const { webhookId, webhookSecret } = credentials;
 
@@ -113,6 +116,8 @@ export const BitbucketSecretScanningFactory = () => {
     TBitbucketDataSourceWithConnection,
     TBitbucketDataSourceCredentials
   > = async ({ credentials, dataSource }) => {
+    if (!credentials) return;
+
     const {
       connection: {
         credentials: { email, apiToken }
@@ -143,22 +148,14 @@ export const BitbucketSecretScanningFactory = () => {
   ) => {
     const {
       connection,
-      config: { includeRepos, workspaceSlug }
+      config: { workspaceSlug }
     } = dataSource;
 
     const repos = await listBitbucketRepositories(connection, workspaceSlug);
 
-    const filteredRepos: typeof repos = [];
-    if (includeRepos.includes("*")) {
-      filteredRepos.push(...repos);
-    } else {
-      filteredRepos.push(...repos.filter((repo) => includeRepos.includes(repo.full_name)));
-    }
-
-    return filteredRepos.map(({ full_name, uuid }) => ({
+    return repos.map(({ full_name, uuid }) => ({
       name: full_name,
-      externalId: uuid,
-      type: SecretScanningResource.Repository
+      externalId: uuid
     }));
   };
 
@@ -213,8 +210,7 @@ export const BitbucketSecretScanningFactory = () => {
   > = ({ repository }) => {
     return {
       name: repository.full_name,
-      externalId: repository.uuid,
-      type: SecretScanningResource.Repository
+      externalId: repository.uuid
     };
   };
 
@@ -309,7 +305,10 @@ export const BitbucketSecretScanningFactory = () => {
                 Message: commit.message,
                 Fingerprint: `${commit.hash}:${filePath}:${finding.RuleID}:${startLine}:${startColumn}`,
                 Date: commit.date,
-                Link: `https://bitbucket.org/${resourceName}/src/${commit.hash}/${filePath}#lines-${startLine}`
+                Attributes: {
+                  ...finding.Attributes,
+                  url: `https://bitbucket.org/${resourceName}/src/${commit.hash}/${filePath}#lines-${startLine}`
+                }
               };
             });
 
@@ -319,19 +318,40 @@ export const BitbucketSecretScanningFactory = () => {
       }
     }
 
-    return allFindings.map(
-      ({
-        // discard match and secret as we don't want to store
-        Match,
-        Secret,
-        ...finding
-      }) => ({
-        details: titleCaseToCamelCase(finding),
-        fingerprint: finding.Fingerprint,
-        severity: SecretScanningFindingSeverity.High,
-        rule: finding.RuleID
-      })
+    return allFindings.map((finding) => ({
+      details: toFindingDetails(finding),
+      fingerprint: finding.Fingerprint,
+      severity: SecretScanningFindingSeverity.High,
+      rule: finding.RuleID
+    }));
+  };
+
+  const setupWebhook: TSecretScanningFactorySetupWebhook<
+    TBitbucketDataSourceWithConnection,
+    TBitbucketDataSourceCredentials
+  > = async ({ dataSource: { id, connection, config } }) => {
+    const { email, apiToken } = connection.credentials;
+    const authHeader = `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`;
+    const webhookSecret = alphaNumericNanoId(64);
+
+    const { data } = await request.post<{ uuid: string }>(
+      `${IntegrationUrls.BITBUCKET_API_URL}/2.0/workspaces/${encodeURIComponent(config.workspaceSlug)}/hooks`,
+      {
+        description: "Infisical webhook for push events",
+        url: `${getConfig().SITE_URL}/secret-scanning/webhooks/bitbucket?dataSourceId=${id}`,
+        active: true,
+        events: ["repo:push"],
+        secret: webhookSecret
+      },
+      {
+        headers: {
+          Authorization: authHeader,
+          Accept: "application/json"
+        }
+      }
     );
+
+    return { webhookId: data.uuid, webhookSecret };
   };
 
   const validateConfigUpdate: TSecretScanningFactoryValidateConfigUpdate<
@@ -349,6 +369,7 @@ export const BitbucketSecretScanningFactory = () => {
     getDiffScanResourcePayload,
     getDiffScanFindingsPayload,
     teardown,
+    setupWebhook,
     validateConfigUpdate
   };
 };

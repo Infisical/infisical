@@ -3,12 +3,17 @@ import {
   SIGNATURE_ALGORITHMS_OPTIONS
 } from "@app/hooks/api/certificates/constants";
 import { CertificateRenewalKeySource } from "@app/hooks/api/certificates/enums";
-import { TCertificate, TRenewCertificateAttributes } from "@app/hooks/api/certificates/types";
+import {
+  TCertificate,
+  TCertificateRenewalPreview,
+  TRenewCertificateAttributes
+} from "@app/hooks/api/certificates/types";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   CertSubjectAlternativeNameType,
-  CertSubjectAttributeType
+  CertSubjectAttributeType,
+  isIssuerGeneratedExtensionOid
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
 import type { RenewalFormData } from "./CertificateRenewalModal";
@@ -54,6 +59,11 @@ const deriveTtlFromCertificate = (cert: TCertificate): string => {
   const hours = Math.max(1, Math.floor(spanMs / (60 * 60 * 1000)));
   return `${hours}h`;
 };
+
+const SAN_TYPES = new Set<string>(Object.values(CertSubjectAlternativeNameType));
+
+const asSanType = (type: string | undefined): CertSubjectAlternativeNameType | undefined =>
+  type && SAN_TYPES.has(type) ? (type as CertSubjectAlternativeNameType) : undefined;
 
 const resolveSanType = (
   value: string,
@@ -105,30 +115,83 @@ export const unionUsageOptions = <T extends { value: string }>(
   return [...allowed, ...all.filter((o) => missing.includes(o.value))];
 };
 
+const pickKnown = (known: Set<string>, value?: string | null) =>
+  known.has(value ?? "") ? (value as string) : "";
+
+const buildSeedSubjectAttributes = (request: TCertificateRenewalPreview["request"]) => {
+  const attributes: { type: CertSubjectAttributeType; value: string }[] = [];
+
+  SUBJECT_ATTR_MAP.forEach(({ attrType, requestKey }) => {
+    const value = request[requestKey as keyof typeof request];
+    if (typeof value === "string" && value) attributes.push({ type: attrType, value });
+  });
+
+  request.domainComponents?.forEach((dc) => {
+    if (dc) attributes.push({ type: CertSubjectAttributeType.DOMAIN_COMPONENT, value: dc });
+  });
+
+  return attributes;
+};
+
 export const buildRenewalFormDefaults = (
   cert: TCertificate,
-  constraints: TemplateConstraints
+  constraints: TemplateConstraints,
+  renewalPreview?: TCertificateRenewalPreview
 ): RenewalFormData => ({
   keySource: CertificateRenewalKeySource.New,
   csr: "",
   ttl: deriveTtlFromCertificate(cert),
-  subjectAttributes: buildSubjectAttributes(cert),
-  subjectAltNames: parseCertificateSans(cert, constraints.allowedSanTypes),
+  subjectAttributes: renewalPreview?.hasOriginatingRequest
+    ? buildSeedSubjectAttributes(renewalPreview.request)
+    : buildSubjectAttributes(cert),
+  subjectAltNames: renewalPreview?.hasOriginatingRequest
+    ? renewalPreview.request.altNames.map(({ type, value }) => ({
+        type: asSanType(type) ?? resolveSanType(value, constraints.allowedSanTypes),
+        value
+      }))
+    : parseCertificateSans(cert, constraints.allowedSanTypes),
   basicConstraints: {
     isCA: Boolean(cert.basicConstraints?.isCA),
     pathLength: cert.basicConstraints?.pathLength ?? null
   },
-  signatureAlgorithm: KNOWN_SIGNATURE_ALGORITHMS.has(cert.signatureAlgorithm ?? "")
-    ? (cert.signatureAlgorithm as string)
-    : "",
-  keyAlgorithm: KNOWN_KEY_ALGORITHMS.has(cert.keyAlgorithm ?? "")
-    ? (cert.keyAlgorithm as string)
-    : "",
-  keyUsages: toUsageFormKeys(cert.keyUsages, KEY_USAGE_BY_NAME),
-  extendedKeyUsages: toUsageFormKeys(cert.extendedKeyUsages, EXTENDED_KEY_USAGE_BY_NAME),
-  customExtensions: (cert.customExtensions ?? [])
-    .filter((extension) => extension.displayValue !== undefined)
-    .map((extension) => ({ oid: extension.oid, value: extension.displayValue as string }))
+  signatureAlgorithm: pickKnown(
+    KNOWN_SIGNATURE_ALGORITHMS,
+    renewalPreview?.hasOriginatingRequest
+      ? renewalPreview.request.signatureAlgorithm
+      : cert.signatureAlgorithm
+  ),
+  keyAlgorithm: pickKnown(
+    KNOWN_KEY_ALGORITHMS,
+    renewalPreview?.hasOriginatingRequest ? renewalPreview.request.keyAlgorithm : cert.keyAlgorithm
+  ),
+  keyUsages: toUsageFormKeys(
+    renewalPreview?.hasOriginatingRequest ? renewalPreview.request.keyUsages : cert.keyUsages,
+    KEY_USAGE_BY_NAME
+  ),
+  extendedKeyUsages: toUsageFormKeys(
+    renewalPreview?.hasOriginatingRequest
+      ? renewalPreview.request.extendedKeyUsages
+      : cert.extendedKeyUsages,
+    EXTENDED_KEY_USAGE_BY_NAME
+  ),
+  customExtensions: renewalPreview?.hasOriginatingRequest
+    ? renewalPreview.request.customExtensions.map(({ oid, value, critical }) => ({
+        oid,
+        value: value ?? "",
+        critical
+      }))
+    : (cert.customExtensions ?? [])
+        .filter(
+          (extension) =>
+            extension.displayValue !== undefined &&
+            !extension.issuerAdded &&
+            !isIssuerGeneratedExtensionOid(extension.oid)
+        )
+        .map((extension) => ({
+          oid: extension.oid,
+          value: extension.displayValue as string,
+          critical: extension.critical
+        }))
 });
 
 const buildBasicConstraints = (

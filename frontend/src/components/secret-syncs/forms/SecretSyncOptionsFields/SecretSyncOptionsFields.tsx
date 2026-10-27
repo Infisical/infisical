@@ -40,6 +40,7 @@ import { InitialSyncAlerts } from "../SecretSyncInitialSyncBehaviorFields";
 import { AwsParameterStoreSyncOptionsFields } from "./AwsParameterStoreSyncOptionsFields";
 import { AwsSecretsManagerSyncOptionsFields } from "./AwsSecretsManagerSyncOptionsFields";
 import { AzureKeyVaultSyncOptionsFields } from "./AzureKeyVaultSyncOptionsFields";
+import { CloudflarePagesSyncOptionsFields } from "./CloudflarePagesSyncOptionsFields";
 import { CloudflareWorkersSyncOptionsFields } from "./CloudflareWorkersSyncOptionsFields";
 import { FlyioSyncOptionsFields } from "./FlyioSyncOptionsFields";
 import { QoverySyncOptionsFields } from "./QoverySyncOptionsFields";
@@ -111,6 +112,12 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
     case SecretSync.Qovery:
       AdditionalSyncOptionsFieldsComponent = <QoverySyncOptionsFields />;
       break;
+    case SecretSync.CloudflareWorkers:
+      AdditionalSyncOptionsFieldsComponent = <CloudflareWorkersSyncOptionsFields />;
+      break;
+    case SecretSync.CloudflarePages:
+      AdditionalSyncOptionsFieldsComponent = <CloudflarePagesSyncOptionsFields />;
+      break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
     case SecretSync.AzureAppConfiguration:
@@ -127,10 +134,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
     case SecretSync.OCIVault:
     case SecretSync.Heroku:
     case SecretSync.GitLab:
-    case SecretSync.CloudflareWorkers:
-      AdditionalSyncOptionsFieldsComponent = <CloudflareWorkersSyncOptionsFields />;
-      break;
-    case SecretSync.CloudflarePages:
+    case SecretSync.CloudflareSecretsStore:
     case SecretSync.Zabbix:
     case SecretSync.Railway:
     case SecretSync.Checkly:
@@ -151,9 +155,11 @@ export const SecretSyncOptionsFields = ({ hideInitialSync, children }: Props) =>
     case SecretSync.TravisCI:
     case SecretSync.Snowflake:
     case SecretSync.Rundeck:
+    case SecretSync.Portainer:
     case SecretSync.HasuraCloud:
     case SecretSync.Cloud66:
     case SecretSync.Daytona:
+    case SecretSync.Keeper:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     case SecretSync.Spacelift:

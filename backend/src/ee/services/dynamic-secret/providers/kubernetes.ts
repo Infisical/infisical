@@ -3,10 +3,11 @@ import https from "https";
 
 import { TDynamicSecrets } from "@app/db/schemas";
 import { request } from "@app/lib/config/request";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { sanitizeString } from "@app/lib/fn";
-import { GatewayHttpProxyActions, GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayHttpProxyActions, GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TKubernetesTokenRequest } from "@app/services/identity-kubernetes-auth/identity-kubernetes-auth-types";
 
@@ -14,7 +15,6 @@ import {
   ActorIdentityAttributes,
   TDynamicSecretKubernetesLeaseConfig
 } from "../../dynamic-secret-lease/dynamic-secret-lease-types";
-import { TGatewayServiceFactory } from "../../gateway/gateway-service";
 import { TGatewayPoolServiceFactory } from "../../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import {
@@ -32,13 +32,11 @@ const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 const GATEWAY_AUTH_DEFAULT_URL = "https://kubernetes.default.svc.cluster.local";
 
 type TKubernetesProviderDTO = {
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
 export const KubernetesProvider = ({
-  gatewayService,
   gatewayV2Service,
   gatewayPoolService
 }: TKubernetesProviderDTO): TDynamicProviderFns => {
@@ -66,42 +64,24 @@ export const KubernetesProvider = ({
       targetHost: inputs.targetHost,
       targetPort: inputs.targetPort
     });
-    if (gatewayV2ConnectionDetails) {
-      const callbackResult = await withGatewayV2Proxy(
-        async (port) => {
-          return gatewayCallback(
-            inputs.reviewTokenThroughGateway ? "http://localhost" : "https://localhost",
-            port,
-            inputs.httpsAgent
-          );
-        },
-        {
-          ...gatewayV2ConnectionDetails,
-          protocol: inputs.reviewTokenThroughGateway ? GatewayProxyProtocol.Http : GatewayProxyProtocol.Tcp,
-          httpsAgent: inputs.httpsAgent
-        }
-      );
-
-      return callbackResult;
+    // Falling through here would silently bypass the gateway this dynamic secret is pinned to
+    // and dial the Kubernetes API server from the platform instead.
+    if (!gatewayV2ConnectionDetails) {
+      throw new NotFoundError({ message: getMissingGatewayMessage(inputs.gatewayId) });
     }
 
-    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(inputs.gatewayId);
-
-    const callbackResult = await withGatewayProxy(
-      async (port, httpsAgent) => {
+    const callbackResult = await withGatewayV2Proxy(
+      async (port) => {
         // Needs to be https protocol or the kubernetes API server will fail with "Client sent an HTTP request to an HTTPS server"
-        const res = await gatewayCallback(
+        return gatewayCallback(
           inputs.reviewTokenThroughGateway ? "http://localhost" : "https://localhost",
           port,
-          httpsAgent
+          inputs.httpsAgent
         );
-        return res;
       },
       {
-        relayDetails,
+        ...gatewayV2ConnectionDetails,
         protocol: inputs.reviewTokenThroughGateway ? GatewayProxyProtocol.Http : GatewayProxyProtocol.Tcp,
-        targetHost: inputs.targetHost,
-        // we always pass this, because its needed for both tcp and http protocol
         httpsAgent: inputs.httpsAgent
       }
     );

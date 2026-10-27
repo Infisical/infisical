@@ -20,9 +20,18 @@ export type TGatewayV2 = {
 
 export type GatewayAwsAuthConfig = {
   id: string;
-  stsEndpoint: string;
   allowedPrincipalArns: string;
   allowedAccountIds: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GatewayGcpAuthConfig = {
+  id: string;
+  type: "gce" | "iam";
+  allowedServiceAccounts: string;
+  allowedProjects: string;
+  allowedZones: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -52,6 +61,7 @@ export type GatewayIdentityAuthConfig = {
 
 export type GatewayAuthMethodView =
   | { method: "aws"; config: GatewayAwsAuthConfig }
+  | { method: "gcp"; config: GatewayGcpAuthConfig }
   | { method: "kubernetes"; config: GatewayKubernetesAuthConfig }
   | { method: "token"; config: GatewayTokenAuthConfig }
   | { method: "identity"; config: GatewayIdentityAuthConfig };
@@ -63,9 +73,15 @@ export type TGatewayV2WithAuthMethod = TGatewayV2 & {
 export type SettableAuthMethodInput =
   | {
       method: "aws";
-      stsEndpoint?: string;
       allowedPrincipalArns: string;
       allowedAccountIds: string;
+    }
+  | {
+      method: "gcp";
+      type: "gce" | "iam";
+      allowedServiceAccounts: string;
+      allowedProjects: string;
+      allowedZones: string;
     }
   | {
       method: "kubernetes";
@@ -119,9 +135,24 @@ export type TGatewayConnectedPkiDiscoveryConfig = {
   projectName: string;
 };
 
+export type TGatewayConnectedPamAccount = {
+  id: string;
+  name: string;
+  accountType: string;
+  folderName: string | null;
+};
+
+export type TGatewayConnectedPamAccountTemplate = {
+  id: string;
+  name: string;
+  type: string;
+};
+
 export type TGatewayConnectedResources = {
   appConnections: TGatewayConnectedAppConnection[];
   dynamicSecrets: TGatewayConnectedDynamicSecret[];
   kubernetesAuths: TGatewayConnectedKubernetesAuth[];
   pkiDiscoveryConfigs: TGatewayConnectedPkiDiscoveryConfig[];
+  pamAccounts?: TGatewayConnectedPamAccount[];
+  pamAccountTemplates?: TGatewayConnectedPamAccountTemplate[];
 };

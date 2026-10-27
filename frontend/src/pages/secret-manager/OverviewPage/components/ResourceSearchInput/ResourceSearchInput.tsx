@@ -20,6 +20,8 @@ type Props = Omit<QuickSearchModalProps, "isOpen" | "onClose" | "onOpenChange" |
   value: string;
   onChange: (search: string) => void;
   className?: string;
+  isSearchAllFoldersOpen?: boolean;
+  onSearchAllFoldersOpenChange?: (isOpen: boolean) => void;
 };
 
 export const ResourceSearchInput = ({
@@ -27,9 +29,11 @@ export const ResourceSearchInput = ({
   onChange,
   className,
   isSingleEnv,
+  isSearchAllFoldersOpen,
+  onSearchAllFoldersOpenChange,
   ...props
 }: Props) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isInternalOpen, setIsInternalOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isOptionHighlighted, setIsOptionHighlighted] = useState(false);
   const deepSearchBtnRef = useRef<HTMLButtonElement>(null);
@@ -38,9 +42,14 @@ export const ResourceSearchInput = ({
 
   // local input state so typing doesn't re-render the whole table
   const [inputValue, setInputValue] = useState(externalValue);
-  const [debouncedInputValue] = useDebounce(inputValue);
+  const [debouncedInputValue, setDebouncedInputValue] = useDebounce(inputValue);
   const previousExternalValue = useRef(externalValue);
   const lastEmittedValue = useRef(externalValue);
+  // keeps a new onChange identity from re-running the sync effect with a stale debounced value
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
     const transition = getResourceSearchStateTransition({
@@ -56,20 +65,27 @@ export const ResourceSearchInput = ({
       previousExternalValue.current = transition.value;
       lastEmittedValue.current = transition.value;
       setInputValue(transition.value);
+      setDebouncedInputValue(transition.value);
       return;
     }
 
     lastEmittedValue.current = transition.value;
-    onChange(transition.value);
-  }, [debouncedInputValue, externalValue, onChange]);
+    onChangeRef.current(transition.value);
+  }, [debouncedInputValue, externalValue, setDebouncedInputValue]);
 
   const handleClear = () => {
     setInputValue("");
+    setDebouncedInputValue("");
     lastEmittedValue.current = "";
     onChange("");
   };
 
   const hasSearch = Boolean(inputValue.trim());
+  const isOpen = isSearchAllFoldersOpen ?? isInternalOpen;
+  const handleOpenChange = (open: boolean) => {
+    if (isSearchAllFoldersOpen === undefined) setIsInternalOpen(open);
+    onSearchAllFoldersOpenChange?.(open);
+  };
 
   return (
     <>
@@ -96,19 +112,23 @@ export const ResourceSearchInput = ({
                 onFocus={() => {
                   setIsFocused(true);
                 }}
-                onBlur={() => {
+                onBlur={(e) => {
+                  if (e.relatedTarget === deepSearchBtnRef.current) return;
                   setIsFocused(false);
                   setIsOptionHighlighted(false);
                 }}
                 onKeyDown={(e) => {
                   if (!isFocused) return;
 
-                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                  if (e.key === "Tab" && !e.shiftKey) {
+                    e.preventDefault();
+                    deepSearchBtnRef.current?.focus();
+                  } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
                     e.preventDefault();
                     setIsOptionHighlighted(true);
                   } else if (e.key === "Enter" && isOptionHighlighted) {
                     e.preventDefault();
-                    setIsOpen(true);
+                    handleOpenChange(true);
                     setIsFocused(false);
                     setIsOptionHighlighted(false);
                   } else if (e.key === "Escape") {
@@ -132,14 +152,31 @@ export const ResourceSearchInput = ({
           align="start"
           className="w-[var(--radix-popover-trigger-width)] p-1"
           onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => {
+            e.preventDefault();
+            inputRef.current?.focus();
+            setIsFocused(false);
+            setIsOptionHighlighted(false);
+          }}
         >
           <button
             ref={deepSearchBtnRef}
             type="button"
             className={`flex w-full cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-foreground hover:bg-foreground/5 ${isOptionHighlighted ? "bg-foreground/5" : ""}`}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              setIsOpen(true);
+            onFocus={() => setIsOptionHighlighted(true)}
+            onBlur={() => {
+              setIsOptionHighlighted(false);
+              setIsFocused(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Tab" && e.shiftKey) {
+                e.preventDefault();
+                inputRef.current?.focus();
+              }
+            }}
+            onClick={() => {
+              handleOpenChange(true);
               setIsFocused(false);
               setIsOptionHighlighted(false);
             }}
@@ -154,10 +191,10 @@ export const ResourceSearchInput = ({
       <QuickSearchModal
         isSingleEnv={isSingleEnv}
         isOpen={isOpen}
-        onOpenChange={setIsOpen}
+        onOpenChange={handleOpenChange}
         initialValue={inputValue}
         onClose={(clearSearch = true) => {
-          setIsOpen(false);
+          handleOpenChange(false);
           if (clearSearch) handleClear();
         }}
         {...props}

@@ -6,6 +6,7 @@ import { getDaytonaAuthHeaders } from "@app/services/app-connection/daytona";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { DAYTONA_SECRET_NAME_PATTERN, DAYTONA_SECRET_NAME_RULE } from "./daytona-sync-schemas";
@@ -62,7 +63,8 @@ const deleteDaytonaSecret = (apiKey: string, secretId: string) =>
   });
 
 export const DaytonaSyncFns = {
-  async syncSecrets(secretSync: TDaytonaSyncWithCredentials, secretMap: TSecretMap) {
+  async syncSecrets(secretSync: TDaytonaSyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const {
       connection,
       environment,
@@ -139,7 +141,8 @@ export const DaytonaSyncFns = {
     throw new Error("Daytona does not support importing secrets.");
   },
 
-  async removeSecrets(secretSync: TDaytonaSyncWithCredentials, secretMap: TSecretMap) {
+  async removeSecrets(secretSync: TDaytonaSyncWithCredentials, payload: TSecretSyncPayload) {
+    const secretMap = payload.flatten();
     const { apiKey } = secretSync.connection.credentials;
 
     const existingSecrets = await listDaytonaSecrets(apiKey);

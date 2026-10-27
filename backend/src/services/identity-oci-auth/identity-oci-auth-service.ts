@@ -24,6 +24,11 @@ import {
   authAttemptCounter,
   recordAuthAttemptMetric
 } from "@app/lib/telemetry/metrics";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import {
+  emitIdentityAuthMethodChanged,
+  IdentityAuthMethodChange
+} from "@app/services/identity/identity-auth-method-events";
 
 import { ActorType } from "../auth/auth-type";
 import { assertIdentityAuthAccessAllowed } from "../identity/identity-auth-permission-fns";
@@ -35,6 +40,7 @@ import { recordIdentityLastLoginDebounced } from "../membership-identity/members
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityOciAuthDALFactory } from "./identity-oci-auth-dal";
+import { getOciErrorForLog, getOciSignerUserOcid } from "./identity-oci-auth-fns";
 import {
   TAttachOciAuthDTO,
   TGetOciAuthDTO,
@@ -60,6 +66,7 @@ type TIdentityOciAuthServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "issueIdentityAccessToken" | "revokeTokensForIdentityAuthMethod" | "invalidateTrustedIpsCache"
   >;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityOciAuthServiceFactory = ReturnType<typeof identityOciAuthServiceFactory>;
@@ -73,7 +80,8 @@ export const identityOciAuthServiceFactory = ({
   licenseService,
   permissionService,
   orgDAL,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventEmitter
 }: TIdentityOciAuthServiceFactoryDep) => {
   const login = async ({ identityId, headers, userOcid, organizationSlug }: TLoginOciAuthDTO) => {
     const authMetricStartTime = performance.now();
@@ -107,12 +115,35 @@ export const identityOciAuthServiceFactory = ({
         });
       }
 
+      const signerUserOcid = getOciSignerUserOcid(headers.authorization);
+      if (!signerUserOcid) {
+        throw new BadRequestError({
+          message:
+            "Invalid OCI signature: the authorization header must be signed by an OCI user API key (keyId in the form <tenancy-ocid>/<user-ocid>/<fingerprint>)."
+        });
+      }
+
+      if (signerUserOcid !== userOcid) {
+        throw new UnauthorizedError({
+          message: "Access denied: the OCI user that signed the request does not match the provided user OCID.",
+          detail: {
+            reasonCode: "signer_mismatch",
+            identityId: identity.id,
+            orgId: identity.orgId,
+            identityName: identity.name
+          }
+        });
+      }
+
       const { data } = await request
         .get<TOciGetUserResponse>(`https://${headers.host}/20160918/users/${userOcid}`, {
           headers
         })
         .catch((err: AxiosError) => {
-          logger.error(err.response, "OciIdentityLogin: Failed to authenticate with Oracle Cloud");
+          logger.error(
+            getOciErrorForLog(err),
+            `OciIdentityLogin: Failed to authenticate with Oracle Cloud [identityId=${identity.id}] [status=${err.response?.status}]`
+          );
           throw err;
         });
 
@@ -289,35 +320,6 @@ export const identityOciAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
@@ -364,6 +366,17 @@ export const identityOciAuthServiceFactory = ({
           accessTokenTTL,
           accessTokenNumUsesLimit,
           accessTokenTrustedIps: JSON.stringify(reformattedAccessTokenTrustedIps)
+        },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.OCI_AUTH,
+          change: IdentityAuthMethodChange.Added,
+          actor,
+          actorId
         },
         tx
       );
@@ -414,35 +427,6 @@ export const identityOciAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.EditAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        OrgPermissionIdentityActions.EditAuth,
-        OrgPermissionSubjects.Identity
-      );
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
@@ -478,15 +462,33 @@ export const identityOciAuthServiceFactory = ({
       return extractIPDetails(accessTokenTrustedIp.ipAddress);
     });
 
-    const updatedOciAuth = await identityOciAuthDAL.updateById(identityOciAuth.id, {
-      tenancyOcid,
-      allowedUsernames,
-      accessTokenMaxTTL,
-      accessTokenTTL,
-      accessTokenNumUsesLimit,
-      accessTokenTrustedIps: reformattedAccessTokenTrustedIps
-        ? JSON.stringify(reformattedAccessTokenTrustedIps)
-        : undefined
+    const updatedOciAuth = await identityOciAuthDAL.transaction(async (tx) => {
+      const doc = await identityOciAuthDAL.updateById(
+        identityOciAuth.id,
+        {
+          tenancyOcid,
+          allowedUsernames,
+          accessTokenMaxTTL,
+          accessTokenTTL,
+          accessTokenNumUsesLimit,
+          accessTokenTrustedIps: reformattedAccessTokenTrustedIps
+            ? JSON.stringify(reformattedAccessTokenTrustedIps)
+            : undefined
+        },
+        tx
+      );
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.OCI_AUTH,
+          change: IdentityAuthMethodChange.Updated,
+          actor,
+          actorId
+        },
+        tx
+      );
+      return doc;
     });
 
     await identityAccessTokenService.invalidateTrustedIpsCache(identityId, IdentityAuthMethod.OCI_AUTH);
@@ -568,32 +570,6 @@ export const identityOciAuthServiceFactory = ({
       });
     }
 
-    if (identityMembershipOrg.identity.projectId) {
-      const { permission } = await permissionService.getProjectPermission({
-        actionProjectType: ActionProjectType.Any,
-        actor,
-        actorId,
-        projectId: identityMembershipOrg.identity.projectId,
-        actorAuthMethod,
-        actorOrgId
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionIdentityActions.RevokeAuth,
-        subject(ProjectPermissionSub.Identity, { identityId })
-      );
-    } else {
-      const { permission } = await permissionService.getOrgPermission({
-        scope: OrganizationActionScope.Any,
-        actor,
-        actorId,
-        orgId: identityMembershipOrg.scopeOrgId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
-    }
-
     await assertIdentityAuthAccessAllowed(
       { permissionService, orgDAL },
       {
@@ -615,6 +591,17 @@ export const identityOciAuthServiceFactory = ({
       const deletedOciAuth = await identityOciAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.OCI_AUTH }, tx);
 
+      await emitIdentityAuthMethodChanged(
+        eventEmitter,
+        {
+          membership: identityMembershipOrg,
+          authMethod: IdentityAuthMethod.OCI_AUTH,
+          change: IdentityAuthMethodChange.Removed,
+          actor,
+          actorId
+        },
+        tx
+      );
       return { ...deletedOciAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
 

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { ArrowDown, TriangleAlert } from "lucide-react";
+import { ArrowDown, Info, TriangleAlert } from "lucide-react";
 
 import {
   Alert,
@@ -33,7 +33,9 @@ const getGraphicVariant = (key: string): GraphicVariant => {
   return "prioritize-destination";
 };
 
-const getShortDestinationName = (name: string) => name.split(" ")[0];
+// "Digital Ocean" is a two-word vendor; the first word alone is not the name.
+const getShortDestinationName = (name: string) =>
+  name.startsWith("Digital Ocean") ? "Digital Ocean" : name.split(" ")[0];
 
 const getBehaviorCopy = (
   key: SecretSyncInitialSyncBehavior,
@@ -119,7 +121,7 @@ const SecretRow = ({ name, fate }: ReconciliationRow) => {
 const ReconciliationLegend = () => (
   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] tracking-wider text-muted uppercase">
     <span className="flex items-center gap-1">
-      <span className="inline-block h-2 w-3 rounded-[2px] border border-border bg-container-hover/80" />
+      <span className="inline-block h-2 w-3 rounded-[2px] border border-border bg-surface-raised/80" />
       unchanged
     </span>
     <span className="flex items-center gap-1">
@@ -200,7 +202,7 @@ const ReconciliationSection = ({
   infisicalRows: ReconciliationRow[];
   destinationRows: ReconciliationRow[];
 }) => (
-  <div className="rounded-md border border-border bg-container-hover/30 p-3">
+  <div className="rounded-md border border-border bg-surface-raised/30 p-3">
     <div className="mb-3 flex items-baseline gap-2">
       <p className="text-xs font-semibold tracking-wider text-foreground uppercase">{title}</p>
       <p className="text-xs text-muted">{subtitle}</p>
@@ -344,6 +346,7 @@ export const SecretSyncInitialSyncBehaviorFields = () => {
   const currentInitialBehavior = watch("syncOptions.initialSyncBehavior");
   const disableSecretDeletion = watch("syncOptions.disableSecretDeletion");
   const keySchema = watch("syncOptions.keySchema");
+  const includeAllSubFolders = Boolean(watch("syncOptions.includeAllSubFolders"));
 
   // Vercel "sensitive" secrets cannot be read back, so importing destination secrets is impossible.
   // Force the initial sync behavior to OverwriteDestination whenever sensitive is enabled.
@@ -359,14 +362,28 @@ export const SecretSyncInitialSyncBehaviorFields = () => {
     }
   }, [vercelSensitive, currentInitialBehavior, setValue]);
 
-  const importAvailable = Boolean(syncOption?.canImportSecrets) && !vercelSensitive;
+  // A sync that includes subfolders has no single folder to import destination secrets back into,
+  // so overwrite is its only option. The source step sets that when the toggle goes on; this keeps
+  // the choice from being offered again here.
+  const importAvailable =
+    Boolean(syncOption?.canImportSecrets) && !vercelSensitive && !includeAllSubFolders;
   const behaviorKeys = importAvailable
     ? BEHAVIOR_ORDER
     : [SecretSyncInitialSyncBehavior.OverwriteDestination];
 
   return (
     <>
-      {!vercelSensitive && !syncOption?.canImportSecrets && (
+      {includeAllSubFolders && syncOption?.canImportSecrets && (
+        <Alert className="mb-3" variant="info">
+          <Info />
+          <AlertTitle>Importing secrets is not supported with subfolders</AlertTitle>
+          <AlertDescription>
+            This sync includes secrets from subfolders, so there is no single folder to import
+            destination secrets into. Turn off subfolders on the source step to import instead.
+          </AlertDescription>
+        </Alert>
+      )}
+      {!vercelSensitive && !includeAllSubFolders && !syncOption?.canImportSecrets && (
         <Alert className="mb-3" variant="warning">
           <TriangleAlert />
           <AlertTitle>Importing secrets is not supported</AlertTitle>

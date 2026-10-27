@@ -7,6 +7,8 @@ export enum PkiSync {
   GcpCertificateManager = "gcp-certificate-manager",
   CloudflareCustomCertificate = "cloudflare-custom-certificate",
   NetScaler = "netscaler",
+  PaloAltoNetworks = "palo-alto-networks",
+  PaloAltoNetworksSslTlsProfile = "palo-alto-networks-ssl-tls-profile",
   F5BigIp = "f5-big-ip",
   KempLoadMaster = "kemp-loadmaster",
   LinuxServer = "linux-server",
@@ -16,8 +18,18 @@ export enum PkiSync {
 
 export enum PkiSyncExportFormat {
   Pem = "pem",
-  Pkcs12 = "pkcs12"
+  Pkcs12 = "pkcs12",
+  Jks = "jks"
 }
+
+export const PKI_SYNC_EXPORT_FORMAT_LABELS: Record<PkiSyncExportFormat, string> = {
+  [PkiSyncExportFormat.Pem]: "PEM",
+  [PkiSyncExportFormat.Pkcs12]: "PKCS#12 (.pfx)",
+  [PkiSyncExportFormat.Jks]: "Java KeyStore (.jks)"
+};
+
+export const isKeystoreExportFormat = (format?: PkiSyncExportFormat) =>
+  format === PkiSyncExportFormat.Pkcs12 || format === PkiSyncExportFormat.Jks;
 
 export enum PemCertificateExtension {
   Pem = "pem",
@@ -29,6 +41,7 @@ export enum HostCommandVariable {
   CertificateDirectory = "certificateDirectory",
   CertificateFiles = "certificateFiles",
   CommonName = "commonName",
+  ExportPassword = "exportPassword",
   Pkcs12Password = "pkcs12Password"
 }
 

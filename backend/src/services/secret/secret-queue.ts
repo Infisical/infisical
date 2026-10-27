@@ -19,13 +19,14 @@ import { TSecretApprovalRequestDALFactory } from "@app/ee/services/secret-approv
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { getTimeDifferenceInSeconds, groupBy, isSamePath, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { highCardinalityMeter, recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { createManySecretsRawFnFactory, updateManySecretsRawFnFactory } from "@app/services/secret/secret-fns";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
@@ -76,7 +77,6 @@ import { WebhookEvents } from "../webhook/webhook-types";
 import { TSecretDALFactory } from "./secret-dal";
 import { interpolateSecrets } from "./secret-fns";
 import {
-  TCreateSecretReminderDTO,
   TFailedIntegrationSyncEmailsPayload,
   THandleReminderDTO,
   TIntegrationSyncPayload,
@@ -123,8 +123,9 @@ type TSecretQueueFactoryDep = {
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
-  reminderService: Pick<TReminderServiceFactory, "createReminderInternal" | "deleteReminderBySecretId">;
+  reminderService: Pick<TReminderServiceFactory, "createReminder" | "deleteReminderBySecretId">;
   projectEventsService: TProjectEventsService;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -190,6 +191,7 @@ export const secretQueueFactory = ({
   resourceMetadataDAL,
   secretSyncQueue,
   folderCommitService,
+  eventEmitter,
   reminderService,
   projectEventsService,
   licenseService,
@@ -273,44 +275,7 @@ export const secretQueueFactory = ({
       .replace(":", "-");
   };
 
-  const addSecretReminder = async ({
-    oldSecret,
-    newSecret,
-    projectId,
-    secretReminderRecipients
-  }: TCreateSecretReminderDTO) => {
-    try {
-      if (oldSecret.id !== newSecret.id) {
-        throw new BadRequestError({
-          name: "SecretReminderIdMismatch",
-          message: "Existing secret didn't match the updated secret ID."
-        });
-      }
-
-      if (!newSecret.secretReminderRepeatDays) {
-        throw new BadRequestError({
-          name: "SecretReminderRepeatDaysMissing",
-          message: "Secret reminder repeat days is missing."
-        });
-      }
-
-      await reminderService.createReminderInternal({
-        secretId: newSecret.id,
-        message: newSecret.secretReminderNote,
-        repeatDays: newSecret.secretReminderRepeatDays,
-        recipients: secretReminderRecipients,
-        projectId
-      });
-    } catch (err) {
-      logger.error(err, "Failed to create secret reminder.");
-      throw new BadRequestError({
-        name: "SecretReminderCreateFailed",
-        message: "Failed to create secret reminder."
-      });
-    }
-  };
-
-  const handleSecretReminder = async ({ newSecret, oldSecret, projectId }: THandleReminderDTO) => {
+  const handleSecretReminder = async ({ newSecret, oldSecret, projectId, actor }: THandleReminderDTO) => {
     const { secretReminderRepeatDays, secretReminderNote, secretReminderRecipients } = newSecret;
 
     if (newSecret.type !== SecretType.Personal && secretReminderRepeatDays !== undefined) {
@@ -318,12 +283,14 @@ export const secretQueueFactory = ({
         (secretReminderRepeatDays && oldSecret.secretReminderRepeatDays !== secretReminderRepeatDays) ||
         (secretReminderNote && oldSecret.secretReminderNote !== secretReminderNote)
       ) {
-        await addSecretReminder({
-          oldSecret,
-          newSecret,
-          projectId,
-          secretReminderRecipients: secretReminderRecipients ?? [],
-          deleteRecipients: false
+        await reminderService.createReminder({
+          ...actor,
+          reminder: {
+            secretId: newSecret.id,
+            message: secretReminderNote,
+            repeatDays: secretReminderRepeatDays,
+            recipients: secretReminderRecipients ?? []
+          }
         });
       } else if (
         secretReminderRepeatDays === null &&
@@ -352,7 +319,8 @@ export const secretQueueFactory = ({
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
-    folderCommitService
+    folderCommitService,
+    eventEmitter
   });
 
   const updateManySecretsRawFn = updateManySecretsRawFnFactory({
@@ -369,7 +337,8 @@ export const secretQueueFactory = ({
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
-    folderCommitService
+    folderCommitService,
+    eventEmitter
   });
 
   /**
@@ -1643,7 +1612,6 @@ export const secretQueueFactory = ({
     syncSecrets,
     startSecretV2Migration,
     syncIntegrations,
-    addSecretReminder,
     removeSecretReminder,
     handleSecretReminder,
     replicateSecrets

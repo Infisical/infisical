@@ -26,7 +26,7 @@ export const windowsLocalAccountRotationFactory: TRotationFactory<
   TWindowsLocalAccountRotationWithConnection,
   TWindowsLocalAccountRotationGeneratedCredentials,
   TWindowsLocalAccountRotationInput["temporaryParameters"]
-> = (secretRotation, _appConnectionDAL, _kmsService, _gatewayService, gatewayV2Service, gatewayPoolService) => {
+> = (secretRotation, _appConnectionDAL, _kmsService, gatewayV2Service, gatewayPoolService) => {
   const { connection, parameters, secretsMapping, activeIndex } = secretRotation;
   const { username, passwordRequirements, rotationMethod = WindowsLocalAccountRotationMethod.LoginAsRoot } = parameters;
 

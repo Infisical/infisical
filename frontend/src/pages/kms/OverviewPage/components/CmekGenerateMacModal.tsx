@@ -1,3 +1,4 @@
+import { useEffect, useId } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { faCheckCircle, faFileSignature, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -7,14 +8,23 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FormControl,
-  Modal,
-  ModalClose,
-  ModalContent,
-  Switch,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
+  IconButton,
   TextArea,
-  Tooltip
-} from "@app/components/v2";
+  Toggle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
 import { TCmek, useCmekGenerateMac } from "@app/hooks/api/cmeks";
 
@@ -31,10 +41,15 @@ type Props = {
   cmek: TCmek;
 };
 
-type FormProps = Pick<Props, "cmek">;
+type FormProps = Pick<Props, "cmek"> & {
+  cmekGenerateMac: ReturnType<typeof useCmekGenerateMac>;
+};
 
-const GenerateMacForm = ({ cmek }: FormProps) => {
-  const cmekGenerateMac = useCmekGenerateMac();
+const GenerateMacForm = ({ cmek, cmekGenerateMac }: FormProps) => {
+  const fieldId = useId();
+  const { reset: resetMacResult } = cmekGenerateMac;
+
+  useEffect(() => resetMacResult, [resetMacResult]);
 
   const {
     handleSubmit,
@@ -71,40 +86,65 @@ const GenerateMacForm = ({ cmek }: FormProps) => {
   return (
     <form onSubmit={handleSubmit(handleGenerateMac)}>
       {mac ? (
-        <FormControl label="Message Authentication Code">
-          <TextArea className="max-h-80 min-h-40 max-w-full min-w-full" isDisabled value={mac} />
-        </FormControl>
+        <Field className="mb-4">
+          <FieldLabel htmlFor={`${fieldId}-mac`}>Message Authentication Code</FieldLabel>
+          <TextArea id={`${fieldId}-mac`} rows={4} readOnly value={mac} />
+        </Field>
       ) : (
         <>
-          <FormControl
-            label="Data to Authenticate"
-            errorText={errors.data?.message}
-            isError={Boolean(errors.data)}
-          >
-            <TextArea {...register("data")} className="max-h-80 min-h-40 max-w-full min-w-full" />
-          </FormControl>
-
-          <div className="mb-6 flex w-full items-center justify-end gap-2">
-            <Controller
-              control={control}
-              name="isBase64Encoded"
-              render={({ field: { onChange, value } }) => (
-                <Switch id="encode-base-64" isChecked={value} onCheckedChange={onChange}>
-                  Data is Base64 encoded{" "}
-                  <Tooltip content="Toggle this switch on if your data is already Base64 encoded to avoid redundant encoding.">
-                    <FontAwesomeIcon icon={faInfoCircle} className="text-mineshaft-400" />
-                  </Tooltip>
-                </Switch>
-              )}
+          <Field className="mb-4" data-invalid={Boolean(errors.data)}>
+            <FieldLabel htmlFor={`${fieldId}-data`}>Data to Authenticate</FieldLabel>
+            <TextArea
+              {...register("data")}
+              id={`${fieldId}-data`}
+              isError={Boolean(errors.data)}
+              aria-describedby={errors.data ? `${fieldId}-data-error` : undefined}
             />
-          </div>
+            <FieldError id={`${fieldId}-data-error`} errors={[errors.data]} />
+          </Field>
+
+          <Controller
+            control={control}
+            name="isBase64Encoded"
+            render={({ field: { onChange, value } }) => (
+              <Field orientation="horizontal" className="mb-6">
+                <Toggle
+                  id={`${fieldId}-encode-base-64`}
+                  checked={value}
+                  onCheckedChange={onChange}
+                />
+                <FieldLabel htmlFor={`${fieldId}-encode-base-64`}>
+                  Data is Base64 encoded
+                </FieldLabel>
+                <Tooltip hoverable selectable={false} delayDuration={50}>
+                  <TooltipTrigger asChild>
+                    <IconButton variant="ghost" size="xs" aria-label="About Base64 encoding">
+                      <FontAwesomeIcon icon={faInfoCircle} className="text-muted" />
+                    </IconButton>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs" sideOffset={5}>
+                    Toggle this switch on if your data is already Base64 encoded to avoid redundant
+                    encoding.
+                  </TooltipContent>
+                </Tooltip>
+              </Field>
+            )}
+          />
         </>
       )}
-      <div className="flex items-center">
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="ghost">{mac ? "Close" : "Cancel"}</Button>
+        </DialogClose>
         <Button
-          className={`mr-4 ${mac ? "w-44" : ""}`}
-          size="sm"
-          leftIcon={
+          className={mac ? "w-44" : undefined}
+          variant="project"
+          onClick={mac ? handleCopyToClipboard : undefined}
+          type={mac ? "button" : "submit"}
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
+          {
             // eslint-disable-next-line no-nested-ternary
             mac ? (
               isCopyingMac ? (
@@ -116,37 +156,28 @@ const GenerateMacForm = ({ cmek }: FormProps) => {
               <FontAwesomeIcon icon={faFileSignature} />
             )
           }
-          onClick={mac ? handleCopyToClipboard : undefined}
-          type={mac ? "button" : "submit"}
-          isLoading={isSubmitting}
-          isDisabled={isSubmitting}
-        >
           {mac ? copyMac : "Generate MAC"}
         </Button>
-        <ModalClose asChild>
-          <Button colorSchema="secondary" variant="plain">
-            {mac ? "Close" : "Cancel"}
-          </Button>
-        </ModalClose>
-      </div>
+      </DialogFooter>
     </form>
   );
 };
 
 export const CmekGenerateMacModal = ({ isOpen, onOpenChange, cmek }: Props) => {
+  const cmekGenerateMac = useCmekGenerateMac();
+
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent
-        title="Generate MAC"
-        subTitle={
-          <>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent isPending={cmekGenerateMac.isPending}>
+        <DialogHeader>
+          <DialogTitle>Generate MAC</DialogTitle>
+          <DialogDescription>
             Generate a message authentication code using{" "}
             <span className="font-bold">{cmek?.name}</span>. Returns a Base64 encoded MAC.
-          </>
-        }
-      >
-        <GenerateMacForm cmek={cmek} />
-      </ModalContent>
-    </Modal>
+          </DialogDescription>
+        </DialogHeader>
+        <GenerateMacForm cmek={cmek} cmekGenerateMac={cmekGenerateMac} />
+      </DialogContent>
+    </Dialog>
   );
 };

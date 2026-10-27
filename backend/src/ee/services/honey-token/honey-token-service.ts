@@ -15,6 +15,7 @@ import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -26,6 +27,7 @@ import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/res
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import { fnSecretBulkDelete, fnSecretBulkInsert } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
@@ -106,6 +108,7 @@ export type THoneyTokenServiceFactoryDep = {
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   secretTagDAL: TSecretTagDALFactory;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
   webhookDAL: Pick<TWebhookDALFactory, "findAllWebhooks" | "transaction" | "update" | "bulkUpdate">;
@@ -151,6 +154,7 @@ export const honeyTokenServiceFactory = ({
   secretVersionTagDAL,
   secretTagDAL,
   folderCommitService,
+  eventEmitter,
   resourceMetadataDAL,
   secretQueueService,
   webhookDAL,
@@ -177,6 +181,7 @@ export const honeyTokenServiceFactory = ({
     secretVersionTagDAL,
     secretTagDAL,
     folderCommitService,
+    eventEmitter,
     resourceMetadataDAL,
     secretQueueService,
     webhookDAL,
@@ -321,10 +326,11 @@ export const honeyTokenServiceFactory = ({
       plainText: Buffer.from(JSON.stringify(honeyTokenCredentials))
     }).cipherTextBlob;
 
-    const { encryptor: secretEncryptor, generateSecretBlindIndex } = await kmsService.createCipherPairWithDataKey({
+    const { encryptor: secretEncryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
+    const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService });
 
     const secretEntries = Object.entries(secretsMapping).map(([credentialField, secretKey]) => {
       const credentialValue = honeyTokenCredentials[credentialField];
@@ -378,13 +384,15 @@ export const honeyTokenServiceFactory = ({
           encryptedValue: secretEncryptor({
             plainText: Buffer.from(value)
           }).cipherTextBlob,
-          secretValueBlindIndex: await generateSecretBlindIndex(Buffer.from(value)),
+          blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(value)),
           references: []
         }))
       );
 
       const createdSecrets = await fnSecretBulkInsert({
         folderId: folder.id,
+        eventEmitter,
+        eventScope: { projectId, environment, secretPath: folder.path },
         orgId: actor.orgId,
         inputSecrets: inputSecretsWithBlindIndex,
         secretDAL,
@@ -425,6 +433,21 @@ export const honeyTokenServiceFactory = ({
     };
   };
 
+  // Includes environments pending deletion so update and revoke keep working during the grace period,
+  // and the permission check gets the real environment and path.
+  const $findHoneyTokenFolder = async (honeyToken: { id: string; projectId: string; folderId: string }) => {
+    const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(
+      honeyToken.projectId,
+      [honeyToken.folderId],
+      undefined,
+      { readFromPrimary: true, includePendingDeletion: true }
+    );
+    if (!folderWithEnv) {
+      throw new NotFoundError({ message: `Folder of honey token with ID "${honeyToken.id}" not found` });
+    }
+    return folderWithEnv;
+  };
+
   const updateHoneyToken = async (
     { honeyTokenId, name, description, secretsMapping }: THoneyTokenUpdateInput,
     actor: OrgServiceActor
@@ -435,7 +458,8 @@ export const honeyTokenServiceFactory = ({
     }
 
     const { projectId } = honeyToken;
-    const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId]);
+    const folderWithEnv = await $findHoneyTokenFolder(honeyToken);
+    const eventScope = { projectId, environment: folderWithEnv.environmentSlug, secretPath: folderWithEnv.path };
     const { permission: updatePermission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -447,8 +471,8 @@ export const honeyTokenServiceFactory = ({
     ForbiddenError.from(updatePermission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.Edit,
       subject(ProjectPermissionSub.HoneyTokens, {
-        environment: folderWithEnv?.environmentSlug ?? "",
-        secretPath: folderWithEnv?.path ?? "/"
+        environment: folderWithEnv.environmentSlug,
+        secretPath: folderWithEnv.path
       })
     );
 
@@ -525,11 +549,11 @@ export const honeyTokenServiceFactory = ({
         decryptor({ cipherTextBlob: honeyToken.encryptedCredentials }).toString()
       ) as Record<string, string>;
 
-      const { encryptor: secretEncryptor, generateSecretBlindIndex: generateBlindIndex } =
-        await kmsService.createCipherPairWithDataKey({
-          type: KmsDataKey.SecretManager,
-          projectId
-        });
+      const { encryptor: secretEncryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.SecretManager,
+        projectId
+      });
+      const blindIndexer = await createSecretBlindIndexer({ projectId, orgId: actor.orgId, kmsService });
 
       const secretEntries = Object.entries(nextSecretsMapping).map(([credentialField, secretKey]) => {
         const credentialValue = decryptedCredentials[credentialField];
@@ -545,6 +569,8 @@ export const honeyTokenServiceFactory = ({
       return honeyTokenDAL.transaction(async (tx) => {
         await fnSecretBulkDelete({
           folderId: honeyToken.folderId,
+          eventEmitter,
+          eventScope,
           projectId,
           inputSecrets: oldSecretKeys.map((key) => ({ type: SecretType.Shared, secretKey: key })),
           actorId: actor.id,
@@ -562,13 +588,15 @@ export const honeyTokenServiceFactory = ({
             encryptedValue: secretEncryptor({
               plainText: Buffer.from(value)
             }).cipherTextBlob,
-            secretValueBlindIndex: await generateBlindIndex(Buffer.from(value)),
+            blindIndexes: await blindIndexer.generateBlindIndexes(Buffer.from(value)),
             references: []
           }))
         );
 
         const createdSecrets = await fnSecretBulkInsert({
           folderId: honeyToken.folderId,
+          eventEmitter,
+          eventScope,
           orgId: actor.orgId,
           inputSecrets: inputSecretsWithBlindIndex,
           secretDAL,
@@ -626,7 +654,8 @@ export const honeyTokenServiceFactory = ({
     }
 
     const { projectId } = honeyToken;
-    const [folderWithEnv] = await folderDAL.findSecretPathByFolderIds(projectId, [honeyToken.folderId]);
+    const folderWithEnv = await $findHoneyTokenFolder(honeyToken);
+    const eventScope = { projectId, environment: folderWithEnv.environmentSlug, secretPath: folderWithEnv.path };
     const { permission: revokePermission } = await permissionService.getProjectPermission({
       actor: actor.type,
       actorId: actor.id,
@@ -638,8 +667,8 @@ export const honeyTokenServiceFactory = ({
     ForbiddenError.from(revokePermission).throwUnlessCan(
       ProjectPermissionHoneyTokenActions.Revoke,
       subject(ProjectPermissionSub.HoneyTokens, {
-        environment: folderWithEnv?.environmentSlug ?? "",
-        secretPath: folderWithEnv?.path ?? "/"
+        environment: folderWithEnv.environmentSlug,
+        secretPath: folderWithEnv.path
       })
     );
 
@@ -704,6 +733,8 @@ export const honeyTokenServiceFactory = ({
 
       await fnSecretBulkDelete({
         folderId: honeyToken.folderId,
+        eventEmitter,
+        eventScope,
         projectId,
         inputSecrets: secretKeys.map((key) => ({ type: SecretType.Shared, secretKey: key })),
         actorId: actor.id,

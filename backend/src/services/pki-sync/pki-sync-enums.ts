@@ -7,6 +7,8 @@ export enum PkiSync {
   GcpCertificateManager = "gcp-certificate-manager",
   CloudflareCustomCertificate = "cloudflare-custom-certificate",
   NetScaler = "netscaler",
+  PaloAltoNetworks = "palo-alto-networks",
+  PaloAltoNetworksSslTlsProfile = "palo-alto-networks-ssl-tls-profile",
   F5BigIp = "f5-big-ip",
   KempLoadMaster = "kemp-loadmaster",
   LinuxServer = "linux-server",
@@ -32,12 +34,6 @@ export enum PkiSyncFailureKind {
   Sync = "sync",
   PostSyncCommand = "post-sync-command"
 }
-
-export const PKI_SYNC_CONNECTION_CONCURRENCY_LIMIT = 3;
-
-export const PKI_SYNC_CONNECTION_AGGREGATE_CONCURRENCY_LIMIT = 15;
-
-export const PKI_SYNC_CONNECTION_CONCURRENCY_TTL_S = 15 * 60;
 
 export const PKI_SYNC_CONNECTION_LOCK_RETRY = { retryCount: 10, retryDelay: 3_000, retryJitter: 500 };
 

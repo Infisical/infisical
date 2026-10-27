@@ -7,6 +7,7 @@ import { validateSsrfUrl } from "@app/lib/validator";
 import { getOvhHttpsAgent } from "@app/services/app-connection/ovh";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
+import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TOvhSyncWithCredentials } from "./ovh-sync-types";
@@ -163,7 +164,8 @@ const writeSecretBundle = async (
 };
 
 export const OvhSyncFns = {
-  syncSecrets: async (secretSync: TOvhSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TOvhSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
@@ -202,7 +204,8 @@ export const OvhSyncFns = {
     }
   },
 
-  removeSecrets: async (secretSync: TOvhSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TOvhSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     await writeSecretBundle(secretSync, (existing) => {
       const desired = { ...existing };
       for (const key of Object.keys(secretMap)) delete desired[key];

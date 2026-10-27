@@ -1,9 +1,9 @@
-import { Helmet } from "react-helmet";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Building2, KeyRound, ServerCog } from "lucide-react";
 
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthPagePanel } from "@app/components/auth/AuthPagePanel";
+import { PageTitle } from "@app/components/PageTitle";
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@app/components/v3";
 
 type Props = {
@@ -15,20 +15,18 @@ export const WelcomePage = ({ organizationId }: Props) => {
 
   return (
     <AuthPageLayout variant="focused" contentClassName="max-w-xl">
-      <Helmet>
-        <title>Instance ready | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Instance Ready" />
+      <link rel="icon" href="/infisical.ico" />
       <AuthPagePanel>
         <CardHeader className="gap-0">
-          <div className="relative mb-8 flex size-10 items-center justify-center bg-primary text-black">
+          <div className="relative mb-8 flex size-10 items-center justify-center bg-project text-black">
             <KeyRound className="size-5" />
-            <span aria-hidden="true" className="absolute -top-1.5 -right-1.5 size-2 bg-primary" />
+            <span aria-hidden="true" className="absolute -top-1.5 -right-1.5 size-2 bg-project" />
           </div>
           <CardTitle className="font-alliance text-3xl leading-tight font-normal">
             Your instance is ready.
           </CardTitle>
-          <CardDescription className="mt-2 max-w-lg font-alliance text-base leading-relaxed">
+          <CardDescription className="mt-2 max-w-lg font-sans text-base leading-relaxed">
             Choose where you want to go next:
           </CardDescription>
         </CardHeader>
@@ -37,7 +35,7 @@ export const WelcomePage = ({ organizationId }: Props) => {
           <div className="grid gap-3">
             <button
               type="button"
-              className="group grid min-h-18 cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center rounded-md border border-primary/30 bg-primary/25 p-4 text-left text-foreground transition-all select-none hover:border-primary/35 hover:bg-primary/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50"
+              className="group grid min-h-18 cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center rounded-md border border-project/30 bg-project/25 p-4 text-left text-foreground transition-all select-none hover:border-project/35 hover:bg-project/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-0 active:scale-[0.99] disabled:pointer-events-none disabled:opacity-50"
               onClick={() =>
                 navigate({
                   to: "/organizations/$orgId/projects",
@@ -48,7 +46,7 @@ export const WelcomePage = ({ organizationId }: Props) => {
               <span className="flex min-w-0 flex-col gap-1">
                 <span className="flex items-start gap-2">
                   <Building2 className="size-5 text-foreground" />
-                  <span className="font-alliance text-base font-medium text-foreground">
+                  <span className="font-sans text-base font-medium text-foreground">
                     Go to dashboard
                   </span>
                 </span>
@@ -67,7 +65,7 @@ export const WelcomePage = ({ organizationId }: Props) => {
               <span className="flex min-w-0 flex-col gap-1">
                 <span className="flex items-start gap-2">
                   <ServerCog className="size-5 text-foreground" />
-                  <span className="font-alliance text-base font-medium text-foreground">
+                  <span className="font-sans text-base font-medium text-foreground">
                     Access server console
                   </span>
                 </span>

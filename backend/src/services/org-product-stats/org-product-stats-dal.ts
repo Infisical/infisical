@@ -176,6 +176,32 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countSecretScanningFindingsForOrg = async (orgId: string, tx?: Knex) => {
+    try {
+      const result = (await (tx || db.replicaNode())(TableName.SecretScanningFinding)
+        .join(
+          TableName.SecretScanningResource,
+          `${TableName.SecretScanningFinding}.resourceId`,
+          `${TableName.SecretScanningResource}.id`
+        )
+        .join(
+          TableName.SecretScanningDataSource,
+          `${TableName.SecretScanningResource}.dataSourceId`,
+          `${TableName.SecretScanningDataSource}.id`
+        )
+        .join(TableName.Project, `${TableName.SecretScanningDataSource}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNull(`${TableName.Project}.deleteAfter`)
+        .where(`${TableName.Project}.type`, ProjectType.SecretScanning)
+        .count(`${TableName.SecretScanningFinding}.id as count`)
+        .first()) as { count: string } | undefined;
+
+      return parseInt(result?.count || "0", 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountSecretScanningFindingsForOrg" });
+    }
+  };
+
   const countAgentVaultAccessBundlesForOrg = async (orgId: string, tx?: Knex) => {
     try {
       const result = (await (tx || db.replicaNode())(TableName.AgentVaultAccessBundle)
@@ -292,6 +318,7 @@ export const orgProductStatsDALFactory = (db: TDbClient) => {
     countKmipClientsForOrg,
     countDataSourcesForOrg,
     countSecretScanningResourcesForOrg,
+    countSecretScanningFindingsForOrg,
     countPamAccountsForOrg,
     countPamAccountTemplatesForOrg,
     countPamFoldersForOrg,

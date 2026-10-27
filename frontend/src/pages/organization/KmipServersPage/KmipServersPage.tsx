@@ -1,16 +1,16 @@
-import { Helmet } from "react-helmet";
+import { PageTitle } from "@app/components/PageTitle";
 
 import { KmipServerTab } from "./components";
 
 export const KmipServersPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Infisical | KMIP Servers</title>
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
-      <div className="mx-auto flex w-full max-w-8xl flex-col">
-        <KmipServerTab />
+      <PageTitle title="KMIP Servers" />
+      <meta property="og:image" content="/images/message.png" />
+      <div className="flex w-full justify-center bg-page text-foreground-inverse">
+        <div className="w-full max-w-8xl">
+          <KmipServerTab />
+        </div>
       </div>
     </>
   );

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useParams } from "@tanstack/react-router";
 import {
   HelpCircleIcon,
   InfoIcon,
@@ -20,6 +19,7 @@ import {
   AlertDescription,
   AlertTitle,
   Button,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
@@ -27,7 +27,6 @@ import {
   FieldGroup,
   FieldLabel,
   FieldTitle,
-  FilterableSelect,
   IconButton,
   Input,
   RadioGroup,
@@ -54,7 +53,7 @@ import {
   superRefineAccessTokenTtl,
   trustedIpsSchema
 } from "@app/helpers/identityAuthSchemas";
-import { useScopeVariant } from "@app/hooks";
+import { useRouteProjectId, useScopeVariant } from "@app/hooks";
 import {
   MachineIdentityAuthMethod,
   useAddIdentityLdapAuth,
@@ -233,9 +232,7 @@ export const IdentityLdapAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
-  const { projectId } = useParams({
-    strict: false
-  });
+  const projectId = useRouteProjectId();
   const scopeVariant = useScopeVariant();
   const { mutateAsync: addMutateAsync } = useAddIdentityLdapAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityLdapAuth();
@@ -548,20 +545,19 @@ export const IdentityLdapAuthForm = ({
                 render={({ field: { onChange }, fieldState: { error } }) => (
                   <Field>
                     <FieldLabel htmlFor="ldap-configuration">Configuration</FieldLabel>
-                    <FilterableSelect<ConfigurationOption>
-                      inputId="ldap-configuration"
+                    <Combobox<ConfigurationOption>
+                      id="ldap-configuration"
                       value={selectedConfiguration}
                       options={configurationOptions}
-                      groupBy="group"
+                      getOptionGroup={(option) => option.group}
                       getOptionLabel={(option) => option.label}
                       getOptionValue={(option) => option.value}
                       placeholder="Select or search configurations..."
+                      searchAriaLabel="Search configurations"
                       isLoading={isTemplatesLoading}
                       isError={Boolean(error || errors.templateId)}
-                      onChange={(option) => {
-                        const selectedOption = option as ConfigurationOption | null;
-                        if (!selectedOption) return;
-
+                      isClearable={false}
+                      onValueChange={(selectedOption) => {
                         if (selectedOption.value === "custom") {
                           onChange("custom");
                           setValue("templateId", "");

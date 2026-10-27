@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import {
+  PamAccessGrantAttributesSchema,
   PamAccessPolicyConditionsSchema,
   PamAccessPolicyConstraintsSchema,
   PamAccessPolicyInputsSchema,
@@ -18,3 +19,5 @@ export type TPamAccessPolicyConstraints = z.infer<typeof PamAccessPolicyConstrai
 // Request
 export type TPamAccessRequest = z.infer<typeof PamAccessRequestSchema>;
 export type TPamAccessRequestData = z.infer<typeof PamAccessPolicyRequestDataSchema>;
+
+export type TPamAccessGrantAttributes = z.infer<typeof PamAccessGrantAttributesSchema>;

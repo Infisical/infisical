@@ -4,6 +4,17 @@ import type { TSecretMetadataPage } from "@app/hooks/api/dashboard/types";
 
 import type { CopySecretsSource } from "./copySecrets.types";
 
+export type CopySecretsErrorKind = "unauthorized" | "forbidden" | "unknown";
+
+export const getCopySecretsErrorKind = (...errors: unknown[]): CopySecretsErrorKind | null => {
+  const statuses = errors.flatMap((error) =>
+    isAxiosError(error) && error.response?.status ? [error.response.status] : []
+  );
+  if (statuses.includes(401)) return "unauthorized";
+  if (statuses.includes(403)) return "forbidden";
+  return errors.some(Boolean) ? "unknown" : null;
+};
+
 export const getCopySecretsRetryDelay = (error: unknown, now = Date.now()) => {
   if (!isAxiosError(error) || error.response?.status !== 429) return null;
   const retryAfter = error.response.headers["retry-after"];

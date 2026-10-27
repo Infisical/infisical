@@ -7,7 +7,7 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
-import { PamAccountType } from "../pam/pam-enums";
+import { accountTypeSupportsSessionLogMasking, PamAccountType } from "../pam/pam-enums";
 import { TPamTemplateSettings } from "../pam-account-template/pam-account-template-schemas";
 import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 
@@ -30,120 +30,32 @@ export type TDefaultTemplate = {
   settings: TPamTemplateSettings;
 };
 
-export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = [
-  {
-    name: "ssh",
-    type: PamAccountType.SSH,
-    settings: {
-      recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres
-    }
-  },
-  {
-    name: "postgres",
-    type: PamAccountType.Postgres,
-    settings: {
-      recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres
-    }
-  },
-  {
-    name: "mysql",
-    type: PamAccountType.MySQL,
-    settings: {
-      recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres
-    }
-  },
-  {
-    name: "mssql",
-    type: PamAccountType.MsSQL,
-    settings: {
-      recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres
-    }
-  },
-  {
-    name: "oracledb",
-    type: PamAccountType.OracleDB,
-    settings: {
-      recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres
-    }
-  },
-  {
-    name: "mongodb",
-    type: PamAccountType.MongoDB,
-    settings: {
-      recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres
-    }
-  },
-  {
-    name: "redis",
-    type: PamAccountType.Redis,
-    settings: {
-      recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres
-    }
-  },
-  {
-    name: "kubernetes",
-    type: PamAccountType.Kubernetes,
-    settings: {
-      recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres
-    }
-  },
-  {
-    name: "aws-iam",
-    type: PamAccountType.AwsIam,
-    settings: {
-      recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres
-    }
-  },
-  {
-    name: "gcp-service-account",
-    type: PamAccountType.GcpServiceAccount,
-    settings: {
-      recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres
-    }
-  },
-  {
-    name: "azure-cli",
-    type: PamAccountType.AzureCli,
-    settings: {
-      recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres
-    }
-  },
-  {
-    name: "windows",
-    type: PamAccountType.Windows,
-    settings: {
-      recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres
-    }
-  },
-  {
-    name: "windows-ad",
-    type: PamAccountType.WindowsAd,
-    settings: {
-      recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres
-    }
-  },
-  {
-    name: "snowflake",
-    type: PamAccountType.Snowflake,
-    settings: {
-      recordingEnabled: true,
-      recordingStorageBackend: PamRecordingStorageBackend.Postgres
-    }
-  }
-];
+const defaultTemplateSettings = (type: PamAccountType): TPamTemplateSettings => ({
+  recordingEnabled: true,
+  recordingStorageBackend: PamRecordingStorageBackend.Postgres,
+  // A seeded template is a new template, so masking starts on, as it does in `create`.
+  sessionLogMaskingBuiltInDetection: accountTypeSupportsSessionLogMasking(type)
+});
+
+export const DEFAULT_ACCOUNT_TEMPLATES: TDefaultTemplate[] = (
+  [
+    { name: "ssh", type: PamAccountType.SSH },
+    { name: "postgres", type: PamAccountType.Postgres },
+    { name: "mysql", type: PamAccountType.MySQL },
+    { name: "mssql", type: PamAccountType.MsSQL },
+    { name: "oracledb", type: PamAccountType.OracleDB },
+    { name: "mongodb", type: PamAccountType.MongoDB },
+    { name: "redis", type: PamAccountType.Redis },
+    { name: "kubernetes", type: PamAccountType.Kubernetes },
+    { name: "aws-iam", type: PamAccountType.AwsIam },
+    { name: "gcp-service-account", type: PamAccountType.GcpServiceAccount },
+    { name: "azure-cli", type: PamAccountType.AzureCli },
+    { name: "windows", type: PamAccountType.Windows },
+    { name: "windows-ad", type: PamAccountType.WindowsAd },
+    { name: "snowflake", type: PamAccountType.Snowflake },
+    { name: "clickhouse", type: PamAccountType.ClickHouse }
+  ] as const
+).map(({ name, type }) => ({ name, type, settings: defaultTemplateSettings(type) }));
 
 export const bootstrapPamProject = async (
   { orgId, adminUserIds = [], adminIdentityIds = [], adminGroupIds = [] }: TBootstrapInput,

@@ -2,6 +2,7 @@ import { useLocation, useNavigate, useParams, useRouteContext } from "@tanstack/
 import {
   BlocksIcon,
   BuildingIcon,
+  CheckIcon,
   CogIcon,
   CreditCardIcon,
   DatabaseIcon,
@@ -12,11 +13,13 @@ import {
   KeyIcon,
   KeyRoundIcon,
   LayoutDashboardIcon,
+  MoonIcon,
   SearchIcon,
   ServerCogIcon,
   SettingsIcon,
   ShieldCheckIcon,
   ShieldIcon,
+  SunIcon,
   UserIcon,
   UsersIcon
 } from "lucide-react";
@@ -29,6 +32,11 @@ import {
   type GlobalCommandMenuSearchStatus
 } from "@app/components/v3/generic/Command";
 import { OrgIcon, ProjectIcon, SubOrgIcon } from "@app/components/v3/platform/ScopeIcons";
+import {
+  type Theme,
+  type ThemeChangeSource,
+  useTheme
+} from "@app/components/v3/platform/ThemeProvider";
 import {
   OrgPermissionActions,
   OrgPermissionAuditLogsActions,
@@ -57,9 +65,13 @@ import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSecretSyncActions
 } from "@app/context/ProjectPermissionContext/types";
-import { getProjectLucideIcon, getProjectTitle } from "@app/helpers/project";
+import { setCertManagerActiveProjectCookie } from "@app/helpers/certManagerActiveProject";
+import { getOrganizationSwitchDestination } from "@app/helpers/organizationSwitch";
+import { getProjectDisplayName, getProjectLucideIcon, getProjectTitle } from "@app/helpers/project";
+import { setSecretScanningActiveProjectCookie } from "@app/helpers/secretScanningActiveProject";
 import { useImplicitProduct } from "@app/hooks";
 import { useGetOrganizationGroups, useGetOrganizationsWithSubOrgs } from "@app/hooks/api";
+import { useCertManagerInstanceState } from "@app/hooks/api/certManagerInstance";
 import { useGetAccessibleProjectsWithSubOrgs } from "@app/hooks/api/projects/queries";
 import type { Project, TProjectNavigation } from "@app/hooks/api/projects/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -164,14 +176,16 @@ const navigateToProject = (
         params: { orgId: project.orgId, projectId: project.id }
       });
     case ProjectType.CertificateManager:
+      setCertManagerActiveProjectCookie(project.orgId, project.id);
       return navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/overview",
-        params: { orgId: project.orgId, projectId: project.id }
+        to: "/organizations/$orgId/cert-manager/overview",
+        params: { orgId: project.orgId }
       });
     case ProjectType.SecretScanning:
+      setSecretScanningActiveProjectCookie(project.orgId, project.id);
       return navigate({
-        to: "/organizations/$orgId/projects/secret-scanning/$projectId/data-sources",
-        params: { orgId: project.orgId, projectId: project.id }
+        to: "/organizations/$orgId/secret-scanning/data-sources",
+        params: { orgId: project.orgId }
       });
     case ProjectType.PAM:
       return navigate({
@@ -180,7 +194,7 @@ const navigateToProject = (
       });
     case ProjectType.AgentVault:
       return navigate({
-        to: "/organizations/$orgId/agent-vault/sessions",
+        to: "/organizations/$orgId/agent-vault",
         params: { orgId: project.orgId }
       });
     case ProjectType.KMS:
@@ -200,6 +214,7 @@ const useEntityCommandGroups = ({
   currentOrganizationName?: string;
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const projectsQuery = useGetAccessibleProjectsWithSubOrgs(currentOrganizationId ?? "");
   const organizationsQuery = useGetOrganizationsWithSubOrgs();
   const { data: projects = [] } = projectsQuery;
@@ -225,6 +240,14 @@ const useEntityCommandGroups = ({
     organizations.map((organization) => [organization.id, organization])
   );
 
+  const certManagerProjectCountByOrg: Record<string, number> = {};
+  projects.forEach((project) => {
+    if (project.type === ProjectType.CertificateManager) {
+      certManagerProjectCountByOrg[project.orgId] =
+        (certManagerProjectCountByOrg[project.orgId] ?? 0) + 1;
+    }
+  });
+
   const projectItems: GlobalCommandMenuItem[] = projects.map((project) => {
     const organization = organizationsById.get(project.orgId);
     const organizationPath = [
@@ -236,7 +259,7 @@ const useEntityCommandGroups = ({
 
     return {
       id: `entity-project-${project.id}`,
-      label: project.name,
+      label: getProjectDisplayName(project, (certManagerProjectCountByOrg[project.orgId] ?? 0) > 1),
       breadcrumb: `${organizationPath} / ${getProjectTitle(project.type)}`,
       icon: getProjectLucideIcon(project.type),
       iconClassName: projectIconClassNames[project.type],
@@ -261,11 +284,17 @@ const useEntityCommandGroups = ({
       ...(organization.isSubOrganization ? ["sub", "sub-org", "sub-organization"] : [])
     ],
     priority: organization.id === currentOrganizationId ? 20 : 0,
-    onSelect: () =>
-      navigate({
-        to: "/organizations/$orgId/projects",
-        params: { orgId: organization.id }
-      })
+    onSelect: () => {
+      if (organization.id === currentOrganizationId) {
+        return navigate({
+          to: "/organizations/$orgId/projects",
+          params: { orgId: organization.id }
+        });
+      }
+      return navigate(
+        getOrganizationSwitchDestination(location, organization.id, organization.isSubOrganization)
+      );
+    }
   }));
 
   const teamItems: GlobalCommandMenuItem[] = teams.map((team) => ({
@@ -306,11 +335,15 @@ const useEntityCommandGroups = ({
 const getNestedCommandGroup = ({
   projectItems,
   organizationItems,
-  teamItems
+  teamItems,
+  theme,
+  setTheme
 }: {
   projectItems: GlobalCommandMenuItem[];
   organizationItems: GlobalCommandMenuItem[];
   teamItems: GlobalCommandMenuItem[];
+  theme: Theme;
+  setTheme: (theme: Theme, source: ThemeChangeSource) => void;
 }): GlobalCommandMenuGroup => ({
   heading: "Explore",
   items: [
@@ -344,7 +377,40 @@ const getNestedCommandGroup = ({
             drilldownPlaceholder: "Search teams..."
           }
         ]
-      : [])
+      : []),
+    {
+      id: "command-change-theme",
+      label: "Change Theme…",
+      breadcrumb: "Global / Appearance",
+      icon: theme === "dark" ? MoonIcon : SunIcon,
+      keywords: ["dark", "light", "appearance"],
+      children: [
+        {
+          heading: "Theme",
+          items: [
+            {
+              id: "theme-dark",
+              label: "Dark",
+              breadcrumb: `Appearance / ${theme === "dark" ? "Current theme" : "Theme"}`,
+              icon: theme === "dark" ? CheckIcon : MoonIcon,
+              keywords: ["theme"],
+              isDisabled: theme === "dark",
+              onSelect: () => setTheme("dark", "command-menu")
+            },
+            {
+              id: "theme-light",
+              label: "Light",
+              breadcrumb: `Appearance / ${theme === "light" ? "Current theme" : "Theme"}`,
+              icon: theme === "light" ? CheckIcon : SunIcon,
+              keywords: ["theme"],
+              isDisabled: theme === "light",
+              onSelect: () => setTheme("light", "command-menu")
+            }
+          ]
+        }
+      ],
+      drilldownPlaceholder: "Choose a theme..."
+    }
   ]
 });
 
@@ -380,6 +446,7 @@ const getAccountItems = (navigate: ReturnType<typeof useNavigate>): GlobalComman
 ];
 
 const PersonalSettingsCommandMenu = () => {
+  const { theme, setTheme } = useTheme();
   const organizationId = useRouteContext({
     from: "/_authenticate",
     select: (context) => context.organizationId
@@ -387,7 +454,7 @@ const PersonalSettingsCommandMenu = () => {
   const navigate = useNavigate();
   const accountItems = getAccountItems(navigate).map((item) => ({ ...item, priority: 30 }));
   const entityGroups = useEntityCommandGroups({ currentOrganizationId: organizationId });
-  const nestedGroup = getNestedCommandGroup(entityGroups);
+  const nestedGroup = getNestedCommandGroup({ ...entityGroups, theme, setTheme });
 
   return (
     <NavigationCommandMenu
@@ -403,6 +470,7 @@ const PersonalSettingsCommandMenu = () => {
 };
 
 const AdminCommandMenu = () => {
+  const { theme, setTheme } = useTheme();
   const { currentOrg } = useOrganization();
   const navigate = useNavigate();
   const accountItems = getAccountItems(navigate);
@@ -451,7 +519,7 @@ const AdminCommandMenu = () => {
       browseGroups={[
         { heading: "Server Console", items: adminItems },
         { heading: "Global", items: accountItems.slice(0, 1) },
-        getNestedCommandGroup(entityGroups)
+        getNestedCommandGroup({ ...entityGroups, theme, setTheme })
       ]}
       searchGroups={[
         { heading: "Pages & Settings", items: [...adminItems, ...accountItems] },
@@ -649,14 +717,16 @@ const getProjectLandingItem = ({
   navigate,
   project,
   organizationName,
-  isCertificateManagerAdmin
+  isCertificateManagerAdmin,
+  isCertManagerMultiInstance = false
 }: {
   navigate: ReturnType<typeof useNavigate>;
   project: Project;
   organizationName: string;
   isCertificateManagerAdmin?: boolean;
+  isCertManagerMultiInstance?: boolean;
 }): GlobalCommandMenuItem => {
-  const breadcrumb = `${organizationName} / ${project.name}`;
+  const breadcrumb = `${organizationName} / ${getProjectDisplayName(project, isCertManagerMultiInstance)}`;
 
   if (project.type === ProjectType.CertificateManager && !isCertificateManagerAdmin) {
     return {
@@ -669,8 +739,8 @@ const getProjectLandingItem = ({
       priority: 40,
       onSelect: () =>
         navigate({
-          to: "/organizations/$orgId/projects/cert-manager/$projectId/requests",
-          params: { orgId: project.orgId, projectId: project.id }
+          to: "/organizations/$orgId/cert-manager/requests",
+          params: { orgId: project.orgId }
         })
     };
   }
@@ -702,15 +772,17 @@ const getProjectPageItems = ({
   project,
   organizationName,
   pathname,
-  isCertificateManagerAdmin
+  isCertificateManagerAdmin,
+  isCertManagerMultiInstance = false
 }: {
   navigate: ReturnType<typeof useNavigate>;
   project: Project;
   organizationName: string;
   pathname: string;
   isCertificateManagerAdmin?: boolean;
+  isCertManagerMultiInstance?: boolean;
 }): GlobalCommandMenuItem[] => {
-  const breadcrumb = `${organizationName} / ${project.name}`;
+  const breadcrumb = `${organizationName} / ${getProjectDisplayName(project, isCertManagerMultiInstance)}`;
   const item = (
     id: string,
     label: string,
@@ -794,32 +866,32 @@ const getProjectPageItems = ({
         getProjectLandingItem({ navigate, project, organizationName }),
         item("findings", "Findings", SearchIcon, "findings", () =>
           navigate({
-            to: "/organizations/$orgId/projects/secret-scanning/$projectId/findings",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/secret-scanning/findings",
+            params: { orgId: project.orgId }
           })
         ),
         item("app-connections", "App Connections", BlocksIcon, "app-connections", () =>
           navigate({
-            to: "/organizations/$orgId/projects/secret-scanning/$projectId/app-connections",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/secret-scanning/app-connections",
+            params: { orgId: project.orgId }
           })
         ),
         item("access-control", "Access Control", ShieldIcon, "access-management", () =>
           navigate({
-            to: "/organizations/$orgId/projects/secret-scanning/$projectId/access-management",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/secret-scanning/access-management",
+            params: { orgId: project.orgId }
           })
         ),
         item("audit-logs", "Audit Logs", FileTextIcon, "audit-logs", () =>
           navigate({
-            to: "/organizations/$orgId/projects/secret-scanning/$projectId/audit-logs",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/secret-scanning/audit-logs",
+            params: { orgId: project.orgId }
           })
         ),
         item("settings", "Settings", SettingsIcon, "settings", () =>
           navigate({
-            to: "/organizations/$orgId/projects/secret-scanning/$projectId/settings",
-            params: { orgId: project.orgId, projectId: project.id },
+            to: "/organizations/$orgId/secret-scanning/settings",
+            params: { orgId: project.orgId },
             search: { selectedTab: "general" }
           })
         )
@@ -829,39 +901,40 @@ const getProjectPageItems = ({
         navigate,
         project,
         organizationName,
-        isCertificateManagerAdmin
+        isCertificateManagerAdmin,
+        isCertManagerMultiInstance
       });
       if (!isCertificateManagerAdmin) return [landing];
       return sortByContext([
         landing,
         item("inventory", "Inventory", DatabaseIcon, "inventory", () =>
           navigate({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/inventory",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/cert-manager/inventory",
+            params: { orgId: project.orgId }
           })
         ),
         item("discovery", "Discovery", SearchIcon, "discovery", () =>
           navigate({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/discovery",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/cert-manager/discovery",
+            params: { orgId: project.orgId }
           })
         ),
         item("access-control", "Access Control", ShieldIcon, "access-management", () =>
           navigate({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/access-management",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/cert-manager/access-management",
+            params: { orgId: project.orgId }
           })
         ),
         item("audit-logs", "Audit Logs", FileTextIcon, "audit-logs", () =>
           navigate({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/audit-logs",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/cert-manager/audit-logs",
+            params: { orgId: project.orgId }
           })
         ),
         item("settings", "Settings", SettingsIcon, "settings", () =>
           navigate({
-            to: "/organizations/$orgId/projects/cert-manager/$projectId/settings",
-            params: { orgId: project.orgId, projectId: project.id }
+            to: "/organizations/$orgId/cert-manager/settings",
+            params: { orgId: project.orgId }
           })
         )
       ]);
@@ -941,26 +1014,30 @@ const CertificateProjectCommandMenu = ({
   const { currentProject } = useProject();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { data: certManagerInstance } = useCertManagerInstanceState();
+  const isCertManagerMultiInstance = Boolean(certManagerInstance?.isMultiInstance);
   const projectItems = filterProjectPageItems(
     getProjectPageItems({
       navigate,
       project: currentProject,
       organizationName: currentOrg.name,
       pathname,
-      isCertificateManagerAdmin: hasProjectRole("admin")
+      isCertificateManagerAdmin: hasProjectRole("admin"),
+      isCertManagerMultiInstance
     }),
     permission
   );
+  const menuHeading = getProjectDisplayName(currentProject, isCertManagerMultiInstance);
 
   return (
     <NavigationCommandMenu
       shell="organization"
       searchStatus={content.searchStatus}
       browseGroups={[
-        { heading: currentProject.name, items: projectItems.slice(0, 2) },
+        { heading: menuHeading, items: projectItems.slice(0, 2) },
         ...content.browseGroups
       ]}
-      searchGroups={[{ heading: "Current Project", items: projectItems }, ...content.searchGroups]}
+      searchGroups={[{ heading: menuHeading, items: projectItems }, ...content.searchGroups]}
     />
   );
 };
@@ -1034,6 +1111,7 @@ const CurrentProjectCommandMenu = ({ content }: { content: CommandContent }) => 
 };
 
 const OrganizationCommandMenu = () => {
+  const { theme, setTheme } = useTheme();
   const { projectId } = useParams({ strict: false }) as { projectId?: string };
   const orgScopedProduct = useImplicitProduct();
   const { currentOrg, isRootOrganization } = useOrganization();
@@ -1097,7 +1175,7 @@ const OrganizationCommandMenu = () => {
     browseGroups: [
       { heading: currentOrg.name, items: organizationItems.slice(0, 3) },
       { heading: "Global", items: globalItems.slice(0, user.superAdmin ? 2 : 1) },
-      getNestedCommandGroup(entityGroups)
+      getNestedCommandGroup({ ...entityGroups, theme, setTheme })
     ],
     searchGroups: [
       { heading: "Pages & Settings", items: [...organizationItems, ...globalItems] },

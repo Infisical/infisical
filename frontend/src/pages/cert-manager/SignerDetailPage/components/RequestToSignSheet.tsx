@@ -115,7 +115,7 @@ export const RequestToSignSheet = ({ isOpen, onOpenChange, signerId }: Props) =>
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-[1100px]">
+      <SheetContent size="wide" className="flex h-full max-h-full flex-col gap-y-0">
         <SheetHeader className="border-b">
           <SheetTitle>
             <div className="flex w-full items-start gap-2">
@@ -123,8 +123,8 @@ export const RequestToSignSheet = ({ isOpen, onOpenChange, signerId }: Props) =>
                 <PenToolIcon className="h-5 w-5" />
               </div>
               <div>
-                <div className="flex items-center gap-x-2 text-mineshaft-300">Request to sign</div>
-                <p className="text-sm leading-4 text-mineshaft-400">
+                <div className="flex items-center gap-x-2 text-label">Request to sign</div>
+                <p className="text-sm leading-4 text-muted">
                   Ask the approvers to let you sign. Pick how many signatures you need and when.
                 </p>
               </div>

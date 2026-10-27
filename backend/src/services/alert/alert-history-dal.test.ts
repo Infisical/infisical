@@ -78,6 +78,18 @@ describe("alert history dal", () => {
     expect(whereCalls).toContainEqual(["hist.alertId", "alert-1"]);
   });
 
+  // The skip list is per channel and only counts successes: a failed channel gets retried, and one
+  // channel's success doesn't suppress another.
+  test("findDeliveredChannelIdsForEvent scopes to the alert and event and only counts successes", async () => {
+    const { dal, whereCalls } = buildDAL();
+
+    await dal.findDeliveredChannelIdsForEvent("alert-1", "42");
+
+    expect(whereCalls).toContainEqual(["hist.alertId", "alert-1"]);
+    expect(whereCalls).toContainEqual(["hist.eventId", "42"]);
+    expect(whereCalls).toContainEqual(["tgt.status", AlertRunStatus.SUCCESS]);
+  });
+
   test("findRecentlyAlertedTargets short-circuits on empty target list without querying", async () => {
     const { dal, whereCalls } = buildDAL();
 

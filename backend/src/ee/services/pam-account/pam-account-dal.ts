@@ -125,6 +125,8 @@ export type TPamAccountDetail = TPamAccounts &
     isStale: boolean;
   };
 
+const effectiveGatewayIdSql = `coalesce("${TableName.PamAccount}"."gatewayId", "${TableName.PamAccountTemplate}"."gatewayId")`;
+
 export type TPamAccountDALFactory = ReturnType<typeof pamAccountDALFactory>;
 
 export const pamAccountDALFactory = (db: TDbClient) => {
@@ -248,6 +250,26 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       .select(detailSelect)) as unknown as TPamAccountDetail[];
 
     return rows[0] || null;
+  };
+
+  // Locks the account's template and then the account, the order a template save takes them, so neither
+  // changes before the caller's transaction commits and the two can't deadlock
+  const findTemplatePoliciesForShare = async (accountId: string, tx: Knex) => {
+    const account = await tx(TableName.PamAccount).where({ id: accountId }).first("templateId");
+    if (!account) return undefined;
+
+    const template = await tx(TableName.PamAccountTemplate)
+      .where({ id: account.templateId })
+      .forShare()
+      .first("policies");
+    const locked = await tx(TableName.PamAccount)
+      .where({ id: accountId })
+      .forShare()
+      .first("projectId", "folderId", "templateId");
+    // The account moved to another template before it was locked, so these policies may not be its own
+    if (!template || !locked || locked.templateId !== account.templateId) return undefined;
+
+    return { projectId: locked.projectId, folderId: locked.folderId, templatePolicies: template.policies as unknown };
   };
 
   const findByIdsWithDetails = async (
@@ -501,10 +523,38 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByGatewayId = async (gatewayId: string, tx?: Knex) => {
+    const docs = await (tx || db.replicaNode())(TableName.PamAccount)
+      .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
+      .leftJoin(TableName.PamFolder, `${TableName.PamAccount}.folderId`, `${TableName.PamFolder}.id`)
+      .whereRaw(`${effectiveGatewayIdSql} = ?`, [gatewayId])
+      .select(
+        `${TableName.PamAccount}.id`,
+        `${TableName.PamAccount}.name`,
+        `${TableName.PamAccountTemplate}.type as accountType`,
+        `${TableName.PamFolder}.name as folderName`
+      );
+
+    return docs as { id: string; name: string; accountType: string; folderName: string | null }[];
+  };
+
+  const countByGatewayIds = async (gatewayIds: string[], tx?: Knex) =>
+    (await (tx || db.replicaNode())(TableName.PamAccount)
+      .join(TableName.PamAccountTemplate, `${TableName.PamAccount}.templateId`, `${TableName.PamAccountTemplate}.id`)
+      .whereRaw(`${effectiveGatewayIdSql} = ANY(?::uuid[])`, [gatewayIds])
+      .groupByRaw(effectiveGatewayIdSql)
+      .select(db.raw(`${effectiveGatewayIdSql} as id`), db.raw("count(*)::int as count"))) as {
+      id: string;
+      count: number;
+    }[];
+
   return {
     ...orm,
+    findByGatewayId,
+    countByGatewayIds,
     findAccessible,
     findByIdWithDetails,
+    findTemplatePoliciesForShare,
     findByIdsWithDetails,
     findAccountsToRotate,
     countAccountsToRotate,

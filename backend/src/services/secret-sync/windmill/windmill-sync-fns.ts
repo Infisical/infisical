@@ -11,7 +11,7 @@ import {
   TWindmillVariable
 } from "@app/services/secret-sync/windmill/windmill-sync-types";
 
-import { TSecretMap } from "../secret-sync-types";
+import { TSecretSyncPayload } from "../secret-sync-payload";
 
 const PAGE_LIMIT = 100;
 
@@ -125,7 +125,8 @@ const deleteWindmillVariable = async ({ path, instanceUrl, accessToken, workspac
   });
 
 export const WindmillSyncFns = {
-  syncSecrets: async (secretSync: TWindmillSyncWithCredentials, secretMap: TSecretMap) => {
+  syncSecrets: async (secretSync: TWindmillSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       connection,
       environment,
@@ -146,7 +147,7 @@ export const WindmillSyncFns = {
       const [key, { value, comment = "" }] = entry;
 
       try {
-        const payload = {
+        const requestPayload = {
           instanceUrl,
           workspace,
           path: path + key,
@@ -156,9 +157,9 @@ export const WindmillSyncFns = {
         };
         if (key in variables) {
           if (variables[key].value !== value || variables[key].description !== comment)
-            await updateWindmillVariable(payload);
+            await updateWindmillVariable(requestPayload);
         } else {
-          await createWindmillVariable(payload);
+          await createWindmillVariable(requestPayload);
         }
       } catch (error) {
         throw new SecretSyncError({
@@ -191,7 +192,8 @@ export const WindmillSyncFns = {
       }
     }
   },
-  removeSecrets: async (secretSync: TWindmillSyncWithCredentials, secretMap: TSecretMap) => {
+  removeSecrets: async (secretSync: TWindmillSyncWithCredentials, payload: TSecretSyncPayload) => {
+    const secretMap = payload.flatten();
     const {
       connection,
       destinationConfig: { path }

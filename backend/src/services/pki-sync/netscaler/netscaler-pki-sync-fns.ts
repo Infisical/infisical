@@ -45,6 +45,8 @@ type TNetScalerPkiSyncFactoryDeps = {
     | "updateById"
     | "findByPkiSyncId"
     | "updateSyncStatus"
+    | "findExternalIdentifiersInUse"
+    | "claimExternalIdentifier"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -420,8 +422,9 @@ export const netScalerPkiSyncFactory = ({
             let oldCertificateIdToRemove: string | undefined;
 
             if (typeof certificateId === "string") {
-              const syncRecordLookupId = certificate?.renewedFromCertificateId || certificateId;
-              const existingSyncRecord = syncRecordsByCertId.get(syncRecordLookupId);
+              const existingSyncRecord =
+                syncRecordsByCertId.get(certificate?.renewedFromCertificateId || certificateId) ??
+                (preserveItemOnRenewal ? syncRecordsByCertId.get(certificateId) : undefined);
 
               if (
                 certificate?.renewedFromCertificateId &&
@@ -493,6 +496,10 @@ export const netScalerPkiSyncFactory = ({
               let fullCertContent = cert;
               if (certificateChain) {
                 fullCertContent = `${cert}\n${certificateChain}`;
+              }
+
+              if (certificateId) {
+                await certificateSyncDAL.claimExternalIdentifier(pkiSync.id, certificateId, targetCertKeyName);
               }
 
               await uploadFileToNetScaler(session, certFilename, fullCertContent);
@@ -568,7 +575,7 @@ export const netScalerPkiSyncFactory = ({
           }
 
           if (canRemoveCertificates) {
-            const certKeysToRemove = new Set<string>();
+            const removalCandidates = new Set<string>();
 
             for (const syncRecord of existingSyncRecords) {
               if (
@@ -576,7 +583,7 @@ export const netScalerPkiSyncFactory = ({
                 !activeExternalIdentifiers.has(syncRecord.externalIdentifier) &&
                 existingCertKeyNames.has(syncRecord.externalIdentifier)
               ) {
-                certKeysToRemove.add(syncRecord.externalIdentifier);
+                removalCandidates.add(syncRecord.externalIdentifier);
               }
             }
 
@@ -585,10 +592,16 @@ export const netScalerPkiSyncFactory = ({
 
               for (const certKeyName of existingCertKeyNames) {
                 if (managedCertNamePattern.test(certKeyName) && !activeExternalIdentifiers.has(certKeyName)) {
-                  certKeysToRemove.add(certKeyName);
+                  removalCandidates.add(certKeyName);
                 }
               }
             }
+
+            const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse([...removalCandidates], {
+              excludePkiSyncId: pkiSync.id,
+              destination: pkiSync.destination
+            });
+            const certKeysToRemove = [...removalCandidates].filter((certKeyName) => !ownedByOtherSync.has(certKeyName));
 
             for (const certKeyName of certKeysToRemove) {
               try {

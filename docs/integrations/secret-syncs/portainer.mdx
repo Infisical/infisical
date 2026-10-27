@@ -1,0 +1,155 @@
+---
+title: "Portainer sync"
+sidebarTitle: "Portainer"
+description: "Learn how to configure a Portainer sync for Infisical."
+---
+
+import ConnectionFormFields from "/snippets/app-connections/portainer/form-fields.mdx";
+
+A Portainer Secret Sync pushes secrets from Infisical into the environment variables of a Portainer stack, where the stack's compose file reads them. Each Infisical secret becomes one stack variable with the same name unless you customize key names to add a prefix or suffix.
+
+<Note>
+    The Portainer Secret Sync requires a [Portainer app connection](/integrations/app-connections/portainer). This guide walks you through creating a project-scoped app connection.
+</Note>
+
+## Prerequisites
+
+- A [project with secrets configured](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret)
+- A [Portainer app connection](/integrations/app-connections/portainer)
+- A Compose or Swarm stack in Portainer (Kubernetes stacks aren't supported, because Portainer doesn't apply environment variables to them)
+
+## Set up the sync in Infisical
+
+<Tip>
+    To create the sync using the API, use the [Create Portainer Sync](/api-reference/endpoints/secret-syncs/portainer/create) endpoint.
+</Tip>
+
+<Steps>
+    <Step>
+        In your project, go to **Integrations** and open the **Secret Syncs** tab. Select **+ Add Sync**.
+
+        ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+
+        Then, select the **Portainer** sync.
+
+        ![Select Portainer](/images/secret-syncs/portainer/step-1.png)
+    </Step>
+    <Step>
+        Under **Source**, choose which secrets to sync from Infisical:
+
+        - **Environment**: The project environment to retrieve secrets from
+        - **Secret Path**: The folder path to retrieve secrets from
+        - **Include secrets from all subfolders**: Also syncs the secrets in every folder beneath the path
+
+        <Tip>
+            If you need to sync secrets from multiple folder locations, use [secret imports](/documentation/platform/secret-reference#secret-imports).
+        </Tip>
+
+        ![Configure Source](/images/secret-syncs/portainer/step-2.png)
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Destination**, create or select the Portainer app connection the sync will use, then choose the stack that receives the secrets.
+
+        <Tabs>
+            <Tab title="Create a new app connection">
+                Under **Portainer Connection**, select **Create Connection** in the dropdown, then fill in:
+
+                <ConnectionFormFields />
+
+                Select **Connect to Portainer**. Infisical returns you to the sync form with the new connection selected.
+
+                <Note>
+                    This creates a connection scoped to the current project. To share the connection across other projects, [create it at the organization level](/integrations/app-connections/portainer#step-2-create-the-app-connection) first, then select it here.
+                </Note>
+            </Tab>
+            <Tab title="Use an existing connection">
+                Under **Portainer Connection**, select the app connection you'd like to use.
+            </Tab>
+        </Tabs>
+
+        - **Environment**: The Portainer environment that hosts the stack
+        - **Stack**: The stack whose variables the sync writes; the form says whether the stack is Git-backed or file-based, which decides [whether a sync restarts your containers](#faq)
+
+        ![Configure Destination](/images/secret-syncs/portainer/step-3.png)
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Initial Sync Behavior**, choose how Infisical handles variables that already exist on the stack on the first sync:
+
+        - **Overwrite Portainer**: Infisical writes its secrets to the stack and imports nothing back; depending on your sync options, variables that aren't in Infisical can be removed
+        - **Import from Portainer, prioritize Infisical**: The stack's variables are imported into Infisical first; where a name exists on both sides, the Infisical value wins
+        - **Import from Portainer, prioritize Portainer**: Same as above, but the stack's value wins
+
+        ![Initial Sync Behavior](/images/secret-syncs/portainer/step-4.png)
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Sync Options**, choose how secrets are synced:
+
+        - **Prevent secret deletion**: When enabled, Infisical adds and updates variables on the stack but never deletes them; enable this if you manage some variables outside of Infisical
+        - **Auto-sync on changes**: When enabled, secrets sync to Portainer automatically as the source changes; turn it off to sync manually only
+        - **Customize key names**: Adds a prefix or suffix to every synced name, using `{{secretKey}}` for the original name and `{{environment}}` for the environment slug
+
+        <Warning>
+            A stack keeps its variables in one list that the sync rewrites, so a sync can change variables that were created outside Infisical. If you don't customize key names, the sync treats every variable on the stack as one it manages:
+
+            - If a stack variable has the same name as an Infisical secret, the sync overwrites the variable's value
+            - If **Prevent secret deletion** is off, every stack variable that isn't in Infisical is deleted
+
+            With customized key names, the sync writes only names with your prefix or suffix, and deletes only variables whose names match it.
+
+            Before the first sync, customize key names or keep **Prevent secret deletion** on. **Prevent secret deletion** is on by default when you create the sync in the UI, but off unless you set `disableSecretDeletion` when you create it through the API.
+        </Warning>
+
+        ![Configure Sync Options](/images/secret-syncs/portainer/step-5.png)
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Give the sync a **Name** and an optional **Description**. The name must be slug-friendly.
+
+        ![Sync Details](/images/secret-syncs/portainer/step-6.png)
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Review your Portainer Sync configuration, then select **Create Sync**.
+
+        ![Review and Create](/images/secret-syncs/portainer/step-7.png)
+
+        <Check>
+            The sync is created. If **Auto-sync on changes** is enabled, it begins syncing secrets to the stack right away.
+        </Check>
+
+        ![Sync Created](/images/secret-syncs/portainer/step-8.png)
+    </Step>
+</Steps>
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="Does a sync restart my containers?">
+        It depends on the stack type. For a Git-backed stack, Infisical writes the variables to the stack's Git settings and leaves the running containers alone; the new values take effect on the stack's next deployment, whether that's an auto-update poll, a webhook, or a manual redeploy. For a file-based stack, Portainer requires the compose file on every update, so Infisical resubmits the current file unchanged along with the variables, and Portainer redeploys the stack. Infisical skips the update if the stack already has exactly these variables. Infisical doesn't wait for the redeploy or check its result, so check the stack in Portainer if your containers don't come up with the new values. If Portainer is still deploying the stack when a sync runs, it rejects the update and the sync fails with that reason; sync again once the deployment has finished.
+    </Accordion>
+    <Accordion title="Can I sync to a Kubernetes stack?">
+        No. Portainer doesn't apply environment variables to Kubernetes stacks, so Infisical doesn't list them as a destination and fails a sync that targets one.
+    </Accordion>
+    <Accordion title="What happens to values with line breaks or special characters?">
+        Portainer stores a Compose stack's variables in an env file with one line per variable, and Compose expands `$VAR` and `${VAR}` references inside the values. Infisical writes every `$` as `$$`, which Compose turns back into a single `$`, so a value like `pa$word` reaches your containers unchanged. If a value contains line breaks, starts or ends with a space, contains a space followed by `#`, or starts with a quote, Infisical also stores the value in double quotes with each special character escaped. Portainer restores the original value when it deploys the stack, and Infisical undoes the same encoding when it imports variables from the stack. Swarm stacks receive their values as-is.
+    </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+    <Card title="Portainer" icon="plug" href="/integrations/app-connections/portainer">
+        Create an organization-level Portainer connection to share across projects.
+    </Card>
+    <Card title="Secret syncs" icon="refresh-cw" href="/integrations/secret-syncs/overview">
+        Learn how secret syncs work and how to manage them.
+    </Card>
+</CardGroup>

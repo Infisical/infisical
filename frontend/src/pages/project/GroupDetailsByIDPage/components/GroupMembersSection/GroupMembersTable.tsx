@@ -34,7 +34,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import { usePagination, usePopUp, useResetPageHelper, useScopeVariant } from "@app/hooks";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useListGroupMembers } from "@app/hooks/api/groups/queries";
@@ -53,6 +53,7 @@ type Props = {
 };
 
 export const GroupMembersTable = ({ groupMembership }: Props) => {
+  const scopeVariant = useScopeVariant();
   const navigate = useNavigate();
   const { currentProject } = useProject();
   const canAssumePrivileges = supportsAssumePrivileges(currentProject.type);
@@ -146,7 +147,7 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
-              variant={memberTypeFilter.length ? "project" : "outline"}
+              variant={memberTypeFilter.length ? scopeVariant : "outline"}
               aria-label="Filter group members"
             >
               <FilterIcon />

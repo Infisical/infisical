@@ -9,6 +9,7 @@ import {
   TBuyProductPayload,
   TCancelTrialPayload,
   TChangeCommitmentsPayload,
+  TConfirmTrialPaymentPayload,
   TCreatePortalPayload,
   TEntitlementOrg,
   TLicenseClientBackend,
@@ -205,6 +206,13 @@ export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }:
     return backend.cancelTrial(orgId, payload);
   };
 
+  const confirmTrialPayment = async (orgId: string, payload: TConfirmTrialPaymentPayload) => {
+    if (!backend) {
+      throw new Error("license client backend is not configured");
+    }
+    return backend.confirmTrialPayment(orgId, payload);
+  };
+
   // The org's trial history; returns an empty history when no backend is configured (self-hosted).
   const getTrials = async (orgId: string) => {
     if (!backend) {
@@ -248,6 +256,7 @@ export const licenseClientFactory = ({ envConfig, keyStore, isOffline = false }:
     changeCommitments,
     startTrial,
     cancelTrial,
+    confirmTrialPayment,
     getTrials,
     cancelSubscription,
     resumeSubscription

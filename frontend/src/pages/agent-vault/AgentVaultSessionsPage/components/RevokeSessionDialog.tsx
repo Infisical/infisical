@@ -1,5 +1,6 @@
+import { memberDisplayName } from "@app/components/agent-vault/MemberName";
 import { createNotification } from "@app/components/notifications";
-import { DeleteConfirmDialog } from "@app/components/v3";
+import { ConfirmationAlertDialog } from "@app/components/v3";
 import { useRevokeAgentVaultSession } from "@app/hooks/api/agentVault";
 import { TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 
@@ -16,7 +17,10 @@ export const RevokeSessionDialog = ({ session, onOpenChange }: Props) => {
 
     try {
       await revokeSession.mutateAsync(session.id);
-      createNotification({ text: `Session for "${session.actorName}" revoked`, type: "success" });
+      createNotification({
+        text: `Session for "${memberDisplayName(session.actor)}" revoked`,
+        type: "success"
+      });
       onOpenChange(false);
     } catch {
       // A failed request returns a 4xx that the global request handler surfaces as a toast
@@ -24,10 +28,10 @@ export const RevokeSessionDialog = ({ session, onOpenChange }: Props) => {
   };
 
   return (
-    <DeleteConfirmDialog
+    <ConfirmationAlertDialog
       isOpen={Boolean(session)}
       onOpenChange={onOpenChange}
-      title={`Revoke Session for "${session?.actorName}"`}
+      title={`Revoke Session for "${session ? memberDisplayName(session.actor) : ""}"`}
       description="Proxies stop attaching credentials for this session at their next poll. This cannot be undone."
       confirmKey="revoke"
       confirmLabel="Revoke Session"

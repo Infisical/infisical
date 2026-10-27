@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
 import { format } from "date-fns";
 import { MoreHorizontal, Plus, Radar, Search, Trash2 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { HighlightText } from "@app/components/utilities/HighlightText";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -28,6 +27,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  ProviderIcon,
   Table,
   TableBody,
   TableCell,
@@ -36,6 +36,7 @@ import {
   TableRow
 } from "@app/components/v3";
 import { Skeleton } from "@app/components/v3/generic/Skeleton";
+import { ConfirmationAlertDialog, PageHeader } from "@app/components/v3/platform";
 import {
   TPamDiscoverySource,
   useDeletePamDiscoverySource,
@@ -97,9 +98,7 @@ export const PamDiscoveryPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Discovery</title>
-      </Helmet>
+      <PageTitle title="Discovery" />
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.PAM}
@@ -180,8 +179,8 @@ export const PamDiscoveryPage = () => {
                       <TableCell>
                         <div className="flex items-center gap-2.5">
                           {meta?.icon && (
-                            <img
-                              src={`/images/integrations/${meta.icon}`}
+                            <ProviderIcon
+                              icon={meta.icon}
                               alt={meta.name}
                               className="size-5 rounded-sm"
                             />
@@ -284,12 +283,13 @@ export const PamDiscoveryPage = () => {
         }}
       />
 
-      <DeleteActionModal
+      <ConfirmationAlertDialog
         isOpen={popUp.deleteSource.isOpen}
-        onChange={(isOpen) => handlePopUpToggle("deleteSource", isOpen)}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteSource", isOpen)}
         title={`Delete ${(popUp.deleteSource.data as TPamDiscoverySource | undefined)?.name ?? "source"}?`}
-        deleteKey="confirm"
-        onDeleteApproved={handleDelete}
+        description="This action is irreversible."
+        confirmKey="confirm"
+        onConfirm={handleDelete}
       />
     </>
   );

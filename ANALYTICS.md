@@ -106,6 +106,15 @@ errors, arbitrary URLs, or unbounded user-entered content. Define lifecycle
 terms such as viewed, clicked, created, succeeded, failed, and canceled so they
 cannot overlap accidentally.
 
+The one exception is the optional `comment` on
+`Billing Cancellation Reason Submitted`. It is free text that a user writes
+when they cancel, and it exists for churn analysis. It is capped at 500
+characters, trimmed, and omitted when empty. Never use it as a breakdown, and
+never put secrets, credentials, tokens, secret values, or other sensitive data
+in it from code. The field shows a hint that tells users not to enter secrets or
+credentials. Do not add free text to any other event without its own documented
+exception here.
+
 Every paywall has a required, lowercase dot-separated `paywallKey` owned by
 its call site. Keep the key stable when copy or plan names change; use modal
 text only as display context. Record the matched route ID, not a concrete URL

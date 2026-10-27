@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import {
   BanIcon,
   CheckIcon,
@@ -28,15 +27,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  ProviderIcon,
+  RowLink,
   TableCell,
   TableRow,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization } from "@app/context";
+import { useProject } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useToggle } from "@app/hooks";
 import {
   PkiSyncStatus,
@@ -66,7 +67,6 @@ export const PkiSyncRow = ({
   onToggleEnable,
   applicationName
 }: Props) => {
-  const navigate = useNavigate();
   const {
     id,
     lastSyncMessage,
@@ -76,13 +76,12 @@ export const PkiSyncRow = ({
     description,
     syncStatus,
     isAutoSyncEnabled,
-    projectId,
     applicationId
   } = pkiSync;
 
   const { syncOption } = usePkiSyncOption(destination);
 
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
   const {
@@ -111,38 +110,35 @@ export const PkiSyncRow = ({
 
   return (
     <TableRow
-      onClick={() => {
-        if (!canReadSync) {
-          return;
-        }
-        navigate({
-          to: ROUTE_PATHS.CertManager.PkiSyncDetailsByIDPage.path,
-          params: {
-            syncId: id,
-            projectId,
-            orgId: currentOrg.id
-          },
-          search: applicationName ? { applicationName } : undefined
-        });
-      }}
+      linked={canReadSync}
       className={twMerge(
         "group h-14 transition-colors duration-100 [&>td]:py-2",
         syncStatus === PkiSyncStatus.Failed && "bg-danger/5 hover:bg-danger/10",
-        canReadSync ? "cursor-pointer" : "cursor-not-allowed"
+        !canReadSync && "cursor-not-allowed"
       )}
       key={`sync-${id}`}
     >
       <TableCell>
-        <img
+        <ProviderIcon
           alt={`${destinationDetails.name} sync`}
-          src={`/images/integrations/${destinationDetails.image}`}
+          icon={destinationDetails.image}
           className="w-5 min-w-5"
         />
       </TableCell>
       <TableCell className="max-w-0 min-w-32!">
         <div>
           <div className="flex w-full items-center">
-            <p className="truncate">{name}</p>
+            <RowLink
+              {...getInstancePinningLink(
+                currentProject.orgId,
+                currentProject,
+                `integrations/${id}`
+              )!}
+              search={(applicationName ? { applicationName } : undefined) as never}
+              disabled={!canReadSync}
+            >
+              {name}
+            </RowLink>
             {description && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -152,12 +148,14 @@ export const PkiSyncRow = ({
               </Tooltip>
             )}
             {!applicationId && (
-              <span className="ml-2 rounded bg-mineshaft-600 px-2 py-0.5 text-[10px] tracking-wide text-mineshaft-200 uppercase">
+              <span className="ml-2 rounded bg-surface-active px-2 py-0.5 text-[10px] tracking-wide text-foreground-secondary uppercase">
                 Legacy
               </span>
             )}
           </div>
-          <p className="truncate text-xs leading-4 text-bunker-300">{destinationDetails.name}</p>
+          <p className="truncate text-xs leading-4 text-label-secondary">
+            {destinationDetails.name}
+          </p>
         </div>
       </TableCell>
       <PkiSyncDestinationCol pkiSync={pkiSync} />
@@ -228,7 +226,7 @@ export const PkiSyncRow = ({
                       <RotateCwIcon />
                       Trigger Sync
                     </span>
-                    <InfoIcon className="size-3.5 text-bunker-300" />
+                    <InfoIcon className="size-3.5 text-label-secondary" />
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="left" sideOffset={20}>
@@ -251,7 +249,7 @@ export const PkiSyncRow = ({
                         <DownloadIcon />
                         Import Certificates
                       </span>
-                      <InfoIcon className="size-3.5 text-bunker-300" />
+                      <InfoIcon className="size-3.5 text-label-secondary" />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent
@@ -276,7 +274,7 @@ export const PkiSyncRow = ({
                         <EraserIcon />
                         Remove Certificates
                       </span>
-                      <InfoIcon className="size-3.5 text-bunker-300" />
+                      <InfoIcon className="size-3.5 text-label-secondary" />
                     </div>
                   </TooltipTrigger>
                   <TooltipContent

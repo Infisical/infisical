@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { TableName, TAgentVaultProxies } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify } from "@app/lib/knex";
 
 export type TAgentVaultProxyDALFactory = ReturnType<typeof agentVaultProxyDALFactory>;
@@ -38,11 +39,44 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findForProject = async (projectId: string, tx?: Knex): Promise<TAgentVaultProxies[]> => {
+  const findForList = async (
+    {
+      projectId,
+      search,
+      orderBy,
+      orderDirection,
+      limit,
+      offset
+    }: {
+      projectId: string;
+      search?: string;
+      orderBy: "name" | "createdAt";
+      orderDirection: "asc" | "desc";
+      limit: number;
+      offset: number;
+    },
+    tx?: Knex
+  ): Promise<{ proxies: TAgentVaultProxies[]; totalCount: number }> => {
     try {
-      return (await (tx || db.replicaNode())(TableName.AgentVaultProxy)
-        .where({ projectId })
-        .orderBy("name", "asc")) as TAgentVaultProxies[];
+      const conn = tx || db.replicaNode();
+
+      const applyFilters = (query: Knex.QueryBuilder) => {
+        void query.where({ projectId });
+        if (search) void query.whereILike("name", `%${sanitizeSqlLikeString(search)}%`);
+        return query;
+      };
+
+      const countResult = (await applyFilters(conn(TableName.AgentVaultProxy)).count("id as count").first()) as
+        | { count: string }
+        | undefined;
+
+      const proxies = (await applyFilters(conn(TableName.AgentVaultProxy))
+        .orderBy(orderBy, orderDirection)
+        .orderBy("name", "asc")
+        .limit(limit)
+        .offset(offset)) as TAgentVaultProxies[];
+
+      return { proxies, totalCount: parseInt(countResult?.count || "0", 10) };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find agent vault proxies" });
     }
@@ -64,5 +98,45 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByIdWithOrg, findByIdInProject, findForProject, recordHeartbeat };
+  // Only fills an empty CA, and only at the token version the caller was checked against, so neither a racing
+  // start nor a rotation that landed in between can be overwritten.
+  const storeRootCaIfMissing = async (
+    id: string,
+    tokenVersion: number,
+    ca: Pick<
+      TAgentVaultProxies,
+      "rootCaCertificate" | "encryptedRootCaPrivateKey" | "rootCaFingerprint" | "rootCaExpiresAt"
+    >,
+    tx?: Knex
+  ): Promise<TAgentVaultProxies | undefined> => {
+    try {
+      const [updated] = (await (tx || db)(TableName.AgentVaultProxy)
+        .where({ id, tokenVersion })
+        .whereNull("rootCaCertificate")
+        .update(ca)
+        .returning("*")) as TAgentVaultProxies[];
+      return updated;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Store agent vault proxy root CA" });
+    }
+  };
+
+  const countByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.AgentVaultProxy).where({ projectId }).count("id").first();
+      return parseInt(String(result?.count || "0"), 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count agent vault proxies" });
+    }
+  };
+
+  return {
+    ...orm,
+    findByIdWithOrg,
+    findByIdInProject,
+    findForList,
+    recordHeartbeat,
+    storeRootCaIfMissing,
+    countByProjectId
+  };
 };

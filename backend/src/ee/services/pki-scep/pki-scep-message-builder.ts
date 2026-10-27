@@ -15,7 +15,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 
 import { buildResponseAttributes } from "./pki-scep-attributes";
 import { rsaPkcs1Encrypt, rsaSign, symmetricEncryptWithOid } from "./pki-scep-crypto";
-import { ScepFailInfo, ScepPkiStatus } from "./pki-scep-types";
+import { KEY_TRANSPORT_OIDS, ScepFailInfo, ScepPkiStatus } from "./pki-scep-types";
 
 export const buildCertRepSuccess = ({
   issuedCertDer,
@@ -246,7 +246,7 @@ const buildEnvelopedDataDer = (
       }).toSchema(),
       // keyEncryptionAlgorithm
       new AlgorithmIdentifier({
-        algorithmId: "1.2.840.113549.1.1.1" // rsaEncryption
+        algorithmId: KEY_TRANSPORT_OIDS.rsaEncryption
       }).toSchema(),
       // encryptedKey
       new asn1js.OctetString({ valueHex: encryptedCek })

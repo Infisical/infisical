@@ -1,12 +1,13 @@
-import { useEffect } from "react";
-import { Helmet } from "react-helmet";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { Badge, PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
+import { PolicyType } from "@app/hooks/api/policies/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { AccessApprovalRequest } from "./components/AccessApprovalRequest";
@@ -20,6 +21,7 @@ enum TabSection {
 }
 
 export const SecretApprovalsPage = () => {
+  const [openAddPolicy, setOpenAddPolicy] = useState<PolicyType | null>(null);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
@@ -74,14 +76,17 @@ export const SecretApprovalsPage = () => {
     });
   };
 
+  const configurePolicy = (policyType: PolicyType) => {
+    setOpenAddPolicy(policyType);
+    updateSelectedTab(TabSection.Policies);
+  };
+
   return (
     <div>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("approval.title") })}</title>
-        <meta property="og:title" content={String(t("approval.og-title"))} />
-        <meta name="og:description" content={String(t("approval.og-description"))} />
-      </Helmet>
-      <div className="mx-auto flex h-full w-full max-w-8xl flex-col gap-8 text-white">
+      <PageTitle title={t("page-titles.secret-approvals")} />
+      <meta property="og:title" content={String(t("approval.og-title"))} />
+      <meta name="og:description" content={String(t("approval.og-description"))} />
+      <div className="mx-auto flex h-full w-full max-w-8xl flex-col bg-page text-foreground-inverse">
         <PageHeader
           scope={ProjectType.SecretManager}
           title="Approval Workflows"
@@ -105,14 +110,22 @@ export const SecretApprovalsPage = () => {
           </TabsList>
           <TabsContent value={TabSection.SecretApprovalRequests}>
             <SecretApprovalRequest
-              onConfigurePolicies={() => updateSelectedTab(TabSection.Policies)}
+              onConfigurePolicies={() => configurePolicy(PolicyType.ChangePolicy)}
             />
           </TabsContent>
           <TabsContent value={TabSection.ResourceApprovalRequests}>
-            <AccessApprovalRequest projectId={projectId} projectSlug={projectSlug} />
+            <AccessApprovalRequest
+              projectId={projectId}
+              projectSlug={projectSlug}
+              onConfigurePolicies={() => configurePolicy(PolicyType.AccessPolicy)}
+            />
           </TabsContent>
           <TabsContent value={TabSection.Policies}>
-            <ApprovalPolicyList projectId={projectId} />
+            <ApprovalPolicyList
+              projectId={projectId}
+              openAddPolicy={openAddPolicy}
+              onAddPolicyOpened={() => setOpenAddPolicy(null)}
+            />
           </TabsContent>
         </Tabs>
       </div>

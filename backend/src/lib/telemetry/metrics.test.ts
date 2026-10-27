@@ -1,6 +1,25 @@
 import opentelemetry from "@opentelemetry/api";
+import {
+  AggregationTemporality,
+  createAllowListAttributesProcessor,
+  type DataPoint,
+  InMemoryMetricExporter,
+  MeterProvider,
+  PeriodicExportingMetricReader
+} from "@opentelemetry/sdk-metrics";
+import type { Knex } from "knex";
 
-import { highCardinalityMeter, normalizeHttpMethod, shouldRecordHighCardinalityMetrics } from "./metrics";
+import { BadRequestError } from "@app/lib/errors";
+
+import {
+  highCardinalityMeter,
+  LocalRefreshOutcome,
+  normalizeHttpMethod,
+  recordLocalRefreshRunMetric,
+  registerInfrastructureMetrics,
+  shouldRecordHighCardinalityMetrics
+} from "./metrics";
+import { INFISICAL_CORE_METER_ATTRIBUTES } from "./telemetry-attributes";
 
 const mockConfig = {
   OTEL_TELEMETRY_COLLECTION_ENABLED: true,
@@ -126,5 +145,97 @@ describe("normalizeHttpMethod", () => {
   test("defaults to GET when the method is absent, matching the instrumentation", () => {
     expect(normalizeHttpMethod(undefined)).toBe("GET");
     expect(normalizeHttpMethod("")).toBe("GET");
+  });
+});
+
+describe("local refresh metrics", () => {
+  let reader: PeriodicExportingMetricReader;
+
+  // Instruments bind to the provider on first use and never rebind, so the provider is installed once.
+  beforeAll(() => {
+    opentelemetry.metrics.disable();
+    reader = new PeriodicExportingMetricReader({
+      exporter: new InMemoryMetricExporter(AggregationTemporality.CUMULATIVE),
+      exportIntervalMillis: 60_000
+    });
+    opentelemetry.metrics.setGlobalMeterProvider(
+      new MeterProvider({
+        readers: [reader],
+        views: [
+          {
+            meterName: "InfisicalCore",
+            attributesProcessors: [createAllowListAttributesProcessor(INFISICAL_CORE_METER_ATTRIBUTES)]
+          }
+        ]
+      })
+    );
+    registerInfrastructureMetrics({ client: {} } as unknown as Knex);
+  });
+
+  afterAll(() => {
+    opentelemetry.metrics.disable();
+  });
+
+  beforeEach(() => {
+    mockConfig.OTEL_TELEMETRY_COLLECTION_ENABLED = true;
+  });
+
+  const collectPoints = async (metricName: string) => {
+    const { resourceMetrics } = await reader.collect();
+    return resourceMetrics.scopeMetrics
+      .flatMap((scope) => scope.metrics)
+      .filter((metric) => metric.descriptor.name === metricName)
+      .flatMap((metric) => metric.dataPoints as DataPoint<number>[]);
+  };
+
+  test("labels failed runs with the classified error type and keeps the labels through the allowlist", async () => {
+    recordLocalRefreshRunMetric({
+      name: "labels",
+      outcome: LocalRefreshOutcome.FAILED,
+      durationMs: 1500,
+      error: new BadRequestError({ message: "bad" }),
+      consecutiveFailures: 1
+    });
+    recordLocalRefreshRunMetric({ name: "labels", outcome: LocalRefreshOutcome.SKIPPED });
+
+    const runs = (await collectPoints("infisical.local_refresh.run.count")).filter(
+      (point) => point.attributes["job.name"] === "labels"
+    );
+    expect(runs.map((point) => point.attributes)).toEqual(
+      expect.arrayContaining([
+        { "job.name": "labels", outcome: "failed", "error.type": "validation" },
+        { "job.name": "labels", outcome: "skipped" }
+      ])
+    );
+
+    const durations = (await collectPoints("infisical.local_refresh.run.duration")).filter(
+      (point) => point.attributes["job.name"] === "labels"
+    );
+    expect(durations).toHaveLength(1);
+    expect((durations[0].value as unknown as { sum: number }).sum).toBe(1.5);
+  });
+
+  test("the consecutive failure gauge heals on success", async () => {
+    const gaugeValue = async () =>
+      (await collectPoints("infisical.local_refresh.consecutive_failures")).find(
+        (point) => point.attributes["job.name"] === "gauge"
+      )?.value;
+
+    recordLocalRefreshRunMetric({ name: "gauge", outcome: LocalRefreshOutcome.FAILED, consecutiveFailures: 3 });
+    expect(await gaugeValue()).toBe(3);
+
+    recordLocalRefreshRunMetric({ name: "gauge", outcome: LocalRefreshOutcome.COMPLETED, consecutiveFailures: 0 });
+    expect(await gaugeValue()).toBe(0);
+  });
+
+  test("records nothing while telemetry is disabled", async () => {
+    mockConfig.OTEL_TELEMETRY_COLLECTION_ENABLED = false;
+    recordLocalRefreshRunMetric({ name: "disabled", outcome: LocalRefreshOutcome.FAILED, consecutiveFailures: 1 });
+    mockConfig.OTEL_TELEMETRY_COLLECTION_ENABLED = true;
+
+    const runs = (await collectPoints("infisical.local_refresh.run.count")).filter(
+      (point) => point.attributes["job.name"] === "disabled"
+    );
+    expect(runs).toHaveLength(0);
   });
 });

@@ -4,6 +4,8 @@ sidebarTitle: "Azure Key Vault"
 description: "Learn how to configure a Azure Key Vault Connection for Infisical."
 ---
 
+import AzureOAuthAppConfigurationServicePrincipal from "/snippets/app-connections/azure/oauth-app-configuration-service-principal.mdx";
+
 Infisical supports three methods for connecting to Azure Key Vault: OAuth, Client Secret, and Certificate (SPN with certificate).
 
 <Accordion title="Self-Hosted Instance">
@@ -121,8 +123,7 @@ Infisical supports three methods for connecting to Azure Key Vault: OAuth, Clien
 
             ![Connect via Azure OAuth](/images/app-connections/azure/key-vault/create-oauth-method.png)
 
-            
-
+            <AzureOAuthAppConfigurationServicePrincipal />
           </Step>
           <Step title="Grant Access">
             You will then be redirected to Azure to grant Infisical access to your Azure account. Once granted,

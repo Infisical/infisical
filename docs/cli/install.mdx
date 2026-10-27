@@ -1,0 +1,34 @@
+---
+title: "Install the CLI"
+sidebarTitle: "Install"
+description: "Install the Infisical CLI with the package manager for your operating system."
+---
+
+import InstallCli from "/snippets/cli/install-cli.mdx";
+
+<Warning>
+  If you installed the CLI on Linux from the Cloudsmith package repository, move to `artifacts-cli.infisical.com`. Cloudsmith stopped serving the CLI on September 16, 2026, so machines still pointed at it can't install or upgrade the CLI. See [Migrate off Cloudsmith](/cli/cloudsmith-migration).
+</Warning>
+
+Install the CLI with the package manager for your operating system:
+
+<InstallCli />
+
+Check that the installation worked:
+
+```bash
+infisical --version
+```
+
+If you install the CLI in production, such as on a server or in a container image, pin a specific version so every reinstall gets the same one. The [CLI releases](https://github.com/Infisical/cli/releases) list every version.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/cli/usage">
+    Log in and check that the CLI can reach your Infisical instance.
+  </Card>
+  <Card title="Upgrade" icon="refresh-cw" href="/cli/upgrade">
+    Upgrade the CLI to the latest version.
+  </Card>
+</CardGroup>
