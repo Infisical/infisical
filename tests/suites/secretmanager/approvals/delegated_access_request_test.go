@@ -165,7 +165,7 @@ func TestDelegatedAccessRequest_Decision(t *testing.T) {
 func TestDelegatedAccessRequest_CallbackLimit(t *testing.T) {
 	t.Parallel()
 
-	t.Run("should close the request when ServiceNow calls back a sixth time", func(t *testing.T) {
+	t.Run("should keep the request open when ServiceNow calls back a sixth time while its decision is being read", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
@@ -178,29 +178,11 @@ func TestDelegatedAccessRequest_CallbackLimit(t *testing.T) {
 		code := req.callback(t, req.record.CallbackToken)
 
 		// Assert
-		require.Equal(t, http.StatusForbidden, code)
-		closed := req.current(t)
-		require.Equal(t, delegatedState{status: "rejected", delegated: "failed", reason: closed.reason}, closed)
-		require.Contains(t, closed.reason, "called back more than 5 times")
-	})
-
-	t.Run("should refuse an approval that arrives after the limit closed the request", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		req := newWaitingDelegatedRequest(t)
-		for range 6 {
-			req.callback(t, req.record.CallbackToken)
-		}
-		req.sn.Seed(t, servicenow.Approved(req.record.SysID))
-
-		// Action
-		code := req.callback(t, req.record.CallbackToken)
-
-		// Assert
-		require.Equal(t, http.StatusForbidden, code)
-		require.False(t, req.current(t).granted)
-		require.Equal(t, http.StatusForbidden, req.readSecret(t))
+		require.Equal(t, http.StatusOK, code)
+		req.sn.ExpectEvent[servicenow.AccessRequestRead](t, nil, fakenet.Within(outboxWait))
+		req.sn.ExpectNoEvent[servicenow.AccessRequestRead](t, nil, fakenet.Within(quietWait))
+		open := req.current(t)
+		require.Equal(t, delegatedState{status: "pending", delegated: "waiting_approval", reason: open.reason}, open)
 	})
 
 	t.Run("should keep the request open when a sixth callback arrives without a token", func(t *testing.T) {

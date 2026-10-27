@@ -15,6 +15,7 @@ import {
 import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "../delegated-approval-enums";
 import { DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT } from "../delegated-approval-events";
 import { TDelegatedApprovalRequestDetails } from "../delegated-approval-schemas";
+import { DELEGATED_APPROVAL_DISPATCH_RETRY_HINT } from "./delegated-approval-dispatch-constants";
 import { delegatedApprovalDispatchConsumerFactory } from "./delegated-approval-dispatch-consumer";
 
 vi.mock("@app/lib/logger", () => ({
@@ -46,8 +47,7 @@ vi.mock("@app/services/app-connection/app-connection-fns", () => ({
 
 const DELEGATED_REQUEST_ID = "11111111-1111-1111-1111-111111111111";
 const ORG_ID = "22222222-2222-2222-2222-222222222222";
-const RETRY_REASON =
-  "ServiceNow did not respond. Infisical will retry automatically. If it keeps failing, send the request again.";
+const RETRY_REASON = `ServiceNow did not respond. ${DELEGATED_APPROVAL_DISPATCH_RETRY_HINT}`;
 const SERVICENOW_RECORD = { type: DelegatedApprovalPolicyType.ServiceNow, recordNumber: "INFAR1000000" };
 
 const pendingDelegatedRequest = {
