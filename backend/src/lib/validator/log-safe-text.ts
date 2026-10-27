@@ -76,6 +76,8 @@ const isUnsafeCharacter = (character: string) => {
   return isControlCharacter(code) || isUncategorizedFormat(code) || FORMAT_CATEGORY.test(character);
 };
 
+export const LOG_UNSAFE_TEXT_MESSAGE = "Value cannot contain control, escape, bidirectional or zero-width characters";
+
 // `allowMultiline` is for fields a user types into a textarea, where a line break or tab is ordinary
 // input. CR is included so CRLF-separated content is not rejected; the sink normalizes it to LF.
 export const containsLogUnsafeCharacters = (value: string, { allowMultiline = false } = {}): boolean => {

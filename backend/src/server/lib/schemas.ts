@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { TemporaryPermissionMode } from "@app/db/schemas";
 import { ms } from "@app/lib/ms";
-import { containsLogUnsafeCharacters } from "@app/lib/validator/log-safe-text";
+import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 
 interface SlugSchemaInputs {
@@ -48,7 +48,7 @@ export const GenericResourceNameSchema = z
 // ingest path normalizes the same characters.
 export const auditSafeText = (schema: z.ZodString, { allowMultiline = false } = {}) =>
   schema.refine((val) => !containsLogUnsafeCharacters(val, { allowMultiline }), {
-    message: "Value cannot contain control, escape, bidirectional or zero-width characters"
+    message: LOG_UNSAFE_TEXT_MESSAGE
   });
 
 export const BaseSecretNameSchema = z.string().trim().min(1);

@@ -61,8 +61,9 @@ describe("auditSafeText composition", () => {
 describe("routes that feed audit metadata keep the wrapper", () => {
   const read = (relative: string) => readFileSync(path.join(__dirname, "../..", relative), "utf8");
 
-  // Every route that creates or renames an identity: the org and project routers take the same name
-  // the legacy router does, and the web app creates project identities through the project router.
+  // Every route that creates an identity: the org and project routers take the same name the legacy
+  // router does, and the web app creates project identities through the project router. Renames are
+  // checked in the identity services instead, and only when the name changes.
   test.each([
     "server/routes/v1/identity-router.ts",
     "server/routes/v1/org-identity-router.ts",
@@ -72,7 +73,7 @@ describe("routes that feed audit metadata keep the wrapper", () => {
       .split("\n")
       .filter((line) => line.trimStart().startsWith("name: auditSafeText("));
 
-    expect(nameLines.length).toBeGreaterThanOrEqual(2); // create and update, and any route added later
+    expect(nameLines.length).toBeGreaterThanOrEqual(1);
     nameLines.forEach((line) => {
       expect(line).toContain(".max(255)");
       expect(line).not.toContain("allowMultiline");
