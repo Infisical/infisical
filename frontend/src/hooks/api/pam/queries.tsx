@@ -8,6 +8,7 @@ import {
   createResourcePermissionQueryHook,
   ResourcePermissionResponse
 } from "@app/helpers/resourcePermissions";
+import { TAutoApprovalInputDetails } from "@app/hooks/api/approvalPolicies/types";
 import { conditionsMatcher } from "@app/hooks/api/roles/permission-matcher";
 
 import {
@@ -652,11 +653,12 @@ export const useGetPamAccountApprovers = (
     queryKey: pamKeys.accountApprovers(accountId ?? "", accessType),
     enabled: Boolean(accountId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ steps: TPamApprovalWorkflowStep[] }>(
-        `/api/v1/pam/access-requests/accounts/${accountId}/approvers`,
-        { params: { accessType } }
-      );
-      return data.steps;
+      const { data } = await apiRequest.get<{
+        steps: TPamApprovalWorkflowStep[];
+        autoApprovalInputs: TAutoApprovalInputDetails[];
+        autoApprovalOnly: boolean;
+      }>(`/api/v1/pam/access-requests/accounts/${accountId}/approvers`, { params: { accessType } });
+      return data;
     }
   });
 };

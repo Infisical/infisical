@@ -1,5 +1,5 @@
 /* eslint-disable no-param-reassign */
-import { useQuery, UseQueryOptions } from "@tanstack/react-query";
+import { useQueries, useQuery, UseQueryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 import { TReactQueryOptions } from "@app/types/reactQuery";
@@ -149,6 +149,21 @@ export const useGetSecretApprovalRequestDetails = ({
     queryKey: secretApprovalRequestKeys.detail({ id }),
     queryFn: () => fetchSecretApprovalRequestDetails({ id }),
     enabled: Boolean(id) && (options?.enabled ?? true)
+  });
+
+export const useGetSecretApprovalRequestDetailsList = ({
+  ids,
+  enabled = true
+}: {
+  ids: string[];
+  enabled?: boolean;
+}) =>
+  useQueries({
+    queries: ids.map((id) => ({
+      queryKey: secretApprovalRequestKeys.detail({ id }),
+      queryFn: () => fetchSecretApprovalRequestDetails({ id }),
+      enabled
+    }))
   });
 
 const fetchSecretApprovalRequestCount = async ({

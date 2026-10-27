@@ -3,7 +3,15 @@ import { Knex } from "knex";
 import { TDbClient } from "@app/db";
 import { AccessApprovalPoliciesSchema, TableName, TAccessApprovalPolicies, TUsers } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { buildFindFilter, ormify, selectAllTableCols, sqlNestRelationships, TFindFilter, TOrmify } from "@app/lib/knex";
+import {
+  buildFindFilter,
+  ormify,
+  rowWithSameIdIn,
+  selectAllTableCols,
+  sqlNestRelationships,
+  TFindFilter,
+  TOrmify
+} from "@app/lib/knex";
 
 import {
   ApproverType,
@@ -398,6 +406,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
     const result = await tx(TableName.AccessApprovalPolicy)
       // eslint-disable-next-line
       .where(buildFindFilter(filter))
+      .whereNotExists(rowWithSameIdIn(TableName.ApprovalPolicies, TableName.AccessApprovalPolicy))
       .where((qb) => {
         if (customFilter?.policyId) {
           void qb.where(`${TableName.AccessApprovalPolicy}.id`, "=", customFilter.policyId);
@@ -593,6 +602,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
           `${TableName.AccessApprovalPolicy}.id`
         )
         .where(`${TableName.AccessApprovalPolicyEnvironment}.envId`, "=", envId)
+        .whereNotExists(rowWithSameIdIn(TableName.ApprovalPolicies, TableName.AccessApprovalPolicy))
         .orderBy("deletedAt", "desc")
         .orderByRaw(`"deletedAt" IS NULL`)
         .select(selectAllTableCols(TableName.AccessApprovalPolicy))
@@ -641,6 +651,7 @@ export const accessApprovalPolicyDALFactory = (db: TDbClient): TAccessApprovalPo
           )
         )
         .whereNull(`${TableName.AccessApprovalPolicy}.deletedAt`)
+        .whereNotExists(rowWithSameIdIn(TableName.ApprovalPolicies, TableName.AccessApprovalPolicy))
         .where((qb) => {
           if (excludePolicyId) void qb.whereNot(`${TableName.AccessApprovalPolicy}.id`, excludePolicyId);
         })

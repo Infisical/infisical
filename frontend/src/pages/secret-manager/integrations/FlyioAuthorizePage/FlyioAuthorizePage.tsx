@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -7,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -75,9 +75,7 @@ export const FlyioAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Authorize Fly.io Integration</title>
-      </Helmet>
+      <PageTitle title="Authorize Fly.io Integration" />
       <Card className="mb-12 w-full max-w-lg">
         <CardHeader>
           <CardTitle>

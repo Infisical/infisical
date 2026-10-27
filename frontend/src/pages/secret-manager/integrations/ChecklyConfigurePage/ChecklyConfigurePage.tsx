@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet";
 import { faArrowUpRightFromSquare, faBookOpen, faBugs } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { motion } from "motion/react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -144,9 +144,7 @@ export const ChecklyConfigurePage = () => {
     integrationAuthGroups &&
     targetAppId ? (
     <div className="flex h-full w-full flex-col items-center justify-center bg-linear-to-tr from-surface-base to-page-deep py-6">
-      <Helmet>
-        <title>Set Up Checkly Integration</title>
-      </Helmet>
+      <PageTitle title="Set Up Checkly Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
@@ -304,9 +302,7 @@ export const ChecklyConfigurePage = () => {
     </div>
   ) : (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Set Up Checkly Integration</title>
-      </Helmet>
+      <PageTitle title="Set Up Checkly Integration" />
       {isIntegrationAuthAppsLoading || isintegrationAuthGroupsLoading ? (
         <img
           src="/images/loading/loading.gif"

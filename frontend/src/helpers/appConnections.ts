@@ -74,6 +74,7 @@ import { GoDaddyConnectionMethod } from "@app/hooks/api/appConnections/types/god
 import { HasuraCloudConnectionMethod } from "@app/hooks/api/appConnections/types/hasura-cloud-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { HpeIloConnectionMethod } from "@app/hooks/api/appConnections/types/hpe-ilo-connection";
+import { JiraConnectionMethod } from "@app/hooks/api/appConnections/types/jira-connection";
 import { KeeperConnectionMethod } from "@app/hooks/api/appConnections/types/keeper-connection";
 import { KempLoadMasterConnectionMethod } from "@app/hooks/api/appConnections/types/kemp-loadmaster-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
@@ -688,6 +689,12 @@ export const APP_CONNECTION_MAP: Record<
     aliases: ["aws s3", "cloudflare r2", "google cloud storage", "gcs", "oracle", "oci"],
     category: "STORAGE",
     description: "Connect to AWS S3, Cloudflare R2, Google Cloud Storage or OCI Object Storage."
+  },
+  [AppConnection.Jira]: {
+    name: "Jira",
+    image: "Jira.svg",
+    category: "PRODUCTIVITY",
+    description: "Atlassian Jira Cloud and Data Center."
   }
 };
 
@@ -759,6 +766,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "GitHub App", icon: GithubIcon };
     case GitHubConnectionMethod.Pat:
     case OnaConnectionMethod.PersonalAccessToken:
+    case JiraConnectionMethod.PersonalAccessToken:
       return { name: "Personal Access Token", icon: KeyRoundIcon };
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
@@ -799,6 +807,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case DopplerConnectionMethod.ApiToken:
     case RundeckConnectionMethod.ApiToken:
     case PortainerConnectionMethod.ApiToken:
+    case JiraConnectionMethod.ApiToken:
       return { name: "API Token", icon: KeyRoundIcon };
     case VenafiConnectionMethod.ApiKey:
       return { name: "API Key", icon: KeyRoundIcon };

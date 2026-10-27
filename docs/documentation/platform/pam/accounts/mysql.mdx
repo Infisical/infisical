@@ -1,84 +1,75 @@
 ---
 title: "MySQL accounts"
 sidebarTitle: "MySQL"
-description: "Add and connect to MySQL databases."
+description: "Give people and agents access to a MySQL database without sharing its credentials."
 ---
 
-MySQL accounts let you manage access to your MySQL databases. Users connect through Web Access (a browser-based interface) or CLI (a local proxy), and every [session](/documentation/platform/pam/sessions/overview) is recorded.
+A MySQL [account](/documentation/platform/pam/accounts/overview) stores the credentials for one MySQL database user. Members connect to the database in the browser or through the Infisical CLI, and Infisical records every query they run.
 
-## Creating an account
+## Prerequisites
+
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
+- A [gateway](/documentation/platform/gateways/overview) that can reach the database
+- A MySQL [account template](/documentation/platform/pam/templates/overview)
+
+## Create the account
 
 <Steps>
-  <Step title="Start adding an account">
-    Go to **Privileged Access Management → Accounts** and select **Add Account**.
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
   </Step>
-  <Step title="Select a folder and template">
-    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a MySQL [template](/documentation/platform/pam/templates/overview).
+  <Step>
+    Select the **Folder** and a MySQL **Account Template**, then select **Next**.
   </Step>
-  <Step title="Enter connection details">
+  <Step>
+    Enter a **Name** and the connection details:
+
     | Field | Description |
-    |-------|-------------|
-    | **Name** | A descriptive name (e.g., `orders-db-readonly`) |
-    | **Host** | Database hostname or IP |
-    | **Port** | MySQL port (default: 3306) |
-    | **Database** | Database name |
-    | **SSL Enabled** | Enable SSL for the connection |
-    | **Reject Unauthorized** | Reject connections with invalid certificates (only if SSL enabled) |
-    | **SSL Certificate** | Custom CA certificate (only if SSL enabled) |
+    | --- | --- |
+    | **Host** | The database's hostname or IP address |
+    | **Port** | The database's port (defaults to `3306`) |
+    | **Database** | The database that sessions connect to |
+    | **SSL Enabled** | Whether to connect over TLS |
+    | **Reject Unauthorized** | Whether to reject a server certificate that can't be verified (shown when **SSL Enabled** is on) |
+    | **SSL Certificate** | The CA certificate that signed the server's certificate (shown when **SSL Enabled** is on) |
   </Step>
-  <Step title="Enter credentials">
-    | Field | Description |
-    |-------|-------------|
-    | **Username** | MySQL username |
-    | **Password** | MySQL password |
-  </Step>
-  <Step title="Save">
-    Select **Create**.
+  <Step>
+    Enter the **Username** and **Password** of the MySQL user, then select **Create**.
   </Step>
 </Steps>
 
-## Connecting
+## Connect
+
+To open a session, follow [Connect to an account](/documentation/platform/pam/accounts/connect).
 
 <Tabs>
-  <Tab title="Web Access">
-    Web Access provides a browser-based interface with two tools:
-
-    - **Data Explorer** — browse tables, view data, filter and sort, edit rows, export to CSV/JSON
-    - **SQL Editor** — write and run SQL queries
-
-    To connect:
-    1. Go to **Privileged Access Management → Accounts**
-    2. Find the account and click the rocket icon (or select **Launch Session** from the menu)
-    3. Click **Connect in Browser**
-
+  <Tab title="Browser">
+    The browser session has a table browser, where you can view, filter, edit, and export rows, and a SQL editor for running queries.
   </Tab>
   <Tab title="CLI">
-    The CLI starts a local proxy that you connect to with your preferred MySQL client.
+    Start the local proxy:
 
     ```bash
-    infisical pam access my-folder/orders-db
+    infisical pam access backend-team/orders-db
     ```
 
-    The command outputs the local port to connect to. Then use your MySQL client:
+    The proxy keeps running in that terminal and prints its port. In a second terminal, connect your MySQL client to that port:
+
     ```bash
-    mysql -h 127.0.0.1 -P <port> -u root orders
+    mysql -h 127.0.0.1 -P <port> orders
     ```
 
-    No password needed since the proxy handles authentication.
-
-    **Flags:**
-    - `--port <port>` — use a specific local port (otherwise one is assigned automatically)
-    - `--reason <reason>` — provide an access reason (if required by template)
+    The proxy signs in for you, so the client doesn't need a password.
   </Tab>
 </Tabs>
 
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="PostgreSQL Accounts" icon="database" href="/documentation/platform/pam/accounts/postgresql">
-    Add PostgreSQL database accounts.
+  <Card title="MySQL credential rotation" icon="refresh-cw" href="/documentation/platform/pam/credential-rotation/mysql">
+    Rotate the passwords of MySQL accounts.
   </Card>
   <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
-    View and manage sessions.
+    Review and end the connections that people and agents make to your accounts.
   </Card>
 </CardGroup>

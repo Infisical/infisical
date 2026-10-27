@@ -15,6 +15,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -27,7 +28,6 @@ import {
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   IconButton,
   Input,
   OrgIcon,
@@ -397,22 +397,19 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
 
                                 return (
                                   <Field className="mb-0 max-w-[786px]">
-                                    <FilterableSelect
-                                      isMulti
+                                    <Combobox
+                                      multiple
                                       isDisabled={!isAllowed}
                                       options={allOptions}
                                       value={selectedValues}
-                                      onChange={(selected) => {
-                                        field.onChange(
-                                          (selected as { slug: string; name: string }[]).map(
-                                            (s) => s.slug
-                                          )
-                                        );
+                                      onValueChange={(selected) => {
+                                        field.onChange(selected.map((s) => s.slug));
                                       }}
                                       getOptionValue={(option) => option.slug}
+                                      getOptionKeywords={(option) => [option.slug]}
                                       getOptionLabel={(option) => option.name}
                                       placeholder="Select roles..."
-                                      menuPosition="fixed"
+                                      searchAriaLabel="Search roles"
                                     />
                                     {error?.message && <FieldError>{error.message}</FieldError>}
                                   </Field>
@@ -545,14 +542,16 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                 render={({ field }) => (
                   <Field>
                     <FieldLabel>Select roles</FieldLabel>
-                    <FilterableSelect
-                      isMulti
+                    <Combobox
+                      multiple
                       options={availableRoles}
                       value={field.value}
-                      onChange={field.onChange}
+                      onValueChange={field.onChange}
                       getOptionValue={(option) => option.slug}
+                      getOptionKeywords={(option) => [option.slug]}
                       getOptionLabel={(option) => option.name}
                       placeholder="Select roles..."
+                      searchAriaLabel="Search roles"
                     />
                     {addProjectIdentityErrors.roles?.message && (
                       <FieldError>{addProjectIdentityErrors.roles.message}</FieldError>
@@ -583,17 +582,18 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                 render={({ field: { onChange, value }, fieldState: { error } }) => (
                   <Field>
                     <FieldLabel>Machine Identity</FieldLabel>
-                    <FilterableSelect
+                    <Combobox
                       value={value}
-                      onChange={onChange}
+                      isClearable={false}
+                      onValueChange={onChange}
                       isLoading={isSearchingIdentities}
                       placeholder="Select machine identity..."
+                      searchAriaLabel="Search machine identities"
                       autoFocus
                       options={availableOrgIdentities}
                       getOptionValue={(option) => option.id}
                       getOptionLabel={(option) => option.name}
-                      onInputChange={(newValue) => setIdentitySearchInput(newValue)}
-                      filterOption={() => true}
+                      onSearchChange={(newValue) => setIdentitySearchInput(newValue)}
                     />
                     {error?.message && <FieldError>{error.message}</FieldError>}
                   </Field>
@@ -605,14 +605,16 @@ export const ProjectTemplateIdentitiesSection = ({ projectTemplate }: Props) => 
                 render={({ field }) => (
                   <Field className="mt-4">
                     <FieldLabel>Select roles</FieldLabel>
-                    <FilterableSelect
-                      isMulti
+                    <Combobox
+                      multiple
                       options={availableRoles}
                       value={field.value}
-                      onChange={field.onChange}
+                      onValueChange={field.onChange}
                       getOptionValue={(option) => option.slug}
+                      getOptionKeywords={(option) => [option.slug]}
                       getOptionLabel={(option) => option.name}
                       placeholder="Select roles..."
+                      searchAriaLabel="Search roles"
                     />
                     {addOrgIdentityErrors.roles?.message && (
                       <FieldError>{addOrgIdentityErrors.roles.message}</FieldError>
