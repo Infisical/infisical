@@ -211,7 +211,7 @@ export const AgentVaultSessionsPage = () => {
           <EmptyTitle>{emptyTitle}</EmptyTitle>
           <EmptyDescription>{emptyDescription}</EmptyDescription>
         </EmptyHeader>
-        {!hasReachableBundles && isAdmin && (
+        {!isFiltered && !hasReachableBundles && isAdmin && (
           <Button variant="av" asChild>
             <Link
               to="/organizations/$orgId/agent-vault/access-bundles"

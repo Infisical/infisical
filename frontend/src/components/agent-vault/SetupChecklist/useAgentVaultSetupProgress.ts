@@ -1,3 +1,5 @@
+import { linkOptions } from "@tanstack/react-router";
+
 import { useOrganization, useProjectPermission } from "@app/context";
 import { useLocalStorageState } from "@app/hooks";
 import {
@@ -16,6 +18,8 @@ const NOTHING_DISMISSED: Record<string, boolean | undefined> = {};
 // The API allows at most 10 proxies per org (AGENT_VAULT_MAX_PROXIES_PER_ORG), so one page holds them all.
 const PROXY_PAGE_SIZE = 20;
 
+const POLL_INTERVAL_MS = 30_000;
+
 export enum AgentVaultSetupStep {
   Proxy = "proxy",
   AccessBundle = "access-bundle",
@@ -30,18 +34,31 @@ export const useAgentVaultSetupProgress = () => {
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
 
-  const proxies = useListAgentVaultProxies({ limit: PROXY_PAGE_SIZE }, isAdmin);
+  // These two poll so a proxy coming online or a session created elsewhere ticks its step off, and stop
+  // once that has happened: the sidebar mounts this hook on every Agent Vault page.
+  const proxies = useListAgentVaultProxies(
+    { limit: PROXY_PAGE_SIZE },
+    {
+      enabled: isAdmin,
+      refetchInterval: (query) =>
+        query.state.data?.proxies.some((proxy) => proxy.heartbeat) ? false : POLL_INTERVAL_MS
+    }
+  );
   const newestBundles = useListAgentVaultAccessBundles(
     { orderBy: "createdAt", orderDirection: "desc", limit: 1 },
-    isAdmin
+    { enabled: isAdmin }
   );
   const fullestBundles = useListAgentVaultAccessBundles(
     { orderBy: "serviceCount", orderDirection: "desc", limit: 1 },
-    isAdmin
+    { enabled: isAdmin }
   );
   const sessions = useListAgentVaultSessions(
     { scope: AgentVaultSessionScope.All, limit: 1 },
-    isAdmin
+    {
+      enabled: isAdmin,
+      refetchInterval: (query) =>
+        (query.state.data?.totalCount ?? 0) > 0 ? false : POLL_INTERVAL_MS
+    }
   );
   const queries = [proxies, newestBundles, fullestBundles, sessions];
 
@@ -90,16 +107,23 @@ export const useAgentVaultSetupProgress = () => {
 
 export type TAgentVaultSetupProgress = ReturnType<typeof useAgentVaultSetupProgress>;
 
-// The page that owns a step, relative to the product root. The Service step needs a bundle to land on.
-export const getAgentVaultSetupStepPath = (
+// The page that owns a step. The Service step needs a bundle to land on. Every target here takes the
+// `create` search flag (agentVaultCreateIntentSearchParams), which useOpenAgentVaultSetupStep relies on.
+export const getAgentVaultSetupStepLink = (
   step: AgentVaultSetupStep,
+  orgId: string,
   newestBundleId?: string
-): string => {
-  if (step === AgentVaultSetupStep.Proxy) return "proxies";
+) => {
+  if (step === AgentVaultSetupStep.Proxy)
+    return linkOptions({ to: "/organizations/$orgId/agent-vault/proxies", params: { orgId } });
   if (step === AgentVaultSetupStep.Service && newestBundleId)
-    return `access-bundles/${newestBundleId}`;
-  if (step === AgentVaultSetupStep.Session) return "sessions";
-  return "access-bundles";
+    return linkOptions({
+      to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
+      params: { orgId, accessBundleId: newestBundleId }
+    });
+  if (step === AgentVaultSetupStep.Session)
+    return linkOptions({ to: "/organizations/$orgId/agent-vault/sessions", params: { orgId } });
+  return linkOptions({ to: "/organizations/$orgId/agent-vault/access-bundles", params: { orgId } });
 };
 
 // A created-but-unconnected proxy has nothing left to create, so its step only opens the page.

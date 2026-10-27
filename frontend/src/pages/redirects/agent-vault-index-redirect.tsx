@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 
 import {
-  getAgentVaultSetupStepPath,
+  AgentVaultSetupStep,
+  getAgentVaultSetupStepLink,
   useAgentVaultSetupProgress
 } from "@app/components/agent-vault/SetupChecklist";
 import { PageLoader } from "@app/components/v3";
@@ -19,11 +20,9 @@ const AgentVaultIndexRedirect = () => {
 
   useEffect(() => {
     if (!isResolved) return;
-    const pathSuffix =
-      isVisible && nextStep ? getAgentVaultSetupStepPath(nextStep, newestBundle?.id) : "sessions";
+    const step = isVisible && nextStep ? nextStep : AgentVaultSetupStep.Session;
     navigate({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      to: `/organizations/${currentOrg.id}/agent-vault/${pathSuffix}` as any,
+      ...getAgentVaultSetupStepLink(step, currentOrg.id, newestBundle?.id),
       replace: true
     });
   }, [isResolved]);

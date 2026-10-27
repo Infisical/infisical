@@ -67,7 +67,10 @@ export const AgentVaultAccessBundleDetailPage = () => {
   // Listing every session is admin-only, and only admins see the note that reads this.
   const { data: sessions } = useListAgentVaultSessions(
     { scope: AgentVaultSessionScope.All, limit: 1 },
-    isAdmin
+    {
+      enabled: isAdmin,
+      refetchInterval: (query) => ((query.state.data?.totalCount ?? 0) > 0 ? false : 30_000)
+    }
   );
 
   const [isEditOpen, setIsEditOpen] = useState(false);

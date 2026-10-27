@@ -22,12 +22,7 @@ export const useAgentVaultCreateIntent = (open: () => void, isReady = true) => {
     if (!shouldCreate || !isReady) return undefined;
     const timer = setTimeout(() => {
       open();
-      navigate({
-        to: ".",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        search: ((prev: Record<string, unknown>) => ({ ...prev, create: undefined })) as any,
-        replace: true
-      });
+      navigate({ to: ".", search: (prev) => ({ ...prev, create: undefined }), replace: true });
     }, OPEN_DELAY_MS);
     return () => clearTimeout(timer);
   }, [shouldCreate, isReady]);

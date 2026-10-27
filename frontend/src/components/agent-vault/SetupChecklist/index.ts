@@ -1,7 +1,7 @@
 export { SetupChecklist } from "./SetupChecklist";
 export {
   AgentVaultSetupStep,
-  getAgentVaultSetupStepPath,
+  getAgentVaultSetupStepLink,
   type TAgentVaultSetupProgress,
   useAgentVaultSetupProgress
 } from "./useAgentVaultSetupProgress";

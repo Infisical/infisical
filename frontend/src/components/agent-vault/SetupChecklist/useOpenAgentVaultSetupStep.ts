@@ -1,11 +1,11 @@
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useMatchRoute, useNavigate } from "@tanstack/react-router";
 
 import { useOrganization } from "@app/context";
 
 import {
   AgentVaultSetupStep,
   doesAgentVaultSetupStepOpenCreate,
-  getAgentVaultSetupStepPath,
+  getAgentVaultSetupStepLink,
   TAgentVaultSetupProgress
 } from "./useAgentVaultSetupProgress";
 
@@ -15,22 +15,17 @@ export const useOpenAgentVaultSetupStep = (
   progress: Pick<TAgentVaultSetupProgress, "hasProxy" | "newestBundle">
 ) => {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const matchRoute = useMatchRoute();
   const { currentOrg } = useOrganization();
 
   return (step: AgentVaultSetupStep) => {
-    const path = `/organizations/${currentOrg.id}/agent-vault/${getAgentVaultSetupStepPath(
-      step,
-      progress.newestBundle?.id
-    )}`;
+    const link = getAgentVaultSetupStepLink(step, currentOrg.id, progress.newestBundle?.id);
     const opensCreate = doesAgentVaultSetupStepOpenCreate(step, progress);
-    const isHere = pathname === path;
+    const isHere = Boolean(matchRoute(link));
     if (isHere && !opensCreate) return;
     navigate({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      to: path as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      search: (opensCreate ? { create: true } : {}) as any,
+      ...link,
+      search: opensCreate ? { create: true } : undefined,
       // The same URL again would push a duplicate history entry.
       replace: isHere
     });
