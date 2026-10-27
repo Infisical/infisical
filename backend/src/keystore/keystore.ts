@@ -253,7 +253,6 @@ export const KeyStorePrefixes = {
 };
 
 export const KeyStoreTtls = {
-  OidcIssuerJwksInSeconds: 10 * 60,
   LdapDirectoryMachinesInSeconds: 60,
   LdapHostLoginInSeconds: 3600,
   LdapGuessedHostLoginInSeconds: 30,
@@ -323,7 +322,8 @@ export const KeyStoreTtls = {
   SecretReplicationSuccessInSeconds: 10,
   NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
   LegacyPkiDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
-  WorkerHeartbeatInSeconds: 300 // 5 minutes - tolerates several missed 60s beats
+  WorkerHeartbeatInSeconds: 300, // 5 minutes - tolerates several missed 60s beats
+  OidcIssuerJwksInSeconds: 600 // 10 minutes
 };
 
 type TDeleteItems = {

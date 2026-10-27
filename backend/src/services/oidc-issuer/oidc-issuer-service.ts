@@ -43,7 +43,7 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
       });
     }
 
-    return `${SITE_URL}/api/v1/oidc-issuer/orgs/${orgId}`;
+    return `${SITE_URL}/api/v1/oidc-issuer/organizations/${orgId}`;
   };
 
   // Issuer keys are reserved, so no customer can create one; the prefix only tells them apart from the
@@ -164,7 +164,10 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
       jwks_uri: `${issuer}/.well-known/jwks.json`,
       response_types_supported: ["id_token"],
       subject_types_supported: ["public"],
-      id_token_signing_alg_values_supported: [OIDC_ISSUER_SIGNING_ALG]
+      id_token_signing_alg_values_supported: [OIDC_ISSUER_SIGNING_ALG],
+      scopes_supported: ["openid"],
+      // Must list every claim signToken sets
+      claims_supported: ["iss", "sub", "aud", "exp", "iat", "nbf", "jti"]
     };
   };
 

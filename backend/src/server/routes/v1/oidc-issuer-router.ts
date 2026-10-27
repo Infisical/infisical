@@ -4,18 +4,19 @@ import { oidcIssuerLimit } from "@app/server/config/rateLimiter";
 
 // The next key is published a full signing period (24h) before it signs, so a cached JWKS younger than that
 // always holds the signing key
-const CACHE_MAX_AGE_SECONDS = 60 * 60;
+const CACHE_CONTROL = `public, max-age=${60 * 60}, must-revalidate`;
 
 const OrgParamsSchema = z.object({
-  orgId: z.string().uuid()
+  organizationId: z.string().uuid()
 });
 
 // Unauthenticated, and shaped by OpenID Connect Discovery 1.0 and RFC 7517 rather than the house envelope,
-// because cloud providers fetch them to verify tokens Infisical signs
+// because cloud providers fetch them to verify tokens Infisical signs. These paths are part of each org's issuer
+// URL, which customers paste into their providers, so they can never move or be renamed.
 export const registerOidcIssuerRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
-    url: "/orgs/:orgId/.well-known/openid-configuration",
+    url: "/organizations/:organizationId/.well-known/openid-configuration",
     config: {
       rateLimit: oidcIssuerLimit
     },
@@ -28,19 +29,21 @@ export const registerOidcIssuerRouter = async (server: FastifyZodProvider) => {
           jwks_uri: z.string(),
           response_types_supported: z.string().array(),
           subject_types_supported: z.string().array(),
-          id_token_signing_alg_values_supported: z.string().array()
+          id_token_signing_alg_values_supported: z.string().array(),
+          scopes_supported: z.string().array(),
+          claims_supported: z.string().array()
         })
       }
     },
     handler: async (req, res) => {
-      void res.header("Cache-Control", `public, max-age=${CACHE_MAX_AGE_SECONDS}`);
-      return server.services.oidcIssuer.getDiscoveryDocument(req.params.orgId);
+      void res.header("Cache-Control", CACHE_CONTROL);
+      return server.services.oidcIssuer.getDiscoveryDocument(req.params.organizationId);
     }
   });
 
   server.route({
     method: "GET",
-    url: "/orgs/:orgId/.well-known/jwks.json",
+    url: "/organizations/:organizationId/.well-known/jwks.json",
     config: {
       rateLimit: oidcIssuerLimit
     },
@@ -63,10 +66,10 @@ export const registerOidcIssuerRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      const jwks = await server.services.oidcIssuer.getJwks(req.params.orgId);
+      const jwks = await server.services.oidcIssuer.getJwks(req.params.organizationId);
 
       // An org gets keys on its first sign, so an empty set must not be cached or that first token fails to verify
-      void res.header("Cache-Control", jwks.keys.length ? `public, max-age=${CACHE_MAX_AGE_SECONDS}` : "no-store");
+      void res.header("Cache-Control", jwks.keys.length ? CACHE_CONTROL : "no-store");
       return jwks;
     }
   });

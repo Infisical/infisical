@@ -1150,7 +1150,7 @@ failure is logged, never thrown, so the original outcome stands.
 
 `services/oidc-issuer` signs short-lived JWTs that cloud providers exchange for access tokens, so a
 connection needs no stored client secret. Each org is its own issuer at
-`/api/v1/oidc-issuer/orgs/<orgId>`, with public discovery and JWKS routes under `.well-known`. The issuer
+`/api/v1/oidc-issuer/organizations/<orgId>`, with public discovery and JWKS routes under `.well-known`. The issuer
 URL and the `sub` shape are one-way doors: customers copy both into their provider.
 
 - **Keys are reserved `sign-verify` `kms_keys` rows named `oidc-issuer-*`, not a new `keyUsage`.** The
