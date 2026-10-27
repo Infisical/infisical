@@ -10,6 +10,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/stretchr/testify/require"
 )
 
@@ -118,6 +119,25 @@ func TestSecretApprovalPolicy_Enforce(t *testing.T) {
 
 		// Assert
 		require.Equal(t, []change{{Op: "create", Key: "API_KEY"}}, heldRequest(t, proj, res.Body).Changes)
+		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev"))
+	})
+
+	t.Run("should hold a replication into the protected path as an open request", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		secretmanager.CreateSecret(t, proj, "prod", "API_KEY", "value")
+		newPolicy(t, proj, []policyMember{userMember(reviewer)})
+
+		// Action
+		secretmanager.CreateImport(t, proj, "dev", secretmanager.Location{Env: "prod", Path: "/"}, secretmanager.Replicated())
+
+		// Assert
+		wait.Until(t, "the replication to open a change request", func() bool { return openRequestCount(t, proj) == 1 })
+		held := getRequest(t, proj, onlyOpenRequest(t, proj))
+		require.Equal(t, []change{{Op: "create", Key: "API_KEY"}}, held.Changes)
 		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev"))
 	})
 
