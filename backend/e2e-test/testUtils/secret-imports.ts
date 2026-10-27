@@ -41,32 +41,6 @@ export const createSecretImport = async (dto: {
   return payload.secretImport as TSecretImport;
 };
 
-export const deleteSecretImport = async (dto: {
-  workspaceId: string;
-  environmentSlug: string;
-  secretPath: string;
-  authToken: string;
-  id: string;
-}) => {
-  const res = await testServer.inject({
-    method: "DELETE",
-    url: `/api/v1/secret-imports/${dto.id}`,
-    headers: {
-      authorization: `Bearer ${dto.authToken}`
-    },
-    body: {
-      workspaceId: dto.workspaceId,
-      environment: dto.environmentSlug,
-      path: dto.secretPath
-    }
-  });
-
-  expect(res.statusCode).toBe(200);
-  const payload = JSON.parse(res.payload);
-  expect(payload).toHaveProperty("secretImport");
-  return payload.secretImport as TSecretImport;
-};
-
 export const listSecretImport = async (dto: {
   workspaceId: string;
   environmentSlug: string;
