@@ -23,6 +23,15 @@ enum SapCommands {
   DropLogin = "sp_droplogin"
 }
 
+// values with ";" or a leading "{" go in braces; unixODBC and FreeTDS disagree on escaping "}" inside them
+const formatConnectionValue = (field: string, value: string) => {
+  if (!value.includes(";") && !value.startsWith("{")) return value;
+  if (!value.includes("}")) return `{${value}}`;
+  throw new BadRequestError({
+    message: `SAP ASE ${field} cannot contain "}" together with ";" or a leading "{"`
+  });
+};
+
 export const SapAseProvider = (): TDynamicProviderFns => {
   const validateProviderInputs = async (inputs: unknown) => {
     const providerInputs = await DynamicSecretSapAseSchema.parseAsync(inputs);
@@ -42,11 +51,11 @@ export const SapAseProvider = (): TDynamicProviderFns => {
   const $getClient = async (providerInputs: z.infer<typeof DynamicSecretSapAseSchema>, useMaster?: boolean) => {
     const connectionString =
       `DRIVER={FreeTDS};` +
-      `SERVER=${providerInputs.host};` +
+      `SERVER=${formatConnectionValue("host", providerInputs.host)};` +
       `PORT=${providerInputs.port};` +
-      `DATABASE=${useMaster ? "master" : providerInputs.database};` +
-      `UID=${providerInputs.username};` +
-      `PWD=${providerInputs.password};` +
+      `DATABASE=${useMaster ? "master" : formatConnectionValue("database", providerInputs.database)};` +
+      `UID=${formatConnectionValue("username", providerInputs.username)};` +
+      `PWD=${formatConnectionValue("password", providerInputs.password)};` +
       `TDS_VERSION=5.0`;
 
     const client = await odbc.connect(connectionString);
