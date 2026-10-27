@@ -73,6 +73,35 @@ describe("containsLogUnsafeCharacters", () => {
   });
 });
 
+describe("lone surrogates", () => {
+  const HIGH = String.fromCharCode(0xd800);
+  const LOW = String.fromCharCode(0xdc00);
+
+  test("are dropped instead of turning into U+FFFD, so jsonb accepts the value", () => {
+    const sanitized = sanitizeLogText(`a${HIGH}b${LOW}c`);
+    expect(sanitized).toBe("abc");
+    expect(sanitized.isWellFormed()).toBe(true);
+  });
+
+  test("are dropped alongside the rest of the unsafe set", () => {
+    expect(sanitizeLogText(`a${HIGH}${ESC}[31mb${NUL}`)).toBe("ab");
+  });
+
+  test("leave real surrogate pairs alone", () => {
+    expect(sanitizeLogText(`ok \u{1F680}${HIGH}`)).toBe("ok \u{1F680}");
+  });
+
+  test("are rejected at the API, multiline or not", () => {
+    expect(containsLogUnsafeCharacters(`a${HIGH}b`)).toBe(true);
+    expect(containsLogUnsafeCharacters(`a${LOW}b`, { allowMultiline: true })).toBe(true);
+    expect(containsLogUnsafeCharacters("ok \u{1F680}")).toBe(false);
+  });
+
+  test("are dropped from payload keys and nested values", () => {
+    expect(sanitizeLogPayload({ [`k${HIGH}`]: { claim: `v${LOW}` } })).toEqual({ k: { claim: "v" } });
+  });
+});
+
 describe("sanitizeLogPayload", () => {
   test("sanitizes nested values, keys and arrays", () => {
     expect(

@@ -36,6 +36,9 @@ const LINE_BREAKS = new Set([0x09, 0x0a, 0x0d, 0x2028, 0x2029]);
 
 const isControlCharacter = (code: number) => code <= 0x1f || (code >= 0x7f && code <= 0x9f);
 
+// Lone surrogates. Postgres jsonb rejects them just like NUL, which fails the whole audit batch.
+const isSurrogate = (code: number) => code >= 0xd800 && code <= 0xdfff;
+
 // The whole Cf category instead of a hand-picked list, since Unicode keeps adding to it.
 const FORMAT_CATEGORY = new RE2("\\p{Cf}", "u");
 
@@ -50,19 +53,24 @@ const isUncategorizedFormat = (code: number) =>
 // Audit text is almost always clean. It over-matches ZWNJ, ZWJ, LF and tab, so those just get walked.
 const UNSAFE_SCREEN = new RE2("[\\x00-\\x1f\\x7f-\\x9f\\x{2028}\\x{2029}]|[\\x{E0000}-\\x{E007F}]|\\p{Cf}", "u");
 
+// RE2 turns lone surrogates into U+FFFD before matching, so the screen can't see them. isWellFormed can.
+const passesScreen = (value: string) => value.isWellFormed() && !UNSAFE_SCREEN.test(value);
+
 // codePointAt, not charCodeAt: past U+FFFF charCodeAt only sees a surrogate half and never matches.
 const isUnsafeCharacter = (character: string) => {
   const code = character.codePointAt(0) ?? 0;
   if (TEXT_JOINERS.has(code)) return false;
 
-  return isControlCharacter(code) || isUncategorizedFormat(code) || FORMAT_CATEGORY.test(character);
+  return (
+    isControlCharacter(code) || isSurrogate(code) || isUncategorizedFormat(code) || FORMAT_CATEGORY.test(character)
+  );
 };
 
 export const LOG_UNSAFE_TEXT_MESSAGE = "Value cannot contain control, escape, bidirectional or zero-width characters";
 
 // `allowMultiline` is for textarea fields. CR is allowed so CRLF input passes, the sink turns it into LF.
 export const containsLogUnsafeCharacters = (value: string, { allowMultiline = false } = {}): boolean => {
-  if (!UNSAFE_SCREEN.test(value)) return false;
+  if (passesScreen(value)) return false;
 
   return Array.from(value).some((character) => {
     const code = character.codePointAt(0) ?? 0;
@@ -73,10 +81,17 @@ export const containsLogUnsafeCharacters = (value: string, { allowMultiline = fa
 
 export const sanitizeLogText = <T extends string | null | undefined>(value: T): T => {
   if (typeof value !== "string") return value;
-  if (!UNSAFE_SCREEN.test(value)) return value;
+  if (passesScreen(value)) return value;
+
+  // Lone surrogates go before any RE2 call, which would turn them into U+FFFD.
+  const wellFormed = value.isWellFormed()
+    ? value
+    : Array.from(value)
+        .filter((character) => !isSurrogate(character.codePointAt(0) ?? 0))
+        .join("");
 
   // Whole sequences first, otherwise dropping ESC alone leaves the rest as visible text.
-  const normalized = value
+  const normalized = wellFormed
     .replace(ANSI_ESCAPE_PATTERN, "")
     .replace(LINE_BREAK_VARIANTS, "\n")
     .replace(VERTICAL_WHITESPACE, " ");
