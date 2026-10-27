@@ -433,9 +433,14 @@ export const IdentityKubernetesAuthForm = ({
     };
 
     if (data) {
-      // the stored JWT reads back as "", so blank keeps it; removing it takes the checkbox
+      // the stored JWT reads back as "", so blank keeps it; removing it takes the checkbox.
+      // gateway mode never sends it, so it is dropped there instead of blocking the connection change
       let tokenReviewerJwtUpdate: string | null | undefined = tokenReviewerJwt || undefined;
-      if (removeTemplateSourcedJwt) {
+      if (
+        removeTemplateSourcedJwt ||
+        (tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway &&
+          data.hasTokenReviewerJwt)
+      ) {
         tokenReviewerJwtUpdate = null;
       }
       await updateMutateAsync(
@@ -474,6 +479,7 @@ export const IdentityKubernetesAuthForm = ({
   };
 
   const tokenReviewMode = watch("tokenReviewMode");
+  const isGatewayMode = tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Gateway;
   const isRemovingTemplateJwt = watch("removeTemplateSourcedJwt");
   const hasTemplateSourcedJwt = Boolean(data?.isTokenReviewerJwtTemplateSourced);
   const hasStoredJwt = hasTemplateSourcedJwt || Boolean(data?.hasTokenReviewerJwt);
@@ -790,7 +796,12 @@ export const IdentityKubernetesAuthForm = ({
                 )}
               />
             )}
-            {scope === "custom" && hasStoredJwt && (
+            {scope === "custom" && hasStoredJwt && isGatewayMode && (
+              <FieldDescription>
+                Gateway mode does not use the stored token reviewer JWT, so it is removed on save.
+              </FieldDescription>
+            )}
+            {scope === "custom" && hasStoredJwt && !isGatewayMode && (
               <Controller
                 control={control}
                 name="removeTemplateSourcedJwt"
@@ -817,10 +828,7 @@ export const IdentityKubernetesAuthForm = ({
                           ? "This identity stores a write-only token reviewer JWT copied from its auth template."
                           : "This identity stores a write-only token reviewer JWT."}{" "}
                         Its connection settings cannot be changed while the JWT is kept. Check to
-                        remove it on save
-                        {tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
-                          ? ", or enter a new JWT above to replace it."
-                          : "."}
+                        remove it on save, or enter a new JWT above to replace it.
                       </FieldDescription>
                     </FieldContent>
                   </Field>

@@ -1291,15 +1291,20 @@ export const identityKubernetesAuthServiceFactory = ({
       }
     }
 
-    // the stored JWT cannot be read back, so changing where or how it is sent needs it supplied again
+    // the stored JWT is write-only, so changing where or over what trust it is sent must resupply it;
+    // otherwise an EditAuth actor could repoint the connection and have login deliver it to a server they control
     if (!template && identityKubernetesAuth.encryptedKubernetesTokenReviewerJwt && tokenReviewerJwt === undefined) {
-      // includes the retired v1 column: unlinking a v1-pinned gateway still repoints where
-      // the template-sourced reviewer JWT would be sent
+      // compare what the write below persists: sending either gateway field rewrites both columns, and the
+      // retired v1 column counts, so unlinking a v1-pinned gateway still repoints where the stored JWT is sent
       const storedGatewayId = identityKubernetesAuth.gatewayV2Id ?? identityKubernetesAuth.gatewayId ?? null;
+      const storedGatewayPoolId = identityKubernetesAuth.gatewayPoolId ?? null;
+      const changesGateway = gatewayId !== undefined || gatewayPoolId !== undefined;
+      const nextGatewayId = changesGateway ? (!gatewayPoolId && gatewayId) || null : storedGatewayId;
+      const nextGatewayPoolId = changesGateway ? (gatewayPoolId ?? null) : storedGatewayPoolId;
       const repointsConnection =
         (kubernetesHost !== undefined && kubernetesHost !== identityKubernetesAuth.kubernetesHost) ||
-        (gatewayId !== undefined && (gatewayId ?? null) !== storedGatewayId) ||
-        (gatewayPoolId !== undefined && (gatewayPoolId ?? null) !== (identityKubernetesAuth.gatewayPoolId ?? null)) ||
+        nextGatewayId !== storedGatewayId ||
+        nextGatewayPoolId !== storedGatewayPoolId ||
         (verifyTlsCertificate !== undefined && verifyTlsCertificate !== identityKubernetesAuth.verifyTlsCertificate) ||
         (caCert !== undefined &&
           caCert !==
