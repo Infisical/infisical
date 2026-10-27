@@ -21,8 +21,7 @@ const virtualRouteFileChangeReloadPlugin: PluginOption = {
   }
 };
 
-// Locale files are served from public/ without a content hash, and the server caches static files
-// as immutable for 30 days, so the loader URL carries this hash to pick up new translations.
+// public/locales is served unhashed with a 30-day immutable cache, so the load path carries this hash.
 const hashLocales = () => {
   const localesDir = join(process.cwd(), "public/locales");
   const hash = createHash("sha256");
