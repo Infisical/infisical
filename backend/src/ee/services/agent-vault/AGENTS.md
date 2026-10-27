@@ -21,7 +21,7 @@ agent-vault-access-bundle/   bundles, services, credential encryption, grants
 agent-vault-variable/        global and personal variables and the reads behind Used By
 agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-personal-value/  each actor's own values for the fields a service leaves to members
-agent-vault-session/         mint, revoke, list, get
+agent-vault-session/         mint, revoke, list, get, edit label
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
 agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve, credential refresh
 agent-vault-oauth/           OAuth for MCP services: discovery, client registration, authorizations, refresh
@@ -108,6 +108,12 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   id: a null actor id reaches the membership lookups as `IS NULL`, matches user rows, and resolved as admin.
   `actorType` is stored at mint because `SET NULL` erases which kind of owner it was. It stays nullable (a pod
   on the previous release writes none) and `toSessionActor` falls back to the backfill's guess.
+- When `SET NULL` leaves a session with neither actor id, `updatedAt` is the only record of when the owner
+  went, and the session log service retires the session from it. So nothing writes to such a row: label edits
+  are refused and revoke is a no-op (the session already reads as revoked). The guard sits in each write's own
+  SQL on the primary (`updateLabel`, `revokeIfActive`), not in a check on the session read beforehand, which
+  can come from a replica that hasn't seen the deletion yet. A new write to sessions needs the same guard, or it
+  reopens the session's late-log window.
 - Status is derived from `revokedAt`, `expiresAt` and the actor columns, never stored: a session with neither
   actor id reads as revoked in the list and the status filter, so they agree with resolve refusing it. Expiry
   is enforced against the clock on every resolve; there is no expiry audit event, matching every other product.
