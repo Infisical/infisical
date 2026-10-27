@@ -132,7 +132,11 @@ const ManageAccessContent = ({
   const searchParam = debouncedSearch.trim() || undefined;
   const actorType = typeFilter ?? undefined;
 
-  const { data, isPending } = useListAgentVaultAccessBundleMembers(accessBundle.id, {
+  const {
+    data,
+    isPending: isMembersPending,
+    isPlaceholderData: isMembersPlaceholder
+  } = useListAgentVaultAccessBundleMembers(accessBundle.id, {
     actorType,
     search: searchParam,
     limit: PER_PAGE,
@@ -141,6 +145,7 @@ const ManageAccessContent = ({
   const {
     data: available,
     isPending: isAvailablePending,
+    isPlaceholderData: isAvailablePlaceholder,
     isError: isAvailableError,
     isFetching: isAvailableFetching
   } = useListAvailableAgentVaultAccessBundleMembers(
@@ -151,10 +156,15 @@ const ManageAccessContent = ({
   const addMembers = useAddAgentVaultAccessBundleMembers();
   const revokeMembers = useRevokeAgentVaultAccessBundleMembers();
 
-  const members = data?.members ?? [];
+  // Both lists keep the previous result while a new filter loads, so rows of the previous type are hidden
+  // here, and a list that hides everything reads as loading rather than empty.
+  const matchesType = (type: AgentVaultMemberType) => !typeFilter || type === typeFilter;
+  const members = (data?.members ?? []).filter((member) => matchesType(member.type));
   const totalCount = data?.totalCount ?? 0;
-  const candidates = available?.members ?? [];
+  const candidates = (available?.members ?? []).filter((member) => matchesType(member.type));
   const candidateCount = available?.totalCount ?? 0;
+  const isPending = isMembersPending || (isMembersPlaceholder && !members.length);
+  const isAvailableLoading = isAvailablePending || (isAvailablePlaceholder && !candidates.length);
   useResetPageHelper({ totalCount, offset: (page - 1) * PER_PAGE, setPage });
 
   // A bundle no one holds yet has nothing above the fold, so the grant list starts open. This content
@@ -166,7 +176,7 @@ const ManageAccessContent = ({
   }, [isPending, totalCount]);
 
   const isFiltered = Boolean(searchParam || typeFilter);
-  const isAvailableSettled = !isAvailablePending && !isAvailableError;
+  const isAvailableSettled = !isAvailableLoading && !isAvailableError;
   const isSearchMiss = Boolean(searchParam) && !totalCount && isAvailableSettled && !candidateCount;
   // a granted candidate stays in this list until the refetch lands
   const isGrantLocked = addMembers.isPending || isAvailableFetching;
@@ -225,7 +235,7 @@ const ManageAccessContent = ({
   };
 
   const renderCandidates = () => {
-    if (isAvailablePending) {
+    if (isAvailableLoading) {
       return (
         <div className="space-y-2 py-2">
           <Skeleton className="h-14 w-full" />
