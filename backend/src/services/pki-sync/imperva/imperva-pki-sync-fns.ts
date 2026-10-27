@@ -406,7 +406,7 @@ export const impervaPkiSyncFactory = ({
 
           const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(
             orphanedRecords.map((record: TCertificateSyncs) => record.externalIdentifier as string),
-            { excludePkiSyncId: pkiSync.id, destination: pkiSync.destination }
+            { excludePkiSyncId: pkiSync.id, destination: pkiSync.destination, projectId: pkiSync.projectId }
           );
 
           for (const record of orphanedRecords) {
@@ -534,7 +534,8 @@ export const impervaPkiSyncFactory = ({
 
     const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse([...slotsToRemove.keys()], {
       excludePkiSyncId: pkiSync.id,
-      destination: pkiSync.destination
+      destination: pkiSync.destination,
+      projectId: pkiSync.projectId
     });
 
     for (const [externalIdentifier, certificateIds] of slotsToRemove) {

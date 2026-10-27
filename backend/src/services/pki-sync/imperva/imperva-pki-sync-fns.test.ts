@@ -311,3 +311,45 @@ describe("Imperva slot ownership", () => {
     expect(removeCertificatesFromDal).toHaveBeenCalledWith("sync-1", ["cert-old"]);
   });
 });
+
+describe("Imperva ownership scoping", () => {
+  test("asks only about slots held inside the same project", async () => {
+    const { impervaPkiSyncFactory } = await import("./imperva-pki-sync-fns");
+    const findExternalIdentifiersInUse = vi.fn().mockResolvedValue(new Set<string>());
+
+    impervaRequest.mockReset();
+    impervaRequest.mockResolvedValue({});
+
+    const factory = impervaPkiSyncFactory({
+      certificateSyncDAL: {
+        findByPkiSyncId: vi.fn().mockResolvedValue([{ certificateId: "cert-old", externalIdentifier: "111:RSA" }]),
+        removeCertificates: vi.fn(),
+        addCertificates: vi.fn(),
+        findByPkiSyncAndCertificate: vi.fn().mockResolvedValue(undefined),
+        updateById: vi.fn(),
+        updateSyncStatus: vi.fn(),
+        findExternalIdentifiersInUse,
+        claimExternalIdentifier: vi.fn()
+      } as never,
+      certificateDAL: { findById: vi.fn().mockResolvedValue(undefined) } as never
+    });
+
+    await factory.syncCertificates(
+      {
+        id: "sync-1",
+        destination: "imperva",
+        projectId: "project-1",
+        destinationConfig: { siteId: "111", siteName: "current.example.com" },
+        syncOptions: { canRemoveCertificates: true },
+        connection: { credentials: { apiId: "id", apiKey: "key" }, gatewayId: null, gatewayPoolId: null }
+      } as never,
+      {}
+    );
+
+    expect(findExternalIdentifiersInUse).toHaveBeenCalledWith(["111:RSA"], {
+      excludePkiSyncId: "sync-1",
+      destination: "imperva",
+      projectId: "project-1"
+    });
+  });
+});
