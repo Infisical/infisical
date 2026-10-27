@@ -1300,7 +1300,6 @@ export const secretSyncQueueFactory = ({
           `SecretSync connection changed, releasing slot and requeueing [syncId=${syncId}] [job=${job.name}] [connectionId=${connectionId}] [currentConnectionId=${secretSync.connectionId}]`
         );
 
-        await $releaseConnectionConcurrency(connectionId);
         await $handleAcquireLockFailure(job as SecretSyncActionJob);
 
         return;
