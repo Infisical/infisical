@@ -6,7 +6,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
 
 concurrency:
   group: security-review-${{ github.event.pull_request.number }}
@@ -174,6 +174,16 @@ jobs:
           else
             echo "::warning::Could not send all finding details to Slack"
           fi
+
+      # Demo only: posts each finding as a public inline comment, like the scanner action's comment-pr option
+      - name: 💬 Comment findings on PR
+        if: steps.changes.outputs.docs_only != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd "$RUNNER_TEMP"
+          jq '.findings // []' results.json > findings.json 2>/dev/null || echo '[]' > findings.json
+          node "$GITHUB_WORKSPACE/scanner/scripts/comment-pr-findings.js" || echo "::warning::Could not comment findings on the PR"
 
       - name: 🚦 Check findings
         if: ${{ !cancelled() && steps.changes.outputs.docs_only != 'true' }}
