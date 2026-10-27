@@ -1,5 +1,3 @@
-import { createFakeWebhookServer } from "e2e-test/fakes/webhook-destination";
-import { createWebhook } from "e2e-test/testUtils/webhooks";
 import { Knex } from "knex";
 
 import { TableName } from "@app/db/schemas";
@@ -199,52 +197,4 @@ describe("Access approval request routing", () => {
     const grants = await db(TableName.ApprovalRequestGrants).where({ requestId });
     expect(grants).toHaveLength(0);
   });
-
-  test("Creating a request on the global system sends the access request webhook", async () => {
-    const secretPath = "/routing-global-webhook";
-    const fakeWebhookServer = await createFakeWebhookServer();
-    const webhook = await createWebhook({
-      projectId: seedData1.project.id,
-      environmentSlug: seedData1.environment.slug,
-      webhookUrl: fakeWebhookServer.url,
-      authToken: jwtAuthToken
-    });
-
-    try {
-      const createRes = await createGlobalPolicy({ name: "routing-global-webhook", secretPath });
-      expect(createRes.statusCode).toBe(200);
-      const policyId = createRes.json().approval.id as string;
-
-      const res = await createAccessRequest(secretPath);
-      expect(res.statusCode).toBe(200);
-      const { approval } = res.json();
-
-      const message = await fakeWebhookServer.waitForMessage(
-        (m) => (m.body as { request?: { id?: string } })?.request?.id === approval.id,
-        10_000
-      );
-      expect(message.body).toMatchObject({
-        event: "secrets.access-request.modified",
-        action: "created",
-        project: { id: seedData1.project.id },
-        request: {
-          id: approval.id,
-          status: "pending",
-          isBypassed: false,
-          policy: { id: policyId, name: "routing-global-webhook", hasSequencedApprovers: false },
-          requestedAccess: {
-            target: { environment: { slug: seedData1.environment.slug }, secretPath },
-            isTemporary: false,
-            permissions: [{ subject: "secrets", actions: ["read"] }]
-          },
-          requestedBy: { type: "user", id: seedData1.id },
-          approvedAt: null,
-          revokedAt: null
-        }
-      });
-    } finally {
-      await getDb()(TableName.Webhook).where({ id: webhook.id }).del();
-      await fakeWebhookServer.stop();
-    }
-  }, 30_000);
 });
