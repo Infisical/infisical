@@ -308,6 +308,7 @@ Tomcat
 HAProxy
 JBoss
 WildFly
+Imperva
 Kemp
 LoadMaster
 NetScaler
@@ -551,6 +552,7 @@ VPC(?:s)?
 VPN(?:s)?
 vCPU(?:s)?
 
+booleans
 walkthrough
 walkthroughs
 

@@ -38,6 +38,8 @@ import {
   buildGcpTooManyCertificatesMessage,
   resolveGcpCertificateManagerConfigUpdate
 } from "./gcp-certificate-manager/gcp-certificate-manager-pki-sync-update-fns";
+import { IMPERVA_PKI_SYNC_LIST_OPTION } from "./imperva/imperva-pki-sync-constants";
+import { impervaPkiSyncFactory } from "./imperva/imperva-pki-sync-fns";
 import { KEMP_LOADMASTER_PKI_SYNC_LIST_OPTION } from "./kemp-loadmaster/kemp-loadmaster-pki-sync-constants";
 import { kempLoadMasterPkiSyncFactory } from "./kemp-loadmaster/kemp-loadmaster-pki-sync-fns";
 import { LINUX_SERVER_PKI_SYNC_LIST_OPTION } from "./linux-server/linux-server-pki-sync-constants";
@@ -98,6 +100,7 @@ const PKI_SYNC_LIST_OPTIONS = {
   [PkiSync.PaloAltoNetworksSslTlsProfile]: PALO_ALTO_NETWORKS_SSL_TLS_PROFILE_PKI_SYNC_LIST_OPTION,
   [PkiSync.F5BigIp]: F5_BIG_IP_PKI_SYNC_LIST_OPTION,
   [PkiSync.KempLoadMaster]: KEMP_LOADMASTER_PKI_SYNC_LIST_OPTION,
+  [PkiSync.Imperva]: IMPERVA_PKI_SYNC_LIST_OPTION,
   [PkiSync.LinuxServer]: LINUX_SERVER_PKI_SYNC_LIST_OPTION,
   [PkiSync.WindowsServer]: WINDOWS_SERVER_PKI_SYNC_LIST_OPTION,
   [PkiSync.NutanixPrismCentral]: NUTANIX_PRISM_CENTRAL_PKI_SYNC_LIST_OPTION
@@ -287,6 +290,11 @@ export const PkiSyncFns = {
           "Kemp LoadMaster does not support importing certificates into Infisical (private keys cannot be extracted)"
         );
       }
+      case PkiSync.Imperva: {
+        throw new Error(
+          "Imperva does not support importing certificates into Infisical (private keys cannot be extracted)"
+        );
+      }
       case PkiSync.LinuxServer: {
         throw new Error("Linux Server does not support importing certificates into Infisical");
       }
@@ -417,6 +425,16 @@ export const PkiSyncFns = {
           gatewayPoolService: dependencies.gatewayPoolService
         });
         return kempLoadMasterPkiSync.syncCertificates(pkiSync, certificateMap);
+      }
+      case PkiSync.Imperva: {
+        checkPkiSyncDestination(pkiSync, PkiSync.Imperva as PkiSync);
+        const impervaPkiSync = impervaPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
+        });
+        return impervaPkiSync.syncCertificates(pkiSync, certificateMap);
       }
       case PkiSync.LinuxServer: {
         checkPkiSyncDestination(pkiSync, PkiSync.LinuxServer as PkiSync);
@@ -706,6 +724,20 @@ export const PkiSyncFns = {
           gatewayPoolService: dependencies.gatewayPoolService
         });
         await kempLoadMasterPkiSync.removeCertificates(pkiSync, certificateNames, {
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateMap: dependencies.certificateMap
+        });
+        break;
+      }
+      case PkiSync.Imperva: {
+        checkPkiSyncDestination(pkiSync, PkiSync.Imperva as PkiSync);
+        const impervaPkiSync = impervaPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          gatewayV2Service: dependencies.gatewayV2Service,
+          gatewayPoolService: dependencies.gatewayPoolService
+        });
+        await impervaPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,
           certificateMap: dependencies.certificateMap
         });

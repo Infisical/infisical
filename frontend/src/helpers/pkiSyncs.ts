@@ -82,6 +82,12 @@ export const PKI_SYNC_MAP: Record<
     category: "Networking",
     description: "Sync certificates to F5 BIG-IP."
   },
+  [PkiSync.Imperva]: {
+    name: "Imperva",
+    image: "Imperva.png",
+    category: "Networking",
+    description: "Sync certificates to Imperva Cloud WAF websites."
+  },
   [PkiSync.KempLoadMaster]: {
     name: "Kemp LoadMaster",
     image: "Kemp LoadMaster.png",
@@ -148,6 +154,7 @@ export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.PaloAltoNetworksSslTlsProfile]: AppConnection.PaloAltoNetworks,
   [PkiSync.F5BigIp]: AppConnection.F5BigIp,
   [PkiSync.KempLoadMaster]: AppConnection.KempLoadMaster,
+  [PkiSync.Imperva]: AppConnection.Imperva,
   [PkiSync.LinuxServer]: AppConnection.SSH,
   [PkiSync.WindowsServer]: AppConnection.WinRM,
   [PkiSync.NutanixPrismCentral]: AppConnection.NutanixPrismCentral

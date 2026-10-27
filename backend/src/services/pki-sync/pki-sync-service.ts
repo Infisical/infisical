@@ -984,18 +984,31 @@ export const pkiSyncServiceFactory = ({
     });
 
     if (syncOptions || destinationConfig) {
-      const existingCount = (await certificateSyncDAL.findByPkiSyncId(id)).length;
+      const effectiveFilters = filters === undefined ? (pkiSync.filters as TPkiSyncFilters | null) : filters;
+
+      // Link rows also carry a certificate on its way out and whatever a failed removal left, and
+      // counting those blocks the edit that fixes them.
+      const heldCount =
+        hasAnyPkiSyncFilter(effectiveFilters) && pkiSync.applicationId
+          ? (
+              await certificateDAL.findCertificatesMatchingSyncFilters(effectiveFilters, {
+                projectId: pkiSync.projectId,
+                applicationId: pkiSync.applicationId
+              })
+            ).length
+          : (await certificateSyncDAL.findByPkiSyncId(id)).length;
+
       assertPkiSyncCertificateCapsAllowCount(
         pkiSync.destination,
         effectiveSyncOptions,
         effectiveDestinationConfig,
-        existingCount
+        heldCount
       );
       assertFiltersCannotExceedCertificateCap(
         pkiSync.destination,
         effectiveSyncOptions,
         effectiveDestinationConfig,
-        filters === undefined ? (pkiSync.filters as TPkiSyncFilters | null) : filters
+        effectiveFilters
       );
     }
 
@@ -1278,6 +1291,13 @@ export const pkiSyncServiceFactory = ({
       syncSubscriber?.name,
       actor
     );
+
+    // Removing a sync's certificates unlinks them, and without this only the next issuance relinks.
+    if (pkiSync.applicationId && hasAnyPkiSyncFilter(pkiSync.filters as TPkiSyncFilters | null)) {
+      await $withFilterLock(id, () =>
+        $reconcileFilters(pkiSync as TPkiSyncReconcileTarget, pkiSync.filters as TPkiSyncFilters | null)
+      );
+    }
 
     await pkiSyncDAL.updateById(id, { syncStatus: PkiSyncStatus.Pending, lastSyncMessage: null });
     await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: id });

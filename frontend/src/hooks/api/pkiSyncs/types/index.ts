@@ -13,6 +13,7 @@ import {
   TGcpCertificateManagerPkiSync,
   TGcpLabel
 } from "./gcp-certificate-manager-sync";
+import { TImpervaPkiSync } from "./imperva-sync";
 import { TKempLoadMasterPkiSync } from "./kemp-loadmaster-sync";
 import { TLinuxServerPkiSync } from "./linux-server-sync";
 import { TNetScalerPkiSync } from "./netscaler-sync";
@@ -53,6 +54,7 @@ export type TPkiSync =
   | TPaloAltoNetworksSslTlsProfilePkiSync
   | TF5BigIpPkiSync
   | TKempLoadMasterPkiSync
+  | TImpervaPkiSync
   | TLinuxServerPkiSync
   | TWindowsServerPkiSync
   | TNutanixPrismCentralPkiSync;
@@ -123,6 +125,8 @@ export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
     parentProfile?: string;
     clusterId?: string;
     clusterName?: string;
+    siteId?: string;
+    siteName?: string;
     destinationPath?: string;
     gcpProjectId?: string;
     location?: string;
@@ -176,6 +180,7 @@ export * from "./cloudflare-custom-certificate-sync";
 export * from "./common";
 export * from "./f5-big-ip-sync";
 export * from "./gcp-certificate-manager-sync";
+export * from "./imperva-sync";
 export * from "./kemp-loadmaster-sync";
 export * from "./linux-server-sync";
 export * from "./netscaler-sync";

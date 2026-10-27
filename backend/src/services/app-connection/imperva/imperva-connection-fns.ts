@@ -1,0 +1,250 @@
+import { AxiosError, AxiosRequestConfig } from "axios";
+import https from "https";
+
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { getConfig } from "@app/lib/config/env";
+import { request } from "@app/lib/config/request";
+import { BadRequestError } from "@app/lib/errors";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
+import { logger } from "@app/lib/logger";
+import { safeRequest } from "@app/lib/validator";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+
+import { ImpervaConnectionMethod } from "./imperva-connection-enums";
+import { TImpervaConnectionConfig } from "./imperva-connection-types";
+
+// Custom certificate writes live on the provisioning API (my.imperva.com/api/prov/v2) while site and
+// certificate reads live on the newer REST API (api.imperva.com), so a connection talks to both hosts.
+export const IMPERVA_PROV_HOST = "my.imperva.com";
+export const IMPERVA_PROV_BASE_PATH = "/api/prov/v2";
+export const IMPERVA_REST_HOST = "api.imperva.com";
+export const IMPERVA_SITES_BASE_PATH = "/sites-mgmt/v3";
+export const IMPERVA_CERTIFICATES_BASE_PATH = "/certificates-ui/v3";
+
+const IMPERVA_HTTPS_PORT = 443;
+const IMPERVA_REQUEST_TIMEOUT_MS = 30_000;
+const IMPERVA_MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
+// Imperva only accepts these page sizes on the sites API
+const IMPERVA_SITES_PAGE_SIZE = 100;
+const IMPERVA_SITES_MIN_PAGE_SIZE = 10;
+const IMPERVA_SITES_MAX_PAGES = 50;
+
+type TImpervaCredentials = TImpervaConnectionConfig["credentials"];
+
+export type TImpervaRequestArgs = Omit<AxiosRequestConfig, "url" | "baseURL" | "httpsAgent"> & {
+  host: string;
+  path: string;
+};
+
+export type TImpervaRequestFn = <R>(args: TImpervaRequestArgs) => Promise<R>;
+
+export type TImpervaApiError = {
+  status?: number;
+  title?: string;
+  detail?: string;
+  code?: string;
+};
+
+export const getImpervaAuthHeaders = (credentials: TImpervaCredentials): Record<string, string> => ({
+  "x-API-Id": credentials.apiId,
+  "x-API-Key": credentials.apiKey
+});
+
+export const getImpervaAccountParams = (credentials: TImpervaCredentials): Record<string, string> =>
+  credentials.accountId ? { caid: credentials.accountId } : {};
+
+export const getImpervaConnectionListItem = () => {
+  return {
+    name: "Imperva" as const,
+    app: AppConnection.Imperva as const,
+    methods: Object.values(ImpervaConnectionMethod) as [ImpervaConnectionMethod.ApiKey]
+  };
+};
+
+const IMPERVA_AUTH_GUIDANCE =
+  "Check that the key is enabled under User Management > My Profile > API keys (Imperva creates keys disabled), that both the ID and the key were copied in full, that the key's role includes the Manage SSL Certificates permission, and that the account ID names an account the key can reach";
+
+// Imperva reports errors three ways, and only errMsg says what a rejected credential got wrong.
+export const extractImpervaErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof AxiosError) {
+    const data = error.response?.data as
+      | { errors?: TImpervaApiError[]; message?: string; res_message?: string; errMsg?: string }
+      | undefined;
+    const apiError = data?.errors?.[0];
+    const reported = apiError
+      ? [apiError.title, apiError.detail].filter(Boolean).join(": ") || undefined
+      : data?.res_message || data?.message || data?.errMsg;
+
+    const status = error.response?.status;
+    if (status === 401 || status === 403) {
+      return `${reported ?? "Imperva rejected the API ID or API key"}. ${IMPERVA_AUTH_GUIDANCE}`;
+    }
+    if (reported) return reported;
+    if (status === 404) {
+      return "Imperva could not find the website. Check the website ID, and set the account ID on the connection if the website belongs to a sub-account";
+    }
+    if (status === 429) {
+      return "Imperva rate limited the request, try again shortly";
+    }
+    return error.message;
+  }
+  if (error instanceof Error) return error.message;
+  return fallback;
+};
+
+const executeImpervaRequestWithGateway = async <R>(
+  args: TImpervaRequestArgs,
+  config: { gatewayId?: string | null; credentials: TImpervaCredentials },
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId"> | undefined
+): Promise<R> => {
+  const { host, path, ...requestCfg } = args;
+  const { gatewayId } = config;
+
+  if (gatewayId && gatewayV2Service) {
+    const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+      gatewayId,
+      targetHost: host,
+      targetPort: IMPERVA_HTTPS_PORT
+    });
+
+    if (!platformConnectionDetails) {
+      throw new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" });
+    }
+
+    return withGatewayV2Proxy(
+      async (proxyPort) => {
+        const resp = await request.request<R>({
+          ...requestCfg,
+          url: `https://localhost:${proxyPort}${path}`,
+          headers: { ...requestCfg.headers, Host: host },
+          httpsAgent: new https.Agent({ servername: host }),
+          timeout: IMPERVA_REQUEST_TIMEOUT_MS,
+          maxContentLength: IMPERVA_MAX_RESPONSE_BYTES,
+          maxBodyLength: IMPERVA_MAX_RESPONSE_BYTES
+        });
+        return resp.data;
+      },
+      {
+        protocol: GatewayProxyProtocol.Tcp,
+        ...platformConnectionDetails
+      }
+    );
+  }
+
+  const resp = await safeRequest.request<R>({
+    ...requestCfg,
+    url: `https://${host}${path}`,
+    servername: host,
+    allowPrivateIps: getConfig().ALLOW_INTERNAL_IP_CONNECTIONS,
+    timeout: IMPERVA_REQUEST_TIMEOUT_MS,
+    maxContentLength: IMPERVA_MAX_RESPONSE_BYTES,
+    maxBodyLength: IMPERVA_MAX_RESPONSE_BYTES
+  });
+  return resp.data;
+};
+
+export const buildImpervaRequestFn = (
+  config: { gatewayId?: string | null; credentials: TImpervaCredentials },
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId"> | undefined
+): TImpervaRequestFn => {
+  return <R>(args: TImpervaRequestArgs) =>
+    executeImpervaRequestWithGateway<R>(
+      {
+        ...args,
+        headers: { ...getImpervaAuthHeaders(config.credentials), ...args.headers }
+      },
+      config,
+      gatewayV2Service
+    );
+};
+
+export type TImpervaSite = {
+  id: string;
+  name: string;
+  status?: string;
+};
+
+type TImpervaSitesResponse = {
+  data?: Array<{ id?: number; name?: string; siteStatus?: string }>;
+  meta?: { page?: number; size?: number; totalPages?: number; totalElements?: number };
+};
+
+export const listImpervaSites = async (
+  config: { gatewayId?: string | null; credentials: TImpervaCredentials },
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId"> | undefined
+): Promise<TImpervaSite[]> => {
+  const makeRequest = buildImpervaRequestFn(config, gatewayV2Service);
+  const sites: TImpervaSite[] = [];
+
+  let page = 0;
+  let totalPages = 1;
+
+  /* eslint-disable no-await-in-loop */
+  while (page < totalPages && page < IMPERVA_SITES_MAX_PAGES) {
+    const response = await makeRequest<TImpervaSitesResponse>({
+      method: "GET",
+      host: IMPERVA_REST_HOST,
+      path: `${IMPERVA_SITES_BASE_PATH}/sites`,
+      params: {
+        page,
+        size: IMPERVA_SITES_PAGE_SIZE,
+        ...getImpervaAccountParams(config.credentials)
+      }
+    });
+
+    for (const site of response.data ?? []) {
+      if (site.id !== undefined && site.id !== null) {
+        sites.push({ id: String(site.id), name: site.name ?? String(site.id), status: site.siteStatus });
+      }
+    }
+
+    totalPages = response.meta?.totalPages ?? 1;
+    page += 1;
+  }
+  /* eslint-enable no-await-in-loop */
+
+  if (page < totalPages) {
+    logger.warn(
+      `Imperva site listing stopped at ${IMPERVA_SITES_MAX_PAGES} pages (${totalPages} pages reported), some websites are not listed`
+    );
+  }
+
+  return sites;
+};
+
+export const validateImpervaConnectionCredentials = async (
+  config: TImpervaConnectionConfig,
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
+) => {
+  const { credentials } = config;
+  const makeRequest = buildImpervaRequestFn({ gatewayId: config.gatewayId, credentials }, gatewayV2Service);
+
+  try {
+    await makeRequest<TImpervaSitesResponse>({
+      method: "GET",
+      host: IMPERVA_REST_HOST,
+      path: `${IMPERVA_SITES_BASE_PATH}/sites`,
+      params: { page: 0, size: IMPERVA_SITES_MIN_PAGE_SIZE, ...getImpervaAccountParams(credentials) }
+    });
+  } catch (error: unknown) {
+    if (error instanceof AxiosError) {
+      const responseBody: unknown = error.response?.data;
+      logger.warn(
+        {
+          status: error.response?.status,
+          body: typeof responseBody === "string" ? responseBody.slice(0, 500) : responseBody
+        },
+        "Imperva rejected the connection validation request"
+      );
+    }
+    throw new BadRequestError({
+      message: `Unable to validate connection: ${extractImpervaErrorMessage(
+        error,
+        "verify the API ID, API key, and account ID"
+      )}`
+    });
+  }
+
+  return credentials;
+};
