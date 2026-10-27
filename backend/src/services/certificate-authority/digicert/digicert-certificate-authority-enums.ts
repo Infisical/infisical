@@ -20,6 +20,11 @@ export enum DigiCertPollOutcome {
   Failed = "failed"
 }
 
+export enum DigiCertLifecycleMode {
+  Renew = "renew",
+  Reissue = "reissue"
+}
+
 export enum CodeSigningOrderStatus {
   Pending = "pending",
   NeedsApproval = "needs_approval",

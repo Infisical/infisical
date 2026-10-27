@@ -714,7 +714,12 @@ export const DigiCertCertificateAuthorityFns = ({
     const client = createDigiCertApiClient(apiKey, baseUrl);
 
     try {
-      await client.revokeOrder(orderId, `Revoked via Infisical — reason: ${reason}`);
+      const { isPendingApproval } = await client.revokeOrder(orderId, `Revoked via Infisical — reason: ${reason}`);
+      if (isPendingApproval) {
+        throw new BadRequestError({
+          message: `DigiCert is waiting for an administrator to approve the revocation of order ${orderId}. Approve it in CertCentral, then revoke again here. Use an API key with administrator access to revoke without approval.`
+        });
+      }
     } catch (err) {
       const message = (err as Error)?.message ?? "";
       if (message.includes("order_already_revoked") || message.includes("order_is_revoked")) {

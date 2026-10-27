@@ -14,6 +14,7 @@ export enum SignerPermissionActions {
   PreApprove = "pre-approve",
   RevokeRequest = "revoke-request",
   ReissueCertificate = "reissue-certificate",
+  RevokeCertificate = "revoke-certificate",
   ExportCertificate = "export-certificate"
 }
 

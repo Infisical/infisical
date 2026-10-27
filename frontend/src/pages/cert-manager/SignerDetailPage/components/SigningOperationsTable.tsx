@@ -29,6 +29,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
+import { CertStatus } from "@app/hooks/api/certificates/enums";
 import {
   getSigningOperationStatusBadgeVariant,
   SIGNER_TABLE_PAGE_SIZE,
@@ -109,11 +110,13 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
         <CardHeader>
           <CardTitle>Signing History</CardTitle>
           <CardDescription>Trail of signing operations on this signer.</CardDescription>
-          <CardAction>
-            <Button variant="neutral" size="sm" onClick={() => setIsConnectOpen(true)}>
-              Set up signing
-            </Button>
-          </CardAction>
+          {signer.certificateStatus !== CertStatus.REVOKED && (
+            <CardAction>
+              <Button variant="neutral" size="sm" onClick={() => setIsConnectOpen(true)}>
+                Set up signing
+              </Button>
+            </CardAction>
+          )}
         </CardHeader>
         <CardContent>
           {(isLoading || operations.length > 0) && (

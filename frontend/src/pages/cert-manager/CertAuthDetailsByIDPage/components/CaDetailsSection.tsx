@@ -63,17 +63,11 @@ import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants"
 import { caKeys } from "@app/hooks/api/ca/queries";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants";
-import { CertKeySource } from "@app/hooks/api/signers";
+import { CertKeySource, certKeySourceLabels } from "@app/hooks/api/signers";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 type Props = {
   caId: string;
-};
-
-const KEY_SOURCE_LABELS: Record<CertKeySource, string> = {
-  [CertKeySource.Infisical]: "Infisical",
-  [CertKeySource.Hsm]: "HSM",
-  [CertKeySource.AwsKms]: "AWS KMS"
 };
 
 const getStatusVariant = (status: CaStatus) => {
@@ -308,7 +302,7 @@ export const CaDetailsSection = ({ caId }: Props) => {
               <DetailLabel>Key Source</DetailLabel>
               <DetailValue>
                 <Badge variant={isHsmBacked || isAwsKmsBacked ? "info" : "neutral"}>
-                  {KEY_SOURCE_LABELS[ca.configuration.keySource ?? CertKeySource.Infisical]}
+                  {certKeySourceLabels[ca.configuration.keySource ?? CertKeySource.Infisical]}
                 </Badge>
               </DetailValue>
             </Detail>

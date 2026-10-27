@@ -3903,6 +3903,7 @@ export const registerRoutes = async (
     usageCounterDAL,
     keyStore,
     certificateDAL,
+    signerDAL,
     certificateBodyDAL,
     certificateSecretDAL,
     certificateAuthorityDAL,
@@ -4498,7 +4499,8 @@ export const registerRoutes = async (
     certificateIssuanceQueue,
     cronJob,
     hsmConnectorService,
-    certificateDAL
+    certificateDAL,
+    certificateService
   });
 
   const signerService = signerServiceFactory({
@@ -4508,6 +4510,7 @@ export const registerRoutes = async (
     certificateBodyDAL,
     certificateSecretDAL,
     certificateAuthorityDAL,
+    certificateService,
     signerIssuanceService,
     internalCertificateAuthorityService,
     digicertFns: digicertCaFns,

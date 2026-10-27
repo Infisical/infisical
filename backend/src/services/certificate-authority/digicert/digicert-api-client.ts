@@ -115,7 +115,13 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
 
   const revokeOrder = async (orderId: number, comments: string) =>
     wrap(async () => {
-      await request.put(`${baseURL}/order/certificate/${orderId}/revoke`, { comments }, { headers });
+      const { data } = await request.put<{ status?: string } | "">(
+        `${baseURL}/order/certificate/${orderId}/revoke`,
+        { comments, skip_approval: true },
+        { headers }
+      );
+      const requestStatus = typeof data === "object" ? data?.status : undefined;
+      return { isPendingApproval: Boolean(requestStatus) && requestStatus !== "approved" };
     }, `order revocation for ${orderId}`);
 
   const listOrderStatusChanges = async ({ seconds }: { seconds: number }) =>

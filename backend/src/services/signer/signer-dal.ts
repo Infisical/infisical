@@ -14,6 +14,8 @@ export type TSignerWithCertificate = TPkiSigners & {
   certificateKeyAlgorithm: string | null;
   certificateKeySource: string | null;
   certificateHsmConnectorId: string | null;
+  certificateHsmKeyLabel: string | null;
+  certificateExternalMetadata: unknown;
   certificateStatus: string | null;
   certificateCaId: string | null;
   approvalPolicyName: string | null;
@@ -50,6 +52,8 @@ export const signerDALFactory = (db: TDbClient) => {
           db.ref("keyAlgorithm").withSchema(TableName.Certificate).as("certificateKeyAlgorithm"),
           db.ref("keySource").withSchema(TableName.Certificate).as("certificateKeySource"),
           db.ref("hsmConnectorId").withSchema(TableName.Certificate).as("certificateHsmConnectorId"),
+          db.ref("hsmKeyLabel").withSchema(TableName.Certificate).as("certificateHsmKeyLabel"),
+          db.ref("externalMetadata").withSchema(TableName.Certificate).as("certificateExternalMetadata"),
           db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
           db.ref("caId").withSchema(TableName.Certificate).as("certificateCaId"),
           db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName")
@@ -165,6 +169,8 @@ export const signerDALFactory = (db: TDbClient) => {
           db.ref("keyAlgorithm").withSchema(TableName.Certificate).as("certificateKeyAlgorithm"),
           db.ref("keySource").withSchema(TableName.Certificate).as("certificateKeySource"),
           db.ref("hsmConnectorId").withSchema(TableName.Certificate).as("certificateHsmConnectorId"),
+          db.ref("hsmKeyLabel").withSchema(TableName.Certificate).as("certificateHsmKeyLabel"),
+          db.ref("externalMetadata").withSchema(TableName.Certificate).as("certificateExternalMetadata"),
           db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
           db.ref("caId").withSchema(TableName.Certificate).as("certificateCaId"),
           db.ref("name").withSchema(TableName.ApprovalPolicies).as("approvalPolicyName")
