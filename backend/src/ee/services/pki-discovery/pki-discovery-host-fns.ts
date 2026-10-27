@@ -2,6 +2,8 @@ import net from "net";
 import { z } from "zod";
 
 import { CertificateScanRpcStatus, TCertificateScanRpcFailure } from "@app/lib/gateway-v2/certificate-scan-rpc";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 
 import { DB_SHORT_VARCHAR_LIMIT, truncateString } from "./pki-discovery-scan-run-fns";
 import {
@@ -108,11 +110,11 @@ export const planHostFileImport = (
   }
 };
 
-export const sshConnectionWithoutGatewayMessage = (connectionName: string) =>
-  `SSH connection '${connectionName}' does not use a gateway. Linux Server discovery runs on the gateway, so assign one to the connection.`;
-
-export const windowsConnectionWithoutGatewayMessage = (connectionName: string) =>
-  `Windows (WinRM) connection '${connectionName}' does not use a gateway. Windows Server discovery runs on the gateway, so assign one to the connection.`;
+export const hostConnectionWithoutGatewayMessage = (
+  type: { label: string; app: AppConnection },
+  connectionName: string
+) =>
+  `${APP_CONNECTION_NAME_MAP[type.app]} connection '${connectionName}' does not use a gateway. ${type.label} discovery runs on the gateway, so assign one to the connection.`;
 
 export const buildHostInstallationName = (hostIdentifier: string, hostname: string | undefined, filePath: string) =>
   truncateString(`${hostname?.trim() || hostIdentifier}:${filePath}`, DB_SHORT_VARCHAR_LIMIT);
@@ -143,7 +145,8 @@ const TRUNCATION_MESSAGES: Record<string, string | undefined> = {
   [HostScanTruncationReason.FileList]: "found too many files to list, so some files were not checked",
   [HostScanTruncationReason.ResponseSize]:
     "found more certificate data than one scan can return, so some files were not checked",
-  [HostScanTruncationReason.TimeLimit]: "ran out of time, so some files were not checked"
+  [HostScanTruncationReason.TimeLimit]: "ran out of time, so some files were not checked",
+  [HostScanTruncationReason.Incomplete]: "could not list every folder, so some files were not checked"
 };
 
 export const summarizeHostScanIssues = (hostIdentifier: string, response: TCertificateScanResponse): string[] => {

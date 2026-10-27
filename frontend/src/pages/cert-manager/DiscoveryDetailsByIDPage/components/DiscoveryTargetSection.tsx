@@ -109,11 +109,13 @@ const WindowsServerTargetSection = ({ discovery }: Props) => {
           <Detail>
             <DetailLabel>Certificate Stores</DetailLabel>
             <DetailValue>
-              <OverflowBadgeList
-                items={targetConfig.certificateStores ?? []}
-                getKey={(store) => store}
-                getLabel={(store) => WindowsCertificateStoreLabels[store] ?? store}
-              />
+              <div className="flex flex-wrap gap-1">
+                {(targetConfig.certificateStores ?? []).map((store) => (
+                  <Badge key={store} variant="neutral">
+                    {WindowsCertificateStoreLabels[store] ?? store}
+                  </Badge>
+                ))}
+              </div>
             </DetailValue>
           </Detail>
           <Detail>

@@ -17,10 +17,7 @@ import {
   PkiInstallationLocationType,
   TPkiInstallation
 } from "@app/hooks/api";
-import {
-  WindowsCertificateStore,
-  WindowsCertificateStoreLabels
-} from "@app/hooks/api/pkiDiscovery/types";
+import { WindowsCertificateStoreLabels } from "@app/hooks/api/pkiDiscovery/types";
 import {
   getKeystoreStatusBadge,
   getStorePath,
@@ -72,9 +69,7 @@ export const InstallationDetailsSection = ({ installation }: Props) => {
                   <DetailLabel>Certificate Store</DetailLabel>
                   <DetailValue>
                     {(locationDetails.storeName &&
-                      WindowsCertificateStoreLabels[
-                        locationDetails.storeName as WindowsCertificateStore
-                      ]) ||
+                      WindowsCertificateStoreLabels[locationDetails.storeName]) ||
                       locationDetails.storeName}
                   </DetailValue>
                 </Detail>

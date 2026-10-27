@@ -18,20 +18,20 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TPkiDiscoveryConfigDALFactory } from "./pki-discovery-config-dal";
 import { validateTargetConfig } from "./pki-discovery-fns";
-import { sshConnectionWithoutGatewayMessage, windowsConnectionWithoutGatewayMessage } from "./pki-discovery-host-fns";
+import { hostConnectionWithoutGatewayMessage } from "./pki-discovery-host-fns";
+import { LINUX_SERVER_SCAN } from "./pki-discovery-host-scan-fns";
 import { TPkiDiscoveryScanHistoryDALFactory } from "./pki-discovery-scan-history-dal";
 import {
   formatTargetConfigIssue,
   importsNothingFromWindowsStores,
-  LinuxServerTargetConfigSchema,
-  NetworkTargetConfigSchema,
-  WindowsServerTargetConfigSchema
+  NetworkTargetConfigSchema
 } from "./pki-discovery-schemas";
 import {
   PkiDiscoveryScanStatus,
@@ -49,26 +49,15 @@ import {
   TUpdatePkiDiscoveryDTO,
   TWindowsServerTargetConfig
 } from "./pki-discovery-types";
+import { WINDOWS_SERVER_SCAN } from "./pki-discovery-windows-scan-fns";
 
 const MAX_CLOUD_DISCOVERIES = 10;
 const SCAN_RATE_LIMIT_HOURS = 24;
 const CONNECTION_VALIDATION_CONCURRENCY = 5;
 
 const HOST_DISCOVERY_TYPES = {
-  [PkiDiscoveryType.LinuxServer]: {
-    label: "Linux Server",
-    app: AppConnection.SSH,
-    connectionKind: "SSH",
-    schema: LinuxServerTargetConfigSchema,
-    withoutGatewayMessage: sshConnectionWithoutGatewayMessage
-  },
-  [PkiDiscoveryType.WindowsServer]: {
-    label: "Windows Server",
-    app: AppConnection.WinRM,
-    connectionKind: "Windows (WinRM)",
-    schema: WindowsServerTargetConfigSchema,
-    withoutGatewayMessage: windowsConnectionWithoutGatewayMessage
-  }
+  [PkiDiscoveryType.LinuxServer]: LINUX_SERVER_SCAN,
+  [PkiDiscoveryType.WindowsServer]: WINDOWS_SERVER_SCAN
 } as const;
 
 type THostDiscoveryType = keyof typeof HOST_DISCOVERY_TYPES;
@@ -175,7 +164,9 @@ export const pkiDiscoveryServiceFactory = ({
       (connection) => !connection.gatewayId && !connection.gatewayPoolId
     );
     if (connectionWithoutGateway) {
-      throw new BadRequestError({ message: hostType.withoutGatewayMessage(connectionWithoutGateway.name) });
+      throw new BadRequestError({
+        message: hostConnectionWithoutGatewayMessage(hostType, connectionWithoutGateway.name)
+      });
     }
     return config;
   };
@@ -184,7 +175,7 @@ export const pkiDiscoveryServiceFactory = ({
     if (isHostDiscoveryType(discoveryType) && hasJobGateway) {
       const hostType = HOST_DISCOVERY_TYPES[discoveryType];
       throw new BadRequestError({
-        message: `${hostType.label} discovery uses the gateway of each ${hostType.connectionKind} connection, so a gateway or gateway pool cannot be set on the job`
+        message: `${hostType.label} discovery uses the gateway of each ${APP_CONNECTION_NAME_MAP[hostType.app]} connection, so a gateway or gateway pool cannot be set on the job`
       });
     }
   };

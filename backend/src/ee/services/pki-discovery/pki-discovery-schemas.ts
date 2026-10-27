@@ -94,12 +94,11 @@ export const WindowsServerTargetConfigSchema = z
     importStandaloneCaCertificates: z
       .boolean()
       .default(false)
-      .describe("Also import CA certificates on their own. Leaf certificates always bring their chain.")
+      .describe("Also import CA certificates found on their own. Leaf certificates always bring their chain.")
   })
   .strict();
 
-// The type-specific schema re-validates on the service; this only keeps the router's shared fields neutral.
-const CA_ONLY_WINDOWS_STORES: string[] = [
+export const CA_ONLY_WINDOWS_STORES: readonly WindowsCertificateStore[] = [
   WindowsCertificateStore.IntermediateCertificationAuthorities,
   WindowsCertificateStore.TrustedRootCertificationAuthorities
 ];
@@ -111,6 +110,7 @@ export const importsNothingFromWindowsStores = (config: {
   !config.importStandaloneCaCertificates &&
   config.certificateStores.every((store) => CA_ONLY_WINDOWS_STORES.includes(store));
 
+// The type-specific schema re-validates on the service; this only keeps the router's shared fields neutral.
 export const DiscoveryTargetConfigInputSchema = NetworkTargetConfigSchema.partial()
   .merge(LinuxServerTargetConfigSchema.partial())
   .merge(WindowsServerTargetConfigSchema.partial())

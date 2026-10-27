@@ -21,6 +21,7 @@ import {
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
+import { GatewayCapability } from "@app/hooks/api/gateways-v2/types";
 import { useConnectionCreation } from "@app/pages/cert-manager/CertificateAuthoritiesPage/components/CaInstallCertModal/useConnectionCreation";
 
 import { THostDiscoveryJobForm } from "./discovery-job-form-schema";
@@ -31,7 +32,7 @@ type TConnectionOption = Pick<TAvailableAppConnection, "id" | "name"> &
 type Props = {
   app: AppConnection.SSH | AppConnection.WinRM;
   connectionLabel: string;
-  capability: "certificateScan" | "windowsCertificateScan";
+  capability: GatewayCapability.CertificateScan | GatewayCapability.WindowsCertificateScan;
 };
 
 export const HostConnectionsFields = ({ app, connectionLabel, capability }: Props) => {

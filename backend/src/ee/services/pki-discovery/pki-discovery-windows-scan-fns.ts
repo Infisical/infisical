@@ -1,43 +1,32 @@
+import { HttpStatusCode } from "axios";
 import net from "net";
 import { z } from "zod";
 
-import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
-import { BadRequestError, GatewayTransportError, NotFoundError } from "@app/lib/errors";
-import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
-import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
-import {
-  callWinRmEndpoint,
-  WINRM_RPC_RESPONSE_TOO_LARGE_STATUS,
-  WinRmRpcEndpoint,
-  WinRmRpcResponse
-} from "@app/lib/gateway-v2/winrm-rpc";
-import { logger } from "@app/lib/logger";
+import { callWinRmEndpoint, WinRmRpcEndpoint, WinRmRpcFailure } from "@app/lib/gateway-v2/winrm-rpc";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
-import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { TWinRMCredentials } from "@app/services/app-connection/winrm/winrm-connection-fns";
 
 import { computeLocationFingerprint } from "./pki-discovery-fns";
+import { buildHostInstallationName, normalizeHostIdentifier } from "./pki-discovery-host-fns";
 import {
-  buildHostInstallationName,
-  normalizeHostIdentifier,
-  windowsConnectionWithoutGatewayMessage
-} from "./pki-discovery-host-fns";
-import {
-  executeHostScan,
   HostScanCapability,
   importCertificateChains,
-  selectScanGateway,
+  resolveHostConnection,
+  runGatewayScan,
   TAppConnectionRow,
+  THostScanDefinition,
   THostScanDeps,
   THostScanOutcome,
   THostScanRun,
+  THostScanType,
   toHostScanErrorMessage,
   TScanGateway,
   TWriteContext,
   upsertInstallationWithLinks,
   withConnectionScanSlot
 } from "./pki-discovery-host-scan-fns";
+import { CA_ONLY_WINDOWS_STORES, WindowsServerTargetConfigSchema } from "./pki-discovery-schemas";
 import {
   HostCertificateChainKind,
   HostCertificateFileStatus,
@@ -50,7 +39,6 @@ import {
 } from "./pki-discovery-types";
 
 const WINDOWS_STORE_LOCATION = "LocalMachine";
-const WINDOWS_CONNECTION_KIND = "Windows (WinRM)";
 const MAX_WINDOWS_SCAN_RESPONSE_BYTES = 24 * 1024 * 1024;
 const DEFAULT_WINRM_HTTP_PORT = 5985;
 const DEFAULT_WINRM_HTTPS_PORT = 5986;
@@ -95,64 +83,43 @@ type TResolvedWindowsHost = TScanGateway & {
 
 type TScannedWindowsHost = TResolvedWindowsHost & { hostname: string };
 
+const WINDOWS_SERVER_SCAN_TYPE: THostScanType = {
+  discoveryType: PkiDiscoveryType.WindowsServer,
+  label: "Windows Server",
+  app: AppConnection.WinRM,
+  capability: HostScanCapability.WindowsCertificateScan
+};
+
 export const resolveWindowsHost = async (
   connection: TAppConnectionRow | undefined,
   orgId: string,
   deps: THostScanDeps
 ): Promise<TResolvedWindowsHost> => {
-  if (!connection || connection.orgId !== orgId || connection.app !== AppConnection.WinRM) {
-    throw new BadRequestError({ message: "The Windows (WinRM) connection no longer exists" });
-  }
-  if (!connection.gatewayId && !connection.gatewayPoolId) {
-    throw new BadRequestError({ message: windowsConnectionWithoutGatewayMessage(connection.name) });
-  }
-
-  const credentials = (await decryptAppConnectionCredentials({
-    orgId: connection.orgId,
-    encryptedCredentials: connection.encryptedCredentials,
-    kmsService: deps.kmsService,
-    projectId: connection.projectId
-  })) as TWinRMCredentials;
-
-  const gateway = await selectScanGateway(
-    connection,
-    HostScanCapability.WindowsCertificateScan,
-    WINDOWS_CONNECTION_KIND,
-    deps
-  );
-
-  const [targetHost] = await verifyHostInputValidity({
-    host: credentials.host,
-    isGateway: true,
-    isDynamicSecret: false
-  });
-
+  const resolved = await resolveHostConnection<TWinRMCredentials>(connection, orgId, WINDOWS_SERVER_SCAN_TYPE, deps);
+  const { credentials } = resolved;
   return {
-    ...gateway,
-    connectionId: connection.id,
+    ...resolved.gateway,
+    connectionId: resolved.connection.id,
     hostIdentifier: normalizeHostIdentifier(
       credentials.host,
       credentials.port,
       credentials.sslEnabled ? DEFAULT_WINRM_HTTPS_PORT : DEFAULT_WINRM_HTTP_PORT
     ),
     hostAddress: credentials.host.trim().toLowerCase(),
-    targetHost,
+    targetHost: resolved.targetHost,
     targetPort: credentials.port,
     credentials
   };
 };
 
-const describeWindowsScanFailure = (
-  failure: Extract<WinRmRpcResponse<unknown>, { ok: false }>,
-  gatewayName: string
-): string => {
-  if (failure.status === 404) {
+const describeWindowsScanFailure = (failure: WinRmRpcFailure, gatewayName: string): string => {
+  if (failure.status === HttpStatusCode.NotFound) {
     return `Gateway '${gatewayName}' is too old for certificate scanning. Update it to the latest version.`;
   }
-  if (failure.status === WINRM_RPC_RESPONSE_TOO_LARGE_STATUS) {
-    return "The scan returned more certificates than one scan can hold. Select fewer certificate stores.";
+  if (failure.status === HttpStatusCode.PayloadTooLarge) {
+    return "The scan found more certificates than one scan can return. Select fewer certificate stores.";
   }
-  if (failure.status === 503) {
+  if (failure.status === HttpStatusCode.ServiceUnavailable) {
     return "The gateway is busy with other certificate scans. Try again later.";
   }
   if (failure.kind === "auth") {
@@ -164,25 +131,17 @@ const describeWindowsScanFailure = (
   return "The gateway could not read the certificate stores on the Windows host. Check the gateway logs for details.";
 };
 
-const runWindowsCertificateScan = async (
+const runWindowsCertificateScan = (
   host: TResolvedWindowsHost,
   stores: WindowsCertificateStore[],
   deps: THostScanDeps
 ): Promise<TWindowsCertificateScanResponse> => {
-  const connectionDetails = await deps.gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
-    gatewayId: host.gatewayId,
-    targetHost: host.targetHost,
-    targetPort: host.targetPort
-  });
-  if (!connectionDetails) {
-    throw new NotFoundError({ message: getMissingGatewayMessage(host.gatewayId) });
-  }
-
   const { credentials } = host;
-  let response: WinRmRpcResponse<unknown>;
-  try {
-    response = await withGatewayV2Proxy(
-      (port) =>
+  return runGatewayScan<WinRmRpcFailure, TWindowsCertificateScanResponse>(
+    host,
+    {
+      protocol: GatewayProxyProtocol.WinRm,
+      call: (port) =>
         callWinRmEndpoint<unknown>({
           port,
           endpoint: WinRmRpcEndpoint.ScanCertificates,
@@ -201,37 +160,12 @@ const runWindowsCertificateScan = async (
             }
           }
         }),
-      { protocol: GatewayProxyProtocol.WinRm, longLived: true, ...connectionDetails }
-    );
-  } catch (error) {
-    if (error instanceof GatewayTransportError) throw error;
-    const message = error instanceof Error ? error.message : String(error);
-    logger.warn(
-      `Windows certificate scan transport failed [connectionId=${host.connectionId}] [gatewayId=${host.gatewayId}] [error=${message}]`
-    );
-    throw new BadRequestError({
-      message:
-        "The connection to the gateway dropped during the scan. Check that the gateway and its relay are running, then try again."
-    });
-  }
-
-  if (!response.ok) {
-    logger.warn(
-      { errorMessage: response.errorMessage },
-      `Windows certificate scan RPC failed [connectionId=${host.connectionId}] [gatewayId=${host.gatewayId}] [status=${response.status}] [kind=${response.kind ?? "none"}]`
-    );
-    throw new BadRequestError({ message: describeWindowsScanFailure(response, host.gatewayName) });
-  }
-
-  const parsed = WindowsCertificateScanResponseSchema.safeParse(response.result);
-  if (!parsed.success) {
-    logger.warn(
-      { issues: parsed.error.issues },
-      `Windows certificate scan result did not match the expected shape [connectionId=${host.connectionId}]`
-    );
-    throw new BadRequestError({ message: "The gateway returned a scan result that could not be read" });
-  }
-  return parsed.data;
+      describeFailure: (failure) => describeWindowsScanFailure(failure, host.gatewayName),
+      schema: WindowsCertificateScanResponseSchema,
+      logLabel: "Windows certificate scan"
+    },
+    deps
+  );
 };
 
 export const storeCertificatePath = (store: string, thumbprint: string) =>
@@ -328,12 +262,16 @@ export const summarizeWindowsScanIssues = (
   const denied = response.deniedStores ?? [];
   if (denied.length > 0) {
     issues.push(
-      `${hostIdentifier}: The connection's user can't open these certificate stores: ${denied
+      `${hostIdentifier}: The connection's account can't open these certificate stores: ${denied
         .map((store) => STORE_NAMES[store] ?? store)
         .join(", ")}`
     );
   }
-  const unreadable = (response.certificates ?? []).filter((cert) => cert.status !== HostCertificateFileStatus.Ok);
+  const unreadable = (response.certificates ?? []).filter(
+    (cert) =>
+      cert.status !== HostCertificateFileStatus.Ok &&
+      !(CA_ONLY_WINDOWS_STORES as readonly string[]).includes(cert.store)
+  );
   if (unreadable.length > 0) {
     const listed = unreadable
       .slice(0, MAX_LISTED_UNREADABLE)
@@ -346,7 +284,7 @@ export const summarizeWindowsScanIssues = (
   const unreadableIssuers = response.unreadableIssuerStores ?? [];
   if (unreadableIssuers.length > 0) {
     issues.push(
-      `${hostIdentifier}: The connection's user can't open ${unreadableIssuers
+      `${hostIdentifier}: The connection's account can't open ${unreadableIssuers
         .map((store) => STORE_NAMES[store] ?? store)
         .join(", ")}, so some certificate chains may be incomplete`
     );
@@ -390,7 +328,7 @@ const scanWindowsConnection = async (
   try {
     const host = await resolveWindowsHost(connection, run.orgId, deps);
     hostLabel = host.hostIdentifier;
-    const response = await withConnectionScanSlot(host.connectionId, WINDOWS_CONNECTION_KIND, deps, () =>
+    const response = await withConnectionScanSlot(host.connectionId, AppConnection.WinRM, deps, () =>
       runWindowsCertificateScan(host, run.targetConfig.certificateStores, deps)
     );
     issues.push(...summarizeWindowsScanIssues(host.hostIdentifier, response));
@@ -425,9 +363,8 @@ const scanWindowsConnection = async (
   }
 };
 
-export const executeWindowsServerScan = (discoveryId: string, deps: THostScanDeps): Promise<void> =>
-  executeHostScan<TWindowsServerTargetConfig>(
-    discoveryId,
-    { discoveryType: PkiDiscoveryType.WindowsServer, label: "Windows Server", scanConnection: scanWindowsConnection },
-    deps
-  );
+export const WINDOWS_SERVER_SCAN: THostScanDefinition<TWindowsServerTargetConfig> = {
+  ...WINDOWS_SERVER_SCAN_TYPE,
+  schema: WindowsServerTargetConfigSchema,
+  scanConnection: scanWindowsConnection
+};

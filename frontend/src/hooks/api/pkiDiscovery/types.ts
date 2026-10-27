@@ -126,7 +126,7 @@ export type TPkiInstallation = {
     hostname?: string;
     format?: PkiCertificateFileFormat;
     storeLocation?: string;
-    storeName?: string;
+    storeName?: WindowsCertificateStore;
     thumbprint?: string;
     hasPrivateKey?: boolean;
   };

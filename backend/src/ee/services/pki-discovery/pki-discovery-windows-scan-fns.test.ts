@@ -137,7 +137,7 @@ describe("Windows store installation identity", () => {
 });
 
 describe("summarizeWindowsScanIssues", () => {
-  test("names denied stores, unreadable certificates and truncation", () => {
+  test("names denied stores, unreadable server certificates and truncation", () => {
     const issues = summarizeWindowsScanIssues("web-01", {
       host: { hostname: "web-01" },
       deniedStores: [WindowsCertificateStore.WebHosting],
@@ -155,12 +155,19 @@ describe("summarizeWindowsScanIssues", () => {
           hasPrivateKey: false,
           status: HostCertificateFileStatus.Ok,
           chains: [{ kind: HostCertificateChainKind.Leaf, indexes: [0] }]
+        },
+        {
+          store: WindowsCertificateStore.IntermediateCertificationAuthorities,
+          thumbprint: "CC",
+          hasPrivateKey: false,
+          status: HostCertificateFileStatus.ParseError,
+          chains: []
         }
       ],
       truncatedReason: HostScanTruncationReason.MaxFiles
     });
     expect(issues).toEqual([
-      "web-01: The connection's user can't open these certificate stores: Web Hosting",
+      "web-01: The connection's account can't open these certificate stores: Web Hosting",
       "web-01: These certificates could not be read: Personal (AA)",
       "web-01: The scan stopped after 5,000 certificates"
     ]);
@@ -185,7 +192,7 @@ describe("summarizeWindowsScanIssues", () => {
         truncatedReason: HostScanTruncationReason.TimeLimit
       })
     ).toEqual([
-      "web-01: The connection's user can't open Trusted Root Certification Authorities, so some certificate chains may be incomplete",
+      "web-01: The connection's account can't open Trusted Root Certification Authorities, so some certificate chains may be incomplete",
       "web-01: The scan ran out of time, so some certificates were not checked. Select fewer certificate stores."
     ]);
   });

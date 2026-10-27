@@ -12,6 +12,7 @@ import {
 import { getDiscoveryDocsUrl, PKI_DISCOVERY_TYPE_MAP } from "@app/helpers/pkiDiscovery";
 import { useCreatePkiDiscovery, useUpdatePkiDiscovery } from "@app/hooks/api";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { GatewayCapability } from "@app/hooks/api/gateways-v2/types";
 import {
   PkiDiscoveryType,
   TPkiDiscovery,
@@ -83,7 +84,7 @@ const STEP_META: Record<
     short: "Stores and CA certificates",
     subtitle: "Choose the certificate stores to read and what to import.",
     rightDescription:
-      "The scan reads the Local Machine certificate stores. Private keys aren't read or imported; the installation only records whether a certificate has one.\n\nStores the connection's user can't open are listed in the scan."
+      "The scan reads the Local Machine certificate stores. Private keys aren't read or imported; the installation only records whether a certificate has one.\n\nStores the connection's account can't open are listed in the scan."
   },
   [DiscoveryJobStep.Folders]: {
     name: "Where to Look",
@@ -315,14 +316,14 @@ export const DiscoveryJobForm = ({
               <HostConnectionsFields
                 app={AppConnection.SSH}
                 connectionLabel="SSH"
-                capability="certificateScan"
+                capability={GatewayCapability.CertificateScan}
               />
             )}
             {currentKey === DiscoveryJobStep.WindowsHosts && (
               <HostConnectionsFields
                 app={AppConnection.WinRM}
                 connectionLabel="Windows (WinRM)"
-                capability="windowsCertificateScan"
+                capability={GatewayCapability.WindowsCertificateScan}
               />
             )}
             {currentKey === DiscoveryJobStep.Stores && <WindowsServerStoresFields />}

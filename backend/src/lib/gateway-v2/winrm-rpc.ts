@@ -1,3 +1,5 @@
+import { HttpStatusCode } from "axios";
+
 import { GatewayRpcResponseTooLargeError, postGatewayRpc } from "./gateway-rpc";
 import { GatewayFailureKind } from "./test-connection-rpc";
 
@@ -52,8 +54,6 @@ export const WINRM_RPC_TIMEOUT_MS = 150_000;
 
 const MAX_WINRM_RPC_RESPONSE_BYTES = 1024 * 1024;
 
-export const WINRM_RPC_RESPONSE_TOO_LARGE_STATUS = 413;
-
 export const callWinRmEndpoint = async <T>(args: {
   port: number;
   endpoint: WinRmRpcEndpoint;
@@ -73,7 +73,7 @@ export const callWinRmEndpoint = async <T>(args: {
     });
   } catch (error) {
     if (error instanceof GatewayRpcResponseTooLargeError) {
-      return { ok: false, status: WINRM_RPC_RESPONSE_TOO_LARGE_STATUS, errorMessage: error.message, kind: null };
+      return { ok: false, status: HttpStatusCode.PayloadTooLarge, errorMessage: error.message, kind: null };
     }
     throw error;
   }

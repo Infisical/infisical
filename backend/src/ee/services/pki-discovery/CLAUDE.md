@@ -13,8 +13,9 @@ Invariants for `pki-discovery-*` and `pki-installation-*` that the code doesn't 
   WinRM ALPN, capability `windowsCertificateScan`. The gateway always reads `CA` and `Root` to build chains, but
   only returns certificates from the requested stores. Installations are `os_store`, keyed on
   `Cert:\LocalMachine\<store>\<thumbprint>` instead of a file path, and never take a password.
-- Both host types share `executeHostScan` in `pki-discovery-host-scan-fns.ts`; a new host type supplies a
-  `THostScanDefinition` and an entry in the service's `HOST_DISCOVERY_TYPES`.
+- Both host types share `executeHostScan`, `resolveHostConnection` and `runGatewayScan` in
+  `pki-discovery-host-scan-fns.ts`; a new host type supplies one `THostScanDefinition` (label, app, capability,
+  schema, per-connection scan) and adds it to the service's `HOST_DISCOVERY_TYPES` and the queue.
 - Host scans take a per-connection slot (`tryAdmitAppConnectionConcurrency`), shared with PKI syncs.
 - Nothing raw reaches users: gateway, transport and file errors map to product messages; raw text is logged.
 - Installation identity is `hostIdentifier` (connection host, plus `:port` unless it is the protocol default: 22 for SSH, 5985 or 5986 for WinRM over HTTP or HTTPS) + real path + gateway or
