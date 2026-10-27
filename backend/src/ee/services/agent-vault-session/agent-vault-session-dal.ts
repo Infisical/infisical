@@ -315,6 +315,22 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
+  // One statement on the primary: the row is locked, rewritten, and its label before the write comes back, so
+  // two quick edits can't both read a stale label and the caller audits what actually changed.
+  const updateLabel = async (id: string, projectId: string, label: string | null, tx?: Knex) => {
+    try {
+      const { rows } = (await (tx || db).raw(
+        `WITH previous AS (SELECT id, label FROM ?? WHERE id = ? AND "projectId" = ? FOR UPDATE)
+        UPDATE ?? AS session SET label = ? FROM previous WHERE session.id = previous.id
+        RETURNING previous.label AS "previousLabel"`,
+        [TableName.AgentVaultSession, id, projectId, TableName.AgentVaultSession, label]
+      )) as { rows: { previousLabel: string | null }[] };
+      return rows[0];
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Update agent vault session label" });
+    }
+  };
+
   // The id is chosen by the caller because the session log key is wrapped with it before the row exists.
   const createWithId = async (data: TAgentVaultSessionsInsert & { id: string }, tx?: Knex) => {
     try {
@@ -327,5 +343,5 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByTokenHash, findForList, revokeIfActive, createWithId };
+  return { ...orm, findByTokenHash, findForList, revokeIfActive, updateLabel, createWithId };
 };

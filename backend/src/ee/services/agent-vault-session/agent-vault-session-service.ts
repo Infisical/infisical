@@ -247,11 +247,11 @@ export const agentVaultSessionServiceFactory = ({
     );
 
     const session = await findVisibleSession({ projectId, ctx, sessionId, isAdmin });
-    if (session.label !== label) {
-      await agentVaultSessionDAL.updateById(session.id, { label });
-    }
+    // The visible session can come from a replica that lags, so the previous label is the one the write replaced.
+    const updated = await agentVaultSessionDAL.updateLabel(session.id, projectId, label);
+    if (!updated) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
 
-    return { session: toSessionView({ ...session, label }), previousLabel: session.label };
+    return { session: toSessionView({ ...session, label }), previousLabel: updated.previousLabel };
   };
 
   return {

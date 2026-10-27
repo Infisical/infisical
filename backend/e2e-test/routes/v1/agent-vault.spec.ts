@@ -3707,12 +3707,12 @@ describe("Agent Vault V1 Router", async () => {
 
       const rejected = {
         tab: "a\tb",
-        zeroWidthSpace: "​",
-        rightToLeftOverride: "revo ‮ltr",
-        lineSeparator: "a b",
-        paragraphSeparator: "a b",
+        zeroWidthSpace: "\u200b",
+        rightToLeftOverride: "revo \u202eltr",
+        lineSeparator: "a\u2028b",
+        paragraphSeparator: "a\u2029b",
         c1Control: "a\u0085b",
-        privateUse: "ab",
+        privateUse: "a\ue000b",
         loneSurrogate: "a\ud800b"
       };
       for await (const [name, label] of Object.entries(rejected)) {
@@ -3747,10 +3747,17 @@ describe("Agent Vault V1 Router", async () => {
 
       // The label is the only field, so leaving it out must not read as clearing it.
       expect((await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, {})).statusCode).toBe(422);
-      expect((await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { label: "a​b" })).statusCode).toBe(
-        422
-      );
+      expect((await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { label: "a\u200bb" })).statusCode).toBe(422);
       expect((await inject("GET", `/api/v1/agent-vault/sessions/${id}`)).json().session.label).toBe("first pass");
+
+      // Back to a label it held a moment ago: the write must land even though nothing looks changed from the
+      // label two edits back.
+      expect((await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { label: "second pass" })).statusCode).toBe(
+        200
+      );
+      const back = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { label: "first pass" });
+      expect(back.json().session.label).toBe("first pass");
+      expect((await testDb("agent_vault_sessions").where({ id }).first()).label).toBe("first pass");
 
       const cleared = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { label: null });
       expect(cleared.statusCode).toBe(200);
