@@ -1,5 +1,8 @@
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
+import { createHash } from "node:crypto";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { defineConfig, loadEnv, PluginOption } from "vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 import wasm from "vite-plugin-wasm";
@@ -18,6 +21,19 @@ const virtualRouteFileChangeReloadPlugin: PluginOption = {
   }
 };
 
+// Locale files are served from public/ without a content hash, and the server caches static files
+// as immutable for 30 days, so the loader URL carries this hash to pick up new translations.
+const hashLocales = () => {
+  const localesDir = join(process.cwd(), "public/locales");
+  const hash = createHash("sha256");
+  readdirSync(localesDir, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => join(entry.parentPath, entry.name))
+    .sort()
+    .forEach((file) => hash.update(file.slice(localesDir.length)).update(readFileSync(file)));
+  return hash.digest("hex").slice(0, 12);
+};
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
@@ -29,6 +45,9 @@ export default defineConfig(({ mode }) => {
   ).replaceAll(".", "-");
 
   return {
+    define: {
+      "import.meta.env.VITE_LOCALES_VERSION": JSON.stringify(hashLocales())
+    },
     server: {
       allowedHosts,
       host: true,

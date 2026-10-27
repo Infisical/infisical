@@ -23,6 +23,9 @@ i18n
       // lookupLocalStorage: "lang"
     },
     ns: ["translations"],
+    backend: {
+      loadPath: `/locales/{{lng}}/{{ns}}.json?v=${import.meta.env.VITE_LOCALES_VERSION}`
+    },
     interpolation: {
       escapeValue: false // not needed for react as it escapes by default
     }
