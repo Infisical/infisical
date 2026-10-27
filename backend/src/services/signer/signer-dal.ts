@@ -6,6 +6,9 @@ import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
+import { CaType } from "../certificate-authority/certificate-authority-enums";
+import { SignerStatus } from "./signer-enums";
+
 export type TSignerWithCertificate = TPkiSigners & {
   certificateCommonName: string | null;
   certificateSerialNumber: string | null;
@@ -191,6 +194,60 @@ export const signerDALFactory = (db: TDbClient) => {
     }
   };
 
+  const updateById: typeof orm.updateById = async (id, data, tx) => {
+    if (data.status === undefined || data.status === SignerStatus.Revoked) return orm.updateById(id, data, tx);
+    try {
+      const [updated] = (await (tx || db)(TableName.PkiSigners)
+        .where({ id })
+        .whereNot({ status: SignerStatus.Revoked })
+        .update(data as never)
+        .returning("*")) as TPkiSigners[];
+      if (updated) return updated;
+      return (await (tx || db)(TableName.PkiSigners).where({ id }).first()) as TPkiSigners;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "UpdateSignerById" });
+    }
+  };
+
+  const findOneByCertificateOrDigiCertOrder = async (
+    {
+      certificateId,
+      caId,
+      digicertOrderId,
+      excludeSignerId
+    }: {
+      certificateId: string;
+      caId: string | null;
+      digicertOrderId?: number;
+      excludeSignerId?: string;
+    },
+    tx?: Knex
+  ): Promise<TPkiSigners | undefined> => {
+    try {
+      const query = (tx || db)(TableName.PkiSigners)
+        .leftJoin(TableName.Certificate, `${TableName.PkiSigners}.certificateId`, `${TableName.Certificate}.id`)
+        .where((qb) => {
+          void qb.where(`${TableName.PkiSigners}.certificateId`, certificateId);
+          if (digicertOrderId !== undefined && caId) {
+            void qb.orWhere((orderQb) => {
+              void orderQb
+                .where(`${TableName.Certificate}.caId`, caId)
+                .whereRaw(`??->>'type' = ?`, [`${TableName.Certificate}.externalMetadata`, CaType.DIGICERT])
+                .whereRaw(`??->>'orderId' = ?`, [`${TableName.Certificate}.externalMetadata`, String(digicertOrderId)]);
+            });
+          }
+        })
+        .select(selectAllTableCols(TableName.PkiSigners));
+      if (excludeSignerId) void query.whereNot(`${TableName.PkiSigners}.id`, excludeSignerId);
+      return (await query.first()) as TPkiSigners | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSignerByCertificateOrDigiCertOrder" });
+    }
+  };
+
+  const restoreStatusAfterFailedRevoke = async (id: string, status: SignerStatus, tx?: Knex) =>
+    orm.updateById(id, { status }, tx);
+
   const findOneInOrgByCurrentHsmPublicKey = async (
     projectId: string,
     hsmPublicKeySpki: Buffer,
@@ -216,6 +273,9 @@ export const signerDALFactory = (db: TDbClient) => {
 
   return {
     ...orm,
+    updateById,
+    restoreStatusAfterFailedRevoke,
+    findOneByCertificateOrDigiCertOrder,
     findByIdWithCertificate,
     findByStatusWithCertificate,
     findByProjectId,

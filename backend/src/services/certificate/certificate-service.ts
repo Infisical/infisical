@@ -43,6 +43,7 @@ import {
 import {
   CA_TYPE_LABEL,
   CertificateImportLinkageMap,
+  DigiCertExternalMetadataSchema,
   TImportExternalMetadata
 } from "@app/services/certificate-common/external-metadata-schemas";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
@@ -139,7 +140,7 @@ type TCertificateServiceFactoryDep = {
     | "updateById"
     | "findByIdForUpdate"
   >;
-  signerDAL: Pick<TSignerDALFactory, "findOne">;
+  signerDAL: Pick<TSignerDALFactory, "findOneByCertificateOrDigiCertOrder">;
   pkiApplicationDAL: Pick<TPkiApplicationDALFactory, "findById">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   pkiApplicationProfileDAL: Pick<TPkiApplicationProfileDALFactory, "findOneByApplicationAndProfile">;
@@ -734,30 +735,11 @@ export const certificateServiceFactory = ({
         pkiSyncDAL,
         pkiSyncQueue
       });
-
       if (cert.applicationId) {
         await queueCertificateFilterReconcile(cert.id, cert.applicationId, pkiSyncQueue);
       }
-
-      // rebuild CRL (TODO: move to interval-based cron job)
-      // Only rebuild CRL for internal CAs - external CAs manage their own CRLs
-      if (!ca.externalCa?.id) {
-        await rebuildCaCrl({
-          caId: ca.id,
-          certificateAuthorityDAL,
-          certificateAuthorityCrlDAL,
-          certificateAuthoritySecretDAL,
-          projectDAL,
-          certificateDAL,
-          kmsService,
-          caKeySourceService
-        });
-      }
     } catch (err) {
-      logger.error(
-        err,
-        `certificate revocation: post-revocation sync or CRL rebuild failed [certificateId=${cert.id}]`
-      );
+      logger.error(err, `certificate revocation: queueing PKI syncs failed [certificateId=${cert.id}] [caId=${ca.id}]`);
     }
 
     try {
@@ -769,6 +751,25 @@ export const certificateServiceFactory = ({
       });
     } catch {
       logger.debug("Failed to queue PKI revocation alert event");
+    }
+
+    // rebuild CRL (TODO: move to interval-based cron job)
+    // Only rebuild CRL for internal CAs - external CAs manage their own CRLs
+    if (!ca.externalCa?.id) {
+      try {
+        await rebuildCaCrl({
+          caId: ca.id,
+          certificateAuthorityDAL,
+          certificateAuthorityCrlDAL,
+          certificateAuthoritySecretDAL,
+          projectDAL,
+          certificateDAL,
+          kmsService,
+          caKeySourceService
+        });
+      } catch (err) {
+        logger.error(err, `certificate revocation: CRL rebuild failed [certificateId=${cert.id}] [caId=${ca.id}]`);
+      }
     }
 
     return revokedAt;
@@ -877,10 +878,20 @@ export const certificateServiceFactory = ({
       );
     }
 
-    const owningSigner = await signerDAL.findOne({ certificateId: cert.id });
-    if (owningSigner) {
+    if (cert.status === CertStatus.REVOKED) {
+      throw new BadRequestError({ message: "Certificate has already been revoked" });
+    }
+    const digicertMetadata = DigiCertExternalMetadataSchema.safeParse(cert.externalMetadata);
+    const signerUsingCertificate = await signerDAL.findOneByCertificateOrDigiCertOrder({
+      certificateId: cert.id,
+      caId: cert.caId ?? null,
+      digicertOrderId: digicertMetadata.success ? digicertMetadata.data.orderId : undefined
+    });
+    if (signerUsingCertificate) {
       throw new BadRequestError({
-        message: `This certificate belongs to signer '${owningSigner.name}'. Revoke it from that signer instead.`
+        message: digicertMetadata.success
+          ? "This certificate, or another certificate on the same DigiCert order, is in use by a code signing signer. Revoke it from the signer instead."
+          : "This certificate is in use by a code signing signer. Revoke it from the signer instead."
       });
     }
 

@@ -5187,6 +5187,7 @@ interface RevokePkiSignerCertificateEvent {
     signerId: string;
     name: string;
     certificateId: string | null | undefined;
+    certificateCommonName: string;
     serialNumber: string;
     revocationReason: CrlReason;
   };

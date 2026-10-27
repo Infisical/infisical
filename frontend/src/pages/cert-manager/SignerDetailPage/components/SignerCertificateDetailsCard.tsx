@@ -1,7 +1,6 @@
 import { format } from "date-fns";
 
 import {
-  Badge,
   Card,
   CardContent,
   CardDescription,
@@ -15,7 +14,6 @@ import {
   Empty,
   EmptyTitle
 } from "@app/components/v3";
-import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { CertKeySource, certKeySourceLabels, TSigner } from "@app/hooks/api/signers";
 
 const NotSet = () => <span className="text-muted">—</span>;
@@ -27,7 +25,6 @@ type Props = {
 export const SignerCertificateDetailsCard = ({ signer }: Props) => {
   const orderId = signer.externalOrder ? String(signer.externalOrder.orderId) : null;
   const hasDetails = Boolean(signer.certificateId || orderId || signer.certificateHsmKeyLabel);
-  const isRevoked = signer.certificateStatus === CertStatus.REVOKED;
 
   return (
     <Card>
@@ -38,14 +35,6 @@ export const SignerCertificateDetailsCard = ({ signer }: Props) => {
       <CardContent>
         {hasDetails ? (
           <DetailGroup>
-            {isRevoked && (
-              <Detail>
-                <DetailLabel>Status</DetailLabel>
-                <DetailValue>
-                  <Badge variant="danger">Revoked</Badge>
-                </DetailValue>
-              </Detail>
-            )}
             <Detail>
               <DetailLabel>Common Name</DetailLabel>
               <DetailValue>
@@ -118,7 +107,7 @@ export const SignerCertificateDetailsCard = ({ signer }: Props) => {
             )}
           </DetailGroup>
         ) : (
-          <Empty className="border border-solid">
+          <Empty className="border">
             <EmptyTitle>No certificate issued yet</EmptyTitle>
           </Empty>
         )}

@@ -55,7 +55,7 @@ export const RevokeSignerCertificateDialog = ({
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent isPending={revokeCertificate.isPending}>
         <DialogHeader>
-          <DialogTitle>Revoke Certificate</DialogTitle>
+          <DialogTitle>Revoke Certificate for {signer.name}</DialogTitle>
           <DialogDescription>
             This can&apos;t be undone. Create a new signer to keep signing. Signatures made before
             revocation may stop validating.

@@ -179,10 +179,12 @@ export const useRevokeSignerCertificate = () => {
       return data;
     },
     onSuccess: (signer) => {
-      queryClient.invalidateQueries({ queryKey: signerKeys.byId(signer.id) });
       queryClient.invalidateQueries({ queryKey: signerKeys.list(signer.projectId) });
-      queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signer.id) });
       createNotification({ text: "Certificate revoked", type: "success" });
+    },
+    onSettled: (_, __, { signerId }) => {
+      queryClient.invalidateQueries({ queryKey: signerKeys.byId(signerId) });
+      queryClient.invalidateQueries({ queryKey: signerKeys.certificate(signerId) });
     }
   });
 };

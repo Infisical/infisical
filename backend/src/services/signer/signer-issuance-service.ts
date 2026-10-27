@@ -18,7 +18,6 @@ import {
   CertKeyAlgorithm,
   CertKeyUsage,
   CertSignatureAlgorithm,
-  CertStatus,
   CrlReason
 } from "../certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
@@ -45,6 +44,14 @@ const POLL_INTERVAL_PATTERN = "*/15 * * * *"; // every 15 minutes
 const POLL_BATCH = 25;
 const RETRY_BACKOFF_MS = 15 * 60_000;
 const IN_FLIGHT_ATTEMPT_MS = 5 * 60_000;
+
+const isAttemptInFlight = (lastAttemptAt: Date | null | undefined, now: number) =>
+  Boolean(lastAttemptAt) && now - new Date(lastAttemptAt as Date).getTime() < IN_FLIGHT_ATTEMPT_MS;
+
+const isDigiCertPlacementInFlight = (job: TPkiSignerCertificateIssuanceJobs, now: number) =>
+  job.caType === CaType.DIGICERT &&
+  !(job.externalOrderRef as TDigiCertExternalOrderRef | null)?.digicert?.orderId &&
+  isAttemptInFlight(job.lastAttemptAt, now);
 
 // DigiCert CS orders can sit pending for up to 3 business days while DigiCert validates the org and
 // waits for the verified-contact email click, so they get a longer window than synchronous CAs.
@@ -359,13 +366,7 @@ export const signerIssuanceServiceFactory = ({
       return;
     }
 
-    const placedOrderId = (snapshot.externalOrderRef as TDigiCertExternalOrderRef | null)?.digicert?.orderId;
-    const isPlacementInFlight =
-      snapshot.caType === CaType.DIGICERT &&
-      !placedOrderId &&
-      Boolean(snapshot.lastAttemptAt) &&
-      now.getTime() - new Date(snapshot.lastAttemptAt as Date).getTime() < IN_FLIGHT_ATTEMPT_MS;
-    if (isPlacementInFlight) {
+    if (isDigiCertPlacementInFlight(snapshot, now.getTime())) {
       logger.info(
         `signer issuance: DigiCert order placement already in flight, skipping [jobId=${snapshot.id}] [signerId=${snapshot.signerId}]`
       );
@@ -484,7 +485,7 @@ export const signerIssuanceServiceFactory = ({
     );
   };
 
-  const $revokeUnattachedCertificate = async (certificateId: string, projectId: string) => {
+  const revokeUnattachedCertificate = async (certificateId: string, projectId: string) => {
     try {
       const project = await projectDAL.findOne({ id: projectId });
       await certificateService.revokeOwnedCertificate({
@@ -524,20 +525,17 @@ export const signerIssuanceServiceFactory = ({
           return;
         }
         const lockedSigner = await signerDAL.findByIdForUpdate(job.signerId, tx);
-        const currentCert = lockedSigner?.certificateId
-          ? await certificateDAL.findById(lockedSigner.certificateId, tx)
-          : null;
-        if (currentCert?.status === CertStatus.REVOKED) {
-          isRefusedForRevokedSigner = true;
-          throw new BadRequestError({
-            message: "The signer's certificate was revoked during issuance. Create a new signer to keep signing."
-          });
-        }
         await certificateDAL.findByIdForUpdate(certificateId, tx);
         const signerUsingCertificate = await signerDAL.findOne({ certificateId }, tx);
         if (signerUsingCertificate && signerUsingCertificate.id !== job.signerId) {
           throw new ConflictError({
             message: `The issued certificate is already used by signer '${signerUsingCertificate.name}'.`
+          });
+        }
+        if (lockedSigner?.status === SignerStatus.Revoked) {
+          isRefusedForRevokedSigner = true;
+          throw new BadRequestError({
+            message: "The signer's certificate was revoked during issuance. Create a new signer to keep signing."
           });
         }
         if (isHsmJob) {
@@ -574,7 +572,7 @@ export const signerIssuanceServiceFactory = ({
           : "Failed to attach the issued certificate to the signer"
       );
       await markJobFailed(job, reason);
-      if (isRefusedForRevokedSigner) await $revokeUnattachedCertificate(certificateId, projectId);
+      if (isRefusedForRevokedSigner) await revokeUnattachedCertificate(certificateId, projectId);
       return;
     }
     if (isSuperseded) {
@@ -917,7 +915,7 @@ export const signerIssuanceServiceFactory = ({
       if (digicert?.orderId === orderId) return true;
       if (digicert?.lifecycle?.previousOrderId !== orderId) return false;
       if (digicert.orderId) return digicert.lifecycle.mode === DigiCertLifecycleMode.Reissue;
-      return Boolean(job.lastAttemptAt) && now - new Date(job.lastAttemptAt as Date).getTime() < IN_FLIGHT_ATTEMPT_MS;
+      return isAttemptInFlight(job.lastAttemptAt, now);
     });
     if (reissueInProgress) {
       throw new ConflictError({
@@ -948,6 +946,7 @@ export const signerIssuanceServiceFactory = ({
     runPendingJobNow,
     cancelOpenJobs,
     hasOpenJobs,
+    revokeUnattachedCertificate,
     getLatestIssuanceKeyConfig,
     start
   };

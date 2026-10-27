@@ -152,7 +152,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { signer, serialNumber } = await server.services.pkiSigner.revokeCertificate({
+      const { signer, serialNumber, commonName } = await server.services.pkiSigner.revokeCertificate({
         signerId: req.params.signerId,
         revocationReason: req.body.revocationReason,
         actor: req.permission.type,
@@ -170,6 +170,7 @@ export const registerSignerCertificateRouter = async (server: FastifyZodProvider
             signerId: signer.id,
             name: signer.name,
             certificateId: signer.certificateId,
+            certificateCommonName: commonName,
             serialNumber,
             revocationReason: req.body.revocationReason
           }

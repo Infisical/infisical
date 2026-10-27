@@ -125,8 +125,8 @@ See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors) for th
 | **Active** | Certificate issued and bound. Signing works, subject to the approval policy. |
 | **Failed** | Issuance failed. Hover the badge to see the reason. Use **Retry Issuance** from the Options menu, or [Edit a Signer](#edit-a-signer) to change the CA, Common Name, or Validity and try again. |
 | **Disabled** | Manually disabled. Signing is blocked. Re-enable from the Options menu. |
-| **Expired** | The certificate's `notAfter` has passed and no auto-renewal was configured (or the renewal failed). Reissue with a new validity period. |
-| **Revoked** | The certificate was revoked. Create a new Signer to keep signing. |
+| **Expired** | The certificate's `notAfter` has passed and no auto-renewal was configured (or the renewal failed). Renew it from the **Options** menu. |
+| **Revoked** | The certificate was revoked. Revocation is permanent, so create a new Signer to keep signing. |
 
 ## Edit a signer
 
@@ -174,7 +174,7 @@ Open the Signer and choose an action from the **Options** menu, or call the [ren
 
 | Action | What happens |
 |--------|--------------|
-| **Renew Certificate** | Requests a new certificate from the same CA with the same Common Name, Validity, and key source. On DigiCert, this places a renewal order, or reissues on the current order if your account has no free code signing subscription. Not available while the Signer is disabled or has a request in progress. |
+| **Renew Certificate** | Requests a new certificate from the same CA with the same Common Name, Validity, and key source. On DigiCert, this places a renewal order, or uses the current order if your account has no free code signing subscription. Not available while the Signer is disabled or has a request in progress. |
 | **Revoke Certificate** | Revokes the certificate at the CA. This can't be undone, so create a new Signer to keep signing. On DigiCert, this revokes every certificate on the order. Not available for Azure AD CS. |
 
 ## Signing with a signer

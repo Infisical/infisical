@@ -5,6 +5,7 @@ import { BadRequestError, InternalServerError } from "@app/lib/errors";
 import { DIGICERT_AUTH_HEADER } from "@app/services/app-connection/digicert/digicert-connection-constants";
 import { extractDigiCertErrorMessage } from "@app/services/app-connection/digicert/digicert-connection-errors";
 
+import { DigiCertRevocationRequestStatus } from "./digicert-certificate-authority-enums";
 import {
   TCheckValidationResponse,
   TDigiCertAlternateOrdersResponse,
@@ -16,6 +17,8 @@ import {
 } from "./digicert-certificate-authority-types";
 
 export type TDigiCertApiClient = ReturnType<typeof createDigiCertApiClient>;
+
+const ORDER_REQUEST_TIMEOUT_MS = 2 * 60_000;
 
 export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
   const headers = {
@@ -49,14 +52,17 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
       const { data } = await request.post<TResp>(
         `${baseURL}/order/certificate/${encodeURIComponent(productSlug)}`,
         body,
-        { headers }
+        { headers, timeout: ORDER_REQUEST_TIMEOUT_MS }
       );
       return data;
     }, `order placement for product ${productSlug}`);
 
   const reissueOrder = async <TResp = TPlaceOrderResponse>(orderId: number, body: Record<string, unknown>) =>
     wrap(async () => {
-      const { data } = await request.post<TResp>(`${baseURL}/order/certificate/${orderId}/reissue`, body, { headers });
+      const { data } = await request.post<TResp>(`${baseURL}/order/certificate/${orderId}/reissue`, body, {
+        headers,
+        timeout: ORDER_REQUEST_TIMEOUT_MS
+      });
       return data;
     }, `order reissue for ${orderId}`);
 
@@ -115,13 +121,12 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
 
   const revokeOrder = async (orderId: number, comments: string) =>
     wrap(async () => {
-      const { data } = await request.put<{ status?: string } | "">(
+      const { data } = await request.put<{ status?: DigiCertRevocationRequestStatus } | "">(
         `${baseURL}/order/certificate/${orderId}/revoke`,
         { comments, skip_approval: true },
         { headers }
       );
-      const requestStatus = typeof data === "object" ? data?.status : undefined;
-      return { isPendingApproval: Boolean(requestStatus) && requestStatus !== "approved" };
+      return { requestStatus: typeof data === "object" ? data?.status : undefined };
     }, `order revocation for ${orderId}`);
 
   const listOrderStatusChanges = async ({ seconds }: { seconds: number }) =>

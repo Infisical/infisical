@@ -157,7 +157,7 @@ export const SignerDetailPage = () => {
     caSupportsCapability(signerCaType as CaType, CaCapability.REVOKE_CERTIFICATES);
 
   let statusTooltip: string | null = null;
-  if (signer.certificateStatus === CertStatus.REVOKED) {
+  if (signer.status === SignerStatus.Revoked) {
     statusTooltip = "Create a new signer to keep signing.";
   } else if (signer.status === SignerStatus.Failed && signer.certificateFailureReason) {
     statusTooltip = signer.certificateFailureReason;
@@ -269,19 +269,17 @@ export const SignerDetailPage = () => {
                       Check Issuance Now
                     </DropdownMenuItem>
                   )}
-                  {signer.status === SignerStatus.Failed &&
-                    signer.caId &&
-                    signer.certificateStatus !== CertStatus.REVOKED && (
-                      <DropdownMenuItem
-                        onClick={() =>
-                          reissueSigner.mutate({ signerId: signer.id, caId: signer.caId! })
-                        }
-                        isDisabled={!can(SignerPermissionActions.ReissueCertificate)}
-                      >
-                        <RotateCwIcon />
-                        Retry Issuance
-                      </DropdownMenuItem>
-                    )}
+                  {signer.status === SignerStatus.Failed && signer.caId && (
+                    <DropdownMenuItem
+                      onClick={() =>
+                        reissueSigner.mutate({ signerId: signer.id, caId: signer.caId! })
+                      }
+                      isDisabled={!can(SignerPermissionActions.ReissueCertificate)}
+                    >
+                      <RotateCwIcon />
+                      Retry Issuance
+                    </DropdownMenuItem>
+                  )}
                   {canRenewCertificate && (
                     <DropdownMenuItem
                       onClick={() => renewSigner.mutate(signer.id)}

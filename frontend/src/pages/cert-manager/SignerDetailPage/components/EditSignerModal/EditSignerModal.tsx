@@ -19,11 +19,11 @@ import { useSubscription } from "@app/context";
 import { getCaIssuanceCapabilities, useListCasByProjectId } from "@app/hooks/api/ca";
 import { CaStatus, CaType } from "@app/hooks/api/ca/enums";
 import { DigiCertCaPurpose } from "@app/hooks/api/ca/types";
-import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { useListHsmConnectors } from "@app/hooks/api/hsmConnectors";
 import {
   CertKeySource,
   SignerKeyAlgorithm,
+  SignerStatus,
   TSigner,
   useImportSignerCertificate,
   useReissueSignerCertificate,
@@ -193,7 +193,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
     externalOrderMode: watchedExternalOrderMode
   });
   const adcsTemplateChanged = isAdcs && (watchedAdcsTemplate?.trim() ?? "") !== signerAdcsTemplate;
-  const isCertificateRevoked = signer.certificateStatus === CertStatus.REVOKED;
+  const isCertificateRevoked = signer.status === SignerStatus.Revoked;
   const visibleSteps = isCertificateRevoked ? STEPS.slice(0, 1) : STEPS;
   const shouldReissue =
     !isCertificateRevoked &&
