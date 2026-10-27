@@ -25,7 +25,8 @@ type Instance struct {
 
 // AccessRequest is a record of the Infisical Approvals application, keyed by its sys_id.
 // Everything above Decision is what Infisical sent; Decision and DecisionNotes are what
-// an approver records in ServiceNow, and stay empty until a test seeds them.
+// an approver records in ServiceNow, and stay empty until a test seeds them. State is
+// what the customer's flow sets; left empty, it follows from Decision.
 type AccessRequest struct {
 	SysID          string   `json:"sysId"`
 	RequestID      string   `json:"requestId"`
@@ -38,6 +39,7 @@ type AccessRequest struct {
 
 	Decision      string `json:"decision,omitempty"`
 	DecisionNotes string `json:"decisionNotes,omitempty"`
+	State         string `json:"state,omitempty"`
 }
 
 func (rec *AccessRequest) detail() AccessRequestDetail {

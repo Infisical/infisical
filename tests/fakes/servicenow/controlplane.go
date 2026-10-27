@@ -38,3 +38,9 @@ func Approved(sysID string) any {
 func Rejected(sysID, notes string) any {
 	return Instance{AccessRequests: map[string]*AccessRequest{sysID: {Decision: "rejected", DecisionNotes: notes}}}
 }
+
+// Expired records the customer's flow closing a record before anyone decided it, which
+// the application does not stamp a decision for.
+func Expired(sysID string) any {
+	return Instance{AccessRequests: map[string]*AccessRequest{sysID: {State: "expired"}}}
+}

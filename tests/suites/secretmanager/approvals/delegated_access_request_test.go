@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -64,6 +65,49 @@ func TestDelegatedAccessRequest_Decision(t *testing.T) {
 		// Assert
 		require.Equal(t, http.StatusOK, code)
 		require.Equal(t, delegatedState{status: "rejected", delegated: "rejected"}, req.await(t, "rejected"))
+		require.Equal(t, http.StatusForbidden, req.readSecret(t))
+	})
+
+	t.Run("should close the request without a grant when ServiceNow records a decision Infisical does not recognise", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		req := newWaitingDelegatedRequest(t)
+		req.sn.Seed(t, servicenow.Instance{AccessRequests: map[string]*servicenow.AccessRequest{
+			req.record.SysID: {Decision: "cancelled"},
+		}})
+
+		// Action
+		code := req.callback(t, req.record.CallbackToken)
+
+		// Assert
+		require.Equal(t, http.StatusOK, code)
+		closed := req.await(t, "failed")
+		require.Equal(t, delegatedState{status: "rejected", delegated: "failed", reason: closed.reason}, closed)
+		require.Contains(t, closed.reason, "does not recognise ('cancelled')")
+		require.Equal(t, http.StatusForbidden, req.readSecret(t))
+	})
+
+	t.Run("should keep waiting for a decision when ServiceNow expires the record without one", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, "Infisical finalizes from the record's decision alone, so a record the customer's flow closed "+
+			"without one reads as undecided, and the request stays open for a later callback, its expiry, or a cancel.")
+
+		// Setup
+		req := newWaitingDelegatedRequest(t)
+		req.sn.Seed(t, servicenow.Expired(req.record.SysID))
+
+		// Action
+		code := req.callback(t, req.record.CallbackToken)
+
+		// Assert
+		require.Equal(t, http.StatusOK, code)
+		open, err := wait.For(t.Context(), func(ctx context.Context) (delegatedState, bool, error) {
+			st, err := req.state(ctx)
+			return st, err == nil && strings.Contains(st.reason, "(state: expired)"), err
+		}, wait.Timeout(outboxWait))
+		require.NoError(t, err, "waiting for the read-back to record the expired record")
+		require.Equal(t, delegatedState{status: "pending", delegated: "waiting_approval", reason: open.reason}, open)
 		require.Equal(t, http.StatusForbidden, req.readSecret(t))
 	})
 
