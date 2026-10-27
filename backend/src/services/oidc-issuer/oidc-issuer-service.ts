@@ -27,7 +27,7 @@ const KEY_ROTATION_LOCK_TTL_MS = 30_000;
 type TOidcIssuerServiceFactoryDep = {
   kmsDAL: Pick<TKmsKeyDALFactory, "find" | "delete" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "getPublicKey" | "signWithKmsKey">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry" | "deleteItem">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry">;
 };
 
 type TJwks = { keys: Awaited<ReturnType<typeof publicKeyToJwk>>[] };
@@ -55,6 +55,30 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
 
     return keys.filter(({ name }) => name.startsWith(OIDC_ISSUER_KEY_NAME_PREFIX));
   };
+
+  const $buildJwks = async (keys: { id: string }[], tx?: Knex): Promise<TJwks> => {
+    const jwks = await Promise.all(
+      keys.map(({ id }) =>
+        kmsService
+          .getPublicKey({ kmsId: id }, tx)
+          .then(publicKeyToJwk)
+          .catch((err) => {
+            // A concurrent rotation can delete the oldest key, which no longer signs
+            if (err instanceof NotFoundError) return null;
+            throw err;
+          })
+      )
+    );
+
+    return { keys: jwks.filter((jwk): jwk is NonNullable<typeof jwk> => jwk !== null) };
+  };
+
+  const $cacheJwks = (orgId: string, jwks: TJwks) =>
+    keyStore.setItemWithExpiry(
+      KeyStorePrefixes.OidcIssuerJwks(orgId),
+      KeyStoreTtls.OidcIssuerJwksInSeconds,
+      JSON.stringify(jwks)
+    );
 
   // A Redis lock rather than an advisory lock, so no database connection is held while RSA keys are generated
   const $rotateKeys = async (orgId: string, waitForLock: boolean) => {
@@ -88,9 +112,12 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
       }
 
       if (keyIdsToDelete.length) await kmsDAL.delete({ $in: { id: keyIdsToDelete } });
-      if (keysToCreate) await keyStore.deleteItem(KeyStorePrefixes.OidcIssuerJwks(orgId));
 
-      return keys.filter(({ id }) => !keyIdsToDelete.includes(id));
+      const activeKeys = keys.filter(({ id }) => !keyIdsToDelete.includes(id));
+      // Built on the primary, so the first fetch after a rotation cannot come from a replica missing the new keys
+      if (keysToCreate) await $cacheJwks(orgId, await kmsDAL.transaction((tx) => $buildJwks(activeKeys, tx)));
+
+      return activeKeys;
     } finally {
       await lock
         .release()
@@ -120,10 +147,13 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
     const issuer = $getIssuerUrl(orgId);
     const { id: kmsId } = await $getSigningKey(orgId);
 
-    const [{ kid }, sign] = await Promise.all([
-      kmsService.getPublicKey({ kmsId }).then(publicKeyToJwk),
-      kmsService.signWithKmsKey({ kmsId })
-    ]);
+    // Read on the primary, because this request may have just created the key
+    const [{ kid }, sign] = await kmsDAL.transaction((tx) =>
+      Promise.all([
+        kmsService.getPublicKey({ kmsId }, tx).then(publicKeyToJwk),
+        kmsService.signWithKmsKey({ kmsId }, tx)
+      ])
+    );
 
     const iat = Math.floor(Date.now() / 1000);
 
@@ -161,33 +191,14 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
   // Cached so anonymous requests do not each decrypt every key. A stale set is safe: keys are published a period
   // before they sign
   const getJwks = async (orgId: string): Promise<TJwks> => {
-    const cacheKey = KeyStorePrefixes.OidcIssuerJwks(orgId);
-    const cached = await keyStore.getItem(cacheKey);
+    const cached = await keyStore.getItem(KeyStorePrefixes.OidcIssuerJwks(orgId));
     if (cached) return JSON.parse(cached) as TJwks;
 
-    const keys = await $listKeys(orgId);
-
-    const jwks = await Promise.all(
-      keys.map(({ id }) =>
-        kmsService
-          .getPublicKey({ kmsId: id })
-          .then(publicKeyToJwk)
-          .catch((err) => {
-            // A concurrent rotation can delete the oldest key, which no longer signs
-            if (err instanceof NotFoundError) return null;
-            throw err;
-          })
-      )
-    );
-
-    const jwkSet = { keys: jwks.filter((jwk): jwk is NonNullable<typeof jwk> => jwk !== null) };
-
+    const jwks = await $buildJwks(await $listKeys(orgId));
     // An empty set is never cached, or the first token signed for the org would be checked against it
-    if (jwkSet.keys.length) {
-      await keyStore.setItemWithExpiry(cacheKey, KeyStoreTtls.OidcIssuerJwksInSeconds, JSON.stringify(jwkSet));
-    }
+    if (jwks.keys.length) await $cacheJwks(orgId, jwks);
 
-    return jwkSet;
+    return jwks;
   };
 
   return {

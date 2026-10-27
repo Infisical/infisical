@@ -1161,8 +1161,9 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   rotation keeps at most three keys. It runs under a Redis lock, so no database connection is held while
   RSA keys are generated.
 - **The JWKS is cached in Redis for 10 minutes**, because building it decrypts every key on an anonymous
-  route. The 24h lead makes a stale set safe. Empty sets are never cached, in Redis or over HTTP, and a
-  rotation clears the entry.
+  route. The 24h lead makes a stale set safe. Empty sets are never cached, in Redis or over HTTP.
+- **Fresh keys are read on the primary.** Signing and the JWKS a rotation caches pass a `tx` to
+  `getPublicKey` and `signWithKmsKey`, because a read replica may not have a key created moments earlier.
 
 ### Enterprise (EE) Features
 
