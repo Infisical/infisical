@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/Infisical/infisical/tests/fakes/aws"
 	"github.com/Infisical/infisical/tests/fakes/github"
 	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
@@ -37,6 +38,7 @@ func main() {
 		license.Service,
 		webhook.Service,
 		webhook.Slack,
+		aws.STS, aws.SSM, aws.SecretsManager, aws.IAM, aws.CloudFormation,
 	)
 
 	mail := smtp.New(func(domain string) fakenet.Emitter { return srv.Emitter(smtp.Host, domain) })
