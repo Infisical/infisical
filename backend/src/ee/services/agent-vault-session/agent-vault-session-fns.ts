@@ -5,7 +5,8 @@ import { z } from "zod";
 
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
+import { AgentVaultMemberType, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultSessionActor } from "./agent-vault-session-types";
 
 export const AGENT_VAULT_SESSION_TOKEN_PREFIX = "agv_";
 
@@ -70,3 +71,15 @@ export const deriveSessionStatus = (
   if (session.expiresAt && session.expiresAt <= now) return AgentVaultSessionStatus.Expired;
   return AgentVaultSessionStatus.Active;
 };
+
+// Most sessions have no label, so a session's audit event also names whose session it is and what it carried.
+export const describeSessionForAudit = (session: {
+  actor: TAgentVaultSessionActor;
+  accessBundles: { name: string }[];
+}) => ({
+  sessionOwner:
+    session.actor.type === AgentVaultMemberType.MachineIdentity
+      ? session.actor.name
+      : (session.actor.email ?? session.actor.username),
+  accessBundleName: session.accessBundles[0]?.name ?? null
+});

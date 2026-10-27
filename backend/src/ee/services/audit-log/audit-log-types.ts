@@ -6788,6 +6788,8 @@ interface AgentVaultSessionUpdateEvent {
     sessionId: string;
     label: string | null;
     previousLabel: string | null;
+    sessionOwner: string;
+    accessBundleName: string | null;
   };
 }
 
@@ -6796,6 +6798,8 @@ interface AgentVaultSessionRevokeEvent {
   metadata: {
     sessionId: string;
     label: string | null;
+    sessionOwner: string;
+    accessBundleName: string | null;
   };
 }
 

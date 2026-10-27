@@ -312,16 +312,17 @@ describe("createChunkUploadUrl: the retirement grace window", () => {
     });
   });
 
+  // Deleting the owner clears both ids and a trigger stamps revokedAt, so these rows carry it like a revoke would.
   test("a session whose owner was deleted still accepts what the proxy held, for a day", async () => {
     const { service } = build({
-      session: { ...liveSession(), userId: null, identityId: null, updatedAt: hoursAgo(23) }
+      session: { ...liveSession(), userId: null, identityId: null, revokedAt: hoursAgo(23) }
     });
     await expect(record(service)).resolves.toHaveProperty("uploadUrl");
   });
 
-  test("a session whose owner was deleted more than a day ago is refused", async () => {
+  test("a session whose owner was deleted more than a day ago stays refused after a later edit", async () => {
     const { service } = build({
-      session: { ...liveSession(), userId: null, identityId: null, updatedAt: hoursAgo(25) }
+      session: { ...liveSession(), userId: null, identityId: null, revokedAt: hoursAgo(25), updatedAt: new Date() }
     });
     await expect(record(service)).rejects.toMatchObject({
       message: "Session ended too long ago to accept session logs"

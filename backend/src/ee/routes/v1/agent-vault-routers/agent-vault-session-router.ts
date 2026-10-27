@@ -7,7 +7,8 @@ import {
 import { AgentVaultSessionScope, AgentVaultSessionStatus } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
   agentVaultSessionLabelSchema,
-  agentVaultSessionLabelUpdateSchema
+  agentVaultSessionLabelUpdateSchema,
+  describeSessionForAudit
 } from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
 import {
   AGENT_VAULT_MAX_SESSION_BUNDLES,
@@ -263,7 +264,12 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           projectId: req.internalAgentVaultProjectId,
           event: {
             type: EventType.AGENT_VAULT_SESSION_UPDATE,
-            metadata: { sessionId: session.id, label: session.label, previousLabel }
+            metadata: {
+              sessionId: session.id,
+              label: session.label,
+              previousLabel,
+              ...describeSessionForAudit(session)
+            }
           }
         });
       }
@@ -300,7 +306,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           projectId: req.internalAgentVaultProjectId,
           event: {
             type: EventType.AGENT_VAULT_SESSION_REVOKE,
-            metadata: { sessionId: session.id, label: session.label }
+            metadata: { sessionId: session.id, label: session.label, ...describeSessionForAudit(session) }
           }
         });
 
