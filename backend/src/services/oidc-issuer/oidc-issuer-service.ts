@@ -5,7 +5,6 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
-import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -23,6 +22,7 @@ import { TSignOidcIssuerTokenDTO } from "./oidc-issuer-types";
 
 const TOKEN_TTL_SECONDS = 5 * 60;
 const KEY_ROTATION_LOCK_TTL_MS = 30_000;
+const KEY_ROTATION_MAX_MS = 2 * 60_000;
 
 type TOidcIssuerServiceFactoryDep = {
   kmsDAL: Pick<TKmsKeyDALFactory, "find" | "delete" | "transaction">;
@@ -82,14 +82,31 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
 
   // A Redis lock rather than an advisory lock, so no database connection is held while RSA keys are generated
   const $rotateKeys = async (orgId: string, waitForLock: boolean) => {
-    const lock = await keyStore
+    const acquired = await keyStore
       .acquireLock(
         [KeyStorePrefixes.OidcIssuerKeyRotationLock(orgId)],
         KEY_ROTATION_LOCK_TTL_MS,
         waitForLock ? { retryCount: 20, retryDelay: 500 } : { retryCount: 0 }
       )
       .catch(() => null);
-    if (!lock) return null;
+    if (!acquired) return null;
+
+    // Generating keys can outlast the lock: renew it for up to KEY_ROTATION_MAX_MS and write nothing once it is lost
+    let lock = acquired;
+    let isLockLost = false;
+    const deadline = Date.now() + KEY_ROTATION_MAX_MS;
+    const renewal = setInterval(() => {
+      if (Date.now() > deadline) isLockLost = true;
+      if (isLockLost) return;
+      void lock.extend?.(KEY_ROTATION_LOCK_TTL_MS).then(
+        (renewed) => {
+          lock = renewed;
+        },
+        () => {
+          isLockLost = true;
+        }
+      );
+    }, KEY_ROTATION_LOCK_TTL_MS / 3);
 
     try {
       // A transaction reads the primary, so a rotation another request just finished is not missed on a replica
@@ -97,7 +114,7 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
       const { keysToCreate, keyIdsToDelete } = getKeyRotationPlan(keys);
 
       // Sequential, so createdAt orders the new keys
-      for (let i = 0; i < keysToCreate; i += 1) {
+      for (let i = 0; i < keysToCreate && !isLockLost; i += 1) {
         keys.push(
           // eslint-disable-next-line no-await-in-loop
           await kmsService.generateKmsKey({
@@ -110,6 +127,7 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
           })
         );
       }
+      if (isLockLost) return null;
 
       if (keyIdsToDelete.length) await kmsDAL.delete({ $in: { id: keyIdsToDelete } });
 
@@ -119,9 +137,8 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
 
       return activeKeys;
     } finally {
-      await lock
-        .release()
-        .catch((err) => logger.warn(err, `OIDC issuer key rotation lock release failed [orgId=${orgId}]`));
+      clearInterval(renewal);
+      await lock.release();
     }
   };
 

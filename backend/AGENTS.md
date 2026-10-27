@@ -1159,7 +1159,7 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
 - **Keys are created on the first sign, never on a JWKS fetch**, so existing orgs need no backfill.
 - **The second newest key signs.** The newest is published a full 24h period before it takes over, and
   rotation keeps at most three keys. It runs under a Redis lock, so no database connection is held while
-  RSA keys are generated.
+  RSA keys are generated; the lock is renewed while it runs, and nothing is written once it is lost.
 - **The JWKS is cached in Redis for 10 minutes**, because building it decrypts every key on an anonymous
   route. The 24h lead makes a stale set safe. Empty sets are never cached, in Redis or over HTTP.
 - **Fresh keys are read on the primary.** Signing and the JWKS a rotation caches pass a `tx` to
