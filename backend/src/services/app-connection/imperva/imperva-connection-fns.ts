@@ -228,16 +228,6 @@ export const validateImpervaConnectionCredentials = async (
       params: { page: 0, size: IMPERVA_SITES_MIN_PAGE_SIZE, ...getImpervaAccountParams(credentials) }
     });
   } catch (error: unknown) {
-    if (error instanceof AxiosError) {
-      const responseBody: unknown = error.response?.data;
-      logger.warn(
-        {
-          status: error.response?.status,
-          body: typeof responseBody === "string" ? responseBody.slice(0, 500) : responseBody
-        },
-        "Imperva rejected the connection validation request"
-      );
-    }
     throw new BadRequestError({
       message: `Unable to validate connection: ${extractImpervaErrorMessage(
         error,

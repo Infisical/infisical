@@ -186,3 +186,42 @@ describe("Imperva slot removal", () => {
     expect(removeCertificatesFromDal).toHaveBeenCalledWith("sync-1", ["cert-1"]);
   });
 });
+
+describe("Imperva failed uploads", () => {
+  test("leaves the certificate already serving in place when the upload is rejected", async () => {
+    const { impervaPkiSyncFactory } = await import("./imperva-pki-sync-fns");
+    const { AxiosError } = await import("axios");
+
+    const rejected = new AxiosError("Request failed");
+    rejected.response = { status: 400, data: { message: "Invalid input" } } as never;
+    impervaRequest.mockReset();
+    impervaRequest.mockRejectedValue(rejected);
+
+    const removeCertificatesFromDal = vi.fn();
+    const factory = impervaPkiSyncFactory({
+      certificateSyncDAL: {
+        findByPkiSyncId: vi.fn().mockResolvedValue([{ certificateId: "old", externalIdentifier: "222:RSA" }]),
+        removeCertificates: removeCertificatesFromDal,
+        addCertificates: vi.fn(),
+        findByPkiSyncAndCertificate: vi.fn().mockResolvedValue(undefined),
+        updateById: vi.fn(),
+        updateSyncStatus: vi.fn()
+      } as never,
+      certificateDAL: { findById: vi.fn().mockResolvedValue(undefined) } as never
+    });
+
+    const sync = {
+      id: "sync-1",
+      destinationConfig: { siteId: "222", siteName: "current.example.com" },
+      syncOptions: { canRemoveCertificates: true },
+      connection: { credentials: { apiId: "id", apiKey: "key" }, gatewayId: null, gatewayPoolId: null }
+    } as never;
+
+    await expect(
+      factory.syncCertificates(sync, { leaf: { cert: RSA_CERT_PEM, privateKey: "key" } } as never)
+    ).rejects.toThrow("Failed to sync certificate to Imperva");
+
+    expect(impervaRequest.mock.calls.every((call) => (call[0] as TRecordedRequest).method !== "DELETE")).toBe(true);
+    expect(removeCertificatesFromDal).not.toHaveBeenCalled();
+  });
+});

@@ -360,8 +360,9 @@ export const impervaPkiSyncFactory = ({
     }
 
     // A certificate this sync no longer manages leaves its slot behind on the site, so it is removed
-    // unless this run wrote a new certificate into that same slot.
-    if (canRemoveCertificates) {
+    // unless this run wrote a new certificate into that same slot. A failed upload leaves the
+    // previous certificate serving, and clearing its slot here would take the site off TLS.
+    if (canRemoveCertificates && failedUploads.length === 0) {
       const orphanedRecords = existingSyncRecords.filter(
         (record: TCertificateSyncs) =>
           record.externalIdentifier &&

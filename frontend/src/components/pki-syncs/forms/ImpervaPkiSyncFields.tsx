@@ -1,16 +1,12 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import { AxiosError } from "axios";
-import { Info, Loader2Icon } from "lucide-react";
+import { Info } from "lucide-react";
 
 import {
+  Combobox,
   Field,
   FieldError,
   FieldLabel,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -52,6 +48,7 @@ export const ImpervaPkiSyncFields = () => {
         name="destinationConfig.siteId"
         control={control}
         render={({ field: { value, onChange }, fieldState: { error } }) => {
+          const siteOptions = sites ?? [];
           const siteFetchErrorText =
             isSitesError && connectionId
               ? ((sitesError as AxiosError<{ message?: string }>)?.response?.data?.message ??
@@ -76,35 +73,22 @@ export const ImpervaPkiSyncFields = () => {
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
-              {connectionId && isLoadingSites ? (
-                <div className="flex items-center gap-2 py-2 text-sm text-muted">
-                  <Loader2Icon className="size-4 animate-spin" />
-                  Loading websites...
-                </div>
-              ) : (
-                <Select
-                  value={value ?? ""}
-                  onValueChange={(newValue) => {
-                    const site = sites?.find((s) => s.id === newValue);
-                    onChange(newValue);
-                    setValue("destinationConfig.siteName", site?.name ?? "");
-                  }}
-                  disabled={!connectionId || isLoadingSites}
-                >
-                  <SelectTrigger className="w-full" isError={Boolean(combinedError)}>
-                    <SelectValue
-                      placeholder={connectionId ? "Select a website" : "Select a connection first"}
-                    />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    {(sites ?? []).map((site) => (
-                      <SelectItem key={site.id} value={site.id}>
-                        {site.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+              <Combobox
+                id="pki-sync-imperva-site"
+                isDisabled={!connectionId}
+                isLoading={Boolean(connectionId) && isLoadingSites}
+                options={siteOptions}
+                value={siteOptions.find((site) => site.id === value) ?? null}
+                onValueChange={(option) => {
+                  onChange(option?.id ?? "");
+                  setValue("destinationConfig.siteName", option?.name ?? "");
+                }}
+                getOptionLabel={(option) => option.name}
+                getOptionValue={(option) => option.id}
+                getOptionKeywords={(option) => [option.id]}
+                placeholder={connectionId ? "Select a website" : "Select a connection first"}
+                isError={Boolean(combinedError)}
+              />
               <FieldError errors={[combinedError]} />
             </Field>
           );
