@@ -1,6 +1,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
+import { IMPERVA_PKI_SYNC_DESTINATION_CONFIG } from "@app/lib/api-docs";
 import { openApiHidden } from "@app/server/lib/schemas";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { pkiDescriptionSchema } from "@app/services/certificate-common/certificate-constants";
@@ -23,13 +24,13 @@ export const ImpervaPkiSyncConfigSchema = z.object({
     .refine((val) => SITE_ID_PATTERN.test(val), {
       message: "Site ID must be the numeric Imperva website ID"
     })
-    .describe("The numeric ID of the Imperva website that receives the certificate."),
+    .describe(IMPERVA_PKI_SYNC_DESTINATION_CONFIG.siteId),
   siteName: z
     .string()
     .trim()
     .max(512, "Site name cannot exceed 512 characters")
     .optional()
-    .describe("The website's name, kept for display. Imperva's website ID is what the sync acts on.")
+    .describe(IMPERVA_PKI_SYNC_DESTINATION_CONFIG.siteName)
 });
 
 export const ImpervaPkiSyncOptionsSchema = BasePkiSyncOptionsSchema.pick({

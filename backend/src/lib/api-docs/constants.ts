@@ -4718,6 +4718,11 @@ export const AGENT_VAULT = {
   }
 };
 
+export const IMPERVA_PKI_SYNC_DESTINATION_CONFIG = {
+  siteId: "The numeric ID of the Imperva website that receives the certificate.",
+  siteName: "The website's name, kept for display. Imperva's website ID is what the sync acts on."
+};
+
 export const PALO_ALTO_NETWORKS_PKI_SYNC_DESTINATION_CONFIG = {
   template:
     "The Panorama template to store certificates in. Required when the connection points to a Panorama, and not allowed for a firewall.",
