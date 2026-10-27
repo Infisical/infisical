@@ -24,15 +24,9 @@ const MAX_RETRIES = 5;
 const RATE_LIMIT_DELAY_MS = 60000;
 
 // Vercel answers with these codes when a request can never succeed as sent, so retrying only repeats the
-// failure. Each maps to the message shown as the sync's error.
-const NON_RETRYABLE_VERCEL_ERRORS: Record<string, string> = {
-  bad_request:
-    "Vercel rejected this environment variable as invalid, for example because its name and value together are larger than Vercel's 65,535-byte limit. Fix the secret in Infisical, then sync again. Check the error code on https://vercel.com/docs/rest-api/errors.",
-  env_key_invalid_characters:
-    "Vercel rejected this environment variable's name. Names can only contain letters, digits and underscores, and cannot start with a digit. Rename the secret or change the sync's key schema, then sync again. Check the error code on https://vercel.com/docs/rest-api/errors.",
-  envs_size_too_large:
-    "Vercel has no space left for environment variables in this project. Remove environment variables you no longer need in Vercel, then sync again. Check the error code on https://vercel.com/docs/rest-api/errors."
-};
+// failure. The message shown to the user is the one Vercel returned.
+// the env_size_too_large is a new set of errors that we are seeing, but are not documented yet but it happening in some cases
+const NON_RETRYABLE_VERCEL_ERRORS = new Set(["bad_request", "env_key_invalid_characters", "envs_size_too_large"]);
 
 const sleep = async (ms: number) =>
   new Promise((resolve) => {
@@ -53,12 +47,15 @@ const getRateLimitDelayMs = (error: AxiosError) => {
 
 // Vercel isn't consistent about casing, e.g. BAD_REQUEST alongside envs_size_too_large.
 const toVercelSyncError = (error: unknown, secretKey?: string) => {
-  const code = isAxiosError(error)
-    ? String((error.response?.data as { error?: { code?: unknown } } | undefined)?.error?.code ?? "").toLowerCase()
-    : "";
-  const message = NON_RETRYABLE_VERCEL_ERRORS[code];
+  const vercelError = isAxiosError(error)
+    ? (error.response?.data as { error?: { code?: unknown; message?: unknown } } | undefined)?.error
+    : undefined;
+  const code = String(vercelError?.code ?? "").toLowerCase();
+  const isNonRetryable = NON_RETRYABLE_VERCEL_ERRORS.has(code);
+  const message =
+    isNonRetryable && typeof vercelError?.message === "string" && vercelError.message ? vercelError.message : undefined;
 
-  return new SecretSyncError({ error, secretKey, shouldRetry: !message, message });
+  return new SecretSyncError({ error, secretKey, shouldRetry: !isNonRetryable, message });
 };
 
 const getVercelSecretsWithRetries = async (

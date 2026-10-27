@@ -93,24 +93,19 @@ describe("Vercel errors that retrying can't fix", () => {
     post.mockReset();
   });
   it.each([
-    ["BAD_REQUEST", false, "65,535-byte limit"],
-    ["env_key_invalid_characters", false, "Rename the secret"],
-    ["envs_size_too_large", false, "no space left"],
-    ["some_other_error", true, ""]
-  ])("sets shouldRetry and the message when a create fails with %s", async (code, shouldRetry, message) => {
+    ["BAD_REQUEST", false],
+    ["env_key_invalid_characters", false],
+    ["envs_size_too_large", false],
+    ["some_other_error", true]
+  ])("sets shouldRetry and the message when a create fails with %s", async (code, shouldRetry) => {
     get.mockResolvedValue({ data: { envs: [] } });
     post.mockRejectedValue(vercelError(code));
     const error = await VercelSyncFns.syncSecrets(sync, payloadOf(["API_KEY"])).catch((err: unknown) => err);
     expect(error).toMatchObject({
       shouldRetry,
       secretKey: "API_KEY",
-      message: (message ? expect.stringContaining(message) : expect.any(String)) as string
+      message: shouldRetry ? "" : "Vercel rejected the request"
     });
-    if (message) {
-      expect(error).toMatchObject({
-        message: expect.stringContaining("https://vercel.com/docs/rest-api/errors") as string
-      });
-    }
   });
   it("stops retrying a read that fails with a listed code", async () => {
     get.mockRejectedValue(vercelError("bad_request"));

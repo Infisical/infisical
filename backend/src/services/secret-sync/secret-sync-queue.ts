@@ -683,13 +683,7 @@ export const secretSyncQueueFactory = ({
       data: { syncId, auditLogInfo, importBehavior }
     } = job;
 
-    await secretSyncDAL.updateById(
-      syncId,
-      {
-        importStatus: SecretSyncStatus.Running
-      },
-      { includeFolderPath: false }
-    );
+    await secretSyncDAL.update({ id: syncId }, { importStatus: SecretSyncStatus.Running });
 
     logger.info(
       `SecretSync Import [syncId=${secretSync.id}] [destination=${secretSync.destination}] [projectId=${secretSync.projectId}] [folderId=${secretSync.folderId}] [connectionId=${secretSync.connectionId}]`
@@ -1293,6 +1287,17 @@ export const secretSyncQueueFactory = ({
 
       if (!secretSync) {
         logger.info(`AppConnectionSecretSync: secret sync ${syncId} not found, skipping`);
+        return;
+      }
+
+      if (secretSync.connectionId !== connectionId && job.name === QueueJobs.SecretSyncSyncSecrets) {
+        logger.info(
+          `SecretSync connection changed, releasing slot and requeueing [syncId=${syncId}] [job=${job.name}] [connectionId=${connectionId}] [currentConnectionId=${secretSync.connectionId}]`
+        );
+
+        await $releaseConnectionConcurrency(connectionId);
+        await $handleAcquireLockFailure(job as SecretSyncActionJob);
+
         return;
       }
 
