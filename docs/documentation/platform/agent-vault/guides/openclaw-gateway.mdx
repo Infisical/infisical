@@ -54,7 +54,7 @@ This guide walks you through running the [OpenClaw](https://docs.openclaw.ai/) [
 - An Infisical organization where you're an Agent Vault admin
 - Two machines on the same private network, one for the Agent Vault proxy and one for OpenClaw (physical machines, virtual machines, or containers)
 - [OpenClaw](https://docs.openclaw.ai/start/getting-started) installed on the OpenClaw machine, with the gateway installed as a service (`openclaw onboard --install-daemon`) and a messaging platform set up and working with your real API keys
-- The [Infisical CLI](/cli/install) 0.43.133 or later installed on the Agent Vault machine (earlier versions don't apply [substitutions](/documentation/platform/agent-vault/services#substitutions))
+- The [Infisical CLI](/cli/install) 0.43.133 or later installed on the Agent Vault machine (earlier versions don't apply [substitutions](/documentation/platform/agent-vault/http-apis#substitutions))
 - [`curl`](https://curl.se/download.html) and [`jq`](https://jqlang.org/download/) installed on the OpenClaw machine
 
 <SeparateMachinesNote />
@@ -76,8 +76,8 @@ Most OpenClaw setups have three kinds of API keys:
 | Kind | Example keys | Service to add in Step 2 |
 | --- | --- | --- |
 | Model provider (the LLM API OpenClaw sends its prompts to) | `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` | The provider's template, such as **OpenRouter**, **Anthropic**, or **OpenAI** |
-| Messaging platform (where you chat with OpenClaw) | `channels.telegram.botToken` or `TELEGRAM_BOT_TOKEN` | A **Custom** service for `api.telegram.org` |
-| External APIs | `GITHUB_TOKEN` | The API's template, such as **GitHub** (or a **Custom** service if Infisical has no template for the API) |
+| Messaging platform (where you chat with OpenClaw) | `channels.telegram.botToken` or `TELEGRAM_BOT_TOKEN` | A **Custom HTTP API** service for `api.telegram.org` |
+| External APIs | `GITHUB_TOKEN` | The API's template, such as **GitHub** (or a **Custom HTTP API** service if Infisical has no template for the API) |
 
 <Note>
 Settings that hold non-sensitive information don't need services in Agent Vault. This includes settings like allowed user IDs and channel IDs.
@@ -101,13 +101,13 @@ First, create an [access bundle](/documentation/platform/agent-vault/access-bund
     Select the access bundle you just created, then select **Add Service**.
   </Step>
   <Step>
-    On the **Choose a template** panel, pick the template for the API, or select **Custom** and enter the API's host.
+    On the **Choose a template** panel, pick the template for the API, or select **Custom HTTP API** and enter the API's host.
   </Step>
   <Step>
     On the **Credential** step, paste the real value of the API key.
 
     <Note>
-    [Add a substitution](/documentation/platform/agent-vault/services#add-a-substitution) for each key instead if either of these is true:
+    [Add a substitution](/documentation/platform/agent-vault/http-apis#add-a-substitution) for each key instead if either of these is true:
 
     - The API expects the key outside a header, such as in the URL path. For example, Telegram's bot token goes in the URL of every request: `https://api.telegram.org/bot<token>/getUpdates`
     - The API uses more than one key (one service can hold a substitution for each key, and an access bundle can't have two services for the same host)
@@ -411,7 +411,7 @@ To follow the gateway's logs, run `openclaw logs --follow`. To check the gateway
 
     - The session was revoked or has expired (check the **Sessions** page in Infisical, and [replace the session](#revoke-or-replace-the-session) if needed)
     - Under the proxy's [strict traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), no service in the bundle covers the host OpenClaw called (add a service that does, or use a pass-through service)
-    - The service covers the host, but doesn't allow the request's method or path (check the service's [methods and paths](/documentation/platform/agent-vault/services#methods-and-paths))
+    - The service covers the host, but doesn't allow the request's method or path (check the service's [methods and paths](/documentation/platform/agent-vault/http-apis#methods-and-paths))
   </Accordion>
 </AccordionGroup>
 
