@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -77,11 +79,11 @@ export const toOrgMembershipActors = ({
   ...[...new Set(identityIds)].map((actorId) => ({ actorType: ActorType.IDENTITY as const, actorId }))
 ];
 
-const emitAll = async (eventEmitter: TEventEmitter, events: TEventInput[], tx?: Knex) => {
-  for await (const event of events) {
-    await eventEmitter.emit(event, tx);
-  }
-};
+const emitAll = (eventEmitter: TEventEmitter, type: string, payloads: Record<string, unknown>[], tx?: Knex) =>
+  eventEmitter.emit(
+    payloads.map((data): TEventInput => ({ id: crypto.randomUUID(), type, data })),
+    tx
+  );
 
 // An empty list is still one page, so the event still goes out.
 const page = <T>(items: T[], size: number): T[][] => (items.length ? chunkArray(items, size) : [[]]);
@@ -100,10 +102,8 @@ export const emitGroupMembershipRemoved = async (
   if (!actors.length) return;
   await emitAll(
     eventEmitter,
-    pageGroupScope(orgIds, actors).map((scope) => ({
-      eventType: GROUP_MEMBERSHIP_REMOVED_EVENT,
-      payload: { groupId, ...scope }
-    })),
+    GROUP_MEMBERSHIP_REMOVED_EVENT,
+    pageGroupScope(orgIds, actors).map((scope) => ({ groupId, ...scope })),
     tx
   );
 };
@@ -115,10 +115,8 @@ export const emitGroupLinkRemoved = (
 ) =>
   emitAll(
     eventEmitter,
-    page(members, MEMBERS_PER_EVENT).map((memberPage) => ({
-      eventType: GROUP_LINK_REMOVED_EVENT,
-      payload: { orgId, groupId, members: memberPage }
-    })),
+    GROUP_LINK_REMOVED_EVENT,
+    page(members, MEMBERS_PER_EVENT).map((memberPage) => ({ orgId, groupId, members: memberPage })),
     tx
   );
 
@@ -129,10 +127,8 @@ export const emitGroupRemoved = (
 ) =>
   emitAll(
     eventEmitter,
-    pageGroupScope(orgIds, members).map((scope) => ({
-      eventType: GROUP_REMOVED_EVENT,
-      payload: { groupId, ...scope }
-    })),
+    GROUP_REMOVED_EVENT,
+    pageGroupScope(orgIds, members).map((scope) => ({ groupId, ...scope })),
     tx
   );
 
@@ -143,6 +139,7 @@ export const emitOrgMembershipRemoved = (
 ) =>
   emitAll(
     eventEmitter,
-    actors.map((actor) => ({ eventType: ORG_MEMBERSHIP_REMOVED_EVENT, payload: { orgId, ...actor } })),
+    ORG_MEMBERSHIP_REMOVED_EVENT,
+    actors.map((actor) => ({ orgId, ...actor })),
     tx
   );
