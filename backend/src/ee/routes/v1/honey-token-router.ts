@@ -210,6 +210,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
           properties: {
             honeyTokenId: honeyToken.id,
             type: honeyToken.type,
+            hosting: honeyToken.config.hosting,
             projectId: honeyToken.projectId,
             environment: req.body.environment,
             secretPath: req.body.secretPath

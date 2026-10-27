@@ -1311,7 +1311,8 @@ export const honeyTokenServiceFactory = ({
         distinctId: "anonymous-honey-token-trigger",
         anonymous: true,
         properties: {
-          type: honeyToken.type
+          type: honeyToken.type,
+          hosting: getHoneyTokenHosting(honeyToken)
         }
       })
       .catch(() => {});
