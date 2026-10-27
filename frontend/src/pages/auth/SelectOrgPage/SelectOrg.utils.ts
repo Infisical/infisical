@@ -9,6 +9,12 @@ type TOrgSsoEnforcement = {
   orgAuthMethod: string;
 };
 
+const SSO_ENFORCEMENT_ERRORS = {
+  google: 'This organization requires Google login. Log out, then choose "Continue with Google".',
+  oidc: 'This organization requires OIDC login. Log out, then choose "Continue with OIDC" and enter your work email.',
+  saml: 'This organization requires SAML login. Log out, then choose "Continue with SAML" and enter your work email.'
+} as const;
+
 // User-facing error when the org enforces an SSO method the session token wasn't issued by,
 // else null. Mirrors the server-side selectOrganization check.
 export const getSsoEnforcementError = (org: TOrgSsoEnforcement): string | null => {
@@ -16,18 +22,18 @@ export const getSsoEnforcementError = (org: TOrgSsoEnforcement): string | null =
 
   const authToken = jwtDecode(getAuthToken()) as { authMethod: AuthMethod };
 
-  let ssoType = "";
   if (org.googleSsoAuthEnforced && authToken.authMethod !== AuthMethod.GOOGLE) {
-    ssoType = "Google SSO";
-  } else if (org.orgAuthMethod === AuthMethod.OIDC && authToken.authMethod !== AuthMethod.OIDC) {
-    ssoType = "OIDC SSO";
-  } else if (
+    return SSO_ENFORCEMENT_ERRORS.google;
+  }
+  if (org.orgAuthMethod === AuthMethod.OIDC && authToken.authMethod !== AuthMethod.OIDC) {
+    return SSO_ENFORCEMENT_ERRORS.oidc;
+  }
+  if (
     org.orgAuthMethod === AuthMethod.SAML &&
     !SAML_AUTH_METHODS.includes(authToken.authMethod as (typeof SAML_AUTH_METHODS)[number])
   ) {
-    ssoType = "SAML SSO";
+    return SSO_ENFORCEMENT_ERRORS.saml;
   }
 
-  if (!ssoType) return null;
-  return `This organization requires ${ssoType}. Please log out and re-login via your identity provider.`;
+  return null;
 };

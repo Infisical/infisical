@@ -91,3 +91,14 @@ export const extractPrincipalArn = (arn: string, formatAsIamRole: boolean = fals
 
   return `arn:${entity.Partition}:${formatAsIamRole ? "iam" : entity.Service}::${entity.AccountNumber}:${entity.Type}/${entity.FriendlyName}`;
 };
+
+// Login only checks the lists that are set, so an empty pair would admit any valid AWS principal.
+export const hasAwsTrustBinding = ({
+  allowedAccountIds,
+  allowedPrincipalArns
+}: {
+  allowedAccountIds?: string | null;
+  allowedPrincipalArns?: string | null;
+}) => Boolean(allowedAccountIds?.trim()) || Boolean(allowedPrincipalArns?.trim());
+
+export const AWS_TRUST_BINDING_REQUIRED_MESSAGE = "Configure at least one allowed AWS account ID or principal ARN.";

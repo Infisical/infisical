@@ -4,7 +4,7 @@ import {
   ArrowRightIcon,
   CircleHelpIcon,
   CircleXIcon,
-  KeyRoundIcon,
+  KeyIcon,
   type LucideIcon,
   PlusIcon,
   ShieldBanIcon
@@ -40,7 +40,7 @@ export const DECISION_PRESENTATION: Record<
   [AgentVaultSessionLogDecision.Brokered]: {
     label: "Brokered",
     variant: "success",
-    icon: KeyRoundIcon,
+    icon: KeyIcon,
     iconClassName: "text-success"
   },
   [AgentVaultSessionLogDecision.Passthrough]: {

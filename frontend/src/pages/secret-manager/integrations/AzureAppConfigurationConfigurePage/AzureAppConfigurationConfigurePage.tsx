@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -8,6 +7,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -160,9 +160,7 @@ export const AzureAppConfigurationConfigurePage = () => {
       onSubmit={handleSubmit(handleIntegrationSubmit)}
       className="flex h-full w-full flex-col items-center justify-center"
     >
-      <Helmet>
-        <title>Set Up Azure App Configuration Integration</title>
-      </Helmet>
+      <PageTitle title="Set Up Azure App Configuration Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>
@@ -394,6 +392,9 @@ export const AzureAppConfigurationConfigurePage = () => {
       </Card>
     </form>
   ) : (
-    <div />
+    <>
+      <PageTitle title="Set Up Azure App Configuration Integration" />
+      <div />
+    </>
   );
 };

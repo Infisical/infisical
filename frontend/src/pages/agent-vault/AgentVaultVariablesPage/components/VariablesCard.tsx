@@ -47,7 +47,11 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { MAX_VARIABLES, toVariableReference } from "@app/helpers/agentVaultVariables";
+import {
+  MAX_PERSONAL_VARIABLES,
+  MAX_VARIABLES,
+  toVariableReference
+} from "@app/helpers/agentVaultVariables";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -55,6 +59,7 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
+  AgentVaultVariableScope,
   useListAgentVaultVariables,
   useRevealAgentVaultVariableValue
 } from "@app/hooks/api/agentVault";
@@ -200,7 +205,13 @@ const TruncatedKey = ({ value }: { value: string }) => {
   );
 };
 
-export const VariablesCard = () => {
+type Props = {
+  /** Personal for the caller's own variables, which only their personal values use. */
+  scope?: AgentVaultVariableScope;
+};
+
+export const VariablesCard = ({ scope = AgentVaultVariableScope.Global }: Props) => {
+  const isPersonal = scope === AgentVaultVariableScope.Personal;
   const revealValue = useRevealAgentVaultVariableValue();
 
   const [search, setSearch] = useState("");
@@ -227,6 +238,7 @@ export const VariablesCard = () => {
     setPage(1);
   }
   const { data, isPending } = useListAgentVaultVariables({
+    scope,
     search: searchTerm || undefined,
     orderBy: sortColumn,
     orderDirection: sortDirection === "ascending" ? "asc" : "desc",
@@ -237,7 +249,7 @@ export const VariablesCard = () => {
   const totalCount = data?.totalCount ?? 0;
   useResetPageHelper({ totalCount, offset: (page - 1) * perPage, setPage });
   // A search narrows totalCount, so whether the cap is reached is read off an unfiltered count.
-  const { data: unfilteredData } = useListAgentVaultVariables({ limit: 1 });
+  const { data: unfilteredData } = useListAgentVaultVariables({ scope, limit: 1 });
 
   const handleSort = (column: SortColumn, direction: "ascending" | "descending" | "none") => {
     setPage(1);
@@ -303,7 +315,8 @@ export const VariablesCard = () => {
   };
 
   const hasVariables = totalCount > 0 || Boolean(searchTerm);
-  const isAtLimit = (unfilteredData?.totalCount ?? 0) >= MAX_VARIABLES;
+  const maxVariables = isPersonal ? MAX_PERSONAL_VARIABLES : MAX_VARIABLES;
+  const isAtLimit = (unfilteredData?.totalCount ?? 0) >= maxVariables;
 
   const openForm = (variable: TAgentVaultVariable | null) => {
     setVariableToEdit(variable);
@@ -314,12 +327,22 @@ export const VariablesCard = () => {
     <Card>
       <CardHeader>
         <CardTitle>
-          Variables
+          {isPersonal ? "Personal Variables" : "Global Variables"}
           <DocumentationLinkBadge href={AgentVaultDocsUrls.variables} />
         </CardTitle>
         <CardDescription>
-          A variable stores one value that any service can use as{" "}
-          <code className="font-mono">{toVariableReference("KEY")}</code>.
+          {isPersonal ? (
+            <>
+              Your own values, for the services that ask each member for one. Use one as{" "}
+              <code className="font-mono">{toVariableReference("KEY")}</code> when you set one up.
+            </>
+          ) : (
+            <>
+              A global variable stores one value that any service can use as{" "}
+              <code className="font-mono">{toVariableReference("KEY")}</code>. Only admins can
+              manage these and see their values.
+            </>
+          )}
         </CardDescription>
         <CardAction>
           {isAtLimit ? (
@@ -329,19 +352,20 @@ export const VariablesCard = () => {
                 <span tabIndex={0}>
                   <Button variant="av" isDisabled>
                     <PlusIcon />
-                    Add Variable
+                    Add {isPersonal ? "Personal" : "Global"} Variable
                   </Button>
                 </span>
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
-                Agent Vault can hold at most {MAX_VARIABLES} variables. Delete one that no service
-                uses first.
+                {isPersonal
+                  ? `You can keep at most ${maxVariables} personal variables. Delete an unused one first.`
+                  : `Agent Vault can hold at most ${maxVariables} global variables. Delete an unused one first.`}
               </TooltipContent>
             </Tooltip>
           ) : (
             <Button variant="av" onClick={() => openForm(null)}>
               <PlusIcon />
-              Add Variable
+              Add {isPersonal ? "Personal" : "Global"} Variable
             </Button>
           )}
         </CardAction>
@@ -370,9 +394,11 @@ export const VariablesCard = () => {
                 {hasVariables ? "No variables match your search" : "No variables yet"}
               </EmptyTitle>
               <EmptyDescription>
-                {hasVariables
-                  ? "Try a different search term."
-                  : "Add a variable to use one value across services in any access bundle."}
+                {hasVariables && "Try a different search term."}
+                {!hasVariables &&
+                  (isPersonal
+                    ? "Add a variable to reuse one of your values across the services you set up."
+                    : "Add a variable to use one value across services in any access bundle.")}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -492,6 +518,7 @@ export const VariablesCard = () => {
       )}
 
       <VariableFormDialog
+        scope={scope}
         isOpen={isFormOpen}
         onOpenChange={setIsFormOpen}
         variable={variableToEdit}

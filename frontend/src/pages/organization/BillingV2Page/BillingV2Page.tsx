@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import {
@@ -8,6 +7,7 @@ import {
 } from "@app/components/license/self-hosted-license";
 import { getSafeUpgradeReturnPath } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v3/platform";
 import {
@@ -37,6 +37,7 @@ import { ALL_ORGS_VALUE } from "./components/RootOrgFilter";
 import { UsageBreakdownSheet } from "./components/UsageBreakdownSheet";
 import { catalogById } from "./billing-v2-format";
 import { BillingV2RenderState } from "./billing-v2-view-types";
+import { useOfflineBilling } from "./useOfflineBilling";
 
 const CONTACT_SALES_URL = "https://infisical.com/talk-to-us";
 
@@ -55,6 +56,7 @@ export const BillingV2Page = () => {
   const { permission } = useOrgPermission();
   const { subscription } = useSubscription();
   const orgId = currentOrg?.id ?? "";
+  const isOfflineLicense = getSelfHostedLicenseState(subscription) === "offline";
   const hasManageBillingPermission = permission.can(
     OrgPermissionBillingActions.ManageBilling,
     OrgPermissionSubjects.Billing
@@ -82,14 +84,11 @@ export const BillingV2Page = () => {
   const { data: unsearchedOrgPage, isPending: isRootOrgCountPending } =
     useGetBillingV2Organizations(orgId, { limit: ORG_PAGE_SIZE });
 
-  const {
-    data: overview,
-    isPending,
-    isPlaceholderData,
-    isError,
-    refetch
-  } = useGetBillingV2Overview(selectedOrgId);
-  const { data: catalog = [], isPending: isCatalogPending } = useGetBillingV2Catalog(selectedOrgId);
+  const onlineOverview = useGetBillingV2Overview(selectedOrgId, { enabled: !isOfflineLicense });
+  const { data: onlineCatalog = [], isPending: isOnlineCatalogPending } = useGetBillingV2Catalog(
+    selectedOrgId,
+    { enabled: !isOfflineLicense }
+  );
   const createPortalSession = useCreateBillingV2PortalSession();
   const addPaymentMethod = useAddBillingV2PaymentMethod();
   const confirmTrialPayment = useConfirmBillingV2TrialPayment();
@@ -101,6 +100,22 @@ export const BillingV2Page = () => {
   // picker on screen while that request is loading or failing.
   const rootOrgCount = unsearchedOrgPage?.totalCount ?? 0;
   const showOrgFilter = rootOrgCount > 1;
+
+  const offlineBilling = useOfflineBilling({
+    orgId: selectedOrgId,
+    scope: showOrgFilter ? breakdownScope : "organization",
+    enabled:
+      isOfflineLicense &&
+      !isRootOrgCountPending &&
+      permission.can(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing)
+  });
+  const overview = isOfflineLicense ? offlineBilling.overview : onlineOverview.data;
+  const isPending = isOfflineLicense ? offlineBilling.isPending : onlineOverview.isPending;
+  const isPlaceholderData = !isOfflineLicense && onlineOverview.isPlaceholderData;
+  const isError = isOfflineLicense ? offlineBilling.isError : onlineOverview.isError;
+  const refetch = isOfflineLicense ? offlineBilling.refetch : onlineOverview.refetch;
+  const catalog = isOfflineLicense ? offlineBilling.catalog : onlineCatalog;
+  const isCatalogPending = !isOfflineLicense && isOnlineCatalogPending;
 
   const [flow, setFlow] = useState<BillingV2Flow | null>(null);
   const openedUpgradeProduct = useRef(false);
@@ -318,11 +333,9 @@ export const BillingV2Page = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("billing.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      <PageTitle title={t("billing.title")} />
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
       <div className="mb-8 flex w-full justify-center bg-page text-foreground-inverse">
         <div className="w-full max-w-8xl">
           <PageHeader scope="org" title={t("billing.title")} description={pageDescription} />

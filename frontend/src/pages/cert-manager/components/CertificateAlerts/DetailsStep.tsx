@@ -25,9 +25,9 @@ import {
   CERTIFICATE_ALERT_EVENT_LABELS,
   CertificateFilterKind,
   getAlertEventDescription,
+  getFilterKinds,
   getScopeEventGroups,
   isExpiryEventType,
-  isFilterableEventType,
   TCertificateAlertForm,
   TCertificateAlertScope
 } from "./types";
@@ -48,11 +48,10 @@ export const DetailsStep = ({ form, scope, isEditing, usedEventTypes }: Props) =
     onChange: (value: string) => void
   ) => {
     onChange(next);
-    if (!isFilterableEventType(next)) {
-      Object.values(CertificateFilterKind).forEach((kind) =>
-        form.setValue(kind, undefined, { shouldDirty: true })
-      );
-    }
+    const nextKinds = getFilterKinds(next);
+    Object.values(CertificateFilterKind)
+      .filter((kind) => !nextKinds.includes(kind))
+      .forEach((kind) => form.setValue(kind, undefined, { shouldDirty: true }));
   };
 
   return (

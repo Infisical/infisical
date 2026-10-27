@@ -1,5 +1,6 @@
 ---
-title: "Environment variables"
+title: "Environment variables (self-hosted)"
+sidebarTitle: "Environment variables"
 description: "Read how to configure environment variables for self-hosted Infisical."
 ---
 
@@ -492,6 +493,32 @@ NODE_EXTRA_CA_CERTS=/path/to/ca.crt
 ```
 
 For Redis Sentinel or Cluster mode, use the `REDIS_SENTINEL_ENABLE_TLS` or `REDIS_CLUSTER_ENABLE_TLS` environment variables respectively.
+
+### Object storage (optional)
+
+Set these variables to give the instance an Amazon S3 bucket for Agent Vault session logs, called default storage. Without it, organizations can only store session logs in their own bucket. To create the bucket and its IAM policy, see [Default storage for session logs](/self-hosting/guides/session-log-storage).
+
+If you set only some of these variables, such as a bucket without a region, Infisical doesn't start.
+
+<ParamField query="OBJECT_STORAGE_S3_BUCKET" type="string" optional>
+  The name of a general purpose S3 bucket. Requires `OBJECT_STORAGE_S3_REGION`.
+</ParamField>
+
+<ParamField query="OBJECT_STORAGE_S3_REGION" type="string" optional>
+  The AWS region of the bucket, such as `us-east-1`. Requires `OBJECT_STORAGE_S3_BUCKET`.
+</ParamField>
+
+<ParamField query="OBJECT_STORAGE_S3_PREFIX" type="string" optional>
+  The folder in the bucket to store files under, such as `infisical`. Up to 256 characters: letters, numbers, and `! - _ . ' ( ) /`, with no slash at the start or end.
+</ParamField>
+
+<ParamField query="OBJECT_STORAGE_S3_ACCESS_KEY_ID" type="string" optional>
+  The access key ID of an IAM user that can use the bucket. Set it together with `OBJECT_STORAGE_S3_SECRET_ACCESS_KEY`. If you leave out both, Infisical finds credentials the way the AWS SDK does by default, for example from the instance's role.
+</ParamField>
+
+<ParamField query="OBJECT_STORAGE_S3_SECRET_ACCESS_KEY" type="string" optional>
+  The secret access key for `OBJECT_STORAGE_S3_ACCESS_KEY_ID`.
+</ParamField>
 
 ## Email service
 

@@ -180,6 +180,7 @@ GitHub App
 GitHub Actions
 GitLab
 Bitbucket
+Bitbucket Pipelines
 Jenkins
 CircleCI
 TeamCity

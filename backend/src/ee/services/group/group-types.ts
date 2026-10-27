@@ -4,6 +4,7 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { OrderByDirection, TGenericPermission } from "@app/lib/types";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
@@ -119,7 +120,7 @@ export type TAddUsersToGroupByUserIds = {
   userIds: string[];
   userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "transaction" | "insertMany">;
-  orgDAL: Pick<TOrgDALFactory, "findMembership">;
+  orgDAL: Pick<TOrgDALFactory, "findMembership" | "lockActorsForOrgAccess">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany">;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
@@ -136,8 +137,12 @@ export type TAddIdentitiesToGroup = {
   identityDAL: Pick<TIdentityDALFactory, "transaction">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "insertMany">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
+  orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess">;
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
 };
+
+// Structural instead of Pick<TGroupDALFactory>, since group-dal.ts imports this file.
+type TGroupOrgIdsDAL = { findGroupOrgIds: (groupId: string, tx?: Knex) => Promise<string[]> };
 
 export type TRemoveUsersFromGroupByUserIds = {
   group: { id: string; name: string; slug: string; orgId: string };
@@ -145,12 +150,14 @@ export type TRemoveUsersFromGroupByUserIds = {
   userDAL: Pick<TUserDALFactory, "find" | "transaction">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "filterProjectsByUserMembership" | "delete">;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
+  groupDAL: TGroupOrgIdsDAL;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "delete">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   tx?: Knex;
   shouldFailOnMissingMembers?: boolean;
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  eventEmitter: TEventEmitter;
 };
 
 export type TRemoveIdentitiesFromGroup = {
@@ -158,12 +165,14 @@ export type TRemoveIdentitiesFromGroup = {
   identityIds: string[];
   identityDAL: Pick<TIdentityDALFactory, "find" | "transaction">;
   membershipDAL: Pick<TMembershipDALFactory, "find">;
+  groupDAL: TGroupOrgIdsDAL;
   identityGroupMembershipDAL: Pick<
     TIdentityGroupMembershipDALFactory,
     "find" | "delete" | "filterProjectsByIdentityMembership"
   >;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   usageMeteringService?: Pick<TUsageMeteringServiceFactory, "emit">;
+  eventEmitter: TEventEmitter;
 };
 
 export type TConvertPendingGroupAdditionsToGroupMemberships = {

@@ -182,6 +182,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       onBlur,
       isDisabled,
       isReadOnly,
+      readOnly,
       onFocus,
       canEditButNotView,
       isLoadingValue,
@@ -321,7 +322,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             value={value && !shouldBindRealValue ? HIDDEN_SECRET_VALUE : (value ?? "")}
             {...props}
             aria-invalid={isError || props["aria-invalid"]}
-            readOnly={isReadOnly || isLoadingValue || isErrorLoadingValue}
+            readOnly={readOnly || isReadOnly || isLoadingValue || isErrorLoadingValue}
           />
         </div>
         {invisibleChars.length > 0 && (

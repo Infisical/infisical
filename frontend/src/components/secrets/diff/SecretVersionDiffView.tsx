@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { useState } from "react";
+import { type JSX, useState } from "react";
 import { FolderIcon, KeyRoundIcon, TrashIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 

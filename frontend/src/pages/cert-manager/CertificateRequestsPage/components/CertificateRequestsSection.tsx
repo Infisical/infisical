@@ -5,7 +5,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { SearchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { FilterableSelect } from "@app/components/v2";
 import {
   Button,
   Card,
@@ -14,6 +13,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Combobox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
@@ -316,17 +316,17 @@ export const CertificateRequestsSection = ({
                       </button>
                     )}
                   </div>
-                  <FilterableSelect
+                  <Combobox
+                    aria-label="Certificate Profiles"
                     value={pendingProfileIds.map((id) => ({
                       value: id,
                       label: profilesData?.certificateProfiles?.find((p) => p.id === id)?.slug || id
                     }))}
-                    onChange={(selectedOptions) => {
-                      const ids = Array.isArray(selectedOptions)
-                        ? selectedOptions.map((opt) => opt.value)
-                        : [];
-                      setPendingProfileIds(ids);
-                    }}
+                    onValueChange={(selectedOptions) =>
+                      setPendingProfileIds(selectedOptions.map((opt) => opt.value))
+                    }
+                    getOptionValue={(option) => option.value}
+                    getOptionLabel={(option) => option.label}
                     options={
                       profilesData?.certificateProfiles?.map((profile) => ({
                         value: profile.id,
@@ -334,10 +334,8 @@ export const CertificateRequestsSection = ({
                       })) || []
                     }
                     placeholder="Select certificate profiles..."
-                    className="w-full border-border-control bg-surface-hover text-foreground-soft"
-                    isMulti
+                    multiple
                     isLoading={!profilesData}
-                    maxMenuHeight={120}
                   />
                 </div>
 
@@ -398,47 +396,51 @@ export const CertificateRequestsSection = ({
           </DropdownMenu>
         </div>
 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="max-w-[200px] min-w-[120px]">SAN / CN</TableHead>
-              <TableHead className="max-w-[120px] min-w-[90px]">Serial #</TableHead>
-              <TableHead className="w-[120px]">Status</TableHead>
-              <TableHead className="max-w-[140px] min-w-[80px]">Profile</TableHead>
-              <TableHead className="w-[110px]">Created</TableHead>
-              <TableHead className="w-5" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading &&
-              Array.from({ length: 6 }).map((_, i) => (
-                <TableRow key={`request-skeleton-${i + 1}`}>
-                  {Array.from({ length: 6 }).map((__, j) => (
-                    <TableCell key={`request-skeleton-cell-${j + 1}`}>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            {!isLoading && isError && (
+        {(isLoading ||
+          isError ||
+          Boolean(certificateRequestsData?.certificateRequests?.length)) && (
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-danger">
-                  Failed to load certificate requests. Please try again.
-                </TableCell>
+                <TableHead className="max-w-[200px] min-w-[120px]">SAN / CN</TableHead>
+                <TableHead className="max-w-[120px] min-w-[90px]">Serial #</TableHead>
+                <TableHead className="w-[120px]">Status</TableHead>
+                <TableHead className="max-w-[140px] min-w-[80px]">Profile</TableHead>
+                <TableHead className="w-[110px]">Created</TableHead>
+                <TableHead className="w-5" />
               </TableRow>
-            )}
-            {!isLoading &&
-              !isError &&
-              certificateRequestsData?.certificateRequests?.map((request) => (
-                <CertificateRequestRow
-                  key={request.id}
-                  request={request}
-                  onViewCertificates={handleViewCertificates}
-                  applicationName={applicationName}
-                />
-              ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {isLoading &&
+                Array.from({ length: 6 }).map((_, i) => (
+                  <TableRow key={`request-skeleton-${i + 1}`}>
+                    {Array.from({ length: 6 }).map((__, j) => (
+                      <TableCell key={`request-skeleton-cell-${j + 1}`}>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              {!isLoading && isError && (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-8 text-center text-danger">
+                    Failed to load certificate requests. Please try again.
+                  </TableCell>
+                </TableRow>
+              )}
+              {!isLoading &&
+                !isError &&
+                certificateRequestsData?.certificateRequests?.map((request) => (
+                  <CertificateRequestRow
+                    key={request.id}
+                    request={request}
+                    onViewCertificates={handleViewCertificates}
+                    applicationName={applicationName}
+                  />
+                ))}
+            </TableBody>
+          </Table>
+        )}
 
         {!isLoading && !isError && certificateRequestsData?.certificateRequests?.length === 0 && (
           <Empty className="border">
