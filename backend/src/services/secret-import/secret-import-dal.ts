@@ -224,6 +224,10 @@ export const secretImportDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Bypasses the soft-deleted source filter of find. Positions are unique per folder across every
+  // stored row, so renumbering must see imports whose source environment or project is soft-deleted.
+  const findIncludingExpired = (folderId: string, tx?: Knex) => secretImportOrm.find({ folderId }, { tx });
+
   const findByFolderIds = async (folderIds: string[], tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.SecretImport)
@@ -587,6 +591,7 @@ export const secretImportDALFactory = (db: TDbClient) => {
     find,
     findById,
     findByIds,
+    findIncludingExpired,
     findByFolderIds,
     findImportByFolderIds,
     findLastImportPosition,
