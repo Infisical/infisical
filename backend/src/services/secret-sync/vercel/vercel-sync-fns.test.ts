@@ -108,7 +108,7 @@ describe("Vercel errors that retrying can't fix", () => {
     });
     if (message) {
       expect(error).toMatchObject({
-        message: expect.stringContaining("https://vercel.com/docs/rest-api/errors")
+        message: expect.stringContaining("https://vercel.com/docs/rest-api/errors") as string
       });
     }
   });
