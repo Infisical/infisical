@@ -197,16 +197,12 @@ export const honeyTokenAwsProviderHooksFactory = ({
       };
     },
     authenticateTrigger: async ({ tokenIdentifier, timestamp, signatureHash, rawBody }) => {
-      const appCfg = getAppConfig();
-      const managedSigningKeys = [
-        appCfg.HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY,
-        appCfg.HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY_PREVIOUS
-      ].filter((key): key is string => Boolean(key));
+      const managedSigningKey = getAppConfig().HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY;
       // The instance key does not depend on which token fired, so it is checked before any lookup and
       // a managed trigger reveals nothing about which access key IDs are registered.
-      const isManagedTrigger = managedSigningKeys.some((key) =>
-        isValidHoneyTokenSignature({ signingKey: key, timestamp, rawBody, signatureHash })
-      );
+      const isManagedTrigger = managedSigningKey
+        ? isValidHoneyTokenSignature({ signingKey: managedSigningKey, timestamp, rawBody, signatureHash })
+        : false;
 
       // A managed trigger is already authenticated by the instance key, and acknowledging an untracked key stops
       // AWS from retrying, so it reads the primary: a replica behind a new token would drop the alert. Customer
