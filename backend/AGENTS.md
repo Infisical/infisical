@@ -1150,21 +1150,19 @@ failure is logged, never thrown, so the original outcome stands.
 
 `services/oidc-issuer` signs short-lived JWTs that cloud providers exchange for access tokens, so a
 connection needs no stored client secret. Each org is its own issuer at
-`/api/v1/oidc-issuer/organizations/<orgId>`, with public discovery and JWKS routes under `.well-known`. The issuer
-URL and the `sub` shape are one-way doors: customers copy both into their provider.
+`/api/v1/oidc-issuer/organizations/<orgId>`, with public discovery and JWKS routes under `.well-known`.
+The issuer URL and each consumer's `sub` format are one-way doors: customers copy both into their provider.
 
 - **Keys are reserved `sign-verify` `kms_keys` rows named `oidc-issuer-*`, not a new `keyUsage`.** The
-  CMEK router validates `keyUsage` with `z.nativeEnum(KmsKeyUsage)`, so a new value would be creatable
-  through the public API. Customers cannot create reserved keys, which is what makes the name prefix safe.
-- **Keys are created on the first sign, never on a JWKS fetch.** Those routes are unauthenticated, and
-  existing orgs need no backfill. An empty JWKS is sent `no-store` so the first token is never checked
-  against a cached empty set.
-- **The built JWKS is cached in Redis for 10 minutes**, because deriving it decrypts every key and the route
-  is anonymous. A stale set is harmless for the reason below; empty sets are never cached, and a rotation
-  clears the entry.
+  CMEK router accepts any `KmsKeyUsage`, so a new value would be creatable through the public API.
+  Customers cannot create reserved keys, which is what makes the name prefix safe.
+- **Keys are created on the first sign, never on a JWKS fetch**, so existing orgs need no backfill.
 - **The second newest key signs.** The newest is published a full 24h period before it takes over, and
-  rotation keeps at most three keys. It runs under a Redis lock rather than an advisory lock, so no
-  database connection is held while RSA keys are generated, and it re-reads keys on the primary.
+  rotation keeps at most three keys. It runs under a Redis lock, so no database connection is held while
+  RSA keys are generated.
+- **The JWKS is cached in Redis for 10 minutes**, because building it decrypts every key on an anonymous
+  route. The 24h lead makes a stale set safe. Empty sets are never cached, in Redis or over HTTP, and a
+  rotation clears the entry.
 
 ### Enterprise (EE) Features
 

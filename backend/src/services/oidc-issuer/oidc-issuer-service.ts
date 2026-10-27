@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory, TKeyStoreLock } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
@@ -46,8 +46,7 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
     return `${SITE_URL}/api/v1/oidc-issuer/organizations/${orgId}`;
   };
 
-  // Issuer keys are reserved, so no customer can create one; the prefix only tells them apart from the
-  // org's other reserved keys.
+  // Customers cannot create reserved keys, so the prefix only separates these from the org's other reserved keys
   const $listKeys = async (orgId: string, tx?: Knex) => {
     const keys = await kmsDAL.find(
       { orgId, projectId: null, isReserved: true, keyUsage: KmsKeyUsage.SIGN_VERIFY },
@@ -57,22 +56,19 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
     return keys.filter(({ name }) => name.startsWith(OIDC_ISSUER_KEY_NAME_PREFIX));
   };
 
-  // A Redis lock rather than an advisory lock, so no database connection is held while RSA keys are generated.
+  // A Redis lock rather than an advisory lock, so no database connection is held while RSA keys are generated
   const $rotateKeys = async (orgId: string, waitForLock: boolean) => {
-    let lock: TKeyStoreLock;
-    try {
-      lock = await keyStore.acquireLock(
+    const lock = await keyStore
+      .acquireLock(
         [KeyStorePrefixes.OidcIssuerKeyRotationLock(orgId)],
         KEY_ROTATION_LOCK_TTL_MS,
         waitForLock ? { retryCount: 20, retryDelay: 500 } : { retryCount: 0 }
-      );
-    } catch {
-      return null;
-    }
+      )
+      .catch(() => null);
+    if (!lock) return null;
 
     try {
-      // Read on the primary, which a transaction runs on: a lagging replica would hide a rotation that another
-      // request just finished, and this one would rotate again
+      // A transaction reads the primary, so a rotation another request just finished is not missed on a replica
       const keys = await kmsDAL.transaction((tx) => $listKeys(orgId, tx));
       const { keysToCreate, keyIdsToDelete } = getKeyRotationPlan(keys);
 
@@ -96,11 +92,9 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
 
       return keys.filter(({ id }) => !keyIdsToDelete.includes(id));
     } finally {
-      try {
-        await lock.release();
-      } catch (err) {
-        logger.warn(err, `OIDC issuer key rotation lock release failed [orgId=${orgId}]`);
-      }
+      await lock
+        .release()
+        .catch((err) => logger.warn(err, `OIDC issuer key rotation lock release failed [orgId=${orgId}]`));
     }
   };
 
@@ -108,8 +102,7 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
     let keys = await $listKeys(orgId);
 
     if (getKeyRotationPlan(keys).keysToCreate) {
-      // A busy lock means another request is already rotating and the current key is still valid, so only an
-      // org with no key to sign with waits for it
+      // Only an org with no signing key waits; otherwise another request is rotating and the current key still works
       keys = (await $rotateKeys(orgId, !getSigningKey(keys))) ?? keys;
     }
 
@@ -145,14 +138,8 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
         exp: iat + TOKEN_TTL_SECONDS,
         jti: crypto.nativeCrypto.randomUUID()
       },
-      sign: async (data) => {
-        const { signature } = await sign({
-          data,
-          signingAlgorithm: SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_256,
-          isDigest: false
-        });
-        return signature;
-      }
+      sign: async (data) =>
+        (await sign({ data, signingAlgorithm: SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_256, isDigest: false })).signature
     });
   };
 
@@ -171,8 +158,8 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
     };
   };
 
-  // Cached so an anonymous caller cannot make every request decrypt keys. A stale set is harmless, because a key
-  // is published a full signing period before it signs and was already out of use when it is deleted.
+  // Cached so anonymous requests do not each decrypt every key. A stale set is safe: keys are published a period
+  // before they sign
   const getJwks = async (orgId: string): Promise<TJwks> => {
     const cacheKey = KeyStorePrefixes.OidcIssuerJwks(orgId);
     const cached = await keyStore.getItem(cacheKey);
@@ -186,8 +173,7 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
           .getPublicKey({ kmsId: id })
           .then(publicKeyToJwk)
           .catch((err) => {
-            // A rotation can delete the oldest key after it was listed. That key stopped signing a full
-            // period ago, so it is dropped rather than failing the whole set.
+            // A concurrent rotation can delete the oldest key, which no longer signs
             if (err instanceof NotFoundError) return null;
             throw err;
           })

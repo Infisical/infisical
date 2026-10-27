@@ -10,9 +10,8 @@ const OrgParamsSchema = z.object({
   organizationId: z.string().uuid()
 });
 
-// Unauthenticated, and shaped by OpenID Connect Discovery 1.0 and RFC 7517 rather than the house envelope,
-// because cloud providers fetch them to verify tokens Infisical signs. These paths are part of each org's issuer
-// URL, which customers paste into their providers, so they can never move or be renamed.
+// Public and shaped by OIDC Discovery and RFC 7517, not the house envelope. The paths are part of each org's
+// issuer URL, which customers paste into their providers, so they can never move.
 export const registerOidcIssuerRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",

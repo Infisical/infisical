@@ -10,16 +10,18 @@ const MAX_KEYS = 3;
 
 type TIssuerKey = { id: string; createdAt: Date };
 
-// Keys are ordered oldest first: previous, current, next. The newest key is published a full signing period
-// before it takes over, so a provider that cached the JWKS already has it, and the previous key stays published
-// for a period after it stops signing.
+// Keys are oldest first: previous, current, next. The next key is published a full signing period before it
+// takes over, so a provider that cached the JWKS already has it.
 export const getSigningKey = <T extends TIssuerKey>(keys: T[]): T | undefined => keys[keys.length - 2];
 
-export const getKeyRotationPlan = (keys: TIssuerKey[], now = new Date()) => {
-  if (keys.length < 2) return { keysToCreate: 2 - keys.length, keyIdsToDelete: [] as string[] };
+export const getKeyRotationPlan = (
+  keys: TIssuerKey[],
+  now = new Date()
+): { keysToCreate: number; keyIdsToDelete: string[] } => {
+  if (keys.length < 2) return { keysToCreate: 2 - keys.length, keyIdsToDelete: [] };
 
   if (now.getTime() - keys[keys.length - 1].createdAt.getTime() < KEY_SIGNING_PERIOD_MS) {
-    return { keysToCreate: 0, keyIdsToDelete: [] as string[] };
+    return { keysToCreate: 0, keyIdsToDelete: [] };
   }
 
   return { keysToCreate: 1, keyIdsToDelete: keys.slice(0, keys.length + 1 - MAX_KEYS).map(({ id }) => id) };
