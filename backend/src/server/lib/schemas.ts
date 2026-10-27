@@ -43,9 +43,8 @@ export const GenericResourceNameSchema = z
     "Name can only contain alphanumeric characters, dashes, underscores, and spaces"
   );
 
-// For free-text fields copied into audit events (display names, access reasons). A charset
-// allowlist would reject existing values, so this bounds only the non-printing set; the audit
-// ingest path normalizes the same characters.
+// For free text that lands in audit events (names, reasons). An allowlist would break existing values,
+// so this only blocks non-printing chars. The audit sink strips the same set.
 export const auditSafeText = (schema: z.ZodString, { allowMultiline = false } = {}) =>
   schema.refine((val) => !containsLogUnsafeCharacters(val, { allowMultiline }), {
     message: LOG_UNSAFE_TEXT_MESSAGE

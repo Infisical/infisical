@@ -87,8 +87,6 @@ describe("sanitizeLogPayload", () => {
   });
 
   test("preserves deep structure instead of truncating it", () => {
-    // oidcClaimsReceived carries whatever the IdP returned, so nesting is legitimate and the shape
-    // is part of what downstream consumers parse.
     let deep: Record<string, unknown> = { value: `a${NUL}b`, keep: 7 };
     for (let i = 0; i < 40; i += 1) deep = { nested: deep };
 
@@ -147,7 +145,6 @@ describe("sanitizeLogPayload", () => {
 
   test("an unterminated OSC introducer does not swallow the rest of the value", () => {
     expect(sanitizeLogText(`ok ${ESC}] ticket INF-42 rest`)).toBe("ok  ticket INF-42 rest");
-    // A properly terminated sequence still goes entirely.
     expect(sanitizeLogText(`${ESC}]0;title${String.fromCharCode(7)}kept`)).toBe("kept");
   });
 

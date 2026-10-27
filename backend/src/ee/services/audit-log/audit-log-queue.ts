@@ -227,8 +227,7 @@ export const auditLogQueueServiceFactory = async ({
       }
 
       const createdAt = new Date(entry.createdAt);
-      // `enriched` feeds both the insert and the stream outbox below, so normalizing free text
-      // here covers persistence and forwarding in one place.
+      // `enriched` feeds both the insert and the stream outbox, so cleaning here covers both.
       return {
         id: entry.id,
         actor: entry.actor.type,

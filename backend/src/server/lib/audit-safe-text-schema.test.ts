@@ -6,9 +6,8 @@ import { z } from "zod";
 
 import { auditSafeText } from "./schemas";
 
-// Guards the composition rather than the sanitizer. The route schemas are the only reason the
-// boundary check runs at all, so a refactor that drops the wrapper or flips the multiline flag
-// would leave the sanitizer's own suite green.
+// Tests the wiring, not the sanitizer. Drop the wrapper or flip the multiline flag and the sanitizer
+// suite would still pass.
 
 const NUL = String.fromCharCode(0);
 const ESC = String.fromCharCode(0x1b);
@@ -56,14 +55,12 @@ describe("auditSafeText composition", () => {
   });
 });
 
-// The route bodies are registered inside server.route() calls, so there is no exported schema to
-// import. Reading the source is what catches the wrapper being dropped from a field.
+// Route schemas live inside server.route() calls, so there's nothing to import. Reading the source is
+// how we catch a dropped wrapper.
 describe("routes that feed audit metadata keep the wrapper", () => {
   const read = (relative: string) => readFileSync(path.join(__dirname, "../..", relative), "utf8");
 
-  // Every route that creates an identity: the org and project routers take the same name the legacy
-  // router does, and the web app creates project identities through the project router. Renames are
-  // checked in the identity services instead, and only when the name changes.
+  // Create routes only. Renames are checked in the identity services, and only when the name changes.
   test.each([
     "server/routes/v1/identity-router.ts",
     "server/routes/v1/org-identity-router.ts",

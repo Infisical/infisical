@@ -548,7 +548,7 @@ describe("audit-log-queue unified consumer", () => {
         }
       });
 
-    // projectName is only carried on the postgres path, so the clickhouse case opts out of it.
+    // projectName only exists on the postgres path.
     const expectClean = (row: Record<string, unknown>, { withProjectName = true } = {}) => {
       if (withProjectName) expect(row.projectName).toBe("projx");
       expect(row.ipAddress).toBe("1.1.1.1[31m");
