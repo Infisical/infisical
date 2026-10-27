@@ -79,7 +79,7 @@ Anyone granted at least one access bundle can create a session. Admins can creat
 
 A label is a short description of what a session is for, such as `nightly deploy` or `support ticket triage`. If one identity creates many sessions, the label is how you tell the sessions apart on the **Sessions** page, and you can search sessions by their label. A label can be up to 128 characters, and can't contain line breaks, tabs, or invisible characters such as zero-width spaces.
 
-You can add, change, or remove a session's label at any time, even after the session expires or is revoked:
+You can add, change, or remove a session's label, even after the session expires or is revoked:
 
 - In Agent Vault, go to **Sessions**, open the session's menu, and select **Add Label** or **Edit Label**
 - From an agent or a script, call [the endpoint that updates a session](/api-reference/endpoints/agent-vault-sessions/update), for example to record what the agent is working on

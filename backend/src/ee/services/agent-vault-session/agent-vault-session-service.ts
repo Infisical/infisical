@@ -18,7 +18,7 @@ import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/
 import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
 import { TAgentVaultSessionDALFactory, TAgentVaultSessionListRow } from "./agent-vault-session-dal";
-import { deriveSessionStatus, generateSessionToken } from "./agent-vault-session-fns";
+import { deriveSessionStatus, generateSessionToken, isOwnerlessSession } from "./agent-vault-session-fns";
 import {
   TGetSessionByIdDTO,
   TListSessionsDTO,
@@ -223,7 +223,9 @@ export const agentVaultSessionServiceFactory = ({
 
     // revokedNow lets the caller audit a real revocation without auditing a repeat. Revoking twice stays a
     // 200 with the original revokedAt, so the second caller is not the one who revoked it.
-    if (session.revokedAt) return { session: toSessionView(session), revokedNow: false };
+    // A session whose owner was deleted already reads as revoked, and writing revokedAt would move updatedAt, the
+    // only record of when the owner went, reopening the session's late-log window.
+    if (session.revokedAt || isOwnerlessSession(session)) return { session: toSessionView(session), revokedNow: false };
 
     // The timestamp comes from the written row: a read-back could land on a replica that has not seen it.
     const revoked = await agentVaultSessionDAL.revokeIfActive(session.id, new Date());
@@ -247,6 +249,13 @@ export const agentVaultSessionServiceFactory = ({
     );
 
     const session = await findVisibleSession({ projectId, ctx, sessionId, isAdmin });
+    // Once the owner is deleted, updatedAt is the only record of when, and the session log service retires the
+    // session from it. Any write would move it and reopen the session's late-log window.
+    if (isOwnerlessSession(session)) {
+      throw new BadRequestError({
+        message: "The user or machine identity that owned this session was deleted, so its label can't be changed."
+      });
+    }
     // The visible session can come from a replica that lags, so the previous label is the one the write replaced.
     const updated = await agentVaultSessionDAL.updateLabel(session.id, projectId, label);
     if (!updated) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });

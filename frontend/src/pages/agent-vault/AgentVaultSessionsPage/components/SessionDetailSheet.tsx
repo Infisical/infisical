@@ -190,14 +190,16 @@ export const SessionDetailSheet = ({
                       {session.label ?? "No label"}
                     </DetailValue>
                   </Detail>
-                  <IconButton
-                    variant="ghost"
-                    size="xs"
-                    aria-label={session.label ? "Edit label" : "Add label"}
-                    onClick={() => onEditLabel(session)}
-                  >
-                    <PencilIcon />
-                  </IconButton>
+                  {!isOwnerDeleted && (
+                    <IconButton
+                      variant="ghost"
+                      size="xs"
+                      aria-label={session.label ? "Edit label" : "Add label"}
+                      onClick={() => onEditLabel(session)}
+                    >
+                      <PencilIcon />
+                    </IconButton>
+                  )}
                 </div>
               </div>
 

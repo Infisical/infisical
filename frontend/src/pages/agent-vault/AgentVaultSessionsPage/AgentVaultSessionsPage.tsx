@@ -496,10 +496,13 @@ export const AgentVaultSessionsPage = () => {
                                 <LogsIcon />
                                 View Session Logs
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setSessionToLabel(session)}>
-                                <PencilIcon />
-                                {session.label ? "Edit Label" : "Add Label"}
-                              </DropdownMenuItem>
+                              {/* The API refuses label edits once the session's owner is deleted */}
+                              {session.actor.id !== null && (
+                                <DropdownMenuItem onClick={() => setSessionToLabel(session)}>
+                                  <PencilIcon />
+                                  {session.label ? "Edit Label" : "Add Label"}
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem
                                 variant="danger"
                                 isDisabled={session.status !== AgentVaultSessionStatus.Active}
