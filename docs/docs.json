@@ -1513,7 +1513,6 @@
                       "api-reference/endpoints/projects/get-project",
                       "api-reference/endpoints/projects/list-projects",
                       "api-reference/endpoints/projects/update-project",
-                      "api-reference/endpoints/projects/secret-snapshots",
                       {
                         "group": "Legacy",
                         "pages": [
@@ -3379,9 +3378,7 @@
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/create",
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/update",
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/delete",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/import-secrets",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/remove-secrets"
+                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets"
                         ]
                       },
                       {

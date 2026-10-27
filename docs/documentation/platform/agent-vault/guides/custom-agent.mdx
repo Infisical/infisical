@@ -104,7 +104,7 @@ openssl x509 -in ca.pem -noout -fingerprint -sha256
 
 Compare the colon-separated value with the proxy's fingerprint on the **Proxies** page in Agent Vault. The **Certificate Authority** column shows the start of the fingerprint, and hovering over it shows the full value. If the values don't match, don't use the file.
 
-Store `ca.pem` where the agent can read it. The certificate isn't secret, so you can add it to the agent's container image. If you [rotate the proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxys-token), download the certificate again.
+Store `ca.pem` where the agent can read it. The certificate isn't secret, so you can add it to the agent's container image. If you [rotate the proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxy’s-token), download the certificate again.
 
 ## Step 3: Replace the API keys with placeholders
 
