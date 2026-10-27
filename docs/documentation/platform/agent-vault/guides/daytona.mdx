@@ -111,7 +111,7 @@ export async function ensureSnapshot(daytona: Daytona): Promise<void> {
 }
 ```
 
-```go Go
+```go Go expandable
 // sandbox_image.go
 package main
 
@@ -194,7 +194,7 @@ public class SandboxImage {
 
 </CodeGroup>
 
-- **Infisical CLI:** replace `<cli-version>` with `<min-cli-version>` or later, because earlier versions can't start a proxy from a proxy token
+- **Infisical CLI:** replace `<cli-version>` with `0.44.7` or later, because earlier versions can't start a proxy from a proxy token
 - **Changing the image:** the function reuses the snapshot if one with the same name exists, so after you change the image, change `SNAPSHOT` to a new name
 
 ## Step 4: Run an agent in a sandbox
@@ -321,8 +321,12 @@ def run_agent(daytona: Daytona, prompt: str) -> str:
             raise RuntimeError(f"The agent failed:\n{agent.result}")
         return agent.result
     finally:
-        if proxy_sandbox:
-            proxy_sandbox.process.exec(STOP_PROXY)
+        # If the proxy doesn't stop, its last session logs are lost, but the cleanup continues.
+        try:
+            if proxy_sandbox:
+                proxy_sandbox.process.exec(STOP_PROXY)
+        except Exception:
+            pass
         # Revoke first, so the session ends even if deleting fails.
         try:
             requests.post(
@@ -450,7 +454,8 @@ export async function runAgent(daytona: Daytona, prompt: string): Promise<string
     if (agent.exitCode !== 0) throw new Error(`The agent failed:\n${agent.result}`);
     return agent.result;
   } finally {
-    await proxySandbox?.process.executeCommand(STOP_PROXY);
+    // If the proxy doesn't stop, its last session logs are lost, but the cleanup continues.
+    await proxySandbox?.process.executeCommand(STOP_PROXY).catch(() => {});
     // Revoke first, so the session ends even if deleting fails.
     try {
       await infisical(`/api/v1/agent-vault/sessions/${session.id}/revoke`, { token: accessToken });
@@ -800,7 +805,12 @@ def run_agent(daytona, prompt)
 
     agent.result
   ensure
-    proxy_sandbox&.process&.exec(command: STOP_PROXY)
+    # If the proxy doesn't stop, its last session logs are lost, but the cleanup continues.
+    begin
+      proxy_sandbox&.process&.exec(command: STOP_PROXY)
+    rescue StandardError
+      nil
+    end
     # Revoke first, so the session ends even if deleting fails.
     begin
       infisical("/api/v1/agent-vault/sessions/#{session['id']}/revoke", token: access_token)
@@ -955,7 +965,11 @@ public class RunAgent {
             }
             return output;
         } finally {
-            if (proxySandbox != null) proxySandbox.getProcess().executeCommand(STOP_PROXY);
+            // If the proxy doesn't stop, its last session logs are lost, but the cleanup continues.
+            try {
+                if (proxySandbox != null) proxySandbox.getProcess().executeCommand(STOP_PROXY);
+            } catch (RuntimeException e) {
+            }
             // Revoke first, so the session ends even if deleting fails.
             try {
                 infisical("/api/v1/agent-vault/sessions/" + session.get("id").asText() + "/revoke", accessToken, null);
@@ -1007,7 +1021,7 @@ await ensureSnapshot(daytona);
 console.log(await runAgent(daytona, "Reply with the word OK."));
 ```
 
-```go Go
+```go Go expandable
 // main.go
 package main
 
