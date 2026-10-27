@@ -22,6 +22,7 @@ import {
   TAgentVaultProxySettingsDTO,
   TAgentVaultProxyWithToken,
   TAgentVaultService,
+  TAgentVaultSession,
   TAgentVaultSessionLogSettingsState,
   TAgentVaultSkill,
   TAgentVaultSkillVersion,
@@ -41,6 +42,7 @@ import {
   TUpdateAgentVaultAccessBundleDTO,
   TUpdateAgentVaultMemberRolesDTO,
   TUpdateAgentVaultServiceDTO,
+  TUpdateAgentVaultSessionLabelDTO,
   TUpdateAgentVaultSessionLogSettingsDTO,
   TUpdateAgentVaultVariableDTO
 } from "./types";
@@ -230,6 +232,23 @@ export const useCreateAgentVaultSession = () => {
       const { data } = await apiRequest.post<{ session: TAgentVaultMintedSession }>(
         "/api/v1/agent-vault/sessions",
         params
+      );
+      return data.session;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(currentOrg.id) });
+    }
+  });
+};
+
+export const useUpdateAgentVaultSessionLabel = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sessionId, label }: TUpdateAgentVaultSessionLabelDTO) => {
+      const { data } = await apiRequest.patch<{ session: TAgentVaultSession }>(
+        `/api/v1/agent-vault/sessions/${sessionId}`,
+        { label }
       );
       return data.session;
     },

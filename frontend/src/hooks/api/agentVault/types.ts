@@ -261,6 +261,7 @@ export type TAgentVaultSessionActor =
 
 export type TAgentVaultSession = {
   id: string;
+  label: string | null;
   actor: TAgentVaultSessionActor;
   status: AgentVaultSessionStatus;
   expiresAt: string | null;
@@ -271,6 +272,7 @@ export type TAgentVaultSession = {
 
 export type TAgentVaultMintedSession = {
   id: string;
+  label: string | null;
   token: string;
   expiresAt: string | null;
   createdAt: string;
@@ -400,6 +402,12 @@ export type TAddAgentVaultMembersDTO = TAgentVaultActorIdsDTO & {
 export type TCreateAgentVaultSessionDTO = {
   accessBundles: string[];
   ttl: string;
+  label?: string;
+};
+
+export type TUpdateAgentVaultSessionLabelDTO = {
+  sessionId: string;
+  label: string | null;
 };
 
 export type TAgentVaultProxySettingsDTO = {

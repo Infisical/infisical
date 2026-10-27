@@ -10,6 +10,7 @@ import {
   LogsIcon,
   MoreHorizontalIcon,
   PackageIcon,
+  PencilIcon,
   PlusIcon,
   SearchIcon,
   TriangleAlertIcon,
@@ -94,11 +95,13 @@ import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSett
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
+import { EditSessionLabelDialog } from "./components/EditSessionLabelDialog";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SampleSessionSheet, SampleSessionTable } from "./components/SampleSessionSheet";
 import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
 import { SessionExpiry } from "./components/SessionExpiry";
+import { SessionLabel } from "./components/SessionLabel";
 import { SESSION_STATUS_PRESENTATION, SessionStatusBadge } from "./components/SessionStatusBadge";
 
 const STATUS_OPTIONS = [
@@ -130,6 +133,7 @@ export const AgentVaultSessionsPage = () => {
     getUserTablePreference("agentVaultSessionsTable", PreferenceKey.PerPage, 20)
   );
   const [sessionToRevoke, setSessionToRevoke] = useState<TAgentVaultSession | null>(null);
+  const [sessionToLabel, setSessionToLabel] = useState<TAgentVaultSession | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [mintedSession, setMintedSession] = useState<TAgentVaultMintedSession | null>(null);
   const [isSampleOpen, setIsSampleOpen] = useState(false);
@@ -348,7 +352,8 @@ export const AgentVaultSessionsPage = () => {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Search by identity, email, or access bundle..."
+                maxLength={255}
+                placeholder="Search by label, identity, email, or access bundle..."
               />
             </InputGroup>
             <DropdownMenu>
@@ -412,6 +417,8 @@ export const AgentVaultSessionsPage = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {/* w-px holds the column to its capped content, so a long label truncates at the column's edge */}
+                  <TableHead className="w-px">Label</TableHead>
                   <TableHead>Identity</TableHead>
                   <TableHead>Access Bundle</TableHead>
                   <TableHead>Created</TableHead>
@@ -425,7 +432,7 @@ export const AgentVaultSessionsPage = () => {
                   Array.from({ length: 5 }).map((_, index) => (
                     // eslint-disable-next-line react/no-array-index-key
                     <TableRow key={`session-skeleton-${index}`}>
-                      {Array.from({ length: 6 }).map((__, cell) => (
+                      {Array.from({ length: 7 }).map((__, cell) => (
                         // eslint-disable-next-line react/no-array-index-key
                         <TableCell key={`session-skeleton-${index}-${cell}`}>
                           <Skeleton className="h-4 w-full" />
@@ -440,6 +447,13 @@ export const AgentVaultSessionsPage = () => {
                       onClick={() => openSheet(session.id)}
                       className="cursor-pointer"
                     >
+                      <TableCell>
+                        {session.label ? (
+                          <SessionLabel label={session.label} className="max-w-60" />
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -528,6 +542,13 @@ export const AgentVaultSessionsPage = () => {
                                 <LogsIcon />
                                 View Session Logs
                               </DropdownMenuItem>
+                              {/* The API refuses label edits once the session's owner is deleted */}
+                              {session.actor.id !== null && (
+                                <DropdownMenuItem onClick={() => setSessionToLabel(session)}>
+                                  <PencilIcon />
+                                  {session.label ? "Edit Label" : "Add Label"}
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem
                                 variant="danger"
                                 isDisabled={session.status !== AgentVaultSessionStatus.Active}
@@ -598,6 +619,14 @@ export const AgentVaultSessionsPage = () => {
         session={openSession}
         isPending={isOpenSessionPending}
         onRevoke={setSessionToRevoke}
+        onEditLabel={setSessionToLabel}
+      />
+
+      <EditSessionLabelDialog
+        session={sessionToLabel}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setSessionToLabel(null);
+        }}
       />
 
       <AgentVaultSessionLogUpgradeModal

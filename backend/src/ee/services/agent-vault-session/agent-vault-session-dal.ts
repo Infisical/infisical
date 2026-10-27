@@ -16,6 +16,7 @@ export type TAgentVaultSessionListRow = {
   id: string;
   userId: string | null;
   identityId: string | null;
+  label: string | null;
   actor: TAgentVaultSessionActor;
   expiresAt: Date | null;
   revokedAt: Date | null;
@@ -156,6 +157,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
 
           void query.where((qb) => {
             void qb
+              .orWhereILike(`${TableName.AgentVaultSession}.label`, term)
               .orWhereILike(`${TableName.Identity}.name`, term)
               .orWhereILike(`${TableName.Users}.username`, term)
               // Covers a first name, a last name and the two together, so no separate checks are needed.
@@ -228,6 +230,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.AgentVaultSession),
           db.ref("userId").withSchema(TableName.AgentVaultSession),
           db.ref("identityId").withSchema(TableName.AgentVaultSession),
+          db.ref("label").withSchema(TableName.AgentVaultSession),
           db.ref("expiresAt").withSchema(TableName.AgentVaultSession),
           db.ref("revokedAt").withSchema(TableName.AgentVaultSession),
           db.ref("createdAt").withSchema(TableName.AgentVaultSession),
@@ -249,6 +252,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
         id: string;
         userId: string | null;
         identityId: string | null;
+        label: string | null;
         expiresAt: Date | null;
         revokedAt: Date | null;
         createdAt: Date;
@@ -274,6 +278,7 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
             id: row.id,
             userId: row.userId,
             identityId: row.identityId,
+            label: row.label,
             actor: toSessionActor(row),
             expiresAt: row.expiresAt,
             revokedAt: row.revokedAt,
@@ -297,16 +302,54 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
   };
 
   // Conditional so two concurrent revokes cannot both believe they were the one that revoked it. The loser
-  // gets no row back, which is what keeps the audit trail down to a single revocation.
+  // gets no row back, which is what keeps the audit trail down to a single revocation. A session whose owner
+  // was deleted is skipped too: updatedAt is the only record of when, and this write would move it.
   const revokeIfActive = async (id: string, revokedAt: Date, tx?: Knex) => {
     try {
       const [row] = (await (tx || db)(TableName.AgentVaultSession)
         .where({ id })
         .whereNull("revokedAt")
+        .where((qb) => {
+          void qb.whereNotNull("userId").orWhereNotNull("identityId");
+        })
         .update({ revokedAt }, "*")) as TAgentVaultSessions[];
       return row as TAgentVaultSessions | undefined;
     } catch (error) {
       throw new DatabaseError({ error, name: "Revoke agent vault session" });
+    }
+  };
+
+  // One statement on the primary: the row is locked, then rewritten only if it still has an owner, and its label
+  // before the write comes back. So two quick edits can't both read a stale label, the caller audits what
+  // actually changed, and a session whose owner was just deleted isn't written even if a replica hasn't seen
+  // that yet: updatedAt is the only record of when the owner went. No row back means no such session.
+  const updateLabel = async (id: string, projectId: string, label: string | null, tx?: Knex) => {
+    try {
+      const { rows } = (await (tx || db).raw(
+        `WITH previous AS (
+          SELECT id, label, "userId", "identityId" FROM ?? WHERE id = ? AND "projectId" = ? FOR UPDATE
+        ), updated AS (
+          UPDATE ?? AS session SET label = ? FROM previous
+          WHERE session.id = previous.id AND (previous."userId" IS NOT NULL OR previous."identityId" IS NOT NULL)
+          RETURNING session.id
+        )
+        SELECT previous.label AS "previousLabel", EXISTS (SELECT 1 FROM updated) AS "isUpdated" FROM previous`,
+        [TableName.AgentVaultSession, id, projectId, TableName.AgentVaultSession, label]
+      )) as { rows: { previousLabel: string | null; isUpdated: boolean }[] };
+      return rows[0] as { previousLabel: string | null; isUpdated: boolean } | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Update agent vault session label" });
+    }
+  };
+
+  // Read after a write that didn't happen, so the answer reflects the row as it is, not as a replica last saw it.
+  const findByIdOnPrimary = async (id: string, projectId: string, tx?: Knex) => {
+    try {
+      return (await (tx || db)(TableName.AgentVaultSession).where({ id, projectId }).first()) as
+        | TAgentVaultSessions
+        | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find agent vault session" });
     }
   };
 
@@ -322,5 +365,5 @@ export const agentVaultSessionDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByTokenHash, findForList, revokeIfActive, createWithId };
+  return { ...orm, findByTokenHash, findForList, revokeIfActive, updateLabel, findByIdOnPrimary, createWithId };
 };

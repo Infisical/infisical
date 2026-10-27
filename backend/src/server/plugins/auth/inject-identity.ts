@@ -1,7 +1,7 @@
 import { requestContext, RequestContextData } from "@fastify/request-context";
 import { FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
-import type { JwtPayload } from "jsonwebtoken";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 
 import { TServiceTokens, TUsers } from "@app/db/schemas";
 import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
@@ -24,6 +24,8 @@ import {
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 import { OauthDelegationMode } from "@app/services/oauth-client/oauth-client-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
+
+import { invalidSignatureMessage } from "./invalid-signature-message";
 
 export type TAuthMode =
   | {
@@ -150,7 +152,16 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
     } as const;
   }
 
-  const decodedToken = crypto.jwt().verify(authTokenValue, jwtSecret) as JwtPayload;
+  let decodedToken: JwtPayload;
+  try {
+    decodedToken = crypto.jwt().verify(authTokenValue, jwtSecret) as JwtPayload;
+  } catch (error) {
+    // Rethrown as the same error class so the response keeps its 403 TokenError shape.
+    if (error instanceof jwt.JsonWebTokenError && error.message === "invalid signature") {
+      throw new jwt.JsonWebTokenError(invalidSignatureMessage(getConfig()));
+    }
+    throw error;
+  }
 
   switch (decodedToken.authTokenType) {
     case AuthTokenType.ACCESS_TOKEN: {
