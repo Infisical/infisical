@@ -34,7 +34,7 @@
 - Secret sharing links with guessable tokens, or that skip their expiry, max-views, or organization restriction checks
 
 **Database Migrations:**
-- Migrations under backend/src/db/migrations that read the license service or a feature flag, directly or through a helper (for example getMigrationEncryptionServices without skipHsmLicenseCheck: true); the license is not initialized when migrations run, so the migration can take the wrong encryption path. Report these even with no attacker involved, since they can corrupt or expose encrypted data.
+- Migrations under backend/src/db/migrations that read the license service or a feature flag, directly or through a helper (for example getMigrationEncryptionServices called with skipHsmLicenseCheck: false, or isHsmActiveAndEnabled given a licenseService); the license is not initialized when migrations run, so the migration can take the wrong encryption path. Report these even with no attacker involved, since they can corrupt or expose encrypted data.
 
 **CI Workflows:**
 - Workflows triggered by pull_request_target or workflow_run that check out or execute code from the pull request
