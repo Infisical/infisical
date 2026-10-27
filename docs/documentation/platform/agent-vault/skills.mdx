@@ -27,7 +27,7 @@ description: Reviews a pull request against the team checklist. Use when asked t
 2. Check each item in checklist.md.
 ```
 
-- `name`: the name agents know the skill by, with up to 64 lowercase letters, numbers, and single hyphens
+- `name`: the name agents know the skill by, with up to 64 lowercase letters, numbers, and single hyphens. The name can't be one that Windows reserves for devices, such as `con`, `aux`, or `com1`
 - `description`: the text an agent reads to decide when to use the skill (up to 1,024 characters)
 
 The folder can also hold other files that the instructions refer to, such as scripts, templates, or reference documents. Each skill can hold:
@@ -61,6 +61,8 @@ You can push a skill folder with the CLI, or create the skill in Infisical.
         To start from a skill you already have, select **Upload** and drop a zipped skill folder or a Markdown file into the dialog. Infisical fills in the **Name**, the **Description**, and the files from the upload.
 
         To write the skill instead, enter a **Name** and a **Description**, then write the instructions in `SKILL.md`. To add more files, follow the steps in [Change the files](#change-the-files).
+
+        The header at the top of `SKILL.md` always matches the **Name** and **Description** fields, so you can change the name and the description in either place.
       </Step>
       <Step>
         Check the files, then select **Create Skill**.
@@ -99,7 +101,9 @@ To detach a skill, open its actions menu in the **Skills** section, select **Rem
 
 ## How agents get skills
 
-When you start an agent with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI downloads the latest version of each skill attached to the session's access bundle and installs the skills before the agent starts. The CLI installs each skill in `~/.agents/skills/<skill-name>`, where Codex, OpenCode, and OpenClaw look for skills.
+When you start an agent with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI downloads the latest version of each skill attached to the session's access bundle from Infisical, and installs the skills before the agent starts. The CLI downloads the skills with the session's token, so the agent's host needs to reach your Infisical instance, as it already does when the CLI creates the session. If you start the agent with a session token and you don't use Infisical Cloud, set your instance with [`--domain`](/cli/reference#global-flags--flag-domain).
+
+The CLI installs each skill in `~/.agents/skills/<skill-name>`, where Codex, OpenCode, and OpenClaw look for skills.
 
 The CLI also adds a link to each skill in the `skills` folder of Claude Code and of Hermes, if that agent's folder exists on the host:
 
@@ -130,9 +134,9 @@ The CLI always starts the agent, even if it can't install the skills:
 
 - If the CLI can't download or install the skills, it prints why the agent started without them
 - If the Infisical CLI on the agent's host is too old to support skills, the agent starts without skills and the CLI doesn't print anything about them
-- If the proxy or your self-hosted Infisical instance is too old to support skills, the agent starts without skills, and the CLI only reports why if you pass [`--log-level=debug`](/cli/reference#global-flags--flag-log-level)
+- If your self-hosted Infisical instance is too old to support skills, the agent starts without skills, and the CLI only reports why if you pass [`--log-level=debug`](/cli/reference#global-flags--flag-log-level)
 
-To use skills, upgrade the [Infisical CLI](/cli/install) on the agent's host and on the proxy's host. If you self-host Infisical, also [upgrade your instance](/self-hosting/guides/upgrading-infisical).
+To use skills, upgrade the [Infisical CLI](/cli/install) on the agent's host. If you self-host Infisical, also [upgrade your instance](/self-hosting/guides/upgrading-infisical).
 
 ## View a skill
 

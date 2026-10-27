@@ -62,3 +62,14 @@ export const WithPlaceholder: Story = {
     "aria-label": "Draft"
   }
 };
+
+export const Borderless: Story = {
+  args: { value: MARKDOWN, language: "markdown", isBorderless: true, className: "h-72" },
+  decorators: [
+    (Story) => (
+      <div className="overflow-hidden rounded-md border border-border bg-card">
+        <Story />
+      </div>
+    )
+  ]
+};

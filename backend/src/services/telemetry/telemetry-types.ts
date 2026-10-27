@@ -2560,13 +2560,13 @@ export type TAgentVaultSkillDetachedFromBundleEvent = {
   properties: TAgentVaultEventBase & { skillId: string; accessBundleId: string };
 };
 
-// Fired by the proxy-facing route once per agent start, so the actor is the proxy, not a user.
+// Fired once per agent start by the route the CLI calls with a session token, which has no request actor.
 export type TAgentVaultSkillsDeliveredEvent = {
   event: PostHogEventTypes.AgentVaultSkillsDelivered;
   properties: {
     orgId: string;
     channel: string;
-    proxyId: string;
+    actorType: string;
     skillCount: number;
   };
 };

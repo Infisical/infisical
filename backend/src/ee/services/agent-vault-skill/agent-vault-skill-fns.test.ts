@@ -317,6 +317,17 @@ describe("parseSkillHeader", () => {
     expectBadRequest(() => parse(manifest(`name: a\ndescription: ${"d".repeat(1025)}`)), /longer than 1024/);
     expectBadRequest(() => parse(manifest("- a\n- b")), /key: value/);
   });
+
+  test("refuses a Windows device name as the skill name", () => {
+    ["con", "prn", "aux", "nul", "com1", "com9", "lpt1", "lpt9"].forEach((name) => {
+      expectBadRequest(
+        () => parse(manifest(`name: ${name}\ndescription: b`)),
+        `'${name}' is a reserved name and can't be used as a skill name.`
+      );
+    });
+    expect(parse(manifest("name: aux-tools\ndescription: b")).name).toBe("aux-tools");
+    expect(parse(manifest("name: com10\ndescription: b")).name).toBe("com10");
+  });
 });
 
 describe("replaceSkillHeaderName", () => {
@@ -362,6 +373,15 @@ describe("replaceSkillHeaderName", () => {
   test("ignores an indented name and anything after the header", () => {
     const before = manifest("meta:\n  name: inner\nname: old-name\ndescription: b", "name: in-body\n");
     expect(rename(before)).toBe(manifest("meta:\n  name: inner\nname: new-name\ndescription: b", "name: in-body\n"));
+  });
+
+  test("quotes a name that would otherwise read back as a number, boolean or null", () => {
+    ["12", "1e5", "true", "null"].forEach((name) => {
+      const after = rename(manifest("name: old-name # kept\ndescription: b"), name);
+      expect(after).toBe(manifest(`name: "${name}" # kept\ndescription: b`));
+      expect(parseSkillHeader(Buffer.from(after!)).name).toBe(name);
+    });
+    expect(rename(manifest("name: 'old-name'\ndescription: b"), "12")).toBe(manifest("name: '12'\ndescription: b"));
   });
 
   test("returns null when there is no name line it can rewrite", () => {

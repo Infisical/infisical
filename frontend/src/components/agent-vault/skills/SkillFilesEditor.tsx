@@ -124,7 +124,8 @@ const InlineNameInput = ({
         aria-invalid={Boolean(error)}
         spellCheck={false}
         autoComplete="off"
-        className="h-6 px-1.5 font-mono text-xs"
+        size="sm"
+        className="font-mono"
         isError={Boolean(error)}
       />
       {error && <p className="text-2xs leading-snug text-danger">{error}</p>}
@@ -142,7 +143,6 @@ type Props = {
   changedPaths?: ReadonlySet<string>;
   /** Files that can't be renamed or deleted. */
   requiredPaths?: readonly string[];
-  getPlaceholder?: (path: string) => string | undefined;
   /** Which view Markdown files open in. Code is where an editable file is changed. */
   defaultView?: "preview" | "code";
   className?: string;
@@ -156,7 +156,6 @@ export const SkillFilesEditor = ({
   onChange,
   changedPaths,
   requiredPaths = [],
-  getPlaceholder,
   defaultView = "preview",
   className
 }: Props) => {
@@ -482,13 +481,10 @@ export const SkillFilesEditor = ({
               language={isMarkdown ? "markdown" : "plain"}
               isReadOnly={!isEditing}
               hasLineWrapping={isMarkdown}
-              placeholder={getPlaceholder?.(selected.path)}
               stateKey={`${isEditing ? "edit" : "view"}:${selected.path}`}
               aria-label={selected.path}
-              className={twMerge(
-                "h-full rounded-none border-0 bg-transparent",
-                (selected.text === null || showRendered) && "hidden"
-              )}
+              isBorderless
+              className={twMerge("h-full", (selected.text === null || showRendered) && "hidden")}
             />
           )}
         </div>

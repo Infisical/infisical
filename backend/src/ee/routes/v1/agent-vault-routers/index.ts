@@ -7,6 +7,7 @@ import { registerAgentVaultProxyAgentRouter } from "./agent-vault-proxy-agent-ro
 import { registerAgentVaultProxyRouter } from "./agent-vault-proxy-router";
 import { registerAgentVaultSessionLogRouter } from "./agent-vault-session-log-router";
 import { registerAgentVaultSessionRouter } from "./agent-vault-session-router";
+import { registerAgentVaultSessionSkillRouter } from "./agent-vault-session-skill-router";
 import { registerAgentVaultSettingsRouter } from "./agent-vault-settings-router";
 import { registerAgentVaultSkillRouter } from "./agent-vault-skill-router";
 import { registerAgentVaultVariableRouter } from "./agent-vault-variable-router";
@@ -23,6 +24,7 @@ export const registerAgentVaultRouters = async (server: FastifyZodProvider) => {
     },
     { prefix: "/sessions" }
   );
+  await server.register(registerAgentVaultSessionSkillRouter, { prefix: "/session" });
   await server.register(registerAgentVaultSettingsRouter, { prefix: "/settings" });
   await server.register(registerAgentVaultAppConnectionRouter, { prefix: "/app-connections/aws" });
   await server.register(registerAgentVaultProxyRouter, { prefix: "/proxies" });

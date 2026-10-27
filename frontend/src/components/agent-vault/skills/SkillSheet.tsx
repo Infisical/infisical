@@ -119,7 +119,12 @@ const SkillSheetBody = ({
   const [dialog, setDialog] = useState<TSkillDialog | null>(null);
 
   const version = viewedVersion ?? skill?.latestVersion;
-  const { data: versionData } = useGetAgentVaultSkillVersion(shownSkillId, version);
+  const {
+    data: versionData,
+    error: versionError,
+    isFetching: isVersionFetching,
+    refetch: refetchVersion
+  } = useGetAgentVaultSkillVersion(shownSkillId, version);
   const restoreVersion = useRestoreAgentVaultSkillVersion();
 
   const original = useMemo(() => toDraftFiles(versionData?.files ?? []), [versionData]);
@@ -237,6 +242,46 @@ const SkillSheetBody = ({
       new Blob([buildSkillZip(skill.name, versionData.files)], { type: "application/zip" }),
       `${skill.name}-v${versionData.version}.zip`
     );
+  };
+
+  const renderFiles = () => {
+    if (versionData || isEditing) {
+      return (
+        <SkillFilesEditor
+          files={files}
+          selectedPath={selectedPath}
+          onSelect={setSelectedPath}
+          isEditing={isEditing}
+          onChange={
+            isEditing ? (draft) => setEdit((prev) => prev && { ...prev, draft }) : undefined
+          }
+          changedPaths={changedPaths}
+          requiredPaths={[SKILL_ENTRY_FILE]}
+          className="h-[calc(100dvh-14rem)] min-h-96 shrink-0"
+        />
+      );
+    }
+    if (versionError) {
+      return (
+        <Empty className="h-[calc(100dvh-14rem)] min-h-96 shrink-0 border">
+          <EmptyHeader>
+            <EmptyTitle>Couldn&apos;t load this version.</EmptyTitle>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button
+              variant="outline"
+              size="xs"
+              isPending={isVersionFetching}
+              onClick={() => refetchVersion()}
+            >
+              <RotateCwIcon />
+              Try Again
+            </Button>
+          </EmptyContent>
+        </Empty>
+      );
+    }
+    return <Skeleton className="h-[calc(100dvh-14rem)] min-h-96 w-full shrink-0" />;
   };
 
   const renderBody = () => {
@@ -364,22 +409,7 @@ const SkillSheetBody = ({
             </Alert>
           )}
 
-          {versionData || isEditing ? (
-            <SkillFilesEditor
-              files={files}
-              selectedPath={selectedPath}
-              onSelect={setSelectedPath}
-              isEditing={isEditing}
-              onChange={
-                isEditing ? (draft) => setEdit((prev) => prev && { ...prev, draft }) : undefined
-              }
-              changedPaths={changedPaths}
-              requiredPaths={[SKILL_ENTRY_FILE]}
-              className="h-[calc(100dvh-14rem)] min-h-96 shrink-0"
-            />
-          ) : (
-            <Skeleton className="h-[calc(100dvh-14rem)] min-h-96 w-full shrink-0" />
-          )}
+          {renderFiles()}
         </div>
 
         {isEditing && hasChanges && (
@@ -392,7 +422,13 @@ const SkillSheetBody = ({
             >
               Discard
             </Button>
-            <Button variant="av" onClick={() => setDialog("save")}>
+            <Button
+              variant="av"
+              onClick={() => {
+                setDialog("save");
+                refetchSkill();
+              }}
+            >
               Save Version
             </Button>
           </SheetFooter>

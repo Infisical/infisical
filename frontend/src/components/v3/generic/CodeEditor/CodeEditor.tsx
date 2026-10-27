@@ -37,6 +37,8 @@ type CodeEditorProps = {
    * history. A document whose text changed while it was away starts a fresh history.
    */
   stateKey?: string;
+  /** Drops the border, radius and background, for an editor that fills a panel which already draws them. */
+  isBorderless?: boolean;
   className?: string;
   "aria-label"?: string;
 };
@@ -135,6 +137,7 @@ const CodeEditor = ({
   hasLineWrapping = false,
   placeholder = "",
   stateKey,
+  isBorderless = false,
   className,
   "aria-label": ariaLabel
 }: CodeEditorProps) => {
@@ -222,7 +225,8 @@ const CodeEditor = ({
       ref={containerRef}
       data-slot="code-editor"
       className={cn(
-        "min-h-0 min-w-0 overflow-hidden rounded-md border border-border bg-container text-foreground",
+        "min-h-0 min-w-0 overflow-hidden text-foreground",
+        isBorderless ? "bg-transparent" : "rounded-md border border-border bg-container",
         className
       )}
     />

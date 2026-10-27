@@ -119,18 +119,6 @@ export const agentVaultCredentialRefreshLimit: RateLimitOptions = {
   }
 };
 
-// Keyed on the proxy, like resolve. A proxy fetches a session's skills once per agent start, and each fetch decrypts
-// every skill on the session's bundles, so this allows one start a second and bounds a proxy stuck refetching.
-export const agentVaultSkillsLimit: RateLimitOptions = {
-  timeWindow: 60 * 1000,
-  hook: "preValidation",
-  max: 60,
-  keyGenerator: (req) => {
-    const actorId = (req as { permission?: { id?: string } }).permission?.id;
-    return actorId ? `agent-vault-skills:${actorId}` : req.realIp;
-  }
-};
-
 export const agentVaultSessionLogChunkLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",

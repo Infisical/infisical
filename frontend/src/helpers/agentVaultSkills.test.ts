@@ -3,17 +3,22 @@ import { describe, expect, test } from "vitest";
 
 import {
   buildDiffRows,
-  buildSkillMarkdown,
   buildSkillZip,
+  bytesToBase64,
   carrySkillFileModes,
   countLineChanges,
   decodeSkillFile,
+  formatSkillHeaderValue,
+  fromDraftFiles,
+  getReservedSkillNameMessage,
   getSkillBaseName,
   getSkillEntryNameError,
   getSkillFileChanges,
   getSkillFolders,
+  getSkillHeaderText,
   getSkillParentPath,
   getSkillPathError,
+  isReservedSkillName,
   joinSkillPath,
   newDraftFile,
   normalizeSkillPath,
@@ -23,6 +28,7 @@ import {
   renameSkillFolders,
   renameSkillPaths,
   replaceSkillEntryFile,
+  setSkillHeaderValue,
   SkillPackageError,
   sortSkillFiles,
   splitFrontmatter,
@@ -96,17 +102,95 @@ describe("readSkillUpload", () => {
   });
 });
 
-describe("buildSkillMarkdown", () => {
-  test("quotes header values so YAML reads them back as plain strings", () => {
-    expect(
-      buildSkillMarkdown({
-        name: "code-review",
-        description: 'Use when: reviewing "PRs"\n# not a comment',
-        body: "\n# Steps\n"
-      })
-    ).toBe(
-      '---\nname: "code-review"\ndescription: "Use when: reviewing \\"PRs\\"\\n# not a comment"\n---\n\n# Steps\n'
+describe("formatSkillHeaderValue", () => {
+  test("writes a value plain when YAML reads it back as the same string", () => {
+    expect(formatSkillHeaderValue("code-review")).toBe("code-review");
+    expect(formatSkillHeaderValue("Reviews code. Use when asked.")).toBe(
+      "Reviews code. Use when asked."
     );
+  });
+
+  test("quotes values YAML would read as something else", () => {
+    expect(formatSkillHeaderValue("12")).toBe('"12"');
+    expect(formatSkillHeaderValue("1e5")).toBe('"1e5"');
+    expect(formatSkillHeaderValue("true")).toBe('"true"');
+    expect(formatSkillHeaderValue("null")).toBe('"null"');
+    expect(formatSkillHeaderValue("")).toBe('""');
+    expect(formatSkillHeaderValue("Use when: reviewing")).toBe('"Use when: reviewing"');
+    expect(formatSkillHeaderValue("a # not a comment")).toBe('"a # not a comment"');
+    expect(formatSkillHeaderValue("'quoted'")).toBe("\"'quoted'\"");
+    expect(formatSkillHeaderValue(" padded ")).toBe('" padded "');
+  });
+});
+
+describe("setSkillHeaderValue", () => {
+  test("rewrites only the key's value and keeps every other header key and the body", () => {
+    const text = "---\nname: old\nlicense: MIT\ndescription: Old.\n---\n\n# Steps\n";
+    expect(setSkillHeaderValue(text, "name", "new-name")).toBe(
+      "---\nname: new-name\nlicense: MIT\ndescription: Old.\n---\n\n# Steps\n"
+    );
+  });
+
+  test("replaces a value written over several lines", () => {
+    const text = "---\ndescription: >\n  First line\n\n  second line\nname: a\n---\nBody\n";
+    expect(setSkillHeaderValue(text, "description", "New.")).toBe(
+      "---\ndescription: New.\nname: a\n---\nBody\n"
+    );
+  });
+
+  test("adds a missing key, and a header when there is none", () => {
+    expect(setSkillHeaderValue("---\nname: a\n---\nBody", "description", "true")).toBe(
+      '---\nname: a\ndescription: "true"\n---\nBody'
+    );
+    expect(setSkillHeaderValue("---\n---\nBody", "name", "a")).toBe("---\nname: a\n---\nBody");
+    expect(setSkillHeaderValue("Body", "name", "a")).toBe("---\nname: a\n---\n\nBody");
+  });
+
+  test("keeps Windows line endings", () => {
+    expect(setSkillHeaderValue("---\r\nname: a\r\nx: 1\r\n---\r\nBody", "name", "b")).toBe(
+      "---\r\nname: b\r\nx: 1\r\n---\r\nBody"
+    );
+  });
+
+  test("reads back as the value it was given", () => {
+    ["12", 'Says "hi" # twice', "a: b", "line\nbreak"].forEach((value) => {
+      const { frontmatter } = splitFrontmatter(setSkillHeaderValue("", "description", value));
+      expect(parseSkillHeader(frontmatter ?? "")?.description).toBe(value);
+    });
+  });
+});
+
+describe("isReservedSkillName", () => {
+  test("refuses Windows device names", () => {
+    ["con", "prn", "aux", "nul", "com1", "com9", "lpt1", "lpt9"].forEach((name) =>
+      expect(isReservedSkillName(name)).toBe(true)
+    );
+    ["console", "com0", "aux-tools", "code-review"].forEach((name) =>
+      expect(isReservedSkillName(name)).toBe(false)
+    );
+    expect(getReservedSkillNameMessage("aux")).toBe(
+      "'aux' is a reserved name and can't be used as a skill name."
+    );
+  });
+});
+
+describe("fromDraftFiles", () => {
+  test("keeps the original bytes of a file whose text is unchanged", () => {
+    const withBom = new Uint8Array([0xef, 0xbb, 0xbf, ...new TextEncoder().encode("# Hi\n")]);
+    const [draft] = toDraftFiles([
+      { path: "SKILL.md", mode: "0644", contentBase64: bytesToBase64(withBom) }
+    ]);
+    expect(draft.text).toBe("# Hi\n");
+    expect(fromDraftFiles([draft])[0].contentBase64).toBe(bytesToBase64(withBom));
+  });
+
+  test("re-encodes a file whose text changed, and keeps its mode", () => {
+    const [draft] = toDraftFiles([
+      { path: "run.sh", mode: "0755", contentBase64: bytesToBase64(strToU8("echo a\n")) }
+    ]);
+    expect(fromDraftFiles([{ ...draft, text: "echo b\n" }])).toEqual([
+      { path: "run.sh", mode: "0755", contentBase64: bytesToBase64(strToU8("echo b\n")) }
+    ]);
   });
 });
 
@@ -267,26 +351,36 @@ describe("file tree edits", () => {
 });
 
 describe("parseSkillHeader", () => {
-  test("reads plain, quoted and folded values", () => {
+  test("reads the header as the server does", () => {
     expect(parseSkillHeader("name: code-review\ndescription: Reviews code.")).toEqual({
       name: "code-review",
       description: "Reviews code."
     });
-    expect(parseSkillHeader('name: "a"\ndescription: "Says \\"hi\\"."')).toEqual({
+    expect(parseSkillHeader("name: 'a'\ndescription: 'It''s fine.'\nlicense: MIT")).toEqual({
       name: "a",
-      description: 'Says "hi".'
+      description: "It's fine.",
+      license: "MIT"
     });
-    expect(parseSkillHeader("name: 'a'\ndescription: 'It''s fine.'")).toEqual({
-      name: "a",
-      description: "It's fine."
+    expect(parseSkillHeader("name: 12\ndescription: >\n  First line\n  second line\n")).toEqual({
+      name: 12,
+      description: "First line second line\n"
     });
-    expect(
-      parseSkillHeader("name: a\ndescription: >\n  First line\n  second line\nother: x")
-    ).toEqual({ name: "a", description: "First line second line" });
+    expect(parseSkillHeader("")).toEqual({});
   });
 
-  test("leaves out keys that are not there", () => {
-    expect(parseSkillHeader("license: MIT")).toEqual({});
+  test("returns null when the header can't be read", () => {
+    expect(parseSkillHeader("name: [unclosed")).toBeNull();
+    expect(parseSkillHeader("- a\n- b")).toBeNull();
+    expect(parseSkillHeader("just text")).toBeNull();
+  });
+});
+
+describe("getSkillHeaderText", () => {
+  test("shows scalars as text and anything else as empty", () => {
+    expect(getSkillHeaderText("a")).toBe("a");
+    expect(getSkillHeaderText(12)).toBe("12");
+    expect(getSkillHeaderText(null)).toBe("");
+    expect(getSkillHeaderText(undefined)).toBe("");
   });
 });
 
@@ -415,5 +509,9 @@ describe("splitFrontmatter", () => {
       body: "\n# Body\n"
     });
     expect(splitFrontmatter("# No header")).toEqual({ frontmatter: null, body: "# No header" });
+    expect(splitFrontmatter("---\n---\nBody\n---\n")).toEqual({
+      frontmatter: "",
+      body: "Body\n---\n"
+    });
   });
 });

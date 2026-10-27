@@ -4711,7 +4711,9 @@ export const AGENT_VAULT = {
     nameFilter: "Return only the skill with exactly this name.",
     limit: "The maximum number of skills to return. Defaults to 20.",
     offset: "How many skills to skip.",
-    totalCount: "How many skills match the filters, across every page."
+    totalCount: "How many skills match the filters, across every page.",
+    sessionSkills:
+      "The latest version of each skill on the session's access bundles that the session's owner can still reach, ordered by name."
   },
   MEMBER: {
     grantedAt: "When the access bundle was granted.",

@@ -2235,6 +2235,7 @@ export const registerRoutes = async (
     agentVaultSessionLogConfigDAL,
     membershipDAL,
     orgDAL,
+    projectDAL,
     permissionService,
     kmsService,
     licenseService,

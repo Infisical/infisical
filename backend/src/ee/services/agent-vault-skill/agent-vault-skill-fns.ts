@@ -161,6 +161,10 @@ export const parseSkillHeader = (content: Buffer): { name: string; description: 
       message: `The 'name' in ${AGENT_VAULT_SKILL_MANIFEST} is '${name}'. A skill name can only use lowercase letters, numbers and single hyphens, and can't start or end with a hyphen.`
     });
   }
+  // The skill installs as a folder of this name, and Windows can't create one named after a device.
+  if (WINDOWS_DEVICE_NAME_RE.test(name)) {
+    throw new BadRequestError({ message: `'${name}' is a reserved name and can't be used as a skill name.` });
+  }
 
   if (description === undefined || description === null) {
     throw new BadRequestError({ message: `${AGENT_VAULT_SKILL_MANIFEST} header needs a 'description'.` });
@@ -184,6 +188,15 @@ export const parseSkillHeader = (content: Buffer): { name: string; description: 
 };
 
 const NAME_LINE_RE = /^(name[ \t]*:[ \t]*)(.*)$/;
+
+// A plain `12`, `1e5`, `true` or `null` reads back as a number, boolean or null, which the header check refuses.
+const loadsAsText = (name: string) => {
+  try {
+    return load(name, { schema: JSON_SCHEMA }) === name;
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Rewrites the value on the top-level `name:` line of a SKILL.md header and leaves every other byte alone (line
@@ -221,7 +234,7 @@ export const replaceSkillHeaderName = (content: Buffer, name: string): Buffer | 
         const end = comment === -1 ? rest.trimEnd().length : comment;
         const scalar = rest.slice(0, end).trimEnd();
         if (!scalar || /^[|>&*!{[]/.test(scalar)) return null;
-        value = `${name}${rest.slice(scalar.length)}`;
+        value = `${loadsAsText(name) ? name : JSON.stringify(name)}${rest.slice(scalar.length)}`;
       }
       lines[i] = `${prefix}${value}${ending}`;
       return Buffer.from(lines.join(""), "utf8");

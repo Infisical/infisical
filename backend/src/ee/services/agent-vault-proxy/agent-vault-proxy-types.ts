@@ -60,6 +60,10 @@ export type TAuthorizeSessionDTO = {
   sessionToken: string;
 };
 
+export type TGetSessionSkillsDTO = {
+  sessionToken: string;
+};
+
 export type TResolveSessionDTO = TAuthorizeSessionDTO & {
   hasSessionLogKey: boolean;
 };

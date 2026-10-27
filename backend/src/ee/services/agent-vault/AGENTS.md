@@ -24,7 +24,7 @@ agent-vault-personal-value/  each actor's own values for the fields a service le
 agent-vault-skill/           the skill library, versions, bundle links, file validation and hashing
 agent-vault-session/         mint, revoke, list, get
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
-agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve, credential refresh, skills
+agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve, credential refresh, session skills
 agent-vault-oauth/           OAuth for MCP services: discovery, client registration, authorizations, refresh
 agent-vault-session-log/     storage settings, chunk ingest, playback
 ```
@@ -324,7 +324,7 @@ reference.
 ## Skills
 
 A skill is an Agent Skills folder (`SKILL.md` plus files) kept per project and attached to bundles. When an agent
-starts, the CLI asks the proxy once for the session's skills and installs them in the user's home
+starts, the CLI fetches the session's skills from Infisical once, with the session token, and installs them in the user's home
 (`~/.agents/skills/<name>`, linked for Claude Code and Hermes, or `--skills-dir`), where they stay after the run.
 There are no live updates: a running agent keeps what it got until it restarts, and nothing on the server removes
 an installed copy.
@@ -354,12 +354,14 @@ an installed copy.
   latest version writes nothing and answers `unchanged: true` with that version, and records no audit or PostHog event.
 - Reading one version's files (`GET /skills/:skillId/versions/:version`) writes an `agent-vault-skill-version-view`
   audit event (data-access class); the list routes write none.
-- **`GET /proxy/skills`** returns the latest files of every skill on the session's reachable bundles (the same
-  intersection as the services), sorted by name, read from the primary. It shares resolve's and credential refresh's
-  session checks (`$authorizeSession`), and resolve itself knows nothing about skills. Each call writes one
-  `agent-vault-skill-delivered` audit event per skill (data-access class), credited to the first session bundle
-  that carries it, and one `Agent Vault Skills Delivered` PostHog event with the count. The proxy does not cache.
-  The route allows 60 calls a minute per proxy (`agentVaultSkillsLimit`), since each one decrypts every skill.
+- **`GET /session/skills`** returns the latest files of every skill on the session's reachable bundles (the same
+  intersection as the services), sorted by name, read from the primary. The proxy is not involved: the CLI calls it
+  with `Authorization: Bearer agv_...` and no other credential, so `inject-identity` skips the path and the route
+  parses the header itself. Any refusal is a 401, an unknown token included. It shares the owner checks of resolve
+  and credential refresh (`$authorizeSessionOwner`), with the org taken from the session's project instead of a
+  proxy. Each call writes one `agent-vault-skill-delivered` audit event per skill (data-access class) with the
+  session's owner as the actor, credited to the first session bundle that carries it, and one anonymous
+  `Agent Vault Skills Delivered` PostHog event with the count. Nothing caches; the route uses `readLimit`.
 - Skills use the `agent-vault-skills` CASL subject. Members keep CASL `Read`, narrowed by reachability
   (`getAgentVaultReachability`): they see only skills attached to a bundle they can reach, each with only those
   bundles, and only the latest version's files. Anything else, an unreachable bundle's skill list included, is a 404.

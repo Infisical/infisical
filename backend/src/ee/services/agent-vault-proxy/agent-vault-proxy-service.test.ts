@@ -85,6 +85,7 @@ const setup = (
     },
     membershipDAL: { findResourceMembershipsForActor: async () => [] },
     orgDAL: { findEffectiveOrgMembership: async () => ({ isActive: true }) as never },
+    projectDAL: { findById: async () => ({ id: PROJECT_ID, orgId: "org-1" }) as never },
     permissionService: {
       getProjectPermission: async () =>
         ({

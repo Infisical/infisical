@@ -22,10 +22,13 @@ import {
   SheetTitle
 } from "@app/components/v3";
 import {
-  buildSkillMarkdown,
   fromDraftFiles,
+  getReservedSkillNameMessage,
+  getSkillHeaderText,
+  isReservedSkillName,
   newDraftFile,
   parseSkillHeader,
+  setSkillHeaderValue,
   SKILL_DESCRIPTION_MAX_LENGTH,
   SKILL_ENTRY_FILE,
   SKILL_NAME_MAX_LENGTH,
@@ -34,7 +37,6 @@ import {
   sortSkillFiles,
   splitFrontmatter,
   toDraftFiles,
-  toSkillFile,
   TSkillDraftFile
 } from "@app/helpers/agentVaultSkills";
 import { useDiscardChangesGuard } from "@app/hooks";
@@ -49,7 +51,11 @@ const schema = z.object({
     .string()
     .min(1, "Required")
     .max(SKILL_NAME_MAX_LENGTH, `A name can be at most ${SKILL_NAME_MAX_LENGTH} characters.`)
-    .regex(SKILL_NAME_RE, SKILL_NAME_MESSAGE),
+    .regex(SKILL_NAME_RE, SKILL_NAME_MESSAGE)
+    .refine(
+      (name) => !isReservedSkillName(name),
+      (name) => ({ message: getReservedSkillNameMessage(name) })
+    ),
   description: z
     .string()
     .trim()
@@ -62,9 +68,21 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const INITIAL_FILES = [newDraftFile(SKILL_ENTRY_FILE)];
+const HEADER_KEYS = ["name", "description"] as const;
 
-const stripLeadingBlankLines = (text: string) => text.replace(/^(\r?\n)+/, "");
+const withHeader = (text: string, values: FormData) =>
+  HEADER_KEYS.reduce((next, key) => setSkillHeaderValue(next, key, values[key]), text);
+
+/** The header's name and description, or null when the text has no header or it can't be read. */
+const readHeaderFields = (text: string): FormData | null => {
+  const { frontmatter } = splitFrontmatter(text);
+  const header = frontmatter === null ? null : parseSkillHeader(frontmatter);
+  if (!header) return null;
+  return {
+    name: getSkillHeaderText(header.name),
+    description: getSkillHeaderText(header.description)
+  };
+};
 
 type Props = {
   isOpen: boolean;
@@ -86,7 +104,11 @@ export const CreateSkillSheet = ({
   shouldNotify = true
 }: Props) => {
   const createSkill = useCreateAgentVaultSkill();
-  const [files, setFiles] = useState<TSkillDraftFile[]>(INITIAL_FILES);
+  const initialFiles = useMemo(
+    () => [newDraftFile(SKILL_ENTRY_FILE, withHeader("", { name: initialName, description: "" }))],
+    [initialName]
+  );
+  const [files, setFiles] = useState<TSkillDraftFile[]>(initialFiles);
   const [selectedPath, setSelectedPath] = useState<string>(SKILL_ENTRY_FILE);
   const [bodyError, setBodyError] = useState<string | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -97,7 +119,7 @@ export const CreateSkillSheet = ({
     getValues,
     setValue,
     reset,
-    formState: { isDirty, isSubmitting }
+    formState: { isDirty, isSubmitting, isSubmitted }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { name: initialName, description: "" }
@@ -106,20 +128,20 @@ export const CreateSkillSheet = ({
   useEffect(() => {
     if (!isOpen) return;
     reset({ name: initialName, description: "" });
-    setFiles(INITIAL_FILES);
+    setFiles(initialFiles);
     setSelectedPath(SKILL_ENTRY_FILE);
     setBodyError(null);
-  }, [isOpen, initialName, reset]);
+  }, [isOpen, initialName, initialFiles, reset]);
 
-  const areFilesDirty = files !== INITIAL_FILES;
+  const areFilesDirty = files !== initialFiles;
   const changedPaths = useMemo(
     () =>
       new Set(
         files
-          .filter((file) => file.path !== SKILL_ENTRY_FILE || Boolean(file.text))
+          .filter((file) => file.path !== SKILL_ENTRY_FILE || file.text !== initialFiles[0].text)
           .map((file) => file.path)
       ),
-    [files]
+    [files, initialFiles]
   );
 
   const close = () => onOpenChange(false);
@@ -127,38 +149,31 @@ export const CreateSkillSheet = ({
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
     useDiscardChangesGuard({ isDirty: isDirty || areFilesDirty, onDiscard: close });
 
-  const applyHeader = (header: { name?: string; description?: string }) => {
-    if (header.name !== undefined) {
-      setValue("name", header.name, { shouldDirty: true, shouldValidate: true });
-    }
-    if (header.description !== undefined) {
-      setValue("description", header.description, { shouldDirty: true, shouldValidate: true });
-    }
+  const getEntryText = (from = files) =>
+    from.find((file) => file.path === SKILL_ENTRY_FILE)?.text ?? "";
+
+  const setEntryText = (from: TSkillDraftFile[], text: string) =>
+    from.map((file) => (file.path === SKILL_ENTRY_FILE ? { ...file, text } : file));
+
+  const syncFieldsFromHeader = (text: string) => {
+    const fields = readHeaderFields(text);
+    if (!fields) return;
+    const current = getValues();
+    HEADER_KEYS.forEach((key) => {
+      if (fields[key] !== current[key])
+        setValue(key, fields[key], { shouldDirty: true, shouldValidate: isSubmitted });
+    });
   };
 
-  // A header pasted into SKILL.md moves into the fields, unless it disagrees with what they already hold.
-  const absorbPastedHeader = (text: string) => {
-    if (!text.startsWith("---")) return null;
-    const { frontmatter, body } = splitFrontmatter(text);
-    if (frontmatter === null) return null;
-    const header = parseSkillHeader(frontmatter);
-    const current = getValues();
-    const fits = (key: keyof FormData) =>
-      header[key] === undefined || !current[key] || current[key] === header[key];
-    if (!fits("name") || !fits("description")) return null;
-    applyHeader(header);
-    return stripLeadingBlankLines(body);
+  const handleFieldChange = (key: (typeof HEADER_KEYS)[number], value: string) => {
+    setFiles((prev) => setEntryText(prev, setSkillHeaderValue(getEntryText(prev), key, value)));
+    setBodyError(null);
   };
 
   const handleFilesChange = (next: TSkillDraftFile[]) => {
-    const before = files.find((file) => file.path === SKILL_ENTRY_FILE)?.text;
-    const entry = next.find((file) => file.path === SKILL_ENTRY_FILE);
-    const body = entry?.text && entry.text !== before ? absorbPastedHeader(entry.text) : null;
-    setFiles(
-      body === null
-        ? next
-        : next.map((file) => (file.path === SKILL_ENTRY_FILE ? { ...file, text: body } : file))
-    );
+    const text = getEntryText(next);
+    if (text !== getEntryText()) syncFieldsFromHeader(text);
+    setFiles(next);
     setBodyError(null);
   };
 
@@ -168,49 +183,51 @@ export const CreateSkillSheet = ({
       ? [drafts[0], ...files.filter((file) => file.path !== SKILL_ENTRY_FILE)]
       : drafts;
     const entry = next.find((file) => file.path === SKILL_ENTRY_FILE);
-    let entryText = "";
-    if (entry?.text) {
-      const { frontmatter, body } = splitFrontmatter(entry.text);
-      if (frontmatter === null) {
-        entryText = entry.text;
-      } else {
-        applyHeader(parseSkillHeader(frontmatter));
-        entryText = stripLeadingBlankLines(body);
-      }
-    }
-    setFiles(
-      sortSkillFiles([
-        newDraftFile(SKILL_ENTRY_FILE, entryText),
+    let entryFiles: TSkillDraftFile[];
+    if (entry?.text && splitFrontmatter(entry.text).frontmatter !== null) {
+      syncFieldsFromHeader(entry.text);
+      entryFiles = next;
+    } else if (entry && entry.text !== null) {
+      entryFiles = setEntryText(next, withHeader(entry.text, getValues()));
+    } else {
+      entryFiles = [
+        newDraftFile(SKILL_ENTRY_FILE, withHeader("", getValues())),
         ...next.filter((file) => file.path !== SKILL_ENTRY_FILE)
-      ])
-    );
+      ];
+    }
+    setFiles(sortSkillFiles(entryFiles));
     setSelectedPath(SKILL_ENTRY_FILE);
     setBodyError(null);
   };
 
-  const onSubmit = async (data: FormData) => {
-    const entry = files.find((file) => file.path === SKILL_ENTRY_FILE);
-    const rest = files.filter((file) => file.path !== SKILL_ENTRY_FILE);
-    if (!entry?.text?.trim()) {
+  const onSubmit = async () => {
+    const text = getEntryText();
+    const { frontmatter, body } = splitFrontmatter(text);
+    const header = frontmatter === null ? {} : parseSkillHeader(frontmatter);
+    if (!header) {
+      setSelectedPath(SKILL_ENTRY_FILE);
+      setBodyError(`The header in ${SKILL_ENTRY_FILE} is not valid YAML.`);
+      return;
+    }
+    if (!body.trim()) {
       setSelectedPath(SKILL_ENTRY_FILE);
       setBodyError(`Write the instructions in ${SKILL_ENTRY_FILE}.`);
       return;
     }
-    if (splitFrontmatter(entry.text).frontmatter !== null) {
-      setSelectedPath(SKILL_ENTRY_FILE);
-      setBodyError(
-        `Remove the YAML header from ${SKILL_ENTRY_FILE}. The Name and Description fields fill it in.`
-      );
-      return;
-    }
+
+    // Only where the header disagrees with the fields (no header, or a name written as `12`), so a header that
+    // already matches, such as a folded description, keeps its exact text.
+    const values = getValues();
+    const entryText = HEADER_KEYS.reduce(
+      (next, key) =>
+        header[key] === values[key] ? next : setSkillHeaderValue(next, key, values[key]),
+      text
+    );
 
     let skill: TAgentVaultSkill;
     try {
       ({ skill } = await createSkill.mutateAsync({
-        files: [
-          toSkillFile(SKILL_ENTRY_FILE, buildSkillMarkdown({ ...data, body: entry.text })),
-          ...fromDraftFiles(rest)
-        ],
+        files: fromDraftFiles(setEntryText(files, entryText)),
         source: "form"
       }));
     } catch {
@@ -261,12 +278,15 @@ export const CreateSkillSheet = ({
                       <FieldContent>
                         <Input
                           {...field}
+                          onChange={(event) => {
+                            field.onChange(event);
+                            handleFieldChange("name", event.target.value);
+                          }}
                           placeholder="code-review"
                           autoComplete="off"
                           spellCheck={false}
                           isError={Boolean(fieldState.error)}
                         />
-                        <FieldDescription>It can&apos;t be changed later.</FieldDescription>
                         <FieldError>{fieldState.error?.message}</FieldError>
                       </FieldContent>
                     </Field>
@@ -281,6 +301,10 @@ export const CreateSkillSheet = ({
                       <FieldContent>
                         <Input
                           {...field}
+                          onChange={(event) => {
+                            field.onChange(event);
+                            handleFieldChange("description", event.target.value);
+                          }}
                           placeholder="Reviews a pull request against the team's checklist. Use when asked to review code."
                           isError={Boolean(fieldState.error)}
                         />
@@ -306,11 +330,6 @@ export const CreateSkillSheet = ({
                     onChange={handleFilesChange}
                     changedPaths={changedPaths}
                     requiredPaths={[SKILL_ENTRY_FILE]}
-                    getPlaceholder={(path) =>
-                      path === SKILL_ENTRY_FILE
-                        ? "Read the diff, check it against the team's checklist, and list what needs fixing."
-                        : undefined
-                    }
                     className="h-[calc(100dvh-14rem)] min-h-96"
                   />
                   <FieldError>{bodyError}</FieldError>

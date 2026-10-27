@@ -4411,6 +4411,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
+        projectDAL: projectDALFactory(testDb),
         permissionService: buildPermissionService(),
         kmsService: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
@@ -4546,6 +4547,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
+        projectDAL: projectDALFactory(testDb),
         permissionService: buildPermissionService(),
         kmsService: {
           createCipherPairWithDataKey: () =>
@@ -4719,6 +4721,7 @@ describe("Agent Vault V1 Router", async () => {
         agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
+        projectDAL: projectDALFactory(testDb),
         permissionService: buildPermissionService(),
         kmsService: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
@@ -4797,28 +4800,33 @@ describe("Agent Vault V1 Router", async () => {
 
     const publish = (skillId: string, files: TFile[]) => inject("POST", `${skillsUrl}/${skillId}/versions`, { files });
 
-    // A real proxy on the real routes, so the files go through the project's actual KMS key.
-    const proxyFor = async (bundles: { name: string }[], proxyName: string, mintAs = inject) => {
+    const sessionSkillsUrl = "/api/v1/agent-vault/session/skills";
+
+    const mintFor = async (bundles: { name: string }[], mintAs = inject) => {
       const mint = await mintAs("POST", "/api/v1/agent-vault/sessions", {
         accessBundles: bundles.map((bundle) => bundle.name),
         ttl: "1h"
       });
       expect(mint.statusCode).toBe(200);
-      const { session } = JSON.parse(mint.payload) as { session: { id: string; token: string } };
-
-      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: proxyName });
-      expect(created.statusCode).toBe(200);
-      const { proxyToken: accessToken } = JSON.parse(created.payload) as { proxyToken: string };
-
-      const asProxy = (method: "GET" | "POST", url: string) =>
-        testServer.inject({
-          method,
-          url: `/api/v1/agent-vault/proxy${url}`,
-          headers: { authorization: `Bearer ${accessToken}`, "x-infisical-agent-session": session.token }
-        });
-
-      return { session, asProxy };
+      return (JSON.parse(mint.payload) as { session: { id: string; token: string } }).session;
     };
+
+    type TCreateAuditLog = (dto: { actor: unknown; orgId?: string; event: unknown }) => Promise<void>;
+    // The route's audit calls, recorded as they are made: the e2e plan has no audit log retention, so none
+    // reach the audit_logs table.
+    const recordAuditLogs = () => {
+      const { auditLog } = (
+        globalThis as unknown as { testServices: { auditLog: { createAuditLog: TCreateAuditLog } } }
+      ).testServices;
+      return vi.spyOn(auditLog, "createAuditLog");
+    };
+
+    const fetchSessionSkills = (authorization?: string) =>
+      testServer.inject({
+        method: "GET",
+        url: sessionSkillsUrl,
+        headers: authorization === undefined ? {} : { authorization }
+      });
 
     test("an admin creates, reads, lists and deletes a skill", async () => {
       const { skill, version } = await createSkill("crud-skill", "Reviews code");
@@ -5259,12 +5267,13 @@ describe("Agent Vault V1 Router", async () => {
       );
     });
 
-    test("a proxy gets every skill of the session's bundles in one call, and nothing from other bundles", async () => {
+    test("a session token gets every skill of the session's bundles in one call, and nothing from other bundles", async () => {
       const bundle = await createAccessBundle("skills-deliver-bundle");
       const otherBundle = await createAccessBundle("skills-deliver-other");
-      const proxy = await proxyFor([bundle], "skills-deliver-proxy");
+      const session = await mintFor([bundle]);
+      const asSession = () => fetchSessionSkills(`Bearer ${session.token}`);
 
-      const empty = await proxy.asProxy("GET", "/skills");
+      const empty = await asSession();
       expect(empty.statusCode).toBe(200);
       expect(JSON.parse(empty.payload)).toEqual({ skills: [] });
 
@@ -5282,7 +5291,35 @@ describe("Agent Vault V1 Router", async () => {
       );
       const { version: alphaV2 } = JSON.parse(republished.payload) as { version: TSkillVersion };
 
-      const delivered = await proxy.asProxy("GET", "/skills");
+      const auditLogs = recordAuditLogs();
+      let delivered: Awaited<ReturnType<typeof asSession>>;
+      try {
+        delivered = await asSession();
+        expect(auditLogs).toHaveBeenCalledTimes(2);
+        expect(auditLogs).toHaveBeenCalledWith(
+          expect.objectContaining({
+            orgId: seedData1.organization.id,
+            actor: expect.objectContaining({
+              type: ActorType.USER,
+              metadata: expect.objectContaining({ userId: seedData1.id })
+            }),
+            event: {
+              type: "agent-vault-skill-delivered",
+              metadata: {
+                sessionId: session.id,
+                skillId: alpha.id,
+                skillName: "alpha-skill",
+                version: 2,
+                sha256: alphaV2.sha256,
+                accessBundleId: bundle.id,
+                accessBundleName: bundle.name
+              }
+            }
+          })
+        );
+      } finally {
+        auditLogs.mockRestore();
+      }
       expect(delivered.statusCode).toBe(200);
       const { skills } = JSON.parse(delivered.payload) as {
         skills: { id: string; name: string; version: number; sha256: string; files: TFile[] }[];
@@ -5302,30 +5339,97 @@ describe("Agent Vault V1 Router", async () => {
       expect(skills.some((row) => row.id === foreign.id)).toBe(false);
 
       expect((await inject("DELETE", `${bundleSkillsUrl(bundle.id)}/${alpha.id}`)).statusCode).toBe(200);
-      const afterDetach = JSON.parse((await proxy.asProxy("GET", "/skills")).payload) as { skills: { id: string }[] };
+      const afterDetach = JSON.parse((await asSession()).payload) as { skills: { id: string }[] };
       expect(afterDetach.skills.map((row) => row.id)).toEqual([zeta.id]);
 
-      const revoked = await inject("POST", `/api/v1/agent-vault/sessions/${proxy.session.id}/revoke`);
+      const revoked = await inject("POST", `/api/v1/agent-vault/sessions/${session.id}/revoke`);
       expect(revoked.statusCode).toBe(200);
-      expect((await proxy.asProxy("GET", "/skills")).statusCode).toBe(401);
+      const afterRevoke = await asSession();
+      expect(afterRevoke.statusCode).toBe(401);
+      expect(JSON.parse(afterRevoke.payload).message).toBe("This session has been revoked");
     });
 
-    test("a session whose actor lost the bundle grant gets no skills", async () => {
+    test("the skills route refuses an expired, unknown or malformed session token with a 401", async () => {
+      const bundle = await createAccessBundle("skills-refused-bundle");
+      const session = await mintFor([bundle]);
+      await testDb("agent_vault_sessions")
+        .where({ id: session.id })
+        .update({ expiresAt: new Date(Date.now() - 1000) });
+      const expired = await fetchSessionSkills(`Bearer ${session.token}`);
+      expect(expired.statusCode).toBe(401);
+      expect(JSON.parse(expired.payload).message).toBe("This session has expired");
+
+      const unknown = await fetchSessionSkills(`Bearer agv_${crypto.randomBytes(32).toString("base64url")}`);
+      expect(unknown.statusCode).toBe(401);
+      expect(JSON.parse(unknown.payload).message).toBe("This Agent Vault session token is not valid");
+
+      const malformedMessage = "Send an Agent Vault session token in the Authorization header, as 'Bearer agv_...'.";
+      const refused = await Promise.all(
+        [
+          undefined,
+          "",
+          session.token,
+          `Basic ${session.token}`,
+          `Bearer ${jwtAuthToken}`,
+          "Bearer agv_",
+          `Bearer agv_${"a".repeat(200)}`
+        ].map((authorization) => fetchSessionSkills(authorization))
+      );
+      refused.forEach((res) => {
+        expect(res.statusCode).toBe(401);
+        expect(JSON.parse(res.payload).message).toBe(malformedMessage);
+      });
+    });
+
+    test("the proxy no longer serves skills", async () => {
+      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "skills-gone-proxy" });
+      expect(created.statusCode).toBe(200);
+      const { proxyToken } = JSON.parse(created.payload) as { proxyToken: string };
+      const res = await testServer.inject({
+        method: "GET",
+        url: "/api/v1/agent-vault/proxy/skills",
+        headers: { authorization: `Bearer ${proxyToken}` }
+      });
+      expect(res.statusCode).toBe(404);
+    });
+
+    test("a member's session gets only the skills its owner still reaches", async () => {
       const bundle = await createAccessBundle("skills-lost-grant-bundle");
+      const otherBundle = await createAccessBundle("skills-lost-grant-other");
       const { skill } = await createSkill("lost-grant-skill");
+      const { skill: unreachable } = await createSkill("unreachable-skill");
       expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id })).statusCode).toBe(200);
+      expect((await inject("POST", bundleSkillsUrl(otherBundle.id), { skillId: unreachable.id })).statusCode).toBe(200);
       const member = await createMemberIdentity("skills-lost-grant");
       try {
         const bundleMembersUrl = `/api/v1/agent-vault/access-bundles/${bundle.id}/members`;
         expect((await inject("POST", bundleMembersUrl, { machineIdentityIds: [member.id] })).statusCode).toBe(200);
-        const proxy = await proxyFor([bundle], "skills-lost-grant-proxy", member.as);
+        const session = await mintFor([bundle], member.as);
+        const asSession = () => fetchSessionSkills(`Bearer ${session.token}`);
 
-        const before = JSON.parse((await proxy.asProxy("GET", "/skills")).payload) as { skills: { id: string }[] };
-        expect(before.skills.map((row) => row.id)).toEqual([skill.id]);
+        const auditLogs = recordAuditLogs();
+        let before: Awaited<ReturnType<typeof asSession>>;
+        try {
+          before = await asSession();
+          expect(auditLogs).toHaveBeenCalledWith(
+            expect.objectContaining({
+              actor: expect.objectContaining({
+                type: ActorType.IDENTITY,
+                metadata: expect.objectContaining({ identityId: member.id, name: "skills-lost-grant" })
+              })
+            })
+          );
+        } finally {
+          auditLogs.mockRestore();
+        }
+        expect(before.statusCode).toBe(200);
+        expect((JSON.parse(before.payload) as { skills: { id: string }[] }).skills.map((row) => row.id)).toEqual([
+          skill.id
+        ]);
 
         expect((await inject("DELETE", bundleMembersUrl, { machineIdentityIds: [member.id] })).statusCode).toBe(200);
 
-        const after = await proxy.asProxy("GET", "/skills");
+        const after = await asSession();
         expect(after.statusCode).toBe(200);
         expect(JSON.parse(after.payload)).toEqual({ skills: [] });
       } finally {
@@ -6250,6 +6354,7 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
+          projectDAL: projectDALFactory(testDb),
           permissionService: buildPermissionService(),
           kmsService: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
@@ -6352,6 +6457,7 @@ describe("Agent Vault V1 Router", async () => {
           agentVaultSessionLogConfigDAL: agentVaultSessionLogConfigDALFactory(testDb),
           membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
+          projectDAL: projectDALFactory(testDb),
           permissionService: buildPermissionService(),
           kmsService: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })

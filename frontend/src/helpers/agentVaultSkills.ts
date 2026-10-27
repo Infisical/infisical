@@ -1,5 +1,6 @@
 import { diffLines } from "diff";
 import { unzipSync, zipSync } from "fflate";
+import { JSON_SCHEMA, load } from "js-yaml";
 
 import { TAgentVaultSkillFile, TAgentVaultSkillFileMode } from "@app/hooks/api/agentVault/types";
 
@@ -157,18 +158,6 @@ export const readSkillUpload = async (file: File): Promise<TAgentVaultSkillFile[
   throw new SkillPackageError("Upload a .zip of the skill's folder, or a single .md file.");
 };
 
-/** JSON strings are valid YAML double-quoted scalars, so any text is safe in the header this way. */
-export const buildSkillMarkdown = ({
-  name,
-  description,
-  body
-}: {
-  name: string;
-  description: string;
-  body: string;
-}) =>
-  `---\nname: ${JSON.stringify(name)}\ndescription: ${JSON.stringify(description)}\n---\n\n${body.trim()}\n`;
-
 export const toSkillFile = (path: string, text: string): TAgentVaultSkillFile => ({
   path,
   mode: "0644",
@@ -188,9 +177,16 @@ export type TSkillDraftFile = {
 export const toDraftFiles = (files: TAgentVaultSkillFile[]): TSkillDraftFile[] =>
   sortSkillFiles(files).map((file) => ({ ...file, text: decodeSkillFile(file) }));
 
+/**
+ * A file whose text is unchanged keeps its original bytes, so a byte order mark or an encoding detail the editor
+ * doesn't show is not lost and the file doesn't appear changed.
+ */
 export const fromDraftFiles = (files: TSkillDraftFile[]): TAgentVaultSkillFile[] =>
   files.map(({ path, mode, text, contentBase64 }) =>
-    text === null ? { path, mode, contentBase64 } : { ...toSkillFile(path, text), mode }
+    text === null ||
+    (contentBase64 !== "" && decodeSkillFile({ path, mode, contentBase64 }) === text)
+      ? { path, mode, contentBase64 }
+      : { ...toSkillFile(path, text), mode }
   );
 
 export const newDraftFile = (path: string, text = ""): TSkillDraftFile => ({
@@ -210,6 +206,11 @@ const CONTROL_CHARS_RE = /[\x00-\x1f\x7f]/;
 const LONE_SURROGATE_RE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
 const WINDOWS_INVALID_CHARS_RE = /[:<>"|?*]/;
 const WINDOWS_DEVICE_NAME_RE = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?$/i;
+
+export const isReservedSkillName = (name: string) => WINDOWS_DEVICE_NAME_RE.test(name);
+
+export const getReservedSkillNameMessage = (name: string) =>
+  `'${name}' is a reserved name and can't be used as a skill name.`;
 
 /** Why the server would refuse a file path, or null. Mirrors assertValidPath in the backend's agent-vault-skill-fns.ts. */
 export const getSkillPathError = (path: string): string | null => {
@@ -333,43 +334,68 @@ export const removeSkillPath = <T extends string | { path: string }>(
   path: string
 ) => items.filter((item) => !isSameOrInside(typeof item === "string" ? item : item.path, path));
 
-const readYamlScalar = (raw: string) => {
-  const value = raw.trim();
-  if (value.startsWith('"')) {
-    try {
-      return JSON.parse(value) as string;
-    } catch {
-      return value.slice(1, value.endsWith('"') ? -1 : undefined);
-    }
+/**
+ * Reads a SKILL.md YAML header the way the server does, with js-yaml's JSON schema. Returns null when it is not valid
+ * YAML or not a list of `key: value` lines.
+ */
+export const parseSkillHeader = (frontmatter: string): Record<string, unknown> | null => {
+  let parsed: unknown;
+  try {
+    parsed = load(frontmatter, { schema: JSON_SCHEMA });
+  } catch {
+    return null;
   }
-  if (value.startsWith("'"))
-    return value.slice(1, value.endsWith("'") ? -1 : undefined).replace(/''/g, "'");
-  return value.replace(/\s+#.*$/, "");
+  if (parsed === undefined || parsed === null) return {};
+  if (typeof parsed !== "object" || Array.isArray(parsed)) return null;
+  return parsed as Record<string, unknown>;
 };
 
+/** A header value as a text field shows it: `12` as "12", and a missing or empty value as "". */
+export const getSkillHeaderText = (value: unknown) => {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return "";
+};
+
+/** Writes a header value plain when YAML reads it back as the same string, else as a double-quoted JSON string. */
+export const formatSkillHeaderValue = (value: string) => {
+  try {
+    if ((load(`v: ${value}`, { schema: JSON_SCHEMA }) as { v?: unknown } | null)?.v === value)
+      return value;
+  } catch {
+    // Not valid as a plain value, so it is quoted below.
+  }
+  return JSON.stringify(value);
+};
+
+const FRONTMATTER_RE = /^(---\r?\n)(?:([\s\S]*?)\r?\n)??(---[ \t]*(?:\r?\n|$))/;
+
 /**
- * Reads `name` and `description` from a SKILL.md YAML header written as plain `key: value` lines, quoted or folded.
- * Anything fancier is left to the server, which parses the header for real.
+ * Sets one top-level key in a SKILL.md header and leaves every other line of the file as it was. A value written over
+ * several indented lines is replaced as a whole. Adds the key when the header lacks it, and a header when there is none.
  */
-export const parseSkillHeader = (frontmatter: string) => {
-  const lines = frontmatter.split(/\r?\n/);
-  const result: { name?: string; description?: string } = {};
-  lines.forEach((line, index) => {
-    const match = /^(name|description):(.*)$/.exec(line);
-    if (!match) return;
-    const [, key, rest] = match;
-    const value = rest.trim();
-    if (/^[>|][-+]?$/.test(value)) {
-      const block: string[] = [];
-      for (let i = index + 1; i < lines.length && /^(\s|$)/.test(lines[i]); i += 1) {
-        block.push(lines[i].trim());
-      }
-      result[key as "name" | "description"] = block.join(value.startsWith(">") ? " " : "\n").trim();
-      return;
+export const setSkillHeaderValue = (text: string, key: string, value: string) => {
+  const entry = `${key}: ${formatSkillHeaderValue(value)}`;
+  const match = FRONTMATTER_RE.exec(text);
+  if (!match) return `---\n${entry}\n---\n\n${text}`;
+
+  const [whole, open, header, close] = match;
+  const eol = open.endsWith("\r\n") ? "\r\n" : "\n";
+  const lines = header === undefined ? [] : header.split(/\r?\n/);
+  const start = lines.findIndex(
+    (line) => line.startsWith(key) && /^[ \t]*:/.test(line.slice(key.length))
+  );
+  if (start === -1) {
+    lines.push(entry);
+  } else {
+    let end = start;
+    for (let i = start + 1; i < lines.length; i += 1) {
+      if (/^[ \t]/.test(lines[i])) end = i;
+      else if (lines[i].trim() !== "") break;
     }
-    result[key as "name" | "description"] = readYamlScalar(value);
-  });
-  return result;
+    lines.splice(start, end - start + 1, entry);
+  }
+  return `${open}${lines.join(eol)}${eol}${close}${text.slice(whole.length)}`;
 };
 
 const countLines = (text: string) => {
@@ -559,14 +585,15 @@ export const buildSkillZip = (folder: string, files: TAgentVaultSkillFile[]) =>
 
 /** Splits a leading YAML header off Markdown, so it can be shown apart from the rendered body. */
 export const splitFrontmatter = (text: string) => {
-  const match = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
+  const match = FRONTMATTER_RE.exec(text);
   if (!match) return { frontmatter: null, body: text };
-  return { frontmatter: match[1], body: text.slice(match[0].length) };
+  return { frontmatter: match[2] ?? "", body: text.slice(match[0].length) };
 };
 
 /** The name a SKILL.md's header gives, when its text has a header with one. */
 export const getSkillEntryName = (text: string | null | undefined) => {
   if (!text) return undefined;
   const { frontmatter } = splitFrontmatter(text);
-  return frontmatter === null ? undefined : parseSkillHeader(frontmatter).name || undefined;
+  const name = frontmatter === null ? undefined : parseSkillHeader(frontmatter)?.name;
+  return typeof name === "string" && name ? name : undefined;
 };
