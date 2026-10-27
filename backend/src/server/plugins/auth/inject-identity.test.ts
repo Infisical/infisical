@@ -98,7 +98,7 @@ describe("extractAuth — token from another instance", () => {
 
     // Still a JsonWebTokenError, so the error handler answers with the same 403 TokenError as before.
     await expect(attempt).rejects.toBeInstanceOf(jwt.JsonWebTokenError);
-    await expect(attempt).rejects.toThrow("not issued by this Infisical instance (US Cloud");
+    await expect(attempt).rejects.toThrow("may have been issued by a different Infisical instance: this is US Cloud");
   });
 
   test("other token errors keep the library message", async () => {

@@ -6,21 +6,23 @@ const CLOUD_REGIONS = {
 } as const;
 
 // jsonwebtoken reports a token signed with another key as a bare "invalid signature". On a Bearer token that
-// almost always means it was issued by another instance, most often the other Infisical Cloud region, and the
-// bare message gives no hint of that. Self-hosted and dedicated instances get no region advice, since it would
-// send their users somewhere their tokens never came from.
+// is most often a token from another instance, usually the other Infisical Cloud region, and the bare message
+// gives no hint of that. It can also be a token signed before this instance's secret changed, or an edited one,
+// so the message says "may". Self-hosted and dedicated instances get no region advice, since it would send their
+// users somewhere their tokens never came from.
 export const invalidSignatureMessage = (cfg: Pick<TEnvConfig, "INFISICAL_CLOUD" | "INTERNAL_REGION">) => {
-  const base = "The access token was not issued by this Infisical instance";
+  const base =
+    "The access token's signature could not be verified. It may have been issued by a different Infisical instance";
 
   if (!cfg.INFISICAL_CLOUD) {
-    return `${base}. Make sure you are sending it to the instance that issued it.`;
+    return `${base}.`;
   }
 
   if (cfg.INTERNAL_REGION) {
     const here = CLOUD_REGIONS[cfg.INTERNAL_REGION];
     const other = CLOUD_REGIONS[cfg.INTERNAL_REGION === "us" ? "eu" : "us"];
-    return `${base} (${here.name}, ${here.url}). If your organization is on ${other.name}, send it to ${other.url}.`;
+    return `${base}: this is ${here.name} (${here.url}); if your organization is on ${other.name}, use ${other.url}.`;
   }
 
-  return `${base}. Make sure you are sending it to the Infisical Cloud region that issued it (US: ${CLOUD_REGIONS.us.url}, EU: ${CLOUD_REGIONS.eu.url}).`;
+  return `${base}: if your organization is on Infisical Cloud, use the region that issued it (US: ${CLOUD_REGIONS.us.url}, EU: ${CLOUD_REGIONS.eu.url}).`;
 };
