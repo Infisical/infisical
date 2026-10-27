@@ -79,9 +79,9 @@ export const toOrgMembershipActors = ({
   ...[...new Set(identityIds)].map((actorId) => ({ actorType: ActorType.IDENTITY as const, actorId }))
 ];
 
-const emitAll = (eventEmitter: TEventEmitter, type: string, data: Record<string, unknown>[], tx?: Knex) =>
+const emitAll = (eventEmitter: TEventEmitter, type: string, payloads: Record<string, unknown>[], tx?: Knex) =>
   eventEmitter.emit(
-    data.map((eventData) => ({ id: crypto.randomUUID(), type, data: eventData })),
+    payloads.map((data): TEventInput => ({ id: crypto.randomUUID(), type, data })),
     tx
   );
 

@@ -8,6 +8,7 @@ import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-ap
 import { TAgentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
 import { TAgentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
 import { TAgentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
+import { TAgentVaultOauthServiceFactory } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-service";
 import { TAgentVaultPersonalValueServiceFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-service";
 import { TAgentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
 import { TAgentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
@@ -387,6 +388,7 @@ declare module "fastify" {
       secretScanningV2ProjectResolver: TSecretScanningV2ProjectResolverFactory;
       agentVaultProjectResolver: TAgentVaultProjectResolverFactory;
       agentVaultAccessBundle: TAgentVaultAccessBundleServiceFactory;
+      agentVaultOauth: TAgentVaultOauthServiceFactory;
       agentVaultVariable: TAgentVaultVariableServiceFactory;
       agentVaultPersonalValue: TAgentVaultPersonalValueServiceFactory;
       agentVaultProxy: TAgentVaultProxyServiceFactory;

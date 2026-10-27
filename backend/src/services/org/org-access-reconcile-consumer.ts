@@ -140,7 +140,7 @@ export const orgAccessReconcileConsumerFactory = ({
   };
 
   const $handleEvent = async (event: TEvent): Promise<TEventConsumerResult> => {
-    const id = String(event.id);
+    const { id } = event;
     let resolveScope: () => Promise<TReconcileScope>;
     try {
       resolveScope = $parseScope(event);

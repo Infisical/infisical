@@ -719,14 +719,22 @@
                       "documentation/platform/agent-vault/guides/openclaw-gateway"
                     ]
                   },
-                  "documentation/platform/agent-vault/guides/custom-agent"
+                  "documentation/platform/agent-vault/guides/custom-agent",
+                  "documentation/platform/agent-vault/guides/modal"
                 ]
               },
               {
                 "group": "Concepts",
                 "pages": [
                   "documentation/platform/agent-vault/access-bundles",
-                  "documentation/platform/agent-vault/services",
+                  {
+                    "group": "Services",
+                    "root": "documentation/platform/agent-vault/services",
+                    "pages": [
+                      "documentation/platform/agent-vault/http-apis",
+                      "documentation/platform/agent-vault/mcp-servers"
+                    ]
+                  },
                   "documentation/platform/agent-vault/variables",
                   {
                     "group": "Sessions",

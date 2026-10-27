@@ -4522,6 +4522,29 @@ export const AGENT_VAULT = {
   SERVICE: {
     serviceId: "The ID of the service.",
     name: "The name of the service.",
+    type: "The service type: `http` for an HTTP API, or `mcp` for a remote MCP server. Can't be changed after the service is created.",
+    updateType: "The service's type, `http` or `mcp`. Must match the type the service was created with.",
+    serverUrlRead: "The MCP server's full URL. Null for an `http` service.",
+    transportRead:
+      "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport. Null for an `http` service.",
+    serverUrl:
+      "The MCP server's URL, such as `https://mcp.example.com/mcp`. Must use `https`, with no username, password, query string or fragment.",
+    transport: "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport.",
+    mcpCredential:
+      "The credential the proxy attaches to requests to the MCP server, a bearer token. To use OAuth instead, connect the service in the Infisical UI.",
+    authorizationId:
+      "The ID of a completed OAuth authorization for this service's server URL, started by the same user. Each authorization can be used once.",
+    updateAuthorizationId:
+      "The ID of a completed OAuth authorization, to reauthorize the service or switch it to OAuth. To keep the stored tokens, leave `credential` out.",
+    oauthStatus:
+      "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the MCP server asked for scopes the connection lacks).",
+    oauthIssuer: "The OAuth authorization server that issued the tokens.",
+    oauthGrantedScopes: "The scopes the authorization server granted.",
+    oauthRequiredScopes: "Scopes the MCP server asked for that the connection lacks. Reauthorize to request them.",
+    oauthExpiresAt:
+      "When the current access token expires, or null if the server didn't say. Not returned to Agent Vault members.",
+    oauthAuthorizedAt: "When the connection was last authorized. Not returned to Agent Vault members.",
+    oauthLastError: "The last refresh failure, if any. Never contains a token. Not returned to Agent Vault members.",
     hostPattern:
       "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). A leading `*.` wildcard matches exactly one label. Paths are not supported.",
     headerName: "The header the credential is written to. Defaults to `Authorization`.",
@@ -4587,6 +4610,43 @@ export const AGENT_VAULT = {
     values:
       "The values to set, at most one per field the service leaves to its members. A field you leave out keeps its saved value, so after a field becomes member provided you only need to send that one.",
     value: `The value. Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to your personal variables, written as \`{{KEY}}\`. Never returned once saved.`
+  },
+  OAUTH: {
+    authorization: "The OAuth authorization, or null when an OAuth client must be registered first.",
+    authorizationId: "The ID of the OAuth authorization.",
+    accessBundleId: "The access bundle the service is in, or will be created in.",
+    serverUrl: "The MCP server's URL. Must match the server URL of the service the authorization is saved to.",
+    serviceId:
+      "The ID of the MCP service to reauthorize. Leave it out when connecting a new service. When set, the sign-in asks for the scopes the service already has, and can only be saved to that service.",
+    clientId:
+      "The client ID of your own OAuth app, for a server that doesn't support dynamic client registration. Register the app with the redirect URI `<your Infisical URL>/agent-vault/oauth/callback`.",
+    clientSecret: "The client secret of your own OAuth app, if it has one.",
+    registration:
+      "Send `dynamic` to register a new client with the server, even when the service being reauthorized uses your own OAuth app.",
+    registrationRequired:
+      "True when the server can't register Infisical as a client by itself, or refused to. Send `clientId` (and `clientSecret`) of your own OAuth app.",
+    redirectUri:
+      "The redirect URI Infisical sends to the authorization server. Register your own OAuth app with this exact value.",
+    oauthAdvertised:
+      "False when the MCP server answered but sent no OAuth challenge and serves no OAuth metadata. The server URL may be wrong; a server that does use OAuth can still be connected with your own client ID and secret.",
+    status: "`pending` until the authorization server redirects back, then `authorized` or `failed`.",
+    error: "Why the authorization failed, when it did.",
+    scopes: "The scopes requested, or once authorized, the scopes granted.",
+    authorizeUrl: "Open this URL in the browser to sign in to the authorization server.",
+    state: "The `state` value from the redirect.",
+    code: "The `code` value from the redirect.",
+    iss: "The `iss` value from the redirect, when the authorization server sends one.",
+    callbackError: "The `error` value from the redirect, when the authorization server sends one instead of a code.",
+    callbackErrorDescription: "The `error_description` value from the redirect."
+  },
+  CREDENTIAL_REFRESH: {
+    hostPattern: "The host pattern cached by the proxy for this service. A changed pattern returns 409.",
+    rejectedTokenHash: "The hex SHA-256 hash of the access token the MCP server rejected.",
+    requiredScopes: "The scopes requested by an insufficient_scope challenge from the MCP server.",
+    credential: "The current bearer credential for the service.",
+    credentialType: "The credential shape the proxy injects into requests.",
+    value: "The access token to attach to requests. Never expose it to the agent.",
+    source: "Set to oauth when the proxy can request an OAuth token refresh."
   },
   VARIABLE: {
     variableId: "The ID of the variable.",

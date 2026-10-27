@@ -6569,8 +6569,15 @@ interface AgentVaultServiceCreateEvent {
     accessBundleName: string;
     serviceId: string;
     name: string;
+    serviceType: string;
+    // MCP services only.
+    serverUrl?: string;
+    transport?: string;
     hostPattern: string;
     credentialType: string;
+    // OAuth credentials only.
+    oauthIssuer?: string;
+    oauthScopes?: string[];
     headerName?: string;
     headerPrefix?: string;
     allowedMethods?: string[] | null;
@@ -6591,8 +6598,15 @@ interface AgentVaultServiceUpdateEvent {
     accessBundleName: string;
     serviceId: string;
     name?: string;
+    // The service's type, which never changes, so present on every update.
+    serviceType: string;
+    serverUrl?: string;
+    transport?: string;
     hostPattern?: string;
     credentialType?: string;
+    // Present when the update connected or reauthorized an OAuth credential.
+    oauthIssuer?: string;
+    oauthScopes?: string[];
     headerName?: string;
     headerPrefix?: string;
     allowedMethods?: string[] | null;
