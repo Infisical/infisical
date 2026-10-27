@@ -300,6 +300,7 @@ export const RelayTab = withPermission(
             </Table>
           )}
           <AlertDialog
+            isPending={deleteRelayById.isPending}
             open={popUp.deleteRelay.isOpen}
             confirmationValue={(popUp.deleteRelay.data as { name?: string })?.name || "relay"}
             onOpenChange={(open) => handlePopUpToggle("deleteRelay", open)}
@@ -320,10 +321,9 @@ export const RelayTab = withPermission(
                 <AlertDescription>Deleting this relay cannot be undone.</AlertDescription>
               </Alert>
               <AlertDialogFooter>
-                <AlertDialogCancel isDisabled={deleteRelayById.isPending}>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   variant="danger"
-                  isPending={deleteRelayById.isPending}
                   onClick={(event) => {
                     event.preventDefault();
                     handleDeleteRelay();

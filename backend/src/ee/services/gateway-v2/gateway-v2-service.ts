@@ -1057,6 +1057,7 @@ export const gatewayV2ServiceFactory = ({
       pkcs11?: boolean;
       sessionLogMaskingBuiltInDetection?: boolean;
       clickhouseNativeProtocol?: boolean;
+      certificateScan?: boolean;
       supported_account_types?: string[];
     };
   }) => {

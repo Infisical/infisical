@@ -86,6 +86,9 @@ export const mockKeyStore = (): TKeyStoreFactory => {
     incrementByAndRefreshExpiryIfUnderLimit: async () => {
       return 1;
     },
+    incrementByIfUnderLimitWithFixedExpiry: async (_key, value) => {
+      return value;
+    },
     claimLeastLoaded: async (keys, baseOccupancies) => {
       if (keys.length === 0) return 0;
       if (keys.length !== baseOccupancies.length) {

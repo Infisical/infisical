@@ -215,7 +215,7 @@ export const assertUserStillActiveInOrg = async ({
   orgId: string;
   userId: string;
   membershipDAL: Pick<TMembershipDALFactory, "lockOrgMembershipForUser">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   tx: Knex;
 }) => {
   const org = await orgDAL.findById(orgId, tx);
@@ -224,7 +224,16 @@ export const assertUserStillActiveInOrg = async ({
 
   for await (const id of orgIds) {
     const membership = await membershipDAL.lockOrgMembershipForUser(id, userId, tx);
-    if (!membership || !membership.isActive) {
+    let isActive = Boolean(membership?.isActive);
+    if (!membership) {
+      await orgDAL.lockActorsForOrgAccess({ orgId: id, actorIds: [userId] }, tx);
+      const withAccess = await orgDAL.findActorsWithActiveOrgAccess(
+        { orgId: id, userIds: [userId], identityIds: [] },
+        tx
+      );
+      isActive = withAccess.userIds.has(userId);
+    }
+    if (!isActive) {
       throw new ForbiddenRequestError({
         message: "Your organization membership is no longer active. Contact an organization admin to restore access."
       });

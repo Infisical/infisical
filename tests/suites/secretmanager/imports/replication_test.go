@@ -149,6 +149,32 @@ func TestSecretReplication_Copy(t *testing.T) {
 		require.Equal(t, map[string][]string{"KEPT": {"value"}}, importedValues(importedSecrets(t, tn.Admin, proj, "dev", "/")))
 	})
 
+	t.Run("should replicate the source's own value of a key it also imports, once", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateFolder(t, proj, "staging", "/upstream")
+		secretmanager.CreateFolder(t, proj, "staging", "/source")
+		secretmanager.CreateSecret(t, proj, "staging", "OVERLAP_KEY", "upstream-value", secretmanager.WithPath("/upstream"))
+		secretmanager.CreateSecret(t, proj, "staging", "UPSTREAM_ONLY_KEY", "upstream-only-value", secretmanager.WithPath("/upstream"))
+		secretmanager.CreateSecret(t, proj, "staging", "OVERLAP_KEY", "source-value", secretmanager.WithPath("/source"))
+		secretmanager.CreateImport(t, proj, "staging", secretmanager.Location{Env: "staging", Path: "/upstream"},
+			secretmanager.IntoPath("/source"))
+
+		// Action
+		devImport := secretmanager.CreateImport(t, proj, "dev", secretmanager.Location{Env: "staging", Path: "/source"},
+			secretmanager.Replicated())
+
+		// Assert
+		waitReplicated(t, proj, "dev", "/", devImport, time.Time{})
+		require.Equal(t, map[string][]string{
+			"OVERLAP_KEY":       {"source-value"},
+			"UPSTREAM_ONLY_KEY": {"upstream-only-value"},
+		}, importedValues(importedSecrets(t, tn.Admin, proj, "dev", "/")))
+	})
+
 	t.Run("should open a change request instead of writing when the replica path has a policy", func(t *testing.T) {
 		t.Parallel()
 

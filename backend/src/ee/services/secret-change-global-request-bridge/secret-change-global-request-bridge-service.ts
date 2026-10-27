@@ -607,7 +607,8 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    bypassReason
+    bypassReason,
+    requireApprovals
   }) => {
     const { approvalRequest, secretChangeRequest } = await $findSecretChangeRequestOrThrow(approvalId);
     if (actor !== ActorType.USER) throw new BadRequestError({ message: "Must be a user" });
@@ -647,7 +648,7 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
       $resolveMergeBypass({
         unmetStep: $findUnmetStep(requestSteps, eligibleByStepId),
         slug: secretChangeRequest.slug,
-        isSoftEnforcement,
+        isSoftEnforcement: isSoftEnforcement && !requireApprovals,
         canBypass,
         bypassReason
       });
@@ -656,6 +657,11 @@ export const secretChangeGlobalRequestBridgeServiceFactory = ({
     const project = await projectDAL.findById(projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
     const folder = await findMergedFolder(projectId, secretChangeRequest.folderId);
+    if (!policy.environments.some((env) => env.id === folder.envId)) {
+      throw new BadRequestError({
+        message: "The policy associated with this secret approval request is not linked to the environment."
+      });
+    }
     const commits = await secretApprovalRequestSecretDAL.findBySecretChangeIdBridgeSecretV2(secretChangeRequest.id);
     const { conflicts, creates, updates, deletes } = await detectSecretApprovalCommitConflicts({
       folderId: folder.id,

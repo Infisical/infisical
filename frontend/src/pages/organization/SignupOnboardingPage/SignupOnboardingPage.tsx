@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
@@ -17,11 +16,13 @@ import {
   getSignupTrialProjectType
 } from "@app/components/auth/signupTrialIntent";
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
+import { PageTitle } from "@app/components/PageTitle";
 import { PageLoader } from "@app/components/v3";
 import { useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
+import { analytics } from "@app/lib/analytics";
 
 enum OnboardingSection {
   Loading = "loading",
@@ -194,11 +195,10 @@ export const SignupOnboardingPage = () => {
       variant={isWorkspaceSetup ? "focused" : "split"}
       contentClassName={isWorkspaceSetup ? "max-w-3xl" : undefined}
       bottomContent={section === OnboardingSection.OrgName ? <AuthTermsNotice /> : undefined}
+      onDocumentationClick={analytics.captureOnboardingDocumentationClicked}
     >
-      <Helmet>
-        <title>{t("common.head-title", { title: t("signup.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={t("page-titles.organization-setup")} />
+      <link rel="icon" href="/infisical.ico" />
       <OnboardingStepTransition step={section}>{renderView()}</OnboardingStepTransition>
     </AuthPageLayout>
   );

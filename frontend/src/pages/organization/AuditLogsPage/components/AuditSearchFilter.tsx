@@ -88,7 +88,7 @@ const PRODUCT_FILTER_KEYS: Partial<Record<ProjectType, string[]>> = {
 // Per-product example hints for the free-text event filter (products not listed use the default)
 const PRODUCT_EVENT_HINTS: Partial<Record<ProjectType, string>> = {
   [ProjectType.PAM]: "pam-account-access, pam-session-start, ...",
-  [ProjectType.AgentVault]: "agent-vault-session-mint, agent-vault-proxy-enroll, ..."
+  [ProjectType.AgentVault]: "agent-vault-session-mint, agent-vault-proxy-token-rotate, ..."
 };
 
 const getProductFilterProperties = (projectType?: ProjectType) => {

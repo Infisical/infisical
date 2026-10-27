@@ -13,13 +13,13 @@ import {
   AlertDescription,
   Button,
   Checkbox,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   GatewayPicker,
   Input,
   Select,
@@ -545,20 +545,20 @@ export const IdentityKubernetesAuthForm = ({
                 render={({ field: { onChange }, fieldState: { error } }) => (
                   <Field>
                     <FieldLabel htmlFor="kubernetes-configuration">Configuration</FieldLabel>
-                    <FilterableSelect<ConfigurationOption>
-                      inputId="kubernetes-configuration"
+                    <Combobox<ConfigurationOption>
+                      id="kubernetes-configuration"
                       value={selectedConfiguration}
                       options={configurationOptions}
-                      groupBy="group"
+                      includeMissingSelectedOptions={false}
+                      getOptionGroup={(option) => option.group}
                       getOptionLabel={(option) => option.label}
                       getOptionValue={(option) => option.value}
                       placeholder="Select or search configurations..."
+                      searchAriaLabel="Search configurations"
                       isLoading={isTemplatesLoading}
                       isError={Boolean(error || errors.templateId)}
-                      onChange={(option) => {
-                        const selectedOption = option as ConfigurationOption | null;
-                        if (!selectedOption) return;
-
+                      isClearable={false}
+                      onValueChange={(selectedOption) => {
                         if (selectedOption.value === "custom") {
                           onChange("custom");
                           setValue("templateId", "");

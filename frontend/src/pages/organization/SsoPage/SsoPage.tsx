@@ -1,6 +1,6 @@
-import { Helmet } from "react-helmet";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
@@ -33,11 +33,9 @@ export const SsoPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Infisical | SSO & Provisioning</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      <PageTitle title="SSO & Provisioning" />
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
       <div className="flex w-full justify-center bg-page text-foreground-inverse">
         <div className="flex w-full max-w-8xl flex-col">
           <PageHeader
