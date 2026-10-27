@@ -1325,7 +1325,7 @@ For an agent on your own computer, [infisical sm agent-proxy run](/cli/reference
 
 Launch an agent that sends its requests through an agent proxy on another host, started with [infisical sm agent-proxy start](/cli/reference#sm-agent-proxy-start). See [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
 
-The command authenticates as the agent's machine identity, with `--client-id` and `--client-secret` or a token. It doesn't use your login. It then starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the variables that make the agent's HTTP clients trust your organization's root certificate. See [what `connect` puts in the agent's environment](/documentation/platform/agent-proxy/standalone-agent-proxy#what-connect-puts-in-the-agents-environment).
+The command authenticates as the agent's machine identity, with `--client-id` and `--client-secret` or a token. It doesn't use your login. It then starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the variables that make the agent's HTTP clients trust your organization's root certificate. See [what `connect` puts in the agent's environment](/documentation/platform/agent-proxy/standalone-agent-proxy#what-connect-puts-in-the-agent’s-environment).
 
 If the agent can read a secret or lease a dynamic secret that a proxied service brokers to it, the command refuses to start, because the agent would get the real value and bypass the proxy.
 
