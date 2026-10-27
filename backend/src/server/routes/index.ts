@@ -361,6 +361,7 @@ import { delegatedApprovalServiceFactory } from "@app/services/delegated-approva
 import { delegatedApprovalDispatchConsumerFactory } from "@app/services/delegated-approval/dispatch/delegated-approval-dispatch-consumer";
 import { delegatedApprovalCallbackServiceFactory } from "@app/services/delegated-approval-callback/delegated-approval-callback-service";
 import { delegatedApprovalDecisionConsumerFactory } from "@app/services/delegated-approval-decision/delegated-approval-decision-consumer";
+import { delegatedApprovalDecisionMapsFactory } from "@app/services/delegated-approval-decision/delegated-approval-decision-maps";
 import { delegatedApprovalDecisionServiceFactory } from "@app/services/delegated-approval-decision/delegated-approval-decision-service";
 import { encryptionKeyRotationServiceFactory } from "@app/services/encryption-key-rotation/encryption-key-rotation-service";
 import { acmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
@@ -3298,6 +3299,11 @@ export const registerRoutes = async (
     secretAccessApprovalGlobalResource
   });
 
+  const delegatedApprovalDecisionMaps = delegatedApprovalDecisionMapsFactory({
+    secretAccessApprovalGlobalResource,
+    secretAccessApprovalGlobalRequestBridgeService
+  });
+
   const delegatedApprovalDecisionService = delegatedApprovalDecisionServiceFactory({
     delegatedApprovalRequestDAL,
     delegatedApprovalPolicyDAL,
@@ -3307,12 +3313,7 @@ export const registerRoutes = async (
     membershipDAL,
     kmsService,
     auditLogService,
-    approvalResources: { [ApprovalPolicyType.SecretAccess]: secretAccessApprovalGlobalResource },
-    decisionNotifiers: {
-      // maybe we can have it in a better place
-      [ApprovalPolicyType.SecretAccess]: ({ approvalRequestId }) =>
-        secretAccessApprovalGlobalRequestBridgeService.notifyDelegatedDecision({ requestId: approvalRequestId })
-    }
+    ...delegatedApprovalDecisionMaps
   });
   eventOutboxRegistry.register(delegatedApprovalDecisionConsumerFactory({ delegatedApprovalDecisionService }));
 

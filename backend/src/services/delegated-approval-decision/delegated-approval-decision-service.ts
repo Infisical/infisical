@@ -409,19 +409,17 @@ export const delegatedApprovalDecisionServiceFactory = ({
       );
       return $retryLater(delegatedRequestId, message, isFinalAttempt);
     }
-    if (finalized.kind === "applied") {
-      const notify = isDelegatedApprovalSupportedPolicyType(approvalRequest.type)
-        ? decisionNotifiers[approvalRequest.type]
-        : undefined;
-      if (notify) {
-        try {
-          await notify({ approvalRequestId: approvalRequest.id, decision: decided.decision });
-        } catch (error) {
-          logger.error(
-            error,
-            `Failed to notify about the delegated approval decision [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequest.id}]`
-          );
-        }
+    if (finalized.kind === "applied" && isDelegatedApprovalSupportedPolicyType(approvalRequest.type)) {
+      try {
+        await decisionNotifiers[approvalRequest.type]({
+          approvalRequestId: approvalRequest.id,
+          decision: decided.decision
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to notify about the delegated approval decision [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequest.id}]`
+        );
       }
     }
     return { status: EventResultStatus.Delivered };

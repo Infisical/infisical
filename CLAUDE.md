@@ -230,7 +230,9 @@ paths: removing a member reaps only the privileges that already exist, so one wr
 effect if the user were ever added back. Every outcome is audited as
 `ACCESS_APPROVAL_REQUEST_DELEGATED_DECISION` with the `PLATFORM` actor, and
 product notifications (the access request webhook) go through `decisionNotifiers`, never through the
-consumer itself. ServiceNow stamps an immutable `decision` on its record before it posts the callback, so
+consumer itself. A new delegated policy type adds its `postApprovalTxRoutine` and decision notifier in
+`delegatedApprovalDecisionMapsFactory`, the same way dispatch details get a builder in
+`DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP`. ServiceNow stamps an immutable `decision` on its record before it posts the callback, so
 the provider reads that field alone and ignores `state`.
 
 ### Object Storage
