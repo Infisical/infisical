@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
 import { PackageIcon, TriangleAlertIcon } from "lucide-react";
 import ms from "ms";
+import { z } from "zod";
 
 import { PersonalValuesDialog } from "@app/components/agent-vault/PersonalValuesDialog";
 import { ServiceIcon } from "@app/components/agent-vault/ServiceIconStack";
@@ -43,6 +46,8 @@ import {
   TAgentVaultService
 } from "@app/hooks/api/agentVault/types";
 
+import { sessionLabelSchema } from "./sessionLabelSchema";
+
 const NEVER_TTL = "never";
 const CUSTOM_TTL = "custom";
 
@@ -55,8 +60,6 @@ const TTL_PRESETS = [
   { value: CUSTOM_TTL, label: "Custom" }
 ];
 const DEFAULT_TTL_PRESET = "7d";
-
-const MAX_LABEL_LENGTH = 128;
 
 const MIN_TTL_MS = 60 * 1000;
 // Mirrors the API's ceiling: past it the expiry overflows and the request fails with a 500.
@@ -74,6 +77,36 @@ const getCustomTtlError = (value: string) => {
   if (parsed < MIN_TTL_MS) return "At least 1 minute.";
   if (parsed > MAX_TTL_MS) return "At most 100 years. Pick Never for no expiry.";
   return null;
+};
+
+const schema = z
+  .object({
+    accessBundle: z.custom<TAgentVaultAccessBundleListItem | null>(),
+    label: sessionLabelSchema,
+    ttlPreset: z.string(),
+    customTtl: z.string()
+  })
+  .superRefine((data, ctx) => {
+    if (!data.accessBundle) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["accessBundle"],
+        message: "Pick an access bundle."
+      });
+    }
+    if (data.ttlPreset === CUSTOM_TTL) {
+      const error = getCustomTtlError(data.customTtl);
+      if (error) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["customTtl"], message: error });
+    }
+  });
+
+type FormData = z.infer<typeof schema>;
+
+const DEFAULT_VALUES: FormData = {
+  accessBundle: null,
+  label: "",
+  ttlPreset: DEFAULT_TTL_PRESET,
+  customTtl: ""
 };
 
 type Props = {
@@ -94,9 +127,16 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
   });
   const createSession = useCreateAgentVaultSession();
 
-  const [selectedBundle, setSelectedBundle] = useState<TAgentVaultAccessBundleListItem | null>(
-    null
-  );
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { isSubmitting }
+  } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: DEFAULT_VALUES });
+  const selectedBundle = watch("accessBundle");
+  const ttlPreset = watch("ttlPreset");
+
   const { data: selectedBundleDetails } = useGetAgentVaultAccessBundle(selectedBundle?.id ?? "");
   const needsSetup =
     selectedBundle && selectedBundleDetails?.id === selectedBundle.id
@@ -108,35 +148,21 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
   const shownNeedsSetup = needsSetup.length > 4 ? needsSetup.slice(0, 3) : needsSetup;
   const hiddenNeedsSetupCount = needsSetup.length - shownNeedsSetup.length;
   const [serviceToSetUp, setServiceToSetUp] = useState<TAgentVaultService | null>(null);
-  const [label, setLabel] = useState("");
-  const [ttlPreset, setTtlPreset] = useState(DEFAULT_TTL_PRESET);
-  const [customTtl, setCustomTtl] = useState("");
-  const customTtlInputRef = useRef<HTMLInputElement>(null);
+  const customTtlInputRef = useRef<HTMLInputElement | null>(null);
   const shouldFocusCustomTtlRef = useRef(false);
 
-  const isCustomTtl = ttlPreset === CUSTOM_TTL;
-  const ttl = isCustomTtl ? customTtl.trim() : ttlPreset;
-  const customTtlError = isCustomTtl ? getCustomTtlError(customTtl) : null;
-  const isTtlValid = customTtlError === null;
-  const visibleTtlError = customTtl.length > 0 ? customTtlError : null;
-
   useEffect(() => {
-    if (isOpen) {
-      setSelectedBundle(null);
-      setLabel("");
-      setTtlPreset(DEFAULT_TTL_PRESET);
-      setCustomTtl("");
-    }
-  }, [isOpen]);
+    if (isOpen) reset(DEFAULT_VALUES);
+  }, [isOpen, reset]);
 
-  const handleCreate = async () => {
-    if (!selectedBundle) return;
+  const onSubmit = async ({ accessBundle, label, ttlPreset: preset, customTtl }: FormData) => {
+    if (!accessBundle) return;
 
     try {
       const session = await createSession.mutateAsync({
-        accessBundles: [selectedBundle.name],
-        ttl,
-        label: label.trim() || undefined
+        accessBundles: [accessBundle.name],
+        ttl: preset === CUSTOM_TTL ? customTtl.trim() : preset,
+        label: label || undefined
       });
       createNotification({ text: "Session created", type: "success" });
       onCreated(session);
@@ -157,98 +183,126 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4">
-          <Field>
-            <FieldLabel htmlFor="agent-vault-session-bundle">Access Bundle</FieldLabel>
-            <FieldContent>
-              <Combobox
-                id="agent-vault-session-bundle"
-                options={accessBundles?.accessBundles ?? []}
-                value={selectedBundle}
-                shouldFilter={false}
-                isLoading={isSearchingBundles}
-                includeMissingSelectedOptions
-                onInputValueChange={setBundleSearch}
-                getOptionValue={(bundle) => bundle.id}
-                getOptionLabel={(bundle) => bundle.name}
-                placeholder="Pick an access bundle"
-                searchPlaceholder="Search access bundles..."
-                emptyMessage="No access bundle matches."
-                modal
-                renderOption={(bundle) => (
-                  <span className="flex min-w-0 items-center gap-2">
-                    <PackageIcon className="size-4 shrink-0 text-muted" />
-                    <span className="truncate">{bundle.name}</span>
-                  </span>
-                )}
-                renderValue={(bundle) => (
-                  <span className="flex min-w-0 items-center gap-2">
-                    <PackageIcon className="size-4 shrink-0 text-muted" />
-                    <span className="truncate">{bundle.name}</span>
-                  </span>
-                )}
-                onValueChange={setSelectedBundle}
-                onClear={() => setSelectedBundle(null)}
-              />
-            </FieldContent>
-          </Field>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+          <Controller
+            control={control}
+            name="accessBundle"
+            render={({ field }) => (
+              <Field>
+                <FieldLabel htmlFor="agent-vault-session-bundle">Access Bundle</FieldLabel>
+                <FieldContent>
+                  <Combobox
+                    id="agent-vault-session-bundle"
+                    options={accessBundles?.accessBundles ?? []}
+                    value={field.value}
+                    shouldFilter={false}
+                    isLoading={isSearchingBundles}
+                    includeMissingSelectedOptions
+                    onInputValueChange={setBundleSearch}
+                    getOptionValue={(bundle) => bundle.id}
+                    getOptionLabel={(bundle) => bundle.name}
+                    placeholder="Pick an access bundle"
+                    searchPlaceholder="Search access bundles..."
+                    emptyMessage="No access bundle matches."
+                    modal
+                    renderOption={(bundle) => (
+                      <span className="flex min-w-0 items-center gap-2">
+                        <PackageIcon className="size-4 shrink-0 text-muted" />
+                        <span className="truncate">{bundle.name}</span>
+                      </span>
+                    )}
+                    renderValue={(bundle) => (
+                      <span className="flex min-w-0 items-center gap-2">
+                        <PackageIcon className="size-4 shrink-0 text-muted" />
+                        <span className="truncate">{bundle.name}</span>
+                      </span>
+                    )}
+                    onValueChange={field.onChange}
+                    onClear={() => field.onChange(null)}
+                  />
+                </FieldContent>
+              </Field>
+            )}
+          />
 
-          <Field>
-            <FieldLabel htmlFor="agent-vault-session-label">Label</FieldLabel>
-            <FieldContent>
-              <Input
-                id="agent-vault-session-label"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                maxLength={MAX_LABEL_LENGTH}
-                placeholder="Nightly deploy"
-              />
-              <FieldDescription>Optional. Describes what this session is for.</FieldDescription>
-            </FieldContent>
-          </Field>
+          <Controller
+            control={control}
+            name="label"
+            render={({ field, fieldState }) => (
+              <Field>
+                <FieldLabel htmlFor="agent-vault-session-label">
+                  Label <span className="text-muted">(optional)</span>
+                </FieldLabel>
+                <FieldContent>
+                  <Input
+                    {...field}
+                    id="agent-vault-session-label"
+                    placeholder="Nightly deploy"
+                    isError={Boolean(fieldState.error)}
+                  />
+                  <FieldDescription>Describes what this session is for.</FieldDescription>
+                  <FieldError>{fieldState.error?.message}</FieldError>
+                </FieldContent>
+              </Field>
+            )}
+          />
 
           <Field>
             <FieldLabel>Expires</FieldLabel>
             <FieldContent>
-              <Select
-                value={ttlPreset}
-                onValueChange={(value) => {
-                  shouldFocusCustomTtlRef.current = value === CUSTOM_TTL;
-                  setTtlPreset(value);
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent
-                  position="popper"
-                  onCloseAutoFocus={(e) => {
-                    if (!shouldFocusCustomTtlRef.current) return;
-                    shouldFocusCustomTtlRef.current = false;
-                    e.preventDefault();
-                    customTtlInputRef.current?.focus();
-                  }}
-                >
-                  {TTL_PRESETS.map((preset) => (
-                    <SelectItem key={preset.value} value={preset.value}>
-                      {preset.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {isCustomTtl && (
-                <>
-                  <Input
-                    ref={customTtlInputRef}
-                    className="mt-2"
-                    value={customTtl}
-                    onChange={(e) => setCustomTtl(e.target.value)}
-                    placeholder="90m"
-                    isError={visibleTtlError !== null}
-                  />
-                  <FieldDescription>A duration such as 30m, 8h, or 7d.</FieldDescription>
-                  <FieldError>{visibleTtlError}</FieldError>
-                </>
+              <Controller
+                control={control}
+                name="ttlPreset"
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={(value) => {
+                      shouldFocusCustomTtlRef.current = value === CUSTOM_TTL;
+                      field.onChange(value);
+                    }}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent
+                      position="popper"
+                      onCloseAutoFocus={(e) => {
+                        if (!shouldFocusCustomTtlRef.current) return;
+                        shouldFocusCustomTtlRef.current = false;
+                        e.preventDefault();
+                        customTtlInputRef.current?.focus();
+                      }}
+                    >
+                      {TTL_PRESETS.map((preset) => (
+                        <SelectItem key={preset.value} value={preset.value}>
+                          {preset.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {ttlPreset === CUSTOM_TTL && (
+                <Controller
+                  control={control}
+                  name="customTtl"
+                  render={({ field, fieldState }) => (
+                    <>
+                      <Input
+                        {...field}
+                        ref={(el) => {
+                          field.ref(el);
+                          customTtlInputRef.current = el;
+                        }}
+                        className="mt-2"
+                        placeholder="90m"
+                        isError={Boolean(fieldState.error)}
+                      />
+                      <FieldDescription>A duration such as 30m, 8h, or 7d.</FieldDescription>
+                      <FieldError>{fieldState.error?.message}</FieldError>
+                    </>
+                  )}
+                />
               )}
               {ttlPreset === NEVER_TTL && (
                 <FieldDescription>This session runs until someone revokes it.</FieldDescription>
@@ -303,21 +357,20 @@ export const CreateSessionDialog = ({ isOpen, onOpenChange, onCreated }: Props) 
               </AlertDescription>
             </Alert>
           )}
-        </div>
-
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="av"
-            isDisabled={!selectedBundle || !isTtlValid}
-            isPending={createSession.isPending}
-            onClick={async () => handleCreate()}
-          >
-            Create Session
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="av"
+              isDisabled={!selectedBundle}
+              isPending={isSubmitting}
+            >
+              Create Session
+            </Button>
+          </DialogFooter>
+        </form>
 
         <PersonalValuesDialog
           target={

@@ -21,7 +21,7 @@ agent-vault-access-bundle/   bundles, services, credential encryption, grants
 agent-vault-variable/        global and personal variables and the reads behind Used By
 agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-personal-value/  each actor's own values for the fields a service leaves to members
-agent-vault-session/         mint, revoke, list, get
+agent-vault-session/         mint, revoke, list, get, edit label
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
 agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve
 agent-vault-session-log/     storage settings, chunk ingest, playback

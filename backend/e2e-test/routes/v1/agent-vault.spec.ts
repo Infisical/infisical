@@ -3700,6 +3700,78 @@ describe("Agent Vault V1 Router", async () => {
       expect(withNewline.statusCode).toBe(422);
     });
 
+    test("a label that would read differently from what is stored is rejected", async () => {
+      const bundle = await createAccessBundle(`session-label-chars-${Date.now()}`);
+      const mint = (label: unknown) =>
+        inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h", label });
+
+      const rejected = {
+        tab: "a\tb",
+        zeroWidthSpace: "​",
+        rightToLeftOverride: "revo ‮ltr",
+        lineSeparator: "a b",
+        paragraphSeparator: "a b",
+        c1Control: "a\u0085b",
+        privateUse: "ab",
+        loneSurrogate: "a\ud800b"
+      };
+      for await (const [name, label] of Object.entries(rejected)) {
+        const res = await mint(label);
+        expect(res.statusCode, name).toBe(422);
+        expect(JSON.stringify(res.json().message), name).toContain("invisible characters");
+      }
+
+      for await (const label of ["PR #123 (prod): café, 部署", "ship it 🚀"]) {
+        const res = await mint(label);
+        expect(res.statusCode).toBe(200);
+        expect(res.json().session.label).toBe(label);
+      }
+
+      const explicitNull = await mint(null);
+      expect(explicitNull.statusCode).toBe(200);
+      expect(explicitNull.json().session.label).toBeNull();
+
+      const blank = await mint("   ");
+      expect(blank.json().session.label).toBeNull();
+    });
+
+    test("a label can be changed or removed later, only by someone who can see the session", async () => {
+      const bundle = await createAccessBundle(`session-label-edit-${Date.now()}`);
+      const mint = await inject("POST", "/api/v1/agent-vault/sessions", { accessBundles: [bundle.name], ttl: "1h" });
+      const { id } = mint.json().session as { id: string };
+
+      const set = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { label: "  first pass  " });
+      expect(set.statusCode).toBe(200);
+      expect(set.json().session).toMatchObject({ id, label: "first pass", status: "active" });
+      expect((await inject("GET", `/api/v1/agent-vault/sessions/${id}`)).json().session.label).toBe("first pass");
+
+      // The label is the only field, so leaving it out must not read as clearing it.
+      expect((await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, {})).statusCode).toBe(422);
+      expect((await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { label: "a​b" })).statusCode).toBe(
+        422
+      );
+      expect((await inject("GET", `/api/v1/agent-vault/sessions/${id}`)).json().session.label).toBe("first pass");
+
+      const cleared = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { label: null });
+      expect(cleared.statusCode).toBe(200);
+      expect(cleared.json().session.label).toBeNull();
+
+      // A revoked session can still be labelled, for whoever reads it afterwards.
+      expect((await inject("POST", `/api/v1/agent-vault/sessions/${id}/revoke`)).statusCode).toBe(200);
+      const afterRevoke = await inject("PATCH", `/api/v1/agent-vault/sessions/${id}`, { label: "done" });
+      expect(afterRevoke.statusCode).toBe(200);
+      expect(afterRevoke.json().session).toMatchObject({ label: "done", status: "revoked" });
+
+      const member = await createMemberIdentity(`session-label-member-${Date.now()}`);
+      try {
+        const somebodyElses = await member.as("PATCH", `/api/v1/agent-vault/sessions/${id}`, { label: "mine now" });
+        expect(somebodyElses.statusCode).toBe(404);
+        expect((await inject("GET", `/api/v1/agent-vault/sessions/${id}`)).json().session.label).toBe("done");
+      } finally {
+        await member.cleanup();
+      }
+    });
+
     test("search filters and counts on the server, not just the page", async () => {
       const alpha = await createAccessBundle("search-alpha");
       const beta = await createAccessBundle("search-beta");

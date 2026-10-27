@@ -19,7 +19,13 @@ import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
 import { TAgentVaultSessionDALFactory, TAgentVaultSessionListRow } from "./agent-vault-session-dal";
 import { deriveSessionStatus, generateSessionToken } from "./agent-vault-session-fns";
-import { TGetSessionByIdDTO, TListSessionsDTO, TMintSessionDTO, TRevokeSessionDTO } from "./agent-vault-session-types";
+import {
+  TGetSessionByIdDTO,
+  TListSessionsDTO,
+  TMintSessionDTO,
+  TRevokeSessionDTO,
+  TUpdateSessionLabelDTO
+} from "./agent-vault-session-types";
 
 // V1 ships one bundle per session; the junction table, `position` and the proxy matcher all handle more.
 export const AGENT_VAULT_MAX_SESSION_BUNDLES = 1;
@@ -233,10 +239,26 @@ export const agentVaultSessionServiceFactory = ({
     };
   };
 
+  const updateSessionLabel = async ({ projectId, ctx, sessionId, label }: TUpdateSessionLabelDTO) => {
+    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAgentVaultSessionActions.Edit,
+      ProjectPermissionSub.AgentVaultSessions
+    );
+
+    const session = await findVisibleSession({ projectId, ctx, sessionId, isAdmin });
+    if (session.label !== label) {
+      await agentVaultSessionDAL.updateById(session.id, { label });
+    }
+
+    return { session: toSessionView({ ...session, label }), previousLabel: session.label };
+  };
+
   return {
     mintSession,
     listSessions,
     getSessionById,
-    revokeSession
+    revokeSession,
+    updateSessionLabel
   };
 };

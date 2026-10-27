@@ -6,6 +6,10 @@ import {
 } from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
 import { AgentVaultSessionScope, AgentVaultSessionStatus } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
+  agentVaultSessionLabelSchema,
+  agentVaultSessionLabelUpdateSchema
+} from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
+import {
   AGENT_VAULT_MAX_SESSION_BUNDLES,
   AGENT_VAULT_SESSION_DEFAULT_TTL,
   AGENT_VAULT_SESSION_MAX_TTL_MS,
@@ -163,13 +167,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
             }
           })
           .describe(AGENT_VAULT.SESSION.ttl),
-        label: z
-          .string()
-          .trim()
-          .max(128, "Label must be at most 128 characters")
-          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-          .optional()
-          .describe(AGENT_VAULT.SESSION.label)
+        label: agentVaultSessionLabelSchema.describe(AGENT_VAULT.SESSION.label)
       }),
       response: {
         200: z.object({
@@ -235,6 +233,46 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
   });
 
   server.route({
+    method: "PATCH",
+    url: "/:sessionId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "updateAgentVaultSession",
+      description: "Update the label of an Agent Vault session",
+      tags: [ApiDocsTags.AgentVaultSessions],
+      params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
+      body: z.object({
+        label: agentVaultSessionLabelUpdateSchema.describe(AGENT_VAULT.SESSION.updateLabel)
+      }),
+      response: { 200: z.object({ session: SessionWithAccessBundlesSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { session, previousLabel } = await server.services.agentVaultSession.updateSessionLabel({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        sessionId: req.params.sessionId,
+        label: req.body.label
+      });
+
+      if (previousLabel !== session.label) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.internalAgentVaultProjectId,
+          event: {
+            type: EventType.AGENT_VAULT_SESSION_UPDATE,
+            metadata: { sessionId: session.id, label: session.label, previousLabel }
+          }
+        });
+      }
+
+      return { session };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/:sessionId/revoke",
     config: { rateLimit: writeLimit },
@@ -262,7 +300,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           projectId: req.internalAgentVaultProjectId,
           event: {
             type: EventType.AGENT_VAULT_SESSION_REVOKE,
-            metadata: { sessionId: session.id }
+            metadata: { sessionId: session.id, label: session.label }
           }
         });
 

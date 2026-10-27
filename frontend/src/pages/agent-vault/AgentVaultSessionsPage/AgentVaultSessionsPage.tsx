@@ -11,6 +11,7 @@ import {
   LogsIcon,
   MoreHorizontalIcon,
   PackageIcon,
+  PencilIcon,
   PlusIcon,
   SearchIcon,
   TriangleAlertIcon,
@@ -89,6 +90,7 @@ import { SessionLogReadAccessAlert } from "@app/pages/agent-vault/AgentVaultSett
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { CreateSessionDialog } from "./components/CreateSessionDialog";
+import { EditSessionLabelDialog } from "./components/EditSessionLabelDialog";
 import { RevokeSessionDialog } from "./components/RevokeSessionDialog";
 import { SessionCreatedDialog } from "./components/SessionCreatedDialog";
 import { SessionDetailSheet } from "./components/SessionDetailSheet";
@@ -126,6 +128,7 @@ export const AgentVaultSessionsPage = () => {
     getUserTablePreference("agentVaultSessionsTable", PreferenceKey.PerPage, 20)
   );
   const [sessionToRevoke, setSessionToRevoke] = useState<TAgentVaultSession | null>(null);
+  const [sessionToLabel, setSessionToLabel] = useState<TAgentVaultSession | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [mintedSession, setMintedSession] = useState<TAgentVaultMintedSession | null>(null);
   const { sessionId: openSessionId, openSheet } = useAgentVaultSheetState();
@@ -286,6 +289,7 @@ export const AgentVaultSessionsPage = () => {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
+                maxLength={255}
                 placeholder="Search by label, identity, email, or access bundle..."
               />
             </InputGroup>
@@ -492,6 +496,10 @@ export const AgentVaultSessionsPage = () => {
                                 <LogsIcon />
                                 View Session Logs
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setSessionToLabel(session)}>
+                                <PencilIcon />
+                                {session.label ? "Edit Label" : "Add Label"}
+                              </DropdownMenuItem>
                               <DropdownMenuItem
                                 variant="danger"
                                 isDisabled={session.status !== AgentVaultSessionStatus.Active}
@@ -556,6 +564,14 @@ export const AgentVaultSessionsPage = () => {
         session={openSession}
         isPending={isOpenSessionPending}
         onRevoke={setSessionToRevoke}
+        onEditLabel={setSessionToLabel}
+      />
+
+      <EditSessionLabelDialog
+        session={sessionToLabel}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setSessionToLabel(null);
+        }}
       />
 
       <AgentVaultSessionLogUpgradeModal

@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { BanIcon, BotIcon, PackageIcon, UserIcon } from "lucide-react";
+import { BanIcon, BotIcon, PackageIcon, PencilIcon, UserIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { memberDisplayName, memberSubtitle } from "@app/components/agent-vault/MemberName";
@@ -13,6 +13,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  IconButton,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -33,9 +34,15 @@ type Props = {
   session: TAgentVaultSession | undefined;
   isPending?: boolean;
   onRevoke: (session: TAgentVaultSession) => void;
+  onEditLabel: (session: TAgentVaultSession) => void;
 };
 
-export const SessionDetailSheet = ({ session, isPending = false, onRevoke }: Props) => {
+export const SessionDetailSheet = ({
+  session,
+  isPending = false,
+  onRevoke,
+  onEditLabel
+}: Props) => {
   const { isOpen, closeSheet } = useAgentVaultSheetState();
   const { currentOrg } = useOrganization();
 
@@ -174,12 +181,24 @@ export const SessionDetailSheet = ({ session, isPending = false, onRevoke }: Pro
                     </Button>
                   )}
                 </div>
-                {session.label && (
-                  <Detail className="min-w-0 border-t border-border px-4 py-3">
+                <div className="flex items-start gap-2 border-t border-border px-4 py-3">
+                  <Detail className="min-w-0 flex-1">
                     <DetailLabel>Label</DetailLabel>
-                    <DetailValue className="min-w-0 break-words">{session.label}</DetailValue>
+                    <DetailValue
+                      className={twMerge("min-w-0 break-words", !session.label && "text-muted")}
+                    >
+                      {session.label ?? "No label"}
+                    </DetailValue>
                   </Detail>
-                )}
+                  <IconButton
+                    variant="ghost"
+                    size="xs"
+                    aria-label={session.label ? "Edit label" : "Add label"}
+                    onClick={() => onEditLabel(session)}
+                  >
+                    <PencilIcon />
+                  </IconButton>
+                </div>
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col">

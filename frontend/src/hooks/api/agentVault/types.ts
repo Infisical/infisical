@@ -324,6 +324,11 @@ export type TCreateAgentVaultSessionDTO = {
   label?: string;
 };
 
+export type TUpdateAgentVaultSessionLabelDTO = {
+  sessionId: string;
+  label: string | null;
+};
+
 export type TAgentVaultProxySettingsDTO = {
   name: string;
   trafficPolicy?: AgentVaultTrafficPolicy;
