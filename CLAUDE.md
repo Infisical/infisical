@@ -198,16 +198,18 @@ differs from the one stored for the request; the provider keeps the first token 
 another, so a mismatch is unrecoverable. The provider calls `POST /api/v1/delegated-approvals/callback` (unauthenticated, IP rate limited)
 with the token in the `Infisical-Approval-Token` header and a body naming the event and the provider's record id;
 the body carries no decision, which a later worker reads back from the provider. The route finds the row by
-`providerRequestId`, checks the token, and only then counts the callback in `callbackAttempts`; on
-the sixth callback with a valid token it sets the row `failed` with a readable `statusReason` and cancels the
-attached approval request in the same transaction, so the policy is freed and the UI stops offering Cancel. A
+`providerRequestId` and checks the token. Only a callback that starts a read-back counts in `callbackAttempts`,
+so the limit bounds read-backs rather than repeats; on the sixth such callback it sets the row `failed` with a
+readable `statusReason` and cancels the attached approval request in the claim's transaction, so the policy is
+freed and the UI stops offering Cancel. That transaction locks the approval request before it claims, the same
+order the decision consumer and cancel take, or failing the request inside it would invert their lock order. A
 refused callback is never counted: the limit closes the request, so counting it would let anyone who knows the
 record id cancel the request, and the token is 256 random bits, so there is nothing to brute force. Every other
 refusal (no row for the record id, bad or missing token, request not `waiting_approval`)
 gets one neutral 403 while the reason goes to the log. An accepted callback only emits an outbox event, and
 only when it wins `claimDecisionRead`: a conditional update of `decisionReadRequestedAt`, in the emit's
 transaction, that one of any number of concurrent callbacks wins. A repeat while a read-back is still in
-flight gets the same 200 and emits nothing; a claim older than `DELEGATED_APPROVAL_DECISION_READ_CLAIM_TTL_MS`
+flight gets the same 200, emits nothing and is not counted; a claim older than `DELEGATED_APPROVAL_DECISION_READ_CLAIM_TTL_MS`
 (70 minutes, past the outbox's last retry) has expired, so a fresh notification after an earlier read-back
 ran out of retries still starts one. `eventType` is the
 body's event and `idempotencyKey` is the delegated request id plus the attempt count. The
