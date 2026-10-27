@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import { Knex } from "knex";
 import { z } from "zod";
 
@@ -51,5 +53,8 @@ export const emitAuditLogStreamDeliveryFailed = (
     failingSince: failingSince.toISOString()
   };
 
-  return eventEmitter.emit({ eventType: AUDIT_LOG_STREAM_DELIVERY_FAILED_EVENT, payload }, tx);
+  return eventEmitter.emit(
+    [{ id: crypto.randomUUID(), type: AUDIT_LOG_STREAM_DELIVERY_FAILED_EVENT, data: payload }],
+    tx
+  );
 };

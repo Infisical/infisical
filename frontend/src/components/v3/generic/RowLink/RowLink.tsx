@@ -15,7 +15,7 @@ const rowLinkContainerClassName = cn(
 );
 
 const rowLinkClassName =
-  "block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring";
+  "block truncate outline-0 after:absolute after:inset-0 after:z-[1] after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring";
 
 type RowLinkAnchorProps = React.ComponentProps<"a"> & { disabled?: boolean };
 

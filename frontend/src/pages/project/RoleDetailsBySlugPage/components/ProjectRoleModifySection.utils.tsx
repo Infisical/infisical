@@ -301,6 +301,7 @@ const AgentVaultAccessBundlePolicyActionSchema = z.object({
 const AgentVaultSessionPolicyActionSchema = z.object({
   [ProjectPermissionAgentVaultSessionActions.Read]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.Create]: z.boolean().optional(),
+  [ProjectPermissionAgentVaultSessionActions.Edit]: z.boolean().optional(),
   [ProjectPermissionAgentVaultSessionActions.Revoke]: z.boolean().optional()
 });
 
@@ -2544,6 +2545,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         label: "Create",
         value: ProjectPermissionAgentVaultSessionActions.Create,
         description: "Mint a session over access bundles you can reach"
+      },
+      {
+        label: "Edit",
+        value: ProjectPermissionAgentVaultSessionActions.Edit,
+        description: "Change a session's label"
       },
       {
         label: "Revoke",

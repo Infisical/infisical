@@ -815,6 +815,7 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
     [
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionAgentVaultSessionActions.Create,
+      ProjectPermissionAgentVaultSessionActions.Edit,
       ProjectPermissionAgentVaultSessionActions.Revoke
     ],
     ProjectPermissionSub.AgentVaultSessions
@@ -917,6 +918,7 @@ const buildAgentVaultProjectMemberPermissionRules = () => {
     [
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionAgentVaultSessionActions.Create,
+      ProjectPermissionAgentVaultSessionActions.Edit,
       ProjectPermissionAgentVaultSessionActions.Revoke
     ],
     ProjectPermissionSub.AgentVaultSessions

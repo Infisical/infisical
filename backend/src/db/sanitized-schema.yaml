@@ -89,6 +89,7 @@ tables:
       - credentialType
       - allowedMethods
       - allowedPathPrefixes
+      - type
       - memberProvidedFields
       - createdAt
       - updatedAt

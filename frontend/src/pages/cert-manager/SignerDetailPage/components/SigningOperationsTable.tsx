@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { HardDriveIcon, UserIcon } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
@@ -18,6 +17,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Pagination,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -28,7 +28,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import { useProject } from "@app/context";
 import {
   getSigningOperationStatusBadgeVariant,
   SIGNER_TABLE_PAGE_SIZE,
@@ -40,6 +40,7 @@ import {
   useListSigningOperations
 } from "@app/hooks/api/signers";
 
+import { getCertManagerLink } from "../../cert-manager-link";
 import { ConnectToSignerDrawer } from "./ConnectToSignerDrawer";
 
 type Props = {
@@ -64,8 +65,7 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(SIGNER_TABLE_PAGE_SIZE);
   const [isConnectOpen, setIsConnectOpen] = useState(false);
-  const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
 
   const { data, isLoading } = useListSigningOperations({
     signerId,
@@ -76,44 +76,31 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
   const operations = data?.operations ?? [];
   const totalCount = data?.totalCount ?? 0;
 
-  const handleActorClick = (op: TSigningOperation) => {
-    if (op.actorType === SigningActorType.User) {
-      if (!op.actorMembershipId) {
-        createNotification({
-          type: "info",
-          text: "This user is no longer a member of this organization."
-        });
-        return;
-      }
-      navigate({
-        to: "/organizations/$orgId/cert-manager/members/$membershipId",
-        params: {
-          orgId: currentOrg.id,
-          membershipId: op.actorId
-        }
-      });
-    } else if (op.actorType === SigningActorType.Identity) {
-      if (!op.actorName) {
-        createNotification({
-          type: "info",
-          text: "This identity is no longer a member of this organization."
-        });
-        return;
-      }
-      navigate({
-        to: "/organizations/$orgId/cert-manager/identities/$identityId",
-        params: {
-          orgId: currentOrg.id,
-          identityId: op.actorId
-        }
-      });
-    }
-  };
+  const renderActorName = (op: TSigningOperation) => {
+    const actorName = getActorDisplayName(op.actorType, op.actorName);
+    const linkClassName = "font-medium text-accent underline";
 
-  const isActorClickable = (op: TSigningOperation) => {
-    if (op.actorType === SigningActorType.User) return Boolean(op.actorMembershipId);
-    if (op.actorType === SigningActorType.Identity) return Boolean(op.actorName);
-    return false;
+    if (op.actorType === SigningActorType.User && op.actorMembershipId) {
+      return (
+        <Link
+          {...getCertManagerLink(currentProject, `members/${op.actorId}`)}
+          className={linkClassName}
+        >
+          {actorName}
+        </Link>
+      );
+    }
+    if (op.actorType === SigningActorType.Identity && op.actorName) {
+      return (
+        <Link
+          {...getCertManagerLink(currentProject, `identities/${op.actorId}`)}
+          className={linkClassName}
+        >
+          {actorName}
+        </Link>
+      );
+    }
+    return <span className="text-muted">{actorName}</span>;
   };
 
   return (
@@ -157,20 +144,18 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
                   operations.map((op) => (
                     <TableRow
                       key={op.id}
-                      className="cursor-pointer transition-colors hover:bg-surface-hover [&>td]:py-3"
-                      onClick={() =>
-                        navigate({
-                          to: "/organizations/$orgId/cert-manager/code-signing/$signerId/operations/$operationId",
-                          params: {
-                            orgId: currentOrg.id,
-                            signerId,
-                            operationId: op.id
-                          }
-                        })
-                      }
+                      linked
+                      className="transition-colors hover:bg-surface-hover [&>td]:py-3"
                     >
                       <TableCell>
-                        {format(new Date(op.createdAt), "MMM d, yyyy HH:mm:ss")}
+                        <RowLink
+                          {...getCertManagerLink(
+                            currentProject,
+                            `code-signing/${signerId}/operations/${op.id}`
+                          )}
+                        >
+                          {format(new Date(op.createdAt), "MMM d, yyyy HH:mm:ss")}
+                        </RowLink>
                       </TableCell>
                       <TableCell>
                         <Badge variant={getSigningOperationStatusBadgeVariant(op.status)}>
@@ -183,7 +168,7 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
                       <TableCell className="max-w-[120px] truncate font-mono text-xs">
                         {op.dataHash}
                       </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                      <TableCell>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <div className="flex items-center gap-1.5">
@@ -192,19 +177,7 @@ export const SigningOperationsTable = ({ signer, signerId }: Props) => {
                               ) : (
                                 <HardDriveIcon className="size-3.5 text-muted" />
                               )}
-                              <button
-                                type="button"
-                                onClick={
-                                  isActorClickable(op) ? () => handleActorClick(op) : undefined
-                                }
-                                className={
-                                  isActorClickable(op)
-                                    ? "cursor-pointer font-medium text-accent underline"
-                                    : "text-muted"
-                                }
-                              >
-                                {getActorDisplayName(op.actorType, op.actorName)}
-                              </button>
+                              {renderActorName(op)}
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>{op.actorName ?? op.actorId}</TooltipContent>
