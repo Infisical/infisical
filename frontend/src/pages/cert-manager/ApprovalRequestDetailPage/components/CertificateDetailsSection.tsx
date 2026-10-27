@@ -10,8 +10,15 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 import { ExternalLinkIcon } from "lucide-react";
 
-import { Skeleton } from "@app/components/v2";
-import { Badge, ButtonGroup } from "@app/components/v3";
+import {
+  Badge,
+  ButtonGroup,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Skeleton
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { CertRequestRequestData, TApprovalRequest } from "@app/hooks/api/approvalRequests";
 import { useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles";
@@ -99,276 +106,299 @@ export const CertificateDetailsSection = ({ request }: Props) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-lg border border-border-control bg-surface-base p-4">
-        <h2 className="text-lg font-normal text-foreground">
-          Request for {certRequest?.altNames?.[0]?.value || certRequest?.commonName || "-"}
-        </h2>
-
-        <div className="mt-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-hover text-sm font-medium text-foreground-secondary">
-            {(request.requesterName || "U")
-              .split(" ")
-              .map((n) => n[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase()}
-          </div>
-          <div>
-            <p className="text-sm font-medium text-foreground">
-              {request.requesterName || "Unknown"}
-            </p>
-            <p className="text-sm text-muted">{request.requesterEmail}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-border-control bg-surface-base p-4">
-        <h3 className="mb-4 flex items-center gap-2 text-base font-normal text-foreground">
-          <FontAwesomeIcon icon={faLock} className="text-sm text-muted" />
-          Certificate Specifications
-        </h3>
-
-        <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-          {certRequest?.keyAlgorithm && (
+      <Card>
+        <CardHeader>
+          <CardTitle role="heading" aria-level={2}>
+            Request for {certRequest?.altNames?.[0]?.value || certRequest?.commonName || "-"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-hover text-sm font-medium text-foreground-secondary">
+              {(request.requesterName || "U")
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()}
+            </div>
             <div>
-              <p className="text-xs text-muted">Key Algorithm</p>
-              <p className="mt-0.5 text-sm text-foreground">
-                {formatKeyAlgorithm(certRequest.keyAlgorithm)}
+              <p className="text-sm font-medium text-foreground">
+                {request.requesterName || "Unknown"}
               </p>
+              <p className="text-sm text-muted">{request.requesterEmail}</p>
             </div>
-          )}
-          {certRequest?.signatureAlgorithm && (
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle role="heading" aria-level={3}>
+            <FontAwesomeIcon icon={faLock} className="text-sm text-muted" />
+            Certificate Specifications
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+            {certRequest?.keyAlgorithm && (
+              <div>
+                <p className="text-xs text-muted">Key Algorithm</p>
+                <p className="mt-0.5 text-sm text-foreground">
+                  {formatKeyAlgorithm(certRequest.keyAlgorithm)}
+                </p>
+              </div>
+            )}
+            {certRequest?.signatureAlgorithm && (
+              <div>
+                <p className="text-xs text-muted">Signature Algorithm</p>
+                <p className="mt-0.5 text-sm text-foreground">{certRequest.signatureAlgorithm}</p>
+              </div>
+            )}
+            {certRequest?.validity?.ttl && (
+              <div>
+                <p className="text-xs text-muted">Validity</p>
+                <p className="mt-0.5 text-sm text-foreground">
+                  {formatValidity(certRequest.validity.ttl)}
+                </p>
+              </div>
+            )}
             <div>
-              <p className="text-xs text-muted">Signature Algorithm</p>
-              <p className="mt-0.5 text-sm text-foreground">{certRequest.signatureAlgorithm}</p>
-            </div>
-          )}
-          {certRequest?.validity?.ttl && (
-            <div>
-              <p className="text-xs text-muted">Validity</p>
-              <p className="mt-0.5 text-sm text-foreground">
-                {formatValidity(certRequest.validity.ttl)}
-              </p>
-            </div>
-          )}
-          <div>
-            <p className="text-xs text-muted">Certificate Authority</p>
-            {isProfileLoading && <Skeleton className="mt-0.5 h-4 w-24" />}
-            {!isProfileLoading && isInternalCa && caId && (
-              <Badge variant="outline" asChild className="mt-1">
-                <Link
-                  to="/organizations/$orgId/cert-manager/ca/$caId"
-                  params={{
-                    orgId: currentOrg.id,
-                    caId
-                  }}
-                >
+              <p className="text-xs text-muted">Certificate Authority</p>
+              {isProfileLoading && <Skeleton className="mt-0.5 h-4 w-24" />}
+              {!isProfileLoading && isInternalCa && caId && (
+                <Badge variant="outline" asChild className="mt-1">
+                  <Link
+                    to="/organizations/$orgId/cert-manager/ca/$caId"
+                    params={{
+                      orgId: currentOrg.id,
+                      caId
+                    }}
+                  >
+                    {profile?.certificateAuthority?.name || "N/A"}
+                    <ExternalLinkIcon />
+                  </Link>
+                </Badge>
+              )}
+              {!isProfileLoading && !(isInternalCa && caId) && (
+                <p className="mt-0.5 text-sm text-foreground">
                   {profile?.certificateAuthority?.name || "N/A"}
-                  <ExternalLinkIcon />
-                </Link>
-              </Badge>
+                </p>
+              )}
+            </div>
+            <div>
+              <p className="text-xs text-muted">Certificate Profile</p>
+              <p className="mt-0.5 text-sm text-foreground">{requestData.profileName}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle role="heading" aria-level={3}>
+            <FontAwesomeIcon icon={faGlobe} className="text-sm text-muted" />
+            Subject Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+            {certRequest?.commonName && (
+              <div>
+                <p className="text-xs text-muted">Common Name (CN)</p>
+                <p className="mt-0.5 text-sm text-foreground">{certRequest.commonName}</p>
+              </div>
             )}
-            {!isProfileLoading && !(isInternalCa && caId) && (
-              <p className="mt-0.5 text-sm text-foreground">
-                {profile?.certificateAuthority?.name || "N/A"}
-              </p>
+            {organization && (
+              <div>
+                <p className="text-xs text-muted">Organization (O)</p>
+                <p className="mt-0.5 text-sm text-foreground">{organization}</p>
+              </div>
+            )}
+            {organizationalUnit && (
+              <div>
+                <p className="text-xs text-muted">Organizational Unit (OU)</p>
+                <p className="mt-0.5 text-sm text-foreground">{organizationalUnit}</p>
+              </div>
+            )}
+            {country && (
+              <div>
+                <p className="text-xs text-muted">Country (C)</p>
+                <p className="mt-0.5 text-sm text-foreground">{country}</p>
+              </div>
+            )}
+            {state && (
+              <div>
+                <p className="text-xs text-muted">State (ST)</p>
+                <p className="mt-0.5 text-sm text-foreground">{state}</p>
+              </div>
+            )}
+            {locality && (
+              <div>
+                <p className="text-xs text-muted">Locality (L)</p>
+                <p className="mt-0.5 text-sm text-foreground">{locality}</p>
+              </div>
             )}
           </div>
-          <div>
-            <p className="text-xs text-muted">Certificate Profile</p>
-            <p className="mt-0.5 text-sm text-foreground">{requestData.profileName}</p>
-          </div>
-        </div>
-      </div>
 
-      <div className="rounded-lg border border-border-control bg-surface-base p-4">
-        <h3 className="mb-4 flex items-center gap-2 text-base font-normal text-foreground">
-          <FontAwesomeIcon icon={faGlobe} className="text-sm text-muted" />
-          Subject Information
-        </h3>
+          {hasDomainComponents && (
+            <div className="mt-4 border-t border-border-control pt-4">
+              <p className="mb-3 text-xs text-muted">Domain Components (DC)</p>
+              <div className="flex flex-wrap gap-2">
+                {domainComponents!.map((dc) => (
+                  <span
+                    key={dc}
+                    className="rounded bg-surface-hover px-2.5 py-1 text-sm text-foreground-secondary"
+                  >
+                    {dc}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
-        <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-          {certRequest?.commonName && (
-            <div>
-              <p className="text-xs text-muted">Common Name (CN)</p>
-              <p className="mt-0.5 text-sm text-foreground">{certRequest.commonName}</p>
+          {hasAltNames && (
+            <div className="mt-4 border-t border-border-control pt-4">
+              <p className="mb-3 text-xs text-muted">Subject Alternative Names (SANs)</p>
+              <div className="flex flex-wrap gap-2">
+                {filteredAltNames.map((san: { type: string; value: string }) => (
+                  <span
+                    key={`${san.type}-${san.value}`}
+                    className="rounded bg-surface-hover px-2.5 py-1 text-sm text-foreground-secondary"
+                  >
+                    {san.value}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
-          {organization && (
-            <div>
-              <p className="text-xs text-muted">Organization (O)</p>
-              <p className="mt-0.5 text-sm text-foreground">{organization}</p>
-            </div>
-          )}
-          {organizationalUnit && (
-            <div>
-              <p className="text-xs text-muted">Organizational Unit (OU)</p>
-              <p className="mt-0.5 text-sm text-foreground">{organizationalUnit}</p>
-            </div>
-          )}
-          {country && (
-            <div>
-              <p className="text-xs text-muted">Country (C)</p>
-              <p className="mt-0.5 text-sm text-foreground">{country}</p>
-            </div>
-          )}
-          {state && (
-            <div>
-              <p className="text-xs text-muted">State (ST)</p>
-              <p className="mt-0.5 text-sm text-foreground">{state}</p>
-            </div>
-          )}
-          {locality && (
-            <div>
-              <p className="text-xs text-muted">Locality (L)</p>
-              <p className="mt-0.5 text-sm text-foreground">{locality}</p>
-            </div>
-          )}
-        </div>
 
-        {hasDomainComponents && (
-          <div className="mt-4 border-t border-border-control pt-4">
-            <p className="mb-3 text-xs text-muted">Domain Components (DC)</p>
-            <div className="flex flex-wrap gap-2">
-              {domainComponents!.map((dc) => (
-                <span
-                  key={dc}
-                  className="rounded bg-surface-hover px-2.5 py-1 text-sm text-foreground-secondary"
-                >
-                  {dc}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {hasAltNames && (
-          <div className="mt-4 border-t border-border-control pt-4">
-            <p className="mb-3 text-xs text-muted">Subject Alternative Names (SANs)</p>
-            <div className="flex flex-wrap gap-2">
-              {filteredAltNames.map((san: { type: string; value: string }) => (
-                <span
-                  key={`${san.type}-${san.value}`}
-                  className="rounded bg-surface-hover px-2.5 py-1 text-sm text-foreground-secondary"
-                >
-                  {san.value}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!certRequest?.commonName &&
-          !organization &&
-          !organizationalUnit &&
-          !country &&
-          !state &&
-          !locality &&
-          !hasDomainComponents &&
-          !hasAltNames && <p className="text-sm text-muted">No subject information specified</p>}
-      </div>
+          {!certRequest?.commonName &&
+            !organization &&
+            !organizationalUnit &&
+            !country &&
+            !state &&
+            !locality &&
+            !hasDomainComponents &&
+            !hasAltNames && <p className="text-sm text-muted">No subject information specified</p>}
+        </CardContent>
+      </Card>
 
       {customExtensions.length > 0 && (
-        <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <h3 className="mb-4 flex items-center gap-2 text-base font-normal text-mineshaft-100">
-            <FontAwesomeIcon icon={faPuzzlePiece} className="text-sm text-mineshaft-400" />
-            Custom Extensions
-          </h3>
-          <CustomExtensionList extensions={customExtensions} />
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle role="heading" aria-level={3}>
+              <FontAwesomeIcon icon={faPuzzlePiece} className="text-sm text-muted" />
+              Custom Extensions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CustomExtensionList extensions={customExtensions} />
+          </CardContent>
+        </Card>
       )}
 
       {basicConstraints?.isCA && (
-        <div className="rounded-lg border border-border-control bg-surface-base p-4">
-          <h3 className="mb-4 flex items-center gap-2 text-base font-normal text-foreground">
-            <FontAwesomeIcon icon={faShieldHalved} className="text-sm text-muted" />
-            Basic Constraints
-          </h3>
-
-          <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-            <div>
-              <p className="text-xs text-muted">Certificate Authority</p>
-              <p className="mt-0.5 text-sm text-foreground">Yes (CA Certificate)</p>
-            </div>
-            {basicConstraints.pathLength !== undefined && (
+        <Card>
+          <CardHeader>
+            <CardTitle role="heading" aria-level={3}>
+              <FontAwesomeIcon icon={faShieldHalved} className="text-sm text-muted" />
+              Basic Constraints
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-3">
               <div>
-                <p className="text-xs text-muted">Path Length</p>
-                <p className="mt-0.5 text-sm text-foreground">{basicConstraints.pathLength}</p>
+                <p className="text-xs text-muted">Certificate Authority</p>
+                <p className="mt-0.5 text-sm text-foreground">Yes (CA Certificate)</p>
               </div>
-            )}
-          </div>
-        </div>
+              {basicConstraints.pathLength !== undefined && (
+                <div>
+                  <p className="text-xs text-muted">Path Length</p>
+                  <p className="mt-0.5 text-sm text-foreground">{basicConstraints.pathLength}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {(hasKeyUsages || hasExtendedKeyUsages) && (
-        <div className="rounded-lg border border-border-control bg-surface-base p-4">
-          <h3 className="mb-4 flex items-center gap-2 text-base font-normal text-foreground">
-            <FontAwesomeIcon icon={faKey} className="text-sm text-muted" />
-            Key Usages
-          </h3>
-
-          {hasKeyUsages && certRequest?.keyUsages && (
-            <div className="mb-4">
-              <p className="mb-3 text-xs text-muted">Key Usages</p>
-              <div className="flex flex-wrap gap-2">
-                {certRequest.keyUsages.map((usage: string) => (
-                  <span
-                    key={usage}
-                    className="rounded bg-surface-hover px-2.5 py-1 text-sm text-foreground-secondary"
-                  >
-                    {formatKeyUsageDisplay(usage)}
-                  </span>
-                ))}
+        <Card>
+          <CardHeader>
+            <CardTitle role="heading" aria-level={3}>
+              <FontAwesomeIcon icon={faKey} className="text-sm text-muted" />
+              Key Usages
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {hasKeyUsages && certRequest?.keyUsages && (
+              <div className="mb-4">
+                <p className="mb-3 text-xs text-muted">Key Usages</p>
+                <div className="flex flex-wrap gap-2">
+                  {certRequest.keyUsages.map((usage: string) => (
+                    <span
+                      key={usage}
+                      className="rounded bg-surface-hover px-2.5 py-1 text-sm text-foreground-secondary"
+                    >
+                      {formatKeyUsageDisplay(usage)}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {hasExtendedKeyUsages && certRequest?.extendedKeyUsages && (
-            <div className={hasKeyUsages ? "border-t border-border-control pt-4" : ""}>
-              <p className="mb-3 text-xs text-muted">Extended Key Usages</p>
-              <div className="flex flex-wrap gap-2">
-                {certRequest.extendedKeyUsages.map((usage: string) => (
-                  <span
-                    key={usage}
-                    className="rounded bg-surface-hover px-2.5 py-1 text-sm text-foreground-secondary"
-                  >
-                    {formatExtendedKeyUsageDisplay(usage)}
-                  </span>
-                ))}
+            {hasExtendedKeyUsages && certRequest?.extendedKeyUsages && (
+              <div className={hasKeyUsages ? "border-t border-border-control pt-4" : ""}>
+                <p className="mb-3 text-xs text-muted">Extended Key Usages</p>
+                <div className="flex flex-wrap gap-2">
+                  {certRequest.extendedKeyUsages.map((usage: string) => (
+                    <span
+                      key={usage}
+                      className="rounded bg-surface-hover px-2.5 py-1 text-sm text-foreground-secondary"
+                    >
+                      {formatExtendedKeyUsageDisplay(usage)}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
-      <div className="rounded-lg border border-border-control bg-surface-base p-4">
-        <h3 className="mb-4 flex items-center gap-2 text-base font-normal text-foreground">
-          <FontAwesomeIcon icon={faTags} className="text-sm text-muted" />
-          Metadata
-        </h3>
-        {metadata.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {metadata.map((item: { key: string; value?: string }) =>
-              item.value ? (
-                <ButtonGroup className="max-w-full min-w-0" key={`${item.key}=${item.value}`}>
-                  <Badge isTruncatable className="max-w-[12rem] shrink-0">
+      <Card>
+        <CardHeader>
+          <CardTitle role="heading" aria-level={3}>
+            <FontAwesomeIcon icon={faTags} className="text-sm text-muted" />
+            Metadata
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {metadata.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {metadata.map((item: { key: string; value?: string }) =>
+                item.value ? (
+                  <ButtonGroup className="max-w-full min-w-0" key={`${item.key}=${item.value}`}>
+                    <Badge isTruncatable className="max-w-[12rem] shrink-0">
+                      <span>{item.key}</span>
+                    </Badge>
+                    <Badge variant="outline" isTruncatable>
+                      <span>{item.value}</span>
+                    </Badge>
+                  </ButtonGroup>
+                ) : (
+                  <Badge key={item.key} isTruncatable>
                     <span>{item.key}</span>
                   </Badge>
-                  <Badge variant="outline" isTruncatable>
-                    <span>{item.value}</span>
-                  </Badge>
-                </ButtonGroup>
-              ) : (
-                <Badge key={item.key} isTruncatable>
-                  <span>{item.key}</span>
-                </Badge>
-              )
-            )}
-          </div>
-        ) : (
-          <p className="text-sm text-muted">No metadata attached to this request.</p>
-        )}
-      </div>
+                )
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted">No metadata attached to this request.</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

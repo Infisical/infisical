@@ -184,22 +184,24 @@ Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI a
   command="agent-vault proxy"
   usage="[flags]"
   flags={[
-    { name: "--data-dir", value: "<string>", type: "string", description: "The directory that holds the proxy's certificate authority, access token, and last settings. It must persist across restarts. Defaults to `~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` when run as root. Can also be set with `INFISICAL_AGENT_VAULT_DATA_DIR`." },
-    { name: "--enrollment-token", value: "<string>", type: "string", description: "The one-time token shown when the proxy was created in Infisical. Needed on the first run and to re-enroll. Can also be set with `INFISICAL_AGENT_VAULT_ENROLLMENT_TOKEN`, which keeps it off the command line." },
+    { name: "--ca-cert", value: "<string>", type: "string", description: "Your own certificate authority to serve instead of the one Infisical generates, as PEM text, PEM encoded as base64, or the path to a PEM file. Pass it with `--ca-key`. Can also be set with `INFISICAL_AGENT_VAULT_CA_CERT`." },
+    { name: "--ca-key", value: "<string>", type: "string", description: "The ECDSA P-256 private key for `--ca-cert`, in the same formats. Can also be set with `INFISICAL_AGENT_VAULT_CA_KEY`, which keeps the key off the command line." },
+    { name: "--data-dir", value: "<string>", type: "string", description: "The directory where the proxy keeps a cache of its settings and certificate authority, if the directory is writable. The proxy starts from the cache if it can't reach Infisical. Defaults to `~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` when run as root. Can also be set with `INFISICAL_AGENT_VAULT_DATA_DIR`." },
     { name: "--log-file", value: "<string>", type: "string", description: "A file to also write logs to, as JSON lines. The file is appended to." },
     { name: "--log-format", value: "<string>", type: "string", default: "console", description: "The format of the logs written to stderr: `console` or `json`." },
-    { name: "--port", value: "<int>", type: "int", default: "17323", description: "The port to listen on, on all interfaces. `0` picks any free port, which the startup line reports." },
+    { name: "--port", value: "<int>", type: "int", default: "17323", description: "The port to listen on, on all interfaces. `0` picks any free port, which the startup line reports. Can also be set with `INFISICAL_AGENT_VAULT_PORT`." },
+    { name: "--proxy-token", value: "<string>", type: "string", description: "The proxy token, which Infisical shows once when you create the proxy or rotate its token. Can also be set with `INFISICAL_AGENT_VAULT_PROXY_TOKEN`, which keeps it off the command line." },
   ]}
   examples={[
-    { title: "Enroll a new proxy", code: "infisical agent-vault proxy --enrollment-token=<enrollment-token>" },
-    { title: "Start an enrolled proxy", code: "infisical agent-vault proxy" },
-    { title: "Log JSON to a file on a custom port", code: "infisical agent-vault proxy --port=18000 --log-format=json --log-file=/var/log/infisical/agent-vault.log" },
+    { title: "Start a proxy", code: "INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> infisical agent-vault proxy" },
+    { title: "Serve your own certificate authority", code: "INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> infisical agent-vault proxy --ca-cert=./ca.crt --ca-key=./ca.key" },
+    { title: "Log JSON to a file on a custom port", code: "INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> infisical agent-vault proxy --port=18000 --log-format=json --log-file=/var/log/infisical/agent-vault.log" },
   ]}
 >
 
 Run an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) in the foreground. For each request, the proxy decides whether the agent's session allows the host and attaches the real credential on the way out, so the agent never holds a secret.
 
-Enroll once with `--enrollment-token`. The proxy saves its certificate authority and access token to `--data-dir`, so later starts need no token. Passing the same token again resumes the existing enrollment. A different token enrolls the proxy again and replaces its certificate authority, so agents that trusted the old one stop trusting the proxy.
+Start the proxy with its proxy token. You can run the proxy on as many machines as you need with the same token. Each time the proxy starts, it loads its settings and certificate authority from Infisical. If it can't reach Infisical, it retries for 60 seconds, then starts from the cache in `--data-dir` if there is one, or exits.
 
 You set the proxy's traffic policy, exceptions, and poll interval in Infisical, not with flags.
 
@@ -446,10 +448,10 @@ Stop and remove a gateway's systemd service. Run the command as root on Linux.
 
 Link the current directory to an Infisical project. The command lists the projects in your profile's organization and writes the one you choose to `.infisical.yaml`, so later commands in this directory and its subdirectories know which project to use. It needs a user login, and starts one if you have no profile.
 
-If the current directory already has an `.infisical.yaml` or a legacy `.infisical.json`, the command asks before writing a new `.infisical.yaml`. The new file holds only the project ID, so settings you added, such as `default-environment`, no longer apply. To keep the settings in a legacy `.infisical.json`, [convert it](/cli/project-config-migration) instead of running `init`. See [project config](/cli/project-config) for the file format.
+If the current directory already has an `.infisical.yaml` or a legacy `.infisical.json`, the command asks before writing a new `.infisical.yaml`. The new file holds only the project ID, and the CLI reads it instead of the old file, so settings you added, such as the default environment, no longer apply. To keep those settings, edit the existing file instead of running `init`. See [project config](/cli/project-config) for the file format.
 
 <Note>
-  If you run `init` without a terminal, such as in CI or from a script, the command never prompts. It exits with an error unless you pass `--project-id`, and it doesn't replace an existing `.infisical.yaml` or legacy `.infisical.json`. To link a different project, edit `secrets-management.project-id` in `.infisical.yaml`.
+  If you run `init` without a terminal, such as in CI or from a script, the command never prompts. It exits with an error unless you pass `--project-id`, and it doesn't replace an existing `.infisical.yaml` or legacy `.infisical.json`. To link a different project, edit `secrets-management.project-id` in `.infisical.yaml`, or `workspaceId` in a legacy `.infisical.json`.
 </Note>
 
 </CLICommand>
@@ -628,6 +630,20 @@ Without `--all` or `--profile`, the command logs out of the profile in effect. S
 </CLICommand>
 
 <CLICommand
+  id="migrate-config"
+  command="migrate-config"
+  examples={[
+    { title: "Convert the legacy project config", code: "infisical migrate-config" },
+  ]}
+>
+
+Convert a legacy `.infisical.json` into `.infisical.yaml`. The command looks for the project config in the current directory, then in each parent directory. It writes `.infisical.yaml` next to the file it finds, copies every setting into it, and deletes `.infisical.json`.
+
+If the project already uses `.infisical.yaml`, the command changes nothing. It warns you when a leftover `.infisical.json` sits in the same directory, because `.infisical.yaml` takes precedence and the old file is no longer read. See [Migrate to .infisical.yaml](/cli/project-config-migration) for the full steps.
+
+</CLICommand>
+
+<CLICommand
   id="org"
   command="org"
 >
@@ -677,7 +693,7 @@ To use a different organization for a single command, pass `--org` to that comma
   command="pam"
 >
 
-Connect to databases, servers, Kubernetes clusters, and cloud accounts managed by [Infisical PAM](/documentation/platform/pam/overview) (privileged access management) from your terminal. A gateway supplies each account's credential, so you never see it, and every session is recorded. Open one account for yourself with [infisical pam access](/cli/reference#pam-access), or give an AI agent brokered access with [infisical pam agentic access](/cli/reference#pam-agentic-access).
+Connect to databases, servers, Kubernetes clusters, and cloud accounts managed by [Infisical Privileged Access Management (PAM)](/documentation/platform/pam/overview) from your terminal. A gateway supplies each account's credential, so you never see it, and every session is recorded. Open one account for yourself with [infisical pam access](/cli/reference#pam-access), or give an AI agent brokered access with [infisical pam agentic access](/cli/reference#pam-agentic-access).
 
 </CLICommand>
 
@@ -708,7 +724,7 @@ Open a session for one PAM account. The command runs as the user you logged in a
 
 SSH accounts connect you to a shell on the target. Pass a command after `--` to run only that command, or `--proxy` to start a local proxy instead. If no terminal is attached, the CLI starts the proxy instead of a shell.
 
-For database, Redis, Snowflake, Kubernetes, GCP, Azure, and Windows accounts, the CLI starts a local proxy on `127.0.0.1` and prints how to connect to it. For AWS IAM accounts, the CLI writes temporary credentials to your AWS credentials file instead. The page for each [account type](/documentation/platform/pam/accounts/overview#account-types) describes how to connect. A proxy runs until you press `Ctrl+C` or the session expires, and the CLI then restores anything it changed, such as your kubeconfig.
+For database, Redis, Snowflake, Kubernetes, GCP, Azure, and Windows accounts, the CLI starts a local proxy on `127.0.0.1` and prints how to connect to it. For AWS IAM accounts, the CLI writes temporary credentials to your AWS credentials file instead. The page for each [account type](/documentation/platform/pam/accounts/account-types) describes how to connect. A proxy runs until you press `Ctrl+C` or the session expires, and the CLI then restores anything it changed, such as your kubeconfig.
 
 If the account requires approval, the CLI offers to submit an access request in an interactive terminal. If it requires MFA, the CLI has you complete MFA in your browser before it continues.
 
@@ -760,9 +776,9 @@ Run AI agents against PAM accounts. The agent reaches each account through a loc
 
 Start a local proxy for each PAM account you can launch, then start an AI agent with instructions for reaching them. Everything after `--` is the command that starts the agent. The `--` is required when that command has flags of its own.
 
-The CLI gives each account its own port on `127.0.0.1`, and the agent connects through those ports without ever holding a credential. The CLI skips accounts that require MFA and accounts of [types agentic access doesn't support](/documentation/platform/pam/ai-agents/overview#supported-account-types), and lists each skipped account with the reason. To open a skipped account, use [infisical pam access](/cli/reference#pam-access).
+The CLI gives each account its own port on `127.0.0.1`, and the agent connects through those ports without ever holding a credential. The CLI skips accounts that require MFA and accounts of [types agentic access doesn't support](/documentation/platform/pam/ai-agents/run#supported-account-types), and lists each skipped account with the reason. To open a skipped account, use [infisical pam access](/cli/reference#pam-access).
 
-The CLI [adds instructions for reaching the accounts](/documentation/platform/pam/ai-agents/overview#how-the-agent-is-told) to the agent's system prompt or to a file such as `AGENTS.md`, depending on the agent. It runs the agent in an [OS sandbox](/documentation/platform/pam/ai-agents/overview#the-sandbox), which stops the agent from reading your Infisical login. On a host without a sandbox, the command fails unless you pass `--no-sandbox`.
+The CLI [adds instructions for reaching the accounts](/documentation/platform/pam/ai-agents/instructions) to the agent's system prompt or to a file such as `AGENTS.md`, depending on the agent. It runs the agent in an [OS sandbox](/documentation/platform/pam/ai-agents/run#sandbox), which stops the agent from reading your Infisical login. On a host without a sandbox, the command fails unless you pass `--no-sandbox`.
 
 The run authenticates with `--token` when one is set, then as a machine identity when `--auth-method` is set, and otherwise as the user you logged in as with [infisical login](/cli/reference#login).
 
@@ -1293,9 +1309,9 @@ For an agent on your own computer, [infisical sm agent-proxy run](/cli/reference
     { name: "--allow-readable-brokered-secrets", type: "bool", description: "Start the agent even if it can read the real value of a secret that a proxied service substitutes into its requests. Without this flag, the command exits with an error, and you fix it by removing the agent's read permission on that secret. Can also be set with `INFISICAL_AGENT_PROXY_ALLOW_READABLE_BROKERED_SECRETS`." },
     { name: "--client-id", value: "<string>", type: "string", description: "The client ID of the agent's machine identity. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`." },
     { name: "--client-secret", value: "<string>", type: "string", description: "The client secret of the agent's machine identity. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`." },
-    { name: "--env", short: "-e", value: "<string>", type: "string", required: true, description: "The environment to fetch proxied services and secrets from. Without it, the CLI reads `INFISICAL_ENVIRONMENT`, then the environment that `.infisical.yaml` maps to your git branch, then its `default-environment`." },
+    { name: "--env", short: "-e", value: "<string>", type: "string", required: true, description: "The environment to fetch proxied services and secrets from. Without it, the CLI reads `INFISICAL_ENVIRONMENT`, then the environment that `.infisical.yaml` maps to your git branch, then its `secrets-management.environment`." },
     { name: "--no-proxy", value: "<string>", type: "string", description: "More hosts for the agent to reach directly instead of through the proxy, separated by commas. Always merged with `localhost,127.0.0.1` and any `NO_PROXY` in your environment." },
-    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to fetch proxied services and secrets from. Without it, the CLI reads `INFISICAL_SECRET_PATH`, then `default-secret-path` in `.infisical.yaml`." },
+    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to fetch proxied services and secrets from. Without it, the CLI reads `INFISICAL_SECRET_PATH`, then `secrets-management.secret-path` in `.infisical.yaml`." },
     { name: "--projectId", value: "<string>", type: "string", required: true, description: "The project to fetch proxied services and secrets from. Can also be set with `INFISICAL_PROJECT_ID`, or read from `.infisical.yaml`." },
     { name: "--proxy", value: "<string>", type: "string", required: true, description: "The agent proxy's address as `host:port`. Can also be set with `INFISICAL_AGENT_PROXY_ADDRESS`. It's never read from `.infisical.yaml`." },
     { name: "--token", value: "<string>", type: "string", description: "A machine identity access token to authenticate with, instead of `--client-id` and `--client-secret`. Without it, the CLI reads `INFISICAL_UNIVERSAL_AUTH_ACCESS_TOKEN`, then `INFISICAL_TOKEN`." },
@@ -1328,11 +1344,11 @@ The command exits with the agent's exit code.
     { name: "--allow-host", value: "<stringArray>", type: "stringArray", description: "A host the agent can reach, without a credential, when `--unmatched-host=block` is set. Repeatable." },
     { name: "--allow-read", value: "<stringArray>", type: "stringArray", description: "A path the agent can read even though the sandbox blocks it by default, such as `~/.aws/config`. The path stays read-only, and the rest of a denied directory stays denied. Repeatable." },
     { name: "--allow-write", value: "<stringArray>", type: "stringArray", description: "A path the agent can write, beyond the working directory, the temporary directory, and the state directories of Claude Code, Codex, and Gemini CLI. Repeatable." },
-    { name: "--env", short: "-e", value: "<string>", type: "string", required: true, description: "The environment to fetch proxied services from. Without it, the CLI reads `INFISICAL_ENVIRONMENT`, then the environment that `.infisical.yaml` maps to your git branch, then its `default-environment`." },
+    { name: "--env", short: "-e", value: "<string>", type: "string", required: true, description: "The environment to fetch proxied services from. Without it, the CLI reads `INFISICAL_ENVIRONMENT`, then the environment that `.infisical.yaml` maps to your git branch, then its `secrets-management.environment`." },
     { name: "--log-file", value: "<string>", type: "string", description: "A file to write the proxy's per-request activity to. The file is appended to. Without it, nothing is written, and only warnings and errors print to stderr unless you pass `--log-level`." },
     { name: "--no-sandbox", type: "bool", description: "Run the agent without the OS sandbox. Credentials are still brokered, but the agent can read your files and keyring and reach the network directly." },
     { name: "--pass-env", value: "<stringArray>", type: "stringArray", description: "One of your environment variables to pass through to the agent, by name, when the command would otherwise remove it. Repeatable." },
-    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to fetch proxied services from. Without it, the CLI reads `INFISICAL_SECRET_PATH`, then `default-secret-path` in `.infisical.yaml`." },
+    { name: "--path", value: "<string>", type: "string", default: "/", description: "The folder to fetch proxied services from. Without it, the CLI reads `INFISICAL_SECRET_PATH`, then `secrets-management.secret-path` in `.infisical.yaml`." },
     { name: "--poll-interval", value: "<int>", type: "int", default: "60", description: "The number of seconds between refreshes of permissions and credentials." },
     { name: "--projectId", value: "<string>", type: "string", required: true, description: "The project to fetch proxied services from. Can also be set with `INFISICAL_PROJECT_ID`, or read from `.infisical.yaml`." },
     { name: "--sandbox", type: "bool", default: "true", description: "Run the agent inside the OS sandbox. Pass `--sandbox=false` or `--no-sandbox` to turn it off. Can also be set with `INFISICAL_AGENT_PROXY_SANDBOX`, where `0`, `false`, or `off` turns it off." },
@@ -1573,7 +1589,7 @@ Print an environment's secrets in a file format such as `.env` or JSON, for tool
 List, inspect, and create Secrets Management [projects](/documentation/platform/project). Use these commands to find the project ID that [infisical init](/cli/reference#init) and the `--projectId` flag take, or to create a project without opening Infisical. `project` is an alias, so `infisical sm project list` also works.
 
 <Note>
-The commands work only with Secrets Management projects. Projects of other products, such as Certificate Manager or KMS, don't appear in the list.
+The commands work only with Secrets Management projects. Projects of other products, such as Certificate Management or KMS, don't appear in the list.
 </Note>
 
 </CLICommand>
@@ -1913,6 +1929,8 @@ In scripts, pass `--plain --silent` to print only the values, with no other outp
 >
 
 Create secrets, or update the value of secrets that already exist. The result table masks values unless you pass `--show-values`.
+
+You can set secrets without permission to read secret values. In that case, the CLI can't compare values, so it writes every secret you pass that already exists and reports each one as `SECRET VALUE MODIFIED`, even when the value didn't change.
 
 Your shell saves the values you pass on the command line in its history file. To keep them out, pass `--file` or `name=@path`, or [set your shell to skip these commands](/cli/faq).
 

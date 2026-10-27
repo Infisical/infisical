@@ -121,6 +121,7 @@ export enum QueueName {
   PamDiscoveryScan = "pam-discovery-scan",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryScan = "pki-discovery-scan",
+  PkiDiscoveryRescan = "pki-discovery-rescan",
   AppConnectionCredentialRotation = "app-connection-credential-rotation",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AuditLogClickHouseBatch = "audit-log-clickhouse-batch",
@@ -205,6 +206,7 @@ export enum QueueJobs {
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation",
   PkiDiscoveryRunScan = "pki-discovery-run-scan",
   PkiDiscoveryScheduledScan = "pki-discovery-scheduled-scan",
+  PkiDiscoveryRescanInstallation = "pki-discovery-rescan-installation",
   AppConnectionCredentialRotationQueueRotations = "app-connection-credential-rotation-queue-rotations",
   AppConnectionCredentialRotationRotate = "app-connection-credential-rotation-rotate",
   AppConnectionCredentialRotationSendNotification = "app-connection-credential-rotation-send-notification",
@@ -575,6 +577,10 @@ export type TQueueJobTypes = {
         name: QueueJobs.PkiDiscoveryScheduledScan;
         payload: undefined;
       };
+  [QueueName.PkiDiscoveryRescan]: {
+    name: QueueJobs.PkiDiscoveryRescanInstallation;
+    payload: { installationId: string };
+  };
   [QueueName.AppConnectionCredentialRotation]:
     | {
         name: QueueJobs.AppConnectionCredentialRotationQueueRotations;

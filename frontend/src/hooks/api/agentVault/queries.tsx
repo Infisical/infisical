@@ -6,7 +6,11 @@ import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
 import { VARIABLE_KEY_MAX_LENGTH, VARIABLE_KEY_RE } from "@app/helpers/agentVaultVariables";
 
-import { AgentVaultMemberType } from "./enums";
+import {
+  AgentVaultMemberType,
+  AgentVaultOauthAuthorizationStatus,
+  AgentVaultVariableScope
+} from "./enums";
 import {
   createSessionLogChunkCache,
   decryptSessionLogPage,
@@ -23,6 +27,7 @@ import {
   TAgentVaultAccessBundleListItem,
   TAgentVaultDecryptedSessionLogPage,
   TAgentVaultMember,
+  TAgentVaultOauthAuthorization,
   TAgentVaultProductActor,
   TAgentVaultProductMember,
   TAgentVaultProductMemberOf,
@@ -32,7 +37,7 @@ import {
   TAgentVaultSessionLogHealth,
   TAgentVaultSessionLogHistoryPage,
   TAgentVaultSessionLogReadCheck,
-  TAgentVaultSessionLogSettings,
+  TAgentVaultSessionLogSettingsState,
   TAgentVaultSessionLogTailPage,
   TAgentVaultVariable,
   TListAgentVaultAccessBundlesDTO,
@@ -45,6 +50,17 @@ import {
 export const fetchAgentVaultProjectId = async () => {
   const { data } = await apiRequest.get<{ projectId: string }>("/api/v1/agent-vault/project");
   return data.projectId;
+};
+
+export const fetchAgentVaultOauthAuthorization = async (
+  authorizationId: string,
+  signal?: AbortSignal
+) => {
+  const { data } = await apiRequest.get<{ authorization: TAgentVaultOauthAuthorization }>(
+    `/api/v1/agent-vault/oauth/authorizations/${encodeURIComponent(authorizationId)}`,
+    { signal }
+  );
+  return data.authorization;
 };
 
 export const AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS = 15_000;
@@ -62,6 +78,8 @@ export const getSessionLogStorageError = (error: unknown) =>
 // path parameter: without it a switch to another org would serve the previous org's data from cache.
 export const agentVaultKeys = {
   all: (orgId: string) => ["agent-vault", orgId] as const,
+  oauthAuthorization: (orgId: string, authorizationId: string) =>
+    [...agentVaultKeys.all(orgId), "oauth-authorizations", authorizationId] as const,
   accessBundles: (orgId: string) => [...agentVaultKeys.all(orgId), "access-bundles"] as const,
   accessBundle: (orgId: string, accessBundleId: string) =>
     [...agentVaultKeys.accessBundles(orgId), accessBundleId] as const,
@@ -93,8 +111,8 @@ export const agentVaultKeys = {
   variables: (orgId: string) => [...agentVaultKeys.all(orgId), "variables"] as const,
   variableList: (orgId: string, params: TListAgentVaultVariablesDTO) =>
     [...agentVaultKeys.variables(orgId), "list", params] as const,
-  variableKeyStatus: (orgId: string, keys: string[]) =>
-    [...agentVaultKeys.variables(orgId), "key-status", keys] as const,
+  variableKeyStatus: (orgId: string, scope: AgentVaultVariableScope, keys: string[]) =>
+    [...agentVaultKeys.variables(orgId), "key-status", scope, keys] as const,
   members: (orgId: string) => [...agentVaultKeys.all(orgId), "members"] as const,
   memberList: (orgId: string, params?: TListAgentVaultMembersDTO) =>
     [...agentVaultKeys.members(orgId), params] as const,
@@ -112,6 +130,35 @@ export const agentVaultKeys = {
     [...agentVaultKeys.sessions(orgId), sessionId, "logs", range ?? {}] as const,
   sessionLogsLive: (orgId: string, sessionId: string, range?: { from?: string; to?: string }) =>
     [...agentVaultKeys.sessions(orgId), sessionId, "logs-live", range ?? {}] as const
+};
+
+// A dropped connection, a deploy, a 5xx or a rate limit can clear on the next poll; any other client error,
+// such as the 404 of an expired authorization, never will.
+export const isTerminalOauthAuthorizationError = (error: unknown) => {
+  if (!axios.isAxiosError(error)) return true;
+  const status = error.response?.status;
+  return status !== undefined && status >= 400 && status < 500 && status !== 408 && status !== 429;
+};
+
+export const useGetAgentVaultOauthAuthorization = (authorizationId: string) => {
+  const { currentOrg } = useOrganization();
+
+  return useQuery({
+    queryKey: agentVaultKeys.oauthAuthorization(currentOrg.id, authorizationId),
+    queryFn: ({ signal }) => fetchAgentVaultOauthAuthorization(authorizationId, signal),
+    enabled: Boolean(authorizationId),
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+    refetchInterval: (query) => {
+      const { data, error } = query.state;
+      if (error && isTerminalOauthAuthorizationError(error)) return false;
+      if (data && data.status !== AgentVaultOauthAuthorizationStatus.Pending) return false;
+      return error ? 5000 : 2000;
+    },
+    // The provider popup can leave the Infisical tab in the background until authorization finishes.
+    refetchIntervalInBackground: true
+  });
 };
 
 export const useListAgentVaultMembers = <T extends AgentVaultMemberType = AgentVaultMemberType>(
@@ -219,6 +266,14 @@ export const useListAgentVaultAccessBundles = (params: TListAgentVaultAccessBund
   });
 };
 
+// One page holds them all in practice: it is only the bundles the caller reaches that still require their values.
+export const useListAgentVaultAccessBundlesRequiringSetup = () =>
+  useListAgentVaultAccessBundles({ requiresSetup: true, limit: 100 });
+
+// Only the count is read, so one row is enough.
+export const useListGrantedAgentVaultAccessBundlesRequiringSetup = () =>
+  useListAgentVaultAccessBundles({ requiresSetup: true, granted: true, limit: 1 });
+
 export const useGetAgentVaultAccessBundle = (accessBundleId: string) => {
   const { currentOrg } = useOrganization();
 
@@ -277,10 +332,10 @@ export const useGetAgentVaultSessionLogSettings = (enabled = true) => {
   return useQuery({
     queryKey: agentVaultKeys.sessionLogSettings(currentOrg.id),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ settings: TAgentVaultSessionLogSettings }>(
+      const { data } = await apiRequest.get<TAgentVaultSessionLogSettingsState>(
         "/api/v1/agent-vault/settings/session-logs"
       );
-      return data.settings;
+      return data;
     },
     enabled
   });
@@ -569,18 +624,23 @@ const isPossibleVariableKey = (key: string) =>
 // already covered doesn't flicker while the next set loads.
 export const useAgentVaultVariableKeyStatus = (
   keys: readonly string[],
-  { enabled = true, isCached = true }: { enabled?: boolean; isCached?: boolean } = {}
+  {
+    enabled = true,
+    isCached = true,
+    scope = AgentVaultVariableScope.Global
+  }: { enabled?: boolean; isCached?: boolean; scope?: AgentVaultVariableScope } = {}
 ) => {
   const { currentOrg } = useOrganization();
   const possibleKeys = [...new Set(keys.filter(isPossibleVariableKey))].sort();
 
   const { data } = useQuery({
-    queryKey: agentVaultKeys.variableKeyStatus(currentOrg.id, possibleKeys),
+    queryKey: agentVaultKeys.variableKeyStatus(currentOrg.id, scope, possibleKeys),
     queryFn: async () => {
       const found: string[] = [];
       for (let i = 0; i < possibleKeys.length; i += KEY_LOOKUP_BATCH_SIZE) {
         // eslint-disable-next-line no-await-in-loop
         const page = await fetchAgentVaultVariables({
+          scope,
           keys: possibleKeys.slice(i, i + KEY_LOOKUP_BATCH_SIZE)
         });
         found.push(...page.variables.map((variable) => variable.key));

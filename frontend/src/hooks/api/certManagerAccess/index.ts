@@ -23,6 +23,11 @@ export const rolesBase = (type?: string, projectId?: string): string =>
     ? "/api/v1/cert-manager/access/roles"
     : `/api/v1/projects/${projectId ?? ""}/roles`;
 
+export const availableUsersUrl = (type?: string, projectId?: string): string =>
+  isCertManagerProject(type)
+    ? "/api/v1/cert-manager/access/available-users"
+    : `/api/v1/projects/${projectId ?? ""}/memberships/available-users`;
+
 export const availableIdentitiesUrl = (type?: string, projectId?: string): string =>
   isCertManagerProject(type)
     ? "/api/v1/cert-manager/access/available-identities"

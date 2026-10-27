@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
-import { Helmet } from "react-helmet";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
@@ -34,7 +34,7 @@ import {
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { DiscoveryJobModal } from "../DiscoveryPage/components/DiscoveryJobModal";
+import { DiscoveryJobSheet } from "../DiscoveryPage/components/DiscoveryJobSheet";
 import {
   DiscoveryDetailsSection,
   DiscoveryInstallationsSection,
@@ -191,7 +191,7 @@ const Page = () => {
         </div>
       </div>
 
-      <DiscoveryJobModal
+      <DiscoveryJobSheet
         isOpen={popUp.editJob.isOpen}
         onClose={() => handlePopUpClose("editJob")}
         projectId={projectId}
@@ -213,10 +213,8 @@ const Page = () => {
 export const DiscoveryDetailsByIDPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Discovery Job Details</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Discovery Job Details" />
+      <link rel="icon" href="/infisical.ico" />
       <Page />
     </>
   );

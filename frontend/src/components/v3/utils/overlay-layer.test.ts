@@ -15,6 +15,21 @@ const createLayers = () => {
   return layers;
 };
 
+const createLayerChain = (configs: { isPending: boolean; isModal: boolean }[]) => {
+  const values: ReturnType<typeof useOverlayLayer>["contextValue"][] = [];
+  const Probe = ({ index }: { index: number }): ReactNode => {
+    const layer = useOverlayLayer(configs[index].isPending, configs[index].isModal);
+    values.push(layer.contextValue);
+    return createElement(
+      OverlayLayerContext.Provider,
+      { value: layer.contextValue },
+      index + 1 < configs.length ? createElement(Probe, { index: index + 1 }) : null
+    );
+  };
+  renderToString(createElement(Probe, { index: 0 }));
+  return values.map(({ isModal, isPending }) => ({ isModal, isPending }));
+};
+
 const escape = () =>
   Object.assign(new Event("keydown", { cancelable: true }), { key: "Escape" }) as KeyboardEvent;
 
@@ -85,5 +100,37 @@ describe("overlay popup bookkeeping", () => {
     child.contextValue.registerPopup("legacy", false);
     ancestor.guardDismiss(escape(), parentHandler);
     expect(parentHandler).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("overlay layer context inheritance", () => {
+  it("keeps a standalone non-modal layer non-modal", () => {
+    expect(createLayerChain([{ isPending: false, isModal: false }])).toEqual([
+      { isModal: false, isPending: false }
+    ]);
+  });
+
+  it("inherits modality and pending state into a non-modal layer", () => {
+    expect(
+      createLayerChain([
+        { isPending: true, isModal: true },
+        { isPending: false, isModal: false }
+      ])
+    ).toEqual([
+      { isModal: true, isPending: true },
+      { isModal: true, isPending: true }
+    ]);
+  });
+
+  it("keeps a nested modal layer's own pending state", () => {
+    expect(
+      createLayerChain([
+        { isPending: true, isModal: true },
+        { isPending: false, isModal: true }
+      ])
+    ).toEqual([
+      { isModal: true, isPending: true },
+      { isModal: true, isPending: false }
+    ]);
   });
 });

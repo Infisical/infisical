@@ -6,6 +6,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -127,6 +128,7 @@ export const CircleCIConfigurePage = () => {
   if (isCircleCIOrganizationsLoading)
     return (
       <div className="flex h-full w-full items-center justify-center p-24">
+        <PageTitle title="Set Up CircleCI Integration" />
         <Spinner />
       </div>
     );
@@ -136,6 +138,7 @@ export const CircleCIConfigurePage = () => {
       onSubmit={handleSubmit(onSubmit)}
       className="flex h-full w-full items-center justify-center"
     >
+      <PageTitle title="Set Up CircleCI Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>

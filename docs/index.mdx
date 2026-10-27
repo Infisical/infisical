@@ -101,7 +101,7 @@ import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard, HomeStack, HomeS
       Run your own certificate authorities and automate the X.509 lifecycle end to end.
     </HomeCard>
     <HomeCard
-      title="Privileged Access Management"
+      title="Privileged Access Management (PAM)"
       href="/documentation/platform/pam/overview"
       icon="user-shield"
       product="pam"
@@ -114,20 +114,21 @@ import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard, HomeStack, HomeS
       Gate access to databases, servers, and accounts behind policies, approvals, and a full session record.
     </HomeCard>
     <HomeCard
-      title="Secrets Scanning"
-      href="/documentation/platform/secret-scanning/overview"
-      icon="radar"
-      product="scanning"
+      title="Agent Vault"
+      href="/documentation/platform/agent-vault/overview"
+      icon="shield-keyhole"
+      product="agent-vault"
+      tag="PREVIEW"
       links={[
-        { label: "GitHub", href: "/documentation/platform/secret-scanning/github" },
-        { label: "GitLab", href: "/documentation/platform/secret-scanning/gitlab" },
-        { label: "Bitbucket", href: "/documentation/platform/secret-scanning/bitbucket" }
+        { label: "Quickstart", href: "/documentation/platform/agent-vault/quickstart" },
+        { label: "Access bundles", href: "/documentation/platform/agent-vault/access-bundles" },
+        { label: "Sessions", href: "/documentation/platform/agent-vault/sessions" }
       ]}
     >
-      Catch hardcoded secrets in source code, pipelines, and infrastructure before they reach production.
+      Run AI agents with the access they need to do work, without giving them the underlying credentials.
     </HomeCard>
     <HomeCard
-      title="Key Management"
+      title="Key Management Service (KMS)"
       href="/documentation/platform/kms/overview"
       icon="lock"
       product="kms"
@@ -140,17 +141,17 @@ import { HomeHero, HomeButton, HomeSection, HomeGrid, HomeCard, HomeStack, HomeS
       Encrypt and decrypt sensitive data with centrally managed keys.
     </HomeCard>
     <HomeCard
-      title="Agent Vault"
-      href="/documentation/platform/agent-vault/overview"
-      icon="shield-keyhole"
-      product="agent-vault"
+      title="Secret Scanning"
+      href="/documentation/platform/secret-scanning/overview"
+      icon="radar"
+      product="scanning"
       links={[
-        { label: "Quickstart", href: "/documentation/platform/agent-vault/quickstart" },
-        { label: "Access bundles", href: "/documentation/platform/agent-vault/access-bundles" },
-        { label: "Sessions", href: "/documentation/platform/agent-vault/sessions" }
+        { label: "GitHub", href: "/documentation/platform/secret-scanning/github" },
+        { label: "GitLab", href: "/documentation/platform/secret-scanning/gitlab" },
+        { label: "Bitbucket", href: "/documentation/platform/secret-scanning/bitbucket" }
       ]}
     >
-      Run AI agents with the access they need to do work, without giving them the underlying credentials.
+      Catch hardcoded secrets in source code, pipelines, and infrastructure before they reach production.
     </HomeCard>
   </HomeGrid>
 </HomeSection>

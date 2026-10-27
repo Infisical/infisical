@@ -1,7 +1,7 @@
 import { ProjectType } from "@app/db/schemas";
 import { GatewayTransport } from "@app/ee/services/gateway-v2/gateway-v2-constants";
 import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
-import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
+import { CertificateSource, PkiKeystorePasswordChange } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ScepChallengeType } from "@app/ee/services/pki-scep/challenge";
 import { ScepEnrollmentStatus } from "@app/ee/services/pki-scep/pki-scep-types";
 import {
@@ -59,6 +59,8 @@ import {
   TOidcAuthDetails
 } from "@app/services/identity-access-token/identity-access-token-types";
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
+import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
+import { OrgAccessRemovalCause } from "@app/services/org/org-membership-events";
 import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 import { THealthCheckCommandResult } from "@app/services/pki-sync/pki-sync-health-check-command-fns";
@@ -215,7 +217,8 @@ export enum SecretApprovalEvent {
   Delete = "delete",
   CreateMany = "create-many",
   UpdateMany = "update-many",
-  DeleteMany = "delete-many"
+  DeleteMany = "delete-many",
+  Commit = "commit"
 }
 
 export enum UserAgentType {
@@ -593,6 +596,7 @@ export enum EventType {
   ADD_GROUP_TO_PROJECT = "add-group-to-project",
   UPDATE_GROUP_PROJECT_MEMBERSHIP = "update-group-project-membership",
   REMOVE_GROUP_FROM_PROJECT = "remove-group-from-project",
+  REVOKE_ORG_PROJECT_ACCESS = "revoke-org-project-access",
 
   GET_PROJECT_TEMPLATES = "get-project-templates",
   GET_PROJECT_TEMPLATE = "get-project-template",
@@ -821,6 +825,8 @@ export enum EventType {
   AGENT_VAULT_VARIABLE_UPDATE = "agent-vault-variable-update",
   AGENT_VAULT_VARIABLE_DELETE = "agent-vault-variable-delete",
   AGENT_VAULT_VARIABLE_VALUE_VIEW = "agent-vault-variable-value-view",
+  AGENT_VAULT_PERSONAL_VALUES_SET = "agent-vault-personal-values-set",
+  AGENT_VAULT_PERSONAL_VALUES_DELETE = "agent-vault-personal-values-delete",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
@@ -830,6 +836,7 @@ export enum EventType {
   AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
   AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
   AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
+  AGENT_VAULT_PROXY_TOKEN_ROTATE = "agent-vault-proxy-token-rotate",
   AGENT_VAULT_PROXY_ENROLL = "agent-vault-proxy-enroll",
   AGENT_VAULT_PROXY_UPDATE = "agent-vault-proxy-update",
   AGENT_VAULT_PROXY_REVOKE = "agent-vault-proxy-revoke",
@@ -844,12 +851,14 @@ export enum EventType {
   APPROVAL_REQUEST_LIST = "approval-request-list",
   APPROVAL_REQUEST_CREATE = "approval-request-create",
   APPROVAL_REQUEST_APPROVE = "approval-request-approve",
+  APPROVAL_REQUEST_AUTO_APPROVE = "approval-request-auto-approve",
   APPROVAL_REQUEST_REJECT = "approval-request-reject",
   APPROVAL_REQUEST_CANCEL = "approval-request-cancel",
   APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
   APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
   APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke",
   PAM_ACCESS_POLICY_BYPASSED = "pam-access-policy-bypassed",
+  PAM_ACCESS_REQUEST_AUTO_APPROVED = "pam-access-request-auto-approved",
   ACCESS_APPROVAL_REQUEST_CREATE = "access-approval-request-create",
   ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
   ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
@@ -2934,6 +2943,22 @@ interface UnlinkGroupFromSubOrgEvent {
   };
 }
 
+// Written by the reconcile consumer and by direct org removals, so the actor is the platform and `reason` /
+// `groupId` say why.
+// `resources` are resource-level grants (PAM, Agent Vault, PKI apps, signers), including ones in projects
+// only reached through a group.
+interface RevokeOrgProjectAccessEvent {
+  type: EventType.REVOKE_ORG_PROJECT_ACCESS;
+  metadata: {
+    userId?: string;
+    identityId?: string;
+    projectIds: string[];
+    resources: { projectId: string; resourceType: string; resourceId: string }[];
+    reason: OrgAccessRemovalCause;
+    groupId?: string;
+  };
+}
+
 interface AddUserToGroupEvent {
   type: EventType.ADD_USER_TO_GROUP;
   metadata: {
@@ -5015,6 +5040,7 @@ interface UpdatePkiInstallationEvent {
     installationId: string;
     name?: string;
     type?: string;
+    keystorePasswordChange?: PkiKeystorePasswordChange;
   };
 }
 
@@ -5719,6 +5745,7 @@ interface PitProcessNewCommitRawEvent {
     secretPath: string;
     message: string;
     approvalId?: string;
+    approvalSlug?: string;
     commitId?: string;
   };
 }
@@ -6443,6 +6470,14 @@ interface AgentVaultProxyTokenReissueEvent {
   };
 }
 
+interface AgentVaultProxyTokenRotateEvent {
+  type: EventType.AGENT_VAULT_PROXY_TOKEN_ROTATE;
+  metadata: {
+    proxyId: string;
+    name: string;
+  };
+}
+
 interface AgentVaultProxyEnrollEvent {
   type: EventType.AGENT_VAULT_PROXY_ENROLL;
   metadata: {
@@ -6484,11 +6519,20 @@ interface AgentVaultSessionLogSettingsUpdateEvent {
   type: EventType.AGENT_VAULT_SESSION_LOG_SETTINGS_UPDATE;
   metadata: {
     enabled: boolean;
+    // Null when session logs are off.
+    storageType: ObjectStorageType | null;
     appConnectionId: string | null;
     appConnectionName: string | null;
     bucket: string | null;
     region: string | null;
     keyPrefix: string | null;
+    // The storage that was recording before this change, when it changed the storage or turned session logs off.
+    previousStorageType?: ObjectStorageType | null;
+    previousAppConnectionId?: string | null;
+    previousAppConnectionName?: string | null;
+    previousBucket?: string | null;
+    previousRegion?: string | null;
+    previousKeyPrefix?: string | null;
   };
 }
 
@@ -6525,12 +6569,21 @@ interface AgentVaultServiceCreateEvent {
     accessBundleName: string;
     serviceId: string;
     name: string;
+    serviceType: string;
+    // MCP services only.
+    serverUrl?: string;
+    transport?: string;
     hostPattern: string;
     credentialType: string;
+    // OAuth credentials only.
+    oauthIssuer?: string;
+    oauthScopes?: string[];
     headerName?: string;
     headerPrefix?: string;
     allowedMethods?: string[] | null;
     allowedPathPrefixes?: string[] | null;
+    // The fields each member sets for themselves, such as credential-value or credential-username.
+    memberProvidedFields?: string[];
     // Names and placeholders only. A sealed value must never reach an audit row.
     customHeaderNames?: string[];
     substitutionPlaceholders?: string[];
@@ -6545,12 +6598,21 @@ interface AgentVaultServiceUpdateEvent {
     accessBundleName: string;
     serviceId: string;
     name?: string;
+    // The service's type, which never changes, so present on every update.
+    serviceType: string;
+    serverUrl?: string;
+    transport?: string;
     hostPattern?: string;
     credentialType?: string;
+    // Present when the update connected or reauthorized an OAuth credential.
+    oauthIssuer?: string;
+    oauthScopes?: string[];
     headerName?: string;
     headerPrefix?: string;
     allowedMethods?: string[] | null;
     allowedPathPrefixes?: string[] | null;
+    // The fields each member sets for themselves after the update, present when it touched the credential.
+    memberProvidedFields?: string[];
     customHeaderNames?: string[];
     customHeadersReplaced?: string[];
     substitutionPlaceholders?: string[];
@@ -6580,6 +6642,8 @@ interface AgentVaultVariableCreateEvent {
     accessBundleName?: string;
     variableId: string;
     key: string;
+    // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
+    scope?: string;
   };
 }
 
@@ -6590,6 +6654,8 @@ interface AgentVaultVariableUpdateEvent {
     accessBundleName?: string;
     variableId: string;
     key: string;
+    // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
+    scope?: string;
     // Present only when the update changed the key.
     previousKey?: string;
     valueReplaced: boolean;
@@ -6603,6 +6669,8 @@ interface AgentVaultVariableDeleteEvent {
     accessBundleName?: string;
     variableId: string;
     key: string;
+    // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
+    scope?: string;
   };
 }
 
@@ -6613,6 +6681,35 @@ interface AgentVaultVariableValueViewEvent {
     accessBundleName?: string;
     variableId: string;
     key: string;
+    // global, or personal for a variable only its owner sees and uses. Absent on events from before personal ones.
+    scope?: string;
+  };
+}
+
+// The personal values the actor set for a service that leaves some fields to each member. Field names only, never a value.
+interface AgentVaultPersonalValuesSetEvent {
+  type: EventType.AGENT_VAULT_PERSONAL_VALUES_SET;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    serviceId: string;
+    serviceName: string;
+    // Which credential the fields belong to: credential-value is a token for bearer and a password for basic.
+    credentialType: string;
+    // The fields this update set. A field it left out kept its saved value.
+    fields: string[];
+    variableKeys: string[];
+  };
+}
+
+interface AgentVaultPersonalValuesDeleteEvent {
+  type: EventType.AGENT_VAULT_PERSONAL_VALUES_DELETE;
+  metadata: {
+    accessBundleId: string;
+    accessBundleName: string;
+    serviceId: string;
+    serviceName: string;
+    credentialType: string;
   };
 }
 
@@ -6886,6 +6983,7 @@ interface PamApprovalConfigUpdateEvent {
     stepCount: number;
     notificationConfigCount?: number;
     breakGlassUserCount?: number;
+    autoApprovalRuleCount?: number;
   };
 }
 
@@ -7089,6 +7187,25 @@ interface ApprovalRequestApproveEvent {
   } & TApprovalRequestSubjectMetadata;
 }
 
+// The rule that approved the request and what it checked, so an admin can see why access was granted
+type TAutoApprovalAuditMetadata = {
+  ruleId: string | null;
+  ruleName?: string;
+  linkedRecords: { label: string; value: string }[];
+  conditions: string[];
+};
+
+interface ApprovalRequestAutoApproveEvent {
+  type: EventType.APPROVAL_REQUEST_AUTO_APPROVE;
+  metadata: {
+    policyType: string;
+    approvalRequestId: string;
+    requesterName: string;
+    requesterEmail: string;
+  } & TAutoApprovalAuditMetadata &
+    TApprovalRequestSubjectMetadata;
+}
+
 interface ApprovalRequestRejectEvent {
   type: EventType.APPROVAL_REQUEST_REJECT;
   metadata: {
@@ -7156,6 +7273,22 @@ interface PamAccessPolicyBypassedEvent {
     bypassReason: string;
     approverCount: number;
   };
+}
+
+interface PamAccessRequestAutoApprovedEvent {
+  type: EventType.PAM_ACCESS_REQUEST_AUTO_APPROVED;
+  metadata: {
+    approvalRequestId: string;
+    grantId?: string;
+    accountId?: string;
+    accountName?: string;
+    folderId?: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
+    duration?: string;
+    accessType: string;
+  } & TAutoApprovalAuditMetadata;
 }
 
 interface AccessApprovalRequestCreateEvent {
@@ -8610,6 +8743,8 @@ export type Event =
   | AgentVaultVariableUpdateEvent
   | AgentVaultVariableDeleteEvent
   | AgentVaultVariableValueViewEvent
+  | AgentVaultPersonalValuesSetEvent
+  | AgentVaultPersonalValuesDeleteEvent
   | AgentVaultProductMemberAddEvent
   | AgentVaultProductMemberUpdateEvent
   | AgentVaultProductMemberRemoveEvent
@@ -8619,6 +8754,7 @@ export type Event =
   | AgentVaultSessionRevokeEvent
   | AgentVaultProxyRegisterEvent
   | AgentVaultProxyTokenReissueEvent
+  | AgentVaultProxyTokenRotateEvent
   | AgentVaultProxyEnrollEvent
   | AgentVaultProxyUpdateEvent
   | AgentVaultProxyRevokeEvent
@@ -8665,12 +8801,14 @@ export type Event =
   | ApprovalRequestListEvent
   | ApprovalRequestCreateEvent
   | ApprovalRequestApproveEvent
+  | ApprovalRequestAutoApproveEvent
   | ApprovalRequestRejectEvent
   | ApprovalRequestCancelEvent
   | ApprovalRequestGrantListEvent
   | ApprovalRequestGrantGetEvent
   | ApprovalRequestGrantRevokeEvent
   | PamAccessPolicyBypassedEvent
+  | PamAccessRequestAutoApprovedEvent
   | AccessApprovalRequestCreateEvent
   | AccessApprovalRequestReviewEvent
   | AccessApprovalRequestRevokeEvent
@@ -8753,6 +8891,7 @@ export type Event =
   | LinkGroupToSubOrgEvent
   | UpdateGroupOrgMembershipEvent
   | UnlinkGroupFromSubOrgEvent
+  | RevokeOrgProjectAccessEvent
   | AddUserToGroupEvent
   | RemoveUserFromGroupEvent
   | AddIdentityToGroupEvent

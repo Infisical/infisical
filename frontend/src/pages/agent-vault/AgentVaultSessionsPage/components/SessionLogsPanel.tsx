@@ -33,14 +33,17 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission, useSubscription } from "@app/context";
+import { useOrganization, useProjectPermission } from "@app/context";
+import { isInfisicalCloud } from "@app/helpers/platform";
 import {
   AGENT_VAULT_SESSION_LOG_LIVE_POLL_MS,
   AgentVaultSessionLogDecision,
+  AgentVaultSessionLogStorageType,
   getSessionLogStorageError,
   sessionLogRecordKey,
   useAgentVaultSessionLogTimeline,
-  useGetAgentVaultSessionLogs
+  useGetAgentVaultSessionLogs,
+  useGetAgentVaultSessionLogSettings
 } from "@app/hooks/api/agentVault";
 import { sessionLogChunkKey } from "@app/hooks/api/agentVault/sessionLogDecrypt";
 import {
@@ -101,8 +104,9 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
-  const { subscription } = useSubscription();
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+  // Only admins can read the settings; they need the storage type to show the right upgrade.
+  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(isAdmin);
   // A session holds one bundle (AGENT_VAULT_MAX_SESSION_BUNDLES). Raising that cap needs a bundle
   // picker here: the rows offering Add Service matched no service, so they name no bundle.
   const accessBundle = session.accessBundles[0];
@@ -110,6 +114,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
   // Not cleared on close: a prefilled host drops the sheet's template step, so clearing the host
   // while the sheet animates out would change the step on screen.
   const [serviceHost, setServiceHost] = useState<string | null>(null);
+  const [servicePath, setServicePath] = useState<string | undefined>();
   const [isServiceSheetOpen, setIsServiceSheetOpen] = useState(false);
   const [addedHosts, setAddedHosts] = useState<Set<string>>(() => new Set());
 
@@ -172,6 +177,12 @@ export const SessionLogsPanel = ({ session }: Props) => {
   const isLoadError = isError && !data;
 
   const isEnabled = pages?.[0]?.sessionLogs.enabled ?? false;
+  const disabledReason = pages?.[0]?.sessionLogs.disabledReason ?? null;
+  // Default storage belongs to whoever runs Infisical, so nothing in Settings or the bucket's CORS rule is the reader's to
+  // fix. A failed read returns no page, so admins fall back to the settings they already load.
+  const isDefaultStorage =
+    (pages?.[0]?.sessionLogs.storageType ?? sessionLogState?.settings?.storage.type) ===
+    AgentVaultSessionLogStorageType.Default;
   const isRecordable = pages?.[0]?.sessionLogs.isRecordable ?? true;
   // Nothing new can arrive while session logs are off or for a session that can't be recorded, so the panel
   // doesn't go live, and an ended session doesn't promise logs that won't come.
@@ -392,7 +403,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
         </EmptyHeader>
         <div className="flex gap-2">
           {retryButton}
-          {isAdmin && (
+          {isAdmin && !isDefaultStorage && (
             <Button variant="av" asChild>
               <Link
                 to="/organizations/$orgId/agent-vault/settings"
@@ -407,24 +418,17 @@ export const SessionLogsPanel = ({ session }: Props) => {
     );
   }
 
-  // Only a running session is offered Settings or an upgrade; turning logs on can't record one that ended.
-  if (
-    !isPending &&
-    !isPlaceholderData &&
-    !isLoadError &&
-    isActive &&
-    !isEnabled &&
-    !hasChunks &&
-    !range
-  ) {
-    if (!subscription.agentVaultByoS3) {
+  // Off and off-plan hide recorded logs, for ended sessions too. Upgrading shows them again, so every admin is offered
+  // it; only a running session is offered Settings, since turning logs on can't record one that ended.
+  if (!isPending && !isPlaceholderData && !isLoadError && disabledReason) {
+    if (disabledReason === "not-on-plan") {
       return (
         <Empty className="border">
           <EmptyHeader>
             <EmptyTitle>Session logs aren&apos;t on your plan</EmptyTitle>
             <EmptyDescription>
               {isAdmin
-                ? "Upgrade to record what your agents reach."
+                ? "Upgrade to see recorded logs and record what your agents reach."
                 : "Ask an Agent Vault administrator about upgrading."}
             </EmptyDescription>
           </EmptyHeader>
@@ -436,14 +440,15 @@ export const SessionLogsPanel = ({ session }: Props) => {
           <AgentVaultSessionLogUpgradeModal
             isOpen={isUpgradeOpen}
             onOpenChange={setIsUpgradeOpen}
+            storageType={sessionLogState?.settings?.storage.type}
           />
         </Empty>
       );
     }
 
     const offDescription = isAdmin
-      ? "Point Agent Vault at a bucket under Settings to start recording what your agents reach."
-      : "Ask an Agent Vault administrator to turn it on.";
+      ? "Turn them on in Settings to record what your agents do."
+      : "Ask an Agent Vault administrator to turn them on.";
 
     return (
       <Empty className="border">
@@ -451,7 +456,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
           <EmptyTitle>Session logs are off</EmptyTitle>
           <EmptyDescription>{offDescription}</EmptyDescription>
         </EmptyHeader>
-        {isAdmin && (
+        {isAdmin && isActive && (
           <Button variant="av" asChild>
             <Link to="/organizations/$orgId/agent-vault/settings" params={{ orgId: currentOrg.id }}>
               Go to Settings
@@ -495,7 +500,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
             <InputGroupInput
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search host, path, method or service..."
+              placeholder="Search host, path, method, tool or service..."
             />
             {search && (
               <InputGroupAddon align="inline-end">
@@ -549,19 +554,28 @@ export const SessionLogsPanel = ({ session }: Props) => {
         <Alert variant="warning">
           <TriangleAlertIcon />
           <AlertDescription>
-            <div className="flex flex-col gap-1">
+            {isDefaultStorage ? (
               <p>
-                None of this session&apos;s logs could be downloaded from the bucket. The
-                bucket&apos;s CORS rule may not allow this origin, or this network may block the
-                bucket.
+                Your browser couldn&apos;t download this session&apos;s logs. Your network may be
+                blocking them. Try again, or contact{" "}
+                {isInfisicalCloud() ? "Infisical support" : "your server administrator"} if it keeps
+                happening.
               </p>
-              {!isAdmin && (
-                <p>Ask an Agent Vault administrator to check the bucket&apos;s CORS rule.</p>
-              )}
-            </div>
+            ) : (
+              <div className="flex flex-col gap-1">
+                <p>
+                  None of this session&apos;s logs could be downloaded from the bucket. The
+                  bucket&apos;s CORS rule may not allow this origin, or this network may block the
+                  bucket.
+                </p>
+                {!isAdmin && (
+                  <p>Ask an Agent Vault administrator to check the bucket&apos;s CORS rule.</p>
+                )}
+              </div>
+            )}
             <AlertAction className="flex gap-2">
               {retryButton}
-              {isAdmin && (
+              {isAdmin && !isDefaultStorage && (
                 <Button variant="outline" size="sm" asChild>
                   <Link
                     to="/organizations/$orgId/agent-vault/settings"
@@ -658,7 +672,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
               <TableHead className="w-48">Time</TableHead>
               <TableHead className="w-24">Method</TableHead>
               <TableHead>Host</TableHead>
-              <TableHead>Path</TableHead>
+              <TableHead>Request</TableHead>
               <TableHead className="w-24">Upstream</TableHead>
               <TableHead className="w-36">Outcome</TableHead>
               <TableHead variant="action" className={canAddService ? "w-36" : "w-12"} />
@@ -695,6 +709,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
                     isAddable
                       ? () => {
                           setServiceHost(hostPatternFor(record));
+                          setServicePath(record.path);
                           setIsServiceSheetOpen(true);
                         }
                       : undefined
@@ -763,6 +778,7 @@ export const SessionLogsPanel = ({ session }: Props) => {
           onOpenChange={setIsServiceSheetOpen}
           accessBundleId={accessBundle.id}
           prefillHost={serviceHost ?? undefined}
+          prefillPath={servicePath}
           onSaved={() => {
             if (serviceHost) setAddedHosts((prev) => new Set(prev).add(serviceHost));
           }}

@@ -1,7 +1,8 @@
+import crypto from "node:crypto";
+
 import { z } from "zod";
 
-import { TEventOutbox } from "@app/db/schemas";
-
+import { TClaimedOutboxRow } from "./event-outbox-dal";
 import { eventOutboxRegistryFactory } from "./event-outbox-registry";
 import { eventOutboxServiceFactory } from "./event-outbox-service";
 import {
@@ -19,11 +20,22 @@ vi.mock("@app/lib/logger", () => ({
   initLogger: () => {}
 }));
 
-const { exhaustedMetrics } = vi.hoisted(() => ({ exhaustedMetrics: [] as { consumer: string; count: number }[] }));
+const { exhaustedMetrics, rejectedMetrics } = vi.hoisted(() => ({
+  exhaustedMetrics: [] as { consumer: string; count: number }[],
+  rejectedMetrics: [] as { eventType: string; reason: string; consumer?: string }[]
+}));
 vi.mock("@app/lib/telemetry/metrics", () => ({
+  EventOutboxRejectReason: {
+    InvalidEvent: "invalid_event",
+    DataTooLarge: "data_too_large",
+    DataRejected: "data_rejected"
+  },
   recordEventOutboxLagMetric: () => {},
   recordEventOutboxExhaustedMetric: (params: { consumer: string; count: number }) => {
     exhaustedMetrics.push(params);
+  },
+  recordEventOutboxRejectedMetric: (params: { eventType: string; reason: string; consumer?: string }) => {
+    rejectedMetrics.push(params);
   }
 }));
 
@@ -38,16 +50,17 @@ const makePayload = (overrides?: Record<string, unknown>) => ({
 });
 
 const makeEvent = (overrides?: Partial<TEventInput>): TEventInput => ({
-  eventType: "approval.workflow.request_opened",
-  payload: makePayload(),
+  id: crypto.randomUUID(),
+  type: "approval.workflow.request_opened",
+  data: makePayload(),
   ...overrides
 });
 
 const makeConsumer = (overrides?: Partial<IEventConsumer>): IEventConsumer =>
   ({
     name: "alert",
-    payloadSchema: z.object({ targetIds: z.array(z.string()).min(1) }),
-    subscribesTo: (eventType: string) => eventType === "approval.workflow.request_opened",
+    dataSchema: z.object({ targetIds: z.array(z.string()).min(1) }),
+    subscribesTo: (type: string) => type === "approval.workflow.request_opened",
     handle: async () => [],
     ...overrides
   }) as IEventConsumer;
@@ -80,7 +93,7 @@ describe("event outbox emit", () => {
       makeConsumer({ name: "other", subscribesTo: () => false })
     ]);
 
-    await service.emit(makeEvent(), TX);
+    await service.emit([makeEvent()], TX);
 
     expect(insertedRows()).toHaveLength(1);
     expect((insertedRows()[0] as { consumer: string }).consumer).toBe("alert");
@@ -89,7 +102,7 @@ describe("event outbox emit", () => {
   test("does not touch the database when no consumer handles the event type", async () => {
     const { service, inserted } = buildService([makeConsumer({ subscribesTo: () => false })]);
 
-    await service.emit(makeEvent(), TX);
+    await service.emit([makeEvent()], TX);
 
     expect(inserted).toHaveLength(0);
   });
@@ -99,38 +112,89 @@ describe("event outbox emit", () => {
   test("writes a row without consulting the database about the resource", async () => {
     const { service, inserted } = buildService([makeConsumer()]);
 
-    await service.emit(makeEvent(), TX);
+    await service.emit([makeEvent()], TX);
 
     expect(inserted).toHaveLength(1);
     expect(inserted[0].tx).toBe(TX);
   });
 
-  // An unreadable payload means a wrong emit site. Failing loudly beats dropping a notification over a
-  // misspelled field.
-  test("throws when the payload does not match the consumer's schema", async () => {
+  // A bad event fails the caller's transaction: a write that commits without its event is a change
+  // consumers never hear about.
+  describe("rejects a malformed event, failing the write it belongs to", () => {
+    beforeEach(() => {
+      rejectedMetrics.length = 0;
+    });
+
+    test("when the data does not match a consumer's schema", async () => {
+      const { service, inserted } = buildService([
+        makeConsumer({ name: "lenient", dataSchema: z.object({}) as never }),
+        makeConsumer({ name: "alert" })
+      ]);
+
+      await expect(service.emit([makeEvent({ data: makePayload({ targetIds: [] }) })], TX)).rejects.toThrow(
+        "could not record an event for this change"
+      );
+
+      expect(inserted).toHaveLength(0);
+      expect(rejectedMetrics).toEqual([
+        { eventType: "approval.workflow.request_opened", reason: "data_rejected", consumer: "alert" }
+      ]);
+    });
+
+    test("when the data is oversized", async () => {
+      const { service, inserted } = buildService([
+        makeConsumer({ dataSchema: z.object({ blob: z.string() }) as never })
+      ]);
+
+      await expect(
+        service.emit([makeEvent({ data: { blob: "x".repeat(MAX_OUTBOX_PAYLOAD_BYTES + 1) } })], TX)
+      ).rejects.toThrow();
+
+      expect(inserted).toHaveLength(0);
+      expect(rejectedMetrics).toEqual([{ eventType: "approval.workflow.request_opened", reason: "data_too_large" }]);
+    });
+
+    test.each([
+      ["the id is not a UUID", { id: "reminder-1" }, "approval.workflow.request_opened"],
+      ["the type is not a dot-namespaced key", { type: "Not A Key" }, "Not A Key"]
+    ])("when %s", async (_, override, reportedType) => {
+      const { service, inserted } = buildService([makeConsumer()]);
+
+      await expect(service.emit([makeEvent(override)], TX)).rejects.toThrow();
+
+      expect(inserted).toHaveLength(0);
+      expect(rejectedMetrics).toEqual([{ eventType: reportedType, reason: "invalid_event" }]);
+    });
+
+    test("without writing the well-formed events emitted with it", async () => {
+      const { service, inserted } = buildService([makeConsumer()]);
+
+      await expect(service.emit([makeEvent(), makeEvent({ type: "Not A Key" })], TX)).rejects.toThrow();
+
+      expect(inserted).toHaveLength(0);
+    });
+  });
+
+  test("gives every consumer's row for one event the event's id", async () => {
+    const { service, insertedRows } = buildService([makeConsumer({ name: "alert" }), makeConsumer({ name: "other" })]);
+    const event = makeEvent();
+
+    await service.emit([event], TX);
+
+    expect((insertedRows() as { eventId: string }[]).map((row) => row.eventId)).toEqual([event.id, event.id]);
+  });
+
+  test("writes many events in one insert inside the caller's tx", async () => {
     const { service, inserted } = buildService([makeConsumer()]);
+    const events = [makeEvent(), makeEvent(), makeEvent()];
 
-    await expect(service.emit(makeEvent({ payload: makePayload({ targetIds: [] }) }), TX)).rejects.toThrow(
-      "the 'alert' consumer cannot accept"
+    await service.emit(events, TX);
+
+    expect(inserted).toHaveLength(1);
+    expect(inserted[0].tx).toBe(TX);
+    expect((inserted[0].rows as { eventId: string }[]).map((row) => row.eventId)).toEqual(
+      events.map((event) => event.id)
     );
-    expect(inserted).toHaveLength(0);
-  });
-
-  test("throws on an oversized payload rather than storing a document", async () => {
-    const { service, inserted } = buildService([
-      makeConsumer({ payloadSchema: z.object({ blob: z.string() }) as never })
-    ]);
-
-    await expect(service.emit(makeEvent({ payload: { blob: "x".repeat(20_000) } }), TX)).rejects.toThrow(
-      `over the ${MAX_OUTBOX_PAYLOAD_BYTES} byte limit`
-    );
-    expect(inserted).toHaveLength(0);
-  });
-
-  test("throws on a malformed event envelope", async () => {
-    const { service } = buildService([makeConsumer()]);
-
-    await expect(service.emit(makeEvent({ eventType: "Not A Key" }), TX)).rejects.toThrow("Invalid outbox event");
   });
 
   // Swallowing it would hand the caller a poisoned transaction instead of the real error.
@@ -146,19 +210,19 @@ describe("event outbox emit", () => {
       eventOutboxRegistry: registry
     });
 
-    await expect(service.emit(makeEvent(), TX)).rejects.toThrow("connection terminated");
+    await expect(service.emit([makeEvent()], TX)).rejects.toThrow("connection terminated");
   });
 });
 
 describe("event outbox drain", () => {
-  const makeRow = (overrides?: Partial<TEventOutbox>): TEventOutbox =>
+  const makeRow = (overrides?: Partial<TClaimedOutboxRow>): TClaimedOutboxRow =>
     ({
       id: 1,
+      eventId: `event-${overrides?.id ?? 1}`,
       consumer: "alert",
       eventType: "approval.workflow.request_opened",
       payload: makePayload(),
-      idempotencyKey: null,
-      occurredAt: new Date(),
+      occurredAt: new Date("2026-08-20T17:42:31.000Z"),
       status: EventOutboxStatus.Processing,
       attempts: 0,
       nextRetryAt: new Date(),
@@ -167,10 +231,10 @@ describe("event outbox drain", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       ...overrides
-    }) as TEventOutbox;
+    }) as TClaimedOutboxRow;
 
   const buildDrain = (opts: {
-    batches: TEventOutbox[][];
+    batches: TClaimedOutboxRow[][];
     handle: IEventConsumer["handle"];
     consumerName?: string;
     settled?: (input: { delivered: { ids: string[] }[] }) => number;
@@ -224,13 +288,38 @@ describe("event outbox drain", () => {
   test("commits a delivered result and stops when a claim comes back empty", async () => {
     const { service, commits } = buildDrain({
       batches: [[makeRow()]],
-      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Delivered }))
+      handle: async (events) => events.map((event) => ({ id: event.id, status: EventResultStatus.Delivered }))
     });
 
     const result = await service.drain(KEY);
 
     expect(result.handled).toBe(1);
     expect(commits[0].delivered).toEqual([{ ids: ["1"] }]);
+  });
+
+  test("hands the consumer each row as a CloudEvent and settles its result on that row", async () => {
+    let received: unknown[] = [];
+    const { service, commits } = buildDrain({
+      batches: [[makeRow({ id: 7, eventId: "550e8400-e29b-41d4-a716-446655440000" })]],
+      handle: async (events) => {
+        received = events;
+        return events.map((event) => ({ id: event.id, status: EventResultStatus.Delivered }));
+      }
+    });
+
+    await service.drain(KEY);
+
+    expect(received).toEqual([
+      {
+        specversion: "1.0",
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        source: "urn:infisical:approval",
+        type: "approval.workflow.request_opened",
+        time: "2026-08-20T17:42:31.000Z",
+        data: makePayload()
+      }
+    ]);
+    expect(commits[0].delivered).toEqual([{ ids: ["7"] }]);
   });
 
   test("retries the whole batch when the consumer throws", async () => {
@@ -260,7 +349,7 @@ describe("event outbox drain", () => {
   test("fails a row terminally once it has used up its attempts", async () => {
     const { service, commits } = buildDrain({
       batches: [[makeRow({ attempts: MAX_OUTBOX_ATTEMPTS - 1 })]],
-      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Retry })),
+      handle: async (events) => events.map((event) => ({ id: event.id, status: EventResultStatus.Retry })),
       consumerName: "alert"
     });
 
@@ -275,11 +364,11 @@ describe("event outbox drain", () => {
   test("groups rows that share an outcome into one commit entry", async () => {
     const { service, commits } = buildDrain({
       batches: [[makeRow({ id: 1 }), makeRow({ id: 2 }), makeRow({ id: 3 }), makeRow({ id: 4 })]],
-      handle: async (rows) =>
-        rows.map((row) =>
-          Number(row.id) <= 2
-            ? { id: String(row.id), status: EventResultStatus.Delivered }
-            : { id: String(row.id), status: EventResultStatus.Retry, error: "slack 502" }
+      handle: async (events) =>
+        events.map((event) =>
+          ["event-1", "event-2"].includes(event.id)
+            ? { id: event.id, status: EventResultStatus.Delivered }
+            : { id: event.id, status: EventResultStatus.Retry, error: "slack 502" }
         )
     });
 
@@ -296,7 +385,7 @@ describe("event outbox drain", () => {
   test("commits under the token the batch was claimed with", async () => {
     const { service, commits, claimTokens } = buildDrain({
       batches: [[makeRow()]],
-      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Delivered }))
+      handle: async (events) => events.map((event) => ({ id: event.id, status: EventResultStatus.Delivered }))
     });
 
     await service.drain(KEY);
@@ -310,7 +399,7 @@ describe("event outbox drain", () => {
     loggerWarn.mockClear();
     const { service } = buildDrain({
       batches: [[makeRow({ id: 1 }), makeRow({ id: 2 })]],
-      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Delivered })),
+      handle: async (events) => events.map((event) => ({ id: event.id, status: EventResultStatus.Delivered })),
       settled: () => 1
     });
 
@@ -324,7 +413,7 @@ describe("event outbox drain", () => {
     loggerWarn.mockClear();
     const { service } = buildDrain({
       batches: [[makeRow()]],
-      handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Delivered }))
+      handle: async (events) => events.map((event) => ({ id: event.id, status: EventResultStatus.Delivered }))
     });
 
     await service.drain(KEY);
@@ -340,9 +429,9 @@ describe("event outbox drain", () => {
       let release: () => void = () => {};
       const { service, extended, claimTokens } = buildDrain({
         batches: [[makeRow({ id: 1 }), makeRow({ id: 2 })]],
-        handle: (rows) =>
+        handle: (events) =>
           new Promise((resolve) => {
-            release = () => resolve(rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Delivered })));
+            release = () => resolve(events.map((event) => ({ id: event.id, status: EventResultStatus.Delivered })));
           })
       });
 
@@ -408,7 +497,7 @@ describe("event outbox drain", () => {
       registry.register(
         makeConsumer({
           name: "alert",
-          handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Delivered }))
+          handle: async (events) => events.map((event) => ({ id: event.id, status: EventResultStatus.Delivered }))
         })
       );
       let commitCalls = 0;
@@ -446,7 +535,7 @@ describe("event outbox drain", () => {
       registry.register(
         makeConsumer({
           name: "alert",
-          handle: async (rows) => rows.map((row) => ({ id: String(row.id), status: EventResultStatus.Delivered }))
+          handle: async (events) => events.map((event) => ({ id: event.id, status: EventResultStatus.Delivered }))
         })
       );
       let commitCalls = 0;

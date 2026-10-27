@@ -800,6 +800,41 @@ export const recordAlertDispatchOutcomeMetric = (params: { resourceType: string;
   });
 };
 
+// -- Object storage (InfisicalCore meter) -------------------------------------------------------------
+// Upload links the shared object storage layer gave out, or refused at the daily cap. Instance totals only: a per-org
+// split would need org ids as labels.
+
+export enum ObjectStorageUploadOutcome {
+  Admitted = "admitted",
+  Capped = "capped"
+}
+
+export const objectStorageUploadCounter = infisicalCoreMeter.createCounter("infisical.object_storage.upload.count", {
+  description:
+    "Upload links the object storage layer gave out or refused at the daily cap, by storage type and outcome.",
+  unit: "{upload}"
+});
+
+export const objectStorageUploadBytesCounter = infisicalCoreMeter.createCounter(
+  "infisical.object_storage.upload.bytes",
+  {
+    description: "Bytes the object storage layer's upload links allow, by storage type and outcome.",
+    unit: "By"
+  }
+);
+
+export const recordObjectStorageUploadMetric = (params: {
+  storageType: string;
+  outcome: ObjectStorageUploadOutcome;
+  bytes: number;
+}) =>
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    const attributes = { type: params.storageType, outcome: params.outcome };
+    objectStorageUploadCounter.add(1, attributes);
+    objectStorageUploadBytesCounter.add(params.bytes, attributes);
+  });
+
 // -- Event outbox (InfisicalCore meter) --------------------------------------------------------------
 // Outbox health, not what consumers do with events. The main canary is the oldest-pending-age gauge
 // in event-outbox-queue.ts, fed by the relay tick.
@@ -829,6 +864,32 @@ export const recordEventOutboxExhaustedMetric = (params: { consumer: string; cou
   safely(() => {
     if (!isTelemetryEnabled()) return;
     eventOutboxExhaustedCounter.add(params.count, { "event_outbox.consumer": params.consumer });
+  });
+
+export enum EventOutboxRejectReason {
+  InvalidEvent = "invalid_event",
+  DataTooLarge = "data_too_large",
+  DataRejected = "data_rejected"
+}
+
+export const eventOutboxRejectedCounter = infisicalCoreMeter.createCounter("infisical.event_outbox.rejected.count", {
+  description:
+    "Events the outbox refused because the emit site built a bad one, by event type and reason. The emit throws, so the business write the event belongs to fails with it. Alarm on any occurrence: it is a bug at the emit site.",
+  unit: "{event}"
+});
+
+export const recordEventOutboxRejectedMetric = (params: {
+  eventType: string;
+  reason: EventOutboxRejectReason;
+  consumer?: string;
+}) =>
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    eventOutboxRejectedCounter.add(1, {
+      "event_outbox.event_type": params.eventType,
+      "event_outbox.reject_reason": params.reason,
+      ...(params.consumer ? { "event_outbox.consumer": params.consumer } : {})
+    });
   });
 
 export enum ProductAnalyticsDropReason {

@@ -267,6 +267,7 @@
     "netmask": "^2.0.2",
     "node-forge": "^1.4.0",
     "nodemailer": "^10.0.16",
+    "oauth4webapi": "3.8.8",
     "oci-common": "^2.142.2",
     "oci-identity": "^2.142.2",
     "oci-keymanagement": "^2.142.2",

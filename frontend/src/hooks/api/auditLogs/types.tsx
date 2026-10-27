@@ -978,6 +978,26 @@ interface PamAccessPolicyBypassedEvent {
   };
 }
 
+interface PamAccessRequestAutoApprovedEvent {
+  type: EventType.PAM_ACCESS_REQUEST_AUTO_APPROVED;
+  metadata: {
+    approvalRequestId: string;
+    grantId?: string;
+    accountId?: string;
+    accountName?: string;
+    folderId?: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
+    duration?: string;
+    accessType: string;
+    ruleId: string | null;
+    ruleName?: string;
+    linkedRecords: { label: string; value: string }[];
+    conditions: string[];
+  };
+}
+
 interface CreateProjectFolderGrantEvent {
   type: EventType.CREATE_PROJECT_FOLDER_GRANT;
   metadata: {
@@ -1118,6 +1138,7 @@ export type Event =
   | IntegrationSyncedEvent
   | ClearIdentityLdapAuthLockoutsEvent
   | PamAccessPolicyBypassedEvent
+  | PamAccessRequestAutoApprovedEvent
   | CreateProjectFolderGrantEvent
   | DeleteProjectFolderGrantEvent
   | CreateSecretFolderAccessEvent

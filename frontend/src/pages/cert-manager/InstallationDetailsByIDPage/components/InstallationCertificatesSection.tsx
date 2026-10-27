@@ -1,5 +1,5 @@
 /* eslint-disable no-nested-ternary */
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { ReactNode } from "react";
 import { format } from "date-fns";
 
 import { truncateSerialNumber } from "@app/components/utilities/serialNumberUtils";
@@ -14,6 +14,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -21,19 +22,19 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { useProject } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { TPkiInstallationCert } from "@app/hooks/api";
 
 import { getCertValidUntilBadgeDetails } from "../../CertificatesPage/components/CertificatesTable.utils";
 
 type Props = {
   certificates: TPkiInstallationCert[];
+  emptyState?: ReactNode;
 };
 
-export const InstallationCertificatesSection = ({ certificates }: Props) => {
-  const navigate = useNavigate();
-  const { orgId } = useParams({
-    from: "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/discovery/installations/$installationId"
-  });
+export const InstallationCertificatesSection = ({ certificates, emptyState }: Props) => {
+  const { currentProject } = useProject();
 
   return (
     <Card>
@@ -42,7 +43,9 @@ export const InstallationCertificatesSection = ({ certificates }: Props) => {
         <CardDescription>Certificates found on this installation</CardDescription>
       </CardHeader>
       <CardContent className="p-0">
-        {certificates.length === 0 ? (
+        {certificates.length === 0 && emptyState ? (
+          emptyState
+        ) : certificates.length === 0 ? (
           <Empty>
             <EmptyHeader>
               <EmptyTitle>No certificates found on this installation</EmptyTitle>
@@ -67,19 +70,18 @@ export const InstallationCertificatesSection = ({ certificates }: Props) => {
                   : null;
 
                 return (
-                  <TableRow
-                    key={cert.id}
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/cert-manager/certificates/$certificateId",
-                        params: {
-                          orgId,
-                          certificateId: cert.certificateId
-                        }
-                      })
-                    }
-                  >
-                    <TableCell>{cert.commonName || "N/A"}</TableCell>
+                  <TableRow key={cert.id} linked>
+                    <TableCell>
+                      <RowLink
+                        {...getInstancePinningLink(
+                          currentProject.orgId,
+                          currentProject,
+                          `certificates/${cert.certificateId}`
+                        )!}
+                      >
+                        {cert.commonName || "N/A"}
+                      </RowLink>
+                    </TableCell>
                     <TableCell>
                       {expiryDetails ? (
                         <Badge variant={expiryDetails.variant}>{expiryDetails.label}</Badge>
