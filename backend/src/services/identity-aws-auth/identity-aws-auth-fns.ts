@@ -1,3 +1,6 @@
+import { isValidAwsRegion } from "@app/lib/aws/region";
+import { BadRequestError } from "@app/lib/errors";
+
 interface PrincipalArnEntity {
   Partition: string;
   Service: "iam" | "sts";
@@ -102,3 +105,70 @@ export const hasAwsTrustBinding = ({
 }) => Boolean(allowedAccountIds?.trim()) || Boolean(allowedPrincipalArns?.trim());
 
 export const AWS_TRUST_BINDING_REQUIRED_MESSAGE = "Configure at least one allowed AWS account ID or principal ARN.";
+
+// Credential=<access-key-id>/<date>/<region>/<service>/aws4_request
+const awsRegionFromAuthorizationHeader = (authorizationHeader: string): string | null => {
+  const credentialField = authorizationHeader.split(" ").find((field) => field.startsWith("Credential="));
+  const credentialParts = credentialField?.split("/");
+  return credentialParts && credentialParts.length >= 3 ? credentialParts[2] : null;
+};
+
+// Left to the HTTP client, which derives them from the STS URL and the body it sends; forwarding them lets the
+// caller pick the server (Host) or leave bytes on a pooled connection for the next request (framing headers)
+const STRIPPED_STS_HEADERS = new Set([
+  "host",
+  "content-length",
+  "transfer-encoding",
+  "connection",
+  "keep-alive",
+  "proxy-connection",
+  "te",
+  "trailer",
+  "upgrade",
+  "expect"
+]);
+
+// The caller's input is replayed to STS and the answer is trusted, so it is narrowed to the one request STS must answer
+export const parseSignedGetCallerIdentityRequest = ({
+  iamHttpRequestMethod,
+  iamRequestBody,
+  iamRequestHeaders
+}: {
+  iamHttpRequestMethod: string;
+  iamRequestBody: string;
+  iamRequestHeaders: string;
+}) => {
+  let rawHeaders: unknown;
+  try {
+    rawHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
+  } catch {
+    throw new BadRequestError({ message: "Signed STS request headers must be base64-encoded JSON" });
+  }
+  if (!rawHeaders || typeof rawHeaders !== "object" || Array.isArray(rawHeaders)) {
+    throw new BadRequestError({ message: "Signed STS request headers must be a JSON object" });
+  }
+
+  const body = Buffer.from(iamRequestBody, "base64").toString();
+  const actions = new URLSearchParams(body).getAll("Action");
+  if (iamHttpRequestMethod.toUpperCase() !== "POST" || actions.length !== 1 || actions[0] !== "GetCallerIdentity") {
+    throw new BadRequestError({ message: "Signed STS request must be a POST of Action=GetCallerIdentity" });
+  }
+
+  const headers: Record<string, string> = {};
+  Object.entries(rawHeaders).forEach(([name, value]) => {
+    const headerName = name.toLowerCase();
+    if (STRIPPED_STS_HEADERS.has(headerName)) return;
+    // A second spelling of a name would let the value that is validated differ from the one that is sent
+    if (headerName in headers || typeof value !== "string") {
+      throw new BadRequestError({ message: `Signed STS request has an invalid ${headerName} header` });
+    }
+    headers[headerName] = value;
+  });
+
+  const region = headers.authorization ? awsRegionFromAuthorizationHeader(headers.authorization) : null;
+  if (!isValidAwsRegion(region)) {
+    throw new BadRequestError({ message: "Invalid AWS region" });
+  }
+
+  return { url: `https://sts.${region}.amazonaws.com`, headers, body };
+};
