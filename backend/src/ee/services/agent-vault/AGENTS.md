@@ -109,8 +109,10 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   on the previous release writes none) and `toSessionActor` falls back to the backfill's guess.
 - When `SET NULL` leaves a session with neither actor id, `updatedAt` is the only record of when the owner
   went, and the session log service retires the session from it. So nothing writes to such a row: label edits
-  are refused and revoke is a no-op (the session already reads as revoked). A new write to sessions needs the
-  same guard, or it reopens the session's late-log window.
+  are refused and revoke is a no-op (the session already reads as revoked). The guard sits in each write's own
+  SQL on the primary (`updateLabel`, `revokeIfActive`), not in a check on the session read beforehand, which
+  can come from a replica that hasn't seen the deletion yet. A new write to sessions needs the same guard, or it
+  reopens the session's late-log window.
 - Status is derived from `revokedAt`, `expiresAt` and the actor columns, never stored: a session with neither
   actor id reads as revoked in the list and the status filter, so they agree with resolve refusing it. Expiry
   is enforced against the clock on every resolve; there is no expiry audit event, matching every other product.
