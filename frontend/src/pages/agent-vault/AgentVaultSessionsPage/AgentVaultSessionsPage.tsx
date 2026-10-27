@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, linkOptions } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -64,10 +63,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission, useSubscription } from "@app/context";
-import {
-  areAgentVaultSessionLogsOn,
-  isAgentVaultSessionLogPlanLapsed
-} from "@app/helpers/agentVaultSessionLogs";
+import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -84,6 +80,7 @@ import {
   useListAgentVaultAccessBundles,
   useListAgentVaultSessions
 } from "@app/hooks/api/agentVault";
+import { AgentVaultSessionLogStorageType } from "@app/hooks/api/agentVault/enums";
 import { TAgentVaultMintedSession, TAgentVaultSession } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -141,12 +138,15 @@ export const AgentVaultSessionsPage = () => {
     offset: (page - 1) * perPage
   });
   const { data: accessBundles } = useListAgentVaultAccessBundles({ limit: 1 });
-  const { data: sessionLogSettings } = useGetAgentVaultSessionLogSettings(isAdmin);
+  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(isAdmin);
   const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(isAdmin);
   const { subscription } = useSubscription();
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
-  const isSessionLogPlanLapsed = Boolean(
-    sessionLogSettings && isAgentVaultSessionLogPlanLapsed(sessionLogSettings, subscription)
+  const sessionLogSettings = sessionLogState?.settings ?? null;
+  // Covers a saved choice the plan dropped and the unsaved default the plan never included.
+  const isSessionLogBlockedByPlan = isAgentVaultSessionLogBlockedByPlan(
+    sessionLogSettings,
+    subscription
   );
 
   const sessions = data?.sessions ?? [];
@@ -182,9 +182,7 @@ export const AgentVaultSessionsPage = () => {
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Sessions" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Sessions" })}</title>
       <PageHeader
         scope={ProjectType.AgentVault}
         icon={IdCardIcon}
@@ -194,9 +192,8 @@ export const AgentVaultSessionsPage = () => {
 
       <div className="flex flex-col gap-8">
         {sessionLogHealth?.connectionError &&
-          sessionLogSettings &&
-          areAgentVaultSessionLogsOn(sessionLogSettings) &&
-          !isSessionLogPlanLapsed && (
+          sessionLogSettings?.enabled &&
+          !isSessionLogBlockedByPlan && (
             <Alert variant="danger">
               <CircleAlertIcon />
               <AlertDescription>
@@ -215,12 +212,14 @@ export const AgentVaultSessionsPage = () => {
             </Alert>
           )}
 
-        {isSessionLogPlanLapsed && (
+        {isSessionLogBlockedByPlan && (
           <Alert variant="warning">
             <TriangleAlertIcon />
             <AlertDescription>
               <p>
-                Your plan no longer includes session logs, so new requests aren&apos;t recorded.
+                {sessionLogSettings?.storage.type === AgentVaultSessionLogStorageType.External
+                  ? "Your plan no longer includes external storage. Upgrade to see recorded logs and keep recording. Recorded logs stay in your bucket."
+                  : "Your plan doesn't include default storage, so session logs aren't being recorded. Upgrade to record and view them."}
               </p>
               <AlertAction>
                 <Button variant="outline" size="sm" onClick={() => setIsUpgradeOpen(true)}>
@@ -231,30 +230,27 @@ export const AgentVaultSessionsPage = () => {
           </Alert>
         )}
 
-        {sessionLogSettings &&
-          Boolean(sessionLogSettings.bucket) &&
-          !isSessionLogPlanLapsed &&
-          !areAgentVaultSessionLogsOn(sessionLogSettings) && (
-            <Alert variant="warning">
-              <TriangleAlertIcon />
-              <AlertDescription>
-                <p>
-                  Sessions aren&apos;t being logged, so there is no record of what your agents
-                  reached.
-                </p>
-                <AlertAction>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link
-                      to="/organizations/$orgId/agent-vault/settings"
-                      params={{ orgId: currentOrg.id }}
-                    >
-                      Go to Settings
-                    </Link>
-                  </Button>
-                </AlertAction>
-              </AlertDescription>
-            </Alert>
-          )}
+        {sessionLogSettings && !sessionLogSettings.enabled && (
+          <Alert variant="warning">
+            <TriangleAlertIcon />
+            <AlertDescription>
+              <p>
+                Sessions aren&apos;t being logged, so there is no record of what your agents
+                reached.
+              </p>
+              <AlertAction>
+                <Button variant="outline" size="sm" asChild>
+                  <Link
+                    to="/organizations/$orgId/agent-vault/settings"
+                    params={{ orgId: currentOrg.id }}
+                  >
+                    Go to Settings
+                  </Link>
+                </Button>
+              </AlertAction>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {isAdmin && !sessionLogHealth?.connectionError && <SessionLogReadAccessAlert />}
 
@@ -562,7 +558,11 @@ export const AgentVaultSessionsPage = () => {
         onRevoke={setSessionToRevoke}
       />
 
-      <AgentVaultSessionLogUpgradeModal isOpen={isUpgradeOpen} onOpenChange={setIsUpgradeOpen} />
+      <AgentVaultSessionLogUpgradeModal
+        isOpen={isUpgradeOpen}
+        onOpenChange={setIsUpgradeOpen}
+        storageType={sessionLogSettings?.storage.type}
+      />
     </div>
   );
 };

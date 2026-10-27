@@ -389,40 +389,6 @@
             ]
           },
           {
-            "item": "Secret Scanning",
-            "icon": "radar",
-            "pages": [
-              "documentation/platform/secret-scanning/overview",
-              "documentation/platform/secret-scanning/concepts/secret-scanning",
-              {
-                "group": "Scanning locally",
-                "pages": [
-                  "documentation/platform/secret-scanning/scan-locally",
-                  "documentation/platform/secret-scanning/pre-commit-hook",
-                  "documentation/platform/secret-scanning/ignore-findings",
-                  "documentation/platform/secret-scanning/local-configuration"
-                ]
-              },
-              {
-                "group": "Scanning repositories",
-                "pages": [
-                  "documentation/platform/secret-scanning/scan-repositories",
-                  {
-                    "group": "Data sources",
-                    "expanded": true,
-                    "pages": [
-                      "documentation/platform/secret-scanning/github",
-                      "documentation/platform/secret-scanning/gitlab",
-                      "documentation/platform/secret-scanning/bitbucket"
-                    ]
-                  },
-                  "documentation/platform/secret-scanning/findings",
-                  "documentation/platform/secret-scanning/configuration"
-                ]
-              }
-            ]
-          },
-          {
             "item": "Certificate Management",
             "icon": "file-key",
             "pages": [
@@ -562,7 +528,8 @@
                     "group": "Discovery",
                     "root": "documentation/platform/pki/discovery/overview",
                     "pages": [
-                      "documentation/platform/pki/discovery/network"
+                      "documentation/platform/pki/discovery/network",
+                      "documentation/platform/pki/discovery/linux-server"
                     ]
                   },
                   {
@@ -608,80 +575,31 @@
             ]
           },
           {
-            "item": "KMS",
-            "icon": "lock",
-            "pages": [
-              "documentation/platform/kms/overview",
-              "documentation/platform/kms/concepts",
-              {
-                "group": "Key management",
-                "pages": [
-                  "documentation/platform/kms/keys",
-                  "documentation/platform/kms/encrypt-decrypt",
-                  "documentation/platform/kms/sign-verify",
-                  "documentation/platform/kms/mac",
-                  "documentation/platform/kms/key-rotation",
-                  "documentation/platform/kms/export-import"
-                ]
-              },
-              {
-                "group": "KMIP",
-                "pages": [
-                  "documentation/platform/kms/kmip",
-                  "documentation/platform/kms/kmip-server",
-                  "documentation/platform/kms/kmip-clients",
-                  "documentation/platform/kms/kmip-dell-poweredge"
-                ]
-              },
-              {
-                "group": "Integrations",
-                "pages": [
-                  "documentation/platform/kms/kubernetes-encryption",
-                  "documentation/platform/kms/sigstore-cosign"
-                ]
-              }
-            ]
-          },
-          {
-            "item": "Privileged Access Management",
+            "item": "Privileged Access Management (PAM)",
             "icon": "users",
             "pages": [
               "documentation/platform/pam/overview",
               {
-                "group": "Privileged access manager",
+                "group": "Get started",
                 "pages": [
-                  {
-                    "group": "Quickstarts",
-                    "pages": [
-                      "documentation/platform/pam/quick-starts/launch-first-session"
-                    ]
-                  },
-                  {
-                    "group": "Concepts",
-                    "pages": [
-                      "documentation/platform/pam/concepts/pam-components",
-                      "documentation/platform/pam/concepts/session-lifecycle",
-                      "documentation/platform/pam/concepts/access-control"
-                    ]
-                  },
-                  {
-                    "group": "Guides",
-                    "pages": [
-                      "documentation/platform/pam/guides/team-access",
-                      "documentation/platform/pam/guides/ssh-certificate-auth"
-                    ]
-                  }
+                  "documentation/platform/pam/quick-starts/launch-first-session",
+                  "documentation/platform/pam/concepts/overview",
+                  "documentation/platform/pam/concepts/session-lifecycle",
+                  "documentation/platform/pam/architecture"
                 ]
               },
               {
-                "group": "Product reference",
+                "group": "Accounts",
                 "pages": [
-                  "documentation/platform/pam/folders/overview",
-                  "documentation/platform/pam/templates/overview",
+                  "documentation/platform/pam/accounts/overview",
+                  "documentation/platform/pam/accounts/add",
+                  "documentation/platform/pam/accounts/connect",
+                  "documentation/platform/pam/accounts/view-credentials",
+                  "documentation/platform/pam/accounts/manage",
                   {
-                    "group": "Accounts",
+                    "group": "Account types",
+                    "root": "documentation/platform/pam/accounts/account-types",
                     "pages": [
-                      "documentation/platform/pam/accounts/overview",
                       "documentation/platform/pam/accounts/postgresql",
                       "documentation/platform/pam/accounts/mysql",
                       "documentation/platform/pam/accounts/mssql",
@@ -690,7 +608,13 @@
                       "documentation/platform/pam/accounts/redis",
                       "documentation/platform/pam/accounts/snowflake",
                       "documentation/platform/pam/accounts/clickhouse",
-                      "documentation/platform/pam/accounts/ssh",
+                      {
+                        "group": "SSH",
+                        "root": "documentation/platform/pam/accounts/ssh",
+                        "pages": [
+                          "documentation/platform/pam/guides/ssh-certificate-auth"
+                        ]
+                      },
                       "documentation/platform/pam/accounts/kubernetes",
                       "documentation/platform/pam/accounts/aws-iam",
                       "documentation/platform/pam/accounts/gcp-service-account",
@@ -698,47 +622,64 @@
                       "documentation/platform/pam/accounts/windows",
                       "documentation/platform/pam/accounts/windows-ad"
                     ]
-                  },
+                  }
+                ]
+              },
+              {
+                "group": "Access control",
+                "pages": [
+                  "documentation/platform/pam/concepts/access-control",
+                  "documentation/platform/pam/folders/overview",
+                  "documentation/platform/pam/templates/overview",
                   "documentation/platform/pam/access-requests/overview",
+                  "documentation/platform/pam/access-requests/auto-approval",
+                  "documentation/platform/pam/access-requests/break-glass"
+                ]
+              },
+              {
+                "group": "AI agents",
+                "pages": [
                   "documentation/platform/pam/ai-agents/overview",
-                  {
-                    "group": "Credential rotation",
-                    "pages": [
-                      "documentation/platform/pam/product-reference/credential-rotation/overview",
-                      "documentation/platform/pam/product-reference/credential-rotation/postgresql",
-                      "documentation/platform/pam/product-reference/credential-rotation/mysql",
-                      "documentation/platform/pam/product-reference/credential-rotation/mssql",
-                      "documentation/platform/pam/product-reference/credential-rotation/oracledb",
-                      "documentation/platform/pam/product-reference/credential-rotation/windows"
-                    ]
-                  },
-                  "documentation/platform/pam/product-reference/credential-health/overview",
-                  {
-                    "group": "Discovery",
-                    "pages": [
-                      "documentation/platform/pam/discovery/overview",
-                      "documentation/platform/pam/discovery/active-directory",
-                      "documentation/platform/pam/discovery/unix",
-                      "documentation/platform/pam/discovery/postgres",
-                      "documentation/platform/pam/discovery/mssql"
-                    ]
-                  },
-                  {
-                    "group": "Dependencies",
-                    "pages": [
-                      "documentation/platform/pam/dependencies/overview"
-                    ]
-                  },
+                  "documentation/platform/pam/ai-agents/run",
+                  "documentation/platform/pam/ai-agents/instructions",
+                  "documentation/platform/pam/ai-agents/unattended",
+                  "documentation/platform/pam/ai-agents/review"
+                ]
+              },
+              {
+                "group": "Credential rotation",
+                "pages": [
+                  "documentation/platform/pam/credential-rotation/overview",
+                  "documentation/platform/pam/credential-rotation/postgresql",
+                  "documentation/platform/pam/credential-rotation/mysql",
+                  "documentation/platform/pam/credential-rotation/mssql",
+                  "documentation/platform/pam/credential-rotation/oracledb",
+                  "documentation/platform/pam/credential-rotation/windows"
+                ]
+              },
+              {
+                "group": "Monitoring",
+                "pages": [
                   {
                     "group": "Sessions",
+                    "root": "documentation/platform/pam/sessions/overview",
                     "pages": [
-                      "documentation/platform/pam/sessions/overview",
                       "documentation/platform/pam/sessions/session-recording",
                       "documentation/platform/pam/sessions/external-storage"
                     ]
                   },
                   "documentation/platform/pam/auditing",
-                  "documentation/platform/pam/architecture"
+                  "documentation/platform/pam/credential-health/overview",
+                  {
+                    "group": "Discovery",
+                    "root": "documentation/platform/pam/discovery/overview",
+                    "pages": [
+                      "documentation/platform/pam/discovery/active-directory",
+                      "documentation/platform/pam/discovery/unix",
+                      "documentation/platform/pam/discovery/postgres",
+                      "documentation/platform/pam/discovery/mssql"
+                    ]
+                  }
                 ]
               }
             ]
@@ -798,6 +739,75 @@
                   },
                   "documentation/platform/agent-vault/proxies",
                   "documentation/platform/agent-vault/access-control"
+                ]
+              }
+            ]
+          },
+          {
+            "item": "Key Management Service (KMS)",
+            "icon": "lock",
+            "pages": [
+              "documentation/platform/kms/overview",
+              "documentation/platform/kms/concepts",
+              {
+                "group": "Key management",
+                "pages": [
+                  "documentation/platform/kms/keys",
+                  "documentation/platform/kms/encrypt-decrypt",
+                  "documentation/platform/kms/sign-verify",
+                  "documentation/platform/kms/mac",
+                  "documentation/platform/kms/key-rotation",
+                  "documentation/platform/kms/export-import"
+                ]
+              },
+              {
+                "group": "KMIP",
+                "pages": [
+                  "documentation/platform/kms/kmip",
+                  "documentation/platform/kms/kmip-server",
+                  "documentation/platform/kms/kmip-clients",
+                  "documentation/platform/kms/kmip-dell-poweredge"
+                ]
+              },
+              {
+                "group": "Integrations",
+                "pages": [
+                  "documentation/platform/kms/kubernetes-encryption",
+                  "documentation/platform/kms/sigstore-cosign"
+                ]
+              }
+            ]
+          },
+          {
+            "item": "Secret Scanning",
+            "icon": "radar",
+            "pages": [
+              "documentation/platform/secret-scanning/overview",
+              "documentation/platform/secret-scanning/concepts/secret-scanning",
+              {
+                "group": "Scanning locally",
+                "pages": [
+                  "documentation/platform/secret-scanning/scan-locally",
+                  "documentation/platform/secret-scanning/pre-commit-hook",
+                  "documentation/platform/secret-scanning/ignore-findings",
+                  "documentation/platform/secret-scanning/local-configuration"
+                ]
+              },
+              {
+                "group": "Scanning repositories",
+                "pages": [
+                  "documentation/platform/secret-scanning/scan-repositories",
+                  {
+                    "group": "Data sources",
+                    "expanded": true,
+                    "pages": [
+                      "documentation/platform/secret-scanning/github",
+                      "documentation/platform/secret-scanning/gitlab",
+                      "documentation/platform/secret-scanning/bitbucket"
+                    ]
+                  },
+                  "documentation/platform/secret-scanning/findings",
+                  "documentation/platform/secret-scanning/configuration"
                 ]
               }
             ]
@@ -1068,6 +1078,7 @@
                   "integrations/app-connections/heroku",
                   "integrations/app-connections/hpe-ilo",
                   "integrations/app-connections/humanitec",
+                  "integrations/app-connections/jira",
                   "integrations/app-connections/keeper",
                   "integrations/app-connections/kemp-loadmaster",
                   "integrations/app-connections/external-infisical",
@@ -1214,7 +1225,8 @@
                   "self-hosting/guides/custom-certificates",
                   "self-hosting/guides/hsm-integration",
                   "self-hosting/guides/automated-bootstrapping",
-                  "self-hosting/guides/cdn-caching"
+                  "self-hosting/guides/cdn-caching",
+                  "self-hosting/guides/session-log-storage"
                 ]
               },
               {
@@ -1300,7 +1312,6 @@
             "pages": [
               "cli/overview",
               "cli/cloudsmith-migration",
-              "cli/project-config-migration",
               {
                 "group": "Get started",
                 "pages": [
@@ -1326,6 +1337,7 @@
                   "cli/reference/kmip",
                   "cli/reference/login",
                   "cli/reference/logout",
+                  "cli/reference/migrate-config",
                   "cli/reference/org",
                   "cli/reference/pam",
                   "cli/reference/profile",
@@ -2109,6 +2121,18 @@
                         ]
                       },
                       {
+                        "group": "Jira",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/jira/list",
+                          "api-reference/endpoints/app-connections/jira/available",
+                          "api-reference/endpoints/app-connections/jira/get-by-id",
+                          "api-reference/endpoints/app-connections/jira/get-by-name",
+                          "api-reference/endpoints/app-connections/jira/create",
+                          "api-reference/endpoints/app-connections/jira/update",
+                          "api-reference/endpoints/app-connections/jira/delete"
+                        ]
+                      },
+                      {
                         "group": "Keeper",
                         "pages": [
                           "api-reference/endpoints/app-connections/keeper/list",
@@ -2768,7 +2792,7 @@
                 ]
               },
               {
-                "group": "Secrets management",
+                "group": "Secrets Management",
                 "boost": 0.25,
                 "pages": [
                   {
@@ -3989,7 +4013,7 @@
                 ]
               },
               {
-                "group": "Certificate management",
+                "group": "Certificate Management",
                 "boost": 0.25,
                 "pages": [
                   {
@@ -4409,6 +4433,7 @@
                           "api-reference/endpoints/code-signing/signers/enable",
                           "api-reference/endpoints/code-signing/signers/disable",
                           "api-reference/endpoints/code-signing/signers/reissue-certificate",
+                          "api-reference/endpoints/code-signing/signers/import-certificate",
                           "api-reference/endpoints/code-signing/signers/list-operations"
                         ]
                       },
@@ -4477,49 +4502,6 @@
                 ]
               },
               {
-                "group": "Infisical KMS",
-                "boost": 0.25,
-                "pages": [
-                  {
-                    "group": "Keys",
-                    "pages": [
-                      "api-reference/endpoints/kms/keys/list",
-                      "api-reference/endpoints/kms/keys/get-by-id",
-                      "api-reference/endpoints/kms/keys/get-by-name",
-                      "api-reference/endpoints/kms/keys/create",
-                      "api-reference/endpoints/kms/keys/update",
-                      "api-reference/endpoints/kms/keys/rotate",
-                      "api-reference/endpoints/kms/keys/delete",
-                      "api-reference/endpoints/kms/keys/public-key",
-                      "api-reference/endpoints/kms/keys/private-key",
-                      "api-reference/endpoints/kms/keys/bulk-export-private-keys"
-                    ]
-                  },
-                  {
-                    "group": "Encryption",
-                    "pages": [
-                      "api-reference/endpoints/kms/encryption/encrypt",
-                      "api-reference/endpoints/kms/encryption/decrypt"
-                    ]
-                  },
-                  {
-                    "group": "Signing",
-                    "pages": [
-                      "api-reference/endpoints/kms/signing/sign",
-                      "api-reference/endpoints/kms/signing/verify",
-                      "api-reference/endpoints/kms/signing/signing-algorithms"
-                    ]
-                  },
-                  {
-                    "group": "Message authentication",
-                    "pages": [
-                      "api-reference/endpoints/kms/mac/generate-mac",
-                      "api-reference/endpoints/kms/mac/verify-mac"
-                    ]
-                  }
-                ]
-              },
-              {
                 "group": "Agent Vault",
                 "pages": [
                   {
@@ -4537,7 +4519,9 @@
                     "pages": [
                       "api-reference/endpoints/agent-vault-services/create",
                       "api-reference/endpoints/agent-vault-services/update",
-                      "api-reference/endpoints/agent-vault-services/delete"
+                      "api-reference/endpoints/agent-vault-services/delete",
+                      "api-reference/endpoints/agent-vault-services/set-personal-values",
+                      "api-reference/endpoints/agent-vault-services/delete-personal-values"
                     ]
                   },
                   {
@@ -4576,7 +4560,7 @@
                       "api-reference/endpoints/agent-vault-proxies/create",
                       "api-reference/endpoints/agent-vault-proxies/update",
                       "api-reference/endpoints/agent-vault-proxies/delete",
-                      "api-reference/endpoints/agent-vault-proxies/enrollment-token",
+                      "api-reference/endpoints/agent-vault-proxies/rotate-token",
                       "api-reference/endpoints/agent-vault-proxies/revoke"
                     ]
                   },
@@ -4606,6 +4590,49 @@
                       "api-reference/endpoints/agent-vault-app-connections/create",
                       "api-reference/endpoints/agent-vault-app-connections/update",
                       "api-reference/endpoints/agent-vault-app-connections/delete"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Key Management Service (KMS)",
+                "boost": 0.25,
+                "pages": [
+                  {
+                    "group": "Keys",
+                    "pages": [
+                      "api-reference/endpoints/kms/keys/list",
+                      "api-reference/endpoints/kms/keys/get-by-id",
+                      "api-reference/endpoints/kms/keys/get-by-name",
+                      "api-reference/endpoints/kms/keys/create",
+                      "api-reference/endpoints/kms/keys/update",
+                      "api-reference/endpoints/kms/keys/rotate",
+                      "api-reference/endpoints/kms/keys/delete",
+                      "api-reference/endpoints/kms/keys/public-key",
+                      "api-reference/endpoints/kms/keys/private-key",
+                      "api-reference/endpoints/kms/keys/bulk-export-private-keys"
+                    ]
+                  },
+                  {
+                    "group": "Encryption",
+                    "pages": [
+                      "api-reference/endpoints/kms/encryption/encrypt",
+                      "api-reference/endpoints/kms/encryption/decrypt"
+                    ]
+                  },
+                  {
+                    "group": "Signing",
+                    "pages": [
+                      "api-reference/endpoints/kms/signing/sign",
+                      "api-reference/endpoints/kms/signing/verify",
+                      "api-reference/endpoints/kms/signing/signing-algorithms"
+                    ]
+                  },
+                  {
+                    "group": "Message authentication",
+                    "pages": [
+                      "api-reference/endpoints/kms/mac/generate-mac",
+                      "api-reference/endpoints/kms/mac/verify-mac"
                     ]
                   }
                 ]
@@ -4741,8 +4768,24 @@
         "header": "PRODUCT",
         "items": [
           {
-            "label": "Secret Management",
-            "href": "https://infisical.com/"
+            "label": "Secrets Management",
+            "href": "https://infisical.com/platform/secrets-management"
+          },
+          {
+            "label": "Certificate Management",
+            "href": "https://infisical.com/platform/certificate-management"
+          },
+          {
+            "label": "Privileged Access Management (PAM)",
+            "href": "https://infisical.com/platform/pam"
+          },
+          {
+            "label": "Agent Vault",
+            "href": "https://infisical.com/platform/agent-vault"
+          },
+          {
+            "label": "Key Management Service (KMS)",
+            "href": "https://infisical.com/docs/documentation/platform/kms/overview"
           },
           {
             "label": "Secret Scanning",
@@ -4917,6 +4960,10 @@
   },
   "redirects": [
     {
+      "source": "/api-reference/endpoints/agent-vault-proxies/enrollment-token",
+      "destination": "/api-reference/endpoints/agent-vault-proxies/rotate-token"
+    },
+    {
       "source": "/documentation/platform/secret-scanning/usage",
       "destination": "/documentation/platform/secret-scanning/scan-repositories"
     },
@@ -4971,6 +5018,10 @@
     {
       "source": "/cli/commands/init",
       "destination": "/cli/reference#init"
+    },
+    {
+      "source": "/cli/project-config-migration",
+      "destination": "/cli/project-config"
     },
     {
       "source": "/cli/commands/kmip",
@@ -5109,6 +5160,18 @@
       "destination": "/documentation/getting-started/set-up-with-ai"
     },
     {
+      "source": "/documentation/getting-started/cli",
+      "destination": "/documentation/guides/local-development"
+    },
+    {
+      "source": "/documentation/getting-started/docker",
+      "destination": "/integrations/platforms/docker"
+    },
+    {
+      "source": "/documentation/getting-started/sdks",
+      "destination": "/sdks/overview"
+    },
+    {
       "source": "/integrations/platforms/docker-intro",
       "destination": "/integrations/platforms/docker"
     },
@@ -5190,7 +5253,35 @@
     },
     {
       "source": "/documentation/platform/pam/product-reference/credential-rotation",
-      "destination": "/documentation/platform/pam/product-reference/credential-rotation/overview"
+      "destination": "/documentation/platform/pam/credential-rotation/overview"
+    },
+    {
+      "source": "/documentation/platform/pam/product-reference/credential-rotation/:slug*",
+      "destination": "/documentation/platform/pam/credential-rotation/:slug*"
+    },
+    {
+      "source": "/documentation/platform/pam/product-reference/credential-health/overview",
+      "destination": "/documentation/platform/pam/credential-health/overview"
+    },
+    {
+      "source": "/documentation/platform/pam/concepts/pam-components",
+      "destination": "/documentation/platform/pam/concepts/overview"
+    },
+    {
+      "source": "/documentation/platform/pam/guides/team-access",
+      "destination": "/documentation/platform/pam/quick-starts/launch-first-session"
+    },
+    {
+      "source": "/documentation/platform/pam/ai-agents/sandbox",
+      "destination": "/documentation/platform/pam/ai-agents/run#sandbox"
+    },
+    {
+      "source": "/documentation/platform/pam/dependencies/overview",
+      "destination": "/documentation/platform/pam/credential-rotation/windows#dependencies"
+    },
+    {
+      "source": "/documentation/platform/pam/recording-storage",
+      "destination": "/documentation/platform/pam/sessions/external-storage"
     },
     {
       "source": "/documentation/platform/pki/guides/applications/k8s-cert-manager",

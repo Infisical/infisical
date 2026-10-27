@@ -1,5 +1,3 @@
-import { Helmet } from "react-helmet";
-
 import { PageHeader } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { OrgOauthClientsTab } from "@app/pages/organization/SettingsPage/components/OrgOauthClientsTab";
@@ -9,11 +7,9 @@ export const OauthApplicationsPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Infisical | OAuth Applications</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-      </Helmet>
+      <title>Infisical | OAuth Applications</title>
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
       <div className="flex w-full justify-center bg-page text-foreground-inverse">
         <div className="flex w-full max-w-8xl flex-col">
           <PageHeader

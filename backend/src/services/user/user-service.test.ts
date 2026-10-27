@@ -358,3 +358,102 @@ describe("getStepUpMfaMethod", () => {
     });
   });
 });
+
+describe("getFactorEnrollmentStepUpMfaMethods", () => {
+  const passkeyEnforcingOrg = { id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.WEBAUTHN };
+
+  test("lets an account with no factor enroll its first one unchallenged", async () => {
+    const service = buildMfaService({ memberOrgIds: [ENFORCED_ORG_ID], orgs: [passkeyEnforcingOrg] });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toBeNull();
+  });
+
+  test("adding a passkey while one exists requires a passkey, not a preferred email", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [passkeyEnforcingOrg],
+      passkeyCount: 1
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toEqual({
+      challenge: MfaMethod.WEBAUTHN,
+      accepted: [MfaMethod.WEBAUTHN]
+    });
+  });
+
+  test("an authenticator app another org uses can't add a passkey while one exists", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
+      memberOrgIds: [ENFORCED_ORG_ID, "totp-org"],
+      orgs: [passkeyEnforcingOrg, { id: "totp-org", enforceMfa: true, selectedMfaMethod: MfaMethod.TOTP }],
+      hasTotp: true,
+      passkeyCount: 1
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toEqual({
+      challenge: MfaMethod.WEBAUTHN,
+      accepted: [MfaMethod.WEBAUTHN]
+    });
+  });
+
+  test("the first passkey can be proven with any factor, preferring the user's choice", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.TOTP },
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [passkeyEnforcingOrg],
+      hasTotp: true
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toEqual({
+      challenge: MfaMethod.TOTP,
+      accepted: [MfaMethod.TOTP]
+    });
+  });
+
+  test("the first authenticator app can be proven with any factor", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.WEBAUTHN },
+      passkeyCount: 1
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.TOTP)).resolves.toEqual({
+      challenge: MfaMethod.WEBAUTHN,
+      accepted: [MfaMethod.WEBAUTHN]
+    });
+  });
+
+  test("email MFA the user turned on proves the first passkey an org newly requires", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [passkeyEnforcingOrg]
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toEqual({
+      challenge: MfaMethod.EMAIL,
+      accepted: [MfaMethod.EMAIL]
+    });
+  });
+
+  test("counts email when an org's login requires it", async () => {
+    const service = buildMfaService({
+      memberOrgIds: [ENFORCED_ORG_ID],
+      orgs: [{ id: ENFORCED_ORG_ID, enforceMfa: true, selectedMfaMethod: MfaMethod.EMAIL }]
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toEqual({
+      challenge: MfaMethod.EMAIL,
+      accepted: [MfaMethod.EMAIL]
+    });
+  });
+
+  test("does not count email when SMTP cannot deliver a code", async () => {
+    const service = buildMfaService({
+      userRow: { isMfaEnabled: true, selectedMfaMethod: MfaMethod.EMAIL },
+      smtp: false
+    });
+
+    await expect(service.getFactorEnrollmentStepUpMfaMethods(USER_ID, MfaMethod.WEBAUTHN)).resolves.toBeNull();
+  });
+});

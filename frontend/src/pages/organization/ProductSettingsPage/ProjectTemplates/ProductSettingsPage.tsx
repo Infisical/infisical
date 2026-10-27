@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -27,10 +26,8 @@ export const ProductSettingsPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Product Settings | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>Product Settings | Infisical</title>
+      <link rel="icon" href="/infisical.ico" />
       <div>
         <div className="mx-auto w-full max-w-8xl bg-page text-foreground-inverse">
           <PageHeader

@@ -1,7 +1,6 @@
 import crypto from "crypto";
 
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
@@ -101,9 +100,7 @@ export const GcpSecretManagerAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Authorize GCP Secret Manager Integration</title>
-      </Helmet>
+      <title>Authorize GCP Secret Manager Integration</title>
       <Card className="mb-12 w-full max-w-lg">
         <CardHeader>
           <CardTitle>

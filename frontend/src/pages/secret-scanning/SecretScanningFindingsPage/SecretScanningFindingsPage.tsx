@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useSearch } from "@tanstack/react-router";
 
@@ -19,9 +18,7 @@ export const SecretScanningFindingsPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: "Secret Scanning" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Secret Scanning" })}</title>
       <ProjectPermissionCan
         renderGuardBanner
         I={ProjectPermissionSecretScanningFindingActions.Read}

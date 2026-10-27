@@ -1,7 +1,6 @@
 import crypto from "crypto";
 
 import { useCallback, useEffect } from "react";
-import { Helmet } from "react-helmet";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import {
@@ -171,9 +170,7 @@ export const SelectIntegrationAuthPage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Select Connection</title>
-      </Helmet>
+      <title>Select Connection</title>
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>

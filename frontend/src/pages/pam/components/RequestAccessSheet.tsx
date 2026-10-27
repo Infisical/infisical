@@ -49,10 +49,15 @@ import {
   TAccessiblePamAccount,
   TPamApprovalWorkflowStep,
   useBreakGlassPamAccessRequest,
+  useCancelPamAccessRequest,
   useCreatePamAccessRequest,
   useGetPamAccountApprovers
 } from "@app/hooks/api/pam";
 
+import {
+  AutoApprovalRequestInputs,
+  toAutoApprovalInputValues
+} from "./auto-approval/AutoApprovalRequestInputs";
 import { AccessTypeBadge } from "./AccessTypeBadge";
 import { useAccountSheetDetails } from "./accountSheetDetails";
 import { PamDetailSheet } from "./PamDetailSheet";
@@ -119,7 +124,8 @@ const ApprovalWorkflow = ({
   isPending: boolean;
   accessType: PamAccessType;
 }) => {
-  const { data: steps } = useGetPamAccountApprovers(accountId, accessType);
+  const { data } = useGetPamAccountApprovers(accountId, accessType);
+  const steps = data?.steps;
   if (!steps?.length) return null;
 
   return (
@@ -181,7 +187,9 @@ export const RequestAccessSheet = ({
   const createRequest = useCreatePamAccessRequest();
   const formId = useId();
   const breakGlass = useBreakGlassPamAccessRequest();
+  const cancelRequest = useCancelPamAccessRequest();
   const [bypassReason, setBypassReason] = useState("");
+  const [autoApprovalValues, setAutoApprovalValues] = useState<Record<string, string>>({});
   const isCredentialRequest = accessType === PamAccessType.Credential;
   const isPending =
     (isCredentialRequest ? account?.credentialAccessStatus : account?.accessStatus) ===
@@ -192,7 +200,16 @@ export const RequestAccessSheet = ({
     : account?.pendingRequestId;
   const canBreakGlass = Boolean(account?.canBreakGlass && pendingRequestId);
   const requireReason = Boolean(account?.requireReason);
-  const [breakGlassOnSubmit, setBreakGlassOnSubmit] = useState(false);
+  const { data: approverData } = useGetPamAccountApprovers(account?.id, accessType);
+  // With no approvers and no auto-approval rules that apply, break glass is the only way in
+  const isBreakGlassOnly = Boolean(
+    account?.canBreakGlass &&
+      approverData &&
+      !approverData.autoApprovalOnly &&
+      !approverData.steps.some((step) => step.approvers.length > 0)
+  );
+  const [breakGlassChosen, setBreakGlassChosen] = useState(false);
+  const breakGlassOnSubmit = breakGlassChosen || isBreakGlassOnly;
   const requestLabel = isCredentialRequest ? "Request credentials" : "Request session access";
   const submitLabel = breakGlassOnSubmit ? "Break glass" : requestLabel;
   const schema = useMemo(
@@ -210,13 +227,33 @@ export const RequestAccessSheet = ({
     defaultValues: { duration: "1h", reason: "" }
   });
 
+  const autoApprovalInputDetails = approverData?.autoApprovalInputs ?? [];
+  const hasAutoApprovalValues = Object.values(autoApprovalValues).some((value) => value.trim());
+
   const handleOpenChange = (open: boolean) => {
     if (!open) {
       reset();
       setBypassReason("");
-      setBreakGlassOnSubmit(false);
+      setBreakGlassChosen(false);
+      setAutoApprovalValues({});
     }
     onOpenChange(open);
+  };
+
+  const onCancelRequest = () => {
+    if (!pendingRequestId) return;
+    cancelRequest.mutate(
+      { requestId: pendingRequestId },
+      {
+        onSuccess: () => {
+          createNotification({
+            text: isCredentialRequest ? "Credential request canceled" : "Access request canceled",
+            type: "success"
+          });
+          handleOpenChange(false);
+        }
+      }
+    );
   };
 
   const onBreakGlass = () => {
@@ -239,28 +276,55 @@ export const RequestAccessSheet = ({
 
   const onSubmit = (data: FormData) => {
     if (!account) return;
+    const autoApprovalInputs = breakGlassOnSubmit
+      ? []
+      : toAutoApprovalInputValues(autoApprovalInputDetails, autoApprovalValues);
+
     createRequest.mutate(
       {
         accountId: account.id,
         duration: data.duration,
         reason: data.reason || undefined,
         accessType,
-        breakGlass: breakGlassOnSubmit || undefined
+        breakGlass: breakGlassOnSubmit || undefined,
+        autoApprovalInputs: autoApprovalInputs.length ? autoApprovalInputs : undefined
       },
       {
-        onSuccess: () => {
-          const submittedText = isCredentialRequest
+        onSuccess: ({ request }) => {
+          const outcome = request?.autoApproval;
+          const approvingRule = outcome?.rules.find((rule) => rule.id === outcome.approvedByRuleId);
+          // The rule that came closest to passing best reflects what the requester was going for
+          const closestRule = outcome?.rules
+            .map((rule) => ({
+              rule,
+              failed: rule.conditions.filter((condition) => !condition.passed).length,
+              passed: rule.conditions.filter((condition) => condition.passed).length
+            }))
+            .sort((a, b) => a.failed - b.failed || b.passed - a.passed)[0]?.rule;
+          const firstFailure = closestRule?.conditions.find(
+            (condition) => !condition.passed
+          )?.reason;
+
+          let text = isCredentialRequest
             ? "Credential access request submitted"
             : "Access request submitted";
-          createNotification({
-            text: breakGlassOnSubmit
-              ? "Access granted. The approvers you skipped have been notified."
-              : submittedText,
-            type: "success"
-          });
+          let type: "success" | "info" = "success";
+          if (breakGlassOnSubmit) {
+            text = "Access granted. The approvers you skipped have been notified.";
+          } else if (request?.autoApprovedAt) {
+            text = `Access approved by the auto-approval rule "${approvingRule?.name ?? "auto-approval"}"`;
+          } else if (outcome && firstFailure) {
+            text = `${text}. It wasn't auto-approved: ${firstFailure}`;
+            type = "info";
+          }
+
+          createNotification({ text, type });
           reset();
+          setAutoApprovalValues({});
           onOpenChange(false);
-          if (breakGlassOnSubmit && account) onGranted?.(account, accessType);
+          if ((breakGlassOnSubmit || request?.autoApprovedAt) && account) {
+            onGranted?.(account, accessType);
+          }
         }
       }
     );
@@ -277,9 +341,20 @@ export const RequestAccessSheet = ({
       typeBadge={typeName}
       badges={<AccessTypeBadge accessType={accessType} />}
       metadata={metadata}
-      isDirty={isDirty && !isPending}
+      isDirty={(isDirty || hasAutoApprovalValues) && !isPending}
       contentFooter={
-        !isPending && (
+        isPending ? (
+          pendingRequestId && (
+            <Button
+              type="button"
+              variant="danger"
+              isPending={cancelRequest.isPending}
+              onClick={onCancelRequest}
+            >
+              Cancel Request
+            </Button>
+          )
+        ) : (
           <>
             <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
               Cancel
@@ -435,6 +510,23 @@ export const RequestAccessSheet = ({
                   </Field>
                 )}
               />
+              {!breakGlassOnSubmit && approverData?.autoApprovalOnly && (
+                <Alert variant="warning">
+                  <ShieldAlert />
+                  <AlertTitle>No one will review this request</AlertTitle>
+                  <AlertDescription>
+                    This folder has no approvers. Your request is approved only if it passes an
+                    auto-approval rule when you submit it. Otherwise it&apos;s rejected immediately.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {!breakGlassOnSubmit && autoApprovalInputDetails.length > 0 && (
+                <AutoApprovalRequestInputs
+                  inputs={autoApprovalInputDetails}
+                  values={autoApprovalValues}
+                  onChange={setAutoApprovalValues}
+                />
+              )}
               <ApprovalWorkflow accountId={account?.id} isPending={false} accessType={accessType} />
               {account?.canBreakGlass && (
                 <Card
@@ -447,13 +539,16 @@ export const RequestAccessSheet = ({
                         Break glass
                       </FieldTitle>
                       <FieldDescription>
-                        Grant now, skipping the approvers. Every use is audited.
+                        {isBreakGlassOnly
+                          ? "Required here. The folder has no approvers. Auto-approval is off for this account. Every use is audited."
+                          : "Grant now, skipping the approvers. Every use is audited."}
                       </FieldDescription>
                     </FieldContent>
                     <Toggle
                       checked={breakGlassOnSubmit}
                       variant="danger"
-                      onCheckedChange={setBreakGlassOnSubmit}
+                      disabled={isBreakGlassOnly}
+                      onCheckedChange={setBreakGlassChosen}
                     />
                   </Field>
                 </Card>

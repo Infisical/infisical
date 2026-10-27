@@ -1,6 +1,5 @@
 import crypto from "crypto";
 
-import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -76,9 +75,7 @@ export const GitlabAuthorizePage = () => {
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <Helmet>
-        <title>Authorize GitLab Integration</title>
-      </Helmet>
+      <title>Authorize GitLab Integration</title>
       <Card className="mb-12 w-full max-w-lg">
         <CardHeader>
           <CardTitle>

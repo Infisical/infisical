@@ -28,7 +28,6 @@ export const AdcsFields = ({ control, availableConnections, isPending }: Props) 
       name="configuration.adcsConnection"
       label="ADCS Connection"
       required
-      menuPlacement="top"
       options={availableConnections}
       isLoading={isPending}
       tooltip="ADCS App Connection contains the Windows domain credentials and Gateway used to reach the AD CS server."

@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { FileText } from "lucide-react";
 
@@ -11,9 +10,7 @@ export const AgentVaultAuditLogsPage = () => {
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Audit Logs" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Audit Logs" })}</title>
       <PageHeader
         scope={ProjectType.AgentVault}
         icon={FileText}

@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Shield } from "lucide-react";
@@ -52,9 +51,7 @@ export const PamAccessControlPage = () => {
 
   return (
     <div className="mx-auto mb-6 w-full max-w-8xl">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Access Control" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "Access Control" })}</title>
       <PageHeader
         scope={ProjectType.PAM}
         icon={Shield}

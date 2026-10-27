@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { Link, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { ChevronLeftIcon, FileSignatureIcon, HardDriveIcon, UserIcon } from "lucide-react";
@@ -62,9 +61,7 @@ export const SigningOperationDetailPage = () => {
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-y-4 px-6 py-6">
-      <Helmet>
-        <title>Signing Operation | {signerName}</title>
-      </Helmet>
+      <title>{`Signing Operation | ${signerName}`}</title>
 
       <Link
         to="/organizations/$orgId/cert-manager/code-signing/$signerId"

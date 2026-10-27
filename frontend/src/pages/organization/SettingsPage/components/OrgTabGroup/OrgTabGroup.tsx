@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useSearch } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
@@ -84,9 +83,7 @@ export const OrgTabGroup = () => {
 
   return (
     <div className="flex w-full flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: pageTitle })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: pageTitle })}</title>
       <PageHeader
         scope={isSubOrganization ? "namespace" : "org"}
         description={

@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -13,9 +12,7 @@ export const KmipPage = () => {
 
   return (
     <div className="h-full bg-page">
-      <Helmet>
-        <title>{t("common.head-title", { title: "KMS" })}</title>
-      </Helmet>
+      <title>{t("common.head-title", { title: "KMS" })}</title>
       <div className="mx-auto flex flex-col bg-page text-foreground">
         <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <PageHeader

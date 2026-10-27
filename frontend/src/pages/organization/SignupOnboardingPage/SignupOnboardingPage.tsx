@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
@@ -197,10 +196,8 @@ export const SignupOnboardingPage = () => {
       bottomContent={section === OnboardingSection.OrgName ? <AuthTermsNotice /> : undefined}
       onDocumentationClick={analytics.captureOnboardingDocumentationClicked}
     >
-      <Helmet>
-        <title>{t("common.head-title", { title: t("signup.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <title>{t("common.head-title", { title: t("signup.title") })}</title>
+      <link rel="icon" href="/infisical.ico" />
       <OnboardingStepTransition step={section}>{renderView()}</OnboardingStepTransition>
     </AuthPageLayout>
   );

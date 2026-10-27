@@ -1882,7 +1882,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         environment: z.string().trim(),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash),
         keys: z.string().trim().transform(decodeURIComponent),
-        viewSecretValue: booleanSchema.default(false)
+        viewSecretValue: booleanSchema.default(false),
+        // returns unreadable values masked instead of refusing the whole request, so one shared value
+        // the user cannot read does not stop the overview from loading the rest in bulk
+        hideUnreadableValues: booleanSchema.default(false)
       }),
       response: {
         200: z.object({
@@ -1901,7 +1904,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { secretPath, projectId, environment, viewSecretValue } = req.query;
+      const { secretPath, projectId, environment, viewSecretValue, hideUnreadableValues } = req.query;
 
       const keys = req.query.keys?.split(",").filter((key) => Boolean(key.trim())) ?? [];
       if (!keys.length) throw new BadRequestError({ message: "One or more keys required" });
@@ -1913,6 +1916,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
         viewSecretValue,
+        throwOnMissingReadValuePermission: !hideUnreadableValues,
         environment,
         actorAuthMethod: req.permission.authMethod,
         projectId,
@@ -1933,6 +1937,30 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
           }
         }
       });
+
+      // Reveal All and copying selected secrets read values here instead of /secret-value, so each
+      // returned value is logged the same way to keep "who read this secret" queryable
+      if (viewSecretValue) {
+        await Promise.all(
+          secrets
+            .filter((secret) => !secret.secretValueHidden)
+            .map((secret) =>
+              server.services.auditLog.createAuditLog({
+                projectId,
+                ...req.auditLogInfo,
+                event: {
+                  type: EventType.DASHBOARD_GET_SECRET_VALUE,
+                  metadata: {
+                    environment,
+                    secretPath,
+                    secretKey: secret.secretKey,
+                    secretId: secret.id
+                  }
+                }
+              })
+            )
+        );
+      }
 
       if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
         await server.services.telemetry.sendPostHogEvents({

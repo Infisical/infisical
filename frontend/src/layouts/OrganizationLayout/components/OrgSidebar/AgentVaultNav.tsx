@@ -8,13 +8,11 @@ import {
   SidebarMenuItem
 } from "@app/components/v3";
 import { useProjectPermission, useSubscription } from "@app/context";
-import {
-  areAgentVaultSessionLogsOn,
-  isAgentVaultSessionLogPlanLapsed
-} from "@app/helpers/agentVaultSessionLogs";
+import { isAgentVaultSessionLogBlockedByPlan } from "@app/helpers/agentVaultSessionLogs";
 import {
   useGetAgentVaultSessionLogHealth,
-  useGetAgentVaultSessionLogSettings
+  useGetAgentVaultSessionLogSettings,
+  useListGrantedAgentVaultAccessBundlesRequiringSetup
 } from "@app/hooks/api/agentVault";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
@@ -25,14 +23,23 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   const { hasProjectRole } = useProjectPermission();
   const { setOpen: setIsIntroOpen } = useAgentVaultIntro();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
-  const { data: sessionLogSettings } = useGetAgentVaultSessionLogSettings(isAdmin);
+  const { data: sessionLogState } = useGetAgentVaultSessionLogSettings(isAdmin);
+  const sessionLogSettings = sessionLogState?.settings ?? null;
   const { data: sessionLogHealth } = useGetAgentVaultSessionLogHealth(isAdmin);
   const { subscription } = useSubscription();
+  // An admin can use any bundle, but the nav only nags about the ones granted to them.
+  const { data: grantedRequiringSetup } = useListGrantedAgentVaultAccessBundlesRequiringSetup();
+  const needsSetup = Boolean(grantedRequiringSetup?.totalCount);
 
   const accessItems: NavItem[] = [
     { label: "Sessions", icon: IdCard, pathSuffix: "sessions" },
-    { label: "Access Bundles", icon: Package, pathSuffix: "access-bundles" },
-    { label: "Variables", icon: Braces, pathSuffix: "variables", hidden: !isAdmin }
+    {
+      label: "Access Bundles",
+      icon: Package,
+      pathSuffix: "access-bundles",
+      alertVariant: needsSetup ? "warning" : undefined
+    },
+    { label: "Variables", icon: Braces, pathSuffix: "variables" }
   ];
 
   const infrastructureItems: NavItem[] = [
@@ -42,9 +49,8 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
   let settingsAlert: NavItem["alertVariant"];
   if (sessionLogHealth?.connectionError) settingsAlert = "danger";
   else if (
-    sessionLogSettings?.bucket &&
-    (!areAgentVaultSessionLogsOn(sessionLogSettings) ||
-      isAgentVaultSessionLogPlanLapsed(sessionLogSettings, subscription))
+    (sessionLogSettings && !sessionLogSettings.enabled) ||
+    isAgentVaultSessionLogBlockedByPlan(sessionLogSettings, subscription)
   )
     settingsAlert = "warning";
 
