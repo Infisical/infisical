@@ -1,6 +1,6 @@
 import { TableName } from "@app/db/schemas";
 
-import { createSecretV2 } from "../../testUtils/secrets";
+import { createSecretV2, getSecretByNameV2 } from "../../testUtils/secrets";
 
 type TProject = { id: string; name: string; slug: string };
 
@@ -23,14 +23,37 @@ const createProject = async (projectName: string, slug?: string): Promise<TProje
   return payload.project as TProject;
 };
 
-const deleteProject = async (projectId: string) => {
+const deleteProject = async (projectId: string, hardDelete?: boolean) => {
   return testServer.inject({
     method: "DELETE",
     url: `/api/v1/projects/${projectId}`,
     headers: {
       authorization: `Bearer ${jwtAuthToken}`
+    },
+    ...(hardDelete ? { query: { hardDelete: "true" } } : {})
+  });
+};
+
+const restoreProject = async (projectId: string) => {
+  return testServer.inject({
+    method: "POST",
+    url: `/api/v1/projects/${projectId}/restore`,
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
     }
   });
+};
+
+const listDeletedProjects = async (): Promise<{ id: string; deleteAfter: string }[]> => {
+  const res = await testServer.inject({
+    method: "GET",
+    url: "/api/v1/projects/deleted",
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    }
+  });
+  expect(res.statusCode).toBe(200);
+  return JSON.parse(res.payload).projects;
 };
 
 const getProject = async (projectId: string) => {
@@ -104,6 +127,45 @@ describe("Project deletion (soft-delete + async cleanup)", async () => {
 
     // second delete resolves the project via the soft-delete-filtered read → not found
     expect((await deleteProject(project.id)).statusCode).toBe(404);
+  });
+
+  test("restores a secret manager project within its grace period", async () => {
+    const project = await createProject("e2e-restore");
+    await createSecretV2({
+      workspaceId: project.id,
+      environmentSlug: "dev",
+      secretPath: "/",
+      key: "E2E_RESTORE_PROBE",
+      value: "kept",
+      authToken: jwtAuthToken
+    });
+    expect((await deleteProject(project.id)).statusCode).toBe(200);
+
+    const deleted = (await listDeletedProjects()).find((p) => p.id === project.id);
+    expect(new Date(deleted?.deleteAfter ?? 0).getTime()).toBeGreaterThan(Date.now() + 13 * 24 * 60 * 60 * 1000);
+
+    expect((await restoreProject(project.id)).statusCode).toBe(200);
+    expect((await getProject(project.id)).statusCode).toBe(200);
+    expect((await listDeletedProjects()).some((p) => p.id === project.id)).toBe(false);
+    const secret = await getSecretByNameV2({
+      workspaceId: project.id,
+      environmentSlug: "dev",
+      secretPath: "/",
+      key: "E2E_RESTORE_PROBE",
+      authToken: jwtAuthToken
+    });
+    expect(secret.secretValue).toBe("kept");
+
+    await deleteProject(project.id, true);
+  });
+
+  test("hardDelete skips the grace period so the project cannot be restored", async () => {
+    const project = await createProject("e2e-hard-delete");
+    expect((await deleteProject(project.id, true)).statusCode).toBe(200);
+
+    expect((await listDeletedProjects()).some((p) => p.id === project.id)).toBe(false);
+    // 400 while it awaits the cleanup worker, 404 once the worker has removed it
+    expect([400, 404]).toContain((await restoreProject(project.id)).statusCode);
   });
 });
 

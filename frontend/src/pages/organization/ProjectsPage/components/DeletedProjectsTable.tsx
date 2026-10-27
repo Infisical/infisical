@@ -21,6 +21,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
   IconButton,
   Table,
   TableBody,
@@ -47,7 +52,11 @@ export const DeletedProjectsTable = ({ projectType }: { projectType: ProjectType
     OrgPermissionSubjects.AdminConsole
   );
 
-  const { data: deletedProjects = [] } = useGetDeletedProjects(projectType, {
+  const {
+    data: deletedProjects = [],
+    isError,
+    refetch
+  } = useGetDeletedProjects(projectType, {
     enabled: canAccessAllProjects
   });
   const restoreProject = useRestoreProject();
@@ -73,7 +82,7 @@ export const DeletedProjectsTable = ({ projectType }: { projectType: ProjectType
     handlePopUpClose("restoreProject");
   };
 
-  if (!canAccessAllProjects || !deletedProjects.length) return null;
+  if (!canAccessAllProjects || (!isError && !deletedProjects.length)) return null;
 
   return (
     <Card className="mt-6">
@@ -84,69 +93,85 @@ export const DeletedProjectsTable = ({ projectType }: { projectType: ProjectType
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableBody>
-            {deletedProjects.map(({ id, name, deleteAfter, softDeletedAt, deletedBy }) => {
-              const deleteAfterDate = new Date(deleteAfter);
-              const remaining = formatRemainingDuration(deleteAfterDate);
+        {isError ? (
+          <Empty className="border">
+            <EmptyHeader>
+              <EmptyTitle>Deleted projects could not be loaded</EmptyTitle>
+              <EmptyDescription>
+                Retry to see which projects can still be restored.
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </EmptyContent>
+          </Empty>
+        ) : (
+          <Table>
+            <TableBody>
+              {deletedProjects.map(({ id, name, deleteAfter, softDeletedAt, deletedBy }) => {
+                const deleteAfterDate = new Date(deleteAfter);
+                const remaining = formatRemainingDuration(deleteAfterDate);
 
-              return (
-                <TableRow key={id}>
-                  <TableCell className="text-warning/80 line-through">{name}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-2">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Badge variant="warning">
-                            <HourglassIcon />
-                            Pending Deletion
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-sm font-semibold text-foreground">
-                              {remaining
-                                ? `${remaining} until permanent deletion`
-                                : "Will be permanently deleted soon"}
-                            </span>
-                            <span className="text-xs text-accent">
-                              {remaining
-                                ? `Scheduled for ${format(deleteAfterDate, "MMM d, yyyy, h:mm a")}`
-                                : "Awaiting the next cleanup sweep"}
-                            </span>
-                            <span className="text-xs text-accent">
-                              Soft-deleted by {getActorLabel(deletedBy)} ·{" "}
-                              {format(new Date(softDeletedAt), "MMM d, yyyy")}
-                            </span>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild disabled={restoreProject.isPending}>
-                          <IconButton
-                            aria-label="Project options"
-                            variant="ghost-muted"
-                            isDisabled={restoreProject.isPending}
-                          >
-                            <Ellipsis />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handlePopUpOpen("restoreProject", { id, name })}
-                          >
-                            <RotateCcwIcon />
-                            Restore Project
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                return (
+                  <TableRow key={id}>
+                    <TableCell className="text-warning/80 line-through">{name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-2">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="warning">
+                              <HourglassIcon />
+                              Pending Deletion
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-sm font-semibold text-foreground">
+                                {remaining
+                                  ? `${remaining} until permanent deletion`
+                                  : "Will be permanently deleted soon"}
+                              </span>
+                              <span className="text-xs text-accent">
+                                {remaining
+                                  ? `Scheduled for ${format(deleteAfterDate, "MMM d, yyyy, h:mm a")}`
+                                  : "Awaiting the next cleanup sweep"}
+                              </span>
+                              <span className="text-xs text-accent">
+                                Soft-deleted by {getActorLabel(deletedBy)} ·{" "}
+                                {format(new Date(softDeletedAt), "MMM d, yyyy")}
+                              </span>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild disabled={restoreProject.isPending}>
+                            <IconButton
+                              aria-label="Project options"
+                              variant="ghost-muted"
+                              isDisabled={restoreProject.isPending}
+                            >
+                              <Ellipsis />
+                            </IconButton>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handlePopUpOpen("restoreProject", { id, name })}
+                            >
+                              <RotateCcwIcon />
+                              Restore Project
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
       <AlertDialog
         open={popUp.restoreProject.isOpen}
