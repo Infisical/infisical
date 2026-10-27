@@ -60,7 +60,9 @@ describe("Vercel retry error handling", () => {
     ["seconds", () => "2", 2000],
     ["an HTTP date", () => new Date(Date.now() + 5000).toUTCString(), 5000],
     ["more than the cap", () => "3600", 60000],
-    ["unparseable", () => "soon", 60000]
+    ["unparseable", () => "soon", 60000],
+    ["zero", () => "0", 3000],
+    ["an already elapsed HTTP date", () => new Date(Date.now() - 5000).toUTCString(), 1000]
   ])("waits for Retry-After given as %s", async (_, retryAfter, expectedDelayMs) => {
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     get

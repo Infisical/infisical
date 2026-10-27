@@ -22,6 +22,7 @@ function isVercelDefaultEnvType(value: string): value is DefaultVercelEnvType {
 
 const MAX_RETRIES = 5;
 const RATE_LIMIT_DELAY_MS = 60000;
+const MIN_RATE_LIMIT_DELAY_MS = 3000;
 
 // Vercel answers with these codes when a request can never succeed as sent, so retrying only repeats the
 // failure. The message shown to the user is the one Vercel returned.
@@ -33,7 +34,8 @@ const sleep = async (ms: number) =>
     setTimeout(resolve, ms);
   });
 
-// Retry-After is either seconds or an HTTP date. It can only shorten the wait, never extend it.
+// Retry-After is either seconds or an HTTP date. It can only shorten the wait, never extend it,
+// and never drop below the floor: 0 (or an already elapsed date) would otherwise retry every in-flight request at once.
 const getRateLimitDelayMs = (error: AxiosError) => {
   const retryAfter = String(error.response?.headers?.["retry-after"] ?? "").trim();
   if (!retryAfter) return RATE_LIMIT_DELAY_MS;
@@ -42,7 +44,7 @@ const getRateLimitDelayMs = (error: AxiosError) => {
   const delayMs = Number.isFinite(seconds) ? seconds * 1000 : Date.parse(retryAfter) - Date.now();
   if (Number.isNaN(delayMs)) return RATE_LIMIT_DELAY_MS;
 
-  return Math.min(Math.max(delayMs, 0), RATE_LIMIT_DELAY_MS);
+  return Math.min(Math.max(delayMs, MIN_RATE_LIMIT_DELAY_MS), RATE_LIMIT_DELAY_MS);
 };
 
 // Vercel isn't consistent about casing, e.g. BAD_REQUEST alongside envs_size_too_large.

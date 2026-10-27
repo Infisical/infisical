@@ -44,6 +44,16 @@ describe("NetlifySyncFns.syncSecrets", () => {
     getVariables.mockResolvedValue([{ key: "EXISTING", values: [] }]);
   });
 
+  it("fails without retry when listing variables is rejected with 400", async () => {
+    getVariables.mockRejectedValue(axiosErrorWithStatus(400));
+
+    const error = await NetlifySyncFns.syncSecrets(sync, payloadOf(["NEW"])).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(SecretSyncError);
+    expect((error as SecretSyncError).shouldRetry).toBe(false);
+    expect((error as SecretSyncError).secretKey).toBeUndefined();
+  });
+
   it("fails without retry when Netlify rejects a new variable with 400", async () => {
     createVariable.mockRejectedValue(axiosErrorWithStatus(400));
 

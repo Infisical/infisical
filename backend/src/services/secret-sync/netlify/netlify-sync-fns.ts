@@ -9,13 +9,21 @@ import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 import { SecretSyncError } from "../secret-sync-errors";
 import type { TNetlifySyncWithCredentials } from "./netlify-sync-types";
 
-const throwNetlifySyncError = (error: unknown, secretKey: string): never => {
+const throwNetlifySyncError = (error: unknown, secretKey?: string): never => {
   throw new SecretSyncError({
     error,
     secretKey,
     // Netlify answers 400 for variables it refuses to store, so retrying the same request can't succeed.
     shouldRetry: !(isAxiosError(error) && error.response?.status === HttpStatusCode.BadRequest)
   });
+};
+
+const getNetlifyVariables = async (...args: Parameters<typeof NetlifyPublicAPI.getVariables>) => {
+  try {
+    return await NetlifyPublicAPI.getVariables(...args);
+  } catch (error) {
+    throwNetlifySyncError(error);
+  }
 };
 
 export const NetlifySyncFns = {
@@ -28,7 +36,7 @@ export const NetlifySyncFns = {
       site_id: config.siteId
     };
 
-    const variables = await NetlifyPublicAPI.getVariables(secretSync.connection, params);
+    const variables = await getNetlifyVariables(secretSync.connection, params);
 
     const map = {} as TSecretMap;
 
@@ -64,7 +72,7 @@ export const NetlifySyncFns = {
       context_name: config.context
     };
 
-    const variables = await NetlifyPublicAPI.getVariables(secretSync.connection, baseParams);
+    const variables = await getNetlifyVariables(secretSync.connection, baseParams);
     const existingInNetlify = Object.fromEntries(variables.map((variable) => [variable.key, variable]));
 
     const variablesToCreate = Object.keys(secretMap).filter((key) => !existingInNetlify[key]);
@@ -140,7 +148,7 @@ export const NetlifySyncFns = {
       context_name: config.context
     };
 
-    const variables = await NetlifyPublicAPI.getVariables(secretSync.connection, baseParams);
+    const variables = await getNetlifyVariables(secretSync.connection, baseParams);
 
     const existingSecrets = Object.fromEntries(variables.map((variable) => [variable.key, variable]));
 
