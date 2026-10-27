@@ -1,5 +1,6 @@
 ---
-title: "Overview"
+title: "Audit logs"
+sidebarTitle: "Overview"
 description: "Track and investigate every action performed within Infisical."
 ---
 
@@ -85,9 +86,9 @@ To view all events scoped to a single product:
     See the [audit log export API reference](/api-reference/endpoints/audit-logs/export-audit-log) for the full parameter list.
 
     <Note>
-      **Privileged Access Manager** and **Agent Vault** use a single project that Infisical manages internally. There's no public API for looking up that project's ID.
+      **Privileged Access Management (PAM)** and **Agent Vault** use a single project that Infisical manages internally. There's no public API for looking up that project's ID.
       
-      Instead, call the organization endpoint (see [For an organization](#for-an-organization)) and filter `eventType` to Privileged Access Manager and Agent Vault [event types](#event-types), (e.g., `eventType=pam-session-start,pam-session-end`).
+      Instead, call the organization endpoint (see [For an organization](#for-an-organization)) and filter `eventType` to PAM and Agent Vault [event types](#event-types), (e.g., `eventType=pam-session-start,pam-session-end`).
     </Note>
   </Tab>
 </Tabs>
@@ -417,7 +418,7 @@ Values that contain a literal `,` can't be filtered this way, because `,` separa
 
 Here are a few common patterns for filtering audit logs, grouped by product.
 
-### Secrets Manager
+### Secrets Management
 
 <AccordionGroup>
   <Accordion title="Who read a specific secret">
@@ -552,7 +553,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
   </Accordion>
 </AccordionGroup>
 
-### Certificate Manager
+### Certificate Management
 
 <AccordionGroup>
   <Accordion title="Recent certificate issuance">
@@ -668,7 +669,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
   </Accordion>
 </AccordionGroup>
 
-### KMS
+### Key Management Service (KMS)
 
 <AccordionGroup>
   <Accordion title="Recent key use">
@@ -791,7 +792,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
   </Accordion>
 </AccordionGroup>
 
-### Privileged Access Manager
+### Privileged Access Management (PAM)
 
 <AccordionGroup>
   <Accordion title="All privileged sessions this week">
@@ -887,7 +888,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
     </Tabs>
   </Accordion>
   <Accordion title="Proxy lifecycle events">
-    Find every proxy registration, enrollment, and revocation.
+    Find every proxy registration, token rotation, and revocation.
 
     <Tabs>
       <Tab title="Infisical UI">
@@ -897,7 +898,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
           </Step>
           <Step>
             Select **Search audit logs** and add:
-            - `event`: `agent-vault-proxy-register`, `agent-vault-proxy-enroll`, `agent-vault-proxy-revoke`, `agent-vault-proxy-delete`
+            - `event`: `agent-vault-proxy-register`, `agent-vault-proxy-token-rotate`, `agent-vault-proxy-revoke`, `agent-vault-proxy-delete`
           </Step>
         </Steps>
       </Tab>
@@ -905,7 +906,7 @@ Here are a few common patterns for filtering audit logs, grouped by product.
         ```bash
         curl -G "https://app.infisical.com/api/v1/organization/audit-logs" \
           -H "Authorization: Bearer <your-access-token>" \
-          --data-urlencode "eventType=agent-vault-proxy-register,agent-vault-proxy-enroll,agent-vault-proxy-revoke,agent-vault-proxy-delete"
+          --data-urlencode "eventType=agent-vault-proxy-register,agent-vault-proxy-token-rotate,agent-vault-proxy-revoke,agent-vault-proxy-delete"
         ```
       </Tab>
     </Tabs>

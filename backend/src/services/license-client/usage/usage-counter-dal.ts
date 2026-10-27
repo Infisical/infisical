@@ -131,7 +131,8 @@ export const usageCounterDALFactory = (db: TDbClient) => {
   };
 
   // Lets an org at its cap keep renewing: reissuing names it already holds cannot raise the count.
-  const isCertificateQuotaKeyActiveInOrg = async (orgId: string, quotaKey: string): Promise<boolean> => {
+  // orgId omitted means instance-wide
+  const isCertificateQuotaKeyActiveInOrg = async (orgId: string | undefined, quotaKey: string): Promise<boolean> => {
     try {
       const row = (await $activeQuotaCertificates(orgId)
         .where(`${TableName.Certificate}.quotaKey`, quotaKey)

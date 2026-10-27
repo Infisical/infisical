@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { SiGithub, SiYoutube } from "react-icons/si";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, LayoutGrid, Users } from "lucide-react";
@@ -14,6 +15,7 @@ import { cn } from "@app/components/v3/utils";
 import { getProjectHomePage } from "@app/helpers/project";
 import { submitSignupOnboarding } from "@app/hooks/api/auth/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
+import { analytics, AnalyticsEvent, OnboardingResource } from "@app/lib/analytics";
 
 import { AuthPagePanel } from "./AuthPagePanel";
 import { SIGNUP_PRODUCTS, SignupProductType } from "./signupProducts";
@@ -32,22 +34,26 @@ const COMMUNITY_LINKS: {
   label: string;
   isNew?: boolean;
   href: string;
+  resource: OnboardingResource;
   icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" | "false" }>;
 }[] = [
   {
     label: "29k+ Stars",
     href: "https://github.com/Infisical/infisical",
+    resource: "github",
     icon: SiGithub
   },
   {
     label: "Discussions",
     isNew: true,
     href: "https://community.infisical.com/latest",
+    resource: "discussions",
     icon: Users
   },
   {
     label: "50+ Videos",
     href: "https://www.youtube.com/@infisical_os",
+    resource: "youtube",
     icon: SiYoutube
   }
 ];
@@ -146,7 +152,18 @@ export default function SignupCompleteStep({
             <div className="flex flex-wrap gap-2">
               {COMMUNITY_LINKS.map((link) => (
                 <Button key={link.label} asChild variant="outline" size="sm">
-                  <a href={link.href} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() =>
+                      analytics.captureForOrganization(
+                        AnalyticsEvent.OnboardingResourceClicked,
+                        orgId,
+                        { resource: link.resource }
+                      )
+                    }
+                  >
                     <link.icon aria-hidden />
                     {link.label}
                     {link.isNew && (

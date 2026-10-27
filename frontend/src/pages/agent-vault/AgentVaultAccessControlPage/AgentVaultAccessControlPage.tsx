@@ -1,8 +1,7 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ShieldIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import {
   ProjectPermissionMemberActions,
@@ -76,13 +75,9 @@ const AgentVaultAccessControlTabsWithPermission = withProjectPermission(
 );
 
 export const AgentVaultAccessControlPage = () => {
-  const { t } = useTranslation();
-
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Access Control" })}</title>
-      </Helmet>
+      <PageTitle title="Access Control" />
       <PageHeader
         scope={ProjectType.AgentVault}
         icon={ShieldIcon}

@@ -6,14 +6,14 @@ import { z } from "zod";
 
 import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
+import { RoleOptionContent } from "@app/components/roles";
 import {
   Button,
+  Combobox,
   Field,
   FieldContent,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   Sheet,
   SheetContent,
@@ -158,14 +158,17 @@ const CreateOrgIdentityForm = ({ onClose }: { onClose: () => void }) => {
             <Field>
               <FieldLabel>Role</FieldLabel>
               <FieldContent>
-                <FilterableSelect
+                <Combobox
                   placeholder="Select role..."
+                  searchAriaLabel="Search roles"
                   options={roles}
-                  onChange={onChange}
+                  isClearable={false}
+                  onValueChange={onChange}
                   value={value}
                   getOptionValue={(option) => option.slug}
+                  getOptionKeywords={(option) => [option.slug]}
                   getOptionLabel={(option) => option.name}
-                  components={{ Option: RoleOption }}
+                  renderOption={(option) => <RoleOptionContent role={option} />}
                   isError={Boolean(error)}
                 />
               </FieldContent>

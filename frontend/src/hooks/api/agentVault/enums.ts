@@ -43,6 +43,12 @@ export enum AgentVaultSessionScope {
   All = "all"
 }
 
+/** Global variables are an admin's, for services; personal ones are the caller's own, for their personal values. */
+export enum AgentVaultVariableScope {
+  Global = "global",
+  Personal = "personal"
+}
+
 export enum AgentVaultSessionLogDecision {
   Brokered = "brokered",
   Passthrough = "passthrough",
@@ -56,4 +62,9 @@ export enum AgentVaultVariableReferenceField {
   CredentialUsername = "credential-username",
   CustomHeader = "custom-header",
   Substitution = "substitution"
+}
+
+export enum AgentVaultSessionLogStorageType {
+  Default = "default",
+  External = "external"
 }

@@ -48,6 +48,7 @@ const createService = ({
   const insertOrgMembershipRevocationMarker = vi.fn().mockResolvedValue(undefined);
   const removeOrgMembershipRevocationMarkers = vi.fn().mockResolvedValue(undefined);
   const deleteAlertsForResource = vi.fn().mockResolvedValue(0);
+  const emit = vi.fn().mockResolvedValue(undefined);
 
   const membershipIdentityDAL = {
     findOne: vi.fn().mockResolvedValue(existingMembership),
@@ -85,7 +86,13 @@ const createService = ({
         .fn()
         .mockImplementation(async (roles: string[]) => (roles.length ? [{ permission: createMongoAbility([]) }] : []))
     } as never,
-    orgDAL: { findById: vi.fn().mockResolvedValue({}), findEffectiveOrgMembership: vi.fn() } as never,
+    orgDAL: {
+      findById: vi.fn().mockResolvedValue({}),
+      findActorsWithActiveOrgAccess: vi.fn(async ({ identityIds }: { identityIds: string[] }) => ({
+        userIds: new Set<string>(),
+        identityIds: new Set(identityIds)
+      }))
+    } as never,
     additionalPrivilegeDAL: { delete: vi.fn().mockResolvedValue(undefined) } as never,
     identityDAL: {
       findById: vi.fn().mockResolvedValue({ orgId: ROOT_ORG_ID, projectId: null })
@@ -102,7 +109,8 @@ const createService = ({
       insertOrgMembershipRevocationMarker,
       removeOrgMembershipRevocationMarkers,
       bumpIdentityRevocationVersion
-    } as never
+    } as never,
+    eventEmitter: { emit }
   });
 
   return {
@@ -111,7 +119,8 @@ const createService = ({
     bumpIdentityRevocationVersion,
     insertOrgMembershipRevocationMarker,
     removeOrgMembershipRevocationMarkers,
-    deleteAlertsForResource
+    deleteAlertsForResource,
+    emit
   };
 };
 
@@ -221,6 +230,37 @@ describe("deleteMembership alert cleanup", () => {
       },
       expect.anything()
     );
+  });
+});
+
+describe("deleteMembership org access reconcile", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  test("removing an org membership emits the removal in the same transaction", async () => {
+    const tx = { marker: "tx" } as unknown as Knex;
+    const { service, emit } = createService({ tx });
+
+    await service.deleteMembership(buildDto());
+
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith(
+      {
+        eventType: "com.infisical.organization.membership.removed.v1",
+        payload: { orgId: SUB_ORG_ID, actorType: "identity", actorId: IDENTITY_ID }
+      },
+      tx
+    );
+  });
+
+  test("removing a project membership emits nothing, the identity still reaches the org", async () => {
+    const { service, emit } = createService();
+
+    await service.deleteMembership({
+      ...buildDto(),
+      scopeData: { scope: AccessScope.Project, orgId: SUB_ORG_ID, projectId: PROJECT_ID }
+    });
+
+    expect(emit).not.toHaveBeenCalled();
   });
 });
 

@@ -17,6 +17,7 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/aws"
 	"github.com/Infisical/infisical/tests/fakes/github"
 	"github.com/Infisical/infisical/tests/fakes/license"
+	"github.com/Infisical/infisical/tests/fakes/oidcidp"
 	"github.com/Infisical/infisical/tests/fakes/smtp"
 	"github.com/Infisical/infisical/tests/fakes/webhook"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
@@ -36,6 +37,7 @@ func main() {
 	srv := fakenet.New(
 		github.Service,
 		license.Service,
+		oidcidp.Service,
 		webhook.Service,
 		webhook.Slack,
 		aws.STS, aws.SSM, aws.SecretsManager, aws.IAM, aws.CloudFormation,

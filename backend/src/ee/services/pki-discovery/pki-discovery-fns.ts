@@ -19,7 +19,7 @@ import {
 import {
   PkiInstallationLocationType,
   ScanEndpointFailureReason,
-  TPkiDiscoveryTargetConfig,
+  TNetworkTargetConfig,
   TPkiInstallationLocationDetails,
   TScanCertificateResult,
   TScanEndpointResult,
@@ -48,6 +48,23 @@ const shouldBlockPrivateIps = (hasGateway: boolean): boolean => {
   const appCfg = getConfig();
   if (appCfg.isDevelopmentMode || appCfg.ALLOW_INTERNAL_IP_CONNECTIONS) return false;
   return true;
+};
+
+export const getPrivateIpRangeError = (ipRanges: string[] | undefined, hasGateway: boolean): string | undefined => {
+  if (!ipRanges?.length || !shouldBlockPrivateIps(hasGateway)) return undefined;
+
+  const appCfg = getConfig();
+  const selfHostedHint = appCfg.isCloud
+    ? ""
+    : " If you are self-hosting, you can alternatively set the 'ALLOW_INTERNAL_IP_CONNECTIONS' environment variable to 'true' on your instance to scan private networks without a gateway.";
+
+  if (ipRanges.some((ip) => !ip.includes("/") && isPrivateIp(ip))) {
+    return `Private/internal IP addresses require a gateway. Use a gateway to scan private networks.${selfHostedHint}`;
+  }
+  if (ipRanges.some((cidr) => cidr.includes("/") && isPrivateIp(cidr.split("/")[0]))) {
+    return `Private/internal CIDR ranges require a gateway. Use a gateway to scan private networks.${selfHostedHint}`;
+  }
+  return undefined;
 };
 
 export type TTargetValidationResult = {
@@ -99,29 +116,20 @@ export const validateTargetConfig = (
   }
 
   if (hasIpRanges) {
+    const invalidRange = ipRanges.find((r) => net.isIP(r.split("/")[0]) === 0);
+    if (invalidRange) {
+      return {
+        valid: false,
+        error: `'${invalidRange}' is not a valid IP address or CIDR range. Add hostnames as domains instead.`
+      };
+    }
+
     const cidrRanges = ipRanges.filter((r) => r.includes("/"));
     const singleIps = ipRanges.filter((r) => !r.includes("/"));
 
-    if (shouldBlockPrivateIps(!!hasGateway)) {
-      const appCfg = getConfig();
-      const selfHostedHint = appCfg.isCloud
-        ? ""
-        : " If you are self-hosting, you can alternatively set the 'ALLOW_INTERNAL_IP_CONNECTIONS' environment variable to 'true' on your instance to scan private networks without a gateway.";
-
-      const privateIp = singleIps.find((ip) => isPrivateIp(ip));
-      if (privateIp) {
-        return {
-          valid: false,
-          error: `Private/internal IP addresses require a gateway. Use a gateway to scan private networks.${selfHostedHint}`
-        };
-      }
-      const privateCidr = cidrRanges.find((cidr) => isPrivateIp(cidr.split("/")[0]));
-      if (privateCidr) {
-        return {
-          valid: false,
-          error: `Private/internal CIDR ranges require a gateway. Use a gateway to scan private networks.${selfHostedHint}`
-        };
-      }
+    const privateIpRangeError = getPrivateIpRangeError(ipRanges, !!hasGateway);
+    if (privateIpRangeError) {
+      return { valid: false, error: privateIpRangeError };
     }
 
     let totalIpCount = singleIps.length;
@@ -131,7 +139,16 @@ export const validateTargetConfig = (
       if (!prefixMatch) {
         return { valid: false, error: `Invalid CIDR notation: ${cidr}` };
       }
+      if (!net.isIPv4(cidr.split("/")[0])) {
+        return {
+          valid: false,
+          error: `IPv6 CIDR ranges are not supported: '${cidr}'. Enter individual IPv6 addresses instead.`
+        };
+      }
       const prefix = parseInt(prefixMatch[1], 10);
+      if (prefix > 32) {
+        return { valid: false, error: `Invalid CIDR notation: ${cidr}` };
+      }
       if (prefix < MIN_CIDR_PREFIX) {
         return {
           valid: false,
@@ -224,7 +241,7 @@ export const scanEndpoint = async (
               seenFingerprints.add(currentCert.fingerprint256);
 
               // eslint-disable-next-line @typescript-eslint/no-use-before-define
-              const certResult = parsePeerCertificate(currentCert);
+              const certResult = parseCertificateDer(currentCert.raw);
               if (certResult) {
                 if (certResult.pemChain.length > 0) {
                   chainPems.push(certResult.pemChain[0]);
@@ -290,34 +307,21 @@ export const scanEndpoint = async (
   });
 };
 
-const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertificateResult | null => {
+const getNameField = (name: x509.Name, field: string) => name.getField(field).join(", ") || undefined;
+
+export const parseCertificateDer = (derBuffer: Buffer): TScanCertificateResult | null => {
   try {
-    const derBuffer = cert.raw;
-
+    const nodeCert = new crypto.X509Certificate(derBuffer);
     const x509Cert = new x509.X509Certificate(derBuffer);
-    const pem = x509Cert.toString("pem");
 
-    let altNames: string | undefined;
-    if (cert.subjectaltname) {
-      altNames = cert.subjectaltname
-        .split(", ")
-        .map((entry) => {
-          const colonIdx = entry.indexOf(":");
-          return colonIdx >= 0 ? entry.substring(colonIdx + 1) : entry;
-        })
-        .filter(Boolean)
-        .join(", ");
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    const fingerprint = computeCertFingerprint(derBuffer);
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    const fingerprintSha1 = computeCertFingerprintSha1(derBuffer);
-
-    const subject = cert.subject || {};
-    // In Node 22, cert subject/issuer fields can be string | string[] for multi-valued attributes
-    const certField = (val: string | string[] | undefined): string | undefined =>
-      Array.isArray(val) ? val.join(", ") : val;
+    const altNames = nodeCert.subjectAltName
+      ?.split(", ")
+      .map((entry) => {
+        const colonIdx = entry.indexOf(":");
+        return colonIdx >= 0 ? entry.substring(colonIdx + 1) : entry;
+      })
+      .filter(Boolean)
+      .join(", ");
 
     let keyUsages: CertKeyUsage[] = [];
     const keyUsagesExt = x509Cert.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
@@ -336,41 +340,39 @@ const parsePeerCertificate = (cert: tls.DetailedPeerCertificate): TScanCertifica
         .filter(Boolean);
     }
 
-    const certBasicConstraints = cert as { ca?: boolean; pathlen?: number };
-    const isCA = certBasicConstraints.ca;
-    const pathLength = certBasicConstraints.pathlen;
-
-    const issuer = cert.issuer || {};
-
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    const signatureAlgorithm = extractSignatureAlgorithm(x509Cert);
+    const basicConstraints = x509Cert.getExtension(x509.BasicConstraintsExtension);
+    const subject = x509Cert.subjectName;
+    const issuer = x509Cert.issuerName;
 
     return {
-      pemChain: [pem],
-      fingerprint,
-      fingerprintSha1,
-      commonName: certField(subject.CN) || "",
-      altNames,
-      notBefore: new Date(cert.valid_from),
-      notAfter: new Date(cert.valid_to),
-      serialNumber: cert.serialNumber,
-      subjectOrganization: certField(subject.O),
-      subjectOrganizationalUnit: certField(subject.OU),
-      subjectCountry: certField(subject.C),
-      subjectState: certField(subject.ST),
-      subjectLocality: certField(subject.L),
+      pemChain: [x509Cert.toString("pem")],
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      fingerprint: computeCertFingerprint(derBuffer),
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      fingerprintSha1: computeCertFingerprintSha1(derBuffer),
+      commonName: getNameField(subject, "CN") || "",
+      altNames: altNames || undefined,
+      notBefore: new Date(nodeCert.validFrom),
+      notAfter: new Date(nodeCert.validTo),
+      serialNumber: nodeCert.serialNumber,
+      subjectOrganization: getNameField(subject, "O"),
+      subjectOrganizationalUnit: getNameField(subject, "OU"),
+      subjectCountry: getNameField(subject, "C"),
+      subjectState: getNameField(subject, "ST"),
+      subjectLocality: getNameField(subject, "L"),
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
       keyAlgorithm: extractKeyAlgorithm(x509Cert),
-      signatureAlgorithm,
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      signatureAlgorithm: extractSignatureAlgorithm(x509Cert),
       keyUsages,
       extendedKeyUsages,
-      isCA,
-      pathLength,
-      issuerCommonName: certField(issuer.CN),
-      issuerOrganization: certField(issuer.O)
+      isCA: basicConstraints ? basicConstraints.ca : nodeCert.ca,
+      pathLength: basicConstraints?.pathLength,
+      issuerCommonName: getNameField(issuer, "CN"),
+      issuerOrganization: getNameField(issuer, "O")
     };
   } catch (error) {
-    logger.error(error, "Failed to parse peer certificate");
+    logger.error(error, "Failed to parse discovered certificate");
     return null;
   }
 };
@@ -572,7 +574,7 @@ export const resolveDomain = async (domain: string): Promise<string[]> => {
 };
 
 export const resolveTargets = async (
-  targetConfig: TPkiDiscoveryTargetConfig,
+  targetConfig: TNetworkTargetConfig,
   hasGateway = false
 ): Promise<TScanTarget[]> => {
   const targets: TScanTarget[] = [];
@@ -632,7 +634,9 @@ export const resolveTargets = async (
 
   if (targetConfig.ipRanges) {
     for (const range of targetConfig.ipRanges) {
-      const ips = expandCIDR(range);
+      // expandCIDR returns its input unchanged when it can't parse it, and the TLS connect would resolve that as a hostname.
+      const expandedIps = expandCIDR(range).filter((ip) => net.isIP(ip) !== 0);
+      const ips = blockPrivate ? expandedIps.filter((ip) => !isPrivateIp(ip)) : expandedIps;
 
       for (const ip of ips) {
         for (const port of ports) {
@@ -660,6 +664,7 @@ export const computeLocationFingerprint = (
   if (locationDetails.ipAddress) parts.push(`ip:${locationDetails.ipAddress}`);
   if (locationDetails.fqdn) parts.push(`fqdn:${locationDetails.fqdn}`);
   if (locationDetails.port) parts.push(`port:${locationDetails.port}`);
+  if (locationDetails.hostIdentifier) parts.push(`host:${locationDetails.hostIdentifier}`);
   if (locationDetails.filePath) parts.push(`path:${locationDetails.filePath}`);
   if (gatewayId) parts.push(`gw:${gatewayId}`);
 

@@ -56,3 +56,31 @@ To allow a user, group, or machine identity to create sessions for a given acces
 ### Revoke access
 
 To revoke access from a user, group, or machine identity, open the bundle and select **Options** > **Manage Access**. Find them with the search box, open their actions menu, and select **Revoke Access**. If any of their agents are running, those agents lose the bundle's credentials within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
+
+## Set up your personal values
+
+Some services ask you for part of their credential, such as your own API key (see [member-provided values](/documentation/platform/agent-vault/services#member-provided-values)). Until you set up your personal values for one of these services, your sessions can't use it, and the service shows **Requires Setup**. This applies to admins too.
+
+To set up your personal values:
+
+<Steps>
+  <Step>
+    In Agent Vault, go to **Access Bundles** and select the access bundle.
+  </Step>
+  <Step>
+    Select **Requires Setup** next to the service, or open the service's actions menu and select **Set Up My Personal Values**.
+  </Step>
+  <Step>
+    Enter each value. To use one of your [personal variables](/documentation/platform/agent-vault/variables#personal-variables), type `{{` or select the arrow at the end of the field, then pick a variable from the list.
+  </Step>
+  <Step>
+    Select **Save**. The service shows **Configured**.
+  </Step>
+</Steps>
+
+Infisical never shows your personal values to anyone else, admins included.
+
+- To change your personal values, open the service's actions menu, select **Update My Personal Values**, and enter the values you want to change
+- To delete your personal values, select **Remove** in the same dialog, then select **Remove Personal Values**
+
+A machine identity sets up its personal values with [the set personal values endpoint](/api-reference/endpoints/agent-vault-services/set-personal-values), and keeps its own personal variables with [the create variable endpoint](/api-reference/endpoints/agent-vault-variables/create).

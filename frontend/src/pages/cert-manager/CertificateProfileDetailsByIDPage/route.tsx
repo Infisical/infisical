@@ -26,6 +26,9 @@ export const Route = createFileRoute(
               orgId: params.orgId
             }
           })
+        },
+        {
+          label: "Certificate Profile"
         }
       ]
     };

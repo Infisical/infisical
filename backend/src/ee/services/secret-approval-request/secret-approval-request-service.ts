@@ -14,7 +14,7 @@ import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
-import { groupBy, pick, unique } from "@app/lib/fn";
+import { groupBy, groupByUnique, pick, unique } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
@@ -318,6 +318,7 @@ export const secretApprovalRequestServiceFactory = ({
 
     const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(projectId);
 
+    let page;
     if (shouldUseSecretV2Bridge) {
       // Policies on the global approval system only exist on upgraded projects, so only this branch has
       // requests on both systems. Each is asked for the head of the list up to the requested page.
@@ -338,27 +339,42 @@ export const secretApprovalRequestServiceFactory = ({
         secretChangeGlobalRequestBridgeService.listSecretChangeRequests(headOfList)
       ]);
       type TListedRequest = (typeof legacyRequests)["approvals"][number] | TSecretChangeRequestListItem;
-      return mergeSecretApprovalRequestPages<TListedRequest>({
+      page = mergeSecretApprovalRequestPages<TListedRequest>({
         pages: [legacyRequests, secretChangeRequests],
         offset,
         limit,
         orderBy,
         orderDirection
       });
+    } else {
+      page = await secretApprovalRequestDAL.findByProjectId({
+        projectId,
+        committer,
+        environment,
+        status,
+        userId: userIdFilter,
+        limit,
+        offset,
+        search,
+        orderBy,
+        orderDirection
+      });
     }
 
-    return secretApprovalRequestDAL.findByProjectId({
-      projectId,
-      committer,
-      environment,
-      status,
-      userId: userIdFilter,
-      limit,
-      offset,
-      search,
-      orderBy,
-      orderDirection
-    });
+    const folderIds = unique(page.approvals.map((el) => el.folderId));
+    const folders = folderIds.length ? await folderDAL.findSecretPathByFolderIds(projectId, folderIds) : [];
+    const folderById = groupByUnique(
+      folders.filter((el) => el !== undefined),
+      (el) => el.id
+    );
+
+    return {
+      ...page,
+      approvals: page.approvals.map((el) => ({
+        ...el,
+        secretPath: folderById[el.folderId]?.path ?? "/"
+      }))
+    };
   };
 
   const getSecretApprovalDetails = async (dto: TSecretApprovalDetailsDTO) => {
@@ -725,7 +741,7 @@ export const secretApprovalRequestServiceFactory = ({
       return secretChangeGlobalRequestBridgeService.mergeSecretChangeRequest(dto);
     }
 
-    const { approvalId, actor, actorId, actorOrgId, actorAuthMethod, bypassReason } = dto;
+    const { approvalId, actor, actorId, actorOrgId, actorAuthMethod, bypassReason, requireApprovals } = dto;
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest)
       throw new NotFoundError({ message: `Secret approval request with ID '${approvalId}' not found` });
@@ -777,6 +793,10 @@ export const secretApprovalRequestServiceFactory = ({
     const isSoftEnforcement = secretApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft;
     const canBypass = !bypassers.length || bypassers.some((bypasser) => bypasser.userId === actorId);
 
+    if (!hasMinApproval && requireApprovals)
+      throw new BadRequestError({
+        message: `Secret approval request '${secretApprovalRequest.slug}' needs ${policy.approvals} approval(s) before it can be merged without a policy bypass.`
+      });
     if (!hasMinApproval && !(isSoftEnforcement && canBypass))
       throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
 
@@ -1799,10 +1819,7 @@ export const secretApprovalRequestServiceFactory = ({
   const findFolderIdsWithOpenRequests = async (folderIds: string[], tx?: Knex) => {
     if (!folderIds.length) return [];
 
-    const legacyRequests = await secretApprovalRequestDAL.find(
-      { $in: { folderId: folderIds }, status: RequestState.Open },
-      { tx }
-    );
+    const legacyRequests = await secretApprovalRequestDAL.findOpenByFolderIds(folderIds, tx);
     const secretChangeFolderIds =
       await secretChangeGlobalRequestBridgeService.findFolderIdsWithOpenSecretChangeRequests(folderIds, tx);
 

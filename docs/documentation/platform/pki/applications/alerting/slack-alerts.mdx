@@ -1,5 +1,5 @@
 ---
-title: "Slack alerts"
+title: "Certificate alerts in Slack"
 sidebarTitle: "Slack"
 description: "Send certificate alert notifications to a Slack channel."
 ---
@@ -14,7 +14,7 @@ A Slack channel on a certificate [alert](/documentation/platform/pki/application
 
 ## Prerequisites
 
-- The Certificate Manager **Admin** role to create a Certificate Manager alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
+- The Certificate Management **Admin** role to create a Certificate Management alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
 - A Slack workspace where you can create apps
 
 ## Step 1: Create a Slack incoming webhook
@@ -65,7 +65,7 @@ A Slack channel on a certificate [alert](/documentation/platform/pki/application
 
 ## Message format
 
-Each Slack message includes the alert's summary, up to two certificates, and a **View in Infisical** button. For an application alert, the button opens the application. For a Certificate Manager alert, it opens the **Inventory** page, or the **Signers** page for a signer certificate expiration alert. The message color shows the alert's severity:
+Each Slack message includes the alert's summary, up to two certificates, and a **View in Infisical** button. For an application alert, the button opens the application. For a Certificate Management alert, it opens the **Inventory** page, or the **Signers** page for a signer certificate expiration alert. The message color shows the alert's severity:
 
 | Color | Severity | When |
 |-------|----------|------|
