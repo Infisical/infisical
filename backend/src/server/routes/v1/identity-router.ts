@@ -126,7 +126,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
         identityId: z.string().describe(IDENTITIES.UPDATE.identityId)
       }),
       body: z.object({
-        name: z.string().trim().min(1).max(255).optional().describe(IDENTITIES.UPDATE.name),
+        name: z.string().trim().max(255).optional().describe(IDENTITIES.UPDATE.name),
         role: z.string().trim().min(1).optional().describe(IDENTITIES.UPDATE.role),
         hasDeleteProtection: z.boolean().optional().describe(IDENTITIES.UPDATE.hasDeleteProtection),
         metadata: z

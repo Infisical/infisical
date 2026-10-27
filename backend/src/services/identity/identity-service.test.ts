@@ -213,4 +213,22 @@ describe("updateIdentity name check", () => {
 
     expect(identityDAL.updateById).not.toHaveBeenCalled();
   });
+
+  test("an unchanged empty name is let through", async () => {
+    const { service, identityDAL } = createService({ identityName: "" });
+
+    await service.updateIdentity({ ...buildDto(), name: "", hasDeleteProtection: true } as never);
+
+    expect(identityDAL.updateById).toHaveBeenCalledWith(IDENTITY_ID, { name: "", hasDeleteProtection: true }, TX);
+  });
+
+  test("a rename to an empty name is refused", async () => {
+    const { service, identityDAL } = createService();
+
+    await expect(service.updateIdentity({ ...buildDto(), name: "" } as never)).rejects.toThrow(
+      "Identity name cannot be empty"
+    );
+
+    expect(identityDAL.updateById).not.toHaveBeenCalled();
+  });
 });
