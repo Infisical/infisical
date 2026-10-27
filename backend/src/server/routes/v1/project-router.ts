@@ -49,6 +49,24 @@ import {
 import { sanitizedServiceTokenSchema } from "../v2/service-token-router";
 import { ProjectAccessRequestCommentSchema } from "./project-access-request-schema";
 
+const deletedBySchema = z
+  .discriminatedUnion("type", [
+    z.object({
+      type: z.literal("user"),
+      id: z.string(),
+      email: z.string().nullable(),
+      username: z.string().nullable(),
+      firstName: z.string().nullable(),
+      lastName: z.string().nullable()
+    }),
+    z.object({
+      type: z.literal("identity"),
+      id: z.string(),
+      name: z.string()
+    })
+  ])
+  .nullable();
+
 const projectWithEnv = SanitizedProjectSchema.merge(
   z.object({
     _id: z.string(),
@@ -60,23 +78,7 @@ const projectWithEnv = SanitizedProjectSchema.merge(
         slug: z.string(),
         deleteAfter: z.date(),
         softDeletedAt: z.date(),
-        deletedBy: z
-          .discriminatedUnion("type", [
-            z.object({
-              type: z.literal("user"),
-              id: z.string(),
-              email: z.string().nullable(),
-              username: z.string().nullable(),
-              firstName: z.string().nullable(),
-              lastName: z.string().nullable()
-            }),
-            z.object({
-              type: z.literal("identity"),
-              id: z.string(),
-              name: z.string()
-            })
-          ])
-          .nullable()
+        deletedBy: deletedBySchema
       })
       .array()
   })
@@ -453,6 +455,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.DELETE.projectId)
       }),
+      querystring: z.object({
+        hardDelete: z
+          .enum(["true", "false"])
+          .default("false")
+          .transform((value) => value === "true")
+          .describe(PROJECTS.DELETE.hardDelete)
+      }),
       response: {
         200: z.object({
           project: SanitizedProjectSchema.optional()
@@ -471,7 +480,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
         filter: {
           type: ProjectFilterType.ID,
           projectId: req.params.projectId
-        }
+        },
+        hardDelete: req.query.hardDelete
       });
 
       await server.services.auditLog.createAuditLog({
@@ -483,7 +493,108 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           metadata: {
             id: project.id,
             name: project.name,
-            softDelete: true
+            softDelete: true,
+            hardDelete: req.query.hardDelete
+          }
+        }
+      });
+
+      return { project };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/deleted",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "listDeletedProjects",
+      tags: [ApiDocsTags.Projects],
+      description: "List soft-deleted projects that can still be restored",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      querystring: z.object({
+        type: z.nativeEnum(ProjectType).optional().describe(PROJECTS.LIST_DELETED.type)
+      }),
+      response: {
+        200: z.object({
+          projects: z
+            .object({
+              id: z.string(),
+              name: z.string(),
+              type: z.string(),
+              deleteAfter: z.date(),
+              softDeletedAt: z.date(),
+              deletedBy: deletedBySchema
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const projects = await server.services.project.listDeletedProjects({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        type: req.query.type
+      });
+      return { projects };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:projectId/restore",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "restoreProject",
+      tags: [ApiDocsTags.Projects],
+      description: "Restore a soft-deleted project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.RESTORE.projectId)
+      }),
+      response: {
+        200: z.object({
+          project: SanitizedProjectSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const project = await server.services.project.restoreProject({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        projectId: req.params.projectId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: project.id,
+        event: {
+          type: EventType.RESTORE_PROJECT,
+          metadata: {
+            id: project.id,
+            name: project.name,
+            slug: project.slug
           }
         }
       });

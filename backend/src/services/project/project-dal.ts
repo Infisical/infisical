@@ -131,6 +131,26 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  const restoreById = async (id: string, slug: string, tx?: Knex) => {
+    try {
+      const [doc] = await (tx || db)(TableName.Project)
+        .where({ id })
+        .whereNotNull("deleteAfter")
+        .andWhere("deleteAfter", ">", new Date())
+        .update({
+          deleteAfter: null,
+          softDeletedAt: null,
+          deletedByActorType: null,
+          deletedByActorId: null,
+          slug
+        })
+        .returning("*");
+      return doc as TProjects | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Restore project" });
+    }
+  };
+
   const findExpiredForHardDelete = async (limit: number, tx?: Knex) => {
     try {
       const rows = await (tx || db.replicaNode())(TableName.Project)
@@ -1018,6 +1038,92 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findDeletedProjects = async (orgId: string, type?: ProjectType, tx?: Knex) => {
+    try {
+      type DeletedProjectRow = {
+        id: string;
+        name: string;
+        type: string;
+        deleteAfter: Date;
+        softDeletedAt: Date;
+        deletedByActorType: string | null;
+        deletedByActorId: string | null;
+        deletedByUserEmail: string | null;
+        deletedByUserUsername: string | null;
+        deletedByUserFirstName: string | null;
+        deletedByUserLastName: string | null;
+        deletedByIdentityName: string | null;
+      };
+
+      const query = (tx || db.replicaNode())(TableName.Project)
+        .leftJoin(TableName.Users, `${TableName.Project}.deletedByActorId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.Identity, `${TableName.Project}.deletedByActorId`, `${TableName.Identity}.id`)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .whereNotNull(`${TableName.Project}.deleteAfter`)
+        .whereNotNull(`${TableName.Project}.softDeletedAt`)
+        .select(
+          `${TableName.Project}.id`,
+          `${TableName.Project}.name`,
+          `${TableName.Project}.type`,
+          `${TableName.Project}.deleteAfter`,
+          `${TableName.Project}.softDeletedAt`,
+          `${TableName.Project}.deletedByActorType`,
+          `${TableName.Project}.deletedByActorId`,
+          db.ref("email").withSchema(TableName.Users).as("deletedByUserEmail"),
+          db.ref("username").withSchema(TableName.Users).as("deletedByUserUsername"),
+          db.ref("firstName").withSchema(TableName.Users).as("deletedByUserFirstName"),
+          db.ref("lastName").withSchema(TableName.Users).as("deletedByUserLastName"),
+          db.ref("name").withSchema(TableName.Identity).as("deletedByIdentityName")
+        )
+        .orderBy(`${TableName.Project}.deleteAfter`, "asc");
+      if (type) void query.where(`${TableName.Project}.type`, type);
+
+      const rows = (await query) as DeletedProjectRow[];
+
+      return rows.map((row) => {
+        let deletedBy:
+          | {
+              type: "user";
+              id: string;
+              email: string | null;
+              username: string | null;
+              firstName: string | null;
+              lastName: string | null;
+            }
+          | { type: "identity"; id: string; name: string }
+          | null = null;
+
+        if (row.deletedByActorId && row.deletedByActorType === ActorType.USER) {
+          deletedBy = {
+            type: "user",
+            id: row.deletedByActorId,
+            email: row.deletedByUserEmail,
+            username: row.deletedByUserUsername,
+            firstName: row.deletedByUserFirstName,
+            lastName: row.deletedByUserLastName
+          };
+        } else if (row.deletedByActorId && row.deletedByActorType === ActorType.IDENTITY) {
+          deletedBy = {
+            type: "identity",
+            id: row.deletedByActorId,
+            name: row.deletedByIdentityName ?? ""
+          };
+        }
+
+        return {
+          id: row.id,
+          name: row.name,
+          type: row.type,
+          deleteAfter: row.deleteAfter,
+          softDeletedAt: row.softDeletedAt,
+          deletedBy
+        };
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find deleted projects" });
+    }
+  };
+
   const countOfBillableOrgProjects = async (orgId: string | null, tx?: Knex) => {
     try {
       const subOrgProjects = db.replicaNode()(TableName.Organization).where({ rootOrgId: orgId }).select("id");
@@ -1054,6 +1160,7 @@ export const projectDALFactory = (db: TDbClient) => {
     findByIdIncludingExpired,
     findIncludingExpired,
     softDeleteById,
+    restoreById,
     findExpiredForHardDelete,
     hardDeleteProjectSecretVersionsInBatches,
     hardDeleteProjectSecretReferencesInBatches,
@@ -1079,6 +1186,7 @@ export const projectDALFactory = (db: TDbClient) => {
     searchProjects,
     findProjectByEnvId,
     findProjectDeletedEnvironments,
+    findDeletedProjects,
     countOfBillableOrgProjects
   };
 };

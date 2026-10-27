@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { addDays, format } from "date-fns";
 import { Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -36,6 +37,7 @@ import {
 } from "@app/context";
 import { useToggle } from "@app/hooks";
 import { useDeleteWorkspace, useLeaveProject, useUpdateProject } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 const CONFIRM_KEYWORD = "confirm";
@@ -44,6 +46,7 @@ export const DeleteProjectSection = () => {
   const navigate = useNavigate();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+    "scheduleDeleteWorkspace",
     "deleteWorkspace",
     "leaveWorkspace"
   ] as const);
@@ -58,14 +61,16 @@ export const DeleteProjectSection = () => {
   const leaveProject = useLeaveProject();
   const { mutateAsync: updateProject, isPending: isUpdatingDeleteProtection } = useUpdateProject();
   const hasDeleteProtection = currentProject?.hasDeleteProtection ?? false;
+  const isRestorable = currentProject?.type === ProjectType.SecretManager;
 
-  const handleDeleteWorkspaceSubmit = async () => {
+  const handleDeleteWorkspaceSubmit = async (hardDelete: boolean) => {
     setIsDeleting.on();
     try {
       if (!currentProject?.id) return;
 
       await deleteWorkspace.mutateAsync({
-        projectID: currentProject?.id
+        projectID: currentProject?.id,
+        hardDelete
       });
 
       createNotification({
@@ -77,6 +82,7 @@ export const DeleteProjectSection = () => {
         to: "/organizations/$orgId/projects",
         params: { orgId: currentOrg.id }
       });
+      handlePopUpClose("scheduleDeleteWorkspace");
       handlePopUpClose("deleteWorkspace");
     } finally {
       setIsDeleting.off();
@@ -138,7 +144,9 @@ export const DeleteProjectSection = () => {
         isPending={isDeleting}
         isDisabled={isDisabled}
         variant="danger"
-        onClick={() => handlePopUpOpen("deleteWorkspace")}
+        onClick={() =>
+          handlePopUpOpen(isRestorable ? "scheduleDeleteWorkspace" : "deleteWorkspace")
+        }
       >
         <Trash2Icon />
         {`Delete ${currentProject?.name}`}
@@ -234,6 +242,57 @@ export const DeleteProjectSection = () => {
 
       <AlertDialog
         isPending={isDeleting}
+        open={popUp.scheduleDeleteWorkspace.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("scheduleDeleteWorkspace", isOpen)}
+      >
+        <AlertDialogContent className="sm:max-w-xl!">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Schedule deletion of {currentProject?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {currentProject?.name} will be inaccessible immediately, then permanently deleted on{" "}
+              <span className="font-medium text-foreground">
+                {format(addDays(new Date(), 14), "MMM d, yyyy")}
+              </span>
+              .
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="list-disc pl-4 text-sm text-label">
+            <li>
+              Organization admins can restore it within 14 days. Secrets, environments, and history
+              are preserved.
+            </li>
+            <li>After 14 days, all project data is wiped and cannot be recovered.</li>
+          </ul>
+          <AlertDialogFooter className="sm:justify-between">
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => {
+                handlePopUpClose("scheduleDeleteWorkspace");
+                handlePopUpOpen("deleteWorkspace");
+              }}
+              isDisabled={isDeleting}
+            >
+              Delete Now
+            </Button>
+            <div className="flex gap-2">
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                variant="project"
+                onClick={(event) => {
+                  event.preventDefault();
+                  handleDeleteWorkspaceSubmit(false);
+                }}
+              >
+                Confirm
+              </AlertDialogAction>
+            </div>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        isPending={isDeleting}
         open={popUp.deleteWorkspace.isOpen}
         confirmationValue={CONFIRM_KEYWORD}
         onOpenChange={(isOpen) => handlePopUpToggle("deleteWorkspace", isOpen)}
@@ -253,7 +312,7 @@ export const DeleteProjectSection = () => {
           <AlertDialogConfirmationField
             inputProps={{ placeholder: `Type ${CONFIRM_KEYWORD} here` }}
             onConfirm={() => {
-              handleDeleteWorkspaceSubmit();
+              handleDeleteWorkspaceSubmit(isRestorable);
             }}
           />
           <AlertDialogFooter>
@@ -262,7 +321,7 @@ export const DeleteProjectSection = () => {
               variant="danger"
               onClick={(event) => {
                 event.preventDefault();
-                handleDeleteWorkspaceSubmit();
+                handleDeleteWorkspaceSubmit(isRestorable);
               }}
             >
               Delete Project

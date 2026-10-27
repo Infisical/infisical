@@ -727,6 +727,7 @@ export enum EventType {
   CREATE_PROJECT = "create-project",
   UPDATE_PROJECT = "update-project",
   DELETE_PROJECT = "delete-project",
+  RESTORE_PROJECT = "restore-project",
 
   CREATE_PROJECT_ROLE = "create-project-role",
   UPDATE_PROJECT_ROLE = "update-project-role",
@@ -5944,6 +5945,16 @@ interface ProjectDeleteEvent {
     // true: actor soft-deleted the project (marked for deletion).
     // false: the async cleanup worker hard-deleted an expired soft-deleted project.
     softDelete?: boolean;
+    hardDelete?: boolean;
+  };
+}
+
+interface ProjectRestoreEvent {
+  type: EventType.RESTORE_PROJECT;
+  metadata: {
+    id: string;
+    name: string;
+    slug: string;
   };
 }
 
@@ -8660,6 +8671,7 @@ export type Event =
   | ProjectCreateEvent
   | ProjectUpdateEvent
   | ProjectDeleteEvent
+  | ProjectRestoreEvent
   | SecretReminderCreateEvent
   | SecretReminderGetEvent
   | SecretReminderDeleteEvent
