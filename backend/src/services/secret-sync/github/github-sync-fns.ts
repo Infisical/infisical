@@ -39,6 +39,7 @@ type TGitHubSyncDeps = {
 type TGitHubSecretTypeDefinition = {
   name: string;
   pathSegment: string;
+  permission: { organization: string; repository: string };
   limit: { organization: number; repository: number };
 };
 
@@ -46,17 +47,20 @@ const GITHUB_SECRET_TYPES: Record<GitHubSyncSecretType, TGitHubSecretTypeDefinit
   [GitHubSyncSecretType.Actions]: {
     name: "Actions",
     pathSegment: "actions",
+    permission: { organization: "Secrets", repository: "Secrets" },
     limit: { organization: 1000, repository: 100 }
   },
   // GitHub publishes no Dependabot-specific limits, so these mirror the Actions limits
   [GitHubSyncSecretType.Dependabot]: {
     name: "Dependabot",
     pathSegment: "dependabot",
+    permission: { organization: "Organization dependabot secrets", repository: "Dependabot secrets" },
     limit: { organization: 1000, repository: 100 }
   },
   [GitHubSyncSecretType.Codespaces]: {
     name: "Codespaces",
     pathSegment: "codespaces",
+    permission: { organization: "Organization codespaces secrets", repository: "Codespaces secrets" },
     limit: { organization: 100, repository: 100 }
   }
 };
@@ -157,6 +161,19 @@ const gitHubResponseMessage = (error: AxiosError) => {
 const gitHubSyncAccountLogin = (destinationConfig: TGitHubSyncDestinationConfig) =>
   destinationConfig.scope === GitHubSyncScope.Organization ? destinationConfig.org : destinationConfig.owner;
 
+const requiredGitHubSecretPermission = (destinationConfig: TGitHubSyncDestinationConfig) => {
+  const { permission } = GITHUB_SECRET_TYPES[getGitHubSyncSecretType(destinationConfig)];
+  if (destinationConfig.scope === GitHubSyncScope.RepositoryEnvironment) {
+    return `the '${permission.repository}' and 'Environments' permissions`;
+  }
+
+  const permissionName =
+    destinationConfig.scope === GitHubSyncScope.Organization ? permission.organization : permission.repository;
+  return `the '${permissionName}' permission`;
+};
+
+const joinSentences = (lead: string, rest: string) => (/[.!?]$/.test(lead) ? `${lead} ${rest}` : `${lead}. ${rest}`);
+
 const gitHubAppInstallationLinks = (host: string | undefined, installationId: string, accountLogin: string) => {
   const webHost = host || "github.com";
   const encodedInstallationId = encodeURIComponent(installationId);
@@ -185,7 +202,8 @@ export const toGitHubSecretsError = (
     });
   }
 
-  let message = gitHubResponseMessage(error);
+  const requiredPermission = `Grant read and write access to ${requiredGitHubSecretPermission(destinationConfig)}.`;
+  let message = joinSentences(gitHubResponseMessage(error), requiredPermission);
   if (connection.method === GitHubConnectionMethod.App) {
     const { host, installationId } = connection.credentials;
     message = `${message} GitHub App installation: ${gitHubAppInstallationLinks(

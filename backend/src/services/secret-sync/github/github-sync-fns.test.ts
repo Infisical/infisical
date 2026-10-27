@@ -369,7 +369,8 @@ describe("GitHub permission errors", () => {
     expect(error).toBeInstanceOf(SecretSyncError);
     expect(error).toMatchObject({
       shouldRetry: false,
-      message: "Resource not accessible by integration"
+      message:
+        "Resource not accessible by integration. Grant read and write access to the 'Dependabot secrets' permission."
     });
     expect((error as SecretSyncError).message).not.toContain("GitHub App installation");
   });
@@ -381,7 +382,39 @@ describe("GitHub permission errors", () => {
       runSync(makeSync(orgConfig(GitHubSyncSecretType.Codespaces)), makePayload(["A"]))
     ).rejects.toMatchObject({
       shouldRetry: false,
-      message: "GitHub refused this request."
+      message:
+        "GitHub refused this request. Grant read and write access to the 'Organization codespaces secrets' permission."
+    });
+  });
+
+  it("names GitHub's Secrets permission for an Actions sync", async () => {
+    paginatedMock.mockRejectedValueOnce(
+      httpError(403, { data: { message: "Resource not accessible by integration" } })
+    );
+
+    const error = await runSync(makeSync(repoConfig(GitHubSyncSecretType.Actions)), makePayload(["A"])).catch(
+      (err: unknown) => err
+    );
+
+    expect((error as SecretSyncError).message).toContain("the 'Secrets' permission");
+    expect((error as SecretSyncError).message).not.toContain("Actions secrets");
+  });
+
+  it("names the Secrets and Environments permissions for an environment sync", async () => {
+    paginatedMock.mockRejectedValueOnce(
+      httpError(403, { data: { message: "Resource not accessible by integration" } })
+    );
+    const environmentConfig = {
+      scope: GitHubSyncScope.RepositoryEnvironment,
+      owner: "acme",
+      repo: "app",
+      env: "prod",
+      secretType: GitHubSyncSecretType.Actions
+    };
+
+    await expect(runSync(makeSync(environmentConfig), makePayload(["A"]))).rejects.toMatchObject({
+      shouldRetry: false,
+      message: expect.stringContaining("the 'Secrets' and 'Environments' permissions")
     });
   });
 
@@ -408,7 +441,7 @@ describe("GitHub permission errors", () => {
 
     await expect(runSync(sync, makePayload(["A"]))).rejects.toMatchObject({
       shouldRetry: false,
-      message: `Resource not accessible by integration GitHub App installation: ${installationLinks}`
+      message: `Resource not accessible by integration. Grant read and write access to the 'Codespaces secrets' permission. GitHub App installation: ${installationLinks}`
     });
   });
 
@@ -425,7 +458,7 @@ describe("GitHub permission errors", () => {
     await expect(runSync(sync, makePayload(["A"]))).rejects.toMatchObject({
       shouldRetry: false,
       message:
-        "Resource not accessible by integration GitHub App installation: https://github.com/settings/installations/172172533 (personal) or https://github.com/organizations/widgets/settings/installations/172172533 (organization)"
+        "Resource not accessible by integration. Grant read and write access to the 'Organization codespaces secrets' permission. GitHub App installation: https://github.com/settings/installations/172172533 (personal) or https://github.com/organizations/widgets/settings/installations/172172533 (organization)"
     });
   });
 
@@ -454,7 +487,8 @@ describe("GitHub permission errors", () => {
     ).rejects.toMatchObject({
       shouldRetry: false,
       secretKey: undefined,
-      message: "Resource not accessible by integration"
+      message:
+        "Resource not accessible by integration. Grant read and write access to the 'Codespaces secrets' permission."
     });
   });
 
