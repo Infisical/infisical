@@ -5,7 +5,7 @@ import { SecretType } from "@app/db/schemas";
 import { Actor, Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -271,6 +271,17 @@ export const secretApprovalRequestMergeFnsFactory = ({
     const conflicts: TSecretApprovalCommitConflict[] = [];
 
     let creates = commits.filter(({ op }) => op === SecretOperations.Create);
+    const createCountByKey = new Map<string, number>();
+    for (const { key } of creates) {
+      createCountByKey.set(key, (createCountByKey.get(key) ?? 0) + 1);
+    }
+    const keysCreatedTwice = [...createCountByKey].filter(([, count]) => count > 1).map(([key]) => `'${key}'`);
+    if (keysCreatedTwice.length) {
+      throw new BadRequestError({
+        message: `Could not merge this change request because it creates ${keysCreatedTwice.length === 1 ? "secret" : "secrets"} ${keysCreatedTwice.join(", ")} more than once. Close the request, then submit the change again.`
+      });
+    }
+
     if (creates.length) {
       const secrets = await secretV2BridgeDAL.findBySecretKeys(
         folderId,

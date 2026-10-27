@@ -877,6 +877,16 @@ export const ORGANIZATIONS = {
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."
   },
+  LIST_USER_ACCESS: {
+    organizationId: "The ID of the organization to list user access for.",
+    user: "The user who can reach the organization.",
+    membership:
+      "The user's direct organization membership, or null when they only reach the organization through groups.",
+    groups: "The groups holding an organization membership that the user belongs to.",
+    groupRoles: "The group's active organization roles, permanent roles first. Expired temporary roles are left out.",
+    groupRole: "The role slug, or 'custom' when it is a custom role.",
+    groupRoleId: "The ID of the custom role, or null for a built-in role."
+  },
   GET_USER_MEMBERSHIP: {
     organizationId: "The ID of the organization to get the membership for.",
     membershipId: "The ID of the membership to get."
@@ -1229,6 +1239,10 @@ export const PROJECT_USERS = {
     usernames: "A list of usernames to invite to the project.",
     roleSlugs:
       "A list of role slugs to assign to the newly created project membership. If nothing is provided, it will default to the Member role."
+  },
+  LIST_AVAILABLE_USERS: {
+    projectId:
+      "The ID of the project to list available users for. Includes users who reach the project's organization through a group."
   },
   REMOVE_MEMBER: {
     projectId: "The ID of the project to remove the member from.",

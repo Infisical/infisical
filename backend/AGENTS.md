@@ -878,6 +878,105 @@ become a short transaction for this; the cache invalidation that follows it stay
 The DAL is covered by `e2e-test/event-outbox.spec.ts` against real Postgres; the unit tests only check
 query shape.
 
+### Org Access Reconcile (second outbox consumer)
+
+Lives in `src/services/org/`: `org-membership-events.ts` (event contract), `org-access-reconcile-consumer.ts`
+and `org-access-sweep-queue.ts`, with queries on `org-dal.ts`. The rule: **an actor keeps project
+memberships in an org only while they have a direct org row there or are in a group that has one.** A user
+can reach a sub-org only through a linked root group, so code removing a group membership can't tell by
+itself whether the actor still reaches the org.
+
+- **Every removal of an org path emits a fact event in the same tx.** Four of them,
+  `com.infisical.organization.<entity>.removed.v1`:
+  - `group-membership`: `groupId`, `orgIds`, the `members` who left. From the removal helpers in
+    `group-fns.ts` (manual route plus SCIM, LDAP, OIDC and SAML sync) and GitHub org sync, which removes team
+    members itself at login and on a manual sync.
+  - `group-link`: `orgId`, `groupId`, the group's `members`. From `membershipGroupService.detachGroupFromOrg`.
+  - `group`: `groupId`, `orgIds`, all `members`. From owned and SCIM group deletes, read with
+    `groupDAL.findGroupActorsAndOrgs` before the cascade.
+  - `membership`: `orgId` + actor. From `deleteOrgMembershipsFn` (users), the org branch of
+    `membershipIdentityService.deleteMembership` and the invited-identity branch of `identityService.deleteIdentity`
+    (identities), and the sweep.
+
+  Group events snapshot orgs and members at removal time, since a later removal can wipe those rows before
+  the consumer runs. The org list always comes from `groupDAL.findGroupOrgIds` (the owning org plus every
+  org the group is linked into), so no emit site builds it by hand. Both lists are paged at 100 (one event
+  per org page x member page) because the outbox rejects payloads over 16 KiB, which rolls back the removal.
+  Any new path removing one of these must emit the matching event.
+- **What leaving an org's projects takes away is defined once**, in
+  `projectAccessRevokeService.revokeActorsInOrgs` (`services/membership/project-access-revoke-service.ts`):
+  project rows, resource rows (PAM, Agent Vault, PKI apps, signers, through
+  `applicationMembershipCleanupService`), project keys, privileges, approver slots, alert recipient slots and
+  live PAM sessions, across every project in the given orgs since those can exist in group-only projects.
+  It runs in the caller's tx and hands back the PAM cancellation sender for after commit. Don't add another
+  copy of that list.
+- **Removing a user from an org tears down synchronously; for an identity it depends on the path.** `deleteOrgMembershipsFn`
+  (org member removal, bulk removal, SCIM deprovision, the instance admin panel) drops the user's org rows in the sub-orgs, their
+  groups there and calls `revokeActorsInOrgs` for the org plus its sub-orgs in the same tx; its event only
+  lets the consumer confirm nothing's left. `membershipIdentityService.deleteMembership` just writes the
+  revocation marker and emits, so the consumer does all the project cleanup there. `identityService.deleteIdentity`
+  (the UI's "Remove From Sub-Organization") deletes the identity's rows in the org itself and emits anyway, like
+  `deleteOrgMembershipsFn`.
+- **The consumer (`org-access-reconcile`) rechecks against current state.** Orgs and actors come from the
+  payload for group events, and from the org plus its sub-orgs for a membership removal. Per org it works in
+  batches of 10 actors, each its own tx with `SET LOCAL statement_timeout` (30s) that locks the actors,
+  rechecks `findActorsWithOrgAccess` and calls `revokeActorsInOrgs` for whoever has no path left, since the
+  rows an actor holds aren't bounded. PAM cancellations, the `revoke-org-project-access` audit log and usage
+  meters fire after each batch commits and only when something was removed, so replays are silent.
+- **The audit event is written for admins.** The actor is the platform; `reason` is an
+  `OrgAccessRemovalCause` mapped from the event type. `revokeActorsInOrgs` returns one entry per (org, actor)
+  and each is logged under that org, so a sub-org admin sees the revoke in their own log when a root
+  removal cascaded into their org. Actors and the group are recorded by id only: a name
+  lookup after the revoke commits could fail, and the retry would find nothing left to log. `projectIds` are
+  project memberships, `resources` the resource grants.
+- **The daily `org-access-reconcile-sweep` cron is a backstop, not a substitute.** It looks for project and
+  resource rows whose actor no longer reaches the org (ghost users skipped) and emits a `membership` event
+  per (actor, org) pair, capped at 5000 per run, in a replica tx with a 3 minute `statement_timeout`.
+  Resource rows count on their own, because a resource grant can exist with no project row behind it (a
+  group-derived PAM admin's personal folder row), and the consumer reaps both.
+- **Not on the enforcement path.** Token validation already rejects actors with no effective org membership
+  (`assertActiveOrgMembership` and its Go port). The lag only shows in member lists, seat counts and SCIM.
+- **`orgDAL.lockActorsForOrgAccess({ orgId, actorIds }, tx)`** serializes everything that grants against the
+  consumer, so access granted between its check and its deletes doesn't get reaped or outlive it. Advisory
+  xact locks at two levels: the root org (resolved from `orgId`) shared plus one key per actor in one sorted
+  statement, or, past `ORG_ACCESS_LOCK_ESCALATION_THRESHOLD` actors, the root org exclusive and no actor
+  keys. The escalation keeps a bulk SCIM sync from filling Postgres's shared lock table, which would fail
+  unrelated transactions instance-wide; the price is that such a sync stalls other grants in its own tenant
+  until it commits. Root org first, then sorted actors, so callers can't deadlock. Two kinds of caller take it:
+  - The add-to-group helpers in `group-fns.ts` (the SSO and SCIM services only pass it through) and GitHub org
+    sync, which adds team members itself. Take it in any new path that grants an org path outside them.
+  - Every path that writes a project or resource membership for a user or identity, through
+    `lockAndAssertActiveOrgAccess` (`services/org/org-access-fns.ts`), which locks and rechecks
+    `findActorsWithActiveOrgAccess` inside the write's own transaction: the generic user and identity
+    `createMembership` at project scope, the deprecated `addUsersToProject`, the org admin console's
+    `grantProjectAdminAccess`, PKI application and signer `addMember` (their `addUserMembers` go through it),
+    PAM's `addProductMember`, `addProductUserMembers` and `addResourceMember`, and Agent Vault's
+    `addProductMembers`. A new add path must call it before its write; the pre-checks outside the transaction
+    stay for their error messages but don't close the race.
+- **Indirect members can be assigned to projects, PAM and Agent Vault included.** Users and identities that
+  reach an org only through a linked group can get a direct project membership; that's the row the consumer
+  revokes once the group path goes away. Two helpers on `org-dal.ts`, and picking the wrong one is the bug:
+  - `findActorsWithActiveOrgAccess` answers "can we grant this actor access now": an active direct org row,
+    or no direct row and an active group holding one (a deactivated direct member stays out, matching
+    `findEffectiveOrgMembership`). Every add path uses it: the project user and identity guards, the
+    `skipUsersWithOrgAccess` step of the project invite routes, PAM's `validateActorExists` /
+    `addProductUserMembers` and Agent Vault's `assertActorsAreAddable`. The candidate lists
+    (`.../memberships/available-users`, `.../available-identities`, Agent Vault's `findAvailableActors`)
+    apply the same rule in SQL.
+  - `findActorsWithOrgAccess` answers "does this actor still reach the org", ignoring deactivation, and is
+    only for the reconcile consumer: deactivating someone must not reap their project rows.
+  - The project invite routes (`POST /v1/projects/:projectId/memberships`, its deprecated v2 twin and the
+    cert manager `/users` route) pass `skipUsersWithOrgAccess` to the org-scope `createMembership`, so a
+    group-only user isn't turned into a direct org member, emailed an org invite, or held to org
+    `Member.Create`. Brand-new emails still go through the full org invite.
+  - The project candidate lists are org member lists, so at project scope they're gated on org
+    `Member.Read` / `Identity.Read` only, plus a 404 when the project isn't in the caller's org. The project
+    and PAM add-member modals read `available-users`; Agent Vault keeps its own `/agent-vault/members/available`.
+
+`e2e-test/routes/v1/org-access-reconcile.spec.ts` covers the sub-org flows end to end against real
+Postgres (group removal, unlink, identities, a second path keeping access, the sweep query); the unit
+tests mock the DALs.
+
 ### Soft-Delete + Async Cleanup
 
 Resources whose deletion cascades across many/large tables use a **soft-delete + paced async hard-delete** pattern instead of a synchronous cascade in the request path.

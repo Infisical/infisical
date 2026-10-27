@@ -460,6 +460,7 @@ import {
 import { applicationMembershipCleanupServiceFactory } from "@app/services/membership/application-membership-cleanup-service";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { projectAccessRevokeServiceFactory } from "@app/services/membership/project-access-revoke-service";
 import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { membershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
 import { membershipIdentityDALFactory } from "@app/services/membership-identity/membership-identity-dal";
@@ -481,6 +482,8 @@ import { objectStorageServiceFactory } from "@app/services/object-storage/object
 import { offlineUsageReportDALFactory } from "@app/services/offline-usage-report/offline-usage-report-dal";
 import { offlineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
+import { orgAccessReconcileConsumerFactory } from "@app/services/org/org-access-reconcile-consumer";
+import { orgAccessSweepQueueFactory } from "@app/services/org/org-access-sweep-queue";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { orgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
@@ -867,6 +870,9 @@ export const registerRoutes = async (
   const folderPermissionDAL = folderPermissionDALFactory(db);
   const membershipRoleDAL = membershipRoleDALFactory(db);
   const approvalPolicyDAL = approvalPolicyDALFactory(db);
+  const eventOutboxDAL = eventOutboxDALFactory(db);
+  const eventOutboxRegistry = eventOutboxRegistryFactory();
+  const eventOutboxService = eventOutboxServiceFactory({ eventOutboxDAL, eventOutboxRegistry });
   const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
   const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
   const approvalPolicyBypassersDAL = approvalPolicyBypassersDALFactory(db);
@@ -988,29 +994,13 @@ export const registerRoutes = async (
 
   const alertChannelRecipientDAL = alertChannelRecipientDALFactory(db);
 
-  const membershipUserService = membershipUserServiceFactory({
-    licenseService,
-    membershipRoleDAL,
-    alertChannelRecipientDAL,
-    membershipUserDAL,
-    orgDAL,
-    permissionService,
-    roleDAL,
-    userDAL,
+  const projectAccessRevokeService = projectAccessRevokeServiceFactory({
+    membershipDAL,
     projectDAL,
     projectKeyDAL,
-    smtpService,
-    tokenService,
-    userAliasDAL,
-    userGroupMembershipDAL,
     additionalPrivilegeDAL,
-    projectAccessRequestDAL,
     applicationMembershipCleanupService,
-    approvalPolicyDAL,
-    emailDomainDAL,
-    oidcConfigDAL,
-    samlConfigDAL,
-    usageMeteringService,
+    alertChannelRecipientDAL,
     pamSessionDAL,
     gatewayV2Service: deferredGatewayV2Service
   });
@@ -1043,7 +1033,9 @@ export const registerRoutes = async (
     alertChannelRecipientDAL,
     additionalPrivilegeDAL,
     identityGroupMembershipDAL,
-    userGroupMembershipDAL
+    userGroupMembershipDAL,
+    identityAccessTokenService,
+    eventEmitter: eventOutboxService
   });
 
   const roleService = roleServiceFactory({
@@ -1212,8 +1204,6 @@ export const registerRoutes = async (
     alertProviderRegistry,
     alertEngine
   });
-  const eventOutboxDAL = eventOutboxDALFactory(db);
-  const eventOutboxRegistry = eventOutboxRegistryFactory();
   eventOutboxRegistry.register(
     alertEventConsumerFactory({
       alertDAL,
@@ -1221,7 +1211,6 @@ export const registerRoutes = async (
       alertProviderRegistry
     })
   );
-  const eventOutboxService = eventOutboxServiceFactory({ eventOutboxDAL, eventOutboxRegistry });
   const eventOutboxQueue = eventOutboxQueueFactory({
     queueService,
     cronJob,
@@ -1273,7 +1262,8 @@ export const registerRoutes = async (
     keyStore,
     usageMeteringService,
     alertService,
-    identityAccessTokenService
+    identityAccessTokenService,
+    eventEmitter: eventOutboxService
   });
 
   const auditLogStreamService = auditLogStreamServiceFactory({
@@ -1347,6 +1337,32 @@ export const registerRoutes = async (
     })
   });
 
+  const membershipUserService = membershipUserServiceFactory({
+    licenseService,
+    membershipRoleDAL,
+    alertChannelRecipientDAL,
+    membershipUserDAL,
+    orgDAL,
+    permissionService,
+    roleDAL,
+    userDAL,
+    projectDAL,
+    smtpService,
+    tokenService,
+    userAliasDAL,
+    userGroupMembershipDAL,
+    additionalPrivilegeDAL,
+    projectAccessRequestDAL,
+    applicationMembershipCleanupService,
+    projectAccessRevokeService,
+    auditLogService,
+    emailDomainDAL,
+    oidcConfigDAL,
+    samlConfigDAL,
+    usageMeteringService,
+    eventEmitter: eventOutboxService
+  });
+
   const oauthClientService = oauthClientServiceFactory({
     oauthClientDAL,
     permissionService,
@@ -1409,7 +1425,9 @@ export const registerRoutes = async (
     membershipRoleDAL,
     usageMeteringService,
     identityAccessTokenService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    eventEmitter: eventOutboxService,
+    membershipGroupService
   });
   const groupProjectService = groupProjectServiceFactory({
     groupDAL,
@@ -1490,13 +1508,15 @@ export const registerRoutes = async (
     membershipRoleDAL,
     membershipUserDAL,
     additionalPrivilegeDAL,
-    approvalPolicyDAL,
     alertChannelRecipientDAL,
+    projectAccessRevokeService,
+    auditLogService,
     emailDomainDAL,
     telemetryService,
     usageMeteringService,
     pamSessionDAL,
-    gatewayV2Service: deferredGatewayV2Service
+    gatewayV2Service: deferredGatewayV2Service,
+    eventEmitter: eventOutboxService
   });
 
   const githubOrgSyncConfigService = githubOrgSyncServiceFactory({
@@ -1512,7 +1532,9 @@ export const registerRoutes = async (
     membershipGroupDAL,
     usageMeteringService,
     alertChannelRecipientDAL,
-    auditLogService
+    auditLogService,
+    orgDAL,
+    eventEmitter: eventOutboxService
   });
 
   // gitHubAppService is created after gatewayPoolService (below) due to dependency on gateway services
@@ -1620,7 +1642,8 @@ export const registerRoutes = async (
     emailDomainDAL,
     telemetryService,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    eventEmitter: eventOutboxService
   });
 
   const ldapService = ldapConfigServiceFactory({
@@ -1647,7 +1670,8 @@ export const registerRoutes = async (
     emailDomainDAL,
     telemetryService,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    eventEmitter: eventOutboxService
   });
   const passwordService = authPaswordServiceFactory({
     tokenService,
@@ -1695,7 +1719,6 @@ export const registerRoutes = async (
     projectDAL,
     projectMembershipDAL,
     orgMembershipDAL,
-    projectKeyDAL,
     smtpService,
     userDAL,
     groupDAL,
@@ -1709,13 +1732,13 @@ export const registerRoutes = async (
     membershipDAL,
     roleDAL,
     userGroupMembershipDAL,
-    additionalPrivilegeDAL,
-    approvalPolicyDAL,
+    projectAccessRevokeService,
+    auditLogService,
     certificatePolicyDAL,
     usageMeteringService,
-    alertChannelRecipientDAL,
     pamSessionDAL,
-    gatewayV2Service: deferredGatewayV2Service
+    gatewayV2Service: deferredGatewayV2Service,
+    eventEmitter: eventOutboxService
   });
 
   const subOrgService = subOrgServiceFactory({
@@ -1776,7 +1799,11 @@ export const registerRoutes = async (
     usageMeteringService,
     alertChannelRecipientDAL,
     pamSessionDAL,
-    gatewayV2Service: deferredGatewayV2Service
+    gatewayV2Service: deferredGatewayV2Service,
+    userGroupMembershipDAL,
+    projectAccessRevokeService,
+    auditLogService,
+    eventEmitter: eventOutboxService
   });
 
   const offlineUsageReportService = offlineUsageReportServiceFactory({
@@ -1792,6 +1819,7 @@ export const registerRoutes = async (
   const orgAdminService = orgAdminServiceFactory({
     smtpService,
     projectDAL,
+    orgDAL,
     permissionService,
     notificationService,
     membershipRoleDAL,
@@ -1978,6 +2006,7 @@ export const registerRoutes = async (
 
   const pkiApplicationMembershipService = pkiApplicationMembershipServiceFactory({
     pkiApplicationDAL,
+    orgDAL,
     membershipDAL,
     membershipRoleDAL,
     permissionService,
@@ -1991,6 +2020,7 @@ export const registerRoutes = async (
 
   const signerMembershipService = signerMembershipServiceFactory({
     signerDAL,
+    orgDAL,
     membershipDAL,
     membershipRoleDAL,
     permissionService,
@@ -2831,7 +2861,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     usageMeteringService,
     alertService,
-    identityAccessTokenService
+    identityAccessTokenService,
+    eventEmitter: eventOutboxService
   });
 
   const identityV2Service = identityV2ServiceFactory({
@@ -3211,6 +3242,20 @@ export const registerRoutes = async (
     cronJob
   });
 
+  eventOutboxRegistry.register(
+    orgAccessReconcileConsumerFactory({
+      orgDAL,
+      projectAccessRevokeService,
+      auditLogService,
+      usageMeteringService
+    })
+  );
+  const orgAccessSweepQueue = orgAccessSweepQueueFactory({
+    cronJob,
+    orgDAL,
+    eventEmitter: eventOutboxService
+  });
+
   const integrationDeprecationQueue = integrationDeprecationQueueFactory({
     integrationDAL,
     orgDAL,
@@ -3261,7 +3306,8 @@ export const registerRoutes = async (
     emailDomainDAL,
     telemetryService,
     usageMeteringService,
-    alertChannelRecipientDAL
+    alertChannelRecipientDAL,
+    eventEmitter: eventOutboxService
   });
 
   const userActivationService = userActivationServiceFactory({
@@ -4485,7 +4531,8 @@ export const registerRoutes = async (
     membershipDAL,
     membershipRoleDAL,
     hsmConnectorService,
-    licenseService
+    licenseService,
+    orgDAL
   });
 
   const signerAutoRenewalQueue = signerAutoRenewalQueueFactory({
@@ -4678,6 +4725,7 @@ export const registerRoutes = async (
   secretReadActivityQueue.init();
   alertQueue.init();
   eventOutboxQueue.init();
+  orgAccessSweepQueue.init();
   auditLogStreamOutboxQueue.init();
   pkiSyncCleanup.init();
   pkiSyncHealthCheckQueue.init();

@@ -43,6 +43,7 @@ export const CronJobName = {
   AuditLogStreamOutboxStaleClaimSweeper: "audit-log-stream-outbox-stale-claim-sweeper",
   AuditLogStreamOutboxCleanup: "audit-log-stream-outbox-cleanup",
   LicenseUsageFlush: "license-usage-flush",
+  OrgAccessReconcileSweep: "org-access-reconcile-sweep",
   PamCredentialRotationQueueRotations: "pam-credential-rotation-queue-rotations",
   PamHeartbeatQueueChecks: "pam-heartbeat-queue-checks",
   MonthlyNativeIntegrationDeprecationNotice: "monthly-native-integration-deprecation-notice",

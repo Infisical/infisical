@@ -45,6 +45,7 @@ const createService = ({
 }: { identityOrgId?: string; hasDeleteProtection?: boolean } = {}) => {
   const deleteAlertsForResource = vi.fn().mockResolvedValue(0);
   const deleteAlertsForDeletedResource = vi.fn().mockResolvedValue(0);
+  const emit = vi.fn().mockResolvedValue(undefined);
 
   const identityDAL = {
     transaction: vi.fn(async (cb: (tx: Knex) => Promise<unknown>) => cb(TX)),
@@ -90,10 +91,11 @@ const createService = ({
       insertIdentityWideRevocationMarker: vi.fn().mockResolvedValue(undefined),
       insertOrgMembershipRevocationMarker: vi.fn().mockResolvedValue(undefined),
       bumpIdentityRevocationVersion: vi.fn().mockResolvedValue(undefined)
-    } as never
+    } as never,
+    eventEmitter: { emit }
   });
 
-  return { service, identityDAL, membershipIdentityDAL, deleteAlertsForResource, deleteAlertsForDeletedResource };
+  return { service, identityDAL, membershipIdentityDAL, deleteAlertsForResource, deleteAlertsForDeletedResource, emit };
 };
 
 describe("deleteIdentity alert cleanup", () => {
@@ -147,5 +149,32 @@ describe("deleteIdentity alert cleanup", () => {
 
     expect(deleteAlertsForDeletedResource).not.toHaveBeenCalled();
     expect(deleteAlertsForResource).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteIdentity org access reconcile", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  test("removing an identity from an org it was invited into emits the removal in the same transaction", async () => {
+    const { service, emit } = createService({ identityOrgId: ROOT_ORG_ID });
+
+    await service.deleteIdentity(buildDto());
+
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith(
+      {
+        eventType: "com.infisical.organization.membership.removed.v1",
+        payload: { orgId: ORG_ID, actorType: "identity", actorId: IDENTITY_ID }
+      },
+      TX
+    );
+  });
+
+  test("deleting the identity row emits nothing, every membership goes with it", async () => {
+    const { service, emit } = createService();
+
+    await service.deleteIdentity(buildDto());
+
+    expect(emit).not.toHaveBeenCalled();
   });
 });

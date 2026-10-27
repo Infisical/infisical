@@ -17,8 +17,8 @@ Earlier removals: `ConfirmActionModal`, `DeleteActionModal`, `HoverCardv2`, `Sec
 | Components                     | Status     | Direction                                                             |
 | ------------------------------ | ---------- | --------------------------------------------------------------------- |
 | `PageHeader` | Supported | Owns the normal 40px bottom boundary (`mb-10`). Remove header-boundary parent gaps and redundant caller margins when adopting it; preserve independent body/card spacing in body containers. `className` supports intentional compact/responsive boundaries. See its spacing stories. |
-| `ReactSelect/FilterableSelect` | Deprecated | Use `Combobox`; keep compatibility available while consumers migrate. |
-| `ReactSelect/CreatableSelect`  | Deprecated | Use `Combobox` with inline `creation` for values needing no metadata, or dialog `creation` for caller-owned forms and persistence. Keep compatibility for react-select-specific component overrides; migrate consumers separately. |
+| `TableRow linked`, `Card linked`, `RowLink`, `CommandItemLink` | Supported | The way to make a row, card or command item navigate. `linked` positions the container and lifts its controls above the `RowLink` overlay, so cmd/ctrl+click, middle-click and "Open link in new tab" work without per-control `relative z-10`. Don't navigate from a row's `onClick`. For Certificate Manager and Secret Scanning destinations, build the link with `getInstancePinningLink` (`helpers/project.ts`) so a new tab opens the right instance. Move rows that still navigate from `onClick` onto it when you touch them. See the Table "Linked Rows" story. |
+| `ReactSelect/FilterableSelect`, `ReactSelect/CreatableSelect` | Removed | Deleted the compatibility directory and its `generic/index.ts` export. No consumers remained at `e434f2fdfdd608f97cd4041af84062991d2645cf`. Use `Combobox`, with inline `creation` for values needing no metadata or dialog `creation` for caller-owned forms and persistence. |
 
 ## Updating the ledger
 

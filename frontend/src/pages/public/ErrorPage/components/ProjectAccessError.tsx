@@ -199,7 +199,7 @@ export const ProjectAccessError = ({ projectId: projectIdProp }: ProjectAccessEr
 
   return (
     <ErrorPageFrame
-      helmetTitle="Infisical | Access Restricted"
+      pageTitle="Access Restricted"
       badgeIcon={<UserXIcon />}
       badgeText="403 · Access Restricted"
       heading={
