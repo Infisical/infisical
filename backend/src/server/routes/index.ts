@@ -1446,6 +1446,7 @@ export const registerRoutes = async (
     folderDAL
   });
   const folderCommitService = folderCommitServiceFactory({
+    eventEmitter: eventOutboxService,
     folderCommitDAL,
     folderCommitChangesDAL,
     folderCheckpointDAL,
@@ -2330,6 +2331,7 @@ export const registerRoutes = async (
   });
 
   const secretSyncQueue = secretSyncQueueFactory({
+    eventEmitter: eventOutboxService,
     queueService,
     cronJob,
     secretSyncDAL,
@@ -2368,6 +2370,7 @@ export const registerRoutes = async (
   });
 
   const secretQueueService = secretQueueFactory({
+    eventEmitter: eventOutboxService,
     keyStore,
     queueService,
     secretDAL,
@@ -2496,6 +2499,7 @@ export const registerRoutes = async (
     projectDAL
   });
   const secretImportService = secretImportServiceFactory({
+    eventEmitter: eventOutboxService,
     licenseService,
     projectBotService,
     projectFolderGrantDAL,
@@ -2526,6 +2530,7 @@ export const registerRoutes = async (
   });
 
   const secretChangeGlobalRequestBridgeService = secretChangeGlobalRequestBridgeServiceFactory({
+    eventEmitter: eventOutboxService,
     approvalRequestDAL,
     membershipUserDAL,
     approvalRequestStepsDAL,
@@ -2569,6 +2574,7 @@ export const registerRoutes = async (
   });
 
   const secretV2BridgeService = secretV2BridgeServiceFactory({
+    eventEmitter: eventOutboxService,
     folderDAL,
     projectDAL,
     secretVersionDAL: secretVersionV2BridgeDAL,
@@ -2592,6 +2598,7 @@ export const registerRoutes = async (
   });
 
   const secretApprovalRequestService = secretApprovalRequestServiceFactory({
+    eventEmitter: eventOutboxService,
     permissionService,
     projectBotService,
     folderDAL,
@@ -2656,6 +2663,7 @@ export const registerRoutes = async (
   });
 
   const folderService = secretFolderServiceFactory({
+    eventEmitter: eventOutboxService,
     permissionService,
     additionalPrivilegeDAL,
     folderDAL,
@@ -2787,6 +2795,7 @@ export const registerRoutes = async (
   });
 
   const secretReplicationService = secretReplicationServiceFactory({
+    eventEmitter: eventOutboxService,
     secretTagDAL,
     secretVersionTagDAL,
     secretDAL,
@@ -3337,6 +3346,7 @@ export const registerRoutes = async (
   });
 
   const externalMigrationQueue = externalMigrationQueueFactory({
+    eventEmitter: eventOutboxService,
     projectEnvService,
     projectDAL,
     projectService,
@@ -3484,6 +3494,7 @@ export const registerRoutes = async (
   });
 
   const honeyTokenService = honeyTokenServiceFactory({
+    eventEmitter: eventOutboxService,
     honeyTokenDAL,
     honeyTokenConfigDAL,
     honeyTokenEventDAL,
@@ -3574,6 +3585,7 @@ export const registerRoutes = async (
   });
 
   const secretRotationV2Service = secretRotationV2ServiceFactory({
+    eventEmitter: eventOutboxService,
     secretRotationV2DAL,
     permissionService,
     appConnectionService,
