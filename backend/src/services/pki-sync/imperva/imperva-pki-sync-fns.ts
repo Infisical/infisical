@@ -297,6 +297,8 @@ export const impervaPkiSyncFactory = ({
         const { certificate, skippedCertificates } = await prepareCertificate(certificateMap);
 
         const failedUploads: Array<{ name: string; error: string }> = [];
+        // Uploaded but not served. Reported per certificate so its row does not read Succeeded.
+        const undeployedCertificates: Array<{ name: string; error: string }> = [];
         const failedRemovals: Array<{ name: string; error: string }> = [];
         const occupiedSlots = new Set<string>();
         let deploymentWarning = "";
@@ -340,6 +342,9 @@ export const impervaPkiSyncFactory = ({
             uploaded += 1;
 
             deploymentWarning = await buildDeploymentWarning(makeRequest, credentials, siteId, authType);
+            if (deploymentWarning) {
+              undeployedCertificates.push({ name: certificate.certName, error: deploymentWarning });
+            }
 
             if (certificate.certificateId) {
               activeCertificateIds.add(certificate.certificateId);
@@ -352,8 +357,9 @@ export const impervaPkiSyncFactory = ({
               if (existingCertSync) {
                 await certificateSyncDAL.updateById(existingCertSync.id, {
                   externalIdentifier,
-                  syncStatus: CertificateSyncStatus.Succeeded,
-                  lastSyncMessage: `Synced ${authType} custom certificate to Imperva site ${siteLabel}`,
+                  syncStatus: deploymentWarning ? CertificateSyncStatus.Failed : CertificateSyncStatus.Succeeded,
+                  lastSyncMessage:
+                    deploymentWarning || `Synced ${authType} custom certificate to Imperva site ${siteLabel}`,
                   lastSyncedAt: new Date()
                 });
               } else {
@@ -469,6 +475,7 @@ export const impervaPkiSyncFactory = ({
           skipped: skippedCertificates.length,
           partialFailureMessage: deploymentWarning || undefined,
           details: {
+            failedUploads: undeployedCertificates.length > 0 ? undeployedCertificates : undefined,
             failedRemovals: failedRemovals.length > 0 ? failedRemovals : undefined,
             skippedCertificates: skippedCertificates.length > 0 ? skippedCertificates : undefined
           }

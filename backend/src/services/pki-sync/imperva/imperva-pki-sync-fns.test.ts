@@ -311,3 +311,53 @@ describe("Imperva slot ownership", () => {
     expect(removeCertificatesFromDal).toHaveBeenCalledWith("sync-1", ["cert-old"]);
   });
 });
+
+describe("Imperva deployment mismatch", () => {
+  test("reports the certificate as not deployed instead of succeeded", async () => {
+    const { impervaPkiSyncFactory } = await import("./imperva-pki-sync-fns");
+
+    impervaRequest.mockReset();
+    impervaRequest.mockImplementation((args: unknown) => {
+      const { method } = args as TRecordedRequest;
+      if (method === "GET") {
+        return Promise.resolve({
+          data: [{ authType: ImpervaCertificateAuthType.Rsa, customCertificateDetails: { hasMismatchSite: true } }]
+        });
+      }
+      return Promise.resolve({});
+    });
+
+    const updateById = vi.fn();
+    const factory = impervaPkiSyncFactory({
+      certificateSyncDAL: {
+        findByPkiSyncId: vi.fn().mockResolvedValue([]),
+        removeCertificates: vi.fn(),
+        addCertificates: vi.fn(),
+        findByPkiSyncAndCertificate: vi.fn().mockResolvedValue({ id: "row-1" }),
+        updateById,
+        updateSyncStatus: vi.fn(),
+        findExternalIdentifiersInUse: vi.fn().mockResolvedValue(new Set<string>()),
+        claimExternalIdentifier: vi.fn()
+      } as never,
+      certificateDAL: { findById: vi.fn().mockResolvedValue(undefined) } as never
+    });
+
+    const result = await factory.syncCertificates(
+      {
+        id: "sync-1",
+        destination: "imperva",
+        projectId: "project-1",
+        destinationConfig: { siteId: "111", siteName: "waf.example.com" },
+        syncOptions: { canRemoveCertificates: true },
+        connection: { credentials: { apiId: "id", apiKey: "key" }, gatewayId: null, gatewayPoolId: null }
+      } as never,
+      { leaf: { cert: RSA_CERT_PEM, privateKey: "key", certificateId: "cert-1" } } as never
+    );
+
+    expect(result.details?.failedUploads).toEqual([
+      { name: "leaf", error: expect.stringContaining("does not cover every managed domain") as unknown as string }
+    ]);
+    expect(result.partialFailureMessage).toContain("does not cover every managed domain");
+    expect(updateById.mock.calls[0][1]).toMatchObject({ syncStatus: "failed" });
+  });
+});
