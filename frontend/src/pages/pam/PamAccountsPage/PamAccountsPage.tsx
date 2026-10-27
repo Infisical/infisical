@@ -1,5 +1,4 @@
 import { useMemo, useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown, FolderOpen, FolderPlus, Plus, Search } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -75,7 +74,6 @@ import { ViewCredentialsModal } from "./components/ViewCredentialsModal";
 const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
 
 export const PamAccountsPage = () => {
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const [searchInput, setSearchInput] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -360,12 +358,6 @@ export const PamAccountsPage = () => {
                   folder={folder}
                   search={debouncedSearch}
                   accounts={filterActive ? (matchesByFolder[folder.id] ?? []) : undefined}
-                  onOpenFolderView={() =>
-                    navigate({
-                      to: "/organizations/$orgId/pam/accounts/$folderId",
-                      params: { orgId: currentOrg.id, folderId: folder.id }
-                    })
-                  }
                   onOpenAccount={(id, tab) => accountSheet.openSheet(id, tab)}
                   onLaunchAccount={setLaunchAccount}
                   onRequestAccess={requestSessionAccess}
