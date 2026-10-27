@@ -16,6 +16,7 @@ import {
   AgentVaultSessionLogChunkCreateResponseSchema,
   AgentVaultSessionLogChunkCreateSchema
 } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-schemas";
+import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { UnauthorizedError } from "@app/lib/errors";
@@ -24,13 +25,14 @@ import {
   agentVaultCredentialRefreshLimit,
   agentVaultHeartbeatLimit,
   agentVaultResolveLimit,
-  agentVaultSessionLogChunkLimit
+  agentVaultSessionLogChunkLimit,
+  agentVaultSkillsLimit
 } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-import { AgentVaultHostPatternSchema } from "./agent-vault-schemas";
+import { AgentVaultHostPatternSchema, AgentVaultSkillFilesResponseSchema } from "./agent-vault-schemas";
 
 const ProxyConfigSchema = z.object({
   trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy).describe(AGENT_VAULT.PROXY.trafficPolicy),
@@ -75,6 +77,13 @@ const RejectedTokenHashSchema = z
   .string()
   .length(64)
   .regex(new RE2(/^[0-9a-fA-F]{64}$/), "Must be the hex sha256 of the rejected access token");
+
+const ProxySkillSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.SKILL.skillId),
+  name: z.string().describe(AGENT_VAULT.SKILL.name),
+  version: z.number().describe(AGENT_VAULT.SKILL.version),
+  sha256: z.string().describe(AGENT_VAULT.SKILL.sha256)
+});
 
 export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvider) => {
   // POST, not GET: a proxy serving its own certificate authority reports it here, and that is recorded.
@@ -283,6 +292,75 @@ export const registerAgentVaultProxyAgentRouter = async (server: FastifyZodProvi
         requiredScopes: req.body.requiredScopes
       });
       return res.status(204).send("");
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/skills",
+    config: { rateLimit: agentVaultSkillsLimit },
+    schema: {
+      hide: true,
+      operationId: "listAgentVaultProxySessionSkills",
+      description:
+        "Get the latest files of every skill on a session's access bundles, ordered by name. Called once when an agent starts.",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      headers: SessionHeaderSchema,
+      response: {
+        200: z.object({
+          skills: ProxySkillSchema.extend({ files: AgentVaultSkillFilesResponseSchema }).array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.AGENT_VAULT_PROXY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { skills, sessionId, projectId } = await server.services.agentVaultProxy.getSessionSkills({
+        proxyId: req.permission.id,
+        orgId: req.permission.orgId,
+        sessionToken: req.headers[SESSION_HEADER]
+      });
+
+      await Promise.all(
+        skills.map((skill) =>
+          server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            actor: { type: ActorType.AGENT_VAULT_PROXY, metadata: { agentVaultProxyId: req.permission.id } },
+            orgId: req.permission.orgId,
+            projectId,
+            event: {
+              type: EventType.AGENT_VAULT_SKILL_DELIVERED,
+              metadata: {
+                sessionId,
+                skillId: skill.id,
+                skillName: skill.name,
+                version: skill.version,
+                sha256: skill.sha256,
+                accessBundleId: skill.accessBundleId,
+                accessBundleName: skill.accessBundleName
+              }
+            }
+          })
+        )
+      );
+
+      void server.services.telemetry
+        .sendPostHogEvents({
+          event: PostHogEventTypes.AgentVaultSkillsDelivered,
+          distinctId: `agent-vault-proxy-${req.permission.id}`,
+          organizationId: req.permission.orgId,
+          anonymous: true,
+          properties: {
+            orgId: req.permission.orgId,
+            channel: req.auditLogInfo.userAgentType ?? UserAgentType.OTHER,
+            proxyId: req.permission.id,
+            skillCount: skills.length
+          }
+        })
+        .catch(() => {});
+
+      return {
+        skills: skills.map(({ id, name, version, sha256, files }) => ({ id, name, version, sha256, files }))
+      };
     }
   });
 

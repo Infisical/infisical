@@ -5,6 +5,7 @@ import {
   AgentVaultServiceType,
   AgentVaultTrafficPolicy
 } from "@app/ee/services/agent-vault/agent-vault-enums";
+import { TAgentVaultSkillAnalyticsSource } from "@app/ee/services/agent-vault-skill/agent-vault-skill-types";
 import {
   AcmeAccountActor,
   AcmeProfileActor,
@@ -329,6 +330,12 @@ export enum PostHogEventTypes {
   AgentVaultVariableCreated = "Agent Vault Variable Created",
   AgentVaultVariableUpdated = "Agent Vault Variable Updated",
   AgentVaultVariableDeleted = "Agent Vault Variable Deleted",
+  AgentVaultSkillCreated = "Agent Vault Skill Created",
+  AgentVaultSkillVersionPublished = "Agent Vault Skill Version Published",
+  AgentVaultSkillDeleted = "Agent Vault Skill Deleted",
+  AgentVaultSkillAttachedToBundle = "Agent Vault Skill Attached To Bundle",
+  AgentVaultSkillDetachedFromBundle = "Agent Vault Skill Detached From Bundle",
+  AgentVaultSkillsDelivered = "Agent Vault Skills Delivered",
   AgentVaultAccessBundleMemberAdded = "Agent Vault Access Bundle Member Added",
   AgentVaultAccessBundleMemberRemoved = "Agent Vault Access Bundle Member Removed",
   AgentVaultSessionCreated = "Agent Vault Session Created",
@@ -2519,6 +2526,51 @@ export type TAgentVaultVariableDeletedEvent = {
   properties: TAgentVaultEventBase & { variableId: string; scope: string };
 };
 
+// source is what the client says it used ("api" when it says nothing, "restore" for a restore). sizeBucket keeps the
+// size a breakdown.
+type TAgentVaultSkillContentProperties = {
+  skillId: string;
+  source: TAgentVaultSkillAnalyticsSource;
+  fileCount: number;
+  sizeBucket: string;
+};
+
+export type TAgentVaultSkillCreatedEvent = {
+  event: PostHogEventTypes.AgentVaultSkillCreated;
+  properties: TAgentVaultEventBase & TAgentVaultSkillContentProperties;
+};
+
+export type TAgentVaultSkillVersionPublishedEvent = {
+  event: PostHogEventTypes.AgentVaultSkillVersionPublished;
+  properties: TAgentVaultEventBase & TAgentVaultSkillContentProperties & { version: number };
+};
+
+export type TAgentVaultSkillDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultSkillDeleted;
+  properties: TAgentVaultEventBase & { skillId: string; detachedBundleCount: number };
+};
+
+export type TAgentVaultSkillAttachedToBundleEvent = {
+  event: PostHogEventTypes.AgentVaultSkillAttachedToBundle;
+  properties: TAgentVaultEventBase & { skillId: string; accessBundleId: string };
+};
+
+export type TAgentVaultSkillDetachedFromBundleEvent = {
+  event: PostHogEventTypes.AgentVaultSkillDetachedFromBundle;
+  properties: TAgentVaultEventBase & { skillId: string; accessBundleId: string };
+};
+
+// Fired by the proxy-facing route once per agent start, so the actor is the proxy, not a user.
+export type TAgentVaultSkillsDeliveredEvent = {
+  event: PostHogEventTypes.AgentVaultSkillsDelivered;
+  properties: {
+    orgId: string;
+    channel: string;
+    proxyId: string;
+    skillCount: number;
+  };
+};
+
 export type TAgentVaultAccessBundleMemberAddedEvent = {
   event: PostHogEventTypes.AgentVaultAccessBundleMemberAdded;
   properties: TAgentVaultEventBase & { accessBundleId: string; memberType: AgentVaultMemberType };
@@ -2622,6 +2674,12 @@ export type TAgentVaultPostHogEvent =
   | TAgentVaultVariableCreatedEvent
   | TAgentVaultVariableUpdatedEvent
   | TAgentVaultVariableDeletedEvent
+  | TAgentVaultSkillCreatedEvent
+  | TAgentVaultSkillVersionPublishedEvent
+  | TAgentVaultSkillDeletedEvent
+  | TAgentVaultSkillAttachedToBundleEvent
+  | TAgentVaultSkillDetachedFromBundleEvent
+  | TAgentVaultSkillsDeliveredEvent
   | TAgentVaultAccessBundleMemberAddedEvent
   | TAgentVaultAccessBundleMemberRemovedEvent
   | TAgentVaultSessionCreatedEvent
@@ -2637,7 +2695,10 @@ export type TAgentVaultPostHogEvent =
   | TAgentVaultProductMemberUpdatedEvent
   | TAgentVaultProductMemberRemovedEvent;
 
-export type TAgentVaultActorPostHogEvent = Exclude<TAgentVaultPostHogEvent, TAgentVaultSessionLogChunkAcceptedEvent>;
+export type TAgentVaultActorPostHogEvent = Exclude<
+  TAgentVaultPostHogEvent,
+  TAgentVaultSessionLogChunkAcceptedEvent | TAgentVaultSkillsDeliveredEvent
+>;
 
 // A trial is burned per PRODUCT, not per (product, plan): the trial-history gate discards plan_key
 // (see licenseV2Service.getOverview), and the license server 409s a repeat. So TrialStarted fires at

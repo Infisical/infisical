@@ -21,9 +21,10 @@ agent-vault-access-bundle/   bundles, services, credential encryption, grants
 agent-vault-variable/        global and personal variables and the reads behind Used By
 agent-vault-member/          product membership (list, add, role, remove)
 agent-vault-personal-value/  each actor's own values for the fields a service leaves to members
+agent-vault-skill/           the skill library, versions, bundle links, file validation and hashing
 agent-vault-session/         mint, revoke, list, get
 agent-vault-project/         the per-org project's lazy bootstrap and resolver
-agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve, credential refresh
+agent-vault-proxy/           create/rotate (proxy token + CA), bootstrap, heartbeat, resolve, credential refresh, skills
 agent-vault-oauth/           OAuth for MCP services: discovery, client registration, authorizations, refresh
 agent-vault-session-log/     storage settings, chunk ingest, playback
 ```
@@ -319,6 +320,51 @@ reference.
   `granted` filter keeps only the bundles granted to the caller (`false`, only the ones an admin reaches by role).
   The sidebar asks for `requiresSetup=true&granted=true` and reads the count, so an admin isn't nagged in the nav
   about bundles they reach only by role, while the page's banner and badges still show them.
+
+## Skills
+
+A skill is an Agent Skills folder (`SKILL.md` plus files) kept per project and attached to bundles. When an agent
+starts, the CLI asks the proxy once for the session's skills and installs them in the user's home
+(`~/.agents/skills/<name>`, linked for Claude Code and Hermes, or `--skills-dir`), where they stay after the run.
+There are no live updates: a running agent keeps what it got until it restarts, and nothing on the server removes
+an installed copy.
+
+- **The name comes from the latest version's `SKILL.md`.** A publish whose `SKILL.md` names something else renames
+  the skill in the same transaction (409 if the name is taken) and writes an `agent-vault-skill-rename` audit event
+  beside the version event. A restore never renames: if the old `SKILL.md` names something else, only the value on
+  its top-level `name:` line is rewritten to the current name (`replaceSkillHeaderName`) and the files are
+  re-validated, re-hashed and re-sealed, so the stored `SKILL.md` always agrees with the skill row. A restore that
+  meets a rename made after it read the name is a 409, not a rename back. The description is the latest version's,
+  stored on the skill row; a restore re-reads it from the files and keeps the current one if that old `SKILL.md` no
+  longer parses.
+- **The server is the authority** on validation (`agent-vault-skill-fns.ts`): the limits, the paths and the YAML
+  header. The upload body limit is 2 MB and the schema caps content only at that, so an oversize file in a request
+  of up to about 1.5 MB of file content (base64 adds a third) gets the 400 that names it; a larger request gets
+  "Request body is too large". The header is parsed with `JSON_SCHEMA` (no custom types; aliases are harmless under it and the 4 KB cap).
+- **Paths must install on every OS:** relative, at most 255 characters with no part over 255 UTF-8 bytes, no
+  `.`/`..`/empty parts, no backslash, control character, lone surrogate or `: < > " | ? *`, no part ending in a dot
+  or space, no Windows device name (`CON`, `COM1`, `nul.txt`...), and no path that is also a folder of another.
+  Duplicates compare by NFC plus lowercase.
+- **A version's `sha256` is over the canonical JSON** (files sorted by UTF-8 path bytes, which is Go's string
+  order, `{ path, mode, contentBase64 }`, content re-encoded). The CLI recomputes it from the files and refuses a
+  mismatch, so the serialization is a contract with the CLI.
+- Files are one sealed blob per version (project `SecretManager` key), encrypted before the transaction. Publish
+  and restore lock the skill row, so version numbers are unique, the unchanged check is authoritative, and a
+  publish racing a delete gets a 404. The newest 20 versions are kept. A publish or a restore whose files match the
+  latest version writes nothing and answers `unchanged: true` with that version, and records no audit or PostHog event.
+- Reading one version's files (`GET /skills/:skillId/versions/:version`) writes an `agent-vault-skill-version-view`
+  audit event (data-access class); the list routes write none.
+- **`GET /proxy/skills`** returns the latest files of every skill on the session's reachable bundles (the same
+  intersection as the services), sorted by name, read from the primary. It shares resolve's and credential refresh's
+  session checks (`$authorizeSession`), and resolve itself knows nothing about skills. Each call writes one
+  `agent-vault-skill-delivered` audit event per skill (data-access class), credited to the first session bundle
+  that carries it, and one `Agent Vault Skills Delivered` PostHog event with the count. The proxy does not cache.
+  The route allows 60 calls a minute per proxy (`agentVaultSkillsLimit`), since each one decrypts every skill.
+- Skills use the `agent-vault-skills` CASL subject. Members keep CASL `Read`, narrowed by reachability
+  (`getAgentVaultReachability`): they see only skills attached to a bundle they can reach, each with only those
+  bundles, and only the latest version's files. Anything else, an unreachable bundle's skill list included, is a 404.
+  Listing versions checks `Edit`, so it is admin only. Creating, publishing, restoring and deleting are admin only. Attaching or detaching needs `Edit` on access bundles and `Read` on skills, and a
+  bundle holds at most 25 skills (`AGENT_VAULT_MAX_SKILLS_PER_BUNDLE`, checked under the bundle lock).
 
 ## Credentials at rest
 

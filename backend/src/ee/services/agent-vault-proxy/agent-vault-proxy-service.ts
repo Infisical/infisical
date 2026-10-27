@@ -54,6 +54,7 @@ import {
 } from "../agent-vault-session-log/agent-vault-session-log-license-fns";
 import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
 import { getEffectiveSessionLogConfig } from "../agent-vault-session-log/agent-vault-session-log-storage-fns";
+import { deserializeSkillFiles } from "../agent-vault-skill/agent-vault-skill-fns";
 import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import {
   mintAgentVaultProxyJwt,
@@ -65,6 +66,7 @@ import { TAgentVaultProxyDALFactory } from "./agent-vault-proxy-dal";
 import {
   TAgentVaultProxyConfig,
   TAgentVaultProxyScoped,
+  TAuthorizeSessionDTO,
   TBootstrapProxyDTO,
   TCreateProxyDTO,
   THeartbeatDTO,
@@ -650,12 +652,8 @@ export const agentVaultProxyServiceFactory = ({
     return resolved;
   };
 
-  // Shared by resolve and credential refresh, so a refresh can never reach a service resolve would not.
-  const $authorizeSession = async ({
-    proxyId,
-    orgId,
-    sessionToken
-  }: Pick<TResolveSessionDTO, "proxyId" | "orgId" | "sessionToken">) => {
+  // Shared by resolve, credential refresh and skills, so neither can reach a bundle resolve would not.
+  const $authorizeSession = async ({ proxyId, orgId, sessionToken }: TAuthorizeSessionDTO) => {
     const session = await agentVaultSessionDAL.findByTokenHash(hashSessionToken(sessionToken));
     if (!session) throw new NotFoundError({ message: "Session not found" });
 
@@ -973,6 +971,38 @@ export const agentVaultProxyServiceFactory = ({
     );
   };
 
+  // Called once when an agent starts: the latest files of every skill on the session's reachable bundles.
+  const getSessionSkills = async (dto: TAuthorizeSessionDTO) => {
+    const { session, accessBundleIds } = await $authorizeSession(dto);
+
+    const rows = await agentVaultResolveDAL.findSessionSkills({
+      sessionId: session.id,
+      projectId: session.projectId,
+      accessBundleIds
+    });
+
+    const decryptor = rows.length
+      ? (
+          await kmsService.createCipherPairWithDataKey({
+            type: KmsDataKey.SecretManager,
+            projectId: session.projectId
+          })
+        ).decryptor
+      : null;
+
+    const skills = rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      version: row.version,
+      sha256: row.sha256,
+      files: deserializeSkillFiles(decryptor!({ cipherTextBlob: row.encryptedFiles })),
+      accessBundleId: row.accessBundleId,
+      accessBundleName: row.accessBundleName
+    }));
+
+    return { skills, sessionId: session.id, projectId: session.projectId };
+  };
+
   return {
     getProxyForAuth,
     listProxies,
@@ -985,6 +1015,7 @@ export const agentVaultProxyServiceFactory = ({
     heartbeat,
     resolveSession,
     refreshCredential,
-    reportMissingScopes
+    reportMissingScopes,
+    getSessionSkills
   };
 };

@@ -105,6 +105,7 @@ export enum ApiDocsTags {
   AgentVault = "Agent Vault",
   AgentVaultAccessBundles = "Agent Vault Access Bundles",
   AgentVaultVariables = "Agent Vault Variables",
+  AgentVaultSkills = "Agent Vault Skills",
   AgentVaultSessions = "Agent Vault Sessions",
   AgentVaultProxies = "Agent Vault Proxies",
   AgentVaultMembers = "Agent Vault Members",
@@ -4676,6 +4677,41 @@ export const AGENT_VAULT = {
     usedByServiceAccessBundleName: "The name of the access bundle the service belongs to.",
     createdAt: "When the variable was added.",
     updatedAt: "When the variable was last changed."
+  },
+  SKILL: {
+    skillId: "The ID of the skill.",
+    name: "The name of the skill, taken from the `name` in the SKILL.md of its latest version. Lowercase letters, numbers and hyphens.",
+    description: "What the skill is for, taken from the `description` in the SKILL.md of its latest version.",
+    latestVersion: "The number of the skill's newest version.",
+    accessBundles:
+      "The access bundles the skill is attached to, ordered by name. A member sees only the bundles they have been granted.",
+    accessBundleId: "The ID of an access bundle the skill is attached to.",
+    accessBundleName: "The name of the access bundle.",
+    createdAt: "When the skill was added.",
+    updatedAt: "When the skill was last changed.",
+    files:
+      "Every file in the skill folder. One must be `SKILL.md` at the root, starting with a YAML header that sets `name` and `description`. At most 50 files, 256 KB per file and 1 MB in total.",
+    filePath:
+      "The file's path inside the skill folder, using `/` between folders. No leading `/`, and no `.` or `..` parts. At most 255 characters, and each file or folder name at most 255 bytes.",
+    fileMode: "The file's permissions: `0644` for a regular file, `0755` for one that can be run.",
+    fileContent: "The file's content, encoded as base64.",
+    source:
+      "Where the upload came from: `cli`, `upload`, `form`, `editor` or `api`. Defaults to `api`. Used only for product analytics.",
+    version: "The version number. Versions count up from 1, and the newest 20 are kept.",
+    sha256: "The SHA-256 digest of the version's files, as hex.",
+    sizeBytes: "The total size of the version's files in bytes.",
+    fileCount: "How many files the version has.",
+    versionCreatedAt: "When the version was published.",
+    unchanged:
+      "True if the files match the latest version, in which case no new version was made and that version is returned.",
+    restoreUnchanged:
+      "True if the version being restored has the same files as the latest version, in which case no new version was made and the latest version is returned.",
+    attachSkillId: "The ID of the skill to attach to the access bundle.",
+    search: "Match skills whose name or description contains this text.",
+    nameFilter: "Return only the skill with exactly this name.",
+    limit: "The maximum number of skills to return. Defaults to 20.",
+    offset: "How many skills to skip.",
+    totalCount: "How many skills match the filters, across every page."
   },
   MEMBER: {
     grantedAt: "When the access bundle was granted.",

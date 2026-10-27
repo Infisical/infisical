@@ -1,0 +1,419 @@
+import { strToU8, unzipSync, zipSync } from "fflate";
+import { describe, expect, test } from "vitest";
+
+import {
+  buildDiffRows,
+  buildSkillMarkdown,
+  buildSkillZip,
+  carrySkillFileModes,
+  countLineChanges,
+  decodeSkillFile,
+  getSkillBaseName,
+  getSkillEntryNameError,
+  getSkillFileChanges,
+  getSkillFolders,
+  getSkillParentPath,
+  getSkillPathError,
+  joinSkillPath,
+  newDraftFile,
+  normalizeSkillPath,
+  parseSkillHeader,
+  readSkillUpload,
+  removeSkillPath,
+  renameSkillFolders,
+  renameSkillPaths,
+  replaceSkillEntryFile,
+  SkillPackageError,
+  sortSkillFiles,
+  splitFrontmatter,
+  toDraftFiles,
+  toSkillFile
+} from "./agentVaultSkills";
+
+const zipFile = (entries: Record<string, Uint8Array>, name = "skill.zip") =>
+  new File([zipSync(entries)], name);
+
+const decoded = (files: Awaited<ReturnType<typeof readSkillUpload>>) =>
+  Object.fromEntries(files.map((file) => [file.path, decodeSkillFile(file)]));
+
+describe("readSkillUpload", () => {
+  test("turns a single Markdown file into SKILL.md", async () => {
+    const files = await readSkillUpload(new File(["# Review"], "review.md"));
+    expect(decoded(files)).toEqual({ "SKILL.md": "# Review" });
+  });
+
+  test("strips a single top-level folder and archive noise", async () => {
+    const files = await readSkillUpload(
+      zipFile({
+        "code-review/SKILL.md": strToU8("---\nname: code-review\n---"),
+        "code-review/scripts/run.sh": strToU8("echo hi"),
+        "code-review/.DS_Store": strToU8("x"),
+        "__MACOSX/code-review/._SKILL.md": strToU8("x")
+      })
+    );
+    expect(sortSkillFiles(files).map((file) => file.path)).toEqual(["SKILL.md", "scripts/run.sh"]);
+  });
+
+  test("keeps paths when the files are at the archive root", async () => {
+    const files = await readSkillUpload(
+      zipFile({ "SKILL.md": strToU8("a"), "docs/guide.md": strToU8("b") })
+    );
+    expect(sortSkillFiles(files).map((file) => file.path)).toEqual(["SKILL.md", "docs/guide.md"]);
+  });
+
+  test("reads Windows-style backslash paths as folders", async () => {
+    const files = await readSkillUpload(
+      zipFile({
+        "review\\SKILL.md": strToU8("a"),
+        "review\\scripts\\run.sh": strToU8("b")
+      })
+    );
+    expect(sortSkillFiles(files).map((file) => file.path)).toEqual(["SKILL.md", "scripts/run.sh"]);
+  });
+
+  test("refuses an entry over the file limit before inflating it", async () => {
+    await expect(
+      readSkillUpload(zipFile({ "SKILL.md": new Uint8Array(256 * 1024 + 1) }))
+    ).rejects.toThrow("File 'SKILL.md' is larger than 256 KB.");
+  });
+
+  test("refuses more than 50 files", async () => {
+    const entries = Object.fromEntries(
+      Array.from({ length: 51 }, (_, index) => [`f${index}.md`, strToU8("x")])
+    );
+    await expect(readSkillUpload(zipFile(entries))).rejects.toThrow(
+      "A skill can hold at most 50 files."
+    );
+  });
+
+  test("explains a file that is not a zip", async () => {
+    await expect(readSkillUpload(new File(["nope"], "skill.zip"))).rejects.toBeInstanceOf(
+      SkillPackageError
+    );
+    await expect(readSkillUpload(new File(["x"], "skill.txt"))).rejects.toThrow(
+      "Upload a .zip of the skill's folder, or a single .md file."
+    );
+  });
+});
+
+describe("buildSkillMarkdown", () => {
+  test("quotes header values so YAML reads them back as plain strings", () => {
+    expect(
+      buildSkillMarkdown({
+        name: "code-review",
+        description: 'Use when: reviewing "PRs"\n# not a comment',
+        body: "\n# Steps\n"
+      })
+    ).toBe(
+      '---\nname: "code-review"\ndescription: "Use when: reviewing \\"PRs\\"\\n# not a comment"\n---\n\n# Steps\n'
+    );
+  });
+});
+
+describe("normalizeSkillPath", () => {
+  test("uses forward slashes and drops leading ./ and /", () => {
+    expect(normalizeSkillPath(" ./scripts\\check.sh ")).toBe("scripts/check.sh");
+    expect(normalizeSkillPath("/docs//guide.md")).toBe("docs/guide.md");
+  });
+});
+
+describe("getSkillPathError", () => {
+  test("accepts ordinary relative paths", () => {
+    expect(getSkillPathError("SKILL.md")).toBeNull();
+    expect(getSkillPathError("scripts/check.sh")).toBeNull();
+    expect(getSkillPathError("docs/.env.example")).toBeNull();
+    expect(getSkillPathError("CONSOLE.md")).toBeNull();
+  });
+
+  test("refuses what the server refuses", () => {
+    expect(getSkillPathError("")).toBe("Enter a name.");
+    expect(getSkillPathError("a\\b")).toBe("A name can't contain a backslash.");
+    expect(getSkillPathError("a\u0001b")).toBe("A name can't contain control characters.");
+    expect(getSkillPathError("a\uD800")).toBe("A name must be valid Unicode text.");
+    expect(getSkillPathError("/abs")).toBe("A name can't be empty, '.' or '..'.");
+    expect(getSkillPathError("a//b")).toBe("A name can't be empty, '.' or '..'.");
+    expect(getSkillPathError("../x")).toBe("A name can't be empty, '.' or '..'.");
+    ["a:b", "a<b", "a>b", 'a"b', "a|b", "a?b", "a*b"].forEach((path) =>
+      expect(getSkillPathError(path)).toMatch(/can't contain any of/)
+    );
+    expect(getSkillPathError("docs./a.md")).toBe("'docs.' can't end in a dot or a space.");
+    expect(getSkillPathError("a /b")).toMatch(/can't end in a dot or a space/);
+  });
+
+  test("limits each file or folder name to 255 UTF-8 bytes", () => {
+    expect(getSkillPathError("é".repeat(127))).toBeNull();
+    const long = "é".repeat(128);
+    expect(getSkillPathError(`docs/${long}`)).toBe(
+      `File name '${long.slice(0, 64)}…' in 'docs/${long}' is too long. Shorten it.`
+    );
+  });
+
+  test("refuses Windows device names with or without an extension", () => {
+    ["CON", "prn", "Aux.txt", "nul.tar.gz", "COM1", "lpt9.md", "scripts/com3"].forEach((path) =>
+      expect(getSkillPathError(path)).toMatch(/is a reserved name/)
+    );
+    expect(getSkillPathError("COM0")).toBeNull();
+    expect(getSkillPathError("LPT10")).toBeNull();
+  });
+
+  test("refuses paths longer than 255 characters", () => {
+    expect(getSkillPathError("a".repeat(255))).toBeNull();
+    expect(getSkillPathError("a".repeat(256))).toMatch(/at most 255 characters/);
+  });
+});
+
+describe("getSkillEntryNameError", () => {
+  const filePaths = ["SKILL.md", "docs/guide.md", "scripts/run.sh"];
+  const folderPaths = getSkillFolders(filePaths, ["empty"]);
+  const check = (name: string, parentPath = "", renamingPath?: string) =>
+    getSkillEntryNameError({ name, parentPath, filePaths, folderPaths, renamingPath });
+
+  test("accepts a new name in the root or a folder", () => {
+    expect(check("README.md")).toBeNull();
+    expect(check("other.md", "docs")).toBeNull();
+    expect(check("nested", "empty")).toBeNull();
+  });
+
+  test("refuses slashes, since folders are made one at a time", () => {
+    expect(check("a/b.md")).toMatch(/can't contain '\/'/);
+  });
+
+  test("refuses a name already used, ignoring case and Unicode form", () => {
+    expect(check("skill.md")).toBe(
+      "A file named 'SKILL.md' is already here. Names must be unique ignoring case."
+    );
+    expect(check("guide.md", "docs")).toBe("A file named 'guide.md' is already here.");
+    expect(
+      getSkillEntryNameError({
+        name: "café.md",
+        parentPath: "",
+        filePaths: ["café.md"],
+        folderPaths: []
+      })
+    ).toMatch(/already here/);
+  });
+
+  test("refuses a file where a folder is, and a folder where a file is", () => {
+    expect(check("Docs")).toBe(
+      "A folder named 'docs' is already here. Names must be unique ignoring case."
+    );
+    expect(check("empty")).toBe("A folder named 'empty' is already here.");
+    expect(check("run.sh", "scripts")).toBe("A file named 'run.sh' is already here.");
+  });
+
+  test("lets a rename change only the case of its own name", () => {
+    expect(check("Guide.md", "docs", "docs/guide.md")).toBeNull();
+    expect(check("Scripts", "", "scripts")).toBeNull();
+    expect(check("docs", "", "scripts")).toMatch(/already here/);
+  });
+
+  test("checks the longest path a renamed folder would give its files", () => {
+    expect(check("x".repeat(250), "", "scripts")).toMatch(/longer than 255/);
+  });
+
+  test("checks the joined path against the server rules", () => {
+    expect(check("nul.md", "docs")).toMatch(/is a reserved name/);
+    expect(check("trailing.", "docs")).toMatch(/can't end in a dot/);
+  });
+});
+
+describe("file tree edits", () => {
+  const files = [
+    { path: "SKILL.md" },
+    { path: "docs/a.md" },
+    { path: "docs/deep/b.md" },
+    { path: "docsx.md" }
+  ];
+
+  test("renames a folder with everything in it, and nothing that only shares a prefix", () => {
+    expect(renameSkillPaths(files, "docs", "guides").map((file) => file.path)).toEqual([
+      "SKILL.md",
+      "guides/a.md",
+      "guides/deep/b.md",
+      "docsx.md"
+    ]);
+    expect(renameSkillFolders(["docs", "docs/deep", "docsx"], "docs", "g")).toEqual([
+      "g",
+      "g/deep",
+      "docsx"
+    ]);
+  });
+
+  test("renames a single file", () => {
+    expect(renameSkillPaths(files, "docs/a.md", "docs/c.md").map((file) => file.path)).toContain(
+      "docs/c.md"
+    );
+  });
+
+  test("removes a folder with everything in it", () => {
+    expect(removeSkillPath(files, "docs").map((file) => file.path)).toEqual([
+      "SKILL.md",
+      "docsx.md"
+    ]);
+    expect(removeSkillPath(["docs", "docs/deep", "docsx"], "docs")).toEqual(["docsx"]);
+  });
+
+  test("lists every folder that holds a file, plus empty ones", () => {
+    expect(getSkillFolders(["a/b/c.md", "d.md"], ["e"]).sort()).toEqual(["a", "a/b", "e"]);
+  });
+
+  test("splits and joins paths", () => {
+    expect(joinSkillPath("", "a.md")).toBe("a.md");
+    expect(joinSkillPath("docs", "a.md")).toBe("docs/a.md");
+    expect(getSkillParentPath("docs/deep/b.md")).toBe("docs/deep");
+    expect(getSkillParentPath("SKILL.md")).toBe("");
+    expect(getSkillBaseName("docs/deep/b.md")).toBe("b.md");
+  });
+});
+
+describe("parseSkillHeader", () => {
+  test("reads plain, quoted and folded values", () => {
+    expect(parseSkillHeader("name: code-review\ndescription: Reviews code.")).toEqual({
+      name: "code-review",
+      description: "Reviews code."
+    });
+    expect(parseSkillHeader('name: "a"\ndescription: "Says \\"hi\\"."')).toEqual({
+      name: "a",
+      description: 'Says "hi".'
+    });
+    expect(parseSkillHeader("name: 'a'\ndescription: 'It''s fine.'")).toEqual({
+      name: "a",
+      description: "It's fine."
+    });
+    expect(
+      parseSkillHeader("name: a\ndescription: >\n  First line\n  second line\nother: x")
+    ).toEqual({ name: "a", description: "First line second line" });
+  });
+
+  test("leaves out keys that are not there", () => {
+    expect(parseSkillHeader("license: MIT")).toEqual({});
+  });
+});
+
+describe("countLineChanges", () => {
+  test("counts added and removed lines", () => {
+    expect(countLineChanges("a\nb\nc\n", "a\nB\nc\nd\n")).toEqual({
+      additions: 2,
+      deletions: 1
+    });
+    expect(countLineChanges("", "one\ntwo")).toEqual({ additions: 2, deletions: 0 });
+    expect(countLineChanges("same\n", "same\n")).toEqual({ additions: 0, deletions: 0 });
+  });
+});
+
+describe("getSkillFileChanges", () => {
+  const original = toDraftFiles([
+    toSkillFile("SKILL.md", "# Skill\n"),
+    { ...toSkillFile("run.sh", "echo hi\n"), mode: "0755" },
+    toSkillFile("old.md", "gone\nsoon\n")
+  ]);
+
+  test("reports nothing for an untouched draft", () => {
+    expect(getSkillFileChanges(original, original)).toEqual([]);
+  });
+
+  test("reports added, modified, mode-only and deleted files with line counts", () => {
+    const draft = [
+      { ...original[0], text: "# Skill\nMore\n" },
+      original.find((file) => file.path === "run.sh")!,
+      newDraftFile("notes/new.md", "a\nb\n")
+    ].map((file) => (file.path === "run.sh" ? { ...file, mode: "0644" as const } : file));
+
+    expect(
+      getSkillFileChanges(original, draft).map(
+        ({ path, status, additions, deletions, newMode }) => ({
+          path,
+          status,
+          additions,
+          deletions,
+          newMode
+        })
+      )
+    ).toEqual([
+      { path: "SKILL.md", status: "modified", additions: 1, deletions: 0, newMode: undefined },
+      { path: "run.sh", status: "modified", additions: 0, deletions: 0, newMode: "0644" },
+      { path: "notes/new.md", status: "added", additions: 2, deletions: 0, newMode: "0644" },
+      { path: "old.md", status: "deleted", additions: 0, deletions: 2, newMode: undefined }
+    ]);
+  });
+});
+
+describe("buildDiffRows", () => {
+  test("numbers lines and folds long unchanged runs", () => {
+    const before = `${Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join("\n")}\n`;
+    const after = before.replace("line 9\n", "line nine\n");
+    const rows = buildDiffRows(before, after, 2);
+    expect(rows[0]).toEqual({ type: "skip", count: 6 });
+    expect(rows.slice(1)).toEqual([
+      { type: "context", text: "line 7", oldLine: 7, newLine: 7 },
+      { type: "context", text: "line 8", oldLine: 8, newLine: 8 },
+      { type: "removed", text: "line 9", oldLine: 9, newLine: null },
+      { type: "added", text: "line nine", oldLine: null, newLine: 9 },
+      { type: "context", text: "line 10", oldLine: 10, newLine: 10 }
+    ]);
+  });
+});
+
+describe("modes and SKILL.md uploads", () => {
+  const previous = [
+    toSkillFile("SKILL.md", "old"),
+    { ...toSkillFile("scripts/run.sh", "echo"), mode: "0755" as const },
+    toSkillFile("docs/a.md", "a")
+  ];
+
+  test("an uploaded archive keeps each existing path's mode", () => {
+    const uploaded = [toSkillFile("SKILL.md", "new"), toSkillFile("scripts/run.sh", "echo 2")];
+    expect(carrySkillFileModes(uploaded, previous).map((file) => file.mode)).toEqual([
+      "0644",
+      "0755"
+    ]);
+  });
+
+  test("a single SKILL.md replaces only SKILL.md", () => {
+    const files = replaceSkillEntryFile(previous, toSkillFile("SKILL.md", "new"));
+    expect(Object.fromEntries(files.map((file) => [file.path, decodeSkillFile(file)]))).toEqual({
+      "SKILL.md": "new",
+      "scripts/run.sh": "echo",
+      "docs/a.md": "a"
+    });
+    expect(files.find((file) => file.path === "scripts/run.sh")?.mode).toBe("0755");
+  });
+
+  test("a downloaded zip holds the files under the skill's folder", () => {
+    const entries = unzipSync(buildSkillZip("review", previous));
+    expect(Object.keys(entries).sort()).toEqual([
+      "review/SKILL.md",
+      "review/docs/a.md",
+      "review/scripts/run.sh"
+    ]);
+  });
+
+  test("a downloaded zip keeps each file's mode", () => {
+    const zip = buildSkillZip("review", previous);
+    const view = new DataView(zip.buffer, zip.byteOffset, zip.byteLength);
+    const modes: Record<string, number> = {};
+    for (let offset = 0; offset + 46 <= zip.length; offset += 1) {
+      if (view.getUint32(offset, true) === 0x02014b50) {
+        const nameLength = view.getUint16(offset + 28, true);
+        const name = new TextDecoder().decode(zip.subarray(offset + 46, offset + 46 + nameLength));
+        // eslint-disable-next-line no-bitwise
+        modes[name] = (view.getUint32(offset + 38, true) >>> 16) & 0o777;
+      }
+    }
+    expect(modes).toEqual({
+      "review/SKILL.md": 0o644,
+      "review/scripts/run.sh": 0o755,
+      "review/docs/a.md": 0o644
+    });
+  });
+});
+
+describe("splitFrontmatter", () => {
+  test("separates a leading YAML header from the body", () => {
+    expect(splitFrontmatter("---\nname: a\n---\n\n# Body\n")).toEqual({
+      frontmatter: "name: a",
+      body: "\n# Body\n"
+    });
+    expect(splitFrontmatter("# No header")).toEqual({ frontmatter: null, body: "# No header" });
+  });
+});

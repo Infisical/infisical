@@ -20,6 +20,7 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { actorContext } from "./agent-vault-router-fns";
 import {
   AgentVaultActorRefSchema,
+  AgentVaultBundleSkillSchema,
   AgentVaultCreatedMemberSchema,
   AgentVaultCreateServiceBodySchema,
   agentVaultListQuery,
@@ -633,6 +634,129 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       });
 
       return { personalValues: { isConfigured: personalValues.isConfigured, fields: personalValues.fields } };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:accessBundleId/skills",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "listAgentVaultAccessBundleSkills",
+      description: "List the skills attached to an Agent Vault access bundle, ordered by name",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+      }),
+      response: { 200: z.object({ skills: AgentVaultBundleSkillSchema.array() }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.agentVaultSkill.listBundleSkills({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId
+      })
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:accessBundleId/skills",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "attachAgentVaultAccessBundleSkill",
+      description:
+        "Attach a skill to an Agent Vault access bundle. Agents get the skill when they start with the bundle, so agents already running get it after a restart.",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+      }),
+      body: z.object({
+        skillId: z.string().uuid().describe(AGENT_VAULT.SKILL.attachSkillId)
+      }),
+      response: { 200: z.object({ skill: AgentVaultBundleSkillSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { skill, accessBundle } = await server.services.agentVaultSkill.attachToBundle({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId,
+        skillId: req.body.skillId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_SKILL_BUNDLE_ATTACH,
+          metadata: {
+            skillId: skill.id,
+            skillName: skill.name,
+            accessBundleId: accessBundle.id,
+            accessBundleName: accessBundle.name
+          }
+        }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultSkillAttachedToBundle,
+        properties: { skillId: skill.id, accessBundleId: accessBundle.id }
+      });
+
+      return { skill };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:accessBundleId/skills/:skillId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "detachAgentVaultAccessBundleSkill",
+      description:
+        "Detach a skill from an Agent Vault access bundle. Agents already running with the bundle keep the skill until they restart.",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+        skillId: z.string().uuid().describe(AGENT_VAULT.SKILL.skillId)
+      }),
+      response: { 200: z.object({ skill: AgentVaultBundleSkillSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { skill, accessBundle } = await server.services.agentVaultSkill.detachFromBundle({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId,
+        skillId: req.params.skillId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_SKILL_BUNDLE_DETACH,
+          metadata: {
+            skillId: skill.id,
+            skillName: skill.name,
+            accessBundleId: accessBundle.id,
+            accessBundleName: accessBundle.name
+          }
+        }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultSkillDetachedFromBundle,
+        properties: { skillId: skill.id, accessBundleId: accessBundle.id }
+      });
+
+      return { skill };
     }
   });
 

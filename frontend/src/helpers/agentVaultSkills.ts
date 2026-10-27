@@ -1,0 +1,572 @@
+import { diffLines } from "diff";
+import { unzipSync, zipSync } from "fflate";
+
+import { TAgentVaultSkillFile, TAgentVaultSkillFileMode } from "@app/hooks/api/agentVault/types";
+
+export const SKILL_NAME_MAX_LENGTH = 64;
+export const SKILL_DESCRIPTION_MAX_LENGTH = 1024;
+export const SKILL_NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+export const SKILL_NAME_MESSAGE =
+  "A skill name uses lower case letters, numbers and single hyphens, like code-review.";
+
+export const SKILL_ENTRY_FILE = "SKILL.md";
+
+// The server enforces these limits. They are repeated here only so an archive is never inflated past them: an entry's
+// declared size bounds what fflate writes, so a small archive that would expand to gigabytes is refused unread.
+const MAX_FILE_BYTES = 256 * 1024;
+const MAX_TOTAL_BYTES = 1024 * 1024;
+const MAX_FILES = 50;
+
+export class SkillPackageError extends Error {}
+
+const formatLimit = (bytes: number) =>
+  bytes >= 1024 * 1024 ? `${bytes / (1024 * 1024)} MB` : `${bytes / 1024} KB`;
+
+export const formatSkillBytes = (bytes: number) => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+export const bytesToBase64 = (bytes: Uint8Array) => {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 8192) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+  }
+  return btoa(binary);
+};
+
+export const base64ToBytes = (value: string) =>
+  Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+
+/** The file's text, or null when it is not valid UTF-8 and so can't be shown. */
+export const decodeSkillFile = (file: TAgentVaultSkillFile) => {
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(base64ToBytes(file.contentBase64));
+  } catch {
+    return null;
+  }
+};
+
+/** Uses forward slashes and drops leading `./` and `/`, as Windows archive tools and typed paths may not. */
+export const normalizeSkillPath = (path: string) =>
+  path
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/\/{2,}/g, "/")
+    .replace(/^(\.\/|\/)+/, "");
+
+// Archive tools add these beside the real files, and they would stop a single top-level folder from being stripped.
+const isArchiveNoise = (path: string) =>
+  path.startsWith("__MACOSX/") || path.split("/").pop() === ".DS_Store";
+
+const stripSharedFolder = (paths: string[]) => {
+  const [first] = paths;
+  const slash = first?.indexOf("/") ?? -1;
+  if (slash <= 0) return paths;
+  const prefix = first.slice(0, slash + 1);
+  return paths.every((path) => path.startsWith(prefix))
+    ? paths.map((path) => path.slice(prefix.length))
+    : paths;
+};
+
+const readZip = (data: Uint8Array): TAgentVaultSkillFile[] => {
+  let count = 0;
+  let total = 0;
+  let entries: Record<string, Uint8Array>;
+  const names: string[] = [];
+  try {
+    entries = unzipSync(data, {
+      filter: ({ name: rawName, originalSize }) => {
+        const name = normalizeSkillPath(rawName);
+        if (rawName.endsWith("/") || rawName.endsWith("\\") || isArchiveNoise(name)) return false;
+        count += 1;
+        total += originalSize;
+        if (originalSize > MAX_FILE_BYTES) {
+          throw new SkillPackageError(
+            `File '${name}' is larger than ${formatLimit(MAX_FILE_BYTES)}.`
+          );
+        }
+        if (count > MAX_FILES) {
+          throw new SkillPackageError(`A skill can hold at most ${MAX_FILES} files.`);
+        }
+        if (total > MAX_TOTAL_BYTES) {
+          throw new SkillPackageError(
+            `A skill can be at most ${formatLimit(MAX_TOTAL_BYTES)} in total.`
+          );
+        }
+        names.push(rawName);
+        return true;
+      }
+    });
+  } catch (error) {
+    if (error instanceof SkillPackageError) throw error;
+    throw new SkillPackageError("This file is not a valid zip archive.");
+  }
+
+  if (names.length === 0) throw new SkillPackageError("This archive holds no files.");
+  const paths = stripSharedFolder(names.map(normalizeSkillPath));
+
+  return names.map((name, index) => ({
+    path: paths[index],
+    mode: "0644" as const,
+    contentBase64: bytesToBase64(entries[name])
+  }));
+};
+
+/** SKILL.md first, then the rest by path, as the skill's files are listed. */
+export const sortSkillFiles = <T extends { path: string }>(files: T[]) =>
+  [...files].sort((a, b) => {
+    if (a.path === SKILL_ENTRY_FILE) return -1;
+    if (b.path === SKILL_ENTRY_FILE) return 1;
+    return a.path.localeCompare(b.path);
+  });
+
+/**
+ * Reads an uploaded skill: a zip of the skill's folder, or a single Markdown file that becomes its SKILL.md. Only
+ * the archive's size is checked here; the server validates everything else and its message is shown as is.
+ */
+export const readSkillUpload = async (file: File): Promise<TAgentVaultSkillFile[]> => {
+  const name = file.name.toLowerCase();
+
+  if (name.endsWith(".md")) {
+    if (file.size > MAX_FILE_BYTES) {
+      throw new SkillPackageError(
+        `File '${file.name}' is larger than ${formatLimit(MAX_FILE_BYTES)}.`
+      );
+    }
+    return [
+      {
+        path: SKILL_ENTRY_FILE,
+        mode: "0644",
+        contentBase64: bytesToBase64(new Uint8Array(await file.arrayBuffer()))
+      }
+    ];
+  }
+
+  if (name.endsWith(".zip")) {
+    // Stored entries make a zip slightly larger than its files, never by more than the headers.
+    if (file.size > MAX_TOTAL_BYTES + 64 * 1024) {
+      throw new SkillPackageError(
+        `A skill can be at most ${formatLimit(MAX_TOTAL_BYTES)} in total.`
+      );
+    }
+    return readZip(new Uint8Array(await file.arrayBuffer()));
+  }
+
+  throw new SkillPackageError("Upload a .zip of the skill's folder, or a single .md file.");
+};
+
+/** JSON strings are valid YAML double-quoted scalars, so any text is safe in the header this way. */
+export const buildSkillMarkdown = ({
+  name,
+  description,
+  body
+}: {
+  name: string;
+  description: string;
+  body: string;
+}) =>
+  `---\nname: ${JSON.stringify(name)}\ndescription: ${JSON.stringify(description)}\n---\n\n${body.trim()}\n`;
+
+export const toSkillFile = (path: string, text: string): TAgentVaultSkillFile => ({
+  path,
+  mode: "0644",
+  contentBase64: bytesToBase64(new TextEncoder().encode(text))
+});
+
+export const isMarkdownPath = (path: string) => /\.(md|markdown)$/i.test(path);
+
+/** A file as the editor holds it: text for anything that decodes as UTF-8, else the original bytes, read only. */
+export type TSkillDraftFile = {
+  path: string;
+  mode: TAgentVaultSkillFileMode;
+  text: string | null;
+  contentBase64: string;
+};
+
+export const toDraftFiles = (files: TAgentVaultSkillFile[]): TSkillDraftFile[] =>
+  sortSkillFiles(files).map((file) => ({ ...file, text: decodeSkillFile(file) }));
+
+export const fromDraftFiles = (files: TSkillDraftFile[]): TAgentVaultSkillFile[] =>
+  files.map(({ path, mode, text, contentBase64 }) =>
+    text === null ? { path, mode, contentBase64 } : { ...toSkillFile(path, text), mode }
+  );
+
+export const newDraftFile = (path: string, text = ""): TSkillDraftFile => ({
+  path,
+  mode: "0644",
+  text,
+  contentBase64: ""
+});
+
+export const SKILL_MAX_FILES = MAX_FILES;
+export const SKILL_MAX_PATH_LENGTH = 255;
+const SKILL_MAX_SEGMENT_BYTES = 255;
+export const AGENT_VAULT_MAX_SKILLS_PER_BUNDLE = 25;
+
+// eslint-disable-next-line no-control-regex
+const CONTROL_CHARS_RE = /[\x00-\x1f\x7f]/;
+const LONE_SURROGATE_RE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+const WINDOWS_INVALID_CHARS_RE = /[:<>"|?*]/;
+const WINDOWS_DEVICE_NAME_RE = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?$/i;
+
+/** Why the server would refuse a file path, or null. Mirrors assertValidPath in the backend's agent-vault-skill-fns.ts. */
+export const getSkillPathError = (path: string): string | null => {
+  if (!path.length) return "Enter a name.";
+  if (LONE_SURROGATE_RE.test(path)) return "A name must be valid Unicode text.";
+  if (path.length > SKILL_MAX_PATH_LENGTH)
+    return `A path can be at most ${SKILL_MAX_PATH_LENGTH} characters, including its folders.`;
+  if (CONTROL_CHARS_RE.test(path)) return "A name can't contain control characters.";
+  if (path.includes("\\")) return "A name can't contain a backslash.";
+  const segments = path.split("/");
+  if (path.startsWith("/") || segments.some((s) => s === "" || s === "." || s === ".."))
+    return "A name can't be empty, '.' or '..'.";
+  const encoder = new TextEncoder();
+  const tooLong = segments.find((s) => encoder.encode(s).length > SKILL_MAX_SEGMENT_BYTES);
+  if (tooLong !== undefined)
+    return `File name '${tooLong.slice(0, 64)}…' in '${path}' is too long. Shorten it.`;
+  if (WINDOWS_INVALID_CHARS_RE.test(path)) return "A name can't contain any of : < > \" | ? *";
+  const trailing = segments.find((s) => s.endsWith(".") || s.endsWith(" "));
+  if (trailing !== undefined) return `'${trailing}' can't end in a dot or a space.`;
+  const device = segments.find((s) => WINDOWS_DEVICE_NAME_RE.test(s));
+  if (device !== undefined) return `'${device}' is a reserved name and can't be used.`;
+  return null;
+};
+
+// The server compares paths this way, since one file system may write both spellings to the same file.
+const foldSkillPath = (path: string) => path.normalize("NFC").toLowerCase();
+
+export const joinSkillPath = (parentPath: string, name: string) =>
+  parentPath ? `${parentPath}/${name}` : name;
+
+export const getSkillParentPath = (path: string) => {
+  const slash = path.lastIndexOf("/");
+  return slash === -1 ? "" : path.slice(0, slash);
+};
+
+export const getSkillBaseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
+
+const isSameOrInside = (path: string, folder: string) =>
+  path === folder || path.startsWith(`${folder}/`);
+
+/** Every folder that holds one of the files, plus any empty folders given. */
+export const getSkillFolders = (
+  filePaths: readonly string[],
+  emptyFolders: readonly string[] = []
+) => {
+  const folders = new Set<string>(emptyFolders);
+  filePaths.forEach((path) => {
+    const segments = path.split("/");
+    segments
+      .slice(0, -1)
+      .forEach((_, index) => folders.add(segments.slice(0, index + 1).join("/")));
+  });
+  return [...folders];
+};
+
+type TSkillEntryCheck = {
+  name: string;
+  parentPath: string;
+  filePaths: readonly string[];
+  folderPaths: readonly string[];
+  /** The file or folder being renamed. It and anything inside it don't count as clashes. */
+  renamingPath?: string;
+};
+
+/** Why a name typed in the file tree can't be used, or null when it can. */
+export const getSkillEntryNameError = ({
+  name,
+  parentPath,
+  filePaths,
+  folderPaths,
+  renamingPath
+}: TSkillEntryCheck): string | null => {
+  if (!name) return "Enter a name.";
+  if (name.includes("/")) return "A name can't contain '/'. Use New Folder to add a folder.";
+  const path = joinSkillPath(parentPath, name);
+  const pathError = getSkillPathError(path);
+  if (pathError) return pathError;
+
+  const isMoved = (existing: string) =>
+    renamingPath !== undefined && isSameOrInside(existing, renamingPath);
+  if (renamingPath !== undefined) {
+    const longest = filePaths
+      .filter(isMoved)
+      .reduce(
+        (max, existing) => Math.max(max, path.length + existing.length - renamingPath.length),
+        0
+      );
+    if (longest > SKILL_MAX_PATH_LENGTH)
+      return `A file inside would have a path longer than ${SKILL_MAX_PATH_LENGTH} characters.`;
+  }
+
+  const folded = foldSkillPath(path);
+  const clash = (paths: readonly string[]) =>
+    paths.find((existing) => !isMoved(existing) && foldSkillPath(existing) === folded);
+  const caseNote = (existing: string) =>
+    existing === path ? "" : " Names must be unique ignoring case.";
+  const file = clash(filePaths);
+  if (file) return `A file named '${getSkillBaseName(file)}' is already here.${caseNote(file)}`;
+  const folder = clash(folderPaths);
+  if (folder)
+    return `A folder named '${getSkillBaseName(folder)}' is already here.${caseNote(folder)}`;
+  return null;
+};
+
+/** Moves a file, or a folder with everything in it, to a new path. */
+export const renameSkillPaths = <T extends { path: string }>(
+  files: readonly T[],
+  from: string,
+  to: string
+): T[] =>
+  files.map((file) =>
+    isSameOrInside(file.path, from) ? { ...file, path: to + file.path.slice(from.length) } : file
+  );
+
+export const renameSkillFolders = (folders: readonly string[], from: string, to: string) =>
+  folders.map((folder) => (isSameOrInside(folder, from) ? to + folder.slice(from.length) : folder));
+
+/** Drops a file, or a folder with everything in it. */
+export const removeSkillPath = <T extends string | { path: string }>(
+  items: readonly T[],
+  path: string
+) => items.filter((item) => !isSameOrInside(typeof item === "string" ? item : item.path, path));
+
+const readYamlScalar = (raw: string) => {
+  const value = raw.trim();
+  if (value.startsWith('"')) {
+    try {
+      return JSON.parse(value) as string;
+    } catch {
+      return value.slice(1, value.endsWith('"') ? -1 : undefined);
+    }
+  }
+  if (value.startsWith("'"))
+    return value.slice(1, value.endsWith("'") ? -1 : undefined).replace(/''/g, "'");
+  return value.replace(/\s+#.*$/, "");
+};
+
+/**
+ * Reads `name` and `description` from a SKILL.md YAML header written as plain `key: value` lines, quoted or folded.
+ * Anything fancier is left to the server, which parses the header for real.
+ */
+export const parseSkillHeader = (frontmatter: string) => {
+  const lines = frontmatter.split(/\r?\n/);
+  const result: { name?: string; description?: string } = {};
+  lines.forEach((line, index) => {
+    const match = /^(name|description):(.*)$/.exec(line);
+    if (!match) return;
+    const [, key, rest] = match;
+    const value = rest.trim();
+    if (/^[>|][-+]?$/.test(value)) {
+      const block: string[] = [];
+      for (let i = index + 1; i < lines.length && /^(\s|$)/.test(lines[i]); i += 1) {
+        block.push(lines[i].trim());
+      }
+      result[key as "name" | "description"] = block.join(value.startsWith(">") ? " " : "\n").trim();
+      return;
+    }
+    result[key as "name" | "description"] = readYamlScalar(value);
+  });
+  return result;
+};
+
+const countLines = (text: string) => {
+  if (text === "") return 0;
+  const lines = text.split("\n");
+  return lines[lines.length - 1] === "" ? lines.length - 1 : lines.length;
+};
+
+export const countLineChanges = (oldText: string, newText: string) => {
+  let additions = 0;
+  let deletions = 0;
+  diffLines(oldText, newText).forEach((change) => {
+    if (change.added) additions += countLines(change.value);
+    if (change.removed) deletions += countLines(change.value);
+  });
+  return { additions, deletions };
+};
+
+export type TSkillFileChange = {
+  path: string;
+  status: "added" | "modified" | "deleted";
+  oldText: string | null;
+  newText: string | null;
+  isBinary: boolean;
+  additions: number;
+  deletions: number;
+  oldMode?: TAgentVaultSkillFileMode;
+  newMode?: TAgentVaultSkillFileMode;
+};
+
+/** What a draft changes against the files it started from, in the draft's order with deleted files last. */
+export const getSkillFileChanges = (
+  original: TSkillDraftFile[],
+  draft: TSkillDraftFile[]
+): TSkillFileChange[] => {
+  const originalByPath = new Map(original.map((file) => [file.path, file]));
+  const draftPaths = new Set(draft.map((file) => file.path));
+  const changes: TSkillFileChange[] = [];
+
+  draft.forEach((file) => {
+    const before = originalByPath.get(file.path);
+    const isBinary = file.text === null;
+    if (!before) {
+      changes.push({
+        path: file.path,
+        status: "added",
+        oldText: null,
+        newText: file.text,
+        isBinary,
+        additions: countLines(file.text ?? ""),
+        deletions: 0,
+        newMode: file.mode
+      });
+      return;
+    }
+    const isContentChanged = isBinary
+      ? before.contentBase64 !== file.contentBase64
+      : before.text !== file.text;
+    if (!isContentChanged && before.mode === file.mode) return;
+    changes.push({
+      path: file.path,
+      status: "modified",
+      oldText: before.text,
+      newText: file.text,
+      isBinary,
+      ...(isBinary || !isContentChanged
+        ? { additions: 0, deletions: 0 }
+        : countLineChanges(before.text ?? "", file.text ?? "")),
+      ...(before.mode !== file.mode && { oldMode: before.mode, newMode: file.mode })
+    });
+  });
+
+  original.forEach((file) => {
+    if (draftPaths.has(file.path)) return;
+    changes.push({
+      path: file.path,
+      status: "deleted",
+      oldText: file.text,
+      newText: null,
+      isBinary: file.text === null,
+      additions: 0,
+      deletions: countLines(file.text ?? ""),
+      oldMode: file.mode
+    });
+  });
+
+  return changes;
+};
+
+export type TDiffRow =
+  | {
+      type: "context" | "added" | "removed";
+      text: string;
+      oldLine: number | null;
+      newLine: number | null;
+    }
+  | { type: "skip"; count: number };
+
+const splitLines = (value: string) => {
+  const lines = value.split("\n");
+  if (lines[lines.length - 1] === "") lines.pop();
+  return lines;
+};
+
+/** A unified line diff, with unchanged runs longer than twice `context` folded into a skip row. */
+export const buildDiffRows = (oldText: string, newText: string, context = 3): TDiffRow[] => {
+  const rows: TDiffRow[] = [];
+  let oldLine = 1;
+  let newLine = 1;
+
+  const changes = diffLines(oldText, newText);
+  changes.forEach((change, index) => {
+    const lines = splitLines(change.value);
+    if (change.added || change.removed) {
+      lines.forEach((text) => {
+        rows.push({
+          type: change.added ? "added" : "removed",
+          text,
+          oldLine: change.added ? null : oldLine,
+          newLine: change.added ? newLine : null
+        });
+        if (change.added) newLine += 1;
+        else oldLine += 1;
+      });
+      return;
+    }
+
+    const head = index === 0 ? 0 : context;
+    const tail = index === changes.length - 1 ? 0 : context;
+    const toRow = (text: string, offset: number): TDiffRow => ({
+      type: "context",
+      text,
+      oldLine: oldLine + offset,
+      newLine: newLine + offset
+    });
+
+    if (lines.length <= head + tail + 1) {
+      lines.forEach((text, offset) => rows.push(toRow(text, offset)));
+    } else {
+      lines.slice(0, head).forEach((text, offset) => rows.push(toRow(text, offset)));
+      rows.push({ type: "skip", count: lines.length - head - tail });
+      lines
+        .slice(lines.length - tail)
+        .forEach((text, offset) => rows.push(toRow(text, lines.length - tail + offset)));
+    }
+    oldLine += lines.length;
+    newLine += lines.length;
+  });
+
+  return rows;
+};
+
+/** Gives each uploaded file the mode the same path had before, since an archive's file modes can't be read here. */
+export const carrySkillFileModes = (
+  files: TAgentVaultSkillFile[],
+  previous: TAgentVaultSkillFile[]
+): TAgentVaultSkillFile[] => {
+  const modes = new Map(previous.map((file) => [file.path, file.mode]));
+  return files.map((file) => ({ ...file, mode: modes.get(file.path) ?? file.mode }));
+};
+
+/** Swaps in a new SKILL.md and keeps every other file of the previous version as it was. */
+export const replaceSkillEntryFile = (
+  previous: TAgentVaultSkillFile[],
+  entry: TAgentVaultSkillFile
+): TAgentVaultSkillFile[] => {
+  const existing = previous.find((file) => file.path === SKILL_ENTRY_FILE);
+  return [
+    { ...entry, mode: existing?.mode ?? entry.mode },
+    ...previous.filter((file) => file.path !== SKILL_ENTRY_FILE)
+  ];
+};
+
+/** The skill's files in a zip under one folder named after it, with executable files marked as such. */
+export const buildSkillZip = (folder: string, files: TAgentVaultSkillFile[]) =>
+  zipSync(
+    Object.fromEntries(
+      files.map((file) => [
+        `${folder}/${file.path}`,
+        [
+          base64ToBytes(file.contentBase64),
+          { os: 3, attrs: (file.mode === "0755" ? 0o100755 : 0o100644) * 0x10000 }
+        ]
+      ])
+    )
+  );
+
+/** Splits a leading YAML header off Markdown, so it can be shown apart from the rendered body. */
+export const splitFrontmatter = (text: string) => {
+  const match = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
+  if (!match) return { frontmatter: null, body: text };
+  return { frontmatter: match[1], body: text.slice(match[0].length) };
+};
+
+/** The name a SKILL.md's header gives, when its text has a header with one. */
+export const getSkillEntryName = (text: string | null | undefined) => {
+  if (!text) return undefined;
+  const { frontmatter } = splitFrontmatter(text);
+  return frontmatter === null ? undefined : parseSkillHeader(frontmatter).name || undefined;
+};

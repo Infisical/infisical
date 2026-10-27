@@ -598,3 +598,66 @@ export type TSetAgentVaultPersonalValuesDTO = {
 };
 
 export type TDeleteAgentVaultPersonalValuesDTO = { accessBundleId: string; serviceId: string };
+
+export type TAgentVaultSkillFileMode = "0644" | "0755";
+
+export type TAgentVaultSkillFile = {
+  path: string;
+  mode: TAgentVaultSkillFileMode;
+  contentBase64: string;
+};
+
+export type TAgentVaultSkillSource = "cli" | "upload" | "form" | "editor";
+
+export type TAgentVaultSkill = {
+  id: string;
+  name: string;
+  description: string;
+  latestVersion: number;
+  /** Sorted by name. */
+  accessBundles: { id: string; name: string }[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TListAgentVaultSkillsDTO = {
+  search?: string;
+  /** Exact name. */
+  name?: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type TAgentVaultSkillPage = {
+  skills: TAgentVaultSkill[];
+  totalCount: number;
+};
+
+export type TAgentVaultSkillVersion = {
+  id: string;
+  version: number;
+  sha256: string;
+  sizeBytes: number;
+  fileCount: number;
+  createdAt: string;
+};
+
+export type TAgentVaultSkillVersionWithFiles = TAgentVaultSkillVersion & {
+  files: TAgentVaultSkillFile[];
+};
+
+export type TAgentVaultBundleSkill = {
+  id: string;
+  name: string;
+  description: string;
+  latestVersion: number;
+};
+
+export type TCreateAgentVaultSkillDTO = {
+  files: TAgentVaultSkillFile[];
+  source: TAgentVaultSkillSource;
+};
+
+export type TPublishAgentVaultSkillVersionDTO = TCreateAgentVaultSkillDTO & {
+  skillId: string;
+};

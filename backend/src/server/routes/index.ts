@@ -48,6 +48,10 @@ import { agentVaultSessionServiceFactory } from "@app/ee/services/agent-vault-se
 import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
 import { AgentVaultSessionLogsNamespace } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-fns";
 import { agentVaultSessionLogServiceFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-service";
+import { agentVaultSkillBundleDALFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-bundle-dal";
+import { agentVaultSkillDALFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-dal";
+import { agentVaultSkillServiceFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-service";
+import { agentVaultSkillVersionDALFactory } from "@app/ee/services/agent-vault-skill/agent-vault-skill-version-dal";
 import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-dal";
 import { agentVaultVariableServiceFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-service";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
@@ -2044,6 +2048,9 @@ export const registerRoutes = async (
   const agentVaultProxyDAL = agentVaultProxyDALFactory(db);
   const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
   const agentVaultSessionLogConfigDAL = agentVaultSessionLogConfigDALFactory(db);
+  const agentVaultSkillDAL = agentVaultSkillDALFactory(db);
+  const agentVaultSkillVersionDAL = agentVaultSkillVersionDALFactory(db);
+  const agentVaultSkillBundleDAL = agentVaultSkillBundleDALFactory(db);
 
   const agentVaultOauthService = agentVaultOauthServiceFactory({
     keyStore,
@@ -2067,6 +2074,16 @@ export const registerRoutes = async (
     agentVaultPersonalValueReferenceDAL,
     agentVaultVariableDAL,
     agentVaultServiceDAL,
+    permissionService,
+    membershipDAL,
+    kmsService
+  });
+
+  const agentVaultSkillService = agentVaultSkillServiceFactory({
+    agentVaultSkillDAL,
+    agentVaultSkillVersionDAL,
+    agentVaultSkillBundleDAL,
+    agentVaultAccessBundleDAL,
     permissionService,
     membershipDAL,
     kmsService
@@ -4834,6 +4851,7 @@ export const registerRoutes = async (
     agentVaultOauth: agentVaultOauthService,
     agentVaultVariable: agentVaultVariableService,
     agentVaultPersonalValue: agentVaultPersonalValueService,
+    agentVaultSkill: agentVaultSkillService,
     agentVaultProxy: agentVaultProxyService,
     agentVaultSession: agentVaultSessionService,
     agentVaultSessionLog: agentVaultSessionLogService,
