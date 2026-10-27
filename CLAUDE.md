@@ -209,17 +209,18 @@ refusal (no row for the record id, bad or missing token, request not `waiting_ap
 gets one neutral 403 while the reason goes to the log. An accepted callback only emits an outbox event, and
 only when it wins `claimDecisionRead`: a conditional update of `decisionReadRequestedAt`, in the emit's
 transaction, that one of any number of concurrent callbacks wins. A repeat while a read-back is still in
-flight gets the same 200, emits nothing and is not counted; a claim older than `DELEGATED_APPROVAL_DECISION_READ_CLAIM_TTL_MS`
-(70 minutes, past the outbox's last retry) has expired, so a fresh notification after an earlier read-back
-ran out of retries still starts one. `eventType` is the
+flight gets the same 200, emits nothing and is not counted. The last read-back attempt clears
+`decisionReadRequestedAt`, so a callback after the outbox gives up claims immediately. A claim whose worker
+died before that write stays until it is older than `DELEGATED_APPROVAL_DECISION_READ_CLAIM_TTL_MS`
+(70 minutes), which is what lets a fresh notification start one then. `eventType` is the
 body's event and `idempotencyKey` is the delegated request id plus the attempt count. The
 `delegated-approval-decision` consumer (`backend/src/services/delegated-approval-decision/`, a thin outbox
 adapter over `delegatedApprovalDecisionService.applyDecision` that, like dispatch, reads up to 10 different
 requests at once and one request's events serially) then reads the decision back through the
 policy's app connection: `TDelegatedApprovalProvider.fetchDecision` returns `pending` or a decision with
 the permissions the provider holds, and the consumer answers `Retry` for `pending` (on the last attempt, `Failed`
-with the request left open and a `statusReason` saying Infisical stopped checking and the callback has to be
-sent again, which the claim TTL lets start a new read-back), compares the approved
+with the request left open, `decisionReadRequestedAt` cleared, and a `statusReason` saying Infisical stopped
+checking and the callback has to be sent again), compares the approved
 permissions with the ones it dispatched after both go through `normalizeDelegatedApprovalPermissions` (set
 comparison: padding, order, duplicates and case never count as a change), and finalizes in one transaction
 that locks the approval request, moves the delegated row `waiting_approval` → `approved` / `rejected`, and

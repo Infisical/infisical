@@ -62,6 +62,7 @@ const APPROVAL_REQUEST_ID = "33333333-3333-3333-3333-333333333333";
 const ORG_ID = "22222222-2222-2222-2222-222222222222";
 const EXTERNAL_ID = "snow-1";
 const POLICY_NAME = "Production secrets";
+const DECISION_READ_REQUESTED_AT = new Date("2026-10-27T15:00:00.000Z");
 const TX = { tx: true } as never;
 const PRIMARY = { primary: true } as never;
 const SERVICENOW_RECORD = { type: DelegatedApprovalPolicyType.ServiceNow, recordNumber: "INFAR1000000" };
@@ -70,7 +71,8 @@ const waitingDelegatedRequest = {
   requestId: APPROVAL_REQUEST_ID,
   status: DelegatedApprovalRequestStatus.WaitingApproval,
   details: { statusReason: null, provider: SERVICENOW_RECORD } as TDelegatedApprovalRequestDetails,
-  providerRequestId: EXTERNAL_ID as string | null
+  providerRequestId: EXTERNAL_ID as string | null,
+  decisionReadRequestedAt: DECISION_READ_REQUESTED_AT as Date | null
 };
 
 type TDelegatedRow = typeof waitingDelegatedRequest;
@@ -362,6 +364,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
       }
     });
     expect(approval()?.status).toBe(ApprovalRequestStatus.Pending);
+    expect(row()?.decisionReadRequestedAt).toEqual(DECISION_READ_REQUESTED_AT);
     expect(createAuditLog).not.toHaveBeenCalled();
   });
 
@@ -518,6 +521,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
       }
     });
     expect(approval()?.status).toBe(ApprovalRequestStatus.Pending);
+    expect(row()?.decisionReadRequestedAt).toBeNull();
     expect(createAuditLog).not.toHaveBeenCalled();
   });
 
@@ -532,6 +536,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
     expect(row()?.details.statusReason).toBe(
       `ServiceNow could not be reached. ${DELEGATED_APPROVAL_DECISION_STOPPED_HINT}`
     );
+    expect(row()?.decisionReadRequestedAt).toBeNull();
     expect(approval()?.status).toBe(ApprovalRequestStatus.Pending);
   });
 
@@ -554,6 +559,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
       expect(result).toEqual({ id: "1", status, error: "The grant could not be written." });
       expect(row()?.status).toBe(DelegatedApprovalRequestStatus.WaitingApproval);
       expect(row()?.details.statusReason).toBe(statusReason);
+      expect(row()?.decisionReadRequestedAt).toEqual(isFinalAttempt ? null : DECISION_READ_REQUESTED_AT);
       expect(approval()?.status).toBe(ApprovalRequestStatus.Pending);
       expect(createAuditLog).not.toHaveBeenCalled();
     }

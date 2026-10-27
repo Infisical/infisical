@@ -114,7 +114,10 @@ export const delegatedApprovalDecisionServiceFactory = ({
     try {
       await delegatedApprovalRequestDAL.updateWithDetails(
         { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.WaitingApproval },
-        { details: { statusReason: toDelegatedApprovalStatusReason(`${reason} ${hint}`) } }
+        {
+          ...(isFinalAttempt ? { decisionReadRequestedAt: null } : {}),
+          details: { statusReason: toDelegatedApprovalStatusReason(`${reason} ${hint}`) }
+        }
       );
     } catch (error) {
       logger.error(
