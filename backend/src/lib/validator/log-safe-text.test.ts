@@ -64,6 +64,13 @@ describe("containsLogUnsafeCharacters", () => {
     expect(containsLogUnsafeCharacters(value)).toBe(true);
     expect(containsLogUnsafeCharacters(value)).toBe(true);
   });
+
+  // Both functions share the global ANSI pattern, so a check must not leave a lastIndex behind that
+  // makes a later, shorter sanitize skip its sequences.
+  test("does not break a later sanitize of a shorter value", () => {
+    expect(containsLogUnsafeCharacters(`${"x".repeat(400)}${ESC}[31m`)).toBe(true);
+    expect(sanitizeLogText(`${ESC}[31mab${ESC}[0m`)).toBe("ab");
+  });
 });
 
 describe("sanitizeLogPayload", () => {

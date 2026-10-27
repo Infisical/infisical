@@ -64,9 +64,6 @@ export const LOG_UNSAFE_TEXT_MESSAGE = "Value cannot contain control, escape, bi
 export const containsLogUnsafeCharacters = (value: string, { allowMultiline = false } = {}): boolean => {
   if (!UNSAFE_SCREEN.test(value)) return false;
 
-  ANSI_ESCAPE_PATTERN.lastIndex = 0;
-  if (ANSI_ESCAPE_PATTERN.test(value)) return true;
-
   return Array.from(value).some((character) => {
     const code = character.codePointAt(0) ?? 0;
     if (allowMultiline && LINE_BREAKS.has(code)) return false;
