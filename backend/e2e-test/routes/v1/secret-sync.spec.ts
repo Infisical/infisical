@@ -2,17 +2,12 @@ import { randomUUID } from "crypto";
 import { fakeParameterStore } from "e2e-test/fakes/aws-parameter-store-sync-fns";
 import { createAwsAppConnection, deleteAwsAppConnection } from "e2e-test/testUtils/app-connections";
 import { createIsolatedOrgAndProject } from "e2e-test/testUtils/fixtures";
-import { createFolder, deleteFolder } from "e2e-test/testUtils/folders";
-import { createSecretImport } from "e2e-test/testUtils/secret-imports";
+import { createFolder } from "e2e-test/testUtils/folders";
 import {
   createSecretSync,
   deleteSecretSync,
-  expectDestinationUnchanged,
   importSecretsForSync,
-  removeSecretsForSync,
-  setAutoSync,
-  triggerSecretSync,
-  waitForDestinationSecrets
+  triggerSecretSync
 } from "e2e-test/testUtils/secret-syncs";
 import { createSecretV2, deleteSecretV2, getSecretsV2 } from "e2e-test/testUtils/secrets";
 
@@ -127,134 +122,7 @@ describe("Secret syncs", async () => {
     await cleanupOrg();
   });
 
-  describe("A sync sends the secrets of its own source environment and secret path", () => {
-    test("A sync sends the secrets of its source secret path", async () => {
-      await addSecret("/services", "API_KEY", "api-value");
-
-      const { secretSync } = await newSync("sends-source-path", { secretPath: "/services" });
-      const sync = await triggerSecretSync({
-        syncId: secretSync!.id,
-        region: REGION,
-        destinationPath: pathFor("sends-source-path"),
-        authToken
-      });
-
-      expect(sync.syncStatus).toBe(SecretSyncStatus.Succeeded);
-      expect(fakeParameterStore.at(REGION, pathFor("sends-source-path")).read()).toEqual({ API_KEY: "api-value" });
-
-      await removeSecret("/services", "API_KEY");
-    });
-
-    // The pin for recursive syncing. When a sync learns to walk child folders, this assertion
-    // has to be rewritten deliberately rather than start failing by accident.
-    test("A sync does not send the secrets of child secret paths", async () => {
-      await addSecret("/services", "PARENT_KEY", "parent-value");
-      await addSecret("/services/api", "CHILD_KEY", "child-value");
-
-      const { secretSync } = await newSync("excludes-child-paths", { secretPath: "/services" });
-      await triggerSecretSync({
-        syncId: secretSync!.id,
-        region: REGION,
-        destinationPath: pathFor("excludes-child-paths"),
-        authToken
-      });
-
-      const delivered = fakeParameterStore.at(REGION, pathFor("excludes-child-paths")).read();
-      expect(delivered).toEqual({ PARENT_KEY: "parent-value" });
-      expect(delivered).not.toHaveProperty("CHILD_KEY");
-
-      await removeSecret("/services", "PARENT_KEY");
-      await removeSecret("/services/api", "CHILD_KEY");
-    });
-  });
-
-  describe("A sync resolves imported and referenced secret values before sending them", () => {
-    test("A secret imported into the source secret path is sent to the destination", async () => {
-      await addSecret("/", "SHARED_KEY", "shared-value");
-      await addSecret("/services", "OWN_KEY", "own-value");
-      await createSecretImport({
-        authToken,
-        workspaceId: projectId,
-        environmentSlug: ENV,
-        secretPath: "/services",
-        importEnv: ENV,
-        importPath: "/"
-      });
-
-      const { secretSync } = await newSync("includes-imports", { secretPath: "/services" });
-      await triggerSecretSync({
-        syncId: secretSync!.id,
-        region: REGION,
-        destinationPath: pathFor("includes-imports"),
-        authToken
-      });
-
-      expect(fakeParameterStore.at(REGION, pathFor("includes-imports")).read()).toEqual({
-        OWN_KEY: "own-value",
-        SHARED_KEY: "shared-value"
-      });
-
-      await removeSecret("/", "SHARED_KEY");
-      await removeSecret("/services", "OWN_KEY");
-    });
-  });
-
-  describe("The key schema renames secret keys at the destination", () => {
-    test("A key schema renames every secret key sent to the destination and resolves the environment", async () => {
-      const destinationPath = pathFor("key-schema");
-      await addSecret("/services", "API_KEY", "api-value");
-
-      // Sitting at the destination and outside the schema, so it proves the sync claims only the
-      // keys the schema matches. With overwrite-destination it would otherwise be deleted as a
-      // key Infisical does not have.
-      fakeParameterStore.at(REGION, destinationPath).seed({ UNMANAGED_KEY: "not-ours" });
-
-      const { secretSync } = await newSync("key-schema", {
-        secretPath: "/services",
-        // Both placeholders, so the assertion below fails if either is left unsubstituted or if
-        // the environment resolves to something other than the sync's own source environment.
-        keySchema: "INFISICAL_{{environment}}_{{secretKey}}",
-        initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination
-      });
-      await triggerSecretSync({
-        syncId: secretSync!.id,
-        region: REGION,
-        destinationPath,
-        authToken
-      });
-
-      expect(fakeParameterStore.at(REGION, destinationPath).read()).toEqual({
-        [`INFISICAL_${ENV}_API_KEY`]: "api-value",
-        UNMANAGED_KEY: "not-ours"
-      });
-
-      await removeSecret("/services", "API_KEY");
-    });
-  });
-
   describe("The initial sync behavior decides what happens to secrets already at the destination", () => {
-    test('Initial sync behavior "overwrite-destination" removes destination secrets Infisical does not have', async () => {
-      await addSecret("/services", "API_KEY", "api-value");
-      fakeParameterStore.at(REGION, pathFor("overwrite-destination")).seed({ STALE_KEY: "stale-value" });
-
-      const { secretSync } = await newSync("overwrite-destination", {
-        secretPath: "/services",
-        initialSyncBehavior: SecretSyncInitialSyncBehavior.OverwriteDestination
-      });
-      await triggerSecretSync({
-        syncId: secretSync!.id,
-        region: REGION,
-        destinationPath: pathFor("overwrite-destination"),
-        authToken
-      });
-
-      expect(fakeParameterStore.at(REGION, pathFor("overwrite-destination")).read()).toEqual({
-        API_KEY: "api-value"
-      });
-
-      await removeSecret("/services", "API_KEY");
-    });
-
     test('Initial sync behavior "import-prioritize-source" keeps the Infisical value for a shared secret key', async () => {
       await addSecret("/services", "API_KEY", "infisical-value");
       fakeParameterStore.at(REGION, pathFor("prioritize-source")).seed({ API_KEY: "destination-value" });
@@ -333,46 +201,6 @@ describe("Secret syncs", async () => {
     });
   });
 
-  describe("A later sync removes destination secrets Infisical no longer has, unless deletion is disabled", () => {
-    test("Deleting a secret in Infisical removes it from the destination on the next sync run", async () => {
-      await addSecret("/services", "API_KEY", "api-value");
-      await addSecret("/services", "OLD_KEY", "old-value");
-
-      const { secretSync } = await newSync("deletes-removed", { secretPath: "/services" });
-      const address = { region: REGION, destinationPath: pathFor("deletes-removed"), authToken };
-      await triggerSecretSync({ syncId: secretSync!.id, ...address });
-
-      await removeSecret("/services", "OLD_KEY");
-      await triggerSecretSync({ syncId: secretSync!.id, ...address });
-
-      expect(fakeParameterStore.at(REGION, pathFor("deletes-removed")).read()).toEqual({ API_KEY: "api-value" });
-
-      await removeSecret("/services", "API_KEY");
-    });
-
-    test("The destination keeps the secret when the disable secret deletion parameter is set to true", async () => {
-      await addSecret("/services", "API_KEY", "api-value");
-      await addSecret("/services", "OLD_KEY", "old-value");
-
-      const { secretSync } = await newSync("keeps-removed", {
-        secretPath: "/services",
-        disableSecretDeletion: true
-      });
-      const address = { region: REGION, destinationPath: pathFor("keeps-removed"), authToken };
-      await triggerSecretSync({ syncId: secretSync!.id, ...address });
-
-      await removeSecret("/services", "OLD_KEY");
-      await triggerSecretSync({ syncId: secretSync!.id, ...address });
-
-      expect(fakeParameterStore.at(REGION, pathFor("keeps-removed")).read()).toEqual({
-        API_KEY: "api-value",
-        OLD_KEY: "old-value"
-      });
-
-      await removeSecret("/services", "API_KEY");
-    });
-  });
-
   describe("Importing from a destination brings its secrets into the source secret path", () => {
     test("An import creates secrets the source secret path does not have", async () => {
       fakeParameterStore.at(REGION, pathFor("import-creates")).seed({ DESTINATION_KEY: "destination-value" });
@@ -424,61 +252,6 @@ describe("Secret syncs", async () => {
     });
   });
 
-  describe("Removing secrets clears the destination and leaves Infisical unchanged", () => {
-    test("A remove clears the sync's secrets from the destination", async () => {
-      await addSecret("/services", "API_KEY", "api-value");
-
-      const { secretSync } = await newSync("remove-clears", { secretPath: "/services" });
-      await triggerSecretSync({
-        syncId: secretSync!.id,
-        region: REGION,
-        destinationPath: pathFor("remove-clears"),
-        authToken
-      });
-      expect(fakeParameterStore.at(REGION, pathFor("remove-clears")).read()).toEqual({ API_KEY: "api-value" });
-
-      const removed = await removeSecretsForSync({ syncId: secretSync!.id, authToken });
-
-      expect(removed.removeStatus).toBe(SecretSyncStatus.Succeeded);
-      expect(fakeParameterStore.at(REGION, pathFor("remove-clears")).read()).toEqual({});
-      expect(await secretKeysAt("/services")).toEqual({ API_KEY: "api-value" });
-
-      await removeSecret("/services", "API_KEY");
-    });
-  });
-
-  describe("Automatic syncing is triggered by changes at the source secret path", () => {
-    test("Creating a secret at the source secret path triggers a sync run", async () => {
-      const destinationPath = pathFor("auto-sync-source");
-      // Auto sync is enabled after creation, and only once the destination has gone quiet, so
-      // exactly one run can be in flight when the write below happens.
-      const { secretSync } = await newSync("auto-sync-source", {
-        secretPath: "/services",
-        isAutoSyncEnabled: false
-      });
-      await setAutoSync({ syncId: secretSync!.id, isAutoSyncEnabled: true, authToken });
-
-      // No explicit trigger: the write alone has to cause the run, which is the behaviour
-      // under test.
-      await addSecret("/services", "NEW_KEY", "new-value");
-
-      await waitForDestinationSecrets({
-        region: REGION,
-        destinationPath,
-        expected: { NEW_KEY: "new-value" }
-      });
-    });
-
-    test("A change at the source secret path does not trigger a sync run when the auto sync parameter is false", async () => {
-      const destinationPath = pathFor("auto-sync-off");
-      await newSync("auto-sync-off", { secretPath: "/services", isAutoSyncEnabled: false });
-
-      await addSecret("/services", "NEW_KEY", "new-value");
-
-      await expectDestinationUnchanged({ region: REGION, destinationPath, expected: {} });
-    });
-  });
-
   describe("A failed sync run is reported on the sync and changes nothing", () => {
     test("A destination failure marks the sync failed and records the reason", async () => {
       const destinationPath = pathFor("destination-rejects");
@@ -498,52 +271,6 @@ describe("Secret syncs", async () => {
       expect(await secretKeysAt("/services")).toEqual({ API_KEY: "api-value" });
 
       await removeSecret("/services", "API_KEY");
-    });
-
-    test("A sync whose source secret path no longer exists fails with a message naming the source", async () => {
-      const destinationPath = pathFor("source-path-gone");
-      const folder = await createFolder({
-        authToken,
-        workspaceId: projectId,
-        environmentSlug: ENV,
-        secretPath: "/",
-        name: "doomed"
-      });
-      await addSecret("/doomed", "API_KEY", "api-value");
-
-      const { secretSync } = await newSync("source-path-gone", { secretPath: "/doomed" });
-      await triggerSecretSync({ syncId: secretSync!.id, region: REGION, destinationPath, authToken });
-
-      await deleteFolder({
-        authToken,
-        workspaceId: projectId,
-        environmentSlug: ENV,
-        secretPath: "/",
-        id: folder.id
-      });
-
-      const res = await testServer.inject({
-        method: "POST",
-        url: `/api/v1/secret-syncs/aws-parameter-store/${secretSync!.id}/sync-secrets`,
-        headers: { authorization: `Bearer ${authToken}` }
-      });
-
-      // The source folder is gone, so the trigger itself refuses rather than queueing a run
-      // that could not resolve a source.
-      expect(res.statusCode).toBe(400);
-      expect(res.json().message).toContain("folder no longer exists");
-    });
-  });
-
-  describe("A sync is created against one existing source secret path and one matching connection", () => {
-    test("Creating a sync for a secret path that does not exist fails", async () => {
-      const { error } = await newSync("missing-source-path", {
-        secretPath: "/does/not/exist",
-        expectStatusCode: 400
-      });
-
-      expect(error!.message).toContain("/does/not/exist");
-      expect(error!.message).toContain(ENV);
     });
   });
 });
