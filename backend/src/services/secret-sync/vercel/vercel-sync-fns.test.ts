@@ -100,11 +100,17 @@ describe("Vercel errors that retrying can't fix", () => {
   ])("sets shouldRetry and the message when a create fails with %s", async (code, shouldRetry, message) => {
     get.mockResolvedValue({ data: { envs: [] } });
     post.mockRejectedValue(vercelError(code));
-    await expect(VercelSyncFns.syncSecrets(sync, payloadOf(["API_KEY"]))).rejects.toMatchObject({
+    const error = await VercelSyncFns.syncSecrets(sync, payloadOf(["API_KEY"])).catch((err: unknown) => err);
+    expect(error).toMatchObject({
       shouldRetry,
       secretKey: "API_KEY",
       message: (message ? expect.stringContaining(message) : expect.any(String)) as string
     });
+    if (message) {
+      expect(error).toMatchObject({
+        message: expect.stringContaining("https://vercel.com/docs/rest-api/errors")
+      });
+    }
   });
   it("stops retrying a read that fails with a listed code", async () => {
     get.mockRejectedValue(vercelError("bad_request"));

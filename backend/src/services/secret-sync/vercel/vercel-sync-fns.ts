@@ -27,11 +27,11 @@ const RATE_LIMIT_DELAY_MS = 60000;
 // failure. Each maps to the message shown as the sync's error.
 const NON_RETRYABLE_VERCEL_ERRORS: Record<string, string> = {
   bad_request:
-    "Vercel rejected this environment variable as invalid, for example because its name and value together are larger than Vercel's 65,535-byte limit. Fix the secret in Infisical, then sync again.",
+    "Vercel rejected this environment variable as invalid, for example because its name and value together are larger than Vercel's 65,535-byte limit. Fix the secret in Infisical, then sync again. Check the error code on https://vercel.com/docs/rest-api/errors.",
   env_key_invalid_characters:
-    "Vercel rejected this environment variable's name. Names can only contain letters, digits and underscores, and cannot start with a digit. Rename the secret or change the sync's key schema, then sync again.",
+    "Vercel rejected this environment variable's name. Names can only contain letters, digits and underscores, and cannot start with a digit. Rename the secret or change the sync's key schema, then sync again. Check the error code on https://vercel.com/docs/rest-api/errors.",
   envs_size_too_large:
-    "Vercel has no space left for environment variables in this project. Remove environment variables you no longer need in Vercel, then sync again."
+    "Vercel has no space left for environment variables in this project. Remove environment variables you no longer need in Vercel, then sync again. Check the error code on https://vercel.com/docs/rest-api/errors."
 };
 
 const sleep = async (ms: number) =>
