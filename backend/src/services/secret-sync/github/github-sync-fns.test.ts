@@ -359,7 +359,7 @@ describe("GithubSyncFns.syncSecrets", () => {
 });
 
 describe("GitHub permission errors", () => {
-  it("names the missing repository permission for the secret type and stops retrying", async () => {
+  it("returns GitHub's 403 message for a token connection and stops retrying", async () => {
     requestMock.mockRejectedValueOnce(httpError(403, { data: { message: "Resource not accessible by integration" } }));
 
     const error = await runSync(makeSync(repoConfig(GitHubSyncSecretType.Dependabot)), makePayload(["A"])).catch(
@@ -367,67 +367,40 @@ describe("GitHub permission errors", () => {
     );
 
     expect(error).toBeInstanceOf(SecretSyncError);
-    expect(error).toMatchObject({ shouldRetry: false });
-    expect((error as SecretSyncError).message).toContain(
-      "lacks permissions to access Dependabot secrets for repository 'acme/app'"
-    );
-    expect((error as SecretSyncError).message).toContain(
-      "read and write access to the 'Dependabot secrets' permission"
-    );
-    expect((error as SecretSyncError).message).toContain("'repo' scope");
+    expect(error).toMatchObject({
+      shouldRetry: false,
+      message: "Resource not accessible by integration"
+    });
+    expect((error as SecretSyncError).message).not.toContain("GitHub App installation");
   });
 
-  it("names the organization permission and the admin:org scope at organization scope", async () => {
+  it("uses a fallback when GitHub's 403 has no message", async () => {
     paginatedMock.mockRejectedValueOnce(httpError(403));
 
     await expect(
       runSync(makeSync(orgConfig(GitHubSyncSecretType.Codespaces)), makePayload(["A"]))
     ).rejects.toMatchObject({
       shouldRetry: false,
-      message: expect.stringMatching(
-        /lacks permissions to access Codespaces secrets for organization 'acme'.*the 'Organization codespaces secrets' permission.*'admin:org' scope/
-      )
+      message: "GitHub refused this request."
     });
   });
 
-  it("names GitHub's Secrets permission for an Actions sync, which has no 'Actions secrets' permission", async () => {
-    paginatedMock.mockRejectedValueOnce(httpError(403));
-
-    const error = await runSync(makeSync(repoConfig(GitHubSyncSecretType.Actions)), makePayload(["A"])).catch(
-      (err: unknown) => err
-    );
-
-    expect((error as SecretSyncError).message).toContain("read and write access to the 'Secrets' permission");
-    expect((error as SecretSyncError).message).not.toContain("access to Actions secrets");
-  });
-
-  it("names the Actions secret type for an environment sync", async () => {
-    paginatedMock.mockRejectedValueOnce(httpError(403));
-    const environmentConfig = {
-      scope: GitHubSyncScope.RepositoryEnvironment,
-      owner: "acme",
-      repo: "app",
-      env: "prod",
-      secretType: GitHubSyncSecretType.Actions
-    };
-
-    const error = await runSync(makeSync(environmentConfig), makePayload(["A"])).catch((err: unknown) => err);
-
-    expect(error).toMatchObject({ shouldRetry: false });
-    expect((error as SecretSyncError).message).toContain(
-      "lacks permissions to access Actions secrets for environment 'prod' in repository 'acme/app'"
-    );
-    expect((error as SecretSyncError).message).toContain(
-      "read and write access to the 'Secrets' and 'Environments' permissions"
-    );
-  });
-
   it.each([
-    ["github.com", undefined, "https://github.com/settings/installations/172172533"],
-    ["GitHub Enterprise Server", "github.example.com", "https://github.example.com/settings/installations/172172533"]
-  ])("links the GitHub App installation on %s", async (_label, host, installationUrl) => {
+    [
+      "github.com",
+      undefined,
+      "https://github.com/settings/installations/172172533 (personal) or https://github.com/organizations/acme/settings/installations/172172533 (organization)"
+    ],
+    [
+      "GitHub Enterprise Server",
+      "github.example.com",
+      "https://github.example.com/settings/installations/172172533 (personal) or https://github.example.com/organizations/acme/settings/installations/172172533 (organization)"
+    ]
+  ])("links both GitHub App installation pages on %s", async (_label, host, installationLinks) => {
     appTokenMock.mockResolvedValue("app-token");
-    paginatedMock.mockRejectedValueOnce(httpError(403));
+    paginatedMock.mockRejectedValueOnce(
+      httpError(403, { data: { message: "Resource not accessible by integration" } })
+    );
     const sync = {
       ...makeSync(repoConfig(GitHubSyncSecretType.Codespaces)),
       connection: { method: "github-app", credentials: { installationId: "172172533", host } }
@@ -435,7 +408,24 @@ describe("GitHub permission errors", () => {
 
     await expect(runSync(sync, makePayload(["A"]))).rejects.toMatchObject({
       shouldRetry: false,
-      message: `The GitHub connection lacks permissions to access Codespaces secrets for repository 'acme/app'. Grant read and write access to the 'Codespaces secrets' permission on the GitHub App installation: ${installationUrl}`
+      message: `Resource not accessible by integration GitHub App installation: ${installationLinks}`
+    });
+  });
+
+  it("uses the organization name in the organization installation link", async () => {
+    appTokenMock.mockResolvedValue("app-token");
+    paginatedMock.mockRejectedValueOnce(
+      httpError(403, { data: { message: "Resource not accessible by integration" } })
+    );
+    const sync = {
+      ...makeSync(orgConfig(GitHubSyncSecretType.Codespaces, { org: "widgets" })),
+      connection: { method: "github-app", credentials: { installationId: "172172533" } }
+    };
+
+    await expect(runSync(sync, makePayload(["A"]))).rejects.toMatchObject({
+      shouldRetry: false,
+      message:
+        "Resource not accessible by integration GitHub App installation: https://github.com/settings/installations/172172533 (personal) or https://github.com/organizations/widgets/settings/installations/172172533 (organization)"
     });
   });
 
@@ -452,9 +442,10 @@ describe("GitHub permission errors", () => {
     });
   });
 
-  it("names the permission when a write is refused, rather than blaming the secret", async () => {
+  it("returns GitHub's message when a write is refused, rather than blaming the secret", async () => {
     requestMock.mockImplementation(async (_gateway: unknown, _service: unknown, config: any) => {
-      if (config.method === "PUT") throw httpError(403);
+      if (config.method === "PUT")
+        throw httpError(403, { data: { message: "Resource not accessible by integration" } });
       return { data: { key_id: "key-1", key: sodium.to_base64(keyPair.publicKey, sodium.base64_variants.ORIGINAL) } };
     });
 
@@ -463,7 +454,7 @@ describe("GitHub permission errors", () => {
     ).rejects.toMatchObject({
       shouldRetry: false,
       secretKey: undefined,
-      message: expect.stringContaining("read and write access to the 'Codespaces secrets' permission")
+      message: "Resource not accessible by integration"
     });
   });
 

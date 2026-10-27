@@ -36,33 +36,27 @@ type TGitHubSyncDeps = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
 };
 
-type TGitHubOrgOrRepoValues = { organization: string; repository: string };
-
 type TGitHubSecretTypeDefinition = {
   name: string;
   pathSegment: string;
-  permission: TGitHubOrgOrRepoValues;
-  limit: Record<keyof TGitHubOrgOrRepoValues, number>;
+  limit: { organization: number; repository: number };
 };
 
 const GITHUB_SECRET_TYPES: Record<GitHubSyncSecretType, TGitHubSecretTypeDefinition> = {
   [GitHubSyncSecretType.Actions]: {
     name: "Actions",
     pathSegment: "actions",
-    permission: { organization: "Secrets", repository: "Secrets" },
     limit: { organization: 1000, repository: 100 }
   },
   // GitHub publishes no Dependabot-specific limits, so these mirror the Actions limits
   [GitHubSyncSecretType.Dependabot]: {
     name: "Dependabot",
     pathSegment: "dependabot",
-    permission: { organization: "Organization dependabot secrets", repository: "Dependabot secrets" },
     limit: { organization: 1000, repository: 100 }
   },
   [GitHubSyncSecretType.Codespaces]: {
     name: "Codespaces",
     pathSegment: "codespaces",
-    permission: { organization: "Organization codespaces secrets", repository: "Codespaces secrets" },
     limit: { organization: 100, repository: 100 }
   }
 };
@@ -153,6 +147,24 @@ const isGitHubRateLimitError = (error: AxiosError) => {
   return typeof message === "string" && message.toLowerCase().includes("rate limit");
 };
 
+const GITHUB_REFUSED_MESSAGE = "GitHub refused this request.";
+
+const gitHubResponseMessage = (error: AxiosError) => {
+  const message = (error.response?.data as { message?: unknown } | undefined)?.message;
+  return typeof message === "string" && message.trim() ? message.trim() : GITHUB_REFUSED_MESSAGE;
+};
+
+const gitHubSyncAccountLogin = (destinationConfig: TGitHubSyncDestinationConfig) =>
+  destinationConfig.scope === GitHubSyncScope.Organization ? destinationConfig.org : destinationConfig.owner;
+
+const gitHubAppInstallationLinks = (host: string | undefined, installationId: string, accountLogin: string) => {
+  const webHost = host || "github.com";
+  const encodedInstallationId = encodeURIComponent(installationId);
+  const personalUrl = `https://${webHost}/settings/installations/${encodedInstallationId}`;
+  const organizationUrl = `https://${webHost}/organizations/${encodeURIComponent(accountLogin)}/settings/installations/${encodedInstallationId}`;
+  return `${personalUrl} (personal) or ${organizationUrl} (organization)`;
+};
+
 export const toGitHubSecretsError = (
   error: unknown,
   { destinationConfig, connection }: Pick<TGitHubSyncWithCredentials, "destinationConfig" | "connection">
@@ -163,24 +175,24 @@ export const toGitHubSecretsError = (
   if (status !== 403 && status !== 404) return error;
   if (status === 403 && isGitHubRateLimitError(error)) return error;
 
-  const { name, permission } = GITHUB_SECRET_TYPES[getGitHubSyncSecretType(destinationConfig)];
-  const { target, missing } = describeGitHubSecretsTarget(destinationConfig);
-  const isOrganization = destinationConfig.scope === GitHubSyncScope.Organization;
-  const classicScope = isOrganization ? "admin:org" : "repo";
-  const requiredPermissions =
-    destinationConfig.scope === GitHubSyncScope.RepositoryEnvironment
-      ? `the '${permission.repository}' and 'Environments' permissions`
-      : `the '${isOrganization ? permission.organization : permission.repository}' permission`;
-
-  let message: string;
   if (status === 404) {
-    message = `GitHub could not find the ${name} secrets for ${target}. Check that ${missing} and that the GitHub connection has the permissions to access it.`;
-  } else if (connection.method === GitHubConnectionMethod.App) {
+    const { name } = GITHUB_SECRET_TYPES[getGitHubSyncSecretType(destinationConfig)];
+    const { target, missing } = describeGitHubSecretsTarget(destinationConfig);
+    return new SecretSyncError({
+      error,
+      shouldRetry: false,
+      message: `GitHub could not find the ${name} secrets for ${target}. Check that ${missing} and that the GitHub connection has the permissions to access it.`
+    });
+  }
+
+  let message = gitHubResponseMessage(error);
+  if (connection.method === GitHubConnectionMethod.App) {
     const { host, installationId } = connection.credentials;
-    const installationUrl = `https://${host || "github.com"}/settings/installations/${encodeURIComponent(installationId)}`;
-    message = `The GitHub connection lacks permissions to access ${name} secrets for ${target}. Grant read and write access to ${requiredPermissions} on the GitHub App installation: ${installationUrl}`;
-  } else {
-    message = `The GitHub connection lacks permissions to access ${name} secrets for ${target}. Grant read and write access to ${requiredPermissions} on the fine-grained token, or use the '${classicScope}' scope for OAuth and classic tokens.`;
+    message = `${message} GitHub App installation: ${gitHubAppInstallationLinks(
+      host,
+      installationId,
+      gitHubSyncAccountLogin(destinationConfig)
+    )}`;
   }
 
   return new SecretSyncError({ error, message, shouldRetry: false });
