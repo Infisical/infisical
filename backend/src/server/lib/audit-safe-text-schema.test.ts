@@ -4,6 +4,11 @@ import path from "node:path";
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 
+import {
+  CreatePamAccessRequestSchema,
+  PamAccessRequestSchema
+} from "@app/services/approval-policy/pam-access/pam-access-policy-schemas";
+
 import { auditSafeText } from "./schemas";
 
 // Tests the wiring, not the sanitizer. Drop the wrapper or flip the multiline flag and the sanitizer
@@ -86,5 +91,26 @@ describe("routes that feed audit metadata keep the wrapper", () => {
     const wrapped = source.match(/reason: auditSafeText\(.*allowMultiline: true/g) ?? [];
 
     expect(wrapped.length).toBeGreaterThanOrEqual(expected);
+  });
+});
+
+describe("PAM access requests on the generic approvals endpoint", () => {
+  const requestData = (reason: string) => ({
+    accountId: "00000000-0000-4000-8000-000000000001",
+    folderId: "00000000-0000-4000-8000-000000000002",
+    duration: "1h",
+    reason
+  });
+  const createRequestData = CreatePamAccessRequestSchema.shape.requestData;
+
+  test("create rejects unsafe reasons and keeps multiline ones", () => {
+    expect(createRequestData.safeParse(requestData(`${ESC}[31mred`)).success).toBe(false);
+    expect(createRequestData.safeParse(requestData(`x${String.fromCodePoint(0x202e)}y`)).success).toBe(false);
+    expect(createRequestData.safeParse(requestData(`line one${LF}line two`)).success).toBe(true);
+  });
+
+  test("the response still parses a stored reason that predates the check", () => {
+    const stored = PamAccessRequestSchema.shape.requestData.shape.requestData;
+    expect(stored.safeParse(requestData(`${ESC}[31mred`)).success).toBe(true);
   });
 });
