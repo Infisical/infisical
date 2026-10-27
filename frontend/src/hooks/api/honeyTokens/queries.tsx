@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { THoneyTokenDetails, THoneyTokenEvent } from "./types";
+import { HoneyTokenType } from "./enums";
+import { THoneyTokenDetails, THoneyTokenEvent, THoneyTokenHostingOptions } from "./types";
 
 export const honeyTokenKeys = {
   all: ["honeyTokens"] as const,
@@ -10,8 +11,34 @@ export const honeyTokenKeys = {
   byId: (honeyTokenId: string) => [...honeyTokenKeys.all, "byId", honeyTokenId] as const,
   events: (honeyTokenId: string) => [...honeyTokenKeys.all, "events", honeyTokenId] as const,
   credentials: (honeyTokenId: string) =>
-    [...honeyTokenKeys.all, "credentials", honeyTokenId] as const
+    [...honeyTokenKeys.all, "credentials", honeyTokenId] as const,
+  allHostingOptions: () => [...honeyTokenKeys.all, "hosting-options"] as const,
+  hostingOptions: (projectId: string, type: HoneyTokenType) =>
+    [...honeyTokenKeys.allHostingOptions(), projectId, type] as const
 };
+
+export const useGetHoneyTokenHostingOptions = ({
+  projectId,
+  type,
+  enabled = true
+}: {
+  projectId: string;
+  type: HoneyTokenType;
+  enabled?: boolean;
+}) =>
+  useQuery({
+    queryKey: honeyTokenKeys.hostingOptions(projectId, type),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ hostingOptions: THoneyTokenHostingOptions }>(
+        "/api/v1/honey-tokens/hosting-options",
+        { params: { projectId, type } }
+      );
+      return data.hostingOptions;
+    },
+    // The setup page opens in a new tab, so returning here has to pick up the new setup status.
+    refetchOnWindowFocus: "always",
+    enabled
+  });
 
 export const useGetHoneyTokenById = ({
   honeyTokenId,

@@ -19,8 +19,7 @@ export const AWS_HONEY_TOKEN_PROVIDER_DEFINITION: THoneyTokenProviderDefinition<
     type: z.literal(HoneyTokenType.AWS),
     credentials: AwsHoneyTokenCredentialsSchema
   }),
-  serviceHooksFactory: ({ kmsService, appConnectionDAL }) =>
-    honeyTokenAwsProviderHooksFactory({ kmsService, appConnectionDAL }),
+  serviceHooksFactory: (deps) => honeyTokenAwsProviderHooksFactory(deps),
   configProviderFactory: (deps) => honeyTokenAwsConfigProviderFactory(deps),
   registerRouter: registerAwsHoneyTokenRouter
 };

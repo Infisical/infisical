@@ -617,6 +617,32 @@ const envSchema = z
     // PAM AWS credentials (for AWS IAM PAM resource type)
     PAM_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
     PAM_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
+
+    // Infisical-managed honey tokens: decoy IAM users live in one AWS account the operator runs,
+    // and its CloudFormation stack signs trigger webhooks with this instance-wide key.
+    HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY: zpStr(
+      z
+        .string()
+        .regex(
+          /^[a-fA-F0-9]{64}$/,
+          "HONEY_TOKEN_MANAGED_WEBHOOK_SIGNING_KEY must be 64 hex characters (32 random bytes), e.g. from `openssl rand -hex 32`"
+        )
+        .optional()
+    ),
+    HONEY_TOKEN_MANAGED_AWS_ROLE_ARN: zpStr(z.string().optional()),
+    // Fall back to the identity Infisical already uses to assume roles in other AWS accounts.
+    HONEY_TOKEN_MANAGED_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).default(
+      process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
+    ),
+    HONEY_TOKEN_MANAGED_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()).default(
+      process.env.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
+    ),
+    HONEY_TOKEN_MANAGED_AWS_IAM_PATH: zpStr(
+      z
+        .string()
+        .regex(/^\/([\w+=,.@-]+\/)*$/, "HONEY_TOKEN_MANAGED_AWS_IAM_PATH must start and end with '/'")
+        .default("/infisical-honey-tokens/")
+    ),
     /* ----------------------------------------------------------------------------- */
 
     /* App Connections ----------------------------------------------------------------------------- */

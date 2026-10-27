@@ -1,12 +1,14 @@
 import { OrderByDirection } from "@app/lib/types";
 
+import { HoneyTokenConfigStatus } from "../honey-token-config/honey-token-config-enums";
 import { TAwsHoneyTokenCredentials } from "./aws/honey-token-aws-types";
-import { HoneyTokenType } from "./honey-token-enums";
-import { TAwsHoneyTokenConfig } from "./honey-token-types";
+import { HoneyTokenManagedUnavailableReason, HoneyTokenType } from "./honey-token-enums";
+import { TAwsHoneyTokenConfig, TAwsHoneyTokenRowConfig } from "./honey-token-types";
 
 export type THoneyTokenCreateInput = {
   projectId: string;
   type: HoneyTokenType;
+  config: TAwsHoneyTokenRowConfig;
   name: string;
   description?: string | null;
   secretsMapping: Record<string, string>;
@@ -47,5 +49,12 @@ export type THoneyTokenTestConnectionResponseByType = {
     isConnected: boolean;
     status: string | null;
     stackName: string;
+  };
+};
+
+export type THoneyTokenCreationOptionsByType = {
+  [HoneyTokenType.AWS]: {
+    infisicalManaged: { isAvailable: boolean; unavailableReason: HoneyTokenManagedUnavailableReason | null };
+    customerAccount: { configStatus: HoneyTokenConfigStatus | null };
   };
 };

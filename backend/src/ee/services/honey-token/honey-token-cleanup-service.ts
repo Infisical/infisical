@@ -1,4 +1,5 @@
 import { NotFoundError } from "@app/lib/errors";
+import { chunkArray } from "@app/lib/fn/array";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
@@ -7,13 +8,16 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { THoneyTokenConfigDALFactory } from "../honey-token-config/honey-token-config-dal";
 import { THoneyTokenDALFactory } from "./honey-token-dal";
-import { HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
+import { HoneyTokenHosting, HoneyTokenStatus, HoneyTokenType } from "./honey-token-enums";
 import { getHoneyTokenServiceHooksByType, HONEY_TOKEN_PROVIDER_MAP } from "./honey-token-provider-fns";
-import { THoneyTokenProviderHooksDep } from "./honey-token-service-types";
+import { THoneyTokenCredentialTarget, THoneyTokenProviderHooksDep } from "./honey-token-service-types";
+import { getHoneyTokenHosting } from "./honey-token-types";
 
 const FOLDERLESS_CLEANUP_BATCH = 100;
 const MAX_CLEANUP_ATTEMPTS = 3;
 const CLEANUP_WORKER_CONCURRENCY = 3;
+// Managed tokens all live in one shared AWS account, so an org deletion must not burst its IAM rate limit.
+const REVOKE_BATCH_SIZE = 5;
 
 type THoneyTokenCleanupServiceFactoryDep = {
   honeyTokenDAL: Pick<
@@ -40,7 +44,12 @@ export const honeyTokenCleanupServiceFactory = ({
   appConnectionDAL,
   queueService
 }: THoneyTokenCleanupServiceFactoryDep) => {
-  const providerHooksByType = getHoneyTokenServiceHooksByType({ kmsService, appConnectionDAL });
+  const providerHooksByType = getHoneyTokenServiceHooksByType({
+    kmsService,
+    appConnectionDAL,
+    honeyTokenDAL,
+    honeyTokenConfigDAL
+  });
 
   const $logContext = (honeyToken: THoneyTokenCleanupRow) =>
     `[honeyTokenId=${honeyToken.id}] [projectId=${honeyToken.projectId}] [orgId=${honeyToken.orgId}]`;
@@ -76,9 +85,13 @@ export const honeyTokenCleanupServiceFactory = ({
         throw new NotFoundError({ message: "Honey token's project was deleted before it was revoked" });
       }
 
-      const appConnection = await findConnection(honeyToken.orgId, type);
-      if (!appConnection) {
-        throw new NotFoundError({ message: "Organization has no honey token connection" });
+      let target: THoneyTokenCredentialTarget = { hosting: HoneyTokenHosting.InfisicalManaged };
+      if (getHoneyTokenHosting(honeyToken) === HoneyTokenHosting.CustomerAccount) {
+        const appConnection = await findConnection(honeyToken.orgId, type);
+        if (!appConnection) {
+          throw new NotFoundError({ message: "Organization has no honey token connection" });
+        }
+        target = { hosting: HoneyTokenHosting.CustomerAccount, appConnection };
       }
 
       const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -89,7 +102,7 @@ export const honeyTokenCleanupServiceFactory = ({
         decryptor({ cipherTextBlob: honeyToken.encryptedCredentials }).toString()
       ) as Record<string, string>;
 
-      await providerHooksByType[type].revokeCredentials({ appConnection, credentials });
+      await providerHooksByType[type].revokeCredentials({ target, credentials });
     };
   };
 
@@ -98,15 +111,18 @@ export const honeyTokenCleanupServiceFactory = ({
     if (!honeyTokens.length) return;
 
     const revoke = $createRevoker();
-    const results = await Promise.allSettled(honeyTokens.map((honeyToken) => revoke(honeyToken)));
-    results.forEach((result, i) => {
-      if (result.status === "rejected") {
-        logger.error(
-          { err: result.reason as unknown },
-          `honey-token-cleanup: could not clean up honey token on ${reason} ${$logContext(honeyTokens[i])}`
-        );
-      }
-    });
+    for (const batch of chunkArray(honeyTokens, REVOKE_BATCH_SIZE)) {
+      // eslint-disable-next-line no-await-in-loop
+      const results = await Promise.allSettled(batch.map((honeyToken) => revoke(honeyToken)));
+      results.forEach((result, i) => {
+        if (result.status === "rejected") {
+          logger.error(
+            { err: result.reason as unknown },
+            `honey-token-cleanup: could not clean up honey token on ${reason} ${$logContext(batch[i])}`
+          );
+        }
+      });
+    }
 
     await honeyTokenDAL.delete({ $in: { id: honeyTokens.map((honeyToken) => honeyToken.id) } });
   };

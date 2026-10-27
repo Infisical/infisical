@@ -6,6 +6,7 @@ import {
   BanIcon,
   CalendarIcon,
   ClockIcon,
+  CloudIcon,
   HexagonIcon,
   MapPinIcon,
   RotateCcw
@@ -44,7 +45,11 @@ import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
 import { ProjectPermissionHoneyTokenActions } from "@app/context/ProjectPermissionContext/types";
 import { HONEY_TOKEN_CREDENTIAL_FIELDS, HONEY_TOKEN_MAP } from "@app/helpers/honeyTokens";
-import { HoneyTokenStatus, HoneyTokenType } from "@app/hooks/api/honeyTokens/enums";
+import {
+  HoneyTokenHosting,
+  HoneyTokenStatus,
+  HoneyTokenType
+} from "@app/hooks/api/honeyTokens/enums";
 import { useResetHoneyToken, useRevokeHoneyToken } from "@app/hooks/api/honeyTokens/mutations";
 import {
   useGetHoneyTokenById,
@@ -199,6 +204,12 @@ const HoneyTokenDetailsContent = ({
                   : ""}
               </Badge>
             )}
+            <Badge variant="shaded" iconPosition="left">
+              <CloudIcon size={13} />
+              {honeyToken.config.hosting === HoneyTokenHosting.InfisicalManaged
+                ? "Infisical Managed"
+                : "Self hosted"}
+            </Badge>
             <Badge variant="shaded" iconPosition="left">
               <HexagonIcon size={13} />
               {honeyToken.openEvents} open event{honeyToken.openEvents !== 1 && "s"}

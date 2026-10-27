@@ -4897,3 +4897,20 @@ export const APPROVAL_POLICY_AUTO_APPROVAL = {
   optionsSiblings:
     "A JSON object of the values already picked in the rule's other conditions, keyed by constraint, which narrows the values listed (e.g. statuses for the picked projects)."
 };
+
+export const HONEY_TOKENS = {
+  CONFIG: {
+    config: "Settings that depend on the honey token's type.",
+    hosting:
+      "Which AWS account holds the decoy credentials. `infisical-managed` uses Infisical's account and needs no setup. `customer-account` uses the AWS account your organization connected in Organization Settings. Defaults to `customer-account` when creating."
+  },
+  HOSTING_OPTIONS: {
+    projectId: "The ID of the project the honey token will be created in.",
+    type: "The honey token type to list hosting options for.",
+    infisicalManagedAvailable: "Whether this instance can create honey tokens in an Infisical-managed AWS account.",
+    infisicalManagedUnavailableReason:
+      "Why Infisical-managed honey tokens are unavailable, or null when they are available. `not-configured` means the instance has no managed signing key; `incomplete-aws-credentials` means only one of the managed AWS access key ID and secret access key is set; `invalid-role-arn` means the managed role ARN is not an IAM role ARN.",
+    customerAccountConfigStatus:
+      "The state of your organization's own AWS account setup for this type, or null if it has not been connected."
+  }
+};

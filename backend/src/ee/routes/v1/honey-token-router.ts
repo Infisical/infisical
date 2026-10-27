@@ -2,11 +2,18 @@ import { z } from "zod";
 
 import { HoneyTokensSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { HoneyTokenType } from "@app/ee/services/honey-token/honey-token-enums";
+import {
+  HoneyTokenHosting,
+  HoneyTokenManagedUnavailableReason,
+  HoneyTokenType
+} from "@app/ee/services/honey-token/honey-token-enums";
 import {
   HONEY_TOKEN_CREDENTIALS_RESPONSE_SCHEMA_MAP,
   HONEY_TOKEN_REGISTER_ROUTER_MAP
 } from "@app/ee/services/honey-token/honey-token-provider-fns";
+import { AwsHoneyTokenRowConfigSchema } from "@app/ee/services/honey-token/honey-token-types";
+import { HoneyTokenConfigStatus } from "@app/ee/services/honey-token-config/honey-token-config-enums";
+import { HONEY_TOKENS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
@@ -24,6 +31,8 @@ const HoneyTokenResponseSchema = HoneyTokensSchema.pick({
   secretsMapping: true,
   createdAt: true,
   updatedAt: true
+}).extend({
+  config: AwsHoneyTokenRowConfigSchema.describe(HONEY_TOKENS.CONFIG.config)
 });
 
 const HoneyTokenDetailsResponseSchema = HoneyTokensSchema.pick({
@@ -38,6 +47,7 @@ const HoneyTokenDetailsResponseSchema = HoneyTokensSchema.pick({
   createdAt: true,
   updatedAt: true
 }).extend({
+  config: AwsHoneyTokenRowConfigSchema.describe(HONEY_TOKENS.CONFIG.config),
   projectId: z.string(),
   folderId: z.string().uuid(),
   environment: z
@@ -95,6 +105,45 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
   });
 
   server.route({
+    url: "/hosting-options",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    schema: {
+      operationId: "getHoneyTokenHostingOptions",
+      querystring: z.object({
+        projectId: z.string().trim().min(1).max(64).describe(HONEY_TOKENS.HOSTING_OPTIONS.projectId),
+        type: z.nativeEnum(HoneyTokenType).describe(HONEY_TOKENS.HOSTING_OPTIONS.type)
+      }),
+      response: {
+        200: z.object({
+          hostingOptions: z.object({
+            infisicalManaged: z.object({
+              isAvailable: z.boolean().describe(HONEY_TOKENS.HOSTING_OPTIONS.infisicalManagedAvailable),
+              unavailableReason: z
+                .nativeEnum(HoneyTokenManagedUnavailableReason)
+                .nullable()
+                .describe(HONEY_TOKENS.HOSTING_OPTIONS.infisicalManagedUnavailableReason)
+            }),
+            customerAccount: z.object({
+              configStatus: z
+                .nativeEnum(HoneyTokenConfigStatus)
+                .nullable()
+                .describe(HONEY_TOKENS.HOSTING_OPTIONS.customerAccountConfigStatus)
+            })
+          })
+        })
+      }
+    },
+    handler: async (req) => {
+      const hostingOptions = await server.services.honeyToken.getCreationOptions(req.query, req.permission);
+      return { hostingOptions };
+    }
+  });
+
+  server.route({
     url: "/",
     method: "POST",
     config: {
@@ -105,6 +154,17 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
       body: z.object({
         projectId: z.string().trim(),
         type: z.nativeEnum(HoneyTokenType),
+        // Defaults to the customer's own account because that is how every token was created before managed
+        // hosting existed, so callers that do not send it keep the same behaviour.
+        config: z
+          .object({
+            hosting: z
+              .nativeEnum(HoneyTokenHosting)
+              .default(HoneyTokenHosting.CustomerAccount)
+              .describe(HONEY_TOKENS.CONFIG.hosting)
+          })
+          .default({})
+          .describe(HONEY_TOKENS.CONFIG.config),
         name: slugSchema({ field: "name" }),
         description: z.string().trim().max(256).nullish(),
         secretsMapping: z.record(z.string(), z.string().min(1)),
@@ -135,6 +195,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
             honeyTokenId: honeyToken.id,
             name: honeyToken.name,
             type: honeyToken.type as HoneyTokenType,
+            hosting: honeyToken.config.hosting,
             environment: req.body.environment,
             secretPath: req.body.secretPath
           }
@@ -149,6 +210,7 @@ export const registerHoneyTokenGenericRouter = async (server: FastifyZodProvider
           properties: {
             honeyTokenId: honeyToken.id,
             type: honeyToken.type,
+            hosting: honeyToken.config.hosting,
             projectId: honeyToken.projectId,
             environment: req.body.environment,
             secretPath: req.body.secretPath
