@@ -154,8 +154,16 @@ export const sanitizeLogPayload = <T>(payload: T): T => {
     if (Array.isArray(source)) {
       source.forEach((item, index) => assign(index, item));
     } else {
-      const taken = new Set<string>();
-      Object.entries(source as Record<string, unknown>).forEach(([key, value]) => {
+      const entries = Object.entries(source as Record<string, unknown>);
+      // Clean keys claim their names first. Otherwise a look-alike `email` with a zero-width space, listed
+      // first, would take the name and push the real field to `email~2`.
+      const cleanKeys = new Set(entries.filter(([key]) => isClean(key)).map(([key]) => key));
+      const taken = new Set(cleanKeys);
+      entries.forEach(([key, value]) => {
+        if (cleanKeys.has(key)) {
+          assign(key, value);
+          return;
+        }
         const sanitizedKey = disambiguate(sanitizeLogText(key), taken);
         taken.add(sanitizedKey);
         assign(sanitizedKey, value);

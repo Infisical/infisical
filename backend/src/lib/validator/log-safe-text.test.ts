@@ -156,6 +156,18 @@ describe("sanitizeLogPayload", () => {
     expect(Object.values(sanitized).sort()).toEqual([1, 2]);
   });
 
+  test("keeps a clean key's value under its own name when a dirty look-alike comes first", () => {
+    const sanitized = sanitizeLogPayload({
+      [`email${ZWSP}`]: "spoofed",
+      email: "real",
+      [`ab${ZWSP}`]: 1,
+      ab: 2,
+      "ab~2": 3
+    });
+
+    expect(sanitized).toEqual({ email: "real", "email~2": "spoofed", ab: 2, "ab~2": 3, "ab~3": 1 });
+  });
+
   test("keeps a key of __proto__ as an own property", () => {
     // Computed keys: the literal form would set the prototype as the object is built.
     const sanitized = sanitizeLogPayload({ ["__proto__"]: { sub: `a${NUL}b` }, [`__pro${ZWSP}to__`]: "second" });
