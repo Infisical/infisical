@@ -1,7 +1,10 @@
 import { Controller, useFormContext } from "react-hook-form";
 
 import { Field, FieldDescription, FieldError, FieldLabel, Input } from "@app/components/v3";
-import { INCLUDE_ROOT_CA_UNSUPPORTED_DESTINATIONS } from "@app/helpers/pkiSyncs";
+import {
+  CERTIFICATE_NAME_SCHEMA_UNSUPPORTED_DESTINATIONS,
+  INCLUDE_ROOT_CA_UNSUPPORTED_DESTINATIONS
+} from "@app/helpers/pkiSyncs";
 import { PkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "../schemas/pki-sync-schema";
@@ -93,92 +96,90 @@ export const PkiSyncOptionsFields = ({ destination, isUpdate }: Props) => {
 
       {renderDestinationOptions(currentDestination, isUpdate)}
 
-      {currentDestination !== PkiSync.NutanixPrismCentral &&
-        currentDestination !== PkiSync.Imperva && (
-          <Controller
-            control={control}
-            name="syncOptions.certificateNameSchema"
-            render={({ field: { value, onChange }, fieldState: { error } }) => (
-              <Field className="mb-4">
-                <FieldLabel>
-                  Certificate name schema
-                  {currentDestination === PkiSync.AwsElasticLoadBalancer && (
-                    <span className="text-muted">(optional)</span>
-                  )}
-                  <NameSchemaHoverCard>
-                    <span>
-                      When a certificate is synced, the certificate name schema will be applied
-                      before it reaches the destination.
-                    </span>
+      {!CERTIFICATE_NAME_SCHEMA_UNSUPPORTED_DESTINATIONS.includes(currentDestination) && (
+        <Controller
+          control={control}
+          name="syncOptions.certificateNameSchema"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <Field className="mb-4">
+              <FieldLabel>
+                Certificate name schema
+                {currentDestination === PkiSync.AwsElasticLoadBalancer && (
+                  <span className="text-muted">(optional)</span>
+                )}
+                <NameSchemaHoverCard>
+                  <span>
+                    When a certificate is synced, the certificate name schema will be applied before
+                    it reaches the destination.
+                  </span>
 
-                    <div className="flex flex-col">
-                      <span>Available placeholders:</span>
-                      <ul className="list-disc pl-4 text-sm">
-                        <li>
-                          <code>{"{{certificateId}}"}</code> - The unique ID of the certificate
-                        </li>
-                        <li>
-                          <code>{"{{shortCertificateId}}"}</code> - A shorter (22-character) form of
-                          the certificate ID. Use it instead of <code>{"{{certificateId}}"}</code>{" "}
-                          when the destination&apos;s name limit is tight (e.g. NetScaler&apos;s 63
-                          characters).
-                        </li>
-                        <li>
-                          <code>{"{{commonName}}"}</code> - The certificate&apos;s common name
-                          (FQDN)
-                        </li>
-                        <li>
-                          <code>{"{{profileId}}"}</code> - The certificate profile ID (falls back to
-                          the certificate ID when none is set)
-                        </li>
-                        <li>
-                          <code>{"{{applicationId}}"}</code> - The ID of the application the sync
-                          belongs to
-                        </li>
-                        <li>
-                          <code>{"{{applicationName}}"}</code> - The name of the application the
-                          sync belongs to
-                        </li>
-                      </ul>
-                      {currentDestination === PkiSync.LinuxServer ||
-                      currentDestination === PkiSync.WindowsServer ? (
-                        <span className="mt-1 text-xs text-muted">
-                          A placeholder is optional here. Include one (for example{" "}
-                          <code>{"{{commonName}}"}</code>) so each certificate resolves to a
-                          distinct file name. A schema with no placeholder resolves to a fixed name
-                          and can be linked to only one certificate. When placeholders resolve, any
-                          characters the destination doesn&apos;t support are replaced with hyphens.
-                        </span>
-                      ) : (
-                        <span className="mt-1 text-xs text-muted">
-                          The schema must include <code>{"{{certificateId}}"}</code> or{" "}
-                          <code>{"{{shortCertificateId}}"}</code> so each certificate gets a unique
-                          name. The template itself can only contain letters, numbers, and the
-                          separators allowed by the destination. When placeholders resolve, any
-                          characters the destination doesn&apos;t support are replaced with hyphens.
-                        </span>
-                      )}
-                    </div>
-                  </NameSchemaHoverCard>
-                </FieldLabel>
-                <Input
-                  value={value || ""}
-                  onChange={(e) => onChange(e.target.value)}
-                  placeholder={
-                    syncOption?.defaultCertificateNameSchema || "INFISICAL_{{certificateId}}"
-                  }
-                  isError={Boolean(error)}
-                />
-                <FieldDescription>
-                  {currentDestination === PkiSync.AwsElasticLoadBalancer
-                    ? "Set a Certificate Name Schema so Infisical only manages the specific certificates you intend to, keeping everything else untouched."
-                    : "The Certificate Name Schema ensures Infisical only manages the specific certificates you intend to, keeping everything else untouched."}
-                </FieldDescription>
-                <FieldError errors={[error]} />
-              </Field>
-            )}
-          />
-        )}
+                  <div className="flex flex-col">
+                    <span>Available placeholders:</span>
+                    <ul className="list-disc pl-4 text-sm">
+                      <li>
+                        <code>{"{{certificateId}}"}</code> - The unique ID of the certificate
+                      </li>
+                      <li>
+                        <code>{"{{shortCertificateId}}"}</code> - A shorter (22-character) form of
+                        the certificate ID. Use it instead of <code>{"{{certificateId}}"}</code>{" "}
+                        when the destination&apos;s name limit is tight (e.g. NetScaler&apos;s 63
+                        characters).
+                      </li>
+                      <li>
+                        <code>{"{{commonName}}"}</code> - The certificate&apos;s common name (FQDN)
+                      </li>
+                      <li>
+                        <code>{"{{profileId}}"}</code> - The certificate profile ID (falls back to
+                        the certificate ID when none is set)
+                      </li>
+                      <li>
+                        <code>{"{{applicationId}}"}</code> - The ID of the application the sync
+                        belongs to
+                      </li>
+                      <li>
+                        <code>{"{{applicationName}}"}</code> - The name of the application the sync
+                        belongs to
+                      </li>
+                    </ul>
+                    {currentDestination === PkiSync.LinuxServer ||
+                    currentDestination === PkiSync.WindowsServer ? (
+                      <span className="mt-1 text-xs text-muted">
+                        A placeholder is optional here. Include one (for example{" "}
+                        <code>{"{{commonName}}"}</code>) so each certificate resolves to a distinct
+                        file name. A schema with no placeholder resolves to a fixed name and can be
+                        linked to only one certificate. When placeholders resolve, any characters
+                        the destination doesn&apos;t support are replaced with hyphens.
+                      </span>
+                    ) : (
+                      <span className="mt-1 text-xs text-muted">
+                        The schema must include <code>{"{{certificateId}}"}</code> or{" "}
+                        <code>{"{{shortCertificateId}}"}</code> so each certificate gets a unique
+                        name. The template itself can only contain letters, numbers, and the
+                        separators allowed by the destination. When placeholders resolve, any
+                        characters the destination doesn&apos;t support are replaced with hyphens.
+                      </span>
+                    )}
+                  </div>
+                </NameSchemaHoverCard>
+              </FieldLabel>
+              <Input
+                value={value || ""}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={
+                  syncOption?.defaultCertificateNameSchema || "INFISICAL_{{certificateId}}"
+                }
+                isError={Boolean(error)}
+              />
+              <FieldDescription>
+                {currentDestination === PkiSync.AwsElasticLoadBalancer
+                  ? "Set a Certificate Name Schema so Infisical only manages the specific certificates you intend to, keeping everything else untouched."
+                  : "The Certificate Name Schema ensures Infisical only manages the specific certificates you intend to, keeping everything else untouched."}
+              </FieldDescription>
+              <FieldError errors={[error]} />
+            </Field>
+          )}
+        />
+      )}
     </>
   );
 };

@@ -22,8 +22,14 @@ export const ImpervaPkiSyncConfigSchema = z.object({
     .max(20, "Site ID cannot exceed 20 characters")
     .refine((val) => SITE_ID_PATTERN.test(val), {
       message: "Site ID must be the numeric Imperva website ID"
-    }),
-  siteName: z.string().trim().max(512, "Site name cannot exceed 512 characters").optional()
+    })
+    .describe("The numeric ID of the Imperva website that receives the certificate."),
+  siteName: z
+    .string()
+    .trim()
+    .max(512, "Site name cannot exceed 512 characters")
+    .optional()
+    .describe("The website's name, kept for display. Imperva's website ID is what the sync acts on.")
 });
 
 export const ImpervaPkiSyncOptionsSchema = BasePkiSyncOptionsSchema.pick({
@@ -43,8 +49,8 @@ export const CreateImpervaPkiSyncSchema = z.object({
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: ImpervaPkiSyncConfigSchema,
   syncOptions: ImpervaPkiSyncOptionsSchema,
-  subscriberId: z.string().nullish(),
-  connectionId: z.string(),
+  subscriberId: z.string().uuid().nullish(),
+  connectionId: z.string().uuid(),
   projectId: z.string().trim().min(1).optional().describe(openApiHidden()),
   applicationId: z.string().uuid().optional(),
   certificateIds: z.array(z.string().uuid()).optional(),
@@ -57,8 +63,8 @@ export const UpdateImpervaPkiSyncSchema = z.object({
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: ImpervaPkiSyncConfigSchema.optional(),
   syncOptions: ImpervaPkiSyncOptionsSchema.optional(),
-  subscriberId: z.string().nullish(),
-  connectionId: z.string().optional(),
+  subscriberId: z.string().uuid().nullish(),
+  connectionId: z.string().uuid().optional(),
   filters: UpdatePkiSyncFiltersField
 });
 

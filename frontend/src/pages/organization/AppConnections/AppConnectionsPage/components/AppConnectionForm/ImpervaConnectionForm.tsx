@@ -98,14 +98,38 @@ export const ImpervaConnectionForm = ({ appConnection, onSubmit }: Props) => {
           {(isAllowed) => (
             <Field className="mb-4">
               <FieldLabel>Gateway</FieldLabel>
-              <GatewayPicker
-                isDisabled={!isAllowed}
-                value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
-                onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
-                  setValue("gatewayId", newGwId, { shouldDirty: true });
-                  setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
-                }}
-              />
+              {isAllowed ? (
+                <GatewayPicker
+                  isDisabled={!isAllowed}
+                  value={{ gatewayId: gatewayId ?? null, gatewayPoolId: gatewayPoolId ?? null }}
+                  onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                    setValue("gatewayId", newGwId, { shouldDirty: true });
+                    setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                  }}
+                />
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <GatewayPicker
+                        isDisabled={!isAllowed}
+                        value={{
+                          gatewayId: gatewayId ?? null,
+                          gatewayPoolId: gatewayPoolId ?? null
+                        }}
+                        onChange={({ gatewayId: newGwId, gatewayPoolId: newPoolId }) => {
+                          setValue("gatewayId", newGwId, { shouldDirty: true });
+                          setValue("gatewayPoolId", newPoolId, { shouldDirty: true });
+                        }}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Restricted access. You don&apos;t have permission to attach gateways to
+                    resources.
+                  </TooltipContent>
+                </Tooltip>
+              )}
               <FieldDescription>
                 Optional. Route Imperva API calls through a gateway when outbound traffic must leave
                 from a fixed network.
@@ -180,12 +204,11 @@ export const ImpervaConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 id="credentials-api-key"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
-                containerClassName="rounded-md border border-input bg-input px-2 py-1.5"
                 isError={Boolean(error?.message)}
               />
               <FieldDescription>
-                Enable the key after creating it, and give its role the Manage SSL Certificates
-                permission. Imperva creates keys disabled.
+                Imperva creates keys disabled, so switch the key on after creating it. Its role also
+                needs the Manage SSL Certificates permission.
               </FieldDescription>
               <FieldError errors={[error]} />
             </Field>

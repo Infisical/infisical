@@ -201,6 +201,12 @@ export const PRESERVE_ITEM_ON_RENEWAL_DESTINATIONS: PkiSync[] = [
   PkiSync.PaloAltoNetworksSslTlsProfile
 ];
 
+// Destinations that name a certificate themselves, so a name schema has nothing to drive.
+export const CERTIFICATE_NAME_SCHEMA_UNSUPPORTED_DESTINATIONS: PkiSync[] = [
+  PkiSync.NutanixPrismCentral,
+  PkiSync.Imperva
+];
+
 export const INCLUDE_ROOT_CA_UNSUPPORTED_DESTINATIONS: PkiSync[] = [
   PkiSync.CloudflareCustomCertificate,
   PkiSync.NutanixPrismCentral,

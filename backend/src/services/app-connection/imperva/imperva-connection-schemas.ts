@@ -13,16 +13,33 @@ import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { ImpervaConnectionMethod } from "./imperva-connection-enums";
 
 const ACCOUNT_ID_PATTERN = new RE2("^[0-9]+$");
+// Both credentials go straight into request headers, where a stray newline throws deep in Node
+// rather than failing here with the field named.
+const HEADER_SAFE_PATTERN = new RE2("^[\\x21-\\x7e]+$");
 
 export const ImpervaConnectionApiKeyCredentialsSchema = z.object({
-  apiId: z.string().trim().min(1, "API ID is required").max(256, "API ID cannot exceed 256 characters"),
-  apiKey: z.string().trim().min(1, "API key is required").max(512, "API key cannot exceed 512 characters"),
+  apiId: z
+    .string()
+    .trim()
+    .min(1, "API ID is required")
+    .max(256, "API ID cannot exceed 256 characters")
+    .refine((val) => HEADER_SAFE_PATTERN.test(val), { message: "API ID cannot contain spaces or line breaks" })
+    .describe(AppConnections.CREDENTIALS.IMPERVA.apiId),
+  apiKey: z
+    .string()
+    .trim()
+    .min(1, "API key is required")
+    .max(512, "API key cannot exceed 512 characters")
+    .refine((val) => HEADER_SAFE_PATTERN.test(val), { message: "API key cannot contain spaces or line breaks" })
+    .describe(AppConnections.CREDENTIALS.IMPERVA.apiKey),
   accountId: z
     .string()
     .trim()
+    .min(1, "Account ID cannot be empty")
     .max(32, "Account ID cannot exceed 32 characters")
     .refine((val) => ACCOUNT_ID_PATTERN.test(val), { message: "Account ID must be numeric" })
     .optional()
+    .describe(AppConnections.CREDENTIALS.IMPERVA.accountId)
 });
 
 const BaseImpervaConnectionSchema = BaseAppConnectionSchema.extend({

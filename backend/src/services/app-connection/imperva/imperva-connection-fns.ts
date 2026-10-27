@@ -1,14 +1,15 @@
 import { AxiosError, AxiosRequestConfig } from "axios";
-import https from "https";
 
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 import { safeRequest } from "@app/lib/validator";
+import { getSharedHttpsAgent } from "@app/lib/validator/safe-request";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { ImpervaConnectionMethod } from "./imperva-connection-enums";
@@ -38,6 +39,18 @@ export type TImpervaRequestArgs = Omit<AxiosRequestConfig, "url" | "baseURL" | "
 };
 
 export type TImpervaRequestFn = <R>(args: TImpervaRequestArgs) => Promise<R>;
+
+// The gateway proxy rewrites whatever a request throws, so Imperva's own status and message are
+// carried out on this instead of on the AxiosError.
+export class ImpervaRequestError extends Error {
+  public readonly status?: number;
+
+  constructor({ message, status }: { message: string; status?: number }) {
+    super(message);
+    this.name = "ImpervaRequestError";
+    this.status = status;
+  }
+}
 
 export type TImpervaApiError = {
   status?: number;
@@ -93,70 +106,103 @@ export const extractImpervaErrorMessage = (error: unknown, fallback: string): st
   return fallback;
 };
 
-const executeImpervaRequestWithGateway = async <R>(
-  args: TImpervaRequestArgs,
-  config: { gatewayId?: string | null; credentials: TImpervaCredentials },
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId"> | undefined
-): Promise<R> => {
-  const { host, path, ...requestCfg } = args;
-  const { gatewayId } = config;
+const toImpervaRequestError = (error: unknown): Error => {
+  if (error instanceof AxiosError) {
+    return new ImpervaRequestError({
+      message: extractImpervaErrorMessage(error, "Imperva rejected the request"),
+      status: error.response?.status
+    });
+  }
+  return error instanceof Error ? error : new Error(String(error));
+};
 
-  if (gatewayId && gatewayV2Service) {
-    const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+const buildDirectRequestFn =
+  (credentials: TImpervaCredentials): TImpervaRequestFn =>
+  async <R>({ host, path, ...requestCfg }: TImpervaRequestArgs) => {
+    try {
+      const resp = await safeRequest.request<R>({
+        ...requestCfg,
+        headers: { ...getImpervaAuthHeaders(credentials), ...requestCfg.headers },
+        url: `https://${host}${path}`,
+        servername: host,
+        allowPrivateIps: getConfig().ALLOW_INTERNAL_IP_CONNECTIONS,
+        timeout: IMPERVA_REQUEST_TIMEOUT_MS,
+        maxContentLength: IMPERVA_MAX_RESPONSE_BYTES,
+        maxBodyLength: IMPERVA_MAX_RESPONSE_BYTES
+      });
+      return resp.data;
+    } catch (error) {
+      throw toImpervaRequestError(error);
+    }
+  };
+
+// One tunnel per host per operation, not per request: each proxy costs a relay connection.
+export const withImpervaOperation = async <T>(
+  config: { gatewayId?: string | null; credentials: TImpervaCredentials },
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId"> | undefined,
+  operation: (makeRequest: TImpervaRequestFn) => Promise<T>
+): Promise<T> => {
+  const { gatewayId, credentials } = config;
+
+  if (!gatewayId) return operation(buildDirectRequestFn(credentials));
+
+  if (!gatewayV2Service) {
+    throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
+  }
+
+  const resolveTarget = async (targetHost: string) => {
+    const details = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
       gatewayId,
-      targetHost: host,
+      targetHost,
       targetPort: IMPERVA_HTTPS_PORT
     });
 
-    if (!platformConnectionDetails) {
-      throw new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" });
-    }
+    if (!details) throw new NotFoundError({ message: getMissingGatewayMessage(gatewayId) });
+    return details;
+  };
 
-    return withGatewayV2Proxy(
-      async (proxyPort) => {
-        const resp = await request.request<R>({
-          ...requestCfg,
-          url: `https://localhost:${proxyPort}${path}`,
-          headers: { ...requestCfg.headers, Host: host },
-          httpsAgent: new https.Agent({ servername: host }),
-          timeout: IMPERVA_REQUEST_TIMEOUT_MS,
-          maxContentLength: IMPERVA_MAX_RESPONSE_BYTES,
-          maxBodyLength: IMPERVA_MAX_RESPONSE_BYTES
-        });
-        return resp.data;
-      },
-      {
-        protocol: GatewayProxyProtocol.Tcp,
-        ...platformConnectionDetails
-      }
+  const [provTarget, restTarget] = await Promise.all([
+    resolveTarget(IMPERVA_PROV_HOST),
+    resolveTarget(IMPERVA_REST_HOST)
+  ]);
+
+  // withGatewayV2Proxy replaces the thrown error with one of its own, so Imperva's status and
+  // message are kept here and rethrown once the proxies have been torn down.
+  let impervaError: Error | undefined;
+
+  try {
+    return await withGatewayV2Proxy(
+      async (provPort) =>
+        withGatewayV2Proxy(
+          async (restPort) => {
+            const makeRequest: TImpervaRequestFn = async <R>({ host, path, ...requestCfg }: TImpervaRequestArgs) => {
+              try {
+                const resp = await request.request<R>({
+                  ...requestCfg,
+                  headers: { ...getImpervaAuthHeaders(credentials), ...requestCfg.headers, Host: host },
+                  url: `https://localhost:${host === IMPERVA_PROV_HOST ? provPort : restPort}${path}`,
+                  httpsAgent: getSharedHttpsAgent({ servername: host, rejectUnauthorized: true }),
+                  timeout: IMPERVA_REQUEST_TIMEOUT_MS,
+                  maxContentLength: IMPERVA_MAX_RESPONSE_BYTES,
+                  maxBodyLength: IMPERVA_MAX_RESPONSE_BYTES
+                });
+                return resp.data;
+              } catch (error) {
+                impervaError = toImpervaRequestError(error);
+                throw impervaError;
+              }
+            };
+
+            return operation(makeRequest);
+          },
+          { protocol: GatewayProxyProtocol.Tcp, ...restTarget }
+        ),
+      { protocol: GatewayProxyProtocol.Tcp, ...provTarget }
     );
+  } catch (error) {
+    if (impervaError) throw impervaError;
+    throw error;
   }
-
-  const resp = await safeRequest.request<R>({
-    ...requestCfg,
-    url: `https://${host}${path}`,
-    servername: host,
-    allowPrivateIps: getConfig().ALLOW_INTERNAL_IP_CONNECTIONS,
-    timeout: IMPERVA_REQUEST_TIMEOUT_MS,
-    maxContentLength: IMPERVA_MAX_RESPONSE_BYTES,
-    maxBodyLength: IMPERVA_MAX_RESPONSE_BYTES
-  });
-  return resp.data;
-};
-
-export const buildImpervaRequestFn = (
-  config: { gatewayId?: string | null; credentials: TImpervaCredentials },
-  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId"> | undefined
-): TImpervaRequestFn => {
-  return <R>(args: TImpervaRequestArgs) =>
-    executeImpervaRequestWithGateway<R>(
-      {
-        ...args,
-        headers: { ...getImpervaAuthHeaders(config.credentials), ...args.headers }
-      },
-      config,
-      gatewayV2Service
-    );
 };
 
 export type TImpervaSite = {
@@ -174,43 +220,53 @@ export const listImpervaSites = async (
   config: { gatewayId?: string | null; credentials: TImpervaCredentials },
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId"> | undefined
 ): Promise<TImpervaSite[]> => {
-  const makeRequest = buildImpervaRequestFn(config, gatewayV2Service);
-  const sites: TImpervaSite[] = [];
+  try {
+    return await withImpervaOperation(config, gatewayV2Service, async (makeRequest) => {
+      const sites: TImpervaSite[] = [];
 
-  let page = 0;
-  let totalPages = 1;
+      let page = 0;
+      let hasMore = true;
 
-  /* eslint-disable no-await-in-loop */
-  while (page < totalPages && page < IMPERVA_SITES_MAX_PAGES) {
-    const response = await makeRequest<TImpervaSitesResponse>({
-      method: "GET",
-      host: IMPERVA_REST_HOST,
-      path: `${IMPERVA_SITES_BASE_PATH}/sites`,
-      params: {
-        page,
-        size: IMPERVA_SITES_PAGE_SIZE,
-        ...getImpervaAccountParams(config.credentials)
+      /* eslint-disable no-await-in-loop */
+      while (hasMore && page < IMPERVA_SITES_MAX_PAGES) {
+        const response = await makeRequest<TImpervaSitesResponse>({
+          method: "GET",
+          host: IMPERVA_REST_HOST,
+          path: `${IMPERVA_SITES_BASE_PATH}/sites`,
+          params: {
+            page,
+            size: IMPERVA_SITES_PAGE_SIZE,
+            ...getImpervaAccountParams(config.credentials)
+          }
+        });
+
+        const pageSites = response.data ?? [];
+        for (const site of pageSites) {
+          if (site.id !== undefined && site.id !== null) {
+            sites.push({ id: String(site.id), name: site.name ?? String(site.id), status: site.siteStatus });
+          }
+        }
+
+        page += 1;
+        // Imperva's totalPages is the signal to follow, but a full page with no pagination metadata
+        // means there is more to read rather than nothing.
+        const totalPages = response.meta?.totalPages;
+        hasMore = totalPages === undefined ? pageSites.length === IMPERVA_SITES_PAGE_SIZE : page < totalPages;
       }
+      /* eslint-enable no-await-in-loop */
+
+      if (hasMore) {
+        logger.warn(`Imperva site listing stopped at ${IMPERVA_SITES_MAX_PAGES} pages, some websites are not listed`);
+      }
+
+      return sites;
     });
-
-    for (const site of response.data ?? []) {
-      if (site.id !== undefined && site.id !== null) {
-        sites.push({ id: String(site.id), name: site.name ?? String(site.id), status: site.siteStatus });
-      }
+  } catch (error) {
+    if (error instanceof ImpervaRequestError) {
+      throw new BadRequestError({ message: `Unable to list Imperva websites: ${error.message}` });
     }
-
-    totalPages = response.meta?.totalPages ?? 1;
-    page += 1;
+    throw error;
   }
-  /* eslint-enable no-await-in-loop */
-
-  if (page < totalPages) {
-    logger.warn(
-      `Imperva site listing stopped at ${IMPERVA_SITES_MAX_PAGES} pages (${totalPages} pages reported), some websites are not listed`
-    );
-  }
-
-  return sites;
 };
 
 export const validateImpervaConnectionCredentials = async (
@@ -218,22 +274,23 @@ export const validateImpervaConnectionCredentials = async (
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   const { credentials } = config;
-  const makeRequest = buildImpervaRequestFn({ gatewayId: config.gatewayId, credentials }, gatewayV2Service);
 
   try {
-    await makeRequest<TImpervaSitesResponse>({
-      method: "GET",
-      host: IMPERVA_REST_HOST,
-      path: `${IMPERVA_SITES_BASE_PATH}/sites`,
-      params: { page: 0, size: IMPERVA_SITES_MIN_PAGE_SIZE, ...getImpervaAccountParams(credentials) }
-    });
-  } catch (error: unknown) {
-    throw new BadRequestError({
-      message: `Unable to validate connection: ${extractImpervaErrorMessage(
-        error,
-        "verify the API ID, API key, and account ID"
-      )}`
-    });
+    await withImpervaOperation({ gatewayId: config.gatewayId, credentials }, gatewayV2Service, (makeRequest) =>
+      makeRequest<TImpervaSitesResponse>({
+        method: "GET",
+        host: IMPERVA_REST_HOST,
+        path: `${IMPERVA_SITES_BASE_PATH}/sites`,
+        params: { page: 0, size: IMPERVA_SITES_MIN_PAGE_SIZE, ...getImpervaAccountParams(credentials) }
+      })
+    );
+  } catch (error) {
+    // Only a refusal from Imperva becomes a validation error; a database or gateway failure keeps
+    // its own class rather than being rendered as a 400 carrying a raw driver message.
+    if (error instanceof ImpervaRequestError) {
+      throw new BadRequestError({ message: `Unable to validate connection: ${error.message}` });
+    }
+    throw error;
   }
 
   return credentials;

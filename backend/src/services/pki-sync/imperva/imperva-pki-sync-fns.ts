@@ -7,14 +7,15 @@ import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2
 import { crypto } from "@app/lib/crypto/cryptography";
 import { logger } from "@app/lib/logger";
 import {
-  buildImpervaRequestFn,
   extractImpervaErrorMessage,
   getImpervaAccountParams,
   IMPERVA_CERTIFICATES_BASE_PATH,
   IMPERVA_PROV_BASE_PATH,
   IMPERVA_PROV_HOST,
   IMPERVA_REST_HOST,
-  TImpervaRequestFn
+  ImpervaRequestError,
+  TImpervaRequestFn,
+  withImpervaOperation
 } from "@app/services/app-connection/imperva/imperva-connection-fns";
 import { TImpervaConnection } from "@app/services/app-connection/imperva/imperva-connection-types";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -39,6 +40,8 @@ type TImpervaPkiSyncFactoryDeps = {
     | "updateById"
     | "findByPkiSyncId"
     | "updateSyncStatus"
+    | "findExternalIdentifiersInUse"
+    | "claimExternalIdentifier"
   >;
   certificateDAL: Pick<TCertificateDALFactory, "findById">;
   gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
@@ -75,12 +78,22 @@ const getImpervaCredentials = (pkiSync: TPkiSyncWithCredentials): TImpervaCreden
 
 // Imperva keeps one custom certificate per site for each key type, so the key type is part of the
 // slot a certificate occupies and is required to remove it again.
-export const resolveImpervaAuthType = (certPem: string): ImpervaCertificateAuthType => {
+export const resolveImpervaAuthType = (certPem: string): ImpervaCertificateAuthType | undefined => {
   try {
     const keyType = crypto.nativeCrypto.createPublicKey(certPem).asymmetricKeyType;
-    return keyType === "ec" ? ImpervaCertificateAuthType.Ecc : ImpervaCertificateAuthType.Rsa;
+    if (keyType === "ec") return ImpervaCertificateAuthType.Ecc;
+    if (keyType === "rsa" || keyType === "rsa-pss") return ImpervaCertificateAuthType.Rsa;
+    return undefined;
   } catch {
-    return ImpervaCertificateAuthType.Rsa;
+    return undefined;
+  }
+};
+
+export const describeImpervaKeyType = (certPem: string): string => {
+  try {
+    return crypto.nativeCrypto.createPublicKey(certPem).asymmetricKeyType ?? "an unrecognized key type";
+  } catch {
+    return "an unreadable public key";
   }
 };
 
@@ -226,6 +239,15 @@ export const impervaPkiSyncFactory = ({
         continue;
       }
 
+      if (selected) {
+        skippedCertificates.push({
+          name: certName,
+          reason: "Imperva holds a single custom certificate per site"
+        });
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
       let renewedFromCertificateId: string | null | undefined;
       if (typeof certificateId === "string") {
         const certificate = await certificateDAL.findById(certificateId);
@@ -238,15 +260,6 @@ export const impervaPkiSyncFactory = ({
           continue;
         }
         renewedFromCertificateId = certificate?.renewedFromCertificateId;
-      }
-
-      if (selected) {
-        skippedCertificates.push({
-          name: certName,
-          reason: "Imperva holds a single custom certificate per site"
-        });
-        // eslint-disable-next-line no-continue
-        continue;
       }
 
       selected = { certName, cert, privateKey, certificateChain, certificateId, renewedFromCertificateId };
@@ -277,146 +290,193 @@ export const impervaPkiSyncFactory = ({
     const siteLabel = siteName ? `${siteName} (${siteId})` : siteId;
 
     const effectiveGatewayId = await resolveGateway(pkiSync);
-    const makeRequest = buildImpervaRequestFn({ gatewayId: effectiveGatewayId, credentials }, gatewayV2Service);
 
-    const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
-    const { certificate, skippedCertificates } = await prepareCertificate(certificateMap);
+    return withImpervaOperation(
+      { gatewayId: effectiveGatewayId, credentials },
+      gatewayV2Service,
+      async (makeRequest) => {
+        const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
+        const { certificate, skippedCertificates } = await prepareCertificate(certificateMap);
 
-    const failedUploads: Array<{ name: string; error: string }> = [];
-    const failedRemovals: Array<{ name: string; error: string }> = [];
-    const occupiedSlots = new Set<string>();
-    let deploymentWarning = "";
-    const activeCertificateIds = new Set<string>();
-    let uploaded = 0;
-    let removed = 0;
+        const failedUploads: Array<{ name: string; error: string }> = [];
+        const failedRemovals: Array<{ name: string; error: string }> = [];
+        const occupiedSlots = new Set<string>();
+        let deploymentWarning = "";
+        const activeCertificateIds = new Set<string>();
+        let uploaded = 0;
+        let removed = 0;
 
-    if (certificate) {
-      const authType = resolveImpervaAuthType(certificate.cert);
-      const externalIdentifier = buildImpervaExternalIdentifier(siteId, authType);
+        const renewedFromCertificateIds: string[] = [];
 
-      try {
-        await uploadCustomCertificate(makeRequest, credentials, siteId, {
-          certificate: buildImpervaCertificatePayload(certificate.cert, certificate.certificateChain),
-          privateKey: Buffer.from(certificate.privateKey.trim()).toString("base64"),
-          authType
-        });
+        if (certificate) {
+          const authType = resolveImpervaAuthType(certificate.cert);
 
-        occupiedSlots.add(externalIdentifier);
-        uploaded += 1;
-
-        deploymentWarning = await buildDeploymentWarning(makeRequest, credentials, siteId, authType);
-
-        if (certificate.certificateId) {
-          activeCertificateIds.add(certificate.certificateId);
-
-          const existingCertSync = await certificateSyncDAL.findByPkiSyncAndCertificate(
-            pkiSync.id,
-            certificate.certificateId
-          );
-
-          if (existingCertSync) {
-            await certificateSyncDAL.updateById(existingCertSync.id, {
-              externalIdentifier,
-              syncStatus: CertificateSyncStatus.Succeeded,
-              lastSyncMessage: `Synced ${authType} custom certificate to Imperva site ${siteLabel}`,
-              lastSyncedAt: new Date()
+          if (!authType) {
+            throw new PkiSyncError({
+              message: `Imperva accepts only RSA and ECDSA certificates, and '${
+                certificate.certName
+              }' uses ${describeImpervaKeyType(certificate.cert)}`
             });
-          } else {
-            await certificateSyncDAL.addCertificates(pkiSync.id, [
-              { certificateId: certificate.certificateId, externalIdentifier }
-            ]);
           }
 
-          if (certificate.renewedFromCertificateId) {
-            await certificateSyncDAL.removeCertificates(pkiSync.id, [certificate.renewedFromCertificateId]);
+          const externalIdentifier = buildImpervaExternalIdentifier(siteId, authType);
+
+          try {
+            // Claimed before the upload so a second sync pointed at the same slot cannot take it over
+            // while this one is writing to it.
+            if (certificate.certificateId) {
+              await certificateSyncDAL.claimExternalIdentifier(
+                pkiSync.id,
+                certificate.certificateId,
+                externalIdentifier
+              );
+            }
+
+            await uploadCustomCertificate(makeRequest, credentials, siteId, {
+              certificate: buildImpervaCertificatePayload(certificate.cert, certificate.certificateChain),
+              privateKey: Buffer.from(certificate.privateKey.trim()).toString("base64"),
+              authType
+            });
+
+            occupiedSlots.add(externalIdentifier);
+            uploaded += 1;
+
+            deploymentWarning = await buildDeploymentWarning(makeRequest, credentials, siteId, authType);
+
+            if (certificate.certificateId) {
+              activeCertificateIds.add(certificate.certificateId);
+
+              const existingCertSync = await certificateSyncDAL.findByPkiSyncAndCertificate(
+                pkiSync.id,
+                certificate.certificateId
+              );
+
+              if (existingCertSync) {
+                await certificateSyncDAL.updateById(existingCertSync.id, {
+                  externalIdentifier,
+                  syncStatus: CertificateSyncStatus.Succeeded,
+                  lastSyncMessage: `Synced ${authType} custom certificate to Imperva site ${siteLabel}`,
+                  lastSyncedAt: new Date()
+                });
+              } else {
+                await certificateSyncDAL.addCertificates(pkiSync.id, [
+                  { certificateId: certificate.certificateId, externalIdentifier }
+                ]);
+              }
+
+              // Dropped after the cleanup below, which still needs the record to find the old slot.
+              if (certificate.renewedFromCertificateId) {
+                renewedFromCertificateIds.push(certificate.renewedFromCertificateId);
+              }
+            }
+
+            logger.info(
+              `Imperva PKI sync [syncId=${pkiSync.id}]: uploaded ${authType} custom certificate to site ${siteLabel}`
+            );
+          } catch (error: unknown) {
+            const errorMessage = describeImpervaUploadFailure(error);
+            failedUploads.push({ name: certificate.certName, error: errorMessage });
+
+            if (certificate.certificateId) {
+              const syncRecord = await certificateSyncDAL.findByPkiSyncAndCertificate(
+                pkiSync.id,
+                certificate.certificateId
+              );
+              if (syncRecord) {
+                await certificateSyncDAL.updateById(syncRecord.id, {
+                  syncStatus: CertificateSyncStatus.Failed,
+                  lastSyncMessage: `Failed to sync to Imperva: ${errorMessage}`.slice(0, 4096)
+                });
+              }
+            }
+
+            logger.error(
+              { error },
+              `Imperva PKI sync [syncId=${pkiSync.id}]: failed to upload certificate to site ${siteLabel}`
+            );
           }
         }
 
-        logger.info(
-          `Imperva PKI sync [syncId=${pkiSync.id}]: uploaded ${authType} custom certificate to site ${siteLabel}`
-        );
-      } catch (error: unknown) {
-        const errorMessage = describeImpervaUploadFailure(error);
-        failedUploads.push({ name: certificate.certName, error: errorMessage });
-
-        if (certificate.certificateId) {
-          const syncRecord = await certificateSyncDAL.findByPkiSyncAndCertificate(
-            pkiSync.id,
-            certificate.certificateId
+        // A failed upload leaves the previous certificate serving, and clearing its slot would
+        // take the website off TLS.
+        if (canRemoveCertificates && failedUploads.length === 0) {
+          // Keyed on the slot rather than the certificate, so repointing the sync to another website
+          // still clears the slot the certificate used to occupy on the old one.
+          const orphanedRecords = existingSyncRecords.filter(
+            (record: TCertificateSyncs) => record.externalIdentifier && !occupiedSlots.has(record.externalIdentifier)
           );
-          if (syncRecord) {
-            await certificateSyncDAL.updateById(syncRecord.id, {
-              syncStatus: CertificateSyncStatus.Failed,
-              lastSyncMessage: `Failed to sync to Imperva: ${errorMessage}`.slice(0, 4096)
-            });
+
+          const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse(
+            orphanedRecords.map((record: TCertificateSyncs) => record.externalIdentifier as string),
+            { excludePkiSyncId: pkiSync.id, destination: pkiSync.destination }
+          );
+
+          for (const record of orphanedRecords) {
+            if (ownedByOtherSync.has(record.externalIdentifier as string)) {
+              if (record.certificateId && !activeCertificateIds.has(record.certificateId)) {
+                await certificateSyncDAL.removeCertificates(pkiSync.id, [record.certificateId]);
+              }
+              // eslint-disable-next-line no-continue
+              continue;
+            }
+
+            // The slot a record occupies belongs to the site it was uploaded to, which is not the sync's
+            // current site once the destination has been repointed.
+            const { siteId: recordSiteId, authType } = parseImpervaExternalIdentifier(
+              record.externalIdentifier as string
+            );
+            const recordSiteLabel = recordSiteId === siteId ? siteLabel : recordSiteId;
+
+            try {
+              await deleteCustomCertificate(makeRequest, credentials, recordSiteId, authType);
+              removed += 1;
+
+              // The row survives when the same certificate was just written to a different slot, since
+              // it now points at that new slot.
+              if (record.certificateId && !activeCertificateIds.has(record.certificateId)) {
+                await certificateSyncDAL.removeCertificates(pkiSync.id, [record.certificateId]);
+              }
+
+              logger.info(
+                `Imperva PKI sync [syncId=${pkiSync.id}]: removed orphaned ${authType} custom certificate from site ${recordSiteLabel}`
+              );
+            } catch (error: unknown) {
+              failedRemovals.push({
+                name: record.externalIdentifier as string,
+                error: extractImpervaErrorMessage(error, "Unknown error")
+              });
+              logger.error(
+                { error },
+                `Imperva PKI sync [syncId=${pkiSync.id}]: failed to remove ${authType} custom certificate from site ${recordSiteLabel}`
+              );
+            }
           }
         }
 
-        logger.error(
-          { error },
-          `Imperva PKI sync [syncId=${pkiSync.id}]: failed to upload certificate to site ${siteLabel}`
-        );
-      }
-    }
+        // Only once the cleanup above has had its look at the old slot.
+        if (renewedFromCertificateIds.length > 0 && failedRemovals.length === 0) {
+          await certificateSyncDAL.removeCertificates(pkiSync.id, renewedFromCertificateIds);
+        }
 
-    // A certificate this sync no longer manages leaves its slot behind on the site, so it is removed
-    // unless this run wrote a new certificate into that same slot. A failed upload leaves the
-    // previous certificate serving, and clearing its slot here would take the site off TLS.
-    if (canRemoveCertificates && failedUploads.length === 0) {
-      const orphanedRecords = existingSyncRecords.filter(
-        (record: TCertificateSyncs) =>
-          record.externalIdentifier &&
-          !occupiedSlots.has(record.externalIdentifier) &&
-          !(record.certificateId && activeCertificateIds.has(record.certificateId))
-      );
-
-      for (const record of orphanedRecords) {
-        // The slot a record occupies belongs to the site it was uploaded to, which is not the sync's
-        // current site once the destination has been repointed.
-        const { siteId: recordSiteId, authType } = parseImpervaExternalIdentifier(record.externalIdentifier as string);
-        const recordSiteLabel = recordSiteId === siteId ? siteLabel : recordSiteId;
-
-        try {
-          await deleteCustomCertificate(makeRequest, credentials, recordSiteId, authType);
-          removed += 1;
-
-          if (record.certificateId) {
-            await certificateSyncDAL.removeCertificates(pkiSync.id, [record.certificateId]);
-          }
-
-          logger.info(
-            `Imperva PKI sync [syncId=${pkiSync.id}]: removed orphaned ${authType} custom certificate from site ${recordSiteLabel}`
-          );
-        } catch (error: unknown) {
-          failedRemovals.push({
-            name: record.externalIdentifier as string,
-            error: extractImpervaErrorMessage(error, "Unknown error")
+        if (failedUploads.length > 0) {
+          throw new PkiSyncError({
+            message: `Failed to sync certificate to Imperva site ${siteLabel}: ${failedUploads[0].error}`
           });
-          logger.error(
-            { error },
-            `Imperva PKI sync [syncId=${pkiSync.id}]: failed to remove ${authType} custom certificate from site ${recordSiteLabel}`
-          );
         }
-      }
-    }
 
-    if (failedUploads.length > 0) {
-      throw new PkiSyncError({
-        message: `Failed to sync certificate to Imperva site ${siteLabel}: ${failedUploads[0].error}`
-      });
-    }
-
-    return {
-      uploaded,
-      removed: removed > 0 ? removed : undefined,
-      failedRemovals: failedRemovals.length > 0 ? failedRemovals.length : undefined,
-      skipped: skippedCertificates.length,
-      partialFailureMessage: deploymentWarning || undefined,
-      details: {
-        failedRemovals: failedRemovals.length > 0 ? failedRemovals : undefined,
-        skippedCertificates: skippedCertificates.length > 0 ? skippedCertificates : undefined
+        return {
+          uploaded,
+          removed: removed > 0 ? removed : undefined,
+          failedRemovals: failedRemovals.length > 0 ? failedRemovals.length : undefined,
+          skipped: skippedCertificates.length,
+          partialFailureMessage: deploymentWarning || undefined,
+          details: {
+            failedRemovals: failedRemovals.length > 0 ? failedRemovals : undefined,
+            skippedCertificates: skippedCertificates.length > 0 ? skippedCertificates : undefined
+          }
+        };
       }
-    };
+    );
   };
 
   const removeCertificates = async (
@@ -474,37 +534,63 @@ export const impervaPkiSyncFactory = ({
       return;
     }
 
-    const effectiveGatewayId = await resolveGateway(pkiSync);
-    const makeRequest = buildImpervaRequestFn({ gatewayId: effectiveGatewayId, credentials }, gatewayV2Service);
+    const ownedByOtherSync = await certificateSyncDAL.findExternalIdentifiersInUse([...slotsToRemove.keys()], {
+      excludePkiSyncId: pkiSync.id,
+      destination: pkiSync.destination
+    });
 
     for (const [externalIdentifier, certificateIds] of slotsToRemove) {
-      const { siteId: recordSiteId, authType } = parseImpervaExternalIdentifier(externalIdentifier);
-      const recordSiteLabel = recordSiteId === siteId ? siteLabel : recordSiteId;
-
-      try {
-        await deleteCustomCertificate(makeRequest, credentials, recordSiteId, authType);
+      if (ownedByOtherSync.has(externalIdentifier)) {
         certificateIdsToClean.push(...certificateIds);
-
-        logger.info(
-          `Imperva PKI sync [syncId=${pkiSync.id}]: removed ${authType} custom certificate from site ${recordSiteLabel}`
-        );
-      } catch (error: unknown) {
-        const message = extractImpervaErrorMessage(error, "Unknown error");
-        if (message.toLowerCase().includes("not found") || message.toLowerCase().includes("no custom certificate")) {
-          certificateIdsToClean.push(...certificateIds);
-          // eslint-disable-next-line no-continue
-          continue;
-        }
-
-        throw new PkiSyncError({
-          message: `Failed to remove ${authType} custom certificate from Imperva site ${recordSiteLabel}: ${message}`,
-          shouldRetry: true
-        });
+        slotsToRemove.delete(externalIdentifier);
       }
     }
 
-    if (certificateIdsToClean.length > 0) {
-      await certificateSyncDAL.removeCertificates(pkiSync.id, certificateIdsToClean);
+    const effectiveGatewayId = await resolveGateway(pkiSync);
+
+    try {
+      await withImpervaOperation(
+        { gatewayId: effectiveGatewayId, credentials },
+        gatewayV2Service,
+        async (makeRequest) => {
+          for (const [externalIdentifier, certificateIds] of slotsToRemove) {
+            const { siteId: recordSiteId, authType } = parseImpervaExternalIdentifier(externalIdentifier);
+            const recordSiteLabel = recordSiteId === siteId ? siteLabel : recordSiteId;
+
+            try {
+              // eslint-disable-next-line no-await-in-loop
+              await deleteCustomCertificate(makeRequest, credentials, recordSiteId, authType);
+              certificateIdsToClean.push(...certificateIds);
+
+              logger.info(
+                `Imperva PKI sync [syncId=${pkiSync.id}]: removed ${authType} custom certificate from site ${recordSiteLabel}`
+              );
+            } catch (error: unknown) {
+              // A slot Imperva no longer has is already in the state the caller asked for. Decided on
+              // the status, since the message is Imperva's own prose.
+              if (error instanceof ImpervaRequestError && error.status === 404) {
+                certificateIdsToClean.push(...certificateIds);
+                // eslint-disable-next-line no-continue
+                continue;
+              }
+
+              throw new PkiSyncError({
+                message: `Failed to remove ${authType} custom certificate from Imperva site ${recordSiteLabel}: ${extractImpervaErrorMessage(
+                  error,
+                  "Unknown error"
+                )}`,
+                shouldRetry: true
+              });
+            }
+          }
+        }
+      );
+    } finally {
+      // Whatever was cleared before the failure still has to lose its link row, or the sync keeps
+      // reporting certificates it has already removed.
+      if (certificateIdsToClean.length > 0) {
+        await certificateSyncDAL.removeCertificates(pkiSync.id, certificateIdsToClean);
+      }
     }
   };
 

@@ -19,7 +19,6 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { deepEqual } from "@app/lib/fn/object";
-import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
@@ -991,12 +990,10 @@ export const pkiSyncServiceFactory = ({
       // counting those blocks the edit that fixes them.
       const heldCount =
         hasAnyPkiSyncFilter(effectiveFilters) && pkiSync.applicationId
-          ? (
-              await certificateDAL.findCertificatesMatchingSyncFilters(effectiveFilters, {
-                projectId: pkiSync.projectId,
-                applicationId: pkiSync.applicationId
-              })
-            ).length
+          ? await certificateDAL.countCertificatesMatchingSyncFilters(effectiveFilters, {
+              projectId: pkiSync.projectId,
+              applicationId: pkiSync.applicationId
+            })
           : (await certificateSyncDAL.findByPkiSyncId(id)).length;
 
       assertPkiSyncCertificateCapsAllowCount(
@@ -1292,35 +1289,6 @@ export const pkiSyncServiceFactory = ({
       syncSubscriber?.name,
       actor
     );
-
-    // Removing a sync's certificates unlinks them, and without this only the next issuance relinks.
-    // Links only: dropping a certificate is the filter editor's job, and a sync must not delete.
-    if (pkiSync.applicationId && hasAnyPkiSyncFilter(pkiSync.filters as TPkiSyncFilters | null)) {
-      await $withFilterLock(id, async () => {
-        const target = pkiSync as TPkiSyncReconcileTarget;
-        const diff = await computePkiSyncCertificateDiff(target, pkiSync.filters as TPkiSyncFilters | null, {
-          certificateDAL,
-          certificateSyncDAL
-        });
-        if (diff.toLink.length === 0) return;
-
-        try {
-          assertPkiSyncCanHoldMatchedCertificates(target, diff.matched.length);
-        } catch (capError) {
-          logger.warn(
-            capError,
-            `A filtered PKI sync matches more certificates than it can hold, so none were linked [pkiSyncId=${id}]`
-          );
-          return;
-        }
-
-        await applyPkiSyncCertificateDiff(
-          target,
-          { ...diff, toUnlink: [] },
-          { certificateDAL, certificateSyncDAL, pkiSyncQueue, auditLogService, pkiApplicationDAL }
-        );
-      });
-    }
 
     await pkiSyncDAL.updateById(id, { syncStatus: PkiSyncStatus.Pending, lastSyncMessage: null });
     await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: id });

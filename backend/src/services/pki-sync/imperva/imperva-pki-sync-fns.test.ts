@@ -45,8 +45,8 @@ describe("Imperva auth type resolution", () => {
     expect(resolveImpervaAuthType(EC_CERT_PEM)).toBe(ImpervaCertificateAuthType.Ecc);
   });
 
-  test("falls back to RSA for an unparseable certificate", () => {
-    expect(resolveImpervaAuthType("not a certificate")).toBe(ImpervaCertificateAuthType.Rsa);
+  test("refuses a certificate whose key type Imperva cannot hold", () => {
+    expect(resolveImpervaAuthType("not a certificate")).toBeUndefined();
   });
 });
 
@@ -93,7 +93,14 @@ vi.mock("@app/lib/logger", () => ({
 
 vi.mock("@app/services/app-connection/imperva/imperva-connection-fns", async (importActual) => {
   const actual = await importActual<typeof import("@app/services/app-connection/imperva/imperva-connection-fns")>();
-  return { ...actual, buildImpervaRequestFn: () => impervaRequest };
+  return {
+    ...actual,
+    withImpervaOperation: (
+      _config: unknown,
+      _gatewayV2Service: unknown,
+      operation: (makeRequest: unknown) => unknown
+    ) => operation(impervaRequest)
+  };
 });
 
 describe("Imperva upload failures", () => {
@@ -136,7 +143,9 @@ describe("Imperva slot removal", () => {
         addCertificates: vi.fn(),
         findByPkiSyncAndCertificate: vi.fn().mockResolvedValue(undefined),
         updateById: vi.fn(),
-        updateSyncStatus: vi.fn()
+        updateSyncStatus: vi.fn(),
+        findExternalIdentifiersInUse: vi.fn().mockResolvedValue(new Set<string>()),
+        claimExternalIdentifier: vi.fn()
       } as never,
       certificateDAL: { findById: vi.fn().mockResolvedValue(undefined) } as never
     });
@@ -205,7 +214,9 @@ describe("Imperva failed uploads", () => {
         addCertificates: vi.fn(),
         findByPkiSyncAndCertificate: vi.fn().mockResolvedValue(undefined),
         updateById: vi.fn(),
-        updateSyncStatus: vi.fn()
+        updateSyncStatus: vi.fn(),
+        findExternalIdentifiersInUse: vi.fn().mockResolvedValue(new Set<string>()),
+        claimExternalIdentifier: vi.fn()
       } as never,
       certificateDAL: { findById: vi.fn().mockResolvedValue(undefined) } as never
     });
@@ -223,5 +234,79 @@ describe("Imperva failed uploads", () => {
 
     expect(impervaRequest.mock.calls.every((call) => (call[0] as TRecordedRequest).method !== "DELETE")).toBe(true);
     expect(removeCertificatesFromDal).not.toHaveBeenCalled();
+  });
+});
+
+describe("Imperva slot ownership", () => {
+  const buildSync = (siteId: string) =>
+    ({
+      id: "sync-1",
+      destination: "imperva",
+      destinationConfig: { siteId, siteName: "current.example.com" },
+      syncOptions: { canRemoveCertificates: true },
+      connection: { credentials: { apiId: "id", apiKey: "key" }, gatewayId: null, gatewayPoolId: null }
+    }) as never;
+
+  const buildDeps = (records: Array<{ certificateId: string; externalIdentifier: string }>, inUse: string[] = []) => {
+    const removeCertificatesFromDal = vi.fn();
+    const certificateSyncDAL = {
+      findByPkiSyncId: vi.fn().mockResolvedValue(records),
+      removeCertificates: removeCertificatesFromDal,
+      addCertificates: vi.fn(),
+      findByPkiSyncAndCertificate: vi.fn().mockResolvedValue({ id: "row-1" }),
+      updateById: vi.fn(),
+      updateSyncStatus: vi.fn(),
+      findExternalIdentifiersInUse: vi.fn().mockResolvedValue(new Set(inUse)),
+      claimExternalIdentifier: vi.fn()
+    };
+    return { certificateSyncDAL, removeCertificatesFromDal };
+  };
+
+  beforeEach(() => {
+    impervaRequest.mockReset();
+    impervaRequest.mockResolvedValue({});
+  });
+
+  test("clears the slot on the website a repointed sync left behind, and keeps the link row", async () => {
+    const { impervaPkiSyncFactory } = await import("./imperva-pki-sync-fns");
+    const { certificateSyncDAL, removeCertificatesFromDal } = buildDeps([
+      { certificateId: "cert-1", externalIdentifier: "111:RSA" }
+    ]);
+
+    const factory = impervaPkiSyncFactory({
+      certificateSyncDAL: certificateSyncDAL as never,
+      certificateDAL: { findById: vi.fn().mockResolvedValue(undefined) } as never
+    });
+
+    await factory.syncCertificates(buildSync("222"), {
+      leaf: { cert: RSA_CERT_PEM, privateKey: "key", certificateId: "cert-1" }
+    } as never);
+
+    const deletes = impervaRequest.mock.calls
+      .map((call) => call[0] as TRecordedRequest)
+      .filter((req) => req.method === "DELETE");
+
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0].path).toBe("/api/prov/v2/sites/111/customCertificate");
+    expect(removeCertificatesFromDal).not.toHaveBeenCalled();
+  });
+
+  test("leaves a slot another sync owns alone", async () => {
+    const { impervaPkiSyncFactory } = await import("./imperva-pki-sync-fns");
+    const { certificateSyncDAL, removeCertificatesFromDal } = buildDeps(
+      [{ certificateId: "cert-old", externalIdentifier: "222:ECC" }],
+      ["222:ECC"]
+    );
+
+    const factory = impervaPkiSyncFactory({
+      certificateSyncDAL: certificateSyncDAL as never,
+      certificateDAL: { findById: vi.fn().mockResolvedValue(undefined) } as never
+    });
+
+    const result = await factory.syncCertificates(buildSync("222"), {});
+
+    expect(impervaRequest).not.toHaveBeenCalled();
+    expect(result.removed).toBeUndefined();
+    expect(removeCertificatesFromDal).toHaveBeenCalledWith("sync-1", ["cert-old"]);
   });
 });

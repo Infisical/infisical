@@ -2133,11 +2133,12 @@
                         ]
                       },
                       {
+                        "group": "Imperva",
+                        "pages": ["api-reference/endpoints/app-connections/imperva/create"]
+                      },
+                      {
                         "group": "Kemp LoadMaster",
-                        "pages": [
-                          "api-reference/endpoints/app-connections/imperva/create",
-                          "api-reference/endpoints/app-connections/kemp-loadmaster/create"
-                        ]
+                        "pages": ["api-reference/endpoints/app-connections/kemp-loadmaster/create"]
                       },
                       {
                         "group": "Laravel Forge",
@@ -4195,10 +4196,15 @@
                             ]
                           },
                           {
-                            "group": "Kemp LoadMaster",
+                            "group": "Imperva",
                             "pages": [
                               "api-reference/endpoints/pki/syncs/imperva/create",
-                              "api-reference/endpoints/pki/syncs/imperva/sync-certificates",
+                              "api-reference/endpoints/pki/syncs/imperva/sync-certificates"
+                            ]
+                          },
+                          {
+                            "group": "Kemp LoadMaster",
+                            "pages": [
                               "api-reference/endpoints/pki/syncs/kemp-loadmaster/create",
                               "api-reference/endpoints/pki/syncs/kemp-loadmaster/sync-certificates"
                             ]

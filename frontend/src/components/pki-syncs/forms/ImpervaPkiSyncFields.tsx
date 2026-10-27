@@ -23,10 +23,11 @@ export const ImpervaPkiSyncFields = () => {
   const { control, setValue } = useFormContext<TImpervaForm>();
 
   const connectionId = useWatch({ name: "connection.id", control });
+  const siteName = useWatch({ name: "destinationConfig.siteName", control });
 
   const {
     data: sites,
-    isFetching: isLoadingSites,
+    isLoading: isLoadingSites,
     isError: isSitesError,
     error: sitesError
   } = useListImpervaSites(
@@ -61,7 +62,7 @@ export const ImpervaPkiSyncFields = () => {
 
           return (
             <Field className="mb-4">
-              <FieldLabel>
+              <FieldLabel htmlFor="pki-sync-imperva-site">
                 Website
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -69,7 +70,7 @@ export const ImpervaPkiSyncFields = () => {
                   </TooltipTrigger>
                   <TooltipContent className="max-w-sm">
                     The Imperva website that will receive the custom certificate. Imperva holds one
-                    custom certificate per website for each key type.
+                    custom certificate per website, so this sync carries a single certificate.
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
@@ -78,7 +79,10 @@ export const ImpervaPkiSyncFields = () => {
                 isDisabled={!connectionId}
                 isLoading={Boolean(connectionId) && isLoadingSites}
                 options={siteOptions}
-                value={siteOptions.find((site) => site.id === value) ?? null}
+                value={
+                  siteOptions.find((site) => site.id === value) ??
+                  (value ? { id: value, name: siteName || value } : null)
+                }
                 onValueChange={(option) => {
                   onChange(option?.id ?? "");
                   setValue("destinationConfig.siteName", option?.name ?? "");
