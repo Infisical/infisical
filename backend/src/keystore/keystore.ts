@@ -83,6 +83,7 @@ export const KeyStorePrefixes = {
   StripeConnectionRefreshLock: (connectionId: string) => `stripe-connection-refresh-mutex-${connectionId}` as const,
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
   OidcIssuerKeyRotationLock: (orgId: string) => `oidc-issuer-key-rotation-mutex-${orgId}` as const,
+  OidcIssuerJwks: (orgId: string) => `oidc-issuer-jwks:${orgId}` as const,
   SecretScanningFullScanLease: (resourceId: string) => `secret-scanning-v2-full-scan-lease-${resourceId}` as const,
   SecretScanningDataSourceLock: (dataSourceId: string) =>
     `secret-scanning-v2-data-source-mutex-${dataSourceId}` as const,
@@ -252,6 +253,7 @@ export const KeyStorePrefixes = {
 };
 
 export const KeyStoreTtls = {
+  OidcIssuerJwksInSeconds: 10 * 60,
   LdapDirectoryMachinesInSeconds: 60,
   LdapHostLoginInSeconds: 3600,
   LdapGuessedHostLoginInSeconds: 30,

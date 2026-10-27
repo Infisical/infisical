@@ -1159,6 +1159,9 @@ URL and the `sub` shape are one-way doors: customers copy both into their provid
 - **Keys are created on the first sign, never on a JWKS fetch.** Those routes are unauthenticated, and
   existing orgs need no backfill. An empty JWKS is sent `no-store` so the first token is never checked
   against a cached empty set.
+- **The built JWKS is cached in Redis for 10 minutes**, because deriving it decrypts every key and the route
+  is anonymous. A stale set is harmless for the reason below; empty sets are never cached, and a rotation
+  clears the entry.
 - **The second newest key signs.** The newest is published a full 24h period before it takes over, and
   rotation keeps at most three keys. It runs under a Redis lock rather than an advisory lock, so no
   database connection is held while RSA keys are generated, and it re-reads keys on the primary.

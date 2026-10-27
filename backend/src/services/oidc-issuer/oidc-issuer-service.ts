@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { KeyStorePrefixes, TKeyStoreFactory, TKeyStoreLock } from "@app/keystore/keystore";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory, TKeyStoreLock } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
@@ -27,8 +27,10 @@ const KEY_ROTATION_LOCK_TTL_MS = 30_000;
 type TOidcIssuerServiceFactoryDep = {
   kmsDAL: Pick<TKmsKeyDALFactory, "find" | "delete" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "getPublicKey" | "signWithKmsKey">;
-  keyStore: Pick<TKeyStoreFactory, "acquireLock">;
+  keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry" | "deleteItem">;
 };
+
+type TJwks = { keys: Awaited<ReturnType<typeof publicKeyToJwk>>[] };
 
 export type TOidcIssuerServiceFactory = ReturnType<typeof oidcIssuerServiceFactory>;
 
@@ -90,6 +92,7 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
       }
 
       if (keyIdsToDelete.length) await kmsDAL.delete({ $in: { id: keyIdsToDelete } });
+      if (keysToCreate) await keyStore.deleteItem(KeyStorePrefixes.OidcIssuerJwks(orgId));
 
       return keys.filter(({ id }) => !keyIdsToDelete.includes(id));
     } finally {
@@ -165,7 +168,13 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
     };
   };
 
-  const getJwks = async (orgId: string) => {
+  // Cached so an anonymous caller cannot make every request decrypt keys. A stale set is harmless, because a key
+  // is published a full signing period before it signs and was already out of use when it is deleted.
+  const getJwks = async (orgId: string): Promise<TJwks> => {
+    const cacheKey = KeyStorePrefixes.OidcIssuerJwks(orgId);
+    const cached = await keyStore.getItem(cacheKey);
+    if (cached) return JSON.parse(cached) as TJwks;
+
     const keys = await $listKeys(orgId);
 
     const jwks = await Promise.all(
@@ -182,7 +191,14 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
       )
     );
 
-    return { keys: jwks.filter((jwk): jwk is NonNullable<typeof jwk> => jwk !== null) };
+    const jwkSet = { keys: jwks.filter((jwk): jwk is NonNullable<typeof jwk> => jwk !== null) };
+
+    // An empty set is never cached, or the first token signed for the org would be checked against it
+    if (jwkSet.keys.length) {
+      await keyStore.setItemWithExpiry(cacheKey, KeyStoreTtls.OidcIssuerJwksInSeconds, JSON.stringify(jwkSet));
+    }
+
+    return jwkSet;
   };
 
   return {
