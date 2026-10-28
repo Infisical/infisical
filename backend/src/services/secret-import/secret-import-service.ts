@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import { ForbiddenError, subject } from "@casl/ability";
+import { Knex } from "knex";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -20,6 +21,8 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 
+import { EventModificationType } from "../event-outbox/event-definition";
+import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -31,9 +34,11 @@ import { TSecretDALFactory } from "../secret/secret-dal";
 import { decryptSecretRaw } from "../secret/secret-fns";
 import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
+import { FolderModifiedEventV1 } from "../secret-folder/secret-folder-events";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { recursivelyGetSecretPaths } from "../secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretImportDALFactory } from "./secret-import-dal";
+import { SecretImportModifiedEventV1 } from "./secret-import-events";
 import { fnSecretsFromImports, fnSecretsV2FromImports } from "./secret-import-fns";
 import {
   TCreateSecretImportDTO,
@@ -48,6 +53,7 @@ import {
 type TSecretImportServiceFactoryDep = {
   secretImportDAL: TSecretImportDALFactory;
   folderDAL: TSecretFolderDALFactory;
+  eventEmitter: TEventEmitter;
   secretDAL: Pick<TSecretDALFactory, "find">;
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find" | "findByFolderIds" | "invalidateSecretCacheByProjectId">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
@@ -67,6 +73,7 @@ export type TSecretImportServiceFactory = ReturnType<typeof secretImportServiceF
 
 export const secretImportServiceFactory = ({
   secretImportDAL,
+  eventEmitter,
   projectEnvDAL,
   projectFolderGrantDAL,
   orgDAL,
@@ -122,6 +129,13 @@ export const secretImportServiceFactory = ({
 
     return imports.map((imp) => ({ ...imp, isAccessRevoked: revokedIds.has(imp.id) }));
   };
+
+  const $emitImportModified = (
+    secretImportId: string,
+    scope: { projectId: string; environment: string; secretPath: string },
+    modificationType: EventModificationType,
+    tx: Knex
+  ) => SecretImportModifiedEventV1.emit(eventEmitter, { secretImportId, ...scope, modificationType }, tx);
 
   const createImport = async ({
     environment,
@@ -258,6 +272,13 @@ export const secretImportServiceFactory = ({
           tx
         );
       }
+
+      await $emitImportModified(
+        doc.id,
+        { projectId, environment, secretPath: folder.path },
+        EventModificationType.Created,
+        tx
+      );
       return doc;
     });
 
@@ -446,6 +467,13 @@ export const secretImportServiceFactory = ({
         },
         tx
       );
+
+      await $emitImportModified(
+        doc.id,
+        { projectId, environment, secretPath: folder.path },
+        EventModificationType.Updated,
+        tx
+      );
       return doc;
     });
 
@@ -500,11 +528,29 @@ export const secretImportServiceFactory = ({
             tx
           );
           await folderDAL.deleteById(replicatedFolder.id, tx);
+          await FolderModifiedEventV1.emit(
+            eventEmitter,
+            {
+              folderId: replicatedFolder.id,
+              projectId,
+              environment,
+              secretPath: replicatedFolder.path,
+              modificationType: EventModificationType.Deleted
+            },
+            tx
+          );
         }
         await secretImportDAL.updateAllPosition(folder.id, doc.position, -1, 2, tx);
       } else {
         await secretImportDAL.updateAllPosition(folder.id, doc.position, -1, 1, tx);
       }
+
+      await $emitImportModified(
+        doc.id,
+        { projectId, environment, secretPath: folder.path },
+        EventModificationType.Deleted,
+        tx
+      );
 
       const importEnv = await projectEnvDAL.findById(doc.importEnv);
       if (!importEnv) {
@@ -1148,7 +1194,9 @@ export const secretImportServiceFactory = ({
             }));
         }) || [];
     if (locallyReferenced.length > 0) {
-      const existingEnvIndex = result.findIndex((item) => item.environment.slug === environment);
+      const existingEnvIndex = result.findIndex(
+        (item) => !("project" in item) && item.environment.slug === environment
+      );
 
       if (existingEnvIndex >= 0) {
         const existingFolderIndex = result[existingEnvIndex].folders.findIndex(

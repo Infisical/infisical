@@ -22,11 +22,13 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
+import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { resolveMembershipRoleSlugs } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
+import { emitOrgMembershipRemoved, toOrgMembershipActors } from "../org/org-membership-events";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityDALFactory } from "./identity-dal";
 import { getIdentityActiveLockoutAuthMethods } from "./identity-fns";
@@ -60,6 +62,7 @@ type TIdentityServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "insertIdentityWideRevocationMarker" | "insertOrgMembershipRevocationMarker" | "bumpIdentityRevocationVersion"
   >;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
@@ -78,7 +81,8 @@ export const identityServiceFactory = ({
   additionalPrivilegeDAL,
   usageMeteringService,
   alertService,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventEmitter
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({
     name,
@@ -468,6 +472,11 @@ export const identityServiceFactory = ({
       const doc = await membershipIdentityDAL.delete({ actorIdentityId: id, scopeOrgId: actorOrgId }, tx);
 
       await identityAccessTokenService.insertOrgMembershipRevocationMarker({ identityId: id, orgId: actorOrgId, tx });
+      await emitOrgMembershipRemoved(
+        eventEmitter,
+        { orgId: actorOrgId, actors: toOrgMembershipActors({ identityIds: [id] }) },
+        tx
+      );
 
       await alertService.deleteAlertsForResource(
         {

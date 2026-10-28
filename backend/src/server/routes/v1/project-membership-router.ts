@@ -85,6 +85,14 @@ const toSecretFolderAccessAuditMetadata = (
     : {})
 });
 
+export const AvailableProjectUserSchema = z.object({
+  id: z.string().uuid(),
+  username: z.string(),
+  email: z.string().nullable().optional(),
+  firstName: z.string().nullable().optional(),
+  lastName: z.string().nullable().optional()
+});
+
 export const registerProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -345,6 +353,46 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
   });
 
   server.route({
+    method: "GET",
+    url: "/:projectId/memberships/available-users",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "listAvailableProjectUsers",
+      tags: [ApiDocsTags.ProjectUsers],
+      description: "List organization users who can be added to the project",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim().min(1).max(64).describe(PROJECT_USERS.LIST_AVAILABLE_USERS.projectId)
+      }),
+      response: {
+        200: z.object({
+          users: AvailableProjectUserSchema.array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { users } = await server.services.membershipUser.listAvailableUsers({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId: req.params.projectId
+        },
+        data: {}
+      });
+      return { users };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/:projectId/memberships",
     config: {
@@ -397,7 +445,8 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
         },
         data: {
           roles: [],
-          usernames: usernamesAndEmails
+          usernames: usernamesAndEmails,
+          skipUsersWithOrgAccess: true
         }
       });
 

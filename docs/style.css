@@ -48,6 +48,8 @@
   --ifx-cat-kms: #109e7a;
   --ifx-cat-pam: #dc2626;
   --ifx-cat-agent-vault: #5f7000;
+  --ifx-tag-bg: rgb(var(--primary, 38 39 43) / 0.1);
+  --ifx-tag-text: rgb(var(--primary, 38 39 43));
 }
 
 .dark {
@@ -83,6 +85,7 @@
   --ifx-cat-kms: #34edbf;
   --ifx-cat-pam: #ff8a85;
   --ifx-cat-agent-vault: #a1d434;
+  --ifx-tag-text: rgb(var(--primary-light, 219 245 48));
 }
 
 /* ==========================================================================
@@ -244,27 +247,33 @@ html.dark[data-current-path="/"] #navbar .nav-tabs-item[data-active="true"]:hove
   color: #f3f3f4;
 }
 
-/* Mintlify honors `tag` only on sidebar groups, so a navbar dropdown item has no
-   way to flag Agent Vault as preview. Both nav items are flex rows, so ::after
-   lands after the label. The mobile item appends a checkmark when it is the
-   current page; `order` keeps that trailing the pill. Depends on Mintlify's
-   navbar markup; recheck after a CLI upgrade. */
+div:has(> .nav-dropdown-item) {
+  width: max-content;
+}
 
+.nav-dropdown-item {
+  white-space: nowrap;
+}
+
+.ifx-card__tag,
 .nav-dropdown-item[href$="/documentation/platform/agent-vault/overview"]::after,
 .mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"]::after {
-  content: "PREVIEW";
   flex: none;
   padding: 0.125rem 0.25rem;
   font-size: 0.65rem;
   font-weight: 700;
   line-height: 1.25;
-  background-color: rgb(var(--primary) / 0.1);
-  color: rgb(var(--primary));
+  background-color: var(--ifx-tag-bg);
+  color: var(--ifx-tag-text);
 }
 
-.dark .nav-dropdown-item[href$="/documentation/platform/agent-vault/overview"]::after,
-.dark .mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"]::after {
-  color: rgb(var(--primary-light));
+.nav-dropdown-item[href$="/documentation/platform/agent-vault/overview"]::after,
+.mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"]::after {
+  content: "PREVIEW";
+}
+
+.nav-dropdown-item[href$="/documentation/platform/agent-vault/overview"] > div {
+  flex-grow: 0;
 }
 
 .mobile-nav-tabs-item[href$="/documentation/platform/agent-vault/overview"] {
@@ -889,6 +898,14 @@ a.ifx-steps__label:hover {
 
 a.ifx-card:hover .ifx-card__icon {
   opacity: 1;
+}
+
+.ifx-card__tag {
+  position: absolute;
+  top: calc(1.5rem + 11px);
+  right: 1.5rem;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
 .ifx-card__title {

@@ -61,7 +61,12 @@ export const DeleteSecretSyncModal = ({ isOpen, onOpenChange, secretSync, onComp
   };
 
   return (
-    <AlertDialog open={isOpen} confirmationValue={name} onOpenChange={onOpenChange}>
+    <AlertDialog
+      isPending={deleteSync.isPending}
+      open={isOpen}
+      confirmationValue={name}
+      onOpenChange={onOpenChange}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure you want to delete {name}?</AlertDialogTitle>
@@ -73,7 +78,7 @@ export const DeleteSecretSyncModal = ({ isOpen, onOpenChange, secretSync, onComp
         </AlertDialogHeader>
         <AlertDialogConfirmationField
           onConfirm={() => {
-            if (!deleteSync.isPending) handleDeleteSecretSync().catch(() => undefined);
+            handleDeleteSecretSync().catch(() => undefined);
           }}
         />
         {syncOption?.canRemoveSecretsOnDeletion && (
@@ -93,13 +98,12 @@ export const DeleteSecretSyncModal = ({ isOpen, onOpenChange, secretSync, onComp
           </Field>
         )}
         <AlertDialogFooter>
-          <AlertDialogCancel isDisabled={deleteSync.isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="danger"
-            isPending={deleteSync.isPending}
             onClick={(event) => {
               event.preventDefault();
-              if (!deleteSync.isPending) handleDeleteSecretSync().catch(() => undefined);
+              handleDeleteSecretSync().catch(() => undefined);
             }}
           >
             Delete

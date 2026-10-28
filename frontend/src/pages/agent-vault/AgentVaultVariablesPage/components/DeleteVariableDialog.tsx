@@ -13,7 +13,7 @@ import {
   Button
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { useDeleteAgentVaultVariable } from "@app/hooks/api/agentVault";
+import { AgentVaultVariableScope, useDeleteAgentVaultVariable } from "@app/hooks/api/agentVault";
 import { TAgentVaultVariable } from "@app/hooks/api/agentVault/types";
 
 type Props = {
@@ -24,6 +24,7 @@ type Props = {
 export const DeleteVariableDialog = ({ variable, onOpenChange }: Props) => {
   const { currentOrg } = useOrganization();
   const deleteVariable = useDeleteAgentVaultVariable();
+  const isPersonal = variable?.scope === AgentVaultVariableScope.Personal;
   const usedByServices = variable?.usedByServices ?? [];
   const isInUse = usedByServices.length > 0;
 
@@ -44,9 +45,13 @@ export const DeleteVariableDialog = ({ variable, onOpenChange }: Props) => {
         <AlertDialogHeader>
           <AlertDialogTitle>Delete &quot;{variable?.key}&quot;</AlertDialogTitle>
           <AlertDialogDescription>
-            {isInUse
+            {isInUse && isPersonal
+              ? `${usedByServices.length === 1 ? "Your personal values for a service use" : `Your personal values for ${usedByServices.length} services use`} this variable. Remove it from ${usedByServices.length === 1 ? "the service" : "those services"} before you delete it.`
+              : null}
+            {isInUse && !isPersonal
               ? `${usedByServices.length === 1 ? "A service uses" : `${usedByServices.length} services use`} this variable. Remove the reference from ${usedByServices.length === 1 ? "it" : "them"} before you delete it.`
-              : "Its value is deleted with it. This cannot be undone."}
+              : null}
+            {!isInUse && "Its value is deleted with it. This cannot be undone."}
           </AlertDialogDescription>
         </AlertDialogHeader>
 

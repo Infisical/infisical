@@ -18,7 +18,6 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useImplicitProduct } from "@app/hooks/useImplicitProduct";
 import { CertManagerInstanceBanner } from "@app/layouts/PkiManagerLayout/components/CertManagerInstanceBanner";
 import { AssumePrivilegeModeBanner } from "@app/layouts/ProjectLayout/components/AssumePrivilegeModeBanner";
-import { SecretScanningInstanceBanner } from "@app/layouts/SecretScanningLayout/components/SecretScanningInstanceBanner";
 
 import { AuditLogBanner } from "./components/AuditLogBanner";
 import { InsecureConnectionBanner } from "./components/InsecureConnectionBanner";
@@ -48,15 +47,6 @@ export const OrganizationLayout = () => {
         (match) =>
           match.routeId ===
           "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/cert-manager/_cert-manager-layout/overview"
-      )
-  });
-
-  const isSecretScanningProject = useRouterState({
-    select: (state) =>
-      state.matches.some(
-        (match) =>
-          match.routeId ===
-          "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-scanning/_secret-scanning-layout"
       )
   });
 
@@ -93,7 +83,6 @@ export const OrganizationLayout = () => {
           <TrialPaymentFailedBanner />
           {(isInsideProject || implicitProduct) && <AssumePrivilegeModeBanner />}
           {isCertManagerOverview && <CertManagerInstanceBanner />}
-          {isSecretScanningProject && <SecretScanningInstanceBanner />}
           {!isLoading && !isInsideProject && !serverDetails?.redisConfigured && <RedisBanner />}
           {!isLoading && !isInsideProject && !serverDetails?.emailConfigured && <SmtpBanner />}
           {!isLoading && !isInsideProject && subscription.auditLogs && <AuditLogBanner />}

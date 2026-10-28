@@ -78,7 +78,7 @@ type TPamAccessRequestServiceFactoryDep = {
     | "revokeGrant"
     | "getActiveGrant"
     | "getAccessStatuses"
-    | "getScopeIdsWithApprovers"
+    | "getRequestableScopes"
     | "getBypassableScopeIds"
     | "reapScope"
     | "reapSubject"
@@ -179,7 +179,7 @@ export const pamAccessRequestServiceFactory = ({
       throw new NotFoundError({ message: "Folder not found" });
     }
 
-    const { steps, bypassers } = await approvalPolicyService.getScopeConfiguration(
+    const { steps, bypassers, autoApproval } = await approvalPolicyService.getScopeConfiguration(
       ApprovalPolicyType.PamAccess,
       ApprovalPolicyScope.PamFolder,
       folderId,
@@ -189,7 +189,8 @@ export const pamAccessRequestServiceFactory = ({
     return {
       steps: steps.map((step) => ({ approvers: step.approvers })),
       notificationConfigs: await getNotificationConfigs(folderId),
-      breakGlassUsers: bypassers
+      breakGlassUsers: bypassers,
+      autoApproval
     };
   };
 
@@ -199,6 +200,7 @@ export const pamAccessRequestServiceFactory = ({
     steps,
     notificationConfigs,
     breakGlassUsers,
+    autoApproval,
     ...ctx
   }: TSetApprovalConfigurationDTO) => {
     await verifyProductMembership(permissionService, projectId, ctx);
@@ -215,9 +217,22 @@ export const pamAccessRequestServiceFactory = ({
     ];
 
     if (dedupedBreakGlassUsers.length > 0 && requestedApprovers.length === 0) {
-      throw new BadRequestError({
-        message: "Break-glass users can only be configured on a folder that has approvers"
-      });
+      // An omitted config leaves the stored rules in place, so they still count
+      const rules = autoApproval
+        ? autoApproval.rules
+        : (
+            await approvalPolicyService.getScopeConfiguration(
+              ApprovalPolicyType.PamAccess,
+              ApprovalPolicyScope.PamFolder,
+              folderId,
+              toApprovalActor(ctx)
+            )
+          ).autoApproval.rules;
+      if (!rules.length) {
+        throw new BadRequestError({
+          message: "Break-glass users can only be configured on a folder that has approvers or auto-approval rules"
+        });
+      }
     }
 
     await pamAccessApprovalResource.verifyPolicyActors?.({
@@ -279,6 +294,7 @@ export const pamAccessRequestServiceFactory = ({
       {
         steps: steps.map((step) => ({ requiredApprovals: 1, approvers: step.approvers })),
         ...(managesBreakGlass ? { bypassers: dedupedBreakGlassUsers } : {}),
+        ...(autoApproval ? { autoApproval } : {}),
         name: `PAM Folder Approval - ${folder.name}`,
         conditions: [],
         constraints: { accessDuration: { min: "30s", max: "7d" } }
@@ -296,7 +312,8 @@ export const pamAccessRequestServiceFactory = ({
       folderId,
       stepCount: steps.length,
       notificationConfigCount: notificationConfigs?.length,
-      breakGlassUserCount: managesBreakGlass ? dedupedBreakGlassUsers.length : undefined
+      breakGlassUserCount: managesBreakGlass ? dedupedBreakGlassUsers.length : undefined,
+      autoApprovalRuleCount: autoApproval?.rules.length
     };
   };
 
@@ -387,6 +404,7 @@ export const pamAccessRequestServiceFactory = ({
     duration,
     accessType = PamAccessType.Session,
     breakGlass = false,
+    autoApprovalInputs,
     ...ctx
   }: TCreateAccessRequestDTO) => {
     const trimmedReason = reason?.trim() || undefined;
@@ -439,6 +457,8 @@ export const pamAccessRequestServiceFactory = ({
         },
         justification: trimmedReason,
         skipApproverNotification: breakGlass,
+        autoApprovalInputs,
+        skipAutoApproval: breakGlass,
         machineIdentityId: ctx.actor === ActorType.IDENTITY ? ctx.actorId : undefined,
         requesterName: requester.name,
         requesterEmail: requester.email
@@ -567,16 +587,25 @@ export const pamAccessRequestServiceFactory = ({
     return new Map(accountIds.map((accountId, i) => [accountId, statuses[i]]));
   };
 
-  // A folder counts as "configured" only when its policy has at least one approver, so an empty policy
-  // surfaces the unavailable flag.
-  const getFolderPolicyConfigured = async (folderIds: string[]): Promise<Set<string>> =>
-    new Set(
-      await approvalPolicyService.getScopeIdsWithApprovers(
-        ApprovalPolicyType.PamAccess,
-        ApprovalPolicyScope.PamFolder,
-        folderIds
-      )
+  // A folder is configured for an account when its policy has an approver, or auto-approval rules the account's
+  // template lets decide its requests. Anything else surfaces the unavailable flag.
+  const getFolderPolicyConfigured = async (folderIds: string[]) => {
+    const hasApproversByFolderId = new Map(
+      (
+        await approvalPolicyService.getRequestableScopes(
+          ApprovalPolicyType.PamAccess,
+          ApprovalPolicyScope.PamFolder,
+          folderIds
+        )
+      ).map(({ scopeId, hasApprovers }) => [scopeId, hasApprovers])
     );
+    return {
+      isConfiguredFor: (folderId: string, allowAutoApproval: boolean) => {
+        const hasApprovers = hasApproversByFolderId.get(folderId);
+        return hasApprovers !== undefined && (hasApprovers || allowAutoApproval);
+      }
+    };
+  };
 
   // Of the given folders, the ones where this actor is a named break-glass user. Drives whether the
   // account list offers the break-glass action at all.
@@ -618,7 +647,7 @@ export const pamAccessRequestServiceFactory = ({
       ctx
     );
 
-    if (!account.folderId) return { steps: [] };
+    if (!account.folderId) return { steps: [], autoApprovalInputs: [], autoApprovalOnly: false };
 
     return approvalPolicyService.getApproverRoster(
       ApprovalPolicyType.PamAccess,

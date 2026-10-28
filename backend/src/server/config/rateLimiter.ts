@@ -107,6 +107,18 @@ export const agentVaultResolveLimit: RateLimitOptions = {
   }
 };
 
+// Its own bucket, so a proxy retrying refreshes against a failing provider can't eat into resolve. A refresh
+// follows an upstream 401 or 403, so steady traffic needs few; this leaves room for many sessions at once.
+export const agentVaultCredentialRefreshLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 600,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `agent-vault-credential-refresh:${actorId}` : req.realIp;
+  }
+};
+
 export const agentVaultSessionLogChunkLimit: RateLimitOptions = {
   timeWindow: 60 * 1000,
   hook: "preValidation",
@@ -114,6 +126,18 @@ export const agentVaultSessionLogChunkLimit: RateLimitOptions = {
   keyGenerator: (req) => {
     const actorId = (req as { permission?: { id?: string } }).permission?.id;
     return actorId ? `agent-vault-session-log:${actorId}` : req.realIp;
+  }
+};
+
+// Called once per proxy start, and per-sandbox sidecars start often from egress addresses shared with other
+// tenants, so this keys on the proxy like the other proxy routes rather than on the IP writeLimit uses.
+export const agentVaultBootstrapLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: (req) => req.rateLimits.writeLimit,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `agent-vault-bootstrap:${actorId}` : req.realIp;
   }
 };
 

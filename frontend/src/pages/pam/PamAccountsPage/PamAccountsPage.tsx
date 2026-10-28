@@ -1,10 +1,8 @@
 import { useMemo, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
-import { useNavigate } from "@tanstack/react-router";
 import { ChevronDown, FolderOpen, FolderPlus, Plus, Search } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   ButtonGroup,
@@ -76,8 +74,6 @@ import { ViewCredentialsModal } from "./components/ViewCredentialsModal";
 const SKELETON_KEYS = ["s1", "s2", "s3", "s4", "s5"];
 
 export const PamAccountsPage = () => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const [searchInput, setSearchInput] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -229,9 +225,7 @@ export const PamAccountsPage = () => {
 
   return (
     <div className="mx-auto mb-6 w-full max-w-8xl">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Accounts" })}</title>
-      </Helmet>
+      <PageTitle title="Accounts" />
       <PageHeader
         title="Accounts"
         description="Access and manage privileged accounts."
@@ -364,12 +358,6 @@ export const PamAccountsPage = () => {
                   folder={folder}
                   search={debouncedSearch}
                   accounts={filterActive ? (matchesByFolder[folder.id] ?? []) : undefined}
-                  onOpenFolderView={() =>
-                    navigate({
-                      to: "/organizations/$orgId/pam/accounts/$folderId",
-                      params: { orgId: currentOrg.id, folderId: folder.id }
-                    })
-                  }
                   onOpenAccount={(id, tab) => accountSheet.openSheet(id, tab)}
                   onLaunchAccount={setLaunchAccount}
                   onRequestAccess={requestSessionAccess}

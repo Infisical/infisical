@@ -51,19 +51,21 @@ In the image below, `/backend` holds the same five secrets in Development, Stagi
 
 ### Replicating folder contents
 
-**Destination** is always the folder you're looking at, so open the environment and folder you want the secrets copied into before you start.
+To copy secrets or folders from one location to another, select **Add New** > **More** > **Copy Secrets**.
 
-To copy secrets or folders from another path into it, select the chevron next to **Add Secret**, then select **Replicate Secrets**.
+![Add New menu open, showing Copy Secrets under More](../../images/platform/folder/replicate-secrets.png)
 
-![Add Secret menu open, showing Replicate Secrets](../../images/platform/folder/replicate-secrets.png)
+The **Copy Secrets** panel starts from the folder you're looking at. Under **Source**, choose the environment and path to copy from. Under **Destination**, choose the environment and path to copy to.
 
-Under **Source**, choose the **Environment** and **Root path** to copy from. **Secrets to replicate** then lists everything at or below that path. Select individual secrets, or select a folder to copy the folder and its contents. Turn off **Include secret values** to copy the keys without their values.
+In the source list, select individual secrets, or select a folder to copy the folder and its contents. The destination list previews the secrets the copy adds or changes.
 
-**Root path** also decides where the copies land. Infisical strips it from the path of each selected secret and recreates what's left under **Destination**. Replicating `/backend/API_KEY` into `/replicated` gives you `/replicated/backend/API_KEY` when the root path is `/`, and `/replicated/API_KEY` when it's `/backend`.
+The source path also decides where the copies land. Infisical strips it from the path of each selected secret and recreates what's left under the destination path. Copying `/backend/API_KEY` into `/replicated` gives you `/replicated/backend/API_KEY` when the source path is `/`, and `/replicated/API_KEY` when it's `/backend`.
 
-![Replicate Secrets panel with a source path and two secrets selected](../../images/platform/folder/replicate-secrets-modal.png)
+Keys are always copied. To choose which other properties come with them, select **Properties** and check or clear **Secret value**, **Comment**, **Tags**, **Metadata**, and **Multi-line encoding**.
 
-Select **Replicate**, then select **Replicate secrets** in the dialog that follows.
+![Copy Secrets panel with a source path and two secrets selected](../../images/platform/folder/replicate-secrets-modal.png)
+
+Select **Copy**. If any selected secrets already exist at the destination, select **Overwrite conflicts** or **Skip conflicts** in the dialog that follows. To overwrite them without the dialog, turn on **Overwrite existing secrets** before you select **Copy**.
 
 ![The replicated secrets in the destination folder](../../images/platform/folder/replicate-secrets-result.png)
 

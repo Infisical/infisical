@@ -47,6 +47,10 @@ export const PkiSyncsTab = () => {
     if (storedFormData && !popUp.addSync.isOpen) {
       try {
         const parsedData = JSON.parse(storedFormData);
+        if (parsedData.returnUrl?.includes("/cert-manager/applications/")) {
+          localStorage.removeItem("pkiSyncFormData");
+          return;
+        }
         if (connectionId && connectionName) {
           const initialData = {
             ...parsedData,

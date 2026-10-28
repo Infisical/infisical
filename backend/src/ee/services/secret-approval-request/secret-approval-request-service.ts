@@ -24,6 +24,7 @@ import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integr
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -154,6 +155,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   queueService: Pick<TQueueServiceFactory, "queue">;
@@ -204,6 +206,7 @@ export const secretApprovalRequestServiceFactory = ({
   projectMicrosoftTeamsConfigDAL,
   microsoftTeamsService,
   folderCommitService,
+  eventEmitter,
   notificationService,
   telemetryService,
   queueService,
@@ -231,6 +234,7 @@ export const secretApprovalRequestServiceFactory = ({
       secretTagDAL,
       resourceMetadataDAL,
       folderCommitService,
+      eventEmitter,
       secretQueueService,
       secretApprovalRequestSecretDAL,
       validateSecrets,
@@ -741,7 +745,7 @@ export const secretApprovalRequestServiceFactory = ({
       return secretChangeGlobalRequestBridgeService.mergeSecretChangeRequest(dto);
     }
 
-    const { approvalId, actor, actorId, actorOrgId, actorAuthMethod, bypassReason } = dto;
+    const { approvalId, actor, actorId, actorOrgId, actorAuthMethod, bypassReason, requireApprovals } = dto;
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest)
       throw new NotFoundError({ message: `Secret approval request with ID '${approvalId}' not found` });
@@ -793,6 +797,10 @@ export const secretApprovalRequestServiceFactory = ({
     const isSoftEnforcement = secretApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft;
     const canBypass = !bypassers.length || bypassers.some((bypasser) => bypasser.userId === actorId);
 
+    if (!hasMinApproval && requireApprovals)
+      throw new BadRequestError({
+        message: `Secret approval request '${secretApprovalRequest.slug}' needs ${policy.approvals} approval(s) before it can be merged without a policy bypass.`
+      });
     if (!hasMinApproval && !(isSoftEnforcement && canBypass))
       throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
 

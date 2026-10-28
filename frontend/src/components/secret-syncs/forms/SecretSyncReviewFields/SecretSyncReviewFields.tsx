@@ -39,7 +39,10 @@ import { ChecklySyncReviewFields } from "./ChecklySyncReviewFields";
 import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CircleCISyncReviewFields } from "./CircleCISyncReviewFields";
 import { Cloud66SyncReviewFields } from "./Cloud66SyncReviewFields";
-import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
+import {
+  CloudflarePagesSyncOptionsReviewFields,
+  CloudflarePagesSyncReviewFields
+} from "./CloudflarePagesReviewFields";
 import { CloudflareSecretsStoreSyncReviewFields } from "./CloudflareSecretsStoreSyncReviewFields";
 import {
   CloudflareWorkersSyncOptionsReviewFields,
@@ -187,6 +190,7 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.CloudflarePages:
       DestinationFieldsComponent = <CloudflarePagesSyncReviewFields />;
+      AdditionalSyncOptionsFieldsComponent = <CloudflarePagesSyncOptionsReviewFields />;
       break;
     case SecretSync.CloudflareWorkers:
       DestinationFieldsComponent = <CloudflareWorkersSyncReviewFields />;

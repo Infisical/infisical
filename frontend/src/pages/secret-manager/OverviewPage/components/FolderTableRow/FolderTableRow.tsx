@@ -4,6 +4,7 @@ import {
   FolderIcon,
   FolderInputIcon,
   InfoIcon,
+  SaveIcon,
   TrashIcon,
   Undo2Icon,
   UsersIcon
@@ -46,6 +47,7 @@ type Props = {
   canDeleteFolder: boolean;
   pendingAction?: PendingAction;
   onBatchRevert?: (folderName: string) => void;
+  onPendingSave?: (folderName: string) => Promise<void>;
   isSelectionDisabled?: boolean;
 };
 
@@ -66,9 +68,11 @@ export const FolderTableRow = ({
   onClick,
   pendingAction,
   onBatchRevert,
+  onPendingSave,
   isSelectionDisabled
 }: Props) => {
   const [isClicking, setIsClicking] = useState(false);
+  const [isSavingPendingChange, setIsSavingPendingChange] = useState(false);
   const handleClick = () => {
     if (isClicking) return;
 
@@ -220,6 +224,35 @@ export const FolderTableRow = ({
                 <TooltipContent>Manage Access</TooltipContent>
               </Tooltip>
             )}
+          {pendingAction && onPendingSave && (
+            <Tooltip>
+              <TooltipTrigger>
+                <IconButton
+                  aria-label="Save pending folder changes"
+                  variant="ghost"
+                  className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-success")}
+                  size="xs"
+                  isDisabled={
+                    isSavingPendingChange ||
+                    (pendingAction === PendingAction.Delete && !canDeleteFolder) ||
+                    (pendingAction === PendingAction.Update && !canEditFolder)
+                  }
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setIsSavingPendingChange(true);
+                    try {
+                      await onPendingSave(folderName);
+                    } finally {
+                      setIsSavingPendingChange(false);
+                    }
+                  }}
+                >
+                  <SaveIcon />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>Save pending changes</TooltipContent>
+            </Tooltip>
+          )}
           {pendingAction ? (
             <Tooltip>
               <TooltipTrigger>

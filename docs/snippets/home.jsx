@@ -342,6 +342,7 @@ export const HomeCard = ({
   href,
   icon,
   product,
+  tag,
   wide,
   links,
   panel,
@@ -472,6 +473,8 @@ export const HomeCard = ({
     </svg>
   );
 
+  const tagEl = tag ? <span className="ifx-card__tag">{tag}</span> : null;
+
   const body = children ? (
     <div className="ifx-card__body">{children}</div>
   ) : null;
@@ -523,6 +526,7 @@ export const HomeCard = ({
       <div className={className}>
         {panel ? <div className="ifx-card__main">{main}</div> : main}
         {panel}
+        {tagEl}
       </div>
     );
   }
@@ -535,6 +539,7 @@ export const HomeCard = ({
         {chevron}
       </span>
       {body}
+      {tagEl}
     </a>
   );
 };
