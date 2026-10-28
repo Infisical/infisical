@@ -4,9 +4,9 @@ import { ActionProjectType, TPkiCollectionItems } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { assertCertificateNotDeleted } from "@app/services/certificate/certificate-fns";
-import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 
 import { TPkiCollectionDALFactory } from "./pki-collection-dal";
 import { transformPkiCollectionItem } from "./pki-collection-fns";

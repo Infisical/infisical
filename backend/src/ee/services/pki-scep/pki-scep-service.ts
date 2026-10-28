@@ -16,11 +16,10 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -46,6 +45,8 @@ import { TCertificateRequestServiceFactory } from "@app/services/certificate-req
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { applyProfileDefaults, resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
+import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TScepEnrollmentConfigDALFactory } from "@app/services/enrollment-config/scep-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";
@@ -283,7 +284,7 @@ export const pkiScepServiceFactory = ({
   type TScepContext = Awaited<ReturnType<typeof loadScepContext>>;
 
   const derToPem = (der: Buffer, label: string): string => {
-    return x509.PemConverter.encode(der, label);
+    return x509.PemConverter.encode(asNonSharedBuffer(der), label);
   };
 
   const $getValidationHandler = (challengeType: string) =>
@@ -419,7 +420,7 @@ export const pkiScepServiceFactory = ({
       throw new BadRequestError({ message: "No CSR found in SCEP enrollment request" });
     }
 
-    const csrObj = new x509.Pkcs10CertificateRequest(parsed.csr);
+    const csrObj = new x509.Pkcs10CertificateRequest(asNonSharedBuffer(parsed.csr));
     const challengePassword = extractScepChallengePassword(csrObj);
 
     const logEnrollmentEvent = (outcome: {
@@ -644,11 +645,11 @@ export const pkiScepServiceFactory = ({
       throw new BadRequestError({ message: "No CSR found in SCEP renewal request" });
     }
 
-    const csrObj = new x509.Pkcs10CertificateRequest(parsed.csr);
+    const csrObj = new x509.Pkcs10CertificateRequest(asNonSharedBuffer(parsed.csr));
 
     let signerCertObj: x509.X509Certificate | null = null;
     try {
-      signerCertObj = new x509.X509Certificate(parsed.signerCertDer);
+      signerCertObj = new x509.X509Certificate(asNonSharedBuffer(parsed.signerCertDer));
     } catch {
       signerCertObj = null;
     }

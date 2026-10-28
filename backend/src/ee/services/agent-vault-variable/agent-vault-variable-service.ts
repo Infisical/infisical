@@ -14,12 +14,12 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
+import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { AgentVaultVariableScope } from "../agent-vault/agent-vault-enums";
 import { ownerOf, ownerOrNullOf, TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
 import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { AGENT_VAULT_MAX_PERSONAL_VARIABLES, AGENT_VAULT_MAX_VARIABLES } from "../agent-vault/agent-vault-variable-fns";
-import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
 import {
   TAgentVaultServiceUsingVariable,
   TAgentVaultVariable,
@@ -183,15 +183,13 @@ export const agentVaultVariableServiceFactory = ({
     scope: isPersonal(variable) ? AgentVaultVariableScope.Personal : AgentVaultVariableScope.Global,
     usedByServices: services
       .filter((service) => service.variableId === variable.id)
-      .map(
-        (service): TAgentVaultVariableUsedByService => ({
-          id: service.serviceId,
-          name: service.serviceName,
-          hostPattern: service.hostPattern,
-          accessBundleId: service.accessBundleId,
-          accessBundleName: service.accessBundleName
-        })
-      ),
+      .map((service): TAgentVaultVariableUsedByService => ({
+        id: service.serviceId,
+        name: service.serviceName,
+        hostPattern: service.hostPattern,
+        accessBundleId: service.accessBundleId,
+        accessBundleName: service.accessBundleName
+      })),
     createdAt: variable.createdAt,
     updatedAt: variable.updatedAt
   });

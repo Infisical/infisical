@@ -7,12 +7,12 @@ import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-chan
 import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
-import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TIdentityGroupMembershipDALFactory } from "./identity-group-membership-dal";

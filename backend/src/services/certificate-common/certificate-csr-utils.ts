@@ -4,6 +4,13 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 
 import {
+  createDistinguishedName,
+  extractDnParts,
+  keyAlgorithmToAlgCfg
+} from "../certificate-authority/certificate-authority-fns";
+import { validateAndMapAltNameType } from "../certificate-authority/certificate-authority-validators";
+import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
+import {
   CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
   CertKeyUsage,
@@ -12,13 +19,6 @@ import {
   TAltNameMapping,
   TAltNameType
 } from "../certificate/certificate-types";
-import {
-  createDistinguishedName,
-  extractDnParts,
-  keyAlgorithmToAlgCfg
-} from "../certificate-authority/certificate-authority-fns";
-import { validateAndMapAltNameType } from "../certificate-authority/certificate-authority-validators";
-import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import {
   GENERAL_NAME_TYPES_WITH_OTHER_NAME,
   mapLegacyExtendedKeyUsageToStandard,

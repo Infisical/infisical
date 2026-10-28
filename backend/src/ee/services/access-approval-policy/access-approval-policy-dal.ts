@@ -24,8 +24,10 @@ import {
   TUpdateAccessApprovalPolicy
 } from "./access-approval-policy-types";
 
-export interface TAccessApprovalPolicyDALFactory
-  extends Omit<TOrmify<TableName.AccessApprovalPolicy>, "findById" | "find"> {
+export interface TAccessApprovalPolicyDALFactory extends Omit<
+  TOrmify<TableName.AccessApprovalPolicy>,
+  "findById" | "find"
+> {
   find: (
     filter: TFindFilter<
       TAccessApprovalPolicies & {

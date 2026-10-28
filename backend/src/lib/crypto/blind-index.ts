@@ -1,5 +1,7 @@
 import crypto, { webcrypto } from "node:crypto";
 
+import { asNonSharedBuffer } from "@app/lib/fn";
+
 const BLIND_INDEX_CONTEXT = "infisical-secret-value-blind-index-v1";
 
 /**
@@ -28,10 +30,10 @@ export const deriveSecretValueBlindIndexKey = async (kmsDataKey: Buffer): Promis
  * Uses Web Crypto API for async, non-blocking operation.
  */
 const importBlindIndexKey = (blindIndexKey: Buffer) =>
-  crypto.subtle.importKey("raw", blindIndexKey, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  crypto.subtle.importKey("raw", asNonSharedBuffer(blindIndexKey), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
 
 const signBlindIndex = async (secretValue: Buffer, cryptoKey: webcrypto.CryptoKey): Promise<string> => {
-  const signature = await crypto.subtle.sign("HMAC", cryptoKey, secretValue);
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, asNonSharedBuffer(secretValue));
 
   return Buffer.from(signature).toString("hex");
 };

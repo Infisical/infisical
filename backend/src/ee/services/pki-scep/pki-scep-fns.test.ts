@@ -47,7 +47,7 @@ describe("decodeAsn1ChallengePasswordValue", () => {
 
   test("accepts an ArrayBuffer as well as a Uint8Array", () => {
     const u8 = derString(UTF8_STRING_TAG, "buffer-pass");
-    const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
+    const ab = new Uint8Array(u8).buffer;
     expect(decodeAsn1ChallengePasswordValue(ab)).toBe("buffer-pass");
   });
 

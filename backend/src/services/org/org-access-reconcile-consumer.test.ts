@@ -32,7 +32,8 @@ const makeEvent = (type: string, data: Record<string, unknown>, id = uuid(9000))
   source: "infisical",
   type,
   time: new Date().toISOString(),
-  data
+  data,
+  isFinalAttempt: false
 });
 const userRemovedFromOrg = (orgId = ORG_ID) =>
   makeEvent(ORG_MEMBERSHIP_REMOVED_EVENT, { orgId, actorType: ActorType.USER, actorId: USER_ID });
