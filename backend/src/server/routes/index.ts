@@ -4526,7 +4526,8 @@ export const registerRoutes = async (
     membershipRoleDAL,
     hsmConnectorService,
     licenseService,
-    orgDAL
+    orgDAL,
+    keyStore
   });
 
   const signerAutoRenewalQueue = signerAutoRenewalQueueFactory({
