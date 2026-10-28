@@ -39,6 +39,13 @@ describe("getAccessErrorMessage", () => {
     expect(getAccessErrorMessage(error, FALLBACK)).toBe("Account requires approval");
   });
 
+  test("returns the string message of a validation failure for an overlong value", () => {
+    const message = "One or more field values exceed the maximum length allowed for this resource";
+    const error = apiError(422, { error: "ValidationFailure", message });
+
+    expect(getAccessErrorMessage(error, FALLBACK)).toBe(message);
+  });
+
   test.each([
     [
       "a validation failure without issues",

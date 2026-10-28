@@ -1,13 +1,16 @@
 import axios from "axios";
 
-import { ApiErrorTypes, TApiErrors } from "@app/hooks/api/types";
-
 export const getAccessErrorMessage = (error: unknown, fallback: string): string => {
   if (!axios.isAxiosError(error)) return fallback;
-  const data = error.response?.data as TApiErrors | undefined;
-  if (!data?.message) return fallback;
-  if (data.error === ApiErrorTypes.ValidationError) {
-    return data.message.map((issue) => issue.message).join(". ") || fallback;
+  const message = (error.response?.data as { message?: unknown } | undefined)?.message;
+  if (typeof message === "string") return message || fallback;
+  if (Array.isArray(message)) {
+    return (
+      message
+        .map((issue: { message?: unknown }) => issue?.message)
+        .filter((text): text is string => typeof text === "string")
+        .join(". ") || fallback
+    );
   }
-  return typeof data.message === "string" ? data.message : fallback;
+  return fallback;
 };
