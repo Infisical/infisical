@@ -221,6 +221,7 @@ You set the proxy's traffic policy, exceptions, and poll interval in Infisical, 
     { name: "--client-id", value: "<string>", type: "string", description: "The client ID of the machine identity that creates the session, for `--access-bundle`. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`." },
     { name: "--client-secret", value: "<string>", type: "string", description: "The client secret of the machine identity that creates the session, for `--access-bundle`. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`." },
     { name: "--keep-session", type: "bool", description: "Leave a session created with `--access-bundle` active when the agent exits, instead of revoking it. Can't be combined with `--session-token`." },
+    { name: "--label", value: "<string>", type: "string", description: "A short description of what a session created with `--access-bundle` is for, shown on the **Sessions** page, such as `nightly deploy`. Up to 128 characters, without line breaks, tabs, or invisible characters. Can't be combined with `--session-token`." },
     { name: "--no-ca-trust", type: "bool", description: "Skip writing the certificate authority, setting the trust variables, and adding it to the macOS keychain, for a machine that already trusts this proxy. `--ca-fingerprint` is still checked." },
     { name: "--no-proxy", value: "<string>", type: "string", description: "More hosts for the agent to reach directly instead of through the proxy, separated by commas. Always merged with `localhost,127.0.0.1` and any `NO_PROXY` in your environment." },
     { name: "--proxy", value: "<string>", type: "string", description: "The Agent Vault proxy's address as `host:port`, such as `10.0.1.5:17323`. A leading `http://` or `https://` is dropped. Required unless `INFISICAL_AGENT_VAULT_PROXY_ADDRESS` is set." },
@@ -236,7 +237,7 @@ You set the proxy's traffic policy, exceptions, and poll interval in Infisical, 
   ]}
   examples={[
     { title: "Run an agent with a session token", code: "infisical agent-vault run --session-token=<session-token> --proxy=10.0.1.5:17323 -- claude" },
-    { title: "Create a session from an access bundle", code: "infisical agent-vault run --access-bundle=code-review --ttl=8h --proxy=10.0.1.5:17323 -- claude" },
+    { title: "Create a session from an access bundle", code: "infisical agent-vault run --access-bundle=code-review --ttl=8h --label=\"review PR 123\" --proxy=10.0.1.5:17323 -- claude" },
     { title: "Pin the proxy's certificate authority", code: "infisical agent-vault run --session-token=<session-token> --proxy=10.0.1.5:17323 --ca-fingerprint=SHA256:9F:2C:... -- claude" },
     { title: "Create the session as a machine identity", code: "infisical agent-vault run \\\n  --access-bundle=code-review \\\n  --client-id=<client-id> \\\n  --client-secret=<client-secret> \\\n  --proxy=10.0.1.5:17323 \\\n  -- claude" },
     { title: "Read the settings from environment variables", code: "export INFISICAL_AGENT_VAULT_PROXY_ADDRESS=10.0.1.5:17323\nexport INFISICAL_AGENT_VAULT_SESSION_TOKEN=<session-token>\ninfisical agent-vault run -- claude" },
@@ -630,6 +631,20 @@ Without `--all` or `--profile`, the command logs out of the profile in effect. S
 </CLICommand>
 
 <CLICommand
+  id="migrate-config"
+  command="migrate-config"
+  examples={[
+    { title: "Convert the legacy project config", code: "infisical migrate-config" },
+  ]}
+>
+
+Convert a legacy `.infisical.json` into `.infisical.yaml`. The command looks for the project config in the current directory, then in each parent directory. It writes `.infisical.yaml` next to the file it finds, copies every setting into it, and deletes `.infisical.json`.
+
+If the project already uses `.infisical.yaml`, the command changes nothing. It warns you when a leftover `.infisical.json` sits in the same directory, because `.infisical.yaml` takes precedence and the old file is no longer read. See [Migrate to .infisical.yaml](/cli/project-config-migration) for the full steps.
+
+</CLICommand>
+
+<CLICommand
   id="org"
   command="org"
 >
@@ -710,7 +725,7 @@ Open a session for one PAM account. The command runs as the user you logged in a
 
 SSH accounts connect you to a shell on the target. Pass a command after `--` to run only that command, or `--proxy` to start a local proxy instead. If no terminal is attached, the CLI starts the proxy instead of a shell.
 
-For database, Redis, Snowflake, Kubernetes, GCP, Azure, and Windows accounts, the CLI starts a local proxy on `127.0.0.1` and prints how to connect to it. For AWS IAM accounts, the CLI writes temporary credentials to your AWS credentials file instead. The page for each [account type](/documentation/platform/pam/accounts/overview#account-types) describes how to connect. A proxy runs until you press `Ctrl+C` or the session expires, and the CLI then restores anything it changed, such as your kubeconfig.
+For database, Redis, Snowflake, Kubernetes, GCP, Azure, and Windows accounts, the CLI starts a local proxy on `127.0.0.1` and prints how to connect to it. For AWS IAM accounts, the CLI writes temporary credentials to your AWS credentials file instead. The page for each [account type](/documentation/platform/pam/accounts/account-types) describes how to connect. A proxy runs until you press `Ctrl+C` or the session expires, and the CLI then restores anything it changed, such as your kubeconfig.
 
 If the account requires approval, the CLI offers to submit an access request in an interactive terminal. If it requires MFA, the CLI has you complete MFA in your browser before it continues.
 
@@ -762,9 +777,9 @@ Run AI agents against PAM accounts. The agent reaches each account through a loc
 
 Start a local proxy for each PAM account you can launch, then start an AI agent with instructions for reaching them. Everything after `--` is the command that starts the agent. The `--` is required when that command has flags of its own.
 
-The CLI gives each account its own port on `127.0.0.1`, and the agent connects through those ports without ever holding a credential. The CLI skips accounts that require MFA and accounts of [types agentic access doesn't support](/documentation/platform/pam/ai-agents/overview#supported-account-types), and lists each skipped account with the reason. To open a skipped account, use [infisical pam access](/cli/reference#pam-access).
+The CLI gives each account its own port on `127.0.0.1`, and the agent connects through those ports without ever holding a credential. The CLI skips accounts that require MFA and accounts of [types agentic access doesn't support](/documentation/platform/pam/ai-agents/run#supported-account-types), and lists each skipped account with the reason. To open a skipped account, use [infisical pam access](/cli/reference#pam-access).
 
-The CLI [adds instructions for reaching the accounts](/documentation/platform/pam/ai-agents/overview#how-the-agent-is-told) to the agent's system prompt or to a file such as `AGENTS.md`, depending on the agent. It runs the agent in an [OS sandbox](/documentation/platform/pam/ai-agents/overview#the-sandbox), which stops the agent from reading your Infisical login. On a host without a sandbox, the command fails unless you pass `--no-sandbox`.
+The CLI [adds instructions for reaching the accounts](/documentation/platform/pam/ai-agents/instructions) to the agent's system prompt or to a file such as `AGENTS.md`, depending on the agent. It runs the agent in an [OS sandbox](/documentation/platform/pam/ai-agents/run#sandbox), which stops the agent from reading your Infisical login. On a host without a sandbox, the command fails unless you pass `--no-sandbox`.
 
 The run authenticates with `--token` when one is set, then as a machine identity when `--auth-method` is set, and otherwise as the user you logged in as with [infisical login](/cli/reference#login).
 
@@ -1311,7 +1326,7 @@ For an agent on your own computer, [infisical sm agent-proxy run](/cli/reference
 
 Launch an agent that sends its requests through an agent proxy on another host, started with [infisical sm agent-proxy start](/cli/reference#sm-agent-proxy-start). See [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
 
-The command authenticates as the agent's machine identity, with `--client-id` and `--client-secret` or a token. It doesn't use your login. It then starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the variables that make the agent's HTTP clients trust your organization's root certificate. See [what `connect` puts in the agent's environment](/documentation/platform/agent-proxy/standalone-agent-proxy#what-connect-puts-in-the-agents-environment).
+The command authenticates as the agent's machine identity, with `--client-id` and `--client-secret` or a token. It doesn't use your login. It then starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the variables that make the agent's HTTP clients trust your organization's root certificate. See [what `connect` puts in the agent's environment](/documentation/platform/agent-proxy/standalone-agent-proxy#what-connect-puts-in-the-agent’s-environment).
 
 If the agent can read a secret or lease a dynamic secret that a proxied service brokers to it, the command refuses to start, because the agent would get the real value and bypass the proxy.
 
@@ -1915,6 +1930,8 @@ In scripts, pass `--plain --silent` to print only the values, with no other outp
 >
 
 Create secrets, or update the value of secrets that already exist. The result table masks values unless you pass `--show-values`.
+
+You can set secrets without permission to read secret values. In that case, the CLI can't compare values, so it writes every secret you pass that already exists and reports each one as `SECRET VALUE MODIFIED`, even when the value didn't change.
 
 Your shell saves the values you pass on the command line in its history file. To keep them out, pass `--file` or `name=@path`, or [set your shell to skip these commands](/cli/faq).
 

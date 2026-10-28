@@ -122,9 +122,9 @@ import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
 import { GitHubConnectionMethod, ValidateGitHubConnectionCredentialsSchema } from "./github";
-import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
 import { githubRadarConnectionService } from "./github-radar/github-radar-connection-service";
+import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitLabConnectionCredentialsSchema } from "./gitlab";
 import { gitlabConnectionService } from "./gitlab/gitlab-connection-service";
 import { ValidateGoDaddyConnectionCredentialsSchema } from "./godaddy/godaddy-connection-schemas";
@@ -137,6 +137,7 @@ import { herokuConnectionService } from "./heroku/heroku-connection-service";
 import { ValidateHpeIloConnectionCredentialsSchema } from "./hpe-ilo";
 import { ValidateHumanitecConnectionCredentialsSchema } from "./humanitec";
 import { humanitecConnectionService } from "./humanitec/humanitec-connection-service";
+import { ValidateJiraConnectionCredentialsSchema } from "./jira";
 import { ValidateKeeperConnectionCredentialsSchema } from "./keeper";
 import { keeperConnectionService } from "./keeper/keeper-connection-service";
 import { ValidateKempLoadMasterConnectionCredentialsSchema } from "./kemp-loadmaster";
@@ -211,9 +212,9 @@ import { ValidateTriggerDevConnectionCredentialsSchema } from "./trigger-dev";
 import { triggerDevConnectionService } from "./trigger-dev/trigger-dev-connection-service";
 import { ValidateUltraDNSConnectionCredentialsSchema } from "./ultradns/ultradns-connection-schema";
 import { ultraDNSConnectionService } from "./ultradns/ultradns-connection-service";
+import { ValidateVenafiTppConnectionCredentialsSchema } from "./venafi-tpp/venafi-tpp-connection-schemas";
 import { ValidateVenafiConnectionCredentialsSchema } from "./venafi/venafi-connection-schema";
 import { venafiConnectionService } from "./venafi/venafi-connection-service";
-import { ValidateVenafiTppConnectionCredentialsSchema } from "./venafi-tpp/venafi-tpp-connection-schemas";
 import { ValidateVercelConnectionCredentialsSchema } from "./vercel";
 import { vercelConnectionService } from "./vercel/vercel-connection-service";
 import { ValidateWindmillConnectionCredentialsSchema } from "./windmill";
@@ -339,7 +340,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Keeper]: ValidateKeeperConnectionCredentialsSchema,
   [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema,
   [AppConnection.ServiceNow]: ValidateServiceNowConnectionCredentialsSchema,
-  [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema
+  [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema,
+  [AppConnection.Jira]: ValidateJiraConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -1211,9 +1213,17 @@ export const appConnectionServiceFactory = ({
         err instanceof DatabaseError &&
         (err.error as { code: string })?.code === DatabaseErrorCode.ForeignKeyViolation
       ) {
+        const { constraint } = err.error as { constraint?: string };
         if (
-          (err.error as { constraint?: string }).constraint === "certificate_authority_secret_appconnectionid_foreign"
+          constraint === "approval_policy_auto_approval_inputs_connectionid_foreign" ||
+          constraint === "approval_policy_auto_approval_conditions_connectionid_foreign"
         ) {
+          throw new BadRequestError({
+            message:
+              "Cannot delete this App Connection because one or more approval policies use it in their auto-approval rules. Remove it from those rules first."
+          });
+        }
+        if (constraint === "certificate_authority_secret_appconnectionid_foreign") {
           throw new BadRequestError({
             message:
               "Cannot delete this App Connection because a certificate authority signs with an AWS KMS key reached through it. Delete that certificate authority first."

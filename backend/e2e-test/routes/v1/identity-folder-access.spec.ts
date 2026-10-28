@@ -8,6 +8,7 @@ import {
   TemporaryPermissionMode
 } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
+import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { removeIdentitiesFromGroup } from "@app/ee/services/group/group-fns";
 import { reapDeletedGroupFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
 import { identityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
@@ -736,8 +737,10 @@ describe("Identity folder access CRUD", () => {
       removalDeps = {
         identityDAL: identityDALFactory(testDb),
         membershipDAL: membershipDALFactory(testDb),
+        groupDAL: groupDALFactory(testDb),
         identityGroupMembershipDAL: identityGroupMembershipDALFactory(testDb),
-        additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb)
+        additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
+        eventEmitter: { emit: async () => {} }
       };
 
       const [identity] = await testDb(TableName.Identity)

@@ -5,17 +5,16 @@ import { SecretType } from "@app/db/schemas";
 import { Actor, Event, EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AUDIT_LOG_SENSITIVE_VALUE } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
-import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
-import { SecretOperations } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { TSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
@@ -30,6 +29,8 @@ import {
 } from "@app/services/secret-v2-bridge/secret-v2-bridge-fns";
 import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
+import { SecretOperations } from "@app/services/secret/secret-types";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -61,6 +62,7 @@ type TSecretApprovalRequestMergeFnsFactoryDep = {
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   secretQueueService: Pick<TSecretQueueFactory, "syncSecrets" | "removeSecretReminder">;
   secretApprovalRequestSecretDAL: Pick<TSecretApprovalRequestSecretDALFactory, "updateV2ById">;
   validateSecrets: TSecretApprovalRequestCommitFnsFactory["validateSecrets"];
@@ -254,6 +256,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
   secretTagDAL,
   resourceMetadataDAL,
   folderCommitService,
+  eventEmitter,
   secretQueueService,
   secretApprovalRequestSecretDAL,
   validateSecrets,
@@ -271,6 +274,17 @@ export const secretApprovalRequestMergeFnsFactory = ({
     const conflicts: TSecretApprovalCommitConflict[] = [];
 
     let creates = commits.filter(({ op }) => op === SecretOperations.Create);
+    const createCountByKey = new Map<string, number>();
+    for (const { key } of creates) {
+      createCountByKey.set(key, (createCountByKey.get(key) ?? 0) + 1);
+    }
+    const keysCreatedTwice = [...createCountByKey].filter(([, count]) => count > 1).map(([key]) => `'${key}'`);
+    if (keysCreatedTwice.length) {
+      throw new BadRequestError({
+        message: `Could not merge this change request because it creates ${keysCreatedTwice.length === 1 ? "secret" : "secrets"} ${keysCreatedTwice.join(", ")} more than once. Close the request, then submit the change again.`
+      });
+    }
+
     if (creates.length) {
       const secrets = await secretV2BridgeDAL.findBySecretKeys(
         folderId,
@@ -376,6 +390,8 @@ export const secretApprovalRequestMergeFnsFactory = ({
       ? await fnSecretBulkInsert({
           tx,
           folderId,
+          eventEmitter,
+          eventScope: { projectId, environment, secretPath },
           actor: { actorId, type: actor },
           orgId: actorOrgId,
           inputSecrets: creates.map((el, idx) => ({
@@ -438,6 +454,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
           secretVersionDAL: secretVersionV2BridgeDAL,
           folderCommitService,
           secretQueueService,
+          eventEmitter,
           folderDAL,
           encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
           decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
@@ -474,6 +491,8 @@ export const secretApprovalRequestMergeFnsFactory = ({
     const updated = updates.length
       ? await fnSecretBulkUpdate({
           folderId,
+          eventEmitter,
+          eventScope: { projectId, environment, secretPath },
           orgId: actorOrgId,
           actor: { actorId, type: actor },
           tx,
@@ -498,7 +517,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
                 skipMultilineEncoding: el.skipMultilineEncoding !== null ? el.skipMultilineEncoding : undefined,
                 key: el.key,
                 tags: el?.tags.map(({ id }) => id),
-                secretMetadata: toSecretMetadataInput(el.secretMetadata),
+                secretMetadata: Array.isArray(el.secretMetadata) ? toSecretMetadataInput(el.secretMetadata) : undefined,
                 ...encryptedValue
               }
             };
@@ -532,6 +551,7 @@ export const secretApprovalRequestMergeFnsFactory = ({
         secretVersionDAL: secretVersionV2BridgeDAL,
         folderCommitService,
         secretQueueService,
+        eventEmitter,
         folderDAL,
         encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
         decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
@@ -544,6 +564,8 @@ export const secretApprovalRequestMergeFnsFactory = ({
       ? await fnSecretBulkDelete({
           projectId,
           folderId,
+          eventEmitter,
+          eventScope: { projectId, environment, secretPath },
           tx,
           actorId,
           actorType: actor,

@@ -15,6 +15,7 @@ import {
 import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "../delegated-approval-enums";
 import { DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT } from "../delegated-approval-events";
 import { TDelegatedApprovalRequestDetails } from "../delegated-approval-schemas";
+import { DELEGATED_APPROVAL_DISPATCH_RETRY_HINT } from "./delegated-approval-dispatch-constants";
 import { delegatedApprovalDispatchConsumerFactory } from "./delegated-approval-dispatch-consumer";
 
 vi.mock("@app/lib/logger", () => ({
@@ -23,8 +24,14 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 vi.mock("@app/lib/telemetry/metrics", () => ({
+  EventOutboxRejectReason: {
+    InvalidEvent: "invalid_event",
+    DataTooLarge: "data_too_large",
+    DataRejected: "data_rejected"
+  },
   recordEventOutboxLagMetric: () => {},
-  recordEventOutboxExhaustedMetric: () => {}
+  recordEventOutboxExhaustedMetric: () => {},
+  recordEventOutboxRejectedMetric: () => {}
 }));
 
 const { dispatch } = vi.hoisted(() => ({ dispatch: vi.fn() }));
@@ -45,9 +52,10 @@ vi.mock("@app/services/app-connection/app-connection-fns", () => ({
 }));
 
 const DELEGATED_REQUEST_ID = "11111111-1111-1111-1111-111111111111";
+const EVENT_ID = "44444444-4444-4444-8444-444444444444";
+const RESENT_EVENT_ID = "55555555-5555-4555-8555-555555555555";
 const ORG_ID = "22222222-2222-2222-2222-222222222222";
-const RETRY_REASON =
-  "ServiceNow did not respond. Infisical will retry automatically. If it keeps failing, send the request again.";
+const RETRY_REASON = `ServiceNow did not respond. ${DELEGATED_APPROVAL_DISPATCH_RETRY_HINT}`;
 const SERVICENOW_RECORD = { type: DelegatedApprovalPolicyType.ServiceNow, recordNumber: "INFAR1000000" };
 
 const pendingDelegatedRequest = {
@@ -56,7 +64,8 @@ const pendingDelegatedRequest = {
   status: DelegatedApprovalRequestStatus.PendingDispatch,
   details: {} as TDelegatedApprovalRequestDetails,
   providerRequestId: null as string | null,
-  encryptedCallbackToken: null
+  encryptedCallbackToken: null,
+  dispatchEventId: "event-1"
 };
 
 type TRow = typeof pendingDelegatedRequest;
@@ -129,10 +138,12 @@ const buildConsumer = ({
 };
 
 const makeEvent = (overrides?: Partial<TEvent>): TEvent => ({
-  id: 1,
-  eventType: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
-  payload: { delegatedRequestId: DELEGATED_REQUEST_ID },
-  occurredAt: new Date(),
+  specversion: "1.0",
+  id: "event-1",
+  source: "urn:infisical:delegated-approval",
+  type: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
+  time: new Date().toISOString(),
+  data: { delegatedRequestId: DELEGATED_REQUEST_ID },
   isFinalAttempt: false,
   ...overrides
 });
@@ -148,7 +159,7 @@ describe("delegatedApprovalDispatchConsumer", () => {
 
     const results = await consumer.handle([makeEvent()]);
 
-    expect(results).toEqual([{ id: "1", status: EventResultStatus.Delivered }]);
+    expect(results).toEqual([{ id: "event-1", status: EventResultStatus.Delivered }]);
     expect(dispatch).toHaveBeenCalledTimes(1);
     expect(dispatch.mock.calls[0][0]).toMatchObject({
       delegatedRequestId: DELEGATED_REQUEST_ID,
@@ -169,7 +180,7 @@ describe("delegatedApprovalDispatchConsumer", () => {
 
     const results = await consumer.handle([makeEvent()]);
 
-    expect(results).toEqual([{ id: "1", status: EventResultStatus.Delivered }]);
+    expect(results).toEqual([{ id: "event-1", status: EventResultStatus.Delivered }]);
     expect(row()).toEqual({
       ...pendingDelegatedRequest,
       status: DelegatedApprovalRequestStatus.WaitingApproval,
@@ -184,7 +195,7 @@ describe("delegatedApprovalDispatchConsumer", () => {
 
     const results = await consumer.handle([makeEvent()]);
 
-    expect(results).toEqual([{ id: "1", status: EventResultStatus.Retry, error: "ServiceNow did not respond." }]);
+    expect(results).toEqual([{ id: "event-1", status: EventResultStatus.Retry, error: "ServiceNow did not respond." }]);
     expect(row()).toMatchObject({
       status: DelegatedApprovalRequestStatus.FailedDispatch,
       details: { statusReason: RETRY_REASON }
@@ -198,7 +209,7 @@ describe("delegatedApprovalDispatchConsumer", () => {
     const results = await consumer.handle([makeEvent()]);
 
     expect(results).toEqual([
-      { id: "1", status: EventResultStatus.Failed, error: "ServiceNow rejected the credentials." }
+      { id: "event-1", status: EventResultStatus.Failed, error: "ServiceNow rejected the credentials." }
     ]);
     expect(row()).toMatchObject({
       status: DelegatedApprovalRequestStatus.FailedDispatch,
@@ -212,7 +223,9 @@ describe("delegatedApprovalDispatchConsumer", () => {
 
     const results = await consumer.handle([makeEvent({ isFinalAttempt: true })]);
 
-    expect(results).toEqual([{ id: "1", status: EventResultStatus.Failed, error: "ServiceNow did not respond." }]);
+    expect(results).toEqual([
+      { id: "event-1", status: EventResultStatus.Failed, error: "ServiceNow did not respond." }
+    ]);
     expect(row()).toMatchObject({
       status: DelegatedApprovalRequestStatus.Failed,
       details: {
@@ -274,7 +287,7 @@ describe("delegatedApprovalDispatchConsumer", () => {
 
     const results = await consumer.handle([makeEvent()]);
 
-    expect(results).toEqual([{ id: "1", status: EventResultStatus.Delivered }]);
+    expect(results).toEqual([{ id: "event-1", status: EventResultStatus.Delivered }]);
     expect(dispatch).not.toHaveBeenCalled();
   });
 
@@ -294,13 +307,14 @@ describe("delegatedApprovalDispatchConsumer", () => {
       findById: async (id: string) => ({
         ...pendingDelegatedRequest,
         id,
-        requestId: id === DELEGATED_REQUEST_ID ? "req-1" : "req-2"
+        requestId: id === DELEGATED_REQUEST_ID ? "req-1" : "req-2",
+        dispatchEventId: id === DELEGATED_REQUEST_ID ? "event-1" : "event-2"
       })
     });
 
     const pending = consumer.handle([
-      makeEvent({ id: 1 }),
-      makeEvent({ id: 2, payload: { delegatedRequestId: otherRequestId } })
+      makeEvent({ id: "event-1" }),
+      makeEvent({ id: "event-2", data: { delegatedRequestId: otherRequestId } })
     ]);
 
     try {
@@ -310,54 +324,111 @@ describe("delegatedApprovalDispatchConsumer", () => {
     }
 
     await expect(pending).resolves.toEqual([
-      { id: "1", status: EventResultStatus.Delivered },
-      { id: "2", status: EventResultStatus.Delivered }
+      { id: "event-1", status: EventResultStatus.Delivered },
+      { id: "event-2", status: EventResultStatus.Delivered }
     ]);
   });
 
-  test("dispatches a second event for the same request only after the first settles", async () => {
+  test("handles a second event for the same request only after the first settles", async () => {
     let releaseFirst: () => void = () => {};
     const firstHeld = new Promise<void>((resolve) => {
       releaseFirst = resolve;
     });
-    let firstSettledAt = 0;
-    let secondStartedAt = 0;
 
     dispatch.mockImplementation(async () => {
-      if (dispatch.mock.calls.length === 1) {
-        await firstHeld;
-        firstSettledAt = Date.now();
-        throw new Error("ServiceNow did not respond.");
-      }
-      secondStartedAt = Date.now();
-      return { providerRequestId: "snow-2" };
+      await firstHeld;
+      throw new Error("ServiceNow did not respond.");
     });
 
-    const { consumer } = buildConsumer();
-    const pending = consumer.handle([makeEvent({ id: 1 }), makeEvent({ id: 2 })]);
+    let readRow: () => TRow | null = () => null;
+    const findById = vi.fn(async () => readRow());
+    const built = buildConsumer({ findById });
+    readRow = built.row;
+
+    const pending = built.consumer.handle([makeEvent({ id: "event-1" }), makeEvent({ id: "event-2" })]);
 
     try {
       await vi.waitFor(() => expect(dispatch).toHaveBeenCalledTimes(1));
       await new Promise((resolve) => {
         setTimeout(resolve, 30);
       });
-      expect(dispatch).toHaveBeenCalledTimes(1);
+      expect(findById).toHaveBeenCalledTimes(1);
     } finally {
       releaseFirst();
     }
 
     const results = await pending;
 
-    expect(dispatch).toHaveBeenCalledTimes(2);
-    expect(firstSettledAt).toBeGreaterThan(0);
-    expect(secondStartedAt).toBeGreaterThanOrEqual(firstSettledAt);
+    expect(findById).toHaveBeenCalledTimes(2);
     expect(results.map((result) => result.status)).toEqual([EventResultStatus.Retry, EventResultStatus.Delivered]);
+  });
+
+  test("skips a superseded event batched with the event that replaced it", async () => {
+    dispatch.mockResolvedValueOnce({ providerRequestId: "snow-2" });
+    const { consumer, row } = buildConsumer({
+      delegatedRequest: { ...pendingDelegatedRequest, dispatchEventId: "event-2" }
+    });
+
+    const results = await consumer.handle([makeEvent({ id: "event-1" }), makeEvent({ id: "event-2" })]);
+
+    expect(results).toEqual([
+      { id: "event-1", status: EventResultStatus.Delivered },
+      { id: "event-2", status: EventResultStatus.Delivered }
+    ]);
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(row()).toMatchObject({
+      status: DelegatedApprovalRequestStatus.WaitingApproval,
+      providerRequestId: "snow-2"
+    });
+  });
+
+  test.each([
+    ["an earlier attempt", false],
+    ["its last attempt", true]
+  ])(
+    "marks an event superseded by a resend delivered on %s without dispatching or closing the request",
+    async (_, isFinalAttempt) => {
+      const resent = {
+        ...pendingDelegatedRequest,
+        status: DelegatedApprovalRequestStatus.FailedDispatch,
+        details: { statusReason: RETRY_REASON },
+        dispatchEventId: "event-2"
+      };
+      const { consumer, row, updateWithDetails, approvalUpdate } = buildConsumer({ delegatedRequest: resent });
+
+      const results = await consumer.handle([makeEvent({ id: "event-1", isFinalAttempt })]);
+
+      expect(results).toEqual([{ id: "event-1", status: EventResultStatus.Delivered }]);
+      expect(dispatch).not.toHaveBeenCalled();
+      expect(updateWithDetails).not.toHaveBeenCalled();
+      expect(approvalUpdate).not.toHaveBeenCalled();
+      expect(row()).toEqual(resent);
+    }
+  );
+
+  test("stops when a resend lands between loading the request and reopening it", async () => {
+    const resent = {
+      ...pendingDelegatedRequest,
+      status: DelegatedApprovalRequestStatus.FailedDispatch,
+      details: { statusReason: RETRY_REASON },
+      dispatchEventId: "event-2"
+    };
+    const { consumer, row } = buildConsumer({
+      delegatedRequest: resent,
+      findById: async () => ({ ...resent, dispatchEventId: "event-1" })
+    });
+
+    const results = await consumer.handle([makeEvent({ id: "event-1" })]);
+
+    expect(results).toEqual([{ id: "event-1", status: EventResultStatus.Delivered }]);
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(row()).toEqual(resent);
   });
 
   test("fails an unreadable payload terminally", async () => {
     const { consumer } = buildConsumer();
 
-    const [result] = await consumer.handle([makeEvent({ payload: { delegatedRequestId: "not-a-uuid" } })]);
+    const [result] = await consumer.handle([makeEvent({ data: { delegatedRequestId: "not-a-uuid" } })]);
 
     expect(result.status).toBe(EventResultStatus.Failed);
     expect(result.error).toContain("Unreadable delegated approval dispatch payload");
@@ -368,6 +439,8 @@ describe("delegatedApprovalDispatchConsumer", () => {
 // Why this consumer exists: a dispatch that fails is kept by the outbox and tried again, instead of
 // depending on an enqueue that ran after the request committed and could be lost with it.
 describe("delegatedApprovalDispatchConsumer through the outbox", () => {
+  const outboxDelegatedRequest = { ...pendingDelegatedRequest, dispatchEventId: EVENT_ID };
+
   const buildOutbox = (consumer: ReturnType<typeof buildConsumer>["consumer"]) => {
     const registry = eventOutboxRegistryFactory();
     registry.register(consumer);
@@ -439,11 +512,17 @@ describe("delegatedApprovalDispatchConsumer through the outbox", () => {
     dispatch
       .mockRejectedValueOnce(new Error("ServiceNow did not respond."))
       .mockResolvedValueOnce({ providerRequestId: "snow-1" });
-    const { consumer, row } = buildConsumer();
+    const { consumer, row } = buildConsumer({ delegatedRequest: outboxDelegatedRequest });
     const { service, rows, elapseBackoff } = buildOutbox(consumer);
 
     await service.emit(
-      { eventType: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT, payload: { delegatedRequestId: DELEGATED_REQUEST_ID } },
+      [
+        {
+          id: EVENT_ID,
+          type: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
+          data: { delegatedRequestId: DELEGATED_REQUEST_ID }
+        }
+      ],
       PRIMARY
     );
     expect(rows).toHaveLength(1);
@@ -478,11 +557,17 @@ describe("delegatedApprovalDispatchConsumer through the outbox", () => {
 
   test("closes the request once the outbox has used up its attempts", async () => {
     dispatch.mockRejectedValue(new Error("ServiceNow did not respond."));
-    const { consumer, row, approvalUpdate } = buildConsumer();
+    const { consumer, row, approvalUpdate } = buildConsumer({ delegatedRequest: outboxDelegatedRequest });
     const { service, rows, elapseBackoff } = buildOutbox(consumer);
 
     await service.emit(
-      { eventType: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT, payload: { delegatedRequestId: DELEGATED_REQUEST_ID } },
+      [
+        {
+          id: EVENT_ID,
+          type: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
+          data: { delegatedRequestId: DELEGATED_REQUEST_ID }
+        }
+      ],
       PRIMARY
     );
 
@@ -501,5 +586,46 @@ describe("delegatedApprovalDispatchConsumer through the outbox", () => {
     expect(rows[0]).toMatchObject({ status: EventOutboxStatus.Failed, attempts: MAX_OUTBOX_ATTEMPTS });
     expect(row()?.status).toBe(DelegatedApprovalRequestStatus.Failed);
     expect(approvalUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  test("lets a resend replace the event still retrying, so its last attempt neither dispatches nor closes", async () => {
+    dispatch.mockRejectedValue(new Error("ServiceNow did not respond."));
+    const { consumer, row, updateWithDetails, approvalUpdate } = buildConsumer({
+      delegatedRequest: outboxDelegatedRequest
+    });
+    const { service, rows, elapseBackoff } = buildOutbox(consumer);
+    const emitDispatch = (id: string) =>
+      service.emit(
+        [{ id, type: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT, data: { delegatedRequestId: DELEGATED_REQUEST_ID } }],
+        PRIMARY
+      );
+
+    await emitDispatch(EVENT_ID);
+    for (let attempt = 1; attempt < MAX_OUTBOX_ATTEMPTS; attempt += 1) {
+      // eslint-disable-next-line no-await-in-loop -- one drain per attempt
+      await service.drain({ consumer: consumer.name });
+      elapseBackoff();
+    }
+    expect(rows[0]).toMatchObject({ status: EventOutboxStatus.Retry, attempts: MAX_OUTBOX_ATTEMPTS - 1 });
+    expect(row()?.status).toBe(DelegatedApprovalRequestStatus.FailedDispatch);
+
+    await updateWithDetails(
+      { id: DELEGATED_REQUEST_ID, status: DelegatedApprovalRequestStatus.FailedDispatch },
+      { dispatchEventId: RESENT_EVENT_ID }
+    );
+    await emitDispatch(RESENT_EVENT_ID);
+    dispatch.mockResolvedValueOnce({ providerRequestId: "snow-1" });
+
+    await service.drain({ consumer: consumer.name });
+
+    expect(dispatch).toHaveBeenCalledTimes(MAX_OUTBOX_ATTEMPTS);
+    expect(rows[0]).toMatchObject({ status: EventOutboxStatus.Delivered, attempts: MAX_OUTBOX_ATTEMPTS });
+    expect(rows[1]).toMatchObject({ status: EventOutboxStatus.Delivered, attempts: 1 });
+    expect(approvalUpdate).not.toHaveBeenCalled();
+    expect(row()).toMatchObject({
+      status: DelegatedApprovalRequestStatus.WaitingApproval,
+      providerRequestId: "snow-1",
+      dispatchEventId: RESENT_EVENT_ID
+    });
   });
 });

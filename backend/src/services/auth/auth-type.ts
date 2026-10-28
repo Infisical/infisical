@@ -53,7 +53,8 @@ export enum AuthMode {
   AGENT_VAULT_PROXY_ACCESS_TOKEN = "agentVaultProxyAccessToken"
 }
 
-export enum ActorType { // would extend to AWS, Azure, ...
+export enum ActorType {
+  // would extend to AWS, Azure, ...
   PLATFORM = "platform", // Useful for when we want to perform logging on automated actions such as integration syncs.
   KMIP_CLIENT = "kmipClient",
   USER = "user", // userIdentity

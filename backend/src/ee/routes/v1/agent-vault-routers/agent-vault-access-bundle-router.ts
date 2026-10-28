@@ -20,23 +20,18 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { actorContext } from "./agent-vault-router-fns";
 import {
   AgentVaultActorRefSchema,
-  AgentVaultAllowedMethodsSchema,
-  AgentVaultAllowedPathPrefixesSchema,
   AgentVaultCreatedMemberSchema,
-  AgentVaultCredentialInputSchema,
-  AgentVaultCredentialUpdateSchema,
-  AgentVaultCustomHeadersInputSchema,
-  AgentVaultCustomHeadersUpdateSchema,
-  AgentVaultHostPatternSchema,
+  AgentVaultCreateServiceBodySchema,
   agentVaultListQuery,
   AgentVaultMemberIdsSchema,
   AgentVaultMemberRevokeIdsSchema,
   AgentVaultMemberSchema,
   AgentVaultNameSchema,
+  AgentVaultPersonalValueInputSchema,
+  AgentVaultPersonalValuesSchema,
   AgentVaultProductMemberSchema,
   AgentVaultServiceSchema,
-  AgentVaultSubstitutionsInputSchema,
-  AgentVaultSubstitutionsUpdateSchema
+  AgentVaultUpdateServiceBodySchema
 } from "./agent-vault-schemas";
 
 const AccessBundleDescriptionSchema = z
@@ -54,18 +49,6 @@ const AccessBundleSchema = AgentVaultAccessBundlesSchema.pick({
   updatedAt: true
 });
 
-// A passthrough switch is a replacement: mergeCredential returns a null secret and updateService nulls
-// the sealed column. The old check only looked at bearer and basic, so it reported no replacement for the
-// one case that destroys the credential outright.
-const isStoredSecretReplaced = (credential?: z.infer<typeof AgentVaultCredentialUpdateSchema>) => {
-  if (!credential) return false;
-  if (credential.type === AgentVaultCredentialType.Bearer) return credential.value !== undefined;
-  if (credential.type === AgentVaultCredentialType.Basic) {
-    return credential.username !== undefined || credential.password !== undefined;
-  }
-  return true;
-};
-
 const variableKeysOf = (service: { variableReferences: { key: string }[] }) => [
   ...new Set(service.variableReferences.map((reference) => reference.key))
 ];
@@ -81,6 +64,16 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       description: "List the Agent Vault access bundles you can reach",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       querystring: z.object({
+        requiresSetup: z
+          .enum(["true", "false"])
+          .transform((value) => value === "true")
+          .optional()
+          .describe(AGENT_VAULT.ACCESS_BUNDLE.requiresSetup),
+        granted: z
+          .enum(["true", "false"])
+          .transform((value) => value === "true")
+          .optional()
+          .describe(AGENT_VAULT.ACCESS_BUNDLE.granted),
         orderBy: z
           .enum(["name", "serviceCount", "createdAt"])
           .default("createdAt")
@@ -93,7 +86,14 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           accessBundles: AccessBundleSchema.extend({
             serviceCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.serviceCount),
             memberCount: z.number().describe(AGENT_VAULT.ACCESS_BUNDLE.memberCount),
-            hostPatterns: z.string().array().describe(AGENT_VAULT.ACCESS_BUNDLE.hostPatterns)
+            hostPatterns: z.string().array().describe(AGENT_VAULT.ACCESS_BUNDLE.hostPatterns),
+            servicesRequiringSetup: z
+              .object({
+                id: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.servicesRequiringSetupId),
+                name: z.string().describe(AGENT_VAULT.ACCESS_BUNDLE.servicesRequiringSetupName)
+              })
+              .array()
+              .describe(AGENT_VAULT.ACCESS_BUNDLE.servicesRequiringSetup)
           }).array(),
           totalCount: z.number()
         })
@@ -169,7 +169,9 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       response: {
         200: z.object({
           accessBundle: AccessBundleSchema.extend({
-            services: AgentVaultServiceSchema.partial({ variableReferences: true }).array()
+            services: AgentVaultServiceSchema.partial({ variableReferences: true })
+              .extend({ personalValues: AgentVaultPersonalValuesSchema.nullable() })
+              .array()
           })
         })
       }
@@ -293,15 +295,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
-      body: z.object({
-        name: AgentVaultNameSchema.describe(AGENT_VAULT.SERVICE.name),
-        hostPattern: AgentVaultHostPatternSchema,
-        allowedMethods: AgentVaultAllowedMethodsSchema.optional(),
-        allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional(),
-        credential: AgentVaultCredentialInputSchema,
-        customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
-        substitutions: AgentVaultSubstitutionsInputSchema.optional()
-      }),
+      body: AgentVaultCreateServiceBodySchema,
       response: {
         200: z.object({ service: AgentVaultServiceSchema })
       }
@@ -326,14 +320,26 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             accessBundleName,
             serviceId: service.id,
             name: service.name,
+            serviceType: service.type,
+            serverUrl: service.serverUrl ?? undefined,
+            transport: service.transport ?? undefined,
             hostPattern: service.hostPattern,
             credentialType: service.credential.type,
             headerName:
               service.credential.type === AgentVaultCredentialType.Bearer ? service.credential.headerName : undefined,
             headerPrefix:
               service.credential.type === AgentVaultCredentialType.Bearer ? service.credential.headerPrefix : undefined,
+            oauthIssuer:
+              service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.issuer : undefined,
+            oauthScopes:
+              service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.grantedScopes : undefined,
             allowedMethods: service.allowedMethods,
             allowedPathPrefixes: service.allowedPathPrefixes,
+            memberProvidedFields:
+              service.credential.type === AgentVaultCredentialType.Bearer ||
+              service.credential.type === AgentVaultCredentialType.Basic
+                ? service.credential.memberProvidedFields
+                : undefined,
             customHeaderNames: service.customHeaders.map((header) => header.name),
             substitutionPlaceholders: service.substitutions.map((substitution) => substitution.placeholder),
             variableKeys: variableKeysOf(service)
@@ -346,6 +352,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         properties: {
           accessBundleId: req.params.accessBundleId,
           serviceId: service.id,
+          serviceType: service.type,
           credentialType: service.credential.type,
           hostPatternCount: parseHostPatterns(service.hostPattern).patterns.length,
           allowedMethodCount: service.allowedMethods?.length ?? 0,
@@ -373,33 +380,22 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
         serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
       }),
-      body: z
-        .object({
-          name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.SERVICE.name),
-          hostPattern: AgentVaultHostPatternSchema.optional(),
-          allowedMethods: AgentVaultAllowedMethodsSchema.optional(),
-          allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional(),
-          credential: AgentVaultCredentialUpdateSchema.optional(),
-          customHeaders: AgentVaultCustomHeadersUpdateSchema.optional(),
-          substitutions: AgentVaultSubstitutionsUpdateSchema.optional()
-        })
-        .refine(
-          (body) => Object.values(body).some((value) => value !== undefined),
-          "Provide at least one of 'name', 'hostPattern', 'allowedMethods', 'allowedPathPrefixes', 'credential', 'customHeaders' or 'substitutions' to update"
-        ),
+      body: AgentVaultUpdateServiceBodySchema,
       response: {
         200: z.object({ service: AgentVaultServiceSchema })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { service, accessBundleName } = await server.services.agentVaultAccessBundle.updateService({
-        projectId: req.internalAgentVaultProjectId,
-        ctx: actorContext(req),
-        accessBundleId: req.params.accessBundleId,
-        serviceId: req.params.serviceId,
-        ...req.body
-      });
+      const { service, accessBundleName, update, credentialReplaced } =
+        await server.services.agentVaultAccessBundle.updateService({
+          projectId: req.internalAgentVaultProjectId,
+          ctx: actorContext(req),
+          accessBundleId: req.params.accessBundleId,
+          serviceId: req.params.serviceId,
+          ...req.body
+        });
+      const isOauthAuthorized = req.body.credential?.type === AgentVaultCredentialType.OAuth;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -413,7 +409,11 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             accessBundleName,
             serviceId: service.id,
             name: req.body.name,
-            hostPattern: req.body.hostPattern,
+            serviceType: service.type,
+            serverUrl: update.serverUrl,
+            transport: update.transport,
+            // Derived from the server URL for an MCP service, so it is reported whenever that changed.
+            hostPattern: update.hostPattern ?? (update.serverUrl ? service.hostPattern : undefined),
             credentialType: req.body.credential?.type,
             headerName:
               req.body.credential?.type === AgentVaultCredentialType.Bearer
@@ -423,21 +423,36 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               req.body.credential?.type === AgentVaultCredentialType.Bearer
                 ? req.body.credential.headerPrefix
                 : undefined,
-            allowedMethods: req.body.allowedMethods,
-            allowedPathPrefixes: req.body.allowedPathPrefixes,
+            oauthIssuer:
+              isOauthAuthorized && service.credential.type === AgentVaultCredentialType.OAuth
+                ? service.credential.issuer
+                : undefined,
+            oauthScopes:
+              isOauthAuthorized && service.credential.type === AgentVaultCredentialType.OAuth
+                ? service.credential.grantedScopes
+                : undefined,
+            allowedMethods: update.allowedMethods,
+            allowedPathPrefixes: update.allowedPathPrefixes,
+            // The setting after the update, present whenever the update touched the credential.
+            memberProvidedFields:
+              req.body.credential &&
+              (service.credential.type === AgentVaultCredentialType.Bearer ||
+                service.credential.type === AgentVaultCredentialType.Basic)
+                ? service.credential.memberProvidedFields
+                : undefined,
             customHeaderNames: req.body.customHeaders?.map((header) => header.name),
             // A row omitting a value keeps the stored secret, so sending one is what marks a rotation.
             // Without this a rotation and a no-op save write the same row.
             customHeadersReplaced: req.body.customHeaders
               ?.filter((header) => header.value !== undefined)
               .map((header) => header.name),
-            substitutionPlaceholders: req.body.substitutions?.map((substitution) => substitution.placeholder),
-            substitutionsReplaced: req.body.substitutions
+            substitutionPlaceholders: update.substitutions?.map((substitution) => substitution.placeholder),
+            substitutionsReplaced: update.substitutions
               ?.filter((substitution) => substitution.value !== undefined)
               .map((substitution) => substitution.placeholder),
-            credentialReplaced: isStoredSecretReplaced(req.body.credential),
+            credentialReplaced,
             variableKeys:
-              req.body.credential || req.body.customHeaders || req.body.substitutions
+              req.body.credential || req.body.customHeaders || update.substitutions
                 ? variableKeysOf(service)
                 : undefined
           }
@@ -449,6 +464,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         properties: {
           accessBundleId: req.params.accessBundleId,
           serviceId: service.id,
+          serviceType: service.type,
           credentialType: service.credential.type,
           hostPatternCount: parseHostPatterns(service.hostPattern).patterns.length,
           allowedMethodCount: service.allowedMethods?.length ?? 0,
@@ -508,6 +524,115 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       });
 
       return { service };
+    }
+  });
+
+  // The caller's own values for a service that leaves some fields to each member. Always the caller's: nobody, an
+  // admin included, can name or read another's, and a stored value never comes back. Read them with the bundle.
+  server.route({
+    method: "PATCH",
+    url: "/:accessBundleId/services/:serviceId/personal-values",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "setAgentVaultServicePersonalValues",
+      description:
+        "Set your personal values for a service. A field you send replaces what you saved for it, and a field you leave out keeps its saved value. Every field the service leaves to its members must be set once the update is applied.",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+        serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
+      }),
+      body: z.object({
+        values: AgentVaultPersonalValueInputSchema.array().min(1).max(2).describe(AGENT_VAULT.PERSONAL_VALUE.values),
+        credentialType: z
+          .nativeEnum(AgentVaultCredentialType)
+          .optional()
+          .describe(AGENT_VAULT.PERSONAL_VALUE.credentialType)
+      }),
+      response: { 200: z.object({ personalValues: AgentVaultPersonalValuesSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { personalValues } = await server.services.agentVaultPersonalValue.setPersonalValues({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId,
+        serviceId: req.params.serviceId,
+        values: req.body.values,
+        credentialType: req.body.credentialType
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_PERSONAL_VALUES_SET,
+          metadata: {
+            accessBundleId: personalValues.accessBundleId,
+            accessBundleName: personalValues.accessBundleName,
+            serviceId: personalValues.serviceId,
+            serviceName: personalValues.serviceName,
+            credentialType: personalValues.credentialType,
+            fields: req.body.values.map((value) => value.field),
+            variableKeys: [
+              ...new Set(
+                personalValues.fields
+                  .filter((field) => req.body.values.some((value) => value.field === field.field))
+                  .flatMap((field) => field.variableReferences.map((reference) => reference.key))
+              )
+            ]
+          }
+        }
+      });
+
+      return { personalValues: { isConfigured: personalValues.isConfigured, fields: personalValues.fields } };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:accessBundleId/services/:serviceId/personal-values",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "deleteAgentVaultServicePersonalValues",
+      description:
+        "Delete your personal values for a service. Until you set them again, the proxy refuses that service's requests from your sessions.",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
+        serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
+      }),
+      response: { 200: z.object({ personalValues: AgentVaultPersonalValuesSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { personalValues } = await server.services.agentVaultPersonalValue.deletePersonalValues({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId,
+        serviceId: req.params.serviceId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_PERSONAL_VALUES_DELETE,
+          metadata: {
+            accessBundleId: personalValues.accessBundleId,
+            accessBundleName: personalValues.accessBundleName,
+            serviceId: personalValues.serviceId,
+            serviceName: personalValues.serviceName,
+            credentialType: personalValues.credentialType
+          }
+        }
+      });
+
+      return { personalValues: { isConfigured: personalValues.isConfigured, fields: personalValues.fields } };
     }
   });
 

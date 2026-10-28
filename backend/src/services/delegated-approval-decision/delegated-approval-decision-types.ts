@@ -60,7 +60,7 @@ export type TDelegatedApprovalDecisionServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   approvalResources: Record<DelegatedApprovalSupportedPolicyType, Pick<TApprovalResource, "postApprovalTxRoutine">>;
-  decisionNotifiers: Partial<Record<DelegatedApprovalSupportedPolicyType, TDelegatedApprovalDecisionNotifier>>;
+  decisionNotifiers: Record<DelegatedApprovalSupportedPolicyType, TDelegatedApprovalDecisionNotifier>;
 };
 
 export type TDelegatedApprovalDecisionContext = {

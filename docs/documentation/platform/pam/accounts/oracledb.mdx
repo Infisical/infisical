@@ -1,71 +1,77 @@
 ---
 title: "Oracle accounts"
 sidebarTitle: "Oracle"
-description: "Add and connect to Oracle databases."
+description: "Give people and agents access to an Oracle database without sharing its credentials."
 ---
 
-Oracle accounts let you manage access to your Oracle databases. Users connect through the CLI, which starts a local proxy, and every [session](/documentation/platform/pam/sessions/overview) is recorded.
+An Oracle [account](/documentation/platform/pam/accounts/overview) stores the credentials for one Oracle database user. Members connect to the database through the Infisical CLI, and Infisical records every statement they run.
 
-## Creating an account
+## Prerequisites
+
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
+- A [gateway](/documentation/platform/gateways/overview) that can reach the database
+- An Oracle [account template](/documentation/platform/pam/templates/overview)
+- An Oracle password of 30 characters or fewer, because the gateway can't sign in with a longer one
+
+## Create the account
 
 <Steps>
-  <Step title="Start adding an account">
-    Go to **Privileged Access Management → Accounts** and select **Add Account**.
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
   </Step>
-  <Step title="Select a folder and template">
-    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select an Oracle [template](/documentation/platform/pam/templates/overview).
+  <Step>
+    Select the **Folder** and an Oracle **Account Template**, then select **Next**.
   </Step>
-  <Step title="Enter connection details">
+  <Step>
+    Enter a **Name** and the connection details:
+
     | Field | Description |
-    |-------|-------------|
-    | **Name** | A descriptive name (e.g., `billing-db`) |
-    | **Host** | Database hostname or IP |
-    | **Port** | Listener port (default: 1521, or 2484 for TCPS) |
+    | --- | --- |
+    | **Host** | The database's hostname or IP address |
+    | **Port** | The listener's port (defaults to `1521`; the TCPS listener usually uses `2484`) |
     | **Service Name** | The Oracle service name, such as `ORCL` or `FREEPDB1` |
-    | **SSL Enabled** | Connect to the TCPS listener |
-    | **Reject Unauthorized** | Reject connections with invalid certificates (only if SSL enabled) |
-    | **SSL Certificate** | Custom CA certificate (only if SSL enabled) |
+    | **SSL Enabled** | Whether to connect to the TCPS listener |
+    | **Reject Unauthorized** | Whether to reject a server certificate that can't be verified (shown when **SSL Enabled** is on) |
+    | **SSL Certificate** | The CA certificate that signed the server's certificate (shown when **SSL Enabled** is on) |
   </Step>
-  <Step title="Enter credentials">
+  <Step>
+    Enter the credentials:
+
     | Field | Description |
-    |-------|-------------|
-    | **Username** | The Oracle username, exactly as Oracle stores it. Unquoted names are stored uppercase |
-    | **Password** | The Oracle password. Maximum 30 characters |
+    | --- | --- |
+    | **Username** | The Oracle user, exactly as Oracle stores it (Oracle stores unquoted names in uppercase) |
+    | **Password** | The user's password |
   </Step>
-  <Step title="Save">
+  <Step>
     Select **Create**.
   </Step>
 </Steps>
 
-Infisical checks it can reach the host before saving, so a wrong host or port fails at **Create**. The username and password are verified by the first [credential health check](/documentation/platform/pam/product-reference/credential-health/overview), which reports **Out of Sync** if Oracle rejects them.
+When you select **Create**, Infisical only checks that it can reach the host and port. The first [credential health check](/documentation/platform/pam/credential-health/overview) checks the username and password, and reports **Out of Sync** if Oracle rejects them.
 
-## Connecting
+## Connect
 
-The CLI starts a local proxy that you connect to with your preferred Oracle client.
+To open a session, follow [Connect to an account](/documentation/platform/pam/accounts/connect). Oracle accounts don't support the browser, so use the CLI.
+
+Start the local proxy. The CLI prints the port, the username, and the service name to connect with:
 
 ```bash
-infisical pam access my-folder/billing-db
+infisical pam access finance/billing-db
 ```
 
-The command outputs the local port to connect to, along with the username and service name.
-
-Then use `sqlplus`, SQL Developer, or any Oracle client:
+The proxy keeps running in that terminal. In a second terminal, connect your Oracle client, such as `sqlplus` or SQL Developer, to the port:
 
 ```bash
 sqlplus <username>/password@127.0.0.1:<port>/<service-name>
 ```
 
-**Flags:**
-- `--port <port>`: use a specific local port (otherwise one is assigned automatically)
-- `--reason <reason>`: provide an access reason (if required by template)
-
 ## Next steps
 
 <CardGroup cols={2}>
-  <Card title="Oracle credential rotation" icon="refresh-cw" href="/documentation/platform/pam/product-reference/credential-rotation/oracledb">
-    Rotate Oracle account passwords on a schedule.
+  <Card title="Oracle credential rotation" icon="refresh-cw" href="/documentation/platform/pam/credential-rotation/oracledb">
+    Rotate the passwords of Oracle accounts.
   </Card>
   <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
-    View and manage sessions.
+    Review and end the connections that people and agents make to your accounts.
   </Card>
 </CardGroup>

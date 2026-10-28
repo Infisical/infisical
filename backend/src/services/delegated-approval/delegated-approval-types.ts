@@ -25,7 +25,8 @@ export type TDelegatedApprovalPolicy = Omit<TDelegatedApprovalPolicies, "type"> 
 
 export type { TDelegatedApprovalProviderDetails, TDelegatedApprovalRequestDetails };
 
-export type TDelegatedApprovalRequest = Omit<TDelegatedApprovalRequests, "status" | "details"> & {
+export type TDelegatedApprovalRequest = Omit<TDelegatedApprovalRequests, "providerType" | "status" | "details"> & {
+  providerType: DelegatedApprovalPolicyType;
   status: DelegatedApprovalRequestStatus;
   details: TDelegatedApprovalRequestDetails;
 };
@@ -53,13 +54,12 @@ export type TUpdateDelegatedApprovalPolicyDTO = {
 
 export type TCreateDelegatedApprovalRequestDTO = {
   approvalRequest: Pick<TApprovalRequests, "id" | "type">;
+  delegatedPolicy: Pick<TDelegatedApprovalPolicy, "type">;
 };
 
 export type TRetryDelegatedApprovalRequestDispatchDTO = {
   approvalRequest: Pick<TApprovalRequests, "id" | "policyId" | "status" | "expiresAt">;
 };
-
-export type TApprovalRequestExpiry = { expiresAt?: Date | string | null };
 
 export type TLoadDelegatedApprovalContextDeps = {
   delegatedApprovalRequestDAL: Pick<TDelegatedApprovalRequestDALFactory, "findById" | "primaryNode">;

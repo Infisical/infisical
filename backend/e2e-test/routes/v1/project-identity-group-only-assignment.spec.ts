@@ -15,10 +15,9 @@ import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { createIdentityActor } from "../../testUtils/identities";
 
 // A sub-org can hold a machine identity only through a group linked in from the root org. Such an
-// identity gets project access through that group, so it must not be assignable to a sub-org project
-// on its own.
+// identity can still hold its own project row; org-access-reconcile.spec.ts covers adding it and the
+// reap once the group path goes.
 const rootOrgId = seedData1.organization.id;
-const GROUP_ONLY_MESSAGE = "only through a group";
 
 describe("Sub-org project assignment of identities that belong only through a group", () => {
   let subOrgId: string;
@@ -156,19 +155,6 @@ describe("Sub-org project assignment of identities that belong only through a gr
     await testDb(TableName.Organization).where({ id: subOrgId }).del();
   });
 
-  test("rejects individually assigning an identity that belongs to the sub-org only through a group", async () => {
-    const res = await testServer.inject({
-      method: "POST",
-      url: assignUrl(groupOnlyIdentityId),
-      headers: { authorization: `Bearer ${subOrgJwt}` },
-      body: { roles: [{ role: ProjectMembershipRole.Viewer }] }
-    });
-
-    expect(res.statusCode).toBe(400);
-    expect(res.json().message).toContain(GROUP_ONLY_MESSAGE);
-    expect(await projectMembershipRows(groupOnlyIdentityId)).toHaveLength(0);
-  });
-
   test("assigns an identity that is a direct member of the sub-org", async () => {
     const res = await testServer.inject({
       method: "POST",
@@ -181,7 +167,7 @@ describe("Sub-org project assignment of identities that belong only through a gr
     expect(await projectMembershipRows(directIdentityId)).toHaveLength(1);
   });
 
-  test("reports a missing membership, not a group, for an identity unrelated to the sub-org", async () => {
+  test("rejects an identity unrelated to the sub-org", async () => {
     const res = await testServer.inject({
       method: "POST",
       url: assignUrl(unrelatedIdentityId),
@@ -190,16 +176,15 @@ describe("Sub-org project assignment of identities that belong only through a gr
     });
 
     expect(res.statusCode).toBe(400);
-    expect(res.json().message).toContain("missing organization membership");
-    expect(res.json().message).not.toContain(GROUP_ONLY_MESSAGE);
+    expect(res.json().message).toContain("is not an active member of this organization");
+    expect(await projectMembershipRows(unrelatedIdentityId)).toHaveLength(0);
   });
 
-  // A group-only identity can still hold an individual project row written before the rule existed.
-  describe("legacy individual membership of a group-only identity", () => {
-    let legacyMembershipId: string;
+  describe("individual membership of a group-only identity", () => {
+    let membershipId: string;
 
     beforeAll(async () => {
-      legacyMembershipId = await insertMembership(
+      membershipId = await insertMembership(
         {
           scope: AccessScope.Project,
           scopeOrgId: subOrgId,
@@ -210,7 +195,7 @@ describe("Sub-org project assignment of identities that belong only through a gr
       );
     });
 
-    test("rejects changing its roles", async () => {
+    test("lets an admin change its roles", async () => {
       const res = await testServer.inject({
         method: "PATCH",
         url: assignUrl(groupOnlyIdentityId),
@@ -218,13 +203,12 @@ describe("Sub-org project assignment of identities that belong only through a gr
         body: { roles: [{ role: ProjectMembershipRole.Admin, isTemporary: false }] }
       });
 
-      expect(res.statusCode).toBe(400);
-      expect(res.json().message).toContain(GROUP_ONLY_MESSAGE);
-      const roles = await testDb(TableName.MembershipRole).where({ membershipId: legacyMembershipId }).pluck("role");
-      expect(roles).toEqual([ProjectMembershipRole.Viewer]);
+      expect(res.statusCode).toBe(200);
+      const roles = await testDb(TableName.MembershipRole).where({ membershipId }).pluck("role");
+      expect(roles).toEqual([ProjectMembershipRole.Admin]);
     });
 
-    test("still lets an admin remove it", async () => {
+    test("lets an admin remove it", async () => {
       const res = await testServer.inject({
         method: "DELETE",
         url: assignUrl(groupOnlyIdentityId),

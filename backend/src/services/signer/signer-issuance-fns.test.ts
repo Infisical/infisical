@@ -3,6 +3,8 @@ import { webcrypto } from "node:crypto";
 import * as x509 from "@peculiar/x509";
 import { beforeAll, describe, expect, it } from "vitest";
 
+import { asNonSharedBuffer } from "@app/lib/fn";
+
 import { assertHsmKeyMatchesCertificate } from "./signer-issuance-fns";
 
 type TCase = {
@@ -58,7 +60,7 @@ const fakeHsm = (testCase: TCase, privateKey: CryptoKey, publicKeySpki?: Buffer)
     signedWithPublicKeys.push(args.publicKeySpki);
     expect(args.isDigest).toBe(false);
     return {
-      signature: Buffer.from(await webcrypto.subtle.sign(testCase.sign, privateKey, args.data)),
+      signature: Buffer.from(await webcrypto.subtle.sign(testCase.sign, privateKey, asNonSharedBuffer(args.data))),
       keyId: "0a1b"
     };
   }

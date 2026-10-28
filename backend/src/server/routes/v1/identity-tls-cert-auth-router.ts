@@ -12,11 +12,11 @@ import { slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
-import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import {
   isValidAllowedSubjectAltNameEntry,
   parseAllowedSubjectAltNames
 } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-fns";
+import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { isSuperAdmin } from "@app/services/super-admin/super-admin-fns";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 

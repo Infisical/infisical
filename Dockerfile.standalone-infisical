@@ -6,6 +6,10 @@ ARG INFISICAL_CLI_VERSION=0.44.6
 
 FROM node:26.12.1-trixie-slim AS base
 
+# Node 26.12.1 bundles npm 11.20.0, whose own dependencies are outdated. 11.21.1 updates them
+# and stays on the npm major that Node ships.
+RUN npm install -g npm@11.21.1 && npm cache clean --force
+
 FROM base AS frontend-dependencies
 
 WORKDIR /app

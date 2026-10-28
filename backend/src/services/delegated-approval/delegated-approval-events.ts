@@ -13,20 +13,20 @@ export type TDelegatedApprovalDispatchRequestedPayload = z.infer<
   typeof DelegatedApprovalDispatchRequestedPayloadSchema
 >;
 
-// updatedAt is the attempt. Repeated retries of one failure share it and collapse on the outbox unique
-// key. A request id alone would not: the previous row is still retained (delivered for a day, failed for
-// 30 days), so a later resend has to insert beside it. The consumer's status write bumps updatedAt,
-// which is what gives that resend a new key.
+// The event id is the request's dispatchEventId. A resend stores a new one, and the consumer skips any event
+// whose id no longer matches, so an older event still in backoff can't dispatch or close the request.
 export const emitDelegatedApprovalDispatchRequested = (
   eventEmitter: TEventEmitter,
-  { delegatedRequestId, updatedAt }: TDelegatedApprovalDispatchRequestedPayload & { updatedAt: Date },
+  { delegatedRequestId, dispatchEventId }: TDelegatedApprovalDispatchRequestedPayload & { dispatchEventId: string },
   tx?: Knex
 ): Promise<void> =>
   eventEmitter.emit(
-    {
-      eventType: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
-      idempotencyKey: `${DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT}:${delegatedRequestId}:${updatedAt.toISOString()}`,
-      payload: { delegatedRequestId }
-    },
+    [
+      {
+        id: dispatchEventId,
+        type: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
+        data: { delegatedRequestId }
+      }
+    ],
     tx
   );

@@ -28,8 +28,6 @@ import {
   TCertRequestRequestData
 } from "@app/services/approval-policy/cert-request/cert-request-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
-import { CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { assertCaInProfileProject } from "@app/services/certificate-authority/certificate-authority-fns";
@@ -63,6 +61,8 @@ import { TCertificateRequestServiceFactory } from "@app/services/certificate-req
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { applyProfileDefaults, resolveEffectiveTtl } from "@app/services/certificate-v3/certificate-v3-fns";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
+import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
+import { CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
 import { TAcmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TUsageCounterDALFactory } from "@app/services/license-client/usage/usage-counter-dal";

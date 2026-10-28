@@ -106,6 +106,34 @@ func TestAccessRequests(t *testing.T) {
 		require.Equal(t, new("approved"), reply.Result.Data.Decision)
 	})
 
+	t.Run("should report no decision when the customer's flow expired the record", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		fake := servicenow.Service.New(fakenet.Emitter{})
+		_, sysID := create(t, fake, "request-1")
+		raw, err := json.Marshal(servicenow.Expired(sysID))
+		require.NoError(t, err)
+		require.NoError(t, fake.Seed(raw))
+
+		// Action
+		code, body := send(t, fake, http.MethodGet, "/api/x_infis_approvals/v1/infisical/access_request/"+sysID, nil)
+
+		// Assert
+		require.Equalf(t, http.StatusOK, code, "read back: %s", body)
+		var reply struct {
+			Result struct {
+				Data struct {
+					State    string  `json:"state"`
+					Decision *string `json:"decision"`
+				} `json:"data"`
+			} `json:"result"`
+		}
+		require.NoError(t, json.Unmarshal(body, &reply))
+		require.Equal(t, "expired", reply.Result.Data.State)
+		require.Nil(t, reply.Result.Data.Decision)
+	})
+
 	t.Run("should return the record it already holds when the same request is sent twice", func(t *testing.T) {
 		t.Parallel()
 

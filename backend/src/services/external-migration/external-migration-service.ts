@@ -47,10 +47,10 @@ import {
   THCVaultConnection
 } from "../app-connection/hc-vault";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
-import { TSecretServiceFactory } from "../secret/secret-service";
-import { SecretProtectionType } from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretFolderServiceFactory } from "../secret-folder/secret-folder-service";
+import { TSecretServiceFactory } from "../secret/secret-service";
+import { SecretProtectionType } from "../secret/secret-types";
 import { TUserDALFactory } from "../user/user-dal";
 import {
   assertVaultFolderImportSecretCount,

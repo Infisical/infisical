@@ -22,8 +22,8 @@ import {
   TApprovalRequestStepsDALFactory
 } from "@app/services/approval-policy/approval-request-dal";
 import { TDelegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TSecretAccessApprovalGlobalPolicyBridgeDALFactory } from "./secret-access-approval-global-policy-bridge-dal";
@@ -57,7 +57,7 @@ export type TSecretAccessApprovalGlobalPolicyBridgeServiceFactoryDep = {
   >;
   delegatedApprovalService: Pick<
     TDelegatedApprovalServiceFactory,
-    "validateConnection" | "createPolicy" | "updatePolicy" | "deletePolicyByPolicyId"
+    "validateConnection" | "assertPlanAllowsPolicyEdit" | "createPolicy" | "updatePolicy" | "deletePolicyByPolicyId"
   >;
 };
 

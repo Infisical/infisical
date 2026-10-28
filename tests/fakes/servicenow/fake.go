@@ -121,9 +121,13 @@ func (in *Instance) readAccessRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	state := "awaiting_approval"
-	if rec.Decision != "" {
+	state := rec.State
+	switch {
+	case state != "":
+	case rec.Decision != "":
 		state = "callback_pending"
+	default:
+		state = "pending"
 	}
 	in.events.Publish(AccessRequestRead{rec.detail()})
 	writeJSON(w, http.StatusOK, map[string]any{"result": map[string]any{
@@ -146,7 +150,7 @@ func (in *Instance) Snapshot() ([]byte, error) {
 }
 
 // Seed merges a partial instance in, so a test names only what it cares about. A
-// record is only ever decided here, never created: Infisical is what creates them.
+// record is only ever changed here, never created: Infisical is what creates them.
 func (in *Instance) Seed(raw []byte) error {
 	var seed Instance
 	if err := json.Unmarshal(raw, &seed); err != nil {
@@ -163,7 +167,7 @@ func (in *Instance) Seed(raw []byte) error {
 		if !ok {
 			return fmt.Errorf("servicenow fake: no access request %q to decide", sysID)
 		}
-		rec.Decision, rec.DecisionNotes = decided.Decision, decided.DecisionNotes
+		rec.Decision, rec.DecisionNotes, rec.State = decided.Decision, decided.DecisionNotes, decided.State
 	}
 	return nil
 }

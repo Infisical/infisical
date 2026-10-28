@@ -10,6 +10,8 @@ import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import {
   PersonalOverridesBehavior,
@@ -17,15 +19,15 @@ import {
   type SecretsOrderBy,
   SecretSortField
 } from "@app/services/secret/secret-types";
-import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 
+import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TSecretValueBlindIndexes } from "./secret-blind-index-fns";
+import { TSecretEventScope } from "./secret-events";
 import { TSecretV2BridgeDALFactory } from "./secret-v2-bridge-dal";
 import { TSecretVersionV2DALFactory } from "./secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "./secret-version-tag-dal";
@@ -207,6 +209,8 @@ export type TFnSecretBulkInsert = {
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
+  eventScope: TSecretEventScope;
   actor?: {
     type: string;
     actorId?: string;
@@ -243,6 +247,8 @@ export type TFnSecretBulkUpdate = {
   secretTagDAL: Pick<TSecretTagDALFactory, "saveTagsToSecretV2" | "deleteTagsToSecretV2" | "find">;
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
+  eventScope: TSecretEventScope;
   actor?: {
     type: string;
     actorId?: string;
@@ -264,6 +270,8 @@ export type TFnSecretBulkDelete = {
     removeSecretReminder: (data: TRemoveSecretReminderDTO, tx?: Knex) => Promise<void>;
   };
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
+  eventScope: TSecretEventScope;
   secretVersionDAL: Pick<TSecretVersionV2DALFactory, "findLatestVersionMany">;
 };
 
@@ -305,6 +313,7 @@ export type TFnSecretMove = {
   secretVersionTagDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   secretApprovalPolicyService: Pick<TSecretApprovalPolicyServiceFactory, "getSecretApprovalPolicy">;
   secretApprovalRequestCreationFns: Pick<
     TSecretApprovalRequestCreationFnsFactory,

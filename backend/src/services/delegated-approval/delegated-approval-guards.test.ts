@@ -7,22 +7,11 @@ import { DelegatedApprovalPolicyType } from "./delegated-approval-enums";
 import {
   DelegatedApprovalRequestBlocker,
   getDelegatedApprovalRequestBlocker,
-  isApprovalRequestExpired,
   requireDelegatedApprovalConnection
 } from "./delegated-approval-guards";
 
 const pending = { status: ApprovalRequestStatus.Pending, expiresAt: null as Date | null };
 const policy = { type: DelegatedApprovalPolicyType.ServiceNow, connectionId: "connection-1" };
-
-describe("isApprovalRequestExpired", () => {
-  test("is false without a deadline or before it, true after it", () => {
-    const now = new Date("2026-10-21T10:00:00Z");
-
-    expect(isApprovalRequestExpired({ expiresAt: null }, now)).toBe(false);
-    expect(isApprovalRequestExpired({ expiresAt: new Date("2026-10-21T11:00:00Z") }, now)).toBe(false);
-    expect(isApprovalRequestExpired({ expiresAt: "2026-10-21T09:00:00Z" }, now)).toBe(true);
-  });
-});
 
 describe("getDelegatedApprovalRequestBlocker", () => {
   test.each([

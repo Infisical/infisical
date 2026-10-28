@@ -8,9 +8,9 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { PamSessionStatus } from "../pam/pam-enums";
 import { getResourceIdsWithActionsForActors, pamActorKey } from "../pam/pam-permission";
-import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { LIVE_PAM_SESSION_STATUSES, sendPamSessionCancellationSignal, terminatePamSessions } from "./pam-session-fns";
@@ -215,7 +215,7 @@ export const assertUserStillActiveInOrg = async ({
   orgId: string;
   userId: string;
   membershipDAL: Pick<TMembershipDALFactory, "lockOrgMembershipForUser">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   tx: Knex;
 }) => {
   const org = await orgDAL.findById(orgId, tx);
@@ -224,7 +224,16 @@ export const assertUserStillActiveInOrg = async ({
 
   for await (const id of orgIds) {
     const membership = await membershipDAL.lockOrgMembershipForUser(id, userId, tx);
-    if (!membership || !membership.isActive) {
+    let isActive = Boolean(membership?.isActive);
+    if (!membership) {
+      await orgDAL.lockActorsForOrgAccess({ orgId: id, actorIds: [userId] }, tx);
+      const withAccess = await orgDAL.findActorsWithActiveOrgAccess(
+        { orgId: id, userIds: [userId], identityIds: [] },
+        tx
+      );
+      isActive = withAccess.userIds.has(userId);
+    }
+    if (!isActive) {
       throw new ForbiddenRequestError({
         message: "Your organization membership is no longer active. Contact an organization admin to restore access."
       });

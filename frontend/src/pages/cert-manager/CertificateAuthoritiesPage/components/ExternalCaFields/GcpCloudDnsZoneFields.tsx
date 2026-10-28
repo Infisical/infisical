@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { Control, Controller } from "react-hook-form";
-import { SingleValue } from "react-select";
+import { Control, Controller, ControllerRenderProps } from "react-hook-form";
 import { AxiosError } from "axios";
 import { Info } from "lucide-react";
 
 import {
+  Combobox,
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -17,7 +16,6 @@ import {
   useGcpConnectionListCloudDnsProjects,
   useGcpConnectionListCloudDnsZones
 } from "@app/hooks/api/appConnections/gcp/queries";
-import { TGcpCloudDnsZone, TGcpProject } from "@app/hooks/api/appConnections/gcp/types";
 
 import { FormData } from "./schema";
 
@@ -37,12 +35,14 @@ const GcpCloudDnsZoneSelect = ({
   gcpProjectId,
   value,
   onChange,
+  inputRef,
   error
 }: {
   connectionId: string;
   gcpProjectId: string;
   value?: string | null;
   onChange: (value: string) => void;
+  inputRef: ControllerRenderProps<FormData, "configuration.dnsProviderConfig.hostedZoneId">["ref"];
   error?: { message?: string };
 }) => {
   const {
@@ -75,19 +75,22 @@ const GcpCloudDnsZoneSelect = ({
           </TooltipContent>
         </Tooltip>
       </FieldLabel>
-      <FilterableSelect
+      <Combobox
+        isClearable={false}
+        includeMissingSelectedOptions={false}
+        ref={inputRef}
         isLoading={isZonesPending && Boolean(connectionId) && Boolean(gcpProjectId)}
         isDisabled={!connectionId || !gcpProjectId}
         value={
           zones.find((zone) => zone.id === value) ||
           (value ? { id: value, name: value.split("/").pop() ?? value, dnsName: "" } : null)
         }
-        onChange={(option) => {
-          onChange((option as SingleValue<TGcpCloudDnsZone>)?.id ?? "");
+        onValueChange={(option) => {
+          onChange(option.id);
         }}
         options={zones}
         placeholder="Select a zone..."
-        noOptionsMessage={() => "No public managed zones found in this project."}
+        emptyMessage="No public managed zones found in this project."
         getOptionLabel={(option) =>
           option.dnsName ? `${option.dnsName} (${option.name})` : option.name
         }
@@ -117,7 +120,7 @@ export const GcpCloudDnsZoneFields = ({ control, connectionId }: Props) => {
     <Controller
       name="configuration.dnsProviderConfig.hostedZoneId"
       control={control}
-      render={({ field: { value, onChange }, fieldState: { error } }) => {
+      render={({ field: { value, onChange, ref }, fieldState: { error } }) => {
         const gcpProjectId = getProjectIdFromZone(value) || selectedProjectId || "";
 
         return (
@@ -136,20 +139,22 @@ export const GcpCloudDnsZoneFields = ({ control, connectionId }: Props) => {
                   </TooltipContent>
                 </Tooltip>
               </FieldLabel>
-              <FilterableSelect
+              <Combobox
+                isClearable={false}
+                includeMissingSelectedOptions={false}
                 isLoading={isProjectsPending && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={
                   projects.find((project) => project.id === gcpProjectId) ||
                   (gcpProjectId ? { id: gcpProjectId, name: gcpProjectId } : null)
                 }
-                onChange={(option) => {
-                  setSelectedProjectId((option as SingleValue<TGcpProject>)?.id ?? "");
+                onValueChange={(option) => {
+                  setSelectedProjectId(option.id);
                   onChange("");
                 }}
                 options={projects}
                 placeholder="Select a project..."
-                noOptionsMessage={({ inputValue }) =>
+                emptyMessage={(inputValue) =>
                   inputValue
                     ? "No matching projects"
                     : "No projects found. Grant the connection's service account the DNS Administrator and Service Usage Viewer roles on your project and enable the Cloud DNS API there."
@@ -167,6 +172,7 @@ export const GcpCloudDnsZoneFields = ({ control, connectionId }: Props) => {
               gcpProjectId={gcpProjectId}
               value={value}
               onChange={onChange}
+              inputRef={ref}
               error={error}
             />
           </>

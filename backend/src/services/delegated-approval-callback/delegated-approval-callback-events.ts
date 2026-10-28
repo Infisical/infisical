@@ -1,3 +1,4 @@
+import { v5 as uuidv5 } from "uuid";
 import { z } from "zod";
 
 import { DelegatedApprovalCallbackEvent } from "./delegated-approval-callback-enums";
@@ -13,6 +14,18 @@ export const DelegatedApprovalCallbackEventPayloadSchema = z.object({
 });
 
 export type TDelegatedApprovalCallbackEventPayload = z.infer<typeof DelegatedApprovalCallbackEventPayloadSchema>;
+
+// Namespaces the event ids derived below, so they can't collide with ids derived the same way elsewhere.
+const DELEGATED_APPROVAL_CALLBACK_EVENT_ID_NAMESPACE = "6583d64a-24ad-474f-8de8-48cbd24dd1f3";
+
+// One id per counted callback, so the read-back each one starts is its own outbox row.
+export const buildDelegatedApprovalCallbackEventId = ({
+  delegatedRequestId,
+  attempts
+}: {
+  delegatedRequestId: string;
+  attempts: number;
+}): string => uuidv5(`${delegatedRequestId}:${attempts}`, DELEGATED_APPROVAL_CALLBACK_EVENT_ID_NAMESPACE);
 
 const DELEGATED_APPROVAL_CALLBACK_EVENTS = new Set<string>(Object.values(DelegatedApprovalCallbackEvent));
 

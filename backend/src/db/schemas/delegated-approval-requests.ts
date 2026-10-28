@@ -12,14 +12,16 @@ import { TImmutableDBKeys } from "./models";
 export const DelegatedApprovalRequestsSchema = z.object({
   id: z.string().uuid(),
   requestId: z.string().uuid(),
+  providerType: z.string(),
   status: z.string(),
   encryptedCallbackToken: zodBuffer.nullable().optional(),
   details: z.unknown(),
   providerRequestId: z.string().nullable().optional(),
+  callbackAttempts: z.number().default(0),
   decisionReadRequestedAt: z.date().nullable().optional(),
+  dispatchEventId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  callbackAttempts: z.number().default(0)
+  updatedAt: z.date()
 });
 
 export type TDelegatedApprovalRequests = z.infer<typeof DelegatedApprovalRequestsSchema>;

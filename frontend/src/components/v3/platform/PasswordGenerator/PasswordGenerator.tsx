@@ -7,7 +7,7 @@ import {
   ShieldCheckIcon,
   TriangleAlertIcon
 } from "lucide-react";
-import RandExp from "randexp";
+import type RandExp from "randexp";
 import { twMerge } from "tailwind-merge";
 
 import { useTimedReset } from "@app/hooks";
@@ -27,6 +27,7 @@ import { IconButton } from "../../generic/IconButton";
 import { Label } from "../../generic/Label";
 import { Popover, PopoverContent, PopoverTrigger } from "../../generic/Popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../generic/Tooltip";
+import { buildSecureRandExp } from "./secure-randexp";
 
 type PasswordOptionsType = {
   length: number;
@@ -67,11 +68,13 @@ const generateFromConstraints = (constraints: TValueConstraints): string => {
 
   if (regexValue) {
     // Regex takes full precedence over min/max length constraints
+    let generator: RandExp | undefined;
     try {
-      middle = new RandExp(new RegExp(regexValue)).gen();
+      generator = buildSecureRandExp(new RegExp(regexValue));
     } catch {
       // Fall through to manual generation if regex is invalid
     }
+    middle = generator?.gen();
   }
 
   if (middle === undefined) {
@@ -300,7 +303,12 @@ export const PasswordGenerator = ({
         {trigger ? (
           cloneElement(trigger, { disabled: isDisabled })
         ) : (
-          <IconButton variant="outline" size="md" isDisabled={isDisabled}>
+          <IconButton
+            aria-label="Generate random value"
+            variant="outline"
+            size="md"
+            isDisabled={isDisabled}
+          >
             <KeyRoundIcon />
           </IconButton>
         )}
@@ -341,10 +349,20 @@ export const PasswordGenerator = ({
             <div className="flex items-center justify-between gap-2">
               <p className="flex-1 font-mono text-sm break-all select-all">{password}</p>
               <div className="flex shrink-0 gap-1">
-                <IconButton variant="ghost" size="xs" onClick={() => setRefresh((prev) => !prev)}>
+                <IconButton
+                  aria-label="Generate another value"
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => setRefresh((prev) => !prev)}
+                >
                   <RefreshCwIcon />
                 </IconButton>
-                <IconButton variant="ghost" size="xs" onClick={copyToClipboard}>
+                <IconButton
+                  aria-label="Copy generated value"
+                  variant="ghost"
+                  size="xs"
+                  onClick={copyToClipboard}
+                >
                   {isCopying ? <CheckIcon /> : <CopyIcon />}
                 </IconButton>
               </div>

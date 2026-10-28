@@ -12,6 +12,8 @@ export const userKeys = {
   getOrgMembershipProjectMemberships: (orgId: string, username: string) =>
     [{ orgId, username }, "org-membership-project-memberships"] as const,
   getOrgUsers: (orgId: string) => [{ orgId }, "user"],
+  getOrgUserAccess: (orgId: string) => [{ orgId }, "user", "access"] as const,
+  allOrgUserAccess: [{}, "user", "access"] as const,
   myIp: ["ip"] as const,
   myAPIKeys: ["api-keys"] as const,
   myAPIKeysV2: ["api-keys-v2"] as const,

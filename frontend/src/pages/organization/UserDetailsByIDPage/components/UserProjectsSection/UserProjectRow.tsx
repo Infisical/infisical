@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { MoreHorizontalIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -9,11 +9,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  RowLink,
   TableCell,
   TableRow
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { getProjectBaseURL, pinProjectForNavigation } from "@app/helpers/project";
+import { getInstancePinningLink, getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetUserProjects } from "@app/hooks/api";
 import { TWorkspaceUser } from "@app/hooks/api/types";
@@ -33,7 +34,6 @@ export const UserProjectRow = ({
   handlePopUpOpen
 }: Props) => {
   const { data: workspaces = [] } = useGetUserProjects();
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
 
   const isAccessible = useMemo(() => {
@@ -46,36 +46,37 @@ export const UserProjectRow = ({
     return workspaceIds.has(project.id);
   }, [workspaces, project]);
 
+  const projectLink =
+    getInstancePinningLink(
+      currentOrg.id,
+      { id: project.id, type: project.type },
+      "access-management"
+    ) ??
+    ({
+      to: `${getProjectBaseURL(project.type)}/access-management`,
+      params: { orgId: currentOrg.id, projectId: project.id }
+    } as const);
+  const projectSearch = { selectedTab: OrgAccessControlTabSections.Member };
+
   return (
     <TableRow
       key={`user-project-membership-${id}`}
-      onClick={() => {
-        if (isAccessible) {
-          pinProjectForNavigation(currentOrg?.id || "", { id: project.id, type: project.type });
-          navigate({
-            to: `${getProjectBaseURL(project.type)}/access-management` as const,
-            params: {
-              orgId: currentOrg?.id || "",
-              projectId: project.id
-            },
-            search: {
-              selectedTab: OrgAccessControlTabSections.Member
-            }
-          });
-          return;
-        }
-
-        createNotification({
-          text: "Unable to access project",
-          type: "error"
-        });
-      }}
+      linked={isAccessible}
+      onClick={
+        isAccessible
+          ? undefined
+          : () => createNotification({ text: "Unable to access project", type: "error" })
+      }
     >
-      <TableCell className="max-w-0 truncate">{project.name}</TableCell>
+      <TableCell className="max-w-0 truncate">
+        <RowLink {...projectLink} search={projectSearch} disabled={!isAccessible}>
+          {project.name}
+        </RowLink>
+      </TableCell>
       <TableCell>{`${formatProjectRoleName(roles[0].role, roles[0].customRoleName)}${
         roles.length > 1 ? ` (+${roles.length - 1})` : ""
       }`}</TableCell>
-      <TableCell>
+      <TableCell data-row-interactive>
         <DropdownMenu>
           <DropdownMenuTrigger>
             <IconButton variant="ghost" size="xs">
@@ -83,27 +84,10 @@ export const UserProjectRow = ({
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              isDisabled={!isAccessible}
-              onClick={(e) => {
-                e.stopPropagation();
-                pinProjectForNavigation(currentOrg?.id || "", {
-                  id: project.id,
-                  type: project.type
-                });
-                navigate({
-                  to: `${getProjectBaseURL(project.type)}/access-management` as const,
-                  params: {
-                    orgId: currentOrg?.id || "",
-                    projectId: project.id
-                  },
-                  search: {
-                    selectedTab: OrgAccessControlTabSections.Member
-                  }
-                });
-              }}
-            >
-              Access Project
+            <DropdownMenuItem asChild isDisabled={!isAccessible}>
+              <Link {...projectLink} search={projectSearch}>
+                Access Project
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuItem
               variant="danger"

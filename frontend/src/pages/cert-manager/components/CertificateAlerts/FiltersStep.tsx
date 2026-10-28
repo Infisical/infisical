@@ -25,37 +25,45 @@ import { CertStatus } from "@app/hooks/api/certificates/enums";
 import {
   ApplicationFilterSelect,
   ProfileFilterSelect,
+  SignerFilterSelect,
   SourceFilterSelect
 } from "./CertificateFilterSelects";
 import {
   CERTIFICATE_FILTER_DEFINITIONS,
+  CERTIFICATE_FILTER_KINDS,
   CertificateFilterKind,
-  NO_FILTERS_DESCRIPTION,
+  getFilterKinds,
+  getNoFiltersDescription,
+  isSignerEventType,
   TCertificateAlertForm
 } from "./types";
 
 const MATCHED_PAGE_SIZE = 20;
 
-const FILTER_KINDS = Object.values(CertificateFilterKind);
-
 const FILTER_SELECTS = {
   [CertificateFilterKind.Applications]: ApplicationFilterSelect,
   [CertificateFilterKind.Profiles]: ProfileFilterSelect,
-  [CertificateFilterKind.Sources]: SourceFilterSelect
+  [CertificateFilterKind.Sources]: SourceFilterSelect,
+  [CertificateFilterKind.Signers]: SignerFilterSelect
 };
 
 type Props = { form: UseFormReturn<TCertificateAlertForm>; projectId: string };
 
-export const FiltersStep = ({ form, projectId }: Props) => {
-  const applicationIds = useWatch({
-    control: form.control,
-    name: CertificateFilterKind.Applications
-  });
-  const profileIds = useWatch({ control: form.control, name: CertificateFilterKind.Profiles });
-  const sources = useWatch({ control: form.control, name: CertificateFilterKind.Sources });
-  const conditionNames = useWatch({ control: form.control, name: "conditionNames" });
-  const filters = { applicationIds, profileIds, sources };
+type TCertificateFilters = Pick<
+  TCertificateAlertForm,
+  | CertificateFilterKind.Applications
+  | CertificateFilterKind.Profiles
+  | CertificateFilterKind.Sources
+>;
 
+const MatchedCertificatesPreview = ({
+  filters,
+  projectId
+}: {
+  filters: TCertificateFilters;
+  projectId: string;
+}) => {
+  const { applicationIds, profileIds, sources } = filters;
   const previewFilters = {
     applicationIds: applicationIds?.length ? applicationIds : undefined,
     profileIds: profileIds?.length ? profileIds : undefined,
@@ -83,19 +91,11 @@ export const FiltersStep = ({ form, projectId }: Props) => {
     source: previewFilters.sources
   });
 
-  const setFilter = (kind: CertificateFilterKind, ids: string[] | undefined) =>
-    form.setValue(kind, ids as TCertificateAlertForm[typeof kind], {
-      shouldDirty: true,
-      shouldValidate: true
-    });
-  const addFilter = (kind: CertificateFilterKind) => form.setValue(kind, [], { shouldDirty: true });
-
-  const presentKinds = FILTER_KINDS.filter((kind) => filters[kind] !== undefined);
-  const addableKinds = FILTER_KINDS.filter((kind) => filters[kind] === undefined);
-
   const matchedCount = preview?.totalCount ?? 0;
-  const isPreviewFiltered = FILTER_KINDS.some((kind) => previewFilters[kind] !== undefined);
-  const hasUnfinishedFilter = FILTER_KINDS.some((kind) => filters[kind]?.length === 0);
+  const isPreviewFiltered = CERTIFICATE_FILTER_KINDS.some(
+    (kind) => previewFilters[kind] !== undefined
+  );
+  const hasUnfinishedFilter = CERTIFICATE_FILTER_KINDS.some((kind) => filters[kind]?.length === 0);
   const certificatesLabel = `${matchedCount} active certificate${matchedCount === 1 ? "" : "s"}`;
   let previewSummary = "Loading the certificates this alert covers.";
   if (isPreviewError && !isPreviewing) {
@@ -129,11 +129,81 @@ export const FiltersStep = ({ form, projectId }: Props) => {
   const showPreviewRows = !isPreviewError && !hasUnfinishedFilter;
 
   return (
+    <>
+      <div className="mt-8 flex items-end justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-foreground">Matched Certificates</p>
+          <p className="mt-0.5 text-xs text-muted">{previewSummary}</p>
+        </div>
+        {isPreviewError && (
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            isPending={isPreviewing}
+            isDisabled={isPreviewing}
+            onClick={() => retryPreview()}
+          >
+            Retry
+          </Button>
+        )}
+      </div>
+
+      <div className="mt-3">
+        <PkiSyncMatchedCertificatesTable
+          rows={showPreviewRows ? (preview?.certificates ?? []) : []}
+          isLoading={showPreviewRows && !preview}
+          emptyTitle={previewEmptyState.title}
+          emptyDescription={previewEmptyState.description}
+        />
+        {showPreviewRows && matchedCount > MATCHED_PAGE_SIZE && (
+          <Pagination
+            className="mt-2"
+            count={matchedCount}
+            page={page}
+            perPage={MATCHED_PAGE_SIZE}
+            onChangePage={setPage}
+            onChangePerPage={() => {}}
+            perPageList={[MATCHED_PAGE_SIZE]}
+          />
+        )}
+      </div>
+    </>
+  );
+};
+
+export const FiltersStep = ({ form, projectId }: Props) => {
+  const eventType = useWatch({ control: form.control, name: "eventType" });
+  const applicationIds = useWatch({
+    control: form.control,
+    name: CertificateFilterKind.Applications
+  });
+  const profileIds = useWatch({ control: form.control, name: CertificateFilterKind.Profiles });
+  const sources = useWatch({ control: form.control, name: CertificateFilterKind.Sources });
+  const signerIds = useWatch({ control: form.control, name: CertificateFilterKind.Signers });
+  const conditionNames = useWatch({ control: form.control, name: "conditionNames" });
+  const filters = { applicationIds, profileIds, sources, signerIds };
+  const isSignerEvent = isSignerEventType(eventType);
+
+  const setFilter = (kind: CertificateFilterKind, ids: string[] | undefined) =>
+    form.setValue(kind, ids as TCertificateAlertForm[typeof kind], {
+      shouldDirty: true,
+      shouldValidate: true
+    });
+  const addFilter = (kind: CertificateFilterKind) => form.setValue(kind, [], { shouldDirty: true });
+
+  const filterKinds = getFilterKinds(eventType);
+  const presentKinds = filterKinds.filter((kind) => filters[kind] !== undefined);
+  const addableKinds = filterKinds.filter((kind) => filters[kind] === undefined);
+
+  return (
     <div className="flex flex-col">
       <div>
         <p className="text-sm font-medium text-foreground">Filters</p>
         <p className="mt-0.5 text-xs text-muted">
-          A certificate is covered only when it matches every filter below.
+          {isSignerEvent
+            ? "The alert covers only the signers selected below."
+            : "A certificate is covered only when it matches every filter below."}
         </p>
       </div>
 
@@ -194,7 +264,9 @@ export const FiltersStep = ({ form, projectId }: Props) => {
           <EmptyMedia variant="icon">
             <FilterIcon />
           </EmptyMedia>
-          <EmptyDescription>{NO_FILTERS_DESCRIPTION} Add a filter to narrow it.</EmptyDescription>
+          <EmptyDescription>
+            {getNoFiltersDescription(eventType)} Add a filter to narrow it.
+          </EmptyDescription>
         </Empty>
       )}
 
@@ -223,44 +295,7 @@ export const FiltersStep = ({ form, projectId }: Props) => {
         </div>
       )}
 
-      <div className="mt-8 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-foreground">Matched Certificates</p>
-          <p className="mt-0.5 text-xs text-muted">{previewSummary}</p>
-        </div>
-        {isPreviewError && (
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            isPending={isPreviewing}
-            isDisabled={isPreviewing}
-            onClick={() => retryPreview()}
-          >
-            Retry
-          </Button>
-        )}
-      </div>
-
-      <div className="mt-3">
-        <PkiSyncMatchedCertificatesTable
-          rows={showPreviewRows ? (preview?.certificates ?? []) : []}
-          isLoading={showPreviewRows && !preview}
-          emptyTitle={previewEmptyState.title}
-          emptyDescription={previewEmptyState.description}
-        />
-        {showPreviewRows && matchedCount > MATCHED_PAGE_SIZE && (
-          <Pagination
-            className="mt-2"
-            count={matchedCount}
-            page={page}
-            perPage={MATCHED_PAGE_SIZE}
-            onChangePage={setPage}
-            onChangePerPage={() => {}}
-            perPageList={[MATCHED_PAGE_SIZE]}
-          />
-        )}
-      </div>
+      {!isSignerEvent && <MatchedCertificatesPreview filters={filters} projectId={projectId} />}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import { type LucideIcon } from "lucide-react";
 
-import { ProviderIcon } from "@app/components/v3";
+import { ProviderIcon, SheetDescription, SheetTitle } from "@app/components/v3";
 
 type Props = {
   name: string;
@@ -20,8 +20,8 @@ export const ExternalCaHeader = ({ name, subtitle, image, icon: Icon }: Props) =
         )}
       </div>
       <div>
-        <div className="flex items-center gap-x-2 text-label">{name}</div>
-        <p className="text-sm leading-4 font-normal text-muted">{subtitle}</p>
+        <SheetTitle>{name}</SheetTitle>
+        <SheetDescription>{subtitle}</SheetDescription>
       </div>
     </div>
   );

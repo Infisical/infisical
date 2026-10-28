@@ -1,11 +1,15 @@
+import crypto from "node:crypto";
+
 import { Knex } from "knex";
 
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { enterpriseAppCheck } from "@app/services/app-connection/app-connection-fns";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
@@ -34,6 +38,7 @@ type TDelegatedApprovalServiceFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   eventEmitter: TEventEmitter;
 };
 
@@ -53,6 +58,7 @@ export const delegatedApprovalServiceFactory = ({
   approvalPolicyDAL,
   appConnectionDAL,
   appConnectionService,
+  licenseService,
   eventEmitter
 }: TDelegatedApprovalServiceFactoryDep) => {
   const $assertConnectionMatches = async (
@@ -87,6 +93,15 @@ export const delegatedApprovalServiceFactory = ({
       DELEGATED_APPROVAL_CONNECTION_MAP[type],
       { connectionId, projectId },
       actor
+    );
+  };
+
+  const assertPlanAllowsPolicyEdit = async (type: DelegatedApprovalPolicyType, orgId: string) => {
+    await enterpriseAppCheck(
+      licenseService,
+      DELEGATED_APPROVAL_CONNECTION_MAP[type],
+      orgId,
+      `Failed to update policy: ${DELEGATED_APPROVAL_NAME_MAP[type]} delegated approval is only available on plans with enterprise app connections. Upgrade your plan, or remove the delegated approver to edit this policy.`
     );
   };
 
@@ -156,17 +171,24 @@ export const delegatedApprovalServiceFactory = ({
     return (policy as TDelegatedApprovalPolicy | undefined) ?? null;
   };
 
-  const createRequest = async ({ approvalRequest }: TCreateDelegatedApprovalRequestDTO, tx?: Knex) => {
+  const createRequest = async ({ approvalRequest, delegatedPolicy }: TCreateDelegatedApprovalRequestDTO, tx?: Knex) => {
     assertPolicyTypeSupportsDelegatedApproval(approvalRequest.type);
 
+    const dispatchEventId = crypto.randomUUID();
     try {
       const request = await delegatedApprovalRequestDAL.create(
-        { requestId: approvalRequest.id, status: DelegatedApprovalRequestStatus.PendingDispatch, details: {} },
+        {
+          requestId: approvalRequest.id,
+          providerType: delegatedPolicy.type,
+          status: DelegatedApprovalRequestStatus.PendingDispatch,
+          details: {},
+          dispatchEventId
+        },
         tx
       );
       await emitDelegatedApprovalDispatchRequested(
         eventEmitter,
-        { delegatedRequestId: request.id, updatedAt: request.updatedAt },
+        { delegatedRequestId: request.id, dispatchEventId },
         tx
       );
       return toDelegatedApprovalRequest(request);
@@ -210,18 +232,34 @@ export const delegatedApprovalServiceFactory = ({
       });
     }
 
-    if (delegatedRequest.status !== DelegatedApprovalRequestStatus.FailedDispatch) {
-      throw new BadRequestError({
-        message: `Only requests that failed to reach ${DELEGATED_APPROVAL_NAME_MAP[delegatedPolicy.type]} can be sent again`
-      });
-    }
-
-    await emitDelegatedApprovalDispatchRequested(eventEmitter, {
-      delegatedRequestId: delegatedRequest.id,
-      updatedAt: delegatedRequest.updatedAt
+    const notResendableError = new BadRequestError({
+      message: `Only requests that failed to reach ${DELEGATED_APPROVAL_NAME_MAP[delegatedPolicy.type]} can be sent again`
     });
 
-    return { delegatedRequest, delegatedPolicy };
+    if (delegatedRequest.status !== DelegatedApprovalRequestStatus.FailedDispatch) {
+      throw notResendableError;
+    }
+
+    // Conditional on failed_dispatch so it serializes with the consumer reopening the row for the event this
+    // replaces: whichever takes the row first wins, and the other backs off.
+    const dispatchEventId = crypto.randomUUID();
+    const resentRequest = await delegatedApprovalRequestDAL.transaction(async (tx) => {
+      const [resent] = await delegatedApprovalRequestDAL.update(
+        { id: delegatedRequest.id, status: DelegatedApprovalRequestStatus.FailedDispatch },
+        { dispatchEventId },
+        tx
+      );
+      if (!resent) throw notResendableError;
+
+      await emitDelegatedApprovalDispatchRequested(
+        eventEmitter,
+        { delegatedRequestId: resent.id, dispatchEventId },
+        tx
+      );
+      return toDelegatedApprovalRequest(resent);
+    });
+
+    return { delegatedRequest: resentRequest, delegatedPolicy };
   };
 
   const deleteRequestByRequestId = async (requestId: string, tx?: Knex) => {
@@ -232,6 +270,7 @@ export const delegatedApprovalServiceFactory = ({
   return {
     listDelegatedApprovalOptions,
     validateConnection,
+    assertPlanAllowsPolicyEdit,
     createPolicy,
     getPolicyByPolicyId,
     updatePolicy,

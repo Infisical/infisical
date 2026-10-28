@@ -25,6 +25,7 @@ import {
   ApprovalRequestStatus,
   ApprovalRequestStepStatus
 } from "@app/services/approval-policy/approval-policy-enums";
+import { isApprovalRequestExpired } from "@app/services/approval-policy/approval-policy-service";
 import { TApprovalRequest } from "@app/services/approval-policy/approval-policy-types";
 import { createApprovalRequestWithSteps } from "@app/services/approval-policy/approval-request-fns";
 import {
@@ -35,7 +36,6 @@ import {
 } from "@app/services/approval-policy/secret-access/secret-access-policy-fns";
 import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
-import { isApprovalRequestExpired } from "@app/services/delegated-approval/delegated-approval-guards";
 import { AccessRequestWebhookAction, WebhookEvents } from "@app/services/webhook/webhook-types";
 
 import { externallyReviewedAccessRequestMessage } from "./secret-access-approval-global-request-bridge-constants";
@@ -351,12 +351,18 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     const parsedMs = requestExpirationTime ? ms(requestExpirationTime) : null;
     const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
 
-    // A policy update locks the policy row for update, so sharing it here keeps a request from being
-    // created with approver steps the update is replacing with a delegated reviewer, or the reverse.
+    // A policy update locks this row, then rewrites its environments, secret path, time limits, approver
+    // steps, and delegated reviewer in the same transaction, which moves updatedAt. Sharing the row waits that
+    // update out, and an unchanged updatedAt means the scope and limits this request was checked against still hold.
     const { approvalRequest: created, policySteps } = await approvalRequestDAL.transaction(async (tx) => {
       const lockedPolicy = await approvalPolicyDAL.findByIdForShare(policy.id, tx);
       if (!lockedPolicy) {
         throw new NotFoundError({ message: `Policy '${policy.name}' was deleted before the request could be created` });
+      }
+      if (new Date(lockedPolicy.updatedAt).getTime() !== new Date(policy.updatedAt).getTime()) {
+        throw new BadRequestError({
+          message: `Policy '${policy.name}' was changed while the request was being created. Submit the request again.`
+        });
       }
 
       const currentSteps = await approvalPolicyDAL.findStepsByPolicyId(policy.id, tx);
@@ -386,7 +392,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
         tx
       );
       if (delegatedPolicy) {
-        await delegatedApprovalService.createRequest({ approvalRequest }, tx);
+        await delegatedApprovalService.createRequest({ approvalRequest, delegatedPolicy }, tx);
       }
       return { approvalRequest, policySteps: currentSteps };
     });

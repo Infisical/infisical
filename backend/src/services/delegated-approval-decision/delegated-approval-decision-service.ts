@@ -4,16 +4,14 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { logger } from "@app/lib/logger";
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
+import { isApprovalRequestExpired } from "@app/services/approval-policy/approval-policy-service";
 import { TApprovalRequest, TApprovalResource } from "@app/services/approval-policy/approval-policy-types";
 import { ActorType } from "@app/services/auth/auth-type";
 import {
   DelegatedApprovalPolicyType,
   DelegatedApprovalRequestStatus
 } from "@app/services/delegated-approval/delegated-approval-enums";
-import {
-  isApprovalRequestExpired,
-  requireDelegatedApprovalConnection
-} from "@app/services/delegated-approval/delegated-approval-guards";
+import { requireDelegatedApprovalConnection } from "@app/services/delegated-approval/delegated-approval-guards";
 import {
   DELEGATED_APPROVAL_FINAL_STATE,
   DELEGATED_APPROVAL_NAME_MAP,
@@ -114,7 +112,10 @@ export const delegatedApprovalDecisionServiceFactory = ({
     try {
       await delegatedApprovalRequestDAL.updateWithDetails(
         { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.WaitingApproval },
-        { details: { statusReason: toDelegatedApprovalStatusReason(`${reason} ${hint}`) } }
+        {
+          ...(isFinalAttempt ? { decisionReadRequestedAt: null } : {}),
+          details: { statusReason: toDelegatedApprovalStatusReason(`${reason} ${hint}`) }
+        }
       );
     } catch (error) {
       logger.error(
@@ -409,19 +410,17 @@ export const delegatedApprovalDecisionServiceFactory = ({
       );
       return $retryLater(delegatedRequestId, message, isFinalAttempt);
     }
-    if (finalized.kind === "applied") {
-      const notify = isDelegatedApprovalSupportedPolicyType(approvalRequest.type)
-        ? decisionNotifiers[approvalRequest.type]
-        : undefined;
-      if (notify) {
-        try {
-          await notify({ approvalRequestId: approvalRequest.id, decision: decided.decision });
-        } catch (error) {
-          logger.error(
-            error,
-            `Failed to notify about the delegated approval decision [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequest.id}]`
-          );
-        }
+    if (finalized.kind === "applied" && isDelegatedApprovalSupportedPolicyType(approvalRequest.type)) {
+      try {
+        await decisionNotifiers[approvalRequest.type]({
+          approvalRequestId: approvalRequest.id,
+          decision: decided.decision
+        });
+      } catch (error) {
+        logger.error(
+          error,
+          `Failed to notify about the delegated approval decision [delegatedRequestId=${delegatedRequestId}] [approvalRequestId=${approvalRequest.id}]`
+        );
       }
     }
     return { status: EventResultStatus.Delivered };

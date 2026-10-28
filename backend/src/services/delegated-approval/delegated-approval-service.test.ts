@@ -7,13 +7,12 @@ import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "./d
 import { DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT } from "./delegated-approval-events";
 import { delegatedApprovalServiceFactory } from "./delegated-approval-service";
 
-const UPDATED_AT = new Date("2026-10-23T13:00:00.000Z");
 const failedRequest = {
   id: "delegated-1",
   requestId: "req-1",
   status: DelegatedApprovalRequestStatus.FailedDispatch,
   details: { statusReason: "ServiceNow could not be reached." },
-  updatedAt: UPDATED_AT
+  dispatchEventId: "44444444-4444-4444-8444-444444444444"
 };
 const serviceNowPolicy = {
   id: "delegated-policy-1",
@@ -34,66 +33,108 @@ const PRIMARY = { primary: true } as never;
 
 const createService = ({
   delegatedRequest = failedRequest as unknown,
-  delegatedPolicy = serviceNowPolicy as unknown
+  delegatedPolicy = serviceNowPolicy as unknown,
+  resendMatches = true
 } = {}) => {
   const emit = vi.fn().mockResolvedValue(undefined);
   const findOne = vi.fn().mockResolvedValue(delegatedRequest);
   const create = vi.fn().mockImplementation(async (row: { requestId: string; status: string; details: object }) => ({
     id: "delegated-1",
-    updatedAt: UPDATED_AT,
     ...row
   }));
+  const update = vi
+    .fn()
+    .mockImplementation(async (_filter: unknown, patch: { dispatchEventId: string }) =>
+      resendMatches ? [{ ...(delegatedRequest as object), ...patch }] : []
+    );
   const service = delegatedApprovalServiceFactory({
-    delegatedApprovalRequestDAL: { findOne, create, primaryNode: () => PRIMARY },
+    delegatedApprovalRequestDAL: {
+      findOne,
+      create,
+      update,
+      primaryNode: () => PRIMARY,
+      transaction: async (cb: (tx: never) => Promise<unknown>) => cb(TX)
+    },
     delegatedApprovalPolicyDAL: { findOne: vi.fn().mockResolvedValue(delegatedPolicy) },
     eventEmitter: { emit }
   } as never);
-  return { service, emit, create, findOne };
+  return { service, emit, create, update, findOne };
 };
 
-const dispatchRequestedEvent = {
-  eventType: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
-  idempotencyKey: `${DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT}:delegated-1:${UPDATED_AT.toISOString()}`,
-  payload: { delegatedRequestId: "delegated-1" }
-};
+const dispatchRequestedEvent = (id: string) => [
+  {
+    id,
+    type: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
+    data: { delegatedRequestId: "delegated-1" }
+  }
+];
 
 describe("delegatedApprovalService.createRequest", () => {
   test("records the dispatch event in the same transaction as the request row", async () => {
     const { service, emit, create } = createService();
 
-    const request = await service.createRequest({ approvalRequest: pendingApprovalRequest as never }, TX);
+    const request = await service.createRequest(
+      { approvalRequest: pendingApprovalRequest as never, delegatedPolicy: serviceNowPolicy },
+      TX
+    );
 
-    expect(request).toMatchObject({ id: "delegated-1", status: DelegatedApprovalRequestStatus.PendingDispatch });
+    expect(request).toMatchObject({
+      id: "delegated-1",
+      providerType: DelegatedApprovalPolicyType.ServiceNow,
+      status: DelegatedApprovalRequestStatus.PendingDispatch
+    });
     expect(create).toHaveBeenCalledWith(
-      { requestId: "req-1", status: DelegatedApprovalRequestStatus.PendingDispatch, details: {} },
+      {
+        requestId: "req-1",
+        providerType: DelegatedApprovalPolicyType.ServiceNow,
+        status: DelegatedApprovalRequestStatus.PendingDispatch,
+        details: {},
+        dispatchEventId: expect.any(String) as string
+      },
       TX
     );
     expect(emit).toHaveBeenCalledTimes(1);
-    expect(emit).toHaveBeenCalledWith(dispatchRequestedEvent, TX);
+    expect(emit).toHaveBeenCalledWith(dispatchRequestedEvent(request.dispatchEventId), TX);
   });
 });
 
 describe("delegatedApprovalService.retryDispatch", () => {
-  test("asks for a new dispatch of a pending request that failed to reach the delegated system", async () => {
-    const { service, emit, findOne } = createService();
+  test("supersedes the previous dispatch event with a new one in the same transaction", async () => {
+    const { service, emit, update, findOne } = createService();
 
-    await expect(service.retryDispatch({ approvalRequest: pendingApprovalRequest })).resolves.toEqual({
-      delegatedRequest: failedRequest,
-      delegatedPolicy: serviceNowPolicy
+    const { delegatedRequest, delegatedPolicy } = await service.retryDispatch({
+      approvalRequest: pendingApprovalRequest
     });
+
+    expect(delegatedPolicy).toEqual(serviceNowPolicy);
+    expect(delegatedRequest.dispatchEventId).not.toBe(failedRequest.dispatchEventId);
     expect(findOne).toHaveBeenCalledWith({ requestId: "req-1" }, PRIMARY);
-    expect(emit).toHaveBeenCalledWith(dispatchRequestedEvent, undefined);
+    expect(update).toHaveBeenCalledWith(
+      { id: "delegated-1", status: DelegatedApprovalRequestStatus.FailedDispatch },
+      { dispatchEventId: delegatedRequest.dispatchEventId },
+      TX
+    );
+    expect(emit).toHaveBeenCalledWith(dispatchRequestedEvent(delegatedRequest.dispatchEventId), TX);
   });
 
-  test("emits the same idempotency key when the same failed attempt is sent again", async () => {
+  test("emits a new event id on every resend", async () => {
     const { service, emit } = createService();
 
     await service.retryDispatch({ approvalRequest: pendingApprovalRequest });
     await service.retryDispatch({ approvalRequest: pendingApprovalRequest });
 
     expect(emit).toHaveBeenCalledTimes(2);
-    expect(emit).toHaveBeenNthCalledWith(1, dispatchRequestedEvent, undefined);
-    expect(emit).toHaveBeenNthCalledWith(2, dispatchRequestedEvent, undefined);
+    const [[[first]], [[second]]] = emit.mock.calls as [{ id: string }[]][];
+    expect(first.id).not.toBe(second.id);
+  });
+
+  test("refuses a resend when the request left failed_dispatch before it landed", async () => {
+    const { service, emit } = createService({ resendMatches: false });
+
+    await expect(service.retryDispatch({ approvalRequest: pendingApprovalRequest })).rejects.toThrow(
+      "Only requests that failed to reach ServiceNow can be sent again"
+    );
+    expect(emit).not.toHaveBeenCalled();
   });
 
   test("refuses a request without a delegated approval", async () => {
@@ -141,11 +182,37 @@ describe("delegatedApprovalService.retryDispatch", () => {
     DelegatedApprovalRequestStatus.WaitingApproval,
     DelegatedApprovalRequestStatus.Approved
   ])("refuses a request in the %s state", async (status) => {
-    const { service, emit } = createService({ delegatedRequest: { ...failedRequest, status } });
+    const { service, emit, update } = createService({ delegatedRequest: { ...failedRequest, status } });
 
     await expect(service.retryDispatch({ approvalRequest: pendingApprovalRequest })).rejects.toThrow(
       "Only requests that failed to reach ServiceNow can be sent again"
     );
+    expect(update).not.toHaveBeenCalled();
     expect(emit).not.toHaveBeenCalled();
+  });
+});
+
+describe("delegatedApprovalService.assertPlanAllowsPolicyEdit", () => {
+  const createPlanService = (enterpriseAppConnections: boolean) => {
+    const getPlan = vi.fn().mockResolvedValue({ enterpriseAppConnections });
+    const service = delegatedApprovalServiceFactory({ licenseService: { getPlan } } as never);
+    return { service, getPlan };
+  };
+
+  test("refuses the edit when the org's plan lacks enterprise app connections", async () => {
+    const { service, getPlan } = createPlanService(false);
+
+    await expect(service.assertPlanAllowsPolicyEdit(DelegatedApprovalPolicyType.ServiceNow, "org-1")).rejects.toThrow(
+      "remove the delegated approver to edit this policy"
+    );
+    expect(getPlan).toHaveBeenCalledWith("org-1");
+  });
+
+  test("allows the edit when the org's plan includes enterprise app connections", async () => {
+    const { service } = createPlanService(true);
+
+    await expect(
+      service.assertPlanAllowsPolicyEdit(DelegatedApprovalPolicyType.ServiceNow, "org-1")
+    ).resolves.toBeUndefined();
   });
 });

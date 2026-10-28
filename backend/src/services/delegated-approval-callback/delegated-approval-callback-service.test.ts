@@ -27,6 +27,8 @@ import {
 // eslint-disable-next-line import/first
 import { DelegatedApprovalCallbackEvent } from "./delegated-approval-callback-enums";
 // eslint-disable-next-line import/first
+import { buildDelegatedApprovalCallbackEventId } from "./delegated-approval-callback-events";
+// eslint-disable-next-line import/first
 import { delegatedApprovalCallbackServiceFactory } from "./delegated-approval-callback-service";
 
 const CIPHER_PREFIX = Buffer.from("enc:");
@@ -219,23 +221,39 @@ describe("handleCallback", () => {
     expect(eventEmitter.emit).not.toHaveBeenCalled();
   });
 
-  test("counts a callback once its token matches", async () => {
+  test("counts a callback that claims the read-back, in the claim's transaction", async () => {
     const { service, delegatedApprovalRequestDAL } = makeCallbackService();
 
     await service.handleCallback(callback());
 
     expect(delegatedApprovalRequestDAL.update).toHaveBeenCalledWith(
       { id: "delegated-1" },
-      { $incr: { callbackAttempts: 1 } }
+      { $incr: { callbackAttempts: 1 } },
+      TX
+    );
+    expect(delegatedApprovalRequestDAL.claimDecisionRead.mock.invocationCallOrder[0]).toBeLessThan(
+      delegatedApprovalRequestDAL.update.mock.invocationCallOrder[0]
     );
   });
 
-  test("rejects a request that is not awaiting a decision", async () => {
-    const { service, eventEmitter } = makeCallbackService({
+  test("locks the approval request before claiming the read-back", async () => {
+    const { service, delegatedApprovalRequestDAL, approvalRequestDAL } = makeCallbackService();
+
+    await service.handleCallback(callback());
+
+    expect(approvalRequestDAL.findByIdForUpdate).toHaveBeenCalledWith("request-1", TX);
+    expect(approvalRequestDAL.findByIdForUpdate.mock.invocationCallOrder[0]).toBeLessThan(
+      delegatedApprovalRequestDAL.claimDecisionRead.mock.invocationCallOrder[0]
+    );
+  });
+
+  test("rejects a request that is not awaiting a decision without counting it", async () => {
+    const { service, delegatedApprovalRequestDAL, eventEmitter } = makeCallbackService({
       delegatedRequest: makeDelegatedRequest({ status: DelegatedApprovalRequestStatus.Approved })
     });
 
     await expect(service.handleCallback(callback())).rejects.toBeInstanceOf(ForbiddenRequestError);
+    expect(delegatedApprovalRequestDAL.update).not.toHaveBeenCalled();
     expect(eventEmitter.emit).not.toHaveBeenCalled();
   });
 
@@ -299,17 +317,19 @@ describe("handleCallback", () => {
       projectId: "project-1"
     });
     expect(eventEmitter.emit).toHaveBeenCalledWith(
-      {
-        eventType: EVENT,
-        idempotencyKey: "delegated-1:1",
-        payload: {
-          delegatedRequestId: "delegated-1",
-          approvalRequestId: "request-1",
-          orgId: "org-1",
-          event: EVENT,
-          externalId: EXTERNAL_ID
+      [
+        {
+          id: buildDelegatedApprovalCallbackEventId({ delegatedRequestId: "delegated-1", attempts: 1 }),
+          type: EVENT,
+          data: {
+            delegatedRequestId: "delegated-1",
+            approvalRequestId: "request-1",
+            orgId: "org-1",
+            event: EVENT,
+            externalId: EXTERNAL_ID
+          }
         }
-      },
+      ],
       TX
     );
   });
@@ -337,6 +357,21 @@ describe("handleCallback", () => {
 
     await expect(service.handleCallback(callback())).resolves.toEqual({ delegatedRequestId: "delegated-1" });
     expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  test("does not count a repeat while another read-back holds the claim, even at the limit", async () => {
+    const atLimit = makeDelegatedRequest({ callbackAttempts: DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS });
+    const { service, delegatedApprovalRequestDAL, approvalRequestDAL } = makeCallbackService({
+      delegatedRequest: atLimit,
+      attemptsAfterIncrement: DELEGATED_APPROVAL_CALLBACK_MAX_ATTEMPTS + 1
+    });
+    delegatedApprovalRequestDAL.claimDecisionRead.mockResolvedValue(null);
+    delegatedApprovalRequestDAL.findById.mockResolvedValue(atLimit);
+
+    await expect(service.handleCallback(callback())).resolves.toEqual({ delegatedRequestId: "delegated-1" });
+    expect(delegatedApprovalRequestDAL.update).not.toHaveBeenCalled();
+    expect(delegatedApprovalRequestDAL.updateWithDetails).not.toHaveBeenCalled();
+    expect(approvalRequestDAL.updateById).not.toHaveBeenCalled();
   });
 
   test("rejects a callback whose request stopped awaiting a decision before the claim", async () => {

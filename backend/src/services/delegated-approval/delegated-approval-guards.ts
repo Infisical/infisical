@@ -3,14 +3,11 @@ import { UnrecoverableError } from "bullmq";
 import { TAppConnections, TApprovalRequests } from "@app/db/schemas";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
+import { isApprovalRequestExpired } from "@app/services/approval-policy/approval-policy-service";
 
 import { DelegatedApprovalPolicyType } from "./delegated-approval-enums";
 import { DELEGATED_APPROVAL_CONNECTION_MAP } from "./delegated-approval-maps";
-import { TApprovalRequestExpiry, TRequireDelegatedApprovalConnectionDTO } from "./delegated-approval-types";
-
-// let's create this helper function inside the access approval global request bridge service
-export const isApprovalRequestExpired = (request: TApprovalRequestExpiry, now: Date = new Date()): boolean =>
-  Boolean(request.expiresAt && new Date(request.expiresAt) < now);
+import { TRequireDelegatedApprovalConnectionDTO } from "./delegated-approval-types";
 
 export enum DelegatedApprovalRequestBlocker {
   Missing = "missing",

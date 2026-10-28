@@ -20,8 +20,6 @@ export const delegatedApprovalDecisionConsumerFactory = ({
   delegatedApprovalDecisionService
 }: TDelegatedApprovalDecisionConsumerDep): IEventConsumer<TDelegatedApprovalCallbackEventPayload> => {
   const $handleEvent = async (event: TEvent): Promise<TEventConsumerResult> => {
-    const id = String(event.id);
-
     const { data, failure } = parseEventPayload(
       event,
       DelegatedApprovalCallbackEventPayloadSchema,
@@ -35,16 +33,16 @@ export const delegatedApprovalDecisionConsumerFactory = ({
       externalId,
       isFinalAttempt: event.isFinalAttempt
     });
-    return { id, ...outcome };
+    return { id: event.id, ...outcome };
   };
 
   return {
     name: DELEGATED_APPROVAL_DECISION_CONSUMER,
-    payloadSchema: DelegatedApprovalCallbackEventPayloadSchema,
+    dataSchema: DelegatedApprovalCallbackEventPayloadSchema,
     subscribesTo: isDelegatedApprovalCallbackEvent,
     handle: (events) =>
       runEventsConcurrentlyByKey(events, {
-        keyOf: (event) => DelegatedApprovalCallbackEventPayloadSchema.safeParse(event.payload).data?.delegatedRequestId,
+        keyOf: (event) => DelegatedApprovalCallbackEventPayloadSchema.safeParse(event.data).data?.delegatedRequestId,
         concurrency: DELEGATED_APPROVAL_DECISION_CONCURRENCY,
         handleEvent: $handleEvent
       })

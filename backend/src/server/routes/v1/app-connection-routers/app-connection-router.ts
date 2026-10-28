@@ -146,6 +146,7 @@ import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
+import { JiraConnectionListItemSchema, SanitizedJiraConnectionSchema } from "@app/services/app-connection/jira";
 import { KeeperConnectionListItemSchema, SanitizedKeeperConnectionSchema } from "@app/services/app-connection/keeper";
 import {
   KempLoadMasterConnectionListItemSchema,
@@ -386,7 +387,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedKeeperConnectionSchema.options,
   ...SanitizedHpeIloConnectionSchema.options,
   ...SanitizedServiceNowConnectionSchema.options,
-  ...SanitizedS3CompatibleConnectionSchema.options
+  ...SanitizedS3CompatibleConnectionSchema.options,
+  ...SanitizedJiraConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -482,7 +484,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   KeeperConnectionListItemSchema,
   HpeIloConnectionListItemSchema,
   ServiceNowConnectionListItemSchema,
-  S3CompatibleConnectionListItemSchema
+  S3CompatibleConnectionListItemSchema,
+  JiraConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {
