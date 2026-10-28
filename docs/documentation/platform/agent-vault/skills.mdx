@@ -167,13 +167,7 @@ If you renamed the skill, the installed folder has the skill's old name.
 
 ### If an agent starts without skills
 
-The CLI always starts the agent, even if it can't install the skills:
-
-- If the CLI can't download or install the skills, it prints why the agent started without them
-- If the Infisical CLI on the agent's host is too old to support skills, the agent starts without skills
-- If your self-hosted Infisical instance is too old to support skills, the agent starts without skills, and the CLI only reports why if you pass [`--log-level=debug`](/cli/reference#global-flags--flag-log-level)
-
-To use skills, upgrade the [Infisical CLI](/cli/install) on the agent's host. If you self-host Infisical, also [upgrade your instance](/self-hosting/guides/upgrading-infisical).
+The CLI always starts the agent, even if it can't install the skills. If it can't download or install them, it prints why the agent started without them.
 
 ## Manage skills
 
