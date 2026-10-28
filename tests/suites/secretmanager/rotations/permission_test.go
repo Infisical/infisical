@@ -8,6 +8,7 @@ import (
 	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,6 +34,53 @@ func TestSecretRotation_Permission(t *testing.T) {
 			requireStatus(t, http.StatusForbidden, checked.StatusCode(), checked.Body)
 		})
 	}
+
+	t.Run("should return generated credentials and a credential check to a role granted only that action", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `New projects refuse additional privileges, so a custom role grants the one
+			action. Without this, the refusals above would also pass if the routes refused everyone.`)
+
+		// Setup
+		e := setup(t)
+		e.proj.NewRole(t, "credentials-reader", fixture.Permission{
+			Subject: "secret-rotation",
+			Action:  []string{"read-generated-credentials"},
+		})
+		actor := e.proj.NewMachineIdentity(t, fixture.WithRoles("credentials-reader"))
+		r := e.newRotation(t)
+
+		// Action
+		generated := r.generated(t, actor.API)
+		checked := r.check(t, actor.API)
+
+		// Assert
+		requireStatus(t, http.StatusOK, generated.StatusCode(), generated.Body)
+		require.Contains(t, string(generated.Body), e.published(t, "/").password)
+		requireStatus(t, http.StatusNoContent, checked.StatusCode(), checked.Body)
+	})
+
+	t.Run("should refuse generated credentials and a credential check when the role grants the action only for another folder", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		e := setup(t)
+		e.proj.NewRole(t, "credentials-reader", fixture.Permission{
+			Subject:    "secret-rotation",
+			Action:     []string{"read-generated-credentials"},
+			Conditions: map[string]any{"secretPath": map[string]any{"$eq": "/elsewhere"}},
+		})
+		actor := e.proj.NewMachineIdentity(t, fixture.WithRoles("credentials-reader"))
+		r := e.newRotation(t)
+
+		// Action
+		generated := r.generated(t, actor.API)
+		checked := r.check(t, actor.API)
+
+		// Assert
+		requireStatus(t, http.StatusForbidden, generated.StatusCode(), generated.Body)
+		require.NotContains(t, string(generated.Body), e.published(t, "/").password)
+		requireStatus(t, http.StatusForbidden, checked.StatusCode(), checked.Body)
+	})
 }
 
 func TestSecretRotation_License(t *testing.T) {

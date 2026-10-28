@@ -4,9 +4,11 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,6 +32,35 @@ func TestSecretRotation_Move(t *testing.T) {
 		require.Equal(t, "/services", r.view(t).Folder.Path)
 		require.Equal(t, published, e.published(t, "/services"))
 		require.Empty(t, e.secretsAt(t, "/"))
+	})
+
+	t.Run("should move the mapped secrets without an approval request when both folders have an approval policy", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `A rotation writes its mapped secrets itself, so moving it moves them directly
+			and opens no secret change request, even for an actor with no secret permissions.`)
+
+		// Setup
+		e := setup(t)
+		secretmanager.CreateFolder(t, e.proj, "dev", "/services")
+		r := e.newRotation(t)
+		published := e.published(t, "/")
+		for _, path := range []string{"/", "/services"} {
+			secretmanager.CreateApprovalPolicy(t, e.proj, secretmanager.Location{Env: "dev", Path: path}, e.tn.Admin)
+		}
+		e.proj.NewRole(t, "rotation-mover", fixture.Permission{
+			Subject: "secret-rotation",
+			Action:  []string{"read", "create", "delete"},
+		})
+		mover := e.proj.NewMachineIdentity(t, fixture.WithRoles("rotation-mover"))
+
+		// Action
+		res := r.move(t, mover.API, "/services")
+
+		// Assert
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		require.Equal(t, published, e.published(t, "/services"))
+		require.Empty(t, e.secretsAt(t, "/"))
+		require.Zero(t, e.openApprovalRequests(t))
 	})
 
 	t.Run("should refuse a move to the folder the rotation is already in", func(t *testing.T) {
@@ -91,4 +122,17 @@ func TestSecretRotation_Move(t *testing.T) {
 		require.Equal(t, "/", r.view(t).Folder.Path)
 		require.Empty(t, e.secretsAt(t, "/services"))
 	})
+}
+
+// openApprovalRequests is the number of secret change requests waiting in the project.
+func (e env) openApprovalRequests(t *testing.T) int {
+	t.Helper()
+	res, err := e.tn.Admin.API.GetSecretApprovalRequestCountWithResponse(t.Context(),
+		&api.GetSecretApprovalRequestCountParams{ProjectId: e.proj.ID})
+	require.NoError(t, err)
+	require.NotNilf(t, res.JSON200, "counting approval requests returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
+	if res.JSON200.Approvals.Open == nil {
+		return 0
+	}
+	return int(*res.JSON200.Approvals.Open)
 }
