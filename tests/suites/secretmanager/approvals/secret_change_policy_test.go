@@ -9,6 +9,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/stretchr/testify/require"
@@ -138,7 +139,17 @@ func TestSecretApprovalPolicy_Enforce(t *testing.T) {
 		wait.Until(t, "the replication to open a change request", func() bool { return openRequestCount(t, proj) == 1 })
 		held := getRequest(t, proj, onlyOpenRequest(t, proj))
 		require.Equal(t, []change{{Op: "create", Key: "API_KEY"}}, held.Changes)
-		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev"))
+		listed, err := proj.Tenant().Admin.API.ListSecretsV4WithResponse(t.Context(), &api.ListSecretsV4Params{
+			ProjectId: &proj.ID, Environment: new("dev"),
+		})
+		require.NoError(t, err)
+		require.NotNilf(t, listed.JSON200, "listing dev returned %d: %s", listed.StatusCode(), apierr.Body(listed.Body))
+		require.Empty(t, listed.JSON200.Secrets)
+		if listed.JSON200.Imports != nil {
+			for _, imp := range *listed.JSON200.Imports {
+				require.Emptyf(t, imp.Secrets, "the replica already serves %s:%s", imp.Environment, imp.SecretPath)
+			}
+		}
 	})
 
 	t.Run("should keep enforcing an existing policy after the plan loses approvals", func(t *testing.T) {
