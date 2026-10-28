@@ -180,7 +180,7 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
 
   return (
     <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
-      <DialogBody className="-mx-6 space-y-4 px-6">
+      <DialogBody className="-mx-6 -my-1 space-y-4 px-6 py-1">
         <div className="flex flex-col gap-4">
           <Controller
             control={control}
