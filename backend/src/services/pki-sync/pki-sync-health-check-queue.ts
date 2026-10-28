@@ -21,11 +21,11 @@ import {
   tryAdmitAppConnectionConcurrency
 } from "../app-connection/app-connection-concurrency-fns";
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
+import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
+import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
-import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { buildCertificateMap } from "./pki-sync-certificate-map-fns";
 import { hydratePkiSyncCredentials } from "./pki-sync-credentials-fns";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";

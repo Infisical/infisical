@@ -27,6 +27,14 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
+import { TAgentVaultMemberDALFactory } from "../agent-vault-member/agent-vault-member-dal";
+import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
+import {
+  clearPersonalValuesAfterRevoke,
+  sameMemberProvidedFields
+} from "../agent-vault-personal-value/agent-vault-personal-value-fns";
+import { TAgentVaultPersonalValueServiceFactory } from "../agent-vault-personal-value/agent-vault-personal-value-service";
+import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import {
   agentVaultActorKey,
   resolveAgentVaultActorNames,
@@ -53,14 +61,6 @@ import {
   toStoredVariableReferences,
   toVariableReference
 } from "../agent-vault/agent-vault-variable-fns";
-import { TAgentVaultMemberDALFactory } from "../agent-vault-member/agent-vault-member-dal";
-import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
-import {
-  clearPersonalValuesAfterRevoke,
-  sameMemberProvidedFields
-} from "../agent-vault-personal-value/agent-vault-personal-value-fns";
-import { TAgentVaultPersonalValueServiceFactory } from "../agent-vault-personal-value/agent-vault-personal-value-service";
-import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import {
   TAgentVaultAccessBundleActorRef,
   TAgentVaultAccessBundleDALFactory,

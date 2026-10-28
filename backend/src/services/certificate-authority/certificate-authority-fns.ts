@@ -9,9 +9,9 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { pick } from "@app/lib/fn";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
-import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
 import { CERT_CLOCK_SKEW_MS, DEFAULT_CRL_VALIDITY_DAYS } from "../certificate-common/certificate-constants";
 import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
+import { CertKeyAlgorithm, CertStatus } from "../certificate/certificate-types";
 import { isExternalCaKeySource } from "./ca-key-source/ca-key-source-fns";
 import type { TCaKeySourceServiceFactory } from "./ca-key-source/ca-key-source-service";
 import { TCaKeyDetails } from "./ca-key-source/ca-key-source-types";
