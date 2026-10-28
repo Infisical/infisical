@@ -833,6 +833,7 @@ export enum EventType {
   AGENT_VAULT_ACCESS_BUNDLE_MEMBER_ADD = "agent-vault-access-bundle-member-add",
   AGENT_VAULT_ACCESS_BUNDLE_MEMBER_REMOVE = "agent-vault-access-bundle-member-remove",
   AGENT_VAULT_SESSION_MINT = "agent-vault-session-mint",
+  AGENT_VAULT_SESSION_UPDATE = "agent-vault-session-update",
   AGENT_VAULT_SESSION_REVOKE = "agent-vault-session-revoke",
   AGENT_VAULT_PROXY_REGISTER = "agent-vault-proxy-register",
   AGENT_VAULT_PROXY_TOKEN_REISSUE = "agent-vault-proxy-token-reissue",
@@ -6569,8 +6570,15 @@ interface AgentVaultServiceCreateEvent {
     accessBundleName: string;
     serviceId: string;
     name: string;
+    serviceType: string;
+    // MCP services only.
+    serverUrl?: string;
+    transport?: string;
     hostPattern: string;
     credentialType: string;
+    // OAuth credentials only.
+    oauthIssuer?: string;
+    oauthScopes?: string[];
     headerName?: string;
     headerPrefix?: string;
     allowedMethods?: string[] | null;
@@ -6591,8 +6599,15 @@ interface AgentVaultServiceUpdateEvent {
     accessBundleName: string;
     serviceId: string;
     name?: string;
+    // The service's type, which never changes, so present on every update.
+    serviceType: string;
+    serverUrl?: string;
+    transport?: string;
     hostPattern?: string;
     credentialType?: string;
+    // Present when the update connected or reauthorized an OAuth credential.
+    oauthIssuer?: string;
+    oauthScopes?: string[];
     headerName?: string;
     headerPrefix?: string;
     allowedMethods?: string[] | null;
@@ -6774,9 +6789,21 @@ interface AgentVaultSessionMintEvent {
   type: EventType.AGENT_VAULT_SESSION_MINT;
   metadata: {
     sessionId: string;
+    label: string | null;
     accessBundleId: string;
     accessBundleName: string;
     expiresAt: string | null;
+  };
+}
+
+interface AgentVaultSessionUpdateEvent {
+  type: EventType.AGENT_VAULT_SESSION_UPDATE;
+  metadata: {
+    sessionId: string;
+    label: string | null;
+    previousLabel: string | null;
+    sessionOwner: string;
+    accessBundleName: string | null;
   };
 }
 
@@ -6784,6 +6811,9 @@ interface AgentVaultSessionRevokeEvent {
   type: EventType.AGENT_VAULT_SESSION_REVOKE;
   metadata: {
     sessionId: string;
+    label: string | null;
+    sessionOwner: string;
+    accessBundleName: string | null;
   };
 }
 
@@ -8737,6 +8767,7 @@ export type Event =
   | AgentVaultAccessBundleMemberAddEvent
   | AgentVaultAccessBundleMemberRemoveEvent
   | AgentVaultSessionMintEvent
+  | AgentVaultSessionUpdateEvent
   | AgentVaultSessionRevokeEvent
   | AgentVaultProxyRegisterEvent
   | AgentVaultProxyTokenReissueEvent

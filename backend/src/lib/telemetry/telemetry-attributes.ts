@@ -25,6 +25,8 @@ export const INFISICAL_CORE_METER_ATTRIBUTES = [
   "audit_log_stream.id",
   "event_outbox.consumer",
   "event_outbox.status",
+  "event_outbox.event_type",
+  "event_outbox.reject_reason",
   "scim.operation",
   "sso.provider",
   "sso.action",

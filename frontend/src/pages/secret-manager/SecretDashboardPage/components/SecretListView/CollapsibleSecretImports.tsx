@@ -5,6 +5,7 @@ import { AlertTriangleIcon, ImportIcon, KeyIcon, RefreshCwIcon } from "lucide-re
 import {
   Alert,
   AlertTitle,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -12,6 +13,7 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 
@@ -87,8 +89,6 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
-  const projectBase = `/organizations/${currentOrg.id}/projects/secret-management/${currentProject.id}`;
-
   const truncatePath = (path: string, maxLength = 54): string => {
     if (path.length <= maxLength) return path;
 
@@ -102,40 +102,48 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
     return `...${endPortion}`;
   };
 
-  const handlePathClick = (item: FlatItem) => {
+  const getItemLink = (item: FlatItem) => {
     if (item.type === ItemType.SecretSync) {
-      window.open(
-        `${projectBase}/integrations/secret-syncs/${item.destination}/${item.id}`,
-        "_blank",
-        "noopener,noreferrer"
-      );
-      return;
+      return {
+        to: ROUTE_PATHS.SecretManager.SecretSyncDetailsByIDPage.path,
+        params: {
+          orgId: currentOrg.id,
+          projectId: currentProject.id,
+          destination: item.destination ?? "",
+          syncId: item.id
+        }
+      } as const;
     }
 
-    const base = item.sourceProjectId
-      ? `/organizations/${currentOrg.id}/projects/secret-management/${item.sourceProjectId}`
-      : projectBase;
-
-    const params = new URLSearchParams();
-    params.set("environments", JSON.stringify([item.environment.slug]));
+    const params = {
+      orgId: currentOrg.id,
+      projectId: item.sourceProjectId ?? currentProject.id
+    };
+    const environments = [item.environment.slug];
 
     if (item.type === ItemType.Folder) {
       // Import: navigate to the folder path, filter to imports
-      params.set("secretPath", item.path);
-      params.set("filterBy", "import");
-    } else {
-      // Secret reference: navigate to the folder containing the secret, search for the key
-      const segments = item.path.split("/").filter(Boolean);
-      const keyName = segments.pop() || "";
-      const folderPath = segments.length > 0 ? `/${segments.join("/")}` : "/";
-      params.set("secretPath", folderPath);
-      params.set("filterBy", "secret");
-      if (keyName) {
-        params.set("search", keyName);
-      }
+      return {
+        to: "/organizations/$orgId/projects/secret-management/$projectId/overview",
+        params,
+        search: { environments, secretPath: item.path, filterBy: "import" }
+      } as const;
     }
 
-    window.open(`${base}/overview?${params.toString()}`, "_blank");
+    // Secret reference: navigate to the folder containing the secret, search for the key
+    const segments = item.path.split("/").filter(Boolean);
+    const keyName = segments.pop() || "";
+    const folderPath = segments.length > 0 ? `/${segments.join("/")}` : "/";
+    return {
+      to: "/organizations/$orgId/projects/secret-management/$projectId/overview",
+      params,
+      search: {
+        environments,
+        secretPath: folderPath,
+        filterBy: "secret",
+        ...(keyName && { search: keyName })
+      }
+    } as const;
   };
 
   const flattenedItems = useMemo(() => {
@@ -272,7 +280,7 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
           {flattenedItems.map((item) => (
             <TableRow
               key={item.id}
-              onClick={() => handlePathClick(item)}
+              linked
               title={
                 item.type === ItemType.SecretSync
                   ? "Navigate to Secret Sync"
@@ -280,7 +288,9 @@ export const CollapsibleSecretImports: React.FC<CollapsibleSecretImportsProps> =
               }
             >
               <TableCell className="border-r" isTruncatable>
-                {getResourceLabel(item)}
+                <RowLink {...getItemLink(item)} target="_blank" rel="noopener noreferrer">
+                  {getResourceLabel(item)}
+                </RowLink>
               </TableCell>
               {hasCrossProjectItems && (
                 <TableCell isTruncatable className="border-r">

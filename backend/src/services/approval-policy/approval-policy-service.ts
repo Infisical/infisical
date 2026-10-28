@@ -194,7 +194,7 @@ export const approvalPolicyServiceFactory = ({
 
   const $emitEvent = async (args: { event: ApprovalNotificationEvent; request: TApprovalRequests }, tx: Knex) => {
     const event = resources[args.request.type as ApprovalPolicyType]?.buildEvent?.(args);
-    if (event) await eventEmitter.emit(event, tx);
+    if (event) await eventEmitter.emit([event], tx);
   };
 
   const $buildDecorationContext = (actor: TApprovalActor): TDecorationContext => {

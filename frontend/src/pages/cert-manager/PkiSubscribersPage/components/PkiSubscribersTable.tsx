@@ -1,6 +1,5 @@
 import { faBan, faEllipsis, faPencil, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -13,6 +12,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -24,9 +24,9 @@ import {
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
-  useOrganization,
   useProject
 } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useListWorkspacePkiSubscribers } from "@app/hooks/api";
 import {
   getPkiSubscriberStatusBadgeVariant,
@@ -43,8 +43,6 @@ type Props = {
 };
 
 export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
-  const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { data, isPending } = useListWorkspacePkiSubscribers(currentProject?.id || "");
   if (!isPending && !data?.length) {
@@ -75,19 +73,18 @@ export const PkiSubscribersTable = ({ handlePopUpOpen }: Props) => {
             data.length > 0 &&
             data.map((subscriber) => {
               return (
-                <TableRow
-                  key={`pki-subscriber-${subscriber.id}`}
-                  onClick={() =>
-                    navigate({
-                      to: "/organizations/$orgId/cert-manager/subscribers/$subscriberName",
-                      params: {
-                        orgId: currentOrg.id,
-                        subscriberName: subscriber.name
-                      }
-                    })
-                  }
-                >
-                  <TableCell>{subscriber.name}</TableCell>
+                <TableRow key={`pki-subscriber-${subscriber.id}`} linked>
+                  <TableCell>
+                    <RowLink
+                      {...getInstancePinningLink(
+                        currentProject.orgId,
+                        currentProject,
+                        `subscribers/${subscriber.name}`
+                      )!}
+                    >
+                      {subscriber.name}
+                    </RowLink>
+                  </TableCell>
                   <TableCell>
                     <Badge variant={getPkiSubscriberStatusBadgeVariant(subscriber.status)}>
                       {pkiSubscriberStatusToNameMap[subscriber.status]}

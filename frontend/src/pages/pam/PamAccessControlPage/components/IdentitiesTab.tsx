@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon, PencilIcon, Plus, SearchIcon, Trash2Icon } from "lucide-react";
 
@@ -36,6 +35,7 @@ import {
   InputGroupInput,
   OrgIcon,
   ProjectIcon,
+  RowLink,
   Skeleton,
   SubOrgIcon,
   Table,
@@ -67,7 +67,6 @@ import { IdentityRoleModal } from "./IdentityRoleModal";
 export const IdentitiesTab = () => {
   const { currentProject } = useProject();
   const { currentOrg, isSubOrganization } = useOrganization();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [isAddIdentityOpen, setIsAddIdentityOpen] = useState(false);
@@ -216,18 +215,14 @@ export const IdentitiesTab = () => {
                   </TableRow>
                 ))}
               {filteredIdentities.map((member) => (
-                <TableRow
-                  key={member.membershipId}
-                  className="cursor-pointer"
-                  onClick={() =>
-                    navigate({
-                      to: "/organizations/$orgId/pam/identities/$identityId",
-                      params: { orgId: currentOrg.id, identityId: member.identityId! }
-                    })
-                  }
-                >
+                <TableRow key={member.membershipId} linked>
                   <TableCell className="font-medium">
-                    <HighlightText text={member.name} highlight={search} />
+                    <RowLink
+                      to="/organizations/$orgId/pam/identities/$identityId"
+                      params={{ orgId: currentOrg.id, identityId: member.identityId! }}
+                    >
+                      <HighlightText text={member.name} highlight={search} />
+                    </RowLink>
                   </TableCell>
                   <TableCell>
                     <button
@@ -248,7 +243,7 @@ export const IdentitiesTab = () => {
                   <TableCell className="text-sm text-muted">
                     {member.createdAt ? format(new Date(member.createdAt), "MMM d, yyyy") : "—"}
                   </TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
+                  <TableCell data-row-interactive>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <IconButton
