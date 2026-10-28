@@ -36,7 +36,8 @@ import { createDigiCertApiClient } from "./digicert-api-client";
 import {
   DIGICERT_FINAL_ISSUED_STATUSES,
   DigiCertOrderStatus,
-  DigiCertPollOutcome
+  DigiCertPollOutcome,
+  DigiCertRevocationRequestStatus
 } from "./digicert-certificate-authority-enums";
 import { DigiCertCaPurpose } from "./digicert-certificate-authority-schemas";
 import {
@@ -714,7 +715,15 @@ export const DigiCertCertificateAuthorityFns = ({
     const client = createDigiCertApiClient(apiKey, baseUrl);
 
     try {
-      await client.revokeOrder(orderId, `Revoked via Infisical — reason: ${reason}`);
+      const { requestStatus } = await client.revokeOrder(orderId, `Revoked via Infisical — reason: ${reason}`);
+      if (requestStatus === DigiCertRevocationRequestStatus.Rejected) {
+        throw new BadRequestError({ message: `DigiCert rejected the revocation of order ${orderId}.` });
+      }
+      if (requestStatus && requestStatus !== DigiCertRevocationRequestStatus.Approved) {
+        throw new BadRequestError({
+          message: `DigiCert is waiting for an administrator to approve the revocation of order ${orderId}. Approve it in CertCentral, then revoke again here. Use an API key with administrator access to revoke without approval.`
+        });
+      }
     } catch (err) {
       const message = (err as Error)?.message ?? "";
       if (message.includes("order_already_revoked") || message.includes("order_is_revoked")) {

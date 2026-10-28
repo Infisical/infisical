@@ -12,6 +12,7 @@ import {
   PenTool,
   RefreshCwIcon,
   RotateCwIcon,
+  ShieldOffIcon,
   Trash2Icon
 } from "lucide-react";
 
@@ -56,7 +57,9 @@ import {
   useSignerPermission
 } from "@app/context/SignerPermissionContext";
 import { useListCasByProjectId } from "@app/hooks/api/ca";
-import { CaType } from "@app/hooks/api/ca/enums";
+import { caSupportsCapability } from "@app/hooks/api/ca/constants";
+import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
+import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   getSignerStatusBadgeVariant,
@@ -67,17 +70,20 @@ import {
   useDisableSigner,
   useEnableSigner,
   useGetSigner,
-  useReissueSignerCertificate
+  useReissueSignerCertificate,
+  useRenewSignerCertificate
 } from "@app/hooks/api/signers";
 
 import { PkiDocsUrls } from "../pki-docs-urls";
 import { EditSignerModal } from "./components/EditSignerModal";
 import { ExportSignerCertModal } from "./components/ExportSignerCertModal";
+import { RevokeSignerCertificateDialog } from "./components/RevokeSignerCertificateDialog";
 import { SignerApprovalsSection } from "./components/SignerApprovalsSection";
+import { SignerCertificateDetailsCard } from "./components/SignerCertificateDetailsCard";
 import { SignerMembersTab } from "./components/SignerMembersTab";
 import { SigningOperationsTable } from "./components/SigningOperationsTable";
 
-type Tab = "activity" | "approvals" | "members";
+type Tab = "overview" | "approvals" | "members";
 
 export const SignerDetailPage = () => {
   const { currentOrg } = useOrganization();
@@ -90,16 +96,17 @@ export const SignerDetailPage = () => {
     from: ROUTE_PATHS.CertManager.SignerDetailByIDPage.id
   });
 
-  const activeTab: Tab = selectedTab ?? "activity";
+  const activeTab: Tab = selectedTab ?? "overview";
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isRevokeOpen, setIsRevokeOpen] = useState(false);
 
   const { data: signer, isLoading } = useGetSigner(signerId);
   const cas = useListCasByProjectId();
-  const isDigicertSigner =
-    (cas.data ?? []).find((ca) => ca.id === signer?.caId)?.type === CaType.DIGICERT;
+  const signerCaType = (cas.data ?? []).find((ca) => ca.id === signer?.caId)?.type;
+  const isDigicertSigner = signerCaType === CaType.DIGICERT;
   const { permission } = useSignerPermission();
   const can = (action: SignerPermissionActions) =>
     permission.can(action, SignerPermissionSub.Signer);
@@ -107,6 +114,7 @@ export const SignerDetailPage = () => {
   const disableSigner = useDisableSigner();
   const deleteSigner = useDeleteSigner();
   const reissueSigner = useReissueSignerCertificate();
+  const renewSigner = useRenewSignerCertificate();
   const checkSignerIssuance = useCheckSignerIssuance();
 
   if (isLoading)
@@ -135,8 +143,24 @@ export const SignerDetailPage = () => {
 
   const onOpenExport = () => setIsExportOpen(true);
 
+  const hasLiveCertificate =
+    Boolean(signer.certificateId) && signer.certificateStatus !== CertStatus.REVOKED;
+  const canRenewCertificate =
+    hasLiveCertificate &&
+    Boolean(signer.caId) &&
+    signer.status !== SignerStatus.Pending &&
+    signer.status !== SignerStatus.Disabled &&
+    signer.status !== SignerStatus.Revoked;
+  const canRevokeCertificate =
+    hasLiveCertificate &&
+    signer.status !== SignerStatus.Pending &&
+    Boolean(signerCaType) &&
+    caSupportsCapability(signerCaType as CaType, CaCapability.REVOKE_CERTIFICATES);
+
   let statusTooltip: string | null = null;
-  if (signer.status === SignerStatus.Failed && signer.certificateFailureReason) {
+  if (signer.status === SignerStatus.Revoked) {
+    statusTooltip = "Create a new signer to keep signing.";
+  } else if (signer.status === SignerStatus.Failed && signer.certificateFailureReason) {
     statusTooltip = signer.certificateFailureReason;
   } else if (signer.status === SignerStatus.Pending && signer.externalOrder) {
     statusTooltip = `DigiCert order #${signer.externalOrder.orderId} is awaiting approval. DigiCert sent an approval link to the order's approver, and issuance completes automatically once they approve it.`;
@@ -207,14 +231,14 @@ export const SignerDetailPage = () => {
                     }
                   >
                     <DownloadIcon />
-                    Export certificate
+                    Export Certificate
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={() => setIsEditOpen(true)}
                     isDisabled={!can(SignerPermissionActions.Edit)}
                   >
                     <PencilIcon />
-                    Edit settings
+                    Edit Settings
                   </DropdownMenuItem>
                   {/* eslint-disable-next-line no-nested-ternary */}
                   {signer.status === SignerStatus.Active ? (
@@ -223,7 +247,7 @@ export const SignerDetailPage = () => {
                       isDisabled={!can(SignerPermissionActions.ManageStatus)}
                     >
                       <BanIcon />
-                      Disable signer
+                      Disable Signer
                     </DropdownMenuItem>
                   ) : signer.status === SignerStatus.Disabled ? (
                     <DropdownMenuItem
@@ -231,7 +255,7 @@ export const SignerDetailPage = () => {
                       isDisabled={!can(SignerPermissionActions.ManageStatus)}
                     >
                       <CheckCircleIcon />
-                      Enable signer
+                      Enable Signer
                     </DropdownMenuItem>
                   ) : null}
                   {signer.status === SignerStatus.Pending && (
@@ -243,7 +267,7 @@ export const SignerDetailPage = () => {
                       }
                     >
                       <RefreshCwIcon />
-                      Check issuance now
+                      Check Issuance Now
                     </DropdownMenuItem>
                   )}
                   {signer.status === SignerStatus.Failed && signer.caId && (
@@ -254,7 +278,28 @@ export const SignerDetailPage = () => {
                       isDisabled={!can(SignerPermissionActions.ReissueCertificate)}
                     >
                       <RotateCwIcon />
-                      Retry issuance
+                      Retry Issuance
+                    </DropdownMenuItem>
+                  )}
+                  {canRenewCertificate && (
+                    <DropdownMenuItem
+                      onClick={() => renewSigner.mutate(signer.id)}
+                      isDisabled={
+                        renewSigner.isPending || !can(SignerPermissionActions.ReissueCertificate)
+                      }
+                    >
+                      <RefreshCwIcon />
+                      Renew Certificate
+                    </DropdownMenuItem>
+                  )}
+                  {canRevokeCertificate && (
+                    <DropdownMenuItem
+                      variant="danger"
+                      onClick={() => setIsRevokeOpen(true)}
+                      isDisabled={!can(SignerPermissionActions.RevokeCertificate)}
+                    >
+                      <ShieldOffIcon />
+                      Revoke Certificate
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem
@@ -263,7 +308,7 @@ export const SignerDetailPage = () => {
                     isDisabled={!can(SignerPermissionActions.Delete)}
                   >
                     <Trash2Icon />
-                    Delete signer
+                    Delete Signer
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -288,13 +333,16 @@ export const SignerDetailPage = () => {
                 }
               >
                 <TabsList variant="project" aria-label="Signer sections">
-                  <TabsTrigger value="activity">Activity</TabsTrigger>
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
                   <TabsTrigger value="approvals">Approvals</TabsTrigger>
                   <TabsTrigger value="members">Members</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="activity" className="pt-2">
-                  <SigningOperationsTable signer={signer} signerId={signerId} />
+                <TabsContent value="overview" className="pt-2">
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,5fr)]">
+                    <SignerCertificateDetailsCard signer={signer} />
+                    <SigningOperationsTable signer={signer} signerId={signerId} />
+                  </div>
                 </TabsContent>
                 <TabsContent value="approvals" className="pt-2">
                   <SignerApprovalsSection
@@ -320,6 +368,12 @@ export const SignerDetailPage = () => {
       </div>
 
       <EditSignerModal isOpen={isEditOpen} onOpenChange={setIsEditOpen} signer={signer} />
+      <RevokeSignerCertificateDialog
+        signer={signer}
+        isDigicertSigner={isDigicertSigner}
+        isOpen={isRevokeOpen}
+        onOpenChange={setIsRevokeOpen}
+      />
       <ExportSignerCertModal
         isOpen={isExportOpen}
         onOpenChange={setIsExportOpen}

@@ -23,6 +23,7 @@ import { useListHsmConnectors } from "@app/hooks/api/hsmConnectors";
 import {
   CertKeySource,
   SignerKeyAlgorithm,
+  SignerStatus,
   TSigner,
   useImportSignerCertificate,
   useReissueSignerCertificate,
@@ -192,13 +193,16 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
     externalOrderMode: watchedExternalOrderMode
   });
   const adcsTemplateChanged = isAdcs && (watchedAdcsTemplate?.trim() ?? "") !== signerAdcsTemplate;
+  const isCertificateRevoked = signer.status === SignerStatus.Revoked;
+  const visibleSteps = isCertificateRevoked ? STEPS.slice(0, 1) : STEPS;
   const shouldReissue =
-    caSwap ||
-    subjectChanged ||
-    keySourceChanged ||
-    keyAlgorithmChanged ||
-    isFromExternalOrder ||
-    adcsTemplateChanged;
+    !isCertificateRevoked &&
+    (caSwap ||
+      subjectChanged ||
+      keySourceChanged ||
+      keyAlgorithmChanged ||
+      isFromExternalOrder ||
+      adcsTemplateChanged);
 
   const handleOpenChange = (open: boolean) => {
     if (!open) {
@@ -307,6 +311,10 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
     if (step === 0) {
       const ok = await basicsForm.trigger();
       if (!ok) return;
+      if (isCertificateRevoked) {
+        await onSave();
+        return;
+      }
       setStep(1);
       return;
     }
@@ -338,8 +346,8 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
     if (step > 0) setStep((s) => s - 1);
   };
 
-  const currentStep = STEPS[step];
-  const isLast = step === STEPS.length - 1;
+  const currentStep = visibleSteps[step];
+  const isLast = step === visibleSteps.length - 1;
   // eslint-disable-next-line no-nested-ternary
   const ctaLabel = isLast
     ? shouldReissue && !usingExistingCertificate
@@ -383,7 +391,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
                 }}
               >
                 <StepperList>
-                  {STEPS.map((s, i) => (
+                  {visibleSteps.map((s, i) => (
                     <StepperStep
                       key={s.name}
                       index={i}
@@ -450,8 +458,10 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
 
           <SheetFooter className="shrink-0 items-center justify-between border-t">
             <span className="text-xs text-warning">
+              {isCertificateRevoked &&
+                "This signer's certificate was revoked, so only its name and description can change."}
               {/* eslint-disable-next-line no-nested-ternary */}
-              {usingExistingCertificate
+              {!isCertificateRevoked && usingExistingCertificate
                 ? "Saving switches the signer to the certificate already issued in this order."
                 : shouldReissue
                   ? "Saving reissues the certificate immediately. The signer switches to the new certificate."
@@ -459,7 +469,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
             </span>
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted">
-                Step {step + 1} of {STEPS.length}
+                Step {step + 1} of {visibleSteps.length}
               </span>
               {step > 0 && (
                 <Button variant="outline" onClick={goBack}>

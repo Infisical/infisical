@@ -33,7 +33,7 @@ You'll typically have one Signer per real-world signing concern, such as `mobile
 
 | Role | Capabilities |
 |------|--------------|
-| **Administrator** | Edit settings, manage members, edit the approval policy, pre-approve signing for others, sign, and export the certificate. |
+| **Administrator** | Edit settings, manage members, edit the approval policy, pre-approve signing for others, sign, export the certificate, and renew or revoke it. |
 | **Operator** | Sign artifacts and submit signing requests. Export the certificate. Can't manage members or the policy. |
 | **Auditor** | View members, activity, and the audit log. Export the certificate. Can't sign or change anything. |
 
@@ -123,13 +123,14 @@ See [HSM Connectors](/documentation/platform/pki/settings/hsm-connectors) for th
 |--------|---------|
 | **Pending** | The Signer is created but the certificate hasn't been issued yet. Most common with external CAs that take time to respond. The PKCS#11 module sees this slot but signing is rejected until the certificate lands. |
 | **Active** | Certificate issued and bound. Signing works, subject to the approval policy. |
-| **Failed** | Issuance failed. Hover the badge to see the reason. Use **Retry issuance** from the Options menu, or [Edit a Signer](#edit-a-signer) to change the CA, Common Name, or Validity and try again. |
+| **Failed** | Issuance failed. Hover the badge to see the reason. Use **Retry Issuance** from the Options menu, or [Edit a Signer](#edit-a-signer) to change the CA, Common Name, or Validity and try again. |
 | **Disabled** | Manually disabled. Signing is blocked. Re-enable from the Options menu. |
-| **Expired** | The certificate's `notAfter` has passed and no auto-renewal was configured (or the renewal failed). Reissue with a new validity period. |
+| **Expired** | The certificate's `notAfter` has passed and no auto-renewal was configured (or the renewal failed). Renew it from the **Options** menu. |
+| **Revoked** | The certificate was revoked. Revocation is permanent, so create a new Signer to keep signing. |
 
 ## Edit a signer
 
-Open the Signer and choose **Options → Edit settings**. The edit sheet walks you through three steps: Basics, Certificate, and Signing Key. Changing the CA, identity, validity, or key triggers a fresh issuance, and the signer switches to the newly issued certificate.
+Open the Signer and choose **Options → Edit Settings**. The edit sheet walks you through three steps: Basics, Certificate, and Signing Key. Changing the CA, identity, validity, or key triggers a fresh issuance, and the signer switches to the newly issued certificate.
 
 <Steps>
   <Step title="Basics">
@@ -166,6 +167,15 @@ Open the Signer and choose **Options → Edit settings**. The edit sheet walks y
     Press **Save** to apply the changes.
   </Step>
 </Steps>
+
+## Renew or revoke the certificate
+
+Open the Signer and choose an action from the **Options** menu, or call the [renew](/api-reference/endpoints/code-signing/signers/renew-certificate) or [revoke](/api-reference/endpoints/code-signing/signers/revoke-certificate) endpoint.
+
+| Action | What happens |
+|--------|--------------|
+| **Renew Certificate** | Requests a new certificate from the same CA with the same Common Name, Validity, and key source. On DigiCert, this places a renewal order, or uses the current order if your account has no free code signing subscription. Not available while the Signer is disabled or has a request in progress. |
+| **Revoke Certificate** | Revokes the certificate at the CA. This can't be undone, so create a new Signer to keep signing. On DigiCert, this revokes every certificate on the order. Not available for Azure AD CS. |
 
 ## Signing with a signer
 

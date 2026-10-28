@@ -8,7 +8,7 @@ import {
   TCodeSigningRequestScopeInput,
   TCodeSigningScope
 } from "../approval-policy/code-signing/code-signing-policy-types";
-import { CertKeyAlgorithm } from "../certificate/certificate-types";
+import { CertKeyAlgorithm, CrlReason } from "../certificate/certificate-types";
 import { CaType } from "../certificate-authority/certificate-authority-enums";
 import { CertKeySource, SignerStatus, SigningOperationStatus } from "./signer-enums";
 
@@ -141,6 +141,15 @@ export type TReissueCertificateDTO = {
   keyAlgorithm?: CertKeyAlgorithm;
   certificate?: TSignerCertificateInput;
   externalConfiguration?: TSignerExternalConfigurationInput;
+} & TActorPermission;
+
+export type TRenewCertificateDTO = {
+  signerId: string;
+} & TActorPermission;
+
+export type TRevokeSignerCertificateDTO = {
+  signerId: string;
+  revocationReason: CrlReason;
 } & TActorPermission;
 
 export type TImportCertificateDTO = {
