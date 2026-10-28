@@ -162,10 +162,13 @@ describe("deleteIdentity org access reconcile", () => {
 
     expect(emit).toHaveBeenCalledTimes(1);
     expect(emit).toHaveBeenCalledWith(
-      {
-        eventType: "com.infisical.organization.membership.removed.v1",
-        payload: { orgId: ORG_ID, actorType: "identity", actorId: IDENTITY_ID }
-      },
+      [
+        {
+          id: expect.any(String) as string,
+          type: "com.infisical.organization.membership.removed.v1",
+          data: { orgId: ORG_ID, actorType: "identity", actorId: IDENTITY_ID }
+        }
+      ],
       TX
     );
   });
