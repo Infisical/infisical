@@ -1535,7 +1535,7 @@ export const SecretEditTableRow = ({
               setPendingAnnotation(null);
             }}
           >
-            <DropdownMenuLabel className="px-2.5 py-0.5 text-[10px]">
+            <DropdownMenuLabel>
               {isSingleEnvView ? "Annotate" : <>Annotate in {environmentName}</>}
             </DropdownMenuLabel>
             <DropdownMenuItem
