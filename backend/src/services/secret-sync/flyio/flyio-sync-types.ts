@@ -31,6 +31,24 @@ export type TDeleteFlyioVariable = TFlyioListVariables & {
   keys: string[];
 };
 
+export type TUpdateFlyioSecretsVariables = {
+  accessToken: string;
+  appName: string;
+  values: Record<string, string | null>;
+};
+
+export type TFlyioAppSecret = {
+  name: string;
+  digest?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type TFlyioUpdateSecretsResponse = {
+  secrets?: TFlyioAppSecret[];
+  version: number;
+};
+
 /** GraphQL error shape returned by Fly.io API */
 export type FlyioGraphQLError = {
   message: string;

@@ -2,12 +2,11 @@
 import { request } from "@app/lib/config/request";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import {
-  FlyioGraphQLResponse,
-  TDeleteFlyioVariable,
   TFlyioListVariables,
   TFlyioSecret,
   TFlyioSyncWithCredentials,
-  TPutFlyioVariable
+  TFlyioUpdateSecretsResponse,
+  TUpdateFlyioSecretsVariables
 } from "@app/services/secret-sync/flyio/flyio-sync-types";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
@@ -59,8 +58,13 @@ async function listAllMachines(
 
 /**
  * Deploy secrets to machines: update each machine with the new secrets version so they
+ * boot with the latest secrets.
  */
-const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials, releaseVersion: number | undefined) => {
+const deployAppMachines = async (
+  secretSync: TFlyioSyncWithCredentials,
+  secretsVersion: number | undefined,
+  appName?: string
+) => {
   const {
     connection: {
       credentials: { accessToken }
@@ -68,7 +72,7 @@ const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials, releaseV
     destinationConfig: { appId }
   } = secretSync;
 
-  const appNameResolved = await getAppNameByAppId({ accessToken, appId });
+  const appNameResolved = appName ?? (await getAppNameByAppId({ accessToken, appId }));
 
   const headers = {
     Authorization: `Bearer ${accessToken}`,
@@ -76,7 +80,7 @@ const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials, releaseV
     Accept: "application/json"
   };
 
-  const machinesApiBase = `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${appNameResolved}/machines`;
+  const machinesApiBase = `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${encodeURIComponent(appNameResolved)}/machines`;
 
   const machineList = await listAllMachines(machinesApiBase, headers);
   const toUpdate = machineList.filter((m) => m.state !== "destroyed" && m.state !== "destroying");
@@ -94,8 +98,8 @@ const deployAppMachines = async (secretSync: TFlyioSyncWithCredentials, releaseV
         config,
         region
       };
-      if (releaseVersion != null) {
-        body.min_secrets_version = releaseVersion;
+      if (secretsVersion != null) {
+        body.min_secrets_version = secretsVersion;
       }
       body.skip_launch = false;
 
@@ -129,25 +133,19 @@ const listFlyioSecrets = async ({ accessToken, appId }: TFlyioListVariables) => 
   return data.data.app.secrets.map((s) => s.name);
 };
 
-// App secrets (NAME=VALUE env vars) must be set via the GraphQL API. The
-// Machines API POST /apps/{name}/secrets is for KMS/secret-key types, not
-// plain app secrets — see https://community.fly.io/t/how-to-create-secrets-via-the-machine-api/24603
-const putFlyioSecrets = async ({ accessToken, appId, secretMap }: TPutFlyioVariable) => {
-  const response = await request.post<FlyioGraphQLResponse<{ setSecrets?: { release?: { version: number } } }>>(
-    IntegrationUrls.FLYIO_API_URL,
-    {
-      query: `
-        mutation SetAppSecrets($appId: ID!, $secrets: [SecretInput!]!) {
-          setSecrets(input: { appId: $appId, secrets: $secrets }) {
-            release { version }
-          }
-        }
-      `,
-      variables: {
-        appId,
-        secrets: Object.entries(secretMap).map(([key, { value }]) => ({ key, value }))
-      }
-    },
+// Set and unset app secrets (NAME=VALUE env vars) via the Machines REST API.
+// Setting a key to null unsets/deletes it. Returns the updated secrets version
+// (uint64) which is tracked and passed as min_secrets_version on machine updates.
+const updateFlyioSecrets = async ({
+  accessToken,
+  appName,
+  values
+}: TUpdateFlyioSecretsVariables): Promise<number | undefined> => {
+  if (Object.keys(values).length === 0) return undefined;
+
+  const { data } = await request.post<TFlyioUpdateSecretsResponse>(
+    `${IntegrationUrls.FLYIO_MACHINES_API_URL}/apps/${encodeURIComponent(appName)}/secrets`,
+    { values },
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -157,50 +155,7 @@ const putFlyioSecrets = async ({ accessToken, appId, secretMap }: TPutFlyioVaria
     }
   );
 
-  const body = response.data as FlyioGraphQLResponse<{
-    setSecrets?: { release?: { version: number } };
-  }>;
-  if (body.errors?.length) {
-    const messages = body.errors.map((e) => e.message).join("; ");
-    throw new SecretSyncError({ message: `Fly.io setSecrets failed: ${messages}` });
-  }
-  return body.data?.setSecrets?.release?.version;
-};
-
-// Use GraphQL unsetSecrets so keys are sent in the request body (no URL encoding issues).
-// Returns release.version when present (for auto-redeploy); Fly may return null.
-const deleteFlyioSecrets = async ({ accessToken, appId, keys }: TDeleteFlyioVariable) => {
-  if (keys.length === 0) return;
-
-  const response = await request.post<FlyioGraphQLResponse<{ unsetSecrets?: { release?: { version: number } } }>>(
-    IntegrationUrls.FLYIO_API_URL,
-    {
-      query: `
-        mutation UnsetAppSecrets($appId: ID!, $keys: [String!]!) {
-          unsetSecrets(input: { appId: $appId, keys: $keys }) {
-            release { version }
-          }
-        }
-      `,
-      variables: { appId, keys }
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        Accept: "application/json"
-      }
-    }
-  );
-
-  const body = response.data as FlyioGraphQLResponse<{
-    unsetSecrets?: { release?: { version: number } };
-  }>;
-  if (body.errors?.length) {
-    const messages = body.errors.map((e) => e.message).join("; ");
-    throw new SecretSyncError({ message: `Fly.io unsetSecrets failed: ${messages}` });
-  }
-  return body.data?.unsetSecrets?.release?.version;
+  return data.version;
 };
 
 export const FlyioSyncFns = {
@@ -214,25 +169,31 @@ export const FlyioSyncFns = {
 
     const { accessToken } = connection.credentials;
 
-    let releaseVersion: number | undefined;
-    try {
-      releaseVersion = await putFlyioSecrets({ accessToken, appId, secretMap });
-    } catch (error) {
-      throw new SecretSyncError({
-        error
-      });
+    const values: Record<string, string | null> = {};
+    for (const [key, { value }] of Object.entries(secretMap)) {
+      values[key] = value;
     }
 
     if (!secretSync.syncOptions.disableSecretDeletion) {
       const secrets = await listFlyioSecrets({ accessToken, appId });
 
-      const keys = secrets.filter(
+      const keysToDelete = secrets.filter(
         (secret) =>
           matchesSchema(secret, environment?.slug || "", secretSync.syncOptions.keySchema) && !(secret in secretMap)
       );
 
+      for (const key of keysToDelete) {
+        values[key] = null;
+      }
+    }
+
+    let appName: string | undefined;
+    let secretsVersion: number | undefined;
+
+    if (Object.keys(values).length > 0) {
       try {
-        await deleteFlyioSecrets({ accessToken, appId, keys });
+        appName = await getAppNameByAppId({ accessToken, appId });
+        secretsVersion = await updateFlyioSecrets({ accessToken, appName, values });
       } catch (error) {
         throw new SecretSyncError({
           error
@@ -241,7 +202,7 @@ export const FlyioSyncFns = {
     }
 
     if (secretSync.syncOptions.autoRedeploy) {
-      await deployAppMachines(secretSync, releaseVersion);
+      await deployAppMachines(secretSync, secretsVersion, appName);
     }
   },
   removeSecrets: async (secretSync: TFlyioSyncWithCredentials, payload: TSecretSyncPayload) => {
@@ -257,17 +218,27 @@ export const FlyioSyncFns = {
 
     const keys = secrets.filter((secret) => secret in secretMap);
 
-    let releaseVersion: number | undefined;
-    try {
-      releaseVersion = await deleteFlyioSecrets({ accessToken, appId, keys });
-    } catch (error) {
-      throw new SecretSyncError({
-        error
-      });
+    let appName: string | undefined;
+    let secretsVersion: number | undefined;
+
+    if (keys.length > 0) {
+      const values: Record<string, string | null> = {};
+      for (const key of keys) {
+        values[key] = null;
+      }
+
+      try {
+        appName = await getAppNameByAppId({ accessToken, appId });
+        secretsVersion = await updateFlyioSecrets({ accessToken, appName, values });
+      } catch (error) {
+        throw new SecretSyncError({
+          error
+        });
+      }
     }
 
     if (secretSync.syncOptions.autoRedeploy) {
-      await deployAppMachines(secretSync, releaseVersion);
+      await deployAppMachines(secretSync, secretsVersion, appName);
     }
   },
   getSecrets: async (secretSync: TFlyioSyncWithCredentials) => {
