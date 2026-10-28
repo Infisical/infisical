@@ -114,7 +114,7 @@ When you start an agent with [`infisical agent-vault run`](/cli/reference#agent-
 
 The CLI downloads the skills from Infisical with the session's token, so the agent's host needs to reach your Infisical instance:
 
-- If the host can't reach Infisical, pass [`--no-skills`](/cli/reference#agent-vault-run--flag-no-skills) to start the agent without skills
+- If the host can't reach Infisical, or you don't want skills, pass [`--no-skills`](/cli/reference#agent-vault-run--flag-no-skills) to start the agent without them
 - If you start the agent with a session token and you don't use US Cloud (`app.infisical.com`), set your instance with [`--domain`](/cli/reference#global-flags--flag-domain), for example `--domain https://eu.infisical.com`
 
 ### Where the CLI installs skills
