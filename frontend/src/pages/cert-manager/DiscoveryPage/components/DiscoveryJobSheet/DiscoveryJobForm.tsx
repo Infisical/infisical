@@ -353,38 +353,64 @@ export const DiscoveryJobForm = ({
       </FormProvider>
 
       <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
-        <span className="text-xs text-muted">{footerStatus}</span>
         {isEditing ? (
-          <div className="flex items-center gap-3">
-            <Button type="button" variant="outline" onClick={onCancel} isDisabled={isPending}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="project"
-              onClick={submitForm}
-              isPending={isPending}
-              isDisabled={!formState.isDirty || isPending}
-            >
-              Save Changes
-            </Button>
-          </div>
+          <>
+            <div className="flex items-center gap-3">
+              <Button type="button" variant="outline" onClick={onCancel} isDisabled={isPending}>
+                Cancel
+              </Button>
+              <span className="text-xs text-muted">{footerStatus}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted">
+                Step {stepIndex + 1} of {steps.length}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStepIndex((prev) => prev - 1)}
+                isDisabled={stepIndex === 0}
+              >
+                Back
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStepIndex((prev) => prev + 1)}
+                isDisabled={isFinalStep}
+              >
+                Next
+              </Button>
+              <Button
+                type="button"
+                variant="project"
+                onClick={submitForm}
+                isPending={isPending}
+                isDisabled={!formState.isDirty || isPending}
+              >
+                Save Changes
+              </Button>
+            </div>
+          </>
         ) : (
-          <div className="flex items-center gap-3">
-            <Button type="button" variant="outline" onClick={handleBack} isDisabled={isPending}>
-              {stepIndex === 0 ? "Cancel" : "Back"}
-            </Button>
-            <Button
-              type="button"
-              variant="project"
-              onClick={handleNext}
-              isPending={isFinalStep && isPending}
-              isDisabled={isFinalStep && isPending}
-            >
-              {!isFinalStep && "Continue"}
-              {isFinalStep && "Create Job"}
-            </Button>
-          </div>
+          <>
+            <span className="text-xs text-muted">{footerStatus}</span>
+            <div className="flex items-center gap-3">
+              <Button type="button" variant="outline" onClick={handleBack} isDisabled={isPending}>
+                {stepIndex === 0 ? "Cancel" : "Back"}
+              </Button>
+              <Button
+                type="button"
+                variant="project"
+                onClick={handleNext}
+                isPending={isFinalStep && isPending}
+                isDisabled={isFinalStep && isPending}
+              >
+                {!isFinalStep && "Continue"}
+                {isFinalStep && "Create Job"}
+              </Button>
+            </div>
+          </>
         )}
       </div>
     </form>
