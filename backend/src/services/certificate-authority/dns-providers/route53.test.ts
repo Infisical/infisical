@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProjectType } from "@app/db/schemas";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
@@ -29,6 +29,10 @@ vi.mock("@app/services/app-connection/aws/aws-connection-fns", () => ({
 }));
 
 describe("Route 53 DNS Provider", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   const connection = {
     orgId: "org-1",
     projectId: "proj-1"

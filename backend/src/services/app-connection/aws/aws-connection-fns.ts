@@ -120,11 +120,8 @@ export const getAwsConnectionConfig = async (
           if (projectId && projectId !== orgId) externalIds.push(projectId);
         } else if (projectType === ProjectType.AgentVault) {
           externalIds.push(orgId);
-        } else if (projectId) {
-          externalIds.push(projectId);
-          if (projectId !== orgId) externalIds.push(orgId);
         } else {
-          externalIds.push(orgId);
+          externalIds.push(projectId ?? orgId);
         }
       } else {
         externalIds.push(orgId);

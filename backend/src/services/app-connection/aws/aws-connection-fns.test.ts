@@ -36,7 +36,7 @@ vi.mock("@aws-sdk/client-sts", async (importOriginal) => {
   };
 });
 
-const assumeRoleConnection = (overrides: Partial<TAwsConnectionConfig>) =>
+const assumeRoleConnection = (overrides: Partial<TAwsConnectionConfig> = {}) =>
   ({
     app: AppConnection.AWS,
     method: AwsConnectionMethod.AssumeRole,
@@ -80,14 +80,6 @@ describe("getAwsConnectionConfig External ID", () => {
     await getAwsConnectionConfig(assumeRoleConnection({ projectType: ProjectType.CertificateManager }));
 
     expect(sts.externalIds).toEqual(["org-1", "proj-1"]);
-  });
-
-  test("connections without projectType retry with org ID if project ID fails", async () => {
-    sts.rejectionsLeft = 1;
-
-    await getAwsConnectionConfig(assumeRoleConnection());
-
-    expect(sts.externalIds).toEqual(["proj-1", "org-1"]);
   });
 
   test("Certificate Manager connections with nested project metadata assume the role with org ID", async () => {
