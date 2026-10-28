@@ -19,9 +19,9 @@ export const DelegatedApprovalRequestsSchema = z.object({
   providerRequestId: z.string().nullable().optional(),
   callbackAttempts: z.number().default(0),
   decisionReadRequestedAt: z.date().nullable().optional(),
+  dispatchEventId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  dispatchEventId: z.string().uuid()
+  updatedAt: z.date()
 });
 
 export type TDelegatedApprovalRequests = z.infer<typeof DelegatedApprovalRequestsSchema>;

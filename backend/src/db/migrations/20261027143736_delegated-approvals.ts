@@ -35,6 +35,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("providerRequestId").nullable();
       t.integer("callbackAttempts").notNullable().defaultTo(0);
       t.timestamp("decisionReadRequestedAt", { useTz: true }).nullable();
+      t.uuid("dispatchEventId").notNullable();
 
       t.timestamps(true, true, true);
 
