@@ -149,6 +149,11 @@ func repoint(t *testing.T, actor *harness.Principal, proj *fixture.Project, env,
 	return res
 }
 
+// replicationBudget is longer than the default wait because one worker serves every
+// tenant's replication jobs, and a job that meets a lock retries with backoff, so a run
+// queues behind others on a busy runner.
+var replicationBudget = wait.Timeout(60 * time.Second)
+
 // waitReplicated waits until a replication import records a run newer than after, then
 // requires that run to have succeeded. It returns the run's time, for the next wait.
 //
@@ -165,7 +170,7 @@ func waitReplicated(t *testing.T, proj *fixture.Project, env, folderPath, import
 			}
 		}
 		return false
-	})
+	}, replicationBudget)
 	require.Truef(t, last.ReplicationOK, "replication failed: %s", last.ReplicationStatus)
 	return *last.LastReplicated
 }
