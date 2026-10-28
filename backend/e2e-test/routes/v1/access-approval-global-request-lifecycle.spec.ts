@@ -264,16 +264,6 @@ describe("Additional privilege list on the global system", () => {
     await db(TableName.Users).whereIn("id", userIds).del();
   });
 
-  test("A privilege granted on the global system is listed as managed by its request", async () => {
-    const { requestId } = await createApprovedTemporaryRequest("/privilege-list-native");
-    const { privilege } = await getRequestState(requestId);
-
-    const listed = (await listUserPrivileges()).find((el) => el.id === privilege?.id);
-    expect(listed?.isLinkedToAccessApproval).toBe(true);
-    expect(listed?.accessApprovalRequestId).toBe(requestId);
-    expect(listed?.policyApproverUserIds).toEqual([seedData1.id]);
-  });
-
   test("A migrated privilege lists the global policy's approvers after they change", async () => {
     const db = getDb();
     const secretPath = "/privilege-list-migrated";

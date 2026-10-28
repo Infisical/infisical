@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/fakes/smtp"
+	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,6 +56,49 @@ func TestAccessApprovalRequest_BreakGlass(t *testing.T) {
 		require.Equal(t, bypassReason, *bypassed.BypassReason)
 		require.Equal(t, []string{g.requester.ID.String()}, bypassed.Policy.Bypassers)
 		awaitRead(t, g.requester, g.proj, true)
+	})
+
+	t.Run("should let a member of a bypasser group approve their own request with a reason and read the secret", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		g := softBypassedBy(t, func(g guarded) approver {
+			bypassers := fixture.NewGroup(t, g.tn)
+			bypassers.AddUser(t, g.requester)
+			return groupApprover(bypassers)
+		})
+		requestID := openRequest(t, g.requester, g.proj, guardedPath, temporary("1h"))
+
+		// Action
+		res := reviewAs(t, g.requester, requestID, "approved", bypassReason)
+
+		// Assert
+		require.Equal(t, http.StatusOK, res.status)
+		bypassed := requestByID(t, g.proj, requestID)
+		require.Equal(t, "approved", bypassed.Status)
+		require.NotNil(t, bypassed.BypassReason)
+		require.Equal(t, bypassReason, *bypassed.BypassReason)
+		awaitRead(t, g.requester, g.proj, true)
+	})
+
+	t.Run("should refuse break glass from a requester outside the bypasser group", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		g := softBypassedBy(t, func(g guarded) approver {
+			bypassers := fixture.NewGroup(t, g.tn)
+			bypassers.AddUser(t, g.approver)
+			return groupApprover(bypassers)
+		})
+		requestID := openRequest(t, g.requester, g.proj, guardedPath, nil)
+
+		// Action
+		res := reviewAs(t, g.requester, requestID, "approved", bypassReason)
+
+		// Assert
+		require.Equal(t, http.StatusForbidden, res.status)
+		require.Equal(t, "You are not permitted to bypass approval on this request", res.message(t))
+		require.Equal(t, "pending", statusOf(t, g.proj, requestID))
 	})
 
 	t.Run("should email the approvers when a request is bypassed", func(t *testing.T) {

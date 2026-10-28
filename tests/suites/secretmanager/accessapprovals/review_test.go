@@ -415,24 +415,30 @@ func TestAccessApprovalRequest_PolicyChangeSteps(t *testing.T) {
 		require.Equal(t, "approved", statusOf(t, p.proj, p.requestID))
 	})
 
-	t.Run("should leave pending requests at their step when only the approvers change", func(t *testing.T) {
+	t.Run("should keep open requests on their steps and put new requests on the changed steps when only the approvers change", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
 		p := setup(t)
+		later := p.proj.NewUser(t, fixture.WithPrincipalName("later"), fixture.WithRoles("requester"))
 
 		// Action
 		res := updatePolicy(t, p.proj, p.policyID, policyBody{
-			"secretPath":        guardedPath,
-			"environments":      []string{"dev"},
-			"approvers":         twoSteps(p, userApprover(p.third).inStep(1)),
-			"approvalsRequired": []map[string]int{{"stepNumber": 1, "numberOfApprovals": 2}},
+			"secretPath":   guardedPath,
+			"environments": []string{"dev"},
+			"approvers":    subjects([]approver{userApprover(p.approver).inStep(1), userApprover(p.third).inStep(2)}),
 		})
 
 		// Assert
 		require.Equal(t, http.StatusOK, res.status)
+		require.Equal(t, "You are not a reviewer in this step", reviewAs(t, p.third, p.requestID, "approved").message(t))
 		approve(t, p.second, p.requestID)
 		require.Equal(t, "approved", statusOf(t, p.proj, p.requestID))
+		newID := openRequest(t, later, p.proj, guardedPath, nil)
+		approve(t, p.approver, newID)
+		require.Equal(t, "You are not a reviewer in this step", reviewAs(t, p.second, newID, "approved").message(t))
+		approve(t, p.third, newID)
+		require.Equal(t, "approved", statusOf(t, p.proj, newID))
 	})
 
 	t.Run("should leave pending requests at their step when the same path and environments are sent again", func(t *testing.T) {
