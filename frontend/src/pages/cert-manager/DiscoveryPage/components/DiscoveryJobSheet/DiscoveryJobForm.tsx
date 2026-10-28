@@ -352,7 +352,7 @@ export const DiscoveryJobForm = ({
         </div>
       </FormProvider>
 
-      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border px-6 py-4">
         {isEditing ? (
           <>
             <div className="flex items-center gap-3">
@@ -361,8 +361,8 @@ export const DiscoveryJobForm = ({
               </Button>
               <span className="text-xs text-muted">{footerStatus}</span>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted">
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <span className="hidden text-xs text-muted sm:inline">
                 Step {stepIndex + 1} of {steps.length}
               </span>
               <Button
