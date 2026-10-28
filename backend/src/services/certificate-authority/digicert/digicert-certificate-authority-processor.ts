@@ -5,11 +5,11 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { getDigiCertApiBaseUrl } from "@app/services/app-connection/digicert/digicert-connection-fns";
 import { TDigiCertConnection } from "@app/services/app-connection/digicert/digicert-connection-types";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import {
   getIssuanceAlertEvent,
   TCertificateAlertEventEmitter
 } from "@app/services/certificate/certificate-alert-events";
-import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";

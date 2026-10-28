@@ -9,8 +9,8 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
 
-import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TTelemetryServiceFactory } from "../telemetry/telemetry-service";
 import { PostHogEventTypes } from "../telemetry/telemetry-types";
 import { TCertificateCleanupConfigDALFactory } from "./certificate-cleanup-dal";
