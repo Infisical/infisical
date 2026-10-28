@@ -99,8 +99,12 @@ export const ServiceIconStack = ({ hostPatterns, maxVisible = 4, className }: Pr
     // The leftmost chip has to paint on top, and flex-row-reverse cannot do it: reversing the
     // direction moves a chip visually and its paint order follows, so the right edge wins either
     // way. `isolate` confines these depths to the stack, which also traps the chips below a linked
-    // row's overlay, so the stack itself is marked interactive for RowLink to lift it.
-    <div data-row-interactive className={cn("isolate flex items-center -space-x-1.5", className)}>
+    // row's overlay, so the stack itself is marked interactive for RowLink to lift it. `w-fit` keeps the
+    // lifted area to the chips, so the rest of the cell still opens the row.
+    <div
+      data-row-interactive
+      className={cn("isolate flex w-fit items-center -space-x-1.5", className)}
+    >
       {/* A screen reader never opens the hover tooltips, so it reads the names here. First, since the
           spacing puts a negative margin on every child but the last, and the last has to stay a chip. */}
       <span className="sr-only">{icons.map((icon) => icon.label).join(", ")}</span>
