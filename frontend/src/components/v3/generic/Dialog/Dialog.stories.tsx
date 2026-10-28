@@ -295,11 +295,11 @@ export const FormWithExternalFooter: Story = {
   render: () => (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline">Create project</Button>
+        <Button variant="outline">Create Project</Button>
       </DialogTrigger>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Create project</DialogTitle>
+          <DialogTitle>Create Project</DialogTitle>
           <DialogDescription>Name the project and review its settings.</DialogDescription>
         </DialogHeader>
         <form
