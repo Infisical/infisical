@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
-	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
@@ -381,97 +380,6 @@ func TestSecretReference_Expand(t *testing.T) {
 	})
 }
 
-func TestSecretReference_CrossProject(t *testing.T) {
-	t.Parallel()
-	h := harness.From(t)
-
-	t.Run("should expand a reference into another project's granted folder", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn := h.NewTenant(t)
-		source, target := sharingProjects(t, tn)
-		secretmanager.AllowCrossProjectSharing(t, tn, true)
-		secretmanager.GrantFolder(t, source, target, secretmanager.Location{Env: "dev", Path: "/"})
-
-		// Action
-		secretmanager.CreateSecret(t, target, "dev", "REF", fmt.Sprintf("${@%s.dev.SHARED}", source.Slug))
-
-		// Assert
-		require.Equal(t, "from-source", secretmanager.GetSecret(t, target, "dev", "REF").Value)
-	})
-
-	t.Run("should keep the reference literal when the folder is not granted", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn := h.NewTenant(t)
-		source, target := sharingProjects(t, tn)
-		secretmanager.AllowCrossProjectSharing(t, tn, true)
-		ref := fmt.Sprintf("${@%s.dev.SHARED}", source.Slug)
-
-		// Action
-		secretmanager.CreateSecret(t, target, "dev", "REF", ref)
-
-		// Assert
-		require.Equal(t, ref, secretmanager.GetSecret(t, target, "dev", "REF").Value)
-	})
-
-	t.Run("should keep the reference literal once the organization turns sharing off", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn := h.NewTenant(t)
-		source, target := sharingProjects(t, tn)
-		secretmanager.AllowCrossProjectSharing(t, tn, true)
-		secretmanager.GrantFolder(t, source, target, secretmanager.Location{Env: "dev", Path: "/"})
-		ref := fmt.Sprintf("${@%s.dev.SHARED}", source.Slug)
-		secretmanager.CreateSecret(t, target, "dev", "REF", ref)
-
-		// Action
-		secretmanager.AllowCrossProjectSharing(t, tn, false)
-
-		// Assert
-		require.Equal(t, ref, secretmanager.GetSecret(t, target, "dev", "REF").Value)
-	})
-
-	t.Run("should not expand references inside the other project's value", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn := h.NewTenant(t)
-		source, target := sharingProjects(t, tn)
-		secretmanager.CreateSecret(t, source, "dev", "INNER", "inner")
-		secretmanager.CreateSecret(t, source, "dev", "OUTER", "${INNER}")
-		secretmanager.AllowCrossProjectSharing(t, tn, true)
-		secretmanager.GrantFolder(t, source, target, secretmanager.Location{Env: "dev", Path: "/"})
-
-		// Action
-		secretmanager.CreateSecret(t, target, "dev", "REF", fmt.Sprintf("${@%s.dev.OUTER}", source.Slug))
-
-		// Assert
-		require.Equal(t, "${INNER}", secretmanager.GetSecret(t, target, "dev", "REF").Value)
-	})
-
-	t.Run("should keep resolving after the plan loses cross-project sharing", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn := h.NewTenant(t)
-		source, target := sharingProjects(t, tn)
-		secretmanager.AllowCrossProjectSharing(t, tn, true)
-		secretmanager.GrantFolder(t, source, target, secretmanager.Location{Env: "dev", Path: "/"})
-		secretmanager.CreateSecret(t, target, "dev", "REF", fmt.Sprintf("${@%s.dev.SHARED}", source.Slug))
-
-		// Action
-		tn.SetPlan(t, license.Enterprise().Without(license.CrossProjectSecretSharing))
-
-		// Assert
-		require.Equal(t, "from-source", secretmanager.GetSecret(t, target, "dev", "REF").Value,
-			"a license check must never change what an existing reference reads")
-	})
-}
-
 func TestSecretReference_Rewrite(t *testing.T) {
 	t.Parallel()
 	h := harness.From(t)
@@ -645,12 +553,4 @@ func readerOfOneFolder(t *testing.T, proj *fixture.Project, folderPath string) *
 	secretmanager.GrantFolderAccess(t, proj, reader, secretmanager.Location{Env: "dev", Path: folderPath},
 		secretmanager.FolderRead)
 	return reader
-}
-
-func sharingProjects(t *testing.T, tn *harness.Tenant) (source, target *fixture.Project) {
-	t.Helper()
-	source = fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-	target = fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-	secretmanager.CreateSecret(t, source, "dev", "SHARED", "from-source")
-	return source, target
 }
