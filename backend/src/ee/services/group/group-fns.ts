@@ -6,6 +6,7 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError
 import { logger } from "@app/lib/logger";
 import { recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
+import { emitGroupMembershipRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
 
 import { terminatePamSessionsLosingGroupAccess } from "../pam-session/pam-session-access-fns";
 import {
@@ -86,7 +87,17 @@ const addAcceptedUsersToGroup = async ({
       continue;
     }
 
-    const usersToAddProjectKeyFor = users.filter((u) => !userKeysSet.has(`${projectId}-${u.id}`));
+    const usersMissingProjectKey = users.filter((u) => !userKeysSet.has(`${projectId}-${u.id}`));
+
+    // SSO-only users never get a key pair, and nothing shares the key later, so failing here would lock them
+    // out of the whole org (or roll back the login) over one legacy project they could not use anyway.
+    const usersToAddProjectKeyFor = usersMissingProjectKey.filter((u) => {
+      if (u.publicKey) return true;
+      logger.warn(
+        `Skipping legacy project key share for a user without a public key [userId=${u.id}] [projectId=${projectId}] [groupId=${group.id}]`
+      );
+      return false;
+    });
 
     if (usersToAddProjectKeyFor.length) {
       // there are users who need to be shared keys
@@ -141,16 +152,10 @@ const addAcceptedUsersToGroup = async ({
       });
 
       const projectKeysToAdd = usersToAddProjectKeyFor.map((user) => {
-        if (!user.publicKey) {
-          throw new NotFoundError({
-            message: `Failed to find user's public key in project with ID '${projectId}'`
-          });
-        }
-
         const { ciphertext: encryptedKey, nonce } = crypto
           .encryption()
           .asymmetric()
-          .encrypt(plaintextProjectKey, user.publicKey, botPrivateKey);
+          .encrypt(plaintextProjectKey, user.publicKey as string, botPrivateKey);
         return {
           encryptedKey,
           nonce,
@@ -267,6 +272,8 @@ export const addUsersToGroupByUserIds = async ({
         });
     });
 
+    await orgDAL.lockActorsForOrgAccess({ orgId: group.orgId, actorIds: foundMembers.map((member) => member.id) }, tx);
+
     const membersToAddToGroupNonPending: TUsers[] = [];
     const membersToAddToGroupPending: TUsers[] = [];
 
@@ -332,6 +339,7 @@ export const addIdentitiesToGroup = async ({
   identityDAL,
   identityGroupMembershipDAL,
   membershipDAL,
+  orgDAL,
   usageMeteringService
 }: TAddIdentitiesToGroup) => {
   const identityIdsSet = new Set(identityIds);
@@ -373,6 +381,8 @@ export const addIdentitiesToGroup = async ({
   }
 
   return identityDAL.transaction(async (tx) => {
+    await orgDAL.lockActorsForOrgAccess({ orgId: group.orgId, actorIds: identityIdsArray }, tx);
+
     await identityGroupMembershipDAL.insertMany(
       foundIdentitiesMemberships.map((membership) => ({
         identityId: membership.actorIdentityId as string,
@@ -396,6 +406,7 @@ export const addIdentitiesToGroup = async ({
  * - Fire the returned sendPamCancellations once the transaction holding the removal commits.
  * @param {group} group - group to remove user(s) from
  * @param {string[]} userIds - id(s) of user(s) to remove from group
+ * Cleans up projects in every org the group reaches, not just its home org.
  */
 export const removeUsersFromGroupByUserIds = async ({
   group,
@@ -407,9 +418,11 @@ export const removeUsersFromGroupByUserIds = async ({
   additionalPrivilegeDAL,
   tx: outerTx,
   membershipGroupDAL,
+  groupDAL,
   shouldFailOnMissingMembers = true,
   usageMeteringService,
   alertChannelRecipientDAL,
+  eventEmitter,
   membershipDAL,
   membershipRoleDAL,
   pamAccountDAL,
@@ -491,8 +504,7 @@ export const removeUsersFromGroupByUserIds = async ({
           await membershipGroupDAL.find(
             {
               scope: AccessScope.Project,
-              actorGroupId: group.id,
-              scopeOrgId: group.orgId
+              actorGroupId: group.id
             },
             { tx }
           )
@@ -588,6 +600,16 @@ export const removeUsersFromGroupByUserIds = async ({
 
     await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: foundMembers.map((m) => m.id) }, tx);
 
+    await emitGroupMembershipRemoved(
+      eventEmitter,
+      {
+        groupId: group.id,
+        orgIds: await groupDAL.findGroupOrgIds(group.id, tx),
+        actors: toOrgMembershipActors({ userIds: foundMembers.map((m) => m.id) })
+      },
+      tx
+    );
+
     const sendPamCancellations = await terminatePamSessionsLosingGroupAccess({
       userIds: foundMembers.map((m) => m.id),
       actorId,
@@ -626,9 +648,11 @@ export const removeIdentitiesFromGroup = async ({
   identityIds,
   identityDAL,
   membershipDAL,
+  groupDAL,
   identityGroupMembershipDAL,
   additionalPrivilegeDAL,
-  usageMeteringService
+  usageMeteringService,
+  eventEmitter
 }: TRemoveIdentitiesFromGroup) => {
   const identityIdsSet = new Set(identityIds);
   const identityIdsArray = Array.from(identityIdsSet);
@@ -678,8 +702,7 @@ export const removeIdentitiesFromGroup = async ({
           await membershipDAL.find(
             {
               scope: AccessScope.Project,
-              actorGroupId: group.id,
-              scopeOrgId: group.orgId
+              actorGroupId: group.id
             },
             { tx }
           )
@@ -720,6 +743,16 @@ export const removeIdentitiesFromGroup = async ({
         $in: {
           identityId: identityIdsArray
         }
+      },
+      tx
+    );
+
+    await emitGroupMembershipRemoved(
+      eventEmitter,
+      {
+        groupId: group.id,
+        orgIds: await groupDAL.findGroupOrgIds(group.id, tx),
+        actors: toOrgMembershipActors({ identityIds: identityIdsArray })
       },
       tx
     );

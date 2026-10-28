@@ -111,7 +111,7 @@ type TPamSessionServiceFactoryDep = {
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   pamAccessRequestService: Pick<
     TPamAccessRequestServiceFactory,
     "checkGrant" | "getAccessStatusBatch" | "getFolderPolicyConfigured"
@@ -510,7 +510,8 @@ export const pamSessionServiceFactory = ({
           actorEmail,
           accountId: account.id,
           mfaSessionId,
-          tokenVersionId
+          tokenVersionId,
+          allowCliHandoff: accessMethod === PamAccessMethod.Cli
         }
       );
     }
@@ -570,7 +571,9 @@ export const pamSessionServiceFactory = ({
           details: {
             requireReason: policy.requireReason,
             hasPendingRequest: statusMap.get(account.id)?.accessStatus === ApprovalAccessStatus.Pending,
-            hasApprovalPolicy: Boolean(account.folderId && foldersWithApprovalPolicy.has(account.folderId))
+            hasApprovalPolicy: Boolean(
+              account.folderId && foldersWithApprovalPolicy.isConfiguredFor(account.folderId, policy.allowAutoApproval)
+            )
           }
         });
       }

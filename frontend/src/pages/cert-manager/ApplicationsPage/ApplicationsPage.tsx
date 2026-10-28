@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
-import { useNavigate, useParams } from "@tanstack/react-router";
 import { InfoIcon, MoreHorizontalIcon, PlusIcon, SlidersHorizontalIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -25,6 +24,7 @@ import {
   PageLoader,
   Pagination,
   ResourceIcon,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -35,7 +35,8 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useProjectPermission } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -53,8 +54,7 @@ import { PkiApplicationModal } from "./components/PkiApplicationModal";
 const APPLICATIONS_TABLE = "pkiApplicationsTable";
 
 export const ApplicationsPage = () => {
-  const { orgId } = useParams({ strict: false });
-  const navigate = useNavigate();
+  const { currentProject } = useProject();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(() =>
     getUserTablePreference(APPLICATIONS_TABLE, PreferenceKey.PerPage, 20)
@@ -108,23 +108,19 @@ export const ApplicationsPage = () => {
         </TableHeader>
         <TableBody>
           {applications.map((app) => (
-            <TableRow
-              key={app.id}
-              className="cursor-pointer"
-              onClick={() =>
-                navigate({
-                  to: "/organizations/$orgId/cert-manager/applications/$applicationName",
-                  params: {
-                    orgId: orgId ?? "",
-                    applicationName: app.name
-                  }
-                })
-              }
-            >
+            <TableRow key={app.id} linked>
               <TableCell className="w-full">
                 <div className="flex items-center gap-x-2 font-mono">
                   <ResourceIcon className="size-4 shrink-0 text-project" />
-                  <span>{app.name}</span>
+                  <RowLink
+                    {...getInstancePinningLink(
+                      currentProject.orgId,
+                      currentProject,
+                      `applications/${app.name}`
+                    )!}
+                  >
+                    {app.name}
+                  </RowLink>
                   {app.description?.length ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -174,9 +170,7 @@ export const ApplicationsPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>Applications</title>
-      </Helmet>
+      <PageTitle title="Applications" />
       <div className="h-full bg-page">
         <div className="mx-auto flex flex-col text-foreground-inverse">
           <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">

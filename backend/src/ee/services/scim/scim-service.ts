@@ -13,6 +13,7 @@ import {
   TOrganizations,
   TUsers
 } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
@@ -43,18 +44,20 @@ import { isUuidV4 } from "@app/lib/validator/validate-uuid";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
 import { prepareDeletedGroupAlertRecipientCleanup } from "@app/services/alert/alert-recipient-cleanup-fns";
-import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { AuthTokenType } from "@app/services/auth/auth-type";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TExternalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TProjectAccessRevokeServiceFactory } from "@app/services/membership/project-access-revoke-service";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TMembershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "@app/services/membership-user/membership-user-fns";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { deleteOrgMembershipsFn } from "@app/services/org/org-fns";
+import { emitGroupRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
 import { OrgAuthMethod } from "@app/services/org/org-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -113,6 +116,7 @@ type TScimServiceFactoryDep = {
   orgDAL: Pick<
     TOrgDALFactory,
     | "createMembership"
+    | "lockActorsForOrgAccess"
     | "findById"
     | "find"
     | "findMembership"
@@ -129,6 +133,8 @@ type TScimServiceFactoryDep = {
   groupDAL: Pick<
     TGroupDALFactory,
     | "create"
+    | "findGroupActorsAndOrgs"
+    | "findGroupOrgIds"
     | "findOne"
     | "findAllGroupPossibleUsers"
     | "delete"
@@ -159,7 +165,8 @@ type TScimServiceFactoryDep = {
   smtpService: Pick<TSmtpService, "sendMail">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
   additionalPrivilegeDAL: TAdditionalPrivilegeDALFactory;
-  approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "deleteUserStepApproversInProjects">;
+  projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients" | "deleteByPrincipals">;
   pamSessionDAL: Pick<TPamSessionDALFactory, "find" | "findLiveByOrgAndUserIds" | "update">;
   pamAccountDAL: Pick<TPamAccountDALFactory, "find">;
@@ -168,6 +175,7 @@ type TScimServiceFactoryDep = {
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  eventEmitter: TEventEmitter;
 };
 
 export const scimServiceFactory = ({
@@ -190,7 +198,8 @@ export const scimServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   additionalPrivilegeDAL,
-  approvalPolicyDAL,
+  projectAccessRevokeService,
+  auditLogService,
   alertChannelRecipientDAL,
   scimEventsDAL,
   emailDomainDAL,
@@ -198,7 +207,8 @@ export const scimServiceFactory = ({
   usageMeteringService,
   pamSessionDAL,
   pamAccountDAL,
-  gatewayV2Service
+  gatewayV2Service,
+  eventEmitter
 }: TScimServiceFactoryDep): TScimServiceFactory => {
   const pamSessionDeps = { membershipDAL, membershipRoleDAL, pamAccountDAL, pamSessionDAL, userDAL, gatewayV2Service };
 
@@ -1096,17 +1106,13 @@ export const scimServiceFactory = ({
       orgMembershipIds: [membership.id],
       orgId: membership.scopeOrgId,
       orgDAL,
-      projectKeyDAL,
       userAliasDAL,
       licenseService,
       membershipUserDAL,
-      membershipRoleDAL,
       userGroupMembershipDAL,
-      additionalPrivilegeDAL,
-      approvalPolicyDAL,
-      alertChannelRecipientDAL,
-      pamSessionDAL,
-      gatewayV2Service
+      projectAccessRevokeService,
+      auditLogService,
+      eventEmitter
     });
 
     // Deprovisioning cascades the user's project + group memberships, changing the identity meters.
@@ -1510,50 +1516,6 @@ export const scimServiceFactory = ({
         });
       }
 
-      if (group.name !== displayName) {
-        const previousName = group.name;
-        // The group lock is per group, so two renames onto one name can race; the unique index
-        // on (orgId, name) is what decides, and its violation is the conflict.
-        const [modifiedGroup] = await groupDAL
-          .update(
-            {
-              id: groupId,
-              orgId
-            },
-            {
-              name: displayName
-            },
-            tx
-          )
-          .catch((err: unknown) => {
-            if (
-              err instanceof DatabaseError &&
-              (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
-            ) {
-              throw new ScimRequestError({
-                detail: `Group with name '${displayName}' already exists in the organization`,
-                status: 409,
-                scimType: "uniqueness",
-                error: err
-              });
-            }
-            throw err;
-          });
-
-        await externalGroupOrgRoleMappingDAL.update(
-          {
-            groupName: previousName,
-            orgId
-          },
-          {
-            groupName: displayName
-          },
-          tx
-        );
-
-        group = modifiedGroup;
-      }
-
       const orgMemberships = members.length
         ? await membershipUserDAL.find(
             {
@@ -1612,13 +1574,57 @@ export const scimServiceFactory = ({
           userIds: toRemoveUserIds,
           userGroupMembershipDAL,
           membershipGroupDAL,
+          groupDAL,
           projectKeyDAL,
           additionalPrivilegeDAL,
           alertChannelRecipientDAL,
+          eventEmitter,
           ...pamSessionDeps,
           tx,
           shouldFailOnMissingMembers
         }));
+      }
+
+      if (group.name !== displayName) {
+        const previousName = group.name;
+        const [modifiedGroup] = await groupDAL
+          .update(
+            {
+              id: groupId,
+              orgId
+            },
+            {
+              name: displayName
+            },
+            tx
+          )
+          .catch((err: unknown) => {
+            if (
+              err instanceof DatabaseError &&
+              (err.error as { code?: string })?.code === DatabaseErrorCode.UniqueViolation
+            ) {
+              throw new ScimRequestError({
+                detail: `Group with name '${displayName}' already exists in the organization`,
+                status: 409,
+                scimType: "uniqueness",
+                error: err
+              });
+            }
+            throw err;
+          });
+
+        await externalGroupOrgRoleMappingDAL.update(
+          {
+            groupName: previousName,
+            orgId
+          },
+          {
+            groupName: displayName
+          },
+          tx
+        );
+
+        group = modifiedGroup;
       }
 
       return group;
@@ -1792,6 +1798,8 @@ export const scimServiceFactory = ({
     };
   };
 
+  // SCIM can delete a group that's still linked into sub-orgs, so read its orgs and members before the
+  // cascade drops the links.
   const deleteScimGroup: TScimServiceFactory["deleteScimGroup"] = async ({ groupId, orgId }) => {
     const org = await requestMemoize(requestMemoKeys.orgFindById(orgId), () => orgDAL.findById(orgId));
     if (!org) {
@@ -1811,6 +1819,7 @@ export const scimServiceFactory = ({
 
     const [group] = await groupDAL.transaction(async (tx) => {
       if (!isUuidV4(groupId)) return [];
+      if (!(await groupDAL.findOne({ id: groupId, orgId }, tx))) return [];
 
       const finalizeAlertRecipients = await prepareDeletedGroupAlertRecipientCleanup(
         { userGroupMembershipDAL, alertChannelRecipientDAL },
@@ -1818,14 +1827,15 @@ export const scimServiceFactory = ({
         tx
       );
 
-      const [groupUsers, groupIdentities] = await Promise.all([
-        userGroupMembershipDAL.find({ groupId }, { tx }),
-        identityGroupMembershipDAL.find({ groupId }, { tx })
-      ]);
-
       await reapDeletedGroupFolderGrants(
         { userGroupMembershipDAL, identityGroupMembershipDAL, membershipGroupDAL, additionalPrivilegeDAL },
         groupId,
+        tx
+      );
+      const { orgIds, userIds, identityIds } = await groupDAL.findGroupActorsAndOrgs(groupId, tx);
+      await emitGroupRemoved(
+        eventEmitter,
+        { groupId, orgIds, members: toOrgMembershipActors({ userIds, identityIds }) },
         tx
       );
 
@@ -1835,8 +1845,8 @@ export const scimServiceFactory = ({
       await finalizeAlertRecipients();
 
       sendPamCancellations = await terminatePamSessionsLosingGroupAccess({
-        userIds: groupUsers.map((m) => m.userId),
-        identityIds: groupIdentities.map((m) => m.identityId),
+        userIds,
+        identityIds,
         ...pamSessionDeps,
         tx
       });

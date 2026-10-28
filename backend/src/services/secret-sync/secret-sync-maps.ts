@@ -205,8 +205,10 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
     "groupId",
     "projectId"
   ],
-  [SecretSync.CloudflarePages]: [],
-  [SecretSync.CloudflareWorkers]: [],
+  // Syncs of any variable type write to the same variables, so blocking duplicate destinations has to
+  // cover them all or one project could overwrite another project's variables.
+  [SecretSync.CloudflarePages]: ["variableType"],
+  [SecretSync.CloudflareWorkers]: ["variableType"],
   [SecretSync.CloudflareSecretsStore]: ["storeName", "scopes"],
   [SecretSync.Supabase]: ["projectName"],
   [SecretSync.Rundeck]: [],

@@ -11,18 +11,20 @@ import {
 } from "@app/helpers/agentVaultVariables";
 import { useDebounce } from "@app/hooks";
 import {
+  AgentVaultVariableScope,
   useAgentVaultVariableKeyStatus,
   useListAgentVaultVariables
 } from "@app/hooks/api/agentVault";
 
 import { useServiceVariables } from "./ServiceVariablesContext";
 
-type TOpenReference = { start: number; query: string };
+// A picker opened from a button has no reference in the text: a pick replaces the whole value.
+type TOpenReference = { start: number; query: string; isPicker?: boolean };
 
 const SUGGESTION_LIMIT = 50;
 
 type TSuggestion =
-  | { type: "variable"; key: string }
+  | { type: "variable"; key: string; usedByCount?: number }
   | { type: "create"; key: string; isKeyValid: boolean };
 
 export const useVariableAutocomplete = ({
@@ -33,7 +35,7 @@ export const useVariableAutocomplete = ({
   /** The whole new value, and where in it the caret belongs. */
   onInsert: (value: string, caret: number) => void;
 }) => {
-  const { requestVariable } = useServiceVariables();
+  const { requestVariable, localVariables, isLocal } = useServiceVariables();
   const [openReference, setOpenReference] = useState<TOpenReference | null>(null);
   const query = openReference ? normalizeVariableKey(openReference.query) : "";
   const [debouncedQuery] = useDebounce(query, 200);
@@ -41,16 +43,26 @@ export const useVariableAutocomplete = ({
 
   // Searched on the server, so the list never has to hold every variable. The last page stays up while the next
   // loads, filtered to the new text, which a longer query only narrows.
-  const { data, isPlaceholderData } = useListAgentVaultVariables(
-    { search: debouncedQuery || undefined, limit: SUGGESTION_LIMIT },
-    { enabled: isOpen }
+  const { data: searched, isPlaceholderData } = useListAgentVaultVariables(
+    {
+      scope: AgentVaultVariableScope.Global,
+      search: debouncedQuery || undefined,
+      limit: SUGGESTION_LIMIT
+    },
+    { enabled: isOpen && !isLocal }
   );
   // A search can show only so many, and the exact key may not be among them, so whether to offer to create it is
   // asked of that key alone.
   const { existing } = useAgentVaultVariableKeyStatus(
-    isOpen && VARIABLE_KEY_RE.test(debouncedQuery) ? [debouncedQuery] : [],
-    { enabled: isOpen }
+    isOpen && !isLocal && VARIABLE_KEY_RE.test(debouncedQuery) ? [debouncedQuery] : [],
+    { enabled: isOpen && !isLocal }
   );
+  const data = useMemo(() => {
+    if (!isLocal) return searched;
+    if (!localVariables) return undefined;
+    const variables = localVariables.filter((variable) => variable.key.includes(debouncedQuery));
+    return { variables, totalCount: variables.length };
+  }, [isLocal, searched, localVariables, debouncedQuery]);
   const [activeIndex, setActiveIndex] = useState(0);
   // Escape closes the list for the reference being typed, not for the field: it opens again at the next {{.
   const dismissedAt = useRef<number | null>(null);
@@ -75,7 +87,12 @@ export const useVariableAutocomplete = ({
       ])
     ]
       .sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))
-      .map((candidate) => ({ type: "variable" as const, key: candidate }));
+      .map((candidate) => ({
+        type: "variable" as const,
+        key: candidate,
+        usedByCount: data.variables.find((variable) => variable.key === candidate)?.usedByServices
+          .length
+      }));
 
     if (!key || keyExists) return matches;
     return [...matches, { type: "create", key, isKeyValid: VARIABLE_KEY_RE.test(key) }];
@@ -85,7 +102,10 @@ export const useVariableAutocomplete = ({
   // how many it shows and how to narrow it.
   const shownCount = suggestions.filter((suggestion) => suggestion.type === "variable").length;
   const truncation =
-    data && !isPlaceholderData && query === debouncedQuery && data.totalCount > shownCount
+    data &&
+    !(isPlaceholderData && !isLocal) &&
+    query === debouncedQuery &&
+    data.totalCount > shownCount
       ? { shown: shownCount, total: data.totalCount }
       : null;
 
@@ -111,6 +131,12 @@ export const useVariableAutocomplete = ({
     }
   };
 
+  const openPicker = () => {
+    dismissedAt.current = null;
+    setOpenReference({ start: 0, query: "", isPicker: true });
+    setActiveIndex(0);
+  };
+
   const dismiss = () => {
     dismissedAt.current = openReference?.start ?? null;
     close();
@@ -121,6 +147,7 @@ export const useVariableAutocomplete = ({
   const surroundings = () => {
     const input = inputRef.current;
     if (!input || !openReference) return null;
+    if (openReference.isPicker) return { before: "", after: "" };
     const reference = findVariableReferenceAtCaret(
       input.value,
       input.selectionStart ?? input.value.length
@@ -179,6 +206,7 @@ export const useVariableAutocomplete = ({
 
   return {
     isOpen,
+    isPicker: Boolean(openReference?.isPicker),
     isLoading: isOpen && !data,
     truncation,
     suggestions,
@@ -188,6 +216,7 @@ export const useVariableAutocomplete = ({
     activeOptionId: openReference && suggestions.length ? optionId(activeIndex) : undefined,
     optionId,
     refresh,
+    openPicker,
     close,
     dismiss,
     choose,
@@ -196,6 +225,11 @@ export const useVariableAutocomplete = ({
 };
 
 type TAutocomplete = ReturnType<typeof useVariableAutocomplete>;
+
+const usedByLabel = (count: number) => {
+  if (count === 0) return "Unused";
+  return `Used by ${count} service${count === 1 ? "" : "s"}`;
+};
 
 export const VariableSuggestions = ({
   autocomplete,
@@ -207,6 +241,7 @@ export const VariableSuggestions = ({
   const anchorRef = useRef<HTMLDivElement>(null);
   const {
     isOpen,
+    isPicker,
     isLoading,
     truncation,
     suggestions,
@@ -237,7 +272,14 @@ export const VariableSuggestions = ({
       onClick={() => choose(suggestion)}
     >
       {suggestion.type === "variable" ? (
-        <span className="flex-1 truncate font-mono text-xs">{suggestion.key}</span>
+        <>
+          <span className="flex-1 truncate font-mono text-xs">{suggestion.key}</span>
+          {suggestion.usedByCount !== undefined && (
+            <span className="shrink-0 text-xs text-muted">
+              {usedByLabel(suggestion.usedByCount)}
+            </span>
+          )}
+        </>
       ) : (
         <>
           <PlusIcon className="size-3.5 shrink-0 text-muted" />
@@ -309,8 +351,25 @@ export const VariableSuggestions = ({
             </>
           ) : (
             <p className="px-2 py-1.5 text-xs text-muted">
-              {isLoading ? "Loading variables..." : "No variables yet. Type a key to create one."}
+              {isLoading && "Loading variables..."}
+              {!isLoading && isPicker && (
+                <>
+                  No variables yet. Type <code className="font-mono">{"{{"}</code> in the field to
+                  create one.
+                </>
+              )}
+              {!isLoading && !isPicker && "No variables yet. Type a key to create one."}
             </p>
+          )}
+          {/* Only when the button opened a list there is something to pick from: someone who typed {{ already knows. */}
+          {isPicker && suggestions.length > 0 && (
+            <>
+              <div className="-mx-1 my-1 h-px bg-border" />
+              <p className="px-2 py-1.5 text-xs text-muted">
+                Tip: type <code className="font-mono">{"{{"}</code> in the field to insert one
+                inline.
+              </p>
+            </>
           )}
         </PopoverContent>
       )}
