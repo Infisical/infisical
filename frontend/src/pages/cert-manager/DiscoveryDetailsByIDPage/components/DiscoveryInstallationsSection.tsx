@@ -87,18 +87,24 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId, isScanRu
               <TableBody>
                 {installations.map((installation) => (
                   <TableRow key={installation.id} linked>
-                    <TableCell>
+                    <TableCell className="max-w-48">
                       <RowLink
                         {...getInstancePinningLink(
                           currentProject.orgId,
                           currentProject,
                           `discovery/installations/${installation.id}`
                         )!}
+                        title={installation.name || getEndpoint(installation)}
                       >
                         {installation.name || getEndpoint(installation)}
                       </RowLink>
                     </TableCell>
-                    <TableCell>{installation.primaryCertName || "N/A"}</TableCell>
+                    <TableCell
+                      className="max-w-44 truncate"
+                      title={installation.primaryCertName ?? undefined}
+                    >
+                      {installation.primaryCertName || "N/A"}
+                    </TableCell>
                     <TableCell>{getGatewayLabel(installation) || "N/A"}</TableCell>
                     <TableCell>
                       {format(new Date(installation.lastSeenAt), "MMM dd, yyyy HH:mm")}

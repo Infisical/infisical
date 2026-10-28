@@ -173,28 +173,16 @@ const WindowsServerSchema = BaseSchema.extend({
   importStandaloneCaCertificates: z.boolean()
 });
 
-const CA_ONLY_STORES = [
+export const CA_CERTIFICATE_STORES = [
   WindowsCertificateStore.IntermediateCertificationAuthorities,
   WindowsCertificateStore.TrustedRootCertificationAuthorities
 ];
 
-export const DiscoveryJobFormSchema = z
-  .discriminatedUnion("discoveryType", [NetworkSchema, LinuxServerSchema, WindowsServerSchema])
-  .superRefine((form, ctx) => {
-    if (
-      form.discoveryType === PkiDiscoveryType.WindowsServer &&
-      !form.importStandaloneCaCertificates &&
-      form.certificateStores.length > 0 &&
-      form.certificateStores.every((store) => CA_ONLY_STORES.includes(store))
-    ) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["certificateStores"],
-        message:
-          "These stores only hold CA certificates. Turn on Include CA Certificates or select another store."
-      });
-    }
-  });
+export const DiscoveryJobFormSchema = z.discriminatedUnion("discoveryType", [
+  NetworkSchema,
+  LinuxServerSchema,
+  WindowsServerSchema
+]);
 
 export type TDiscoveryJobForm = z.infer<typeof DiscoveryJobFormSchema>;
 export type TNetworkDiscoveryJobForm = z.infer<typeof NetworkSchema>;
@@ -215,14 +203,17 @@ export const getDefaultFormValues = (
 
   if (type === PkiDiscoveryType.WindowsServer) {
     const config = discovery?.targetConfig;
+    const importStandaloneCaCertificates = config?.importStandaloneCaCertificates ?? false;
     return {
       ...base,
       discoveryType: PkiDiscoveryType.WindowsServer,
       connections: discovery?.connections ?? [],
-      certificateStores: Object.values(WindowsCertificateStore).filter((store) =>
-        (config?.certificateStores ?? DEFAULT_WINDOWS_CERTIFICATE_STORES).includes(store)
+      certificateStores: Object.values(WindowsCertificateStore).filter(
+        (store) =>
+          (config?.certificateStores ?? DEFAULT_WINDOWS_CERTIFICATE_STORES).includes(store) &&
+          (importStandaloneCaCertificates || !CA_CERTIFICATE_STORES.includes(store))
       ),
-      importStandaloneCaCertificates: config?.importStandaloneCaCertificates ?? false
+      importStandaloneCaCertificates
     };
   }
 

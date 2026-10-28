@@ -182,7 +182,7 @@ export const InstallationsTab = ({ projectId }: Props) => {
               <TableBody>
                 {installations.map((installation) => (
                   <TableRow key={installation.id} linked>
-                    <TableCell>
+                    <TableCell className="max-w-96">
                       <div className="flex items-center gap-2">
                         <DiscoveryTypeIcon
                           type={getInstallationDiscoveryType(installation)}
@@ -194,13 +194,18 @@ export const InstallationsTab = ({ projectId }: Props) => {
                             currentProject,
                             `discovery/installations/${installation.id}`
                           )!}
+                          className="min-w-0"
+                          title={installation.name || getEndpoint(installation)}
                         >
                           {installation.name || getEndpoint(installation)}
                         </RowLink>
                         {getKeystoreStatusBadge(installation)}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell
+                      className="max-w-56 truncate"
+                      title={installation.primaryCertName ?? undefined}
+                    >
                       {installation.primaryCertName || <span className="text-accent">—</span>}
                     </TableCell>
                     <TableCell>{getGatewayLabel(installation) || "N/A"}</TableCell>

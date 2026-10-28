@@ -18,7 +18,7 @@ import {
   WindowsCertificateStoreLabels
 } from "@app/hooks/api/pkiDiscovery/types";
 
-import { TWindowsServerDiscoveryJobForm } from "./discovery-job-form-schema";
+import { CA_CERTIFICATE_STORES, TWindowsServerDiscoveryJobForm } from "./discovery-job-form-schema";
 
 const STORE_DESCRIPTIONS: Record<WindowsCertificateStore, string> = {
   [WindowsCertificateStore.Personal]:
@@ -36,26 +36,23 @@ const SERVER_STORES = [
   WindowsCertificateStore.RemoteDesktop
 ];
 
-const CA_STORES = [
-  WindowsCertificateStore.IntermediateCertificationAuthorities,
-  WindowsCertificateStore.TrustedRootCertificationAuthorities
-];
-
 type StoreOptionsProps = {
   stores: WindowsCertificateStore[];
   value: WindowsCertificateStore[];
   onChange: (stores: WindowsCertificateStore[]) => void;
+  isDisabled?: boolean;
 };
 
-const StoreOptions = ({ stores, value, onChange }: StoreOptionsProps) => (
+const StoreOptions = ({ stores, value, onChange, isDisabled }: StoreOptionsProps) => (
   <FieldGroup data-slot="checkbox-group">
     {stores.map((store) => {
       const id = `certificate-store-${store.replace(" ", "-")}`;
       return (
-        <Field key={store} orientation="horizontal">
+        <Field key={store} orientation="horizontal" data-disabled={isDisabled}>
           <Checkbox
             id={id}
             variant="project"
+            isDisabled={isDisabled}
             isChecked={value.includes(store)}
             onCheckedChange={(checked) =>
               onChange(
@@ -67,7 +64,7 @@ const StoreOptions = ({ stores, value, onChange }: StoreOptionsProps) => (
           />
           <FieldContent>
             <FieldTitle>
-              <Label htmlFor={id} className="cursor-pointer">
+              <Label htmlFor={id} className={isDisabled ? "cursor-not-allowed" : "cursor-pointer"}>
                 {WindowsCertificateStoreLabels[store]}
               </Label>
             </FieldTitle>
@@ -80,7 +77,8 @@ const StoreOptions = ({ stores, value, onChange }: StoreOptionsProps) => (
 );
 
 export const WindowsServerStoresFields = () => {
-  const { control, trigger } = useFormContext<TWindowsServerDiscoveryJobForm>();
+  const { control, trigger, watch } = useFormContext<TWindowsServerDiscoveryJobForm>();
+  const includeCa = watch("importStandaloneCaCertificates");
 
   return (
     <Controller
@@ -94,12 +92,11 @@ export const WindowsServerStoresFields = () => {
           </FieldSet>
           <FieldSet>
             <FieldLegend variant="label">CA Certificate Stores</FieldLegend>
-            <StoreOptions stores={CA_STORES} value={value} onChange={onChange} />
             <Controller
               control={control}
               name="importStandaloneCaCertificates"
-              render={({ field: { value: includeCa, onChange: setIncludeCa } }) => (
-                <Field orientation="horizontal" className="mt-2">
+              render={({ field: { onChange: setIncludeCa } }) => (
+                <Field orientation="horizontal" className="mb-2">
                   <FieldContent>
                     <FieldTitle>
                       <Label htmlFor="import-standalone-ca" className="cursor-pointer">
@@ -117,11 +114,20 @@ export const WindowsServerStoresFields = () => {
                     checked={includeCa}
                     onCheckedChange={(checked) => {
                       setIncludeCa(checked);
-                      trigger("certificateStores");
+                      if (!checked) {
+                        onChange(value.filter((store) => !CA_CERTIFICATE_STORES.includes(store)));
+                        trigger("certificateStores");
+                      }
                     }}
                   />
                 </Field>
               )}
+            />
+            <StoreOptions
+              stores={CA_CERTIFICATE_STORES}
+              value={value}
+              onChange={onChange}
+              isDisabled={!includeCa}
             />
           </FieldSet>
           <FieldError errors={[error]} />
