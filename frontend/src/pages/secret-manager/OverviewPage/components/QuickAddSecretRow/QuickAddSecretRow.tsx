@@ -18,12 +18,37 @@ import {
   useSecretInputActionShortcuts
 } from "@app/components/v3";
 import { useProject } from "@app/context";
+import { fetchSecretKeyExists } from "@app/hooks/api/dashboard/queries";
 
 import { overviewCountBucket, useOverviewTelemetry } from "../../OverviewTelemetry";
 import { TABLE_ROW_ACTIVE_FILTER_CLASS_NAME } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
 
 type TParsedEnv = Record<string, { value: string; comments: string[] }>;
+
+const findEnvironmentsWithSecretKey = async ({
+  projectId,
+  environments,
+  secretPath,
+  secretKey
+}: {
+  projectId: string;
+  environments: string[];
+  secretPath: string;
+  secretKey: string;
+}) => {
+  const results = await Promise.all(
+    environments.map((environment) =>
+      fetchSecretKeyExists({ projectId, environment, secretPath, secretKey }).catch(() => false)
+    )
+  );
+  return environments.filter((_, index) => results[index]);
+};
+
+const getDuplicateKeyError = (environmentsWithKey: string[], isMultiEnvironmentView: boolean) =>
+  isMultiEnvironmentView
+    ? `A secret with this name already exists in ${environmentsWithKey.join(", ")}`
+    : "A secret with this name already exists";
 
 type Props = {
   autoQueueOnBlur?: boolean;
@@ -70,6 +95,7 @@ export const QuickAddSecretRow = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [valueEditorStyle, setValueEditorStyle] = useState<CSSProperties>();
   const isMultiEnvironmentView = environments.length > 1;
+  const environmentSlugs = environments.join(",");
 
   useEffect(() => {
     if (!isMultiEnvironmentView) {
@@ -100,6 +126,40 @@ export const QuickAddSecretRow = ({
 
     return () => resizeObserver.disconnect();
   }, [isMultiEnvironmentView]);
+
+  useEffect(() => {
+    const secretKey = key.trim();
+    if (!secretKey) return undefined;
+
+    if (existingSecretKeys.includes(secretKey)) {
+      setError("A secret with this name already exists");
+      return undefined;
+    }
+
+    let isCancelled = false;
+    const timer = setTimeout(async () => {
+      const environmentsWithKey = await findEnvironmentsWithSecretKey({
+        projectId: currentProject.id,
+        environments: environmentSlugs.split(","),
+        secretPath,
+        secretKey
+      });
+      if (!isCancelled && environmentsWithKey.length)
+        setError(getDuplicateKeyError(environmentsWithKey, isMultiEnvironmentView));
+    }, 300);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [
+    key,
+    existingSecretKeys,
+    currentProject.id,
+    environmentSlugs,
+    secretPath,
+    isMultiEnvironmentView
+  ]);
 
   useEffect(() => {
     onActivityChange(activityId, isActive);
@@ -134,6 +194,18 @@ export const QuickAddSecretRow = ({
     setError(undefined);
 
     try {
+      const environmentsWithKey = await findEnvironmentsWithSecretKey({
+        projectId: currentProject.id,
+        environments,
+        secretPath,
+        secretKey: normalizedKey
+      });
+      if (environmentsWithKey.length) {
+        setError(getDuplicateKeyError(environmentsWithKey, isMultiEnvironmentView));
+        if (refocus) setTimeout(() => keyInputRef.current?.focus(), 0);
+        return;
+      }
+
       await Promise.all(
         environments.map((environment) =>
           onCreateSecret(environment, normalizedKey, value, comment, isDirectSave)

@@ -21,6 +21,7 @@ import {
   TGetDashboardProjectSecretsDetailsDTO,
   TGetDashboardProjectSecretsOverviewDTO,
   TGetDashboardProjectSecretsQuickSearchDTO,
+  TGetSecretKeyExistsDTO,
   TGetSecretMetadataDTO,
   TGetSecretValueDTO,
   TSearchSecretsByMetadataDTO,
@@ -123,6 +124,14 @@ export const fetchSecretMetadata = async (params: TGetSecretMetadataDTO, signal?
     { params, signal }
   );
   return data;
+};
+
+export const fetchSecretKeyExists = async (params: TGetSecretKeyExistsDTO) => {
+  const { data } = await apiRequest.get<{ exists: boolean }>(
+    "/api/v1/dashboard/secret-key-exists",
+    { params }
+  );
+  return data.exists;
 };
 
 export const fetchProjectSecretsOverview = async ({

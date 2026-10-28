@@ -1985,6 +1985,57 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
+    url: "/secret-key-exists",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: true,
+      operationId: "getSecretKeyExists",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      querystring: z.object({
+        projectId: z.string().trim().min(1).max(64),
+        environment: z.string().trim().min(1).max(64),
+        secretPath: z.string().trim().max(1000).default("/").transform(removeTrailingSlash),
+        secretKey: z.string().trim().min(1).max(500)
+      }),
+      response: {
+        200: z.object({
+          exists: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { projectId, environment, secretPath, secretKey } = req.query;
+
+      const { secrets } = await server.services.secret.getSecretsRaw({
+        personalOverridesBehavior: PersonalOverridesBehavior.NeverInclude,
+        secretImportReferencesBehavior: SecretImportReferencesBehavior.SourceEnvironment,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        viewSecretValue: false,
+        throwOnMissingReadValuePermission: false,
+        projectId,
+        environment,
+        path: secretPath,
+        keys: [secretKey]
+      });
+
+      return {
+        exists: secrets.some((secret) => secret.secretKey === secretKey && secret.type === SecretType.Shared)
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/secret-value",
     config: {
       rateLimit: secretsLimit
