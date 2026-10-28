@@ -34,12 +34,14 @@ output-options:
     - verifyEmailSignupV3
     - completeAccountSignupV3
     - inviteProjectMembers
+    - removeProjectMembers
     - createMachineIdentity
     - createProjectMachineIdentity
     - createProjectIdentityMembership
     - createProjectRole
     - listProjectMachineIdentities
     - createGitHubAppConnection
+    - createServiceNowAppConnection
     - createGitHubSecretSync
     - getGitHubSecretSync
     - deleteGitHubSecretSync
@@ -81,6 +83,13 @@ output-options:
     - reviewSecretApprovalRequest
     - updateSecretApprovalRequestStatus
     - mergeSecretApprovalRequest
+    - createAccessApprovalPolicy
+    - listAccessApprovalPolicies
+    - updateAccessApprovalPolicy
+    - getAccessApprovalPolicy
+    - createAccessApprovalRequest
+    - listAccessApprovalRequests
+    - handleDelegatedApprovalCallback
     - createGroup
     - addUserToGroup
     - removeUserFromGroup
@@ -101,6 +110,7 @@ output-options:
     - getOrgMembership
     - updateOrgMembership
     - getCurrentUser
+    - deleteUser
     - createScimToken
     - listScimTokens
     - deleteScimToken
