@@ -30,6 +30,8 @@ To scan repositories, connect them to Infisical with a data source. A data sourc
   </Card>
 </CardGroup>
 
+A [Claude Code](/documentation/platform/secret-scanning/claude-code) data source is different: it doesn't cover repositories or use an app connection. Instead, the Infisical plugin for Claude Code sends prompts that contain secrets to Infisical, and Infisical blocks each prompt until a reviewer reviews its secrets. You can also set the data source to only report the secrets and let the prompts continue. The scan settings and manual scans on this page don't apply to it.
+
 To see your data sources, go to **Secret Scanning** > **Data Sources**.
 
 ![data sources](/images/platform/secret-scanning/secret-scanning-data-sources.png)

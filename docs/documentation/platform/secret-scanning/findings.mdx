@@ -20,6 +20,12 @@ To see the details of a finding, select its row:
 
 If a later scan finds the same secret in the same place, Infisical keeps the existing finding and its status instead of adding a new one.
 
+### Claude Code findings
+
+A finding from a [Claude Code](/documentation/platform/secret-scanning/claude-code) data source comes from a prompt, not from a file. It contains the matching rule, where the secret is in the prompt, the secret's entropy, the name and email address of the developer who submitted the prompt, when they submitted it, and the working directory and session ID of the Claude Code session. Infisical doesn't store the prompt or the value of the secret.
+
+The status of a Claude Code finding also controls the plugin. If the data source uses **Block the prompt** (the default), Infisical blocks every prompt that contains the secret while the finding is **Unresolved**. If the data source uses **Report only**, Infisical allows the prompt and warns the developer. After you change the status to **Resolved**, **False Positive**, or **Ignore**, Infisical allows prompts that contain the secret, for every developer in the project.
+
 ## Finding statuses
 
 Every new finding starts as **Unresolved**. After you review a finding, change its status to one of the following:
@@ -28,7 +34,7 @@ Every new finding starts as **Unresolved**. After you review a finding, change i
 - **False Positive**: The value isn't a secret
 - **Ignore**: The value is a secret, but you've decided it's safe to leave, such as a test credential
 
-The status is only a record of your review, and doesn't change how Infisical scans. To stop a value from being reported in the first place, ignore it in the [scanning configuration](/documentation/platform/secret-scanning/configuration#ignore-one-line).
+For repository data sources, the status is only a record of your review, and doesn't change how Infisical scans. For [Claude Code](/documentation/platform/secret-scanning/claude-code#review-findings), the status decides whether Infisical blocks or warns about prompts that contain the secret. To stop a value from being reported in the first place, ignore it in the [scanning configuration](/documentation/platform/secret-scanning/configuration#ignore-one-line).
 
 ## Change a finding's status
 

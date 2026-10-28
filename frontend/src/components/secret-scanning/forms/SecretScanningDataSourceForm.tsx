@@ -18,7 +18,10 @@ import {
 import { ProviderIcon } from "@app/components/v3/platform/ProviderIcon";
 import { useProject } from "@app/context";
 import {
+  CLAUDE_CODE_PLUGIN_SETUP_COMMAND,
+  doesDataSourceRequireConnection,
   doesDataSourceSupportDiscovery,
+  getClaudeCodeSecretDetectedAction,
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
@@ -31,6 +34,7 @@ import {
   useCreateSecretScanningDataSource,
   useUpdateSecretScanningDataSource
 } from "@app/hooks/api/secretScanningV2/mutations";
+import { ClaudeCodeSecretDetectedAction } from "@app/hooks/api/secretScanningV2/types/claude-code-data-source";
 import { GitLabDataSourceScope } from "@app/hooks/api/secretScanningV2/types/gitlab-data-source";
 
 import { SecretScanningDataSourceSchema, TSecretScanningDataSourceForm } from "./schemas";
@@ -59,6 +63,8 @@ const getDefaultConfig = (type: SecretScanningDataSource) => {
       return { workspaceSlug: "" };
     case SecretScanningDataSource.GitLab:
       return { scope: GitLabDataSourceScope.Account };
+    case SecretScanningDataSource.ClaudeCode:
+      return { onSecretDetected: ClaudeCodeSecretDetectedAction.Block };
     default:
       throw new Error(`Unhandled data source type: ${type}`);
   }
@@ -73,7 +79,16 @@ const getDefaultValues = (type: SecretScanningDataSource) =>
     config: getDefaultConfig(type)
   }) as DefaultValues<TSecretScanningDataSourceForm>;
 
-const CONNECTION_STEP_FIELDS: Record<SecretScanningDataSource, TFormField[]> = {
+// Claude Code data sources created before the detection setting existed may not have a saved value
+const getEditValues = (dataSource: TSecretScanningDataSource) =>
+  dataSource.type === SecretScanningDataSource.ClaudeCode
+    ? {
+        ...dataSource,
+        config: { onSecretDetected: getClaudeCodeSecretDetectedAction(dataSource.config) }
+      }
+    : dataSource;
+
+const CONNECTION_STEP_FIELDS: Partial<Record<SecretScanningDataSource, TFormField[]>> = {
   [SecretScanningDataSource.GitHub]: ["connection"],
   [SecretScanningDataSource.Bitbucket]: ["connection", "config.workspaceSlug"],
   [SecretScanningDataSource.GitLab]: [
@@ -84,7 +99,7 @@ const CONNECTION_STEP_FIELDS: Record<SecretScanningDataSource, TFormField[]> = {
   ]
 };
 
-const CONNECTION_STEP_INFO: Record<SecretScanningDataSource, string> = {
+const CONNECTION_STEP_INFO: Partial<Record<SecretScanningDataSource, string>> = {
   [SecretScanningDataSource.GitHub]:
     "The App Connection is how Secret Scanning reads your GitHub repositories. It cannot be changed after the data source is created.",
   [SecretScanningDataSource.Bitbucket]:
@@ -93,12 +108,58 @@ const CONNECTION_STEP_INFO: Record<SecretScanningDataSource, string> = {
     "The App Connection is how Secret Scanning reads your GitLab projects. Without a group, the data source covers every project the connection can read. GitLab only reports new projects through group webhooks, so a group is required to discover them. Connection and group cannot be changed after the data source is created."
 };
 
+const PROVIDER_CATEGORY: Record<SecretScanningDataSource, string> = {
+  [SecretScanningDataSource.GitHub]: "Version Control",
+  [SecretScanningDataSource.Bitbucket]: "Version Control",
+  [SecretScanningDataSource.GitLab]: "Version Control",
+  [SecretScanningDataSource.ClaudeCode]: "AI Assistant"
+};
+
+const PROVIDER_DESCRIPTION: Partial<Record<SecretScanningDataSource, string>> = {
+  [SecretScanningDataSource.ClaudeCode]:
+    "Scan Claude Code prompts for secrets, then block or report the prompts that contain them."
+};
+
+const SCAN_STEP_FIELDS: Partial<Record<SecretScanningDataSource, TFormField[]>> = {
+  [SecretScanningDataSource.ClaudeCode]: ["config.onSecretDetected"]
+};
+
+const SCAN_STEP_SUBTITLE: Partial<Record<SecretScanningDataSource, string>> = {
+  [SecretScanningDataSource.ClaudeCode]: "Decide what happens when a prompt contains a secret."
+};
+
+const SCAN_STEP_INFO: Partial<Record<SecretScanningDataSource, string>> = {
+  [SecretScanningDataSource.ClaudeCode]:
+    "With Block the prompt, Claude Code stops the prompt until its findings are reviewed in Infisical. With Report only, the prompt continues, Infisical records the secret as a finding, and the developer sees a warning. You can change this later."
+};
+
+const getReviewInfo = (type: SecretScanningDataSource, isEdit: boolean) => {
+  if (isEdit) {
+    return doesDataSourceRequireConnection(type)
+      ? "Saving updates the data source right away. Changes to scan options apply to the next scan or commit."
+      : "Saving updates the data source right away.";
+  }
+
+  if (type === SecretScanningDataSource.ClaudeCode) {
+    return `After you create the data source, install the Infisical Claude Code plugin, run ${CLAUDE_CODE_PLUGIN_SETUP_COMMAND} in Claude Code, and select this data source by its name. You can change scan options, name, and description later from the data source's settings.`;
+  }
+
+  return "You can change scan options, name, and description later from the data source's settings.";
+};
+
+// data sources without an App Connection have no connection settings, so they skip that step
+const getFormSteps = (type: SecretScanningDataSource) =>
+  doesDataSourceRequireConnection(type)
+    ? [FormStep.Provider, FormStep.Connection, FormStep.Scan, FormStep.Details, FormStep.Review]
+    : [FormStep.Provider, FormStep.Scan, FormStep.Details, FormStep.Review];
+
 const getSteps = (type: SecretScanningDataSource, isEdit: boolean) => {
   const { name: platform } = SECRET_SCANNING_DATA_SOURCE_MAP[type];
   const { singularNoun, pluralNoun, verb } = RESOURCE_DESCRIPTION_HELPER[type];
 
-  return [
+  const steps = [
     {
+      id: FormStep.Provider,
       name: "Provider",
       description: platform,
       title: "Choose a Provider",
@@ -107,28 +168,35 @@ const getSteps = (type: SecretScanningDataSource, isEdit: boolean) => {
       fields: [] as TFormField[]
     },
     {
+      id: FormStep.Connection,
       name: "Connection",
       description: "Connection and scope",
       title: `Connect to ${platform}`,
       subtitle: isEdit
         ? "The App Connection and scope are fixed once the data source is created."
         : "Choose the App Connection and, if needed, narrow its scope.",
-      info: CONNECTION_STEP_INFO[type],
-      fields: CONNECTION_STEP_FIELDS[type]
+      info: CONNECTION_STEP_INFO[type] ?? "",
+      fields: CONNECTION_STEP_FIELDS[type] ?? []
     },
     {
+      id: FormStep.Scan,
       name: "Scan Options",
       description: "Scan behavior",
       title: "Configure Scanning",
-      subtitle: "Decide when this data source gets scanned.",
-      info: `Historical scan checks existing history once ${pluralNoun} are enabled. Scan New Commits keeps watching each ${verb}. Discovery adds every ${singularNoun} the connection can access, including ones created later.`,
-      fields: [
-        "isHistoricalScanEnabled",
-        "isScanNewCommitsEnabled",
-        "isDiscoveryEnabled"
-      ] as TFormField[]
+      subtitle: SCAN_STEP_SUBTITLE[type] ?? "Decide when this data source gets scanned.",
+      info:
+        SCAN_STEP_INFO[type] ??
+        `Historical scan checks existing history once ${pluralNoun} are enabled. Scan New Commits keeps watching each ${verb}. Discovery adds every ${singularNoun} the connection can access, including ones created later.`,
+      fields:
+        SCAN_STEP_FIELDS[type] ??
+        ([
+          "isHistoricalScanEnabled",
+          "isScanNewCommitsEnabled",
+          "isDiscoveryEnabled"
+        ] as TFormField[])
     },
     {
+      id: FormStep.Details,
       name: "Details",
       description: "Name and description",
       title: "Name This Data Source",
@@ -137,18 +205,20 @@ const getSteps = (type: SecretScanningDataSource, isEdit: boolean) => {
       fields: ["name", "description"] as TFormField[]
     },
     {
+      id: FormStep.Review,
       name: "Review",
       description: "Confirm configuration",
       title: isEdit ? "Review and Save" : "Review and Create",
       subtitle: isEdit
         ? "Confirm the details below, then save your changes."
         : "Confirm the details below, then create the data source.",
-      info: isEdit
-        ? "Saving updates the data source right away. Changes to scan options apply to the next scan or commit."
-        : "You can change scan options, name, and description later from the data source's settings.",
+      info: getReviewInfo(type, isEdit),
       fields: [] as TFormField[]
     }
   ];
+
+  const formSteps = getFormSteps(type);
+  return steps.filter(({ id }) => formSteps.includes(id));
 };
 
 const ProviderCard = ({
@@ -172,13 +242,13 @@ const ProviderCard = ({
           <ProviderIcon icon={image} alt={`${name} logo`} className="h-6 w-6 object-contain" />
         </div>
         <span className="text-[10px] font-medium tracking-wider text-muted uppercase">
-          Version Control
+          {PROVIDER_CATEGORY[type]}
         </span>
       </div>
       <div className="flex flex-col gap-1">
         <p className="text-sm font-semibold text-foreground">{name}</p>
         <p className="text-xs leading-relaxed text-muted">
-          Scan {pluralNoun} hosted on {name} for leaked secrets.
+          {PROVIDER_DESCRIPTION[type] ?? `Scan ${pluralNoun} hosted on ${name} for leaked secrets.`}
         </p>
       </div>
     </button>
@@ -223,16 +293,21 @@ export const SecretScanningDataSourceForm = ({
   const updateDataSource = useUpdateSecretScanningDataSource();
   const isEdit = Boolean(dataSource);
 
+  // edits and restored forms open on the step after Provider
   const [step, setStep] = useState(
-    isEdit || initialFormData ? FormStep.Connection : FormStep.Provider
+    isEdit || initialFormData
+      ? getFormSteps(dataSource?.type ?? initialFormData?.type ?? initialType)[1]
+      : FormStep.Provider
   );
 
   const formMethods = useForm<TSecretScanningDataSourceForm>({
     resolver: zodResolver(SecretScanningDataSourceSchema),
-    defaultValues: (dataSource ?? {
-      ...getDefaultValues(initialType),
-      ...initialFormData
-    }) as DefaultValues<TSecretScanningDataSourceForm>,
+    defaultValues: (dataSource
+      ? getEditValues(dataSource)
+      : {
+          ...getDefaultValues(initialType),
+          ...initialFormData
+        }) as DefaultValues<TSecretScanningDataSourceForm>,
     // Step validation uses trigger(), which does not put the form into its submitted state.
     // Validate changes from the start so a field's error clears as soon as it is corrected.
     mode: "onChange",
@@ -261,8 +336,12 @@ export const SecretScanningDataSourceForm = ({
   }, [isSubmitting, onSubmittingChange]);
 
   const steps = getSteps(type, isEdit);
-  const firstStep = isEdit ? FormStep.Connection : FormStep.Provider;
-  const currentStep = steps[step];
+  const stepIndex = Math.max(
+    steps.findIndex(({ id }) => id === step),
+    0
+  );
+  const firstStepIndex = isEdit ? 1 : 0;
+  const currentStep = steps[stepIndex];
   const isFinalStep = step === FormStep.Review;
 
   let submitLabel = "Continue";
@@ -271,9 +350,27 @@ export const SecretScanningDataSourceForm = ({
   const { name: platform, image } = SECRET_SCANNING_DATA_SOURCE_MAP[type];
   const { pluralNoun } = RESOURCE_DESCRIPTION_HELPER[type];
 
-  const onSubmit = async ({ connection, ...formData }: TSecretScanningDataSourceForm) => {
-    const isDiscoveryEnabled =
-      formData.isDiscoveryEnabled && doesDataSourceSupportDiscovery(formData);
+  let sheetDescription =
+    PROVIDER_DESCRIPTION[type] ?? `Connect a ${platform} data source to scan its ${pluralNoun}.`;
+  if (dataSource) {
+    sheetDescription = `Edit the scan options and details of "${dataSource.name}".`;
+  }
+
+  const onSubmit = async ({
+    connection,
+    isHistoricalScanEnabled,
+    isScanNewCommitsEnabled,
+    isDiscoveryEnabled,
+    ...formData
+  }: TSecretScanningDataSourceForm) => {
+    // data sources without an App Connection do not accept the scan toggles
+    const scanSettings = doesDataSourceRequireConnection(formData.type)
+      ? {
+          isHistoricalScanEnabled,
+          isScanNewCommitsEnabled,
+          isDiscoveryEnabled: isDiscoveryEnabled && doesDataSourceSupportDiscovery(formData)
+        }
+      : {};
 
     if (dataSource) {
       const updated = await updateDataSource.mutateAsync({
@@ -283,9 +380,7 @@ export const SecretScanningDataSourceForm = ({
         name: formData.name,
         description: formData.description,
         config: formData.config,
-        isHistoricalScanEnabled: formData.isHistoricalScanEnabled,
-        isScanNewCommitsEnabled: formData.isScanNewCommitsEnabled,
-        isDiscoveryEnabled
+        ...scanSettings
       });
 
       createNotification({
@@ -298,7 +393,7 @@ export const SecretScanningDataSourceForm = ({
 
     const created = await createDataSource.mutateAsync({
       ...formData,
-      isDiscoveryEnabled,
+      ...scanSettings,
       connectionId: connection?.id,
       projectId: currentProject.id
     });
@@ -318,16 +413,16 @@ export const SecretScanningDataSourceForm = ({
 
     if (!(await trigger(currentStep.fields))) return;
 
-    setStep((prev) => prev + 1);
+    setStep(steps[stepIndex + 1].id);
   };
 
   const handleBack = () => {
-    if (step === firstStep) {
+    if (stepIndex === firstStepIndex) {
       onCancel();
       return;
     }
 
-    setStep((prev) => prev - 1);
+    setStep(steps[stepIndex - 1].id);
   };
 
   return (
@@ -342,11 +437,7 @@ export const SecretScanningDataSourceForm = ({
                 href={`https://infisical.com/docs/documentation/platform/secret-scanning/${type}`}
               />
             </div>
-            <SheetDescription>
-              {dataSource
-                ? `Edit the scan options and details of "${dataSource.name}".`
-                : `Connect a ${platform} data source to scan its ${pluralNoun}.`}
-            </SheetDescription>
+            <SheetDescription>{sheetDescription}</SheetDescription>
           </div>
         </div>
       </SheetHeader>
@@ -364,7 +455,7 @@ export const SecretScanningDataSourceForm = ({
             <p className="text-xs font-medium tracking-wider text-muted uppercase">
               {isEdit ? "Steps" : "Setup Steps"}
             </p>
-            <Stepper activeStep={step} onStepChange={setStep}>
+            <Stepper activeStep={stepIndex} onStepChange={(index) => setStep(steps[index].id)}>
               <StepperList>
                 {steps.map((s, index) => (
                   <StepperStep
@@ -372,7 +463,7 @@ export const SecretScanningDataSourceForm = ({
                     index={index}
                     title={s.name}
                     description={s.description}
-                    disabled={isEdit && index === FormStep.Provider}
+                    disabled={isEdit && s.id === FormStep.Provider}
                   />
                 ))}
               </StepperList>
@@ -390,7 +481,7 @@ export const SecretScanningDataSourceForm = ({
             <ProviderFields
               onSelect={(newType) => {
                 if (newType !== type) reset(getDefaultValues(newType));
-                setStep(FormStep.Connection);
+                setStep(getFormSteps(newType)[1]);
               }}
             />
           )}
@@ -403,7 +494,7 @@ export const SecretScanningDataSourceForm = ({
         {step !== FormStep.Provider && (
           <aside className="hidden w-64 shrink-0 flex-col gap-3 overflow-y-auto border-l border-border p-5 lg:flex">
             <p className="text-xs font-medium tracking-wider text-muted uppercase">
-              Step {step + 1} · {currentStep.name}
+              Step {stepIndex + 1} · {currentStep.name}
             </p>
             <p className="text-sm font-medium text-foreground">What this step does</p>
             <p className="text-sm leading-relaxed text-accent">{currentStep.info}</p>
@@ -413,11 +504,11 @@ export const SecretScanningDataSourceForm = ({
 
       <SheetFooter className="items-center justify-between border-t">
         <span className="text-xs text-muted">
-          Step {step + 1} of {steps.length}
+          Step {stepIndex + 1} of {steps.length}
         </span>
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleBack} isDisabled={isSubmitting}>
-            {step === firstStep ? "Cancel" : "Back"}
+            {stepIndex === firstStepIndex ? "Cancel" : "Back"}
           </Button>
           {step !== FormStep.Provider && (
             <Button

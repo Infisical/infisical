@@ -14,6 +14,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
   Button,
+  CopyButton,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,7 +30,10 @@ import {
   Tabs,
   TabsContent,
   TabsList,
-  TabsTrigger
+  TabsTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useProjectPermission } from "@app/context";
@@ -38,6 +42,8 @@ import {
   ProjectPermissionSecretScanningFindingActions
 } from "@app/context/ProjectPermissionContext/types";
 import {
+  CLAUDE_CODE_PLUGIN_INSTALL_COMMAND,
+  doesDataSourceRequireConnection,
   RESOURCE_DESCRIPTION_HELPER,
   SECRET_SCANNING_DATA_SOURCE_MAP
 } from "@app/helpers/secretScanningV2";
@@ -184,9 +190,39 @@ const PageContent = () => {
               </span>
             }
             description={
-              dataSource.connection
-                ? `Connected via App Connection ${dataSource.connection.name}`
-                : `${details.name} Data Source`
+              dataSource.connection ? (
+                `Connected via App Connection ${dataSource.connection.name}`
+              ) : (
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className="shrink-0">{details.name} Data Source</span>
+                  {dataSource.type === SecretScanningDataSource.ClaudeCode && (
+                    <span className="inline-flex h-6 min-w-0 items-center gap-0.5 rounded-sm border border-border pl-1.5">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <code className="truncate font-mono text-xs">
+                            {CLAUDE_CODE_PLUGIN_INSTALL_COMMAND}
+                          </code>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-sm font-mono text-xs break-all">
+                          {CLAUDE_CODE_PLUGIN_INSTALL_COMMAND}
+                        </TooltipContent>
+                      </Tooltip>
+                      <CopyButton
+                        value={CLAUDE_CODE_PLUGIN_INSTALL_COMMAND}
+                        ariaLabel="Copy plugin install command"
+                        size="2xs"
+                        className="h-5 w-5 shrink-0"
+                        onClick={() =>
+                          createNotification({
+                            text: "Install command copied to clipboard",
+                            type: "info"
+                          })
+                        }
+                      />
+                    </span>
+                  )}
+                </span>
+              )
             }
           >
             <DropdownMenu>
@@ -201,22 +237,25 @@ const PageContent = () => {
                   <CopyIcon />
                   Copy Data Source ID
                 </DropdownMenuItem>
-                <ProjectPermissionCan
-                  I={ProjectPermissionSecretScanningDataSourceActions.TriggerScans}
-                  a={ProjectPermissionSub.SecretScanningDataSources}
-                >
-                  {(isAllowed: boolean) => (
-                    <DropdownMenuItem
-                      isDisabled={
-                        !isAllowed || dataSource.isDisconnected || triggerDataSourceScan.isPending
-                      }
-                      onClick={handleTriggerScan}
-                    >
-                      <ScanSearchIcon />
-                      Scan All {resourceDetails.pluralTitle}
-                    </DropdownMenuItem>
-                  )}
-                </ProjectPermissionCan>
+                {/* data sources without an App Connection only scan content as it is submitted */}
+                {doesDataSourceRequireConnection(dataSource.type) && (
+                  <ProjectPermissionCan
+                    I={ProjectPermissionSecretScanningDataSourceActions.TriggerScans}
+                    a={ProjectPermissionSub.SecretScanningDataSources}
+                  >
+                    {(isAllowed: boolean) => (
+                      <DropdownMenuItem
+                        isDisabled={
+                          !isAllowed || dataSource.isDisconnected || triggerDataSourceScan.isPending
+                        }
+                        onClick={handleTriggerScan}
+                      >
+                        <ScanSearchIcon />
+                        Scan All {resourceDetails.pluralTitle}
+                      </DropdownMenuItem>
+                    )}
+                  </ProjectPermissionCan>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
