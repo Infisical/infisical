@@ -22,7 +22,7 @@ Imperva stores one custom certificate per website for each key type, so a sync t
 - An [Imperva Connection](/integrations/app-connections/imperva) whose API key has the **Manage SSL Certificates** permission
 - A website already protected by Imperva Cloud WAF
 - A certificate whose subject alternative names cover every managed domain on that website
-- An RSA 2048-bit or ECDSA P-256 certificate. Imperva blocks RSA 4096-bit uploads, and ECDSA P-384 needs prior approval from Imperva Support
+- An RSA certificate with a key smaller than 4096 bits, or an ECDSA P-256 certificate, since Imperva rejects RSA 4096 and every other ECDSA curve
 
 ## Create an Imperva sync
 
@@ -119,7 +119,6 @@ Infisical uploads the certificate and its private key to the website as a custom
 - The leaf certificate and its intermediate CA certificates are sent as one chain, giving visitors a complete trust path
 - The key type is read from the certificate, and Imperva stores it in the matching RSA or ECDSA slot
 - A renewal overwrites the certificate in that slot, and the website keeps serving without a binding step
-- Imperva serves a custom certificate to clients that support SNI, so cover other clients by adding the domain to an Imperva SAN certificate
 
 ## Removing certificates
 
@@ -150,9 +149,6 @@ To manually sync certificates, use the [Sync Certificates](/api-reference/endpoi
   No. Private keys can't be read back out of Imperva, so the sync only pushes certificates.
 </Accordion>
 
-<Accordion title="Does uploading a certificate change any other website setting?">
-  Yes. Each custom certificate upload resets the website's **Enable HTTP/2** setting to your account-level default. Check that default in Imperva before your first sync if the website relies on a per-website value.
-</Accordion>
 </AccordionGroup>
 
 ## What's next?
