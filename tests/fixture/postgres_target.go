@@ -77,10 +77,13 @@ func (p *PostgresTarget) DropRoleAtCleanup(tt *testing.T, name string) {
 		ctx := context.WithoutCancel(tt.Context())
 		conn, err := pgx.Connect(ctx, p.external)
 		if err != nil {
+			tt.Errorf("dropping role %s: connecting to the target: %v", name, err)
 			return
 		}
 		defer func() { _ = conn.Close(ctx) }()
-		_, _ = conn.Exec(ctx, "DROP ROLE IF EXISTS "+pgx.Identifier{name}.Sanitize())
+		if _, err := conn.Exec(ctx, "DROP ROLE IF EXISTS "+pgx.Identifier{name}.Sanitize()); err != nil {
+			tt.Errorf("dropping role %s: %v", name, err)
+		}
 	})
 }
 
