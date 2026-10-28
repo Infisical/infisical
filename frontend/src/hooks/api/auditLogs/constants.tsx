@@ -82,7 +82,6 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.IMPORT_CERT]: "Import certificate",
   [EventType.GET_CERT]: "Get certificate",
   [EventType.DELETE_CERT]: "Delete certificate",
-  [EventType.RESTORE_CERT]: "Restore certificate",
   [EventType.REVOKE_CERT]: "Revoke certificate",
   [EventType.ASSIGN_CERT_TO_APPLICATION]: "Assign certificate to Application",
   [EventType.CREATE_PKI_APPLICATION]: "Create Application",

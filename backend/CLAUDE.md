@@ -945,10 +945,10 @@ Note that `logger.ts` also has a `redactedKeys` list applied to structured-objec
 
 ### Certificate soft delete
 
-Deleting a certificate stamps `deletedAt`, `deletedByActorType`, `deletedByActorId` and `deletedVia` on
-the row and, in the same transaction, removes its `certificate_bodies`, `certificate_secrets` and
-`certificate_syncs` rows. The row itself stays, so the inventory, audit trail and renewal chain keep
-pointing at something. Things that rely on that:
+Deleting a certificate stamps `deletedAt`, `deletedByActorType` and `deletedByActorId` on the row and, in the
+same transaction, removes its `certificate_bodies`, `certificate_secrets` and `certificate_syncs` rows. The
+row itself stays, so the inventory, audit trail and renewal chain keep pointing at something. Things that rely
+on that:
 
 - **Every background or enumeration query filters `whereNull("deletedAt")`**: expiry alerts, auto-renewal,
   syncs, discovery, HSM connector usage and stats. A new query over `certificates` needs the same filter unless
@@ -965,26 +965,20 @@ pointing at something. Things that rely on that:
 - **CRL and OCSP keep deleted certificates.** Deletion is not revocation, so a revoked certificate stays on
   the CRL after it is deleted, and revoking a deleted certificate is still allowed.
 - **A deleted certificate is never renewed or changed.** `assertCertificateNotDeleted` guards the renewal
-  entry points and the issuance queue, and EST re-enroll and SCEP renewal refuse a deleted client
-  certificate. A renewal the CA already accepted before the delete still completes and links to the deleted
-  original, because the CA has issued that certificate and discarding it would lose it.
-- **Re-import restores the row** (`restoreDeleted`) when the deleted row has the same fingerprint, Application,
-  project, profile and CA (`canRestoreDeletedCertificate`). The import has to name the deleted row's profile, so the
-  profile's `IssueCert` check always runs before a profile-managed certificate comes back. Both restore paths
-  emit `restore-cert` with `restoredVia`, and `restoreDeleted` resets the HSM key fields. **Rediscovery restores it only when the
-  discovery job has `restoreDeletedCertificates` on** and the row has no Application, profile or CA (the same
-  `canRestoreDeletedCertificate` rule, which also requires the same project); otherwise the installation is linked to the deleted row,
-  so the inventory can still show where a deleted certificate is deployed.
-- **Discovery matches deleted rows by fingerprint, and certificates issued before 2026-01-27 have none.** The
-  delete computes and stores a missing fingerprint before it removes the body, so discovery can still find the
-  deleted row. If the body can't be read, the delete fails and nothing is removed.
+  entry points and the first attempt of the issuance job, and EST re-enroll and SCEP renewal refuse a deleted
+  client certificate. A renewal the CA already accepted before the delete (an ACM renewal still polling, a
+  DigiCert or GoDaddy order) still completes and links to the deleted original, because the CA has issued
+  that certificate and discarding it would lose it.
+- **A sync can still write a link for a certificate deleted mid-run.** `certificate_syncs` inserts are not
+  filtered on `deletedAt`, so a provider that uploads and then records the link leaves a tracking row, and the
+  sync the delete queued removes that copy from the destination through it.
+- **Deleted certificates are not restored.** Serial numbers stay globally unique
+  (`certificates_serialnumber_unique`), so re-importing a deleted certificate into the same project fails with
+  the deleted message (any other project gets the generic serial conflict, so nothing about it leaks), and
+  rediscovery links the installation to the deleted row instead of creating a new one.
 - **A deleted certificate keeps its HSM key reference** (`keySource`, connector, key label and id), so the
   record stays true for audits. Deleting the connector detaches deleted rows (`hsmConnectorId` set to null),
-  which is why the key source CHECK requires only a key label for `hsm`, not a connector. The rollback leaves
-  that CHECK in place.
-- **Serial numbers stay globally unique, deleted rows included** (`certificates_serialnumber_unique`), so a
-  deleted certificate still holds its serial: re-importing it restores the row, and a re-import that cannot be
-  restored (another Application, profile or CA) is refused with a message naming where to import it instead.
+  which is why the key source CHECK requires a connector only while `deletedAt` is null.
 
 ### Certificate revocation: CRL and OCSP
 

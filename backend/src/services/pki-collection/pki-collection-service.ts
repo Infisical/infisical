@@ -263,12 +263,12 @@ export const pkiCollectionServiceFactory = ({
           id: itemId
         });
         if (!certificate) throw new NotFoundError({ message: `Certificate with ID '${itemId}' not found` });
-        assertCertificateNotDeleted(certificate, "be added to a collection");
+        assertCertificateNotDeleted(certificate, "It can't be added to a collection.");
 
         pkiCollectionItem = await certificateDAL.transaction(async (tx) => {
           const lockedCertificate = await certificateDAL.findByIdForShare(itemId, tx);
           if (!lockedCertificate) throw new NotFoundError({ message: `Certificate with ID '${itemId}' not found` });
-          assertCertificateNotDeleted(lockedCertificate, "be added to a collection");
+          assertCertificateNotDeleted(lockedCertificate, "It can't be added to a collection.");
 
           return pkiCollectionItemDAL.create({ pkiCollectionId: collectionId, certId: itemId }, tx);
         });

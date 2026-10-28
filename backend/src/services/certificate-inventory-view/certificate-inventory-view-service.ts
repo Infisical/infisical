@@ -8,6 +8,7 @@ import { TPermissionServiceFactory } from "../../ee/services/permission/permissi
 import { ProjectPermissionActions, ProjectPermissionSub } from "../../ee/services/permission/project-permission";
 import { ResourcePermissionSub } from "../../ee/services/permission/resource-permission";
 import { NON_PQC_KEY_ALGORITHMS, PQC_KEY_ALGORITHMS } from "../certificate/certificate-dal";
+import { CertStatus } from "../certificate/certificate-types";
 import { TPkiApplicationDALFactory } from "../pki-application/pki-application-dal";
 import { TCertificateInventoryViewDALFactory } from "./certificate-inventory-view-dal";
 import {
@@ -77,7 +78,7 @@ const SYSTEM_VIEWS: TSystemView[] = [
   {
     id: "system-deleted",
     name: "Deleted",
-    filters: { status: ["deleted"] },
+    filters: { status: [CertStatus.DELETED] },
     columns: null,
     isSystem: true,
     createdByUserId: null

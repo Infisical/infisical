@@ -114,27 +114,6 @@ export const DiscoveryDetailsFields = () => {
           )}
         />
       )}
-      <Controller
-        control={control}
-        name="restoreDeletedCertificates"
-        render={({ field: { value, onChange } }) => (
-          <Field orientation="horizontal" className="mb-4">
-            <FieldContent>
-              <Label htmlFor="restore-deleted-certificates">Restore Deleted Certificates</Label>
-              <FieldDescription>
-                Restore a deleted certificate when a scan finds it again, unless it&apos;s in an
-                Application or was issued from a certificate profile or CA.
-              </FieldDescription>
-            </FieldContent>
-            <Toggle
-              id="restore-deleted-certificates"
-              variant="project"
-              checked={value}
-              onCheckedChange={onChange}
-            />
-          </Field>
-        )}
-      />
     </>
   );
 };

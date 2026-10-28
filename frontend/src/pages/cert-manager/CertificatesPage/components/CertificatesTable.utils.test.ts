@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ActorType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
 
 import {
@@ -127,41 +127,22 @@ describe("getCertificateDeletionWarning sync removal", () => {
 });
 
 describe("getCertificateDeletedBySummary", () => {
-  it("names the actor and says UI for deletions from the web app", () => {
+  it("names the actor that deleted the certificate", () => {
     expect(
       getCertificateDeletedBySummary({
         deletedByActorType: ActorType.USER,
-        deletedByActorName: "John Smith",
-        deletedVia: UserAgentType.WEB
+        deletedByActorName: "John Smith"
       })
-    ).toBe("John Smith via UI");
+    ).toBe("John Smith");
   });
 
-  it("names the client for other callers and falls back when the actor is gone", () => {
+  it("falls back to the actor type when the actor no longer exists", () => {
     expect(
       getCertificateDeletedBySummary({
         deletedByActorType: ActorType.IDENTITY,
-        deletedByActorName: null,
-        deletedVia: UserAgentType.TERRAFORM
+        deletedByActorName: null
       })
-    ).toBe("A machine identity via Terraform");
-    expect(
-      getCertificateDeletedBySummary({
-        deletedByActorType: ActorType.USER,
-        deletedVia: UserAgentType.CLI
-      })
-    ).toBe("A user via CLI");
-  });
-
-  it("says API when the client is unknown", () => {
-    expect(
-      getCertificateDeletedBySummary({
-        deletedByActorType: ActorType.USER,
-        deletedVia: UserAgentType.OTHER
-      })
-    ).toBe("A user via API");
-    expect(
-      getCertificateDeletedBySummary({ deletedByActorType: ActorType.USER, deletedVia: null })
-    ).toBe("A user via API");
+    ).toBe("A machine identity");
+    expect(getCertificateDeletedBySummary({ deletedByActorType: ActorType.USER })).toBe("A user");
   });
 });

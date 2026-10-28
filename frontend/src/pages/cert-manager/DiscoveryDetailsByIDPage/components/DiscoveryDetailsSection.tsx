@@ -97,16 +97,6 @@ export const DiscoveryDetailsSection = ({ discovery }: Props) => {
               </DetailValue>
             </Detail>
           )}
-          <Detail>
-            <DetailLabel>Restore Deleted Certificates</DetailLabel>
-            <DetailValue>
-              {discovery.restoreDeletedCertificates ? (
-                <Badge variant="success">Enabled</Badge>
-              ) : (
-                <Badge variant="neutral">Disabled</Badge>
-              )}
-            </DetailValue>
-          </Detail>
         </DetailGroup>
       </CardContent>
     </Card>

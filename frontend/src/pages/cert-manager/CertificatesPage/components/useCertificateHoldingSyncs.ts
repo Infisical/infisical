@@ -1,5 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
-
 import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionPkiSyncActions,
@@ -10,7 +8,7 @@ import {
   PkiApplicationResourceActions,
   PkiApplicationResourceSub
 } from "@app/hooks/api/pkiApplications/types";
-import { fetchPkiSyncsByProjectId, pkiSyncKeys } from "@app/hooks/api/pkiSyncs/queries";
+import { useListPkiSyncsWithCertificate } from "@app/hooks/api/pkiSyncs/queries";
 
 export const useCertificateHoldingSyncs = ({
   certificateId,
@@ -37,14 +35,12 @@ export const useCertificateHoldingSyncs = ({
 
   const projectId = currentProject?.id || "";
   const isQueryEnabled = isEnabled && Boolean(projectId) && Boolean(certificateId) && canReadSyncs;
-  const { data: syncs = [], isPending } = useQuery({
-    queryKey: [
-      ...pkiSyncKeys.listWithCertificate(projectId, certificateId || ""),
-      applicationId ?? null
-    ],
-    queryFn: () => fetchPkiSyncsByProjectId(projectId, certificateId, applicationId ?? undefined),
-    enabled: isQueryEnabled
-  });
+  const { data: syncs = [], isPending } = useListPkiSyncsWithCertificate(
+    projectId,
+    certificateId || "",
+    { enabled: isQueryEnabled },
+    applicationId ?? undefined
+  );
 
   return {
     holdingSyncs: syncs.filter((sync) => sync.hasCertificate),

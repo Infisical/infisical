@@ -102,7 +102,6 @@ describe("certificateService.deleteCert", () => {
       expect.objectContaining({
         deletedByActorType: ActorType.USER,
         deletedByActorId: "user-1",
-        deletedVia: UserAgentType.TERRAFORM,
         deletedAt: expect.any(Date) as Date
       }),
       tx

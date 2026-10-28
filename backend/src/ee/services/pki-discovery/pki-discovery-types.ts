@@ -132,7 +132,6 @@ export type TCreatePkiDiscoveryDTO = {
   gatewayId?: string | null;
   gatewayPoolId?: string | null;
   orgActor: OrgServiceActor;
-  restoreDeletedCertificates?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdatePkiDiscoveryDTO = {
@@ -146,7 +145,6 @@ export type TUpdatePkiDiscoveryDTO = {
   gatewayPoolId?: string | null;
   isActive?: boolean;
   orgActor: OrgServiceActor;
-  restoreDeletedCertificates?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeletePkiDiscoveryDTO = {

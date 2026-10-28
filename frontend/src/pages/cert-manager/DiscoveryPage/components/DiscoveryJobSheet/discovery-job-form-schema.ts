@@ -107,7 +107,6 @@ const BaseSchema = z.object({
   name: slugSchema({ field: "Name", max: 100 }),
   description: z.string().trim().max(255, "Description can be at most 255 characters").optional(),
   isAutoScanEnabled: z.boolean(),
-  restoreDeletedCertificates: z.boolean(),
   scanIntervalDays: z
     .number()
     .min(1, "Enter an interval between 1 and 365 days")
@@ -171,7 +170,6 @@ export const getDefaultFormValues = (
     name: discovery?.name ?? "",
     description: discovery?.description ?? "",
     isAutoScanEnabled: discovery?.isAutoScanEnabled ?? false,
-    restoreDeletedCertificates: discovery?.restoreDeletedCertificates ?? false,
     scanIntervalDays: discovery?.scanIntervalDays ?? 7
   };
 

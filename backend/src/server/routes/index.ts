@@ -4345,8 +4345,7 @@ export const registerRoutes = async (
     gatewayV2DAL,
     gatewayPoolService,
     telemetryService,
-    keyStore,
-    auditLogService
+    keyStore
   });
 
   const pkiDiscoveryService = pkiDiscoveryServiceFactory({

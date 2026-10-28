@@ -2310,9 +2310,7 @@ export const CERTIFICATES = {
       "When this certificate was deleted, or null if it has not been. A deleted certificate keeps its record, metadata and renewal history, but its certificate and private key are no longer available.",
     deletedByActorType: "The type of actor that deleted this certificate: 'user' or 'identity'.",
     deletedByActorId: "The ID of the user or machine identity that deleted this certificate.",
-    deletedByActorName: "The name of the user or machine identity that deleted this certificate, if it still exists.",
-    deletedVia:
-      "The client the certificate was deleted from, such as 'web' for the Infisical UI or 'terraform' for the Terraform provider."
+    deletedByActorName: "The name of the user or machine identity that deleted this certificate, if it still exists."
   },
   RENEW: {
     id: "The ID of the certificate to renew.",

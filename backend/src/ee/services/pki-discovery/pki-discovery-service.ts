@@ -181,7 +181,6 @@ export const pkiDiscoveryServiceFactory = ({
     gatewayId,
     gatewayPoolId,
     orgActor,
-    restoreDeletedCertificates,
     actor,
     actorId,
     actorAuthMethod,
@@ -273,8 +272,7 @@ export const pkiDiscoveryServiceFactory = ({
         scanIntervalDays: isAutoScanEnabled ? scanIntervalDays : null,
         gatewayId: gatewayPoolId ? null : gatewayId,
         gatewayPoolId: gatewayPoolId ?? null,
-        isActive: true,
-        restoreDeletedCertificates
+        isActive: true
       });
 
       return discovery;
@@ -300,7 +298,6 @@ export const pkiDiscoveryServiceFactory = ({
     gatewayPoolId,
     isActive,
     orgActor,
-    restoreDeletedCertificates,
     actor,
     actorId,
     actorAuthMethod,
@@ -399,8 +396,7 @@ export const pkiDiscoveryServiceFactory = ({
         scanIntervalDays: isAutoScanEnabled ? scanIntervalDays : null,
         gatewayId: gatewayIdValue,
         gatewayPoolId: gatewayPoolIdValue,
-        isActive,
-        restoreDeletedCertificates
+        isActive
       });
 
       return updatedDiscovery;

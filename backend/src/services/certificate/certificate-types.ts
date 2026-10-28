@@ -21,18 +21,6 @@ export enum CertStatus {
   DELETED = "deleted"
 }
 
-export enum CertificateDeletionEligibility {
-  Expired = "expired",
-  Discovered = "discovered",
-  Imported = "imported",
-  Issued = "issued"
-}
-
-export enum CertificateRestoreSource {
-  Import = "import",
-  Discovery = "discovery"
-}
-
 export enum CertKeyAlgorithm {
   RSA_2048 = "RSA_2048",
   RSA_3072 = "RSA_3072",

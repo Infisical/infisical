@@ -2,7 +2,7 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { EventType, UserAgentType } from "@app/ee/services/audit-log/audit-log-types";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ApiDocsTags, CERTIFICATES } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
@@ -16,12 +16,7 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
-import {
-  CertificateRestoreSource,
-  CertKeyAlgorithm,
-  CertSignatureAlgorithm,
-  CrlReason
-} from "@app/services/certificate/certificate-types";
+import { CertKeyAlgorithm, CertSignatureAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
@@ -1516,7 +1511,6 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               .describe(CERTIFICATES.GET.deletedByActorType),
             deletedByActorId: z.string().uuid().nullable().optional().describe(CERTIFICATES.GET.deletedByActorId),
             deletedByActorName: z.string().nullable().optional().describe(CERTIFICATES.GET.deletedByActorName),
-            deletedVia: z.nativeEnum(UserAgentType).nullable().optional().describe(CERTIFICATES.GET.deletedVia),
             metadata: z.array(z.object({ key: z.string(), value: z.string() })).optional()
           })
         })
@@ -1788,45 +1782,33 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const {
-        certificate,
-        certificateChain,
-        privateKey,
-        serialNumber,
-        cert,
-        profileName,
-        caName,
-        applicationName,
-        restoredFromDeletion
-      } = await server.services.certificate.importCert({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.internalCertManagerProjectId,
-        ...req.body
-      });
+      const { certificate, certificateChain, privateKey, serialNumber, cert, profileName, caName, applicationName } =
+        await server.services.certificate.importCert({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          projectId: req.internalCertManagerProjectId,
+          ...req.body
+        });
 
-      const importMetadata = {
-        certId: cert.id,
-        cn: cert.commonName,
-        serialNumber,
-        applicationId: cert.applicationId,
-        applicationName,
-        certificateProfileId: cert.profileId ?? undefined,
-        profileName: profileName ?? undefined,
-        caId: cert.caId ?? undefined,
-        caName: caName ?? undefined
-      };
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: cert.projectId,
-        event: restoredFromDeletion
-          ? {
-              type: EventType.RESTORE_CERT,
-              metadata: { ...importMetadata, restoredVia: CertificateRestoreSource.Import }
-            }
-          : { type: EventType.IMPORT_CERT, metadata: importMetadata }
+        event: {
+          type: EventType.IMPORT_CERT,
+          metadata: {
+            certId: cert.id,
+            cn: cert.commonName,
+            serialNumber,
+            applicationId: cert.applicationId,
+            applicationName,
+            certificateProfileId: cert.profileId ?? undefined,
+            profileName: profileName ?? undefined,
+            caId: cert.caId ?? undefined,
+            caName: caName ?? undefined
+          }
+        }
       });
 
       await server.services.telemetry.sendPostHogEvents({
@@ -1947,15 +1929,14 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { deletedCert, applicationName, statusAtDeletion, deletionAllowedReason } =
-        await server.services.certificate.deleteCert({
-          id: req.params.id,
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          auditLogInfo: req.auditLogInfo
-        });
+      const { deletedCert, applicationName, statusAtDeletion } = await server.services.certificate.deleteCert({
+        id: req.params.id,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        auditLogInfo: req.auditLogInfo
+      });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -1970,7 +1951,6 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             notAfter: deletedCert.notAfter.toISOString(),
             source: (deletedCert.source as CertificateSource | null) ?? CertificateSource.Issued,
             statusAtDeletion,
-            deletionAllowedReason,
             applicationId: deletedCert.applicationId,
             applicationName
           }

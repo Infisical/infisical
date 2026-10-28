@@ -43,6 +43,6 @@ Invalidate a certificate when it's compromised, misconfigured, or no longer need
 
 ## Retirement
 
-Deleting a certificate removes it and its private key, and it stays in the inventory as **Deleted**. A deleted certificate can't be renewed, and deleting doesn't revoke it. To restore it, import the same certificate into its original Application and certificate profile. Certificate Cleanup permanently removes expired certificates.
+Deleting a certificate removes the certificate and its private key, and its details stay in the inventory as **Deleted**. A deleted certificate can't be renewed. Deleting doesn't revoke it, but you can still revoke it afterward if its certificate authority supports revocation. The exception is a certificate imported into a profile with an internal certificate authority, which you must revoke before deleting it. A deleted certificate issued from a certificate authority keeps counting toward your certificate quota until it expires or is revoked. Deleted imported and discovered certificates stop counting right away. Certificate Cleanup permanently removes expired certificates.
 
 [Learn more about Certificate Cleanup →](/documentation/platform/pki/settings/certificate-cleanup)

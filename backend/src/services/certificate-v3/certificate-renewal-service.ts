@@ -594,6 +594,8 @@ export const certificateRenewalServiceFactory = ({
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
+    assertCertificateNotDeleted(originalCert);
+
     if (!originalCert.profileId) {
       throw new ForbiddenRequestError({
         message:
@@ -1121,8 +1123,6 @@ export const certificateRenewalServiceFactory = ({
         const renewalAuth = internal
           ? undefined
           : await $authorizeRenewal({ originalCert, profile, actorCtx, isEditingCertificate }, tx);
-
-        assertCertificateNotDeleted(originalCert);
 
         const { issuerType, ca, caType, policy } = await $resolveRenewalIssuer(
           {

@@ -11,7 +11,6 @@ import {
   toHostScanErrorMessage,
   writeHostFile
 } from "./pki-discovery-host-scan-fns";
-import { buildDeletedCertificatePolicy } from "./pki-discovery-scan-fns";
 import { DB_SHORT_VARCHAR_LIMIT, truncateString } from "./pki-discovery-scan-run-fns";
 import { LinuxServerTargetConfigSchema } from "./pki-discovery-schemas";
 import {
@@ -98,12 +97,6 @@ export const rescanInstallation = async (installationId: string, deps: THostScan
         scanTime: new Date(),
         importStandaloneCaCertificates: targetConfig.importStandaloneCaCertificates,
         kmsEncryptor,
-        deletedCertificatePolicy: buildDeletedCertificatePolicy(deps, {
-          projectId: installation.projectId,
-          discoveryId: discoveryConfig?.id ?? "",
-          discoveryName: discoveryConfig?.name ?? "",
-          restoreDeletedCertificates: discoveryConfig?.restoreDeletedCertificates ?? false
-        }),
         certificateIdsByFingerprint: new Map(),
         targetInstallationId: installation.id
       },

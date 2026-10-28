@@ -3,8 +3,7 @@ import { Knex } from "knex";
 import net from "net";
 import pLimit from "p-limit";
 
-import { TCertificates, TCertificatesInsert, TPkiCertificateInstallationsInsert } from "@app/db/schemas";
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { TCertificatesInsert, TPkiCertificateInstallationsInsert } from "@app/db/schemas";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -13,11 +12,9 @@ import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { canRestoreDeletedCertificate } from "@app/services/certificate/certificate-fns";
-import { CertificateRestoreSource, CertStatus } from "@app/services/certificate/certificate-types";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -69,43 +66,7 @@ type TExecuteScanDeps = {
   gatewayV2DAL?: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService?: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
-
-export type TDeletedCertificatePolicy = {
-  restoreDeletedCertificates: boolean;
-  onCertificateRestored: (certificate: TCertificates) => Promise<void>;
-};
-
-export const buildDeletedCertificatePolicy = (
-  deps: { auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog"> },
-  discovery: { projectId: string; discoveryId: string; discoveryName: string; restoreDeletedCertificates: boolean }
-): TDeletedCertificatePolicy => ({
-  restoreDeletedCertificates: discovery.restoreDeletedCertificates,
-  onCertificateRestored: (restoredCertificate) =>
-    deps.auditLogService
-      .createAuditLog({
-        projectId: discovery.projectId,
-        actor: { type: ActorType.PLATFORM, metadata: {} },
-        event: {
-          type: EventType.RESTORE_CERT,
-          metadata: {
-            certId: restoredCertificate.id,
-            cn: restoredCertificate.commonName,
-            serialNumber: restoredCertificate.serialNumber,
-            restoredVia: CertificateRestoreSource.Discovery,
-            discoveryId: discovery.discoveryId,
-            discoveryName: discovery.discoveryName
-          }
-        }
-      })
-      .catch((error: unknown) => {
-        logger.error(
-          error,
-          `Failed to record the restore of a deleted certificate [certificateId=${restoredCertificate.id}] [discoveryId=${discovery.discoveryId}]`
-        );
-      })
-});
 
 export const findOrCreateNetworkInstallation = async (
   deps: Pick<TExecuteScanDeps, "pkiCertificateInstallationDAL">,
@@ -340,12 +301,6 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
     if (await discardScanRunIfDeleted(discoveryId, scanHistoryId, deps)) return;
 
     const uniqueCertificateIds = new Set<string>();
-    const deletedCertificatePolicy = buildDeletedCertificatePolicy(deps, {
-      projectId: discoveryConfig.projectId,
-      discoveryId,
-      discoveryName: discoveryConfig.name,
-      restoreDeletedCertificates: discoveryConfig.restoreDeletedCertificates
-    });
     const uniqueInstallationIds = new Set<string>();
     let successfulScans = 0;
     let certParseErrors = 0;
@@ -365,7 +320,6 @@ export const executeScan = async (discoveryId: string, deps: TExecuteScanDeps): 
           now,
           deps,
           kmsEncryptor,
-          deletedCertificatePolicy,
           effectiveGatewayId ?? undefined,
           gatewayName,
           discoveryConfig.gatewayPoolId ?? effectiveGatewayId ?? undefined
@@ -545,7 +499,6 @@ const processEndpointResult = async (
   scanTime: Date,
   deps: TExecuteScanDeps,
   kmsEncryptor: TKmsEncryptor,
-  deletedCertificatePolicy: TDeletedCertificatePolicy,
   gatewayId?: string,
   gatewayName?: string,
   fingerprintGatewayKey?: string
@@ -591,7 +544,7 @@ const processEndpointResult = async (
       const certId = await processDiscoveredCertificate(
         certResult,
         projectId,
-        { certificateDAL, certificateBodyDAL, kmsEncryptor, deletedCertificatePolicy },
+        { certificateDAL, certificateBodyDAL, kmsEncryptor },
         {
           discoveredBy: discoveryId,
           host: result.host,
@@ -640,7 +593,6 @@ type TProcessDiscoveredCertDeps = {
   certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: TCertificateBodyDALFactory;
   kmsEncryptor: TKmsEncryptor;
-  deletedCertificatePolicy: TDeletedCertificatePolicy;
 };
 
 export const processDiscoveredCertificate = async (
@@ -649,7 +601,7 @@ export const processDiscoveredCertificate = async (
   deps: TProcessDiscoveredCertDeps,
   discoveryMetadata?: Record<string, unknown>
 ): Promise<string | null> => {
-  const { certificateDAL, certificateBodyDAL, kmsEncryptor, deletedCertificatePolicy } = deps;
+  const { certificateDAL, certificateBodyDAL, kmsEncryptor } = deps;
 
   try {
     const existingCerts = await certificateDAL.find({
@@ -657,17 +609,8 @@ export const processDiscoveredCertificate = async (
       fingerprintSha256: certResult.fingerprint
     });
 
-    const liveMatch = existingCerts.find((existing) => !existing.deletedAt);
-    if (liveMatch) {
-      return liveMatch.id;
-    }
-    const deletedMatch = existingCerts[0];
-    if (
-      deletedMatch &&
-      (!deletedCertificatePolicy.restoreDeletedCertificates ||
-        !canRestoreDeletedCertificate(deletedMatch, { projectId, applicationId: null, profileId: null, caId: null }))
-    ) {
-      return deletedMatch.id;
+    if (existingCerts.length > 0) {
+      return existingCerts[0].id;
     }
 
     const friendlyName =
@@ -679,8 +622,9 @@ export const processDiscoveredCertificate = async (
     // Deliberately not gated on the certificate quota: this is a background scan, and every PKI
     // license gate blocks creation only. A scan can push an org past its cap, after which new
     // issuance is refused until it upgrades or cleans up.
-    const certData: Omit<TCertificatesInsert, "quotaKey" | "status"> = {
+    const certData: Omit<TCertificatesInsert, "quotaKey"> = {
       projectId,
+      status: CertStatus.ACTIVE,
       serialNumber: truncateString(serialNumber, DB_SHORT_VARCHAR_LIMIT) || "unknown",
       friendlyName,
       commonName: truncateString(certResult.commonName, DB_SHORT_VARCHAR_LIMIT) || "Unknown",
@@ -723,23 +667,7 @@ export const processDiscoveredCertificate = async (
     }
 
     const newCert = await certificateDAL.transaction(async (tx) => {
-      const cert = deletedMatch
-        ? await certificateDAL.restoreDeleted(
-            deletedMatch.id,
-            {
-              ...certData,
-              serialNumber: deletedMatch.serialNumber,
-              friendlyName: deletedMatch.friendlyName,
-              source: deletedMatch.source,
-              discoveryMetadata:
-                deletedMatch.source === CertificateSource.Discovered
-                  ? certData.discoveryMetadata
-                  : deletedMatch.discoveryMetadata
-            },
-            tx
-          )
-        : await certificateDAL.create({ status: CertStatus.ACTIVE, ...certData }, tx);
-      if (!cert) return undefined;
+      const cert = await certificateDAL.create(certData, tx);
 
       if (encryptedCertificate) {
         await certificateBodyDAL.create(
@@ -754,9 +682,6 @@ export const processDiscoveredCertificate = async (
 
       return cert;
     });
-
-    if (!newCert) return deletedMatch?.id ?? null;
-    if (deletedMatch) await deletedCertificatePolicy.onCertificateRestored(newCert);
 
     return newCert.id;
   } catch (error) {

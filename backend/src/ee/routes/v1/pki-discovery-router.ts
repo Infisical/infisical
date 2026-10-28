@@ -25,9 +25,6 @@ const DiscoveryConnectionsSchema = z
   .array(z.object({ id: z.string().uuid(), name: z.string(), app: z.nativeEnum(AppConnection) }))
   .optional();
 
-const RESTORE_DELETED_CERTIFICATES_DESCRIPTION =
-  "Restore a deleted certificate when a scan finds it again. Certificates in an Application, or issued from a certificate profile or certificate authority, are never restored.";
-
 export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -88,12 +85,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
           isAutoScanEnabled: z.boolean().optional().default(false).describe("Enable automatic scheduled scans"),
           scanIntervalDays: z.number().min(1).max(365).optional().describe("Interval in days between automatic scans"),
           gatewayId: z.string().uuid().optional().describe("Gateway ID for scanning private networks"),
-          gatewayPoolId: z.string().uuid().optional().describe("Gateway pool ID for scanning private networks"),
-          restoreDeletedCertificates: z
-            .boolean()
-            .optional()
-            .default(false)
-            .describe(RESTORE_DELETED_CERTIFICATES_DESCRIPTION)
+          gatewayPoolId: z.string().uuid().optional().describe("Gateway pool ID for scanning private networks")
         })
         .superRefine((data, ctx) => {
           if (data.gatewayId && data.gatewayPoolId) {
@@ -121,7 +113,6 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         gatewayId: req.body.gatewayId,
         gatewayPoolId: req.body.gatewayPoolId,
         orgActor: req.permission,
-        restoreDeletedCertificates: req.body.restoreDeletedCertificates,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -135,8 +126,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
           type: EventType.CREATE_PKI_DISCOVERY,
           metadata: {
             discoveryId: discovery.id,
-            name: discovery.name,
-            restoreDeletedCertificates: discovery.restoreDeletedCertificates
+            name: discovery.name
           }
         }
       });
@@ -302,8 +292,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
             .optional()
             .nullable()
             .describe("Gateway pool ID for scanning private networks"),
-          isActive: z.boolean().optional().describe("Whether the discovery configuration is active"),
-          restoreDeletedCertificates: z.boolean().optional().describe(RESTORE_DELETED_CERTIFICATES_DESCRIPTION)
+          isActive: z.boolean().optional().describe("Whether the discovery configuration is active")
         })
         .superRefine((data, ctx) => {
           if (data.gatewayId && data.gatewayPoolId) {
@@ -330,7 +319,6 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
         gatewayPoolId: req.body.gatewayPoolId,
         isActive: req.body.isActive,
         orgActor: req.permission,
-        restoreDeletedCertificates: req.body.restoreDeletedCertificates,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -344,8 +332,7 @@ export const registerPkiDiscoveryRouter = async (server: FastifyZodProvider) => 
           type: EventType.UPDATE_PKI_DISCOVERY,
           metadata: {
             discoveryId: discovery.id,
-            name: discovery.name,
-            restoreDeletedCertificates: discovery.restoreDeletedCertificates
+            name: discovery.name
           }
         }
       });

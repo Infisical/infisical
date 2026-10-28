@@ -1,5 +1,5 @@
 import type { TPkcs12Entry } from "@app/helpers/pkcs12";
-import { ActorType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { CaType } from "@app/hooks/api/ca/enums";
 
 import {
@@ -86,7 +86,6 @@ export type TCertificate = {
   deletedByActorType?: ActorType | null;
   deletedByActorId?: string | null;
   deletedByActorName?: string | null;
-  deletedVia?: UserAgentType | null;
 };
 
 export type TCertificateByIdResponse = {

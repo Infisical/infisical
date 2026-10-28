@@ -1,8 +1,7 @@
 import { format } from "date-fns";
 import ms from "ms";
 
-import { userAgentTypeToNameMap } from "@app/hooks/api/auditLogs/constants";
-import { ActorType, UserAgentType } from "@app/hooks/api/auditLogs/enums";
+import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { CaType } from "@app/hooks/api/ca/enums";
 import { CertSource, CertStatus } from "@app/hooks/api/certificates/enums";
 import { TCertificateSource } from "@app/hooks/api/certificates/types";
@@ -62,20 +61,12 @@ export const getCertificateDisplayStatus = (certificate: TCertificateStatusSourc
 type TCertificateDeletedBySource = {
   deletedByActorType?: ActorType | null;
   deletedByActorName?: string | null;
-  deletedVia?: UserAgentType | null;
 };
 
 export const getCertificateDeletedBySummary = (certificate: TCertificateDeletedBySource) => {
-  const fallbackActor =
-    certificate.deletedByActorType === ActorType.IDENTITY ? "A machine identity" : "A user";
-  const client = certificate.deletedVia;
-  let channel = "API";
-  if (client === UserAgentType.WEB) channel = "UI";
-  else if (client && client !== UserAgentType.OTHER && userAgentTypeToNameMap[client]) {
-    channel = userAgentTypeToNameMap[client];
-  }
+  if (certificate.deletedByActorName) return certificate.deletedByActorName;
 
-  return `${certificate.deletedByActorName || fallbackActor} via ${channel}`;
+  return certificate.deletedByActorType === ActorType.IDENTITY ? "A machine identity" : "A user";
 };
 
 export const canRevokeAfterDeletion = (

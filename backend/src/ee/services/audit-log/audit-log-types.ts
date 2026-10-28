@@ -41,8 +41,6 @@ import { TApprovalRequestSubjectMetadata } from "@app/services/approval-policy/a
 import { ActorType } from "@app/services/auth/auth-type";
 import {
   CertExtendedKeyUsage,
-  CertificateDeletionEligibility,
-  CertificateRestoreSource,
   CertKeyAlgorithm,
   CertKeyUsage,
   CertStatus,
@@ -444,7 +442,6 @@ export enum EventType {
   GET_CA_CERTIFICATE_TEMPLATES = "get-ca-certificate-templates",
   GET_CERT = "get-cert",
   DELETE_CERT = "delete-cert",
-  RESTORE_CERT = "restore-cert",
   REVOKE_CERT = "revoke-cert",
   ASSIGN_CERT_TO_APPLICATION = "assign-cert-to-application",
   GET_CERT_BODY = "get-cert-body",
@@ -3240,24 +3237,6 @@ interface ImportCert {
   };
 }
 
-interface RestoreCert {
-  type: EventType.RESTORE_CERT;
-  metadata: {
-    certId: string;
-    cn: string;
-    serialNumber: string;
-    restoredVia: CertificateRestoreSource;
-    applicationId?: string | null;
-    applicationName?: string | null;
-    certificateProfileId?: string;
-    profileName?: string;
-    caId?: string;
-    caName?: string;
-    discoveryId?: string;
-    discoveryName?: string;
-  };
-}
-
 interface SignCert {
   type: EventType.SIGN_CERT;
   metadata: {
@@ -3296,7 +3275,6 @@ interface DeleteCert {
     notAfter: string;
     source: CertificateSource;
     statusAtDeletion: CertStatus;
-    deletionAllowedReason: CertificateDeletionEligibility;
     applicationId?: string | null;
     applicationName?: string | null;
   };
@@ -4974,7 +4952,6 @@ interface CreatePkiDiscoveryEvent {
   metadata: {
     discoveryId: string;
     name: string;
-    restoreDeletedCertificates?: boolean;
   };
 }
 
@@ -4983,7 +4960,6 @@ interface UpdatePkiDiscoveryEvent {
   metadata: {
     discoveryId: string;
     name: string;
-    restoreDeletedCertificates?: boolean;
   };
 }
 
@@ -8296,7 +8272,6 @@ export type Event =
   | GetCaCertificateTemplates
   | GetCert
   | DeleteCert
-  | RestoreCert
   | RevokeCert
   | AssignCertToApplication
   | GetCertBody

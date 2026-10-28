@@ -1,6 +1,6 @@
 import { AuditLogEventClass } from "../auditLogSettings/types";
 import { CaStatus } from "../ca";
-import { CertificateRestoreSource, CertStatus, CrlReason } from "../certificates/enums";
+import { CertStatus, CrlReason } from "../certificates/enums";
 import { IdentityTrustedIp } from "../identities/types";
 import { PkiItemType } from "../pkiCollections/constants";
 import { WorkflowIntegration } from "../workflowIntegrations/types";
@@ -684,24 +684,6 @@ interface ImportCert {
   };
 }
 
-interface RestoreCert {
-  type: EventType.RESTORE_CERT;
-  metadata: {
-    certId: string;
-    cn: string;
-    serialNumber: string;
-    restoredVia: CertificateRestoreSource;
-    applicationId?: string | null;
-    applicationName?: string | null;
-    certificateProfileId?: string;
-    profileName?: string;
-    caId?: string;
-    caName?: string;
-    discoveryId?: string;
-    discoveryName?: string;
-  };
-}
-
 interface GetCert {
   type: EventType.GET_CERT;
   metadata: {
@@ -721,7 +703,7 @@ interface DeleteCert {
     notAfter: string;
     source: string;
     statusAtDeletion?: CertStatus;
-    deletionAllowedReason: string;
+    deletionAllowedReason?: string;
     applicationId?: string | null;
     applicationName?: string | null;
   };
@@ -1108,7 +1090,6 @@ export type Event =
   | ImportCert
   | GetCert
   | DeleteCert
-  | RestoreCert
   | RevokeCert
   | GetCertBody
   | GetCertPrivateKey

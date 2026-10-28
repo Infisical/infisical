@@ -380,7 +380,11 @@ export const certificateIssuanceQueueFactory = ({
   /**
    * Process certificate issuance jobs
    */
-  const processCertificateIssuanceJobs = async (data: TIssueCertificateFromProfileJobData, signal?: AbortSignal) => {
+  const processCertificateIssuanceJobs = async (
+    data: TIssueCertificateFromProfileJobData,
+    signal?: AbortSignal,
+    attemptsMade = 0
+  ) => {
     const {
       certificateId,
       profileId,
@@ -446,7 +450,7 @@ export const certificateIssuanceQueueFactory = ({
         });
       }
 
-      if (isRenewal && originalCertificateId) {
+      if (isRenewal && originalCertificateId && attemptsMade === 0) {
         const originalCertificate = await certificateDAL.findById(originalCertificateId);
         if (originalCertificate) assertCertificateNotDeleted(originalCertificate);
       }
@@ -1315,7 +1319,7 @@ export const certificateIssuanceQueueFactory = ({
   queueService.start(QueueName.CertificateIssuance, async (job, _token, signal) => {
     const work = (async () => {
       try {
-        await processCertificateIssuanceJobs(job.data, signal);
+        await processCertificateIssuanceJobs(job.data, signal, job.attemptsMade ?? 0);
       } catch (error) {
         // AcmPendingError is rethrown on every retry so BullMQ keeps polling; the in-handler
         // FAILED-update branch never runs for it. On the final attempt we still need to flip the request

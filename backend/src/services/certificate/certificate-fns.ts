@@ -3,8 +3,6 @@ import { Knex } from "knex";
 import forge from "node-forge";
 import RE2 from "re2";
 
-import { TCertificates } from "@app/db/schemas";
-import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -22,7 +20,6 @@ import type { TCertificateDALFactory } from "./certificate-dal";
 import {
   CertExtendedKeyUsage,
   CertExtendedKeyUsageOIDToName,
-  CertificateDeletionEligibility,
   CertKeyAlgorithm,
   CertKeyUsage,
   CertSignatureAlgorithm,
@@ -542,18 +539,6 @@ export const resolveCertificateStatus = (certificate: {
   return CertStatus.ACTIVE;
 };
 
-export const resolveCertificateDeletionEligibility = (certificate: {
-  status: string;
-  notAfter: Date;
-  source?: string | null;
-}): CertificateDeletionEligibility => {
-  if (certificate.source === CertificateSource.Discovered) return CertificateDeletionEligibility.Discovered;
-  if (certificate.source === CertificateSource.Imported) return CertificateDeletionEligibility.Imported;
-  if (new Date(certificate.notAfter).getTime() <= Date.now()) return CertificateDeletionEligibility.Expired;
-
-  return CertificateDeletionEligibility.Issued;
-};
-
 type TDeletableCertificate = {
   friendlyName?: string | null;
   commonName?: string | null;
@@ -564,27 +549,19 @@ type TDeletableCertificate = {
 export const getCertificateDisplayName = (certificate: Omit<TDeletableCertificate, "deletedAt">) =>
   certificate.friendlyName || certificate.commonName || certificate.serialNumber;
 
-export const assertCertificateMaterialAvailable = (certificate: TDeletableCertificate) => {
+export const assertCertificateNotDeleted = (
+  certificate: TDeletableCertificate,
+  consequence = "It can no longer be renewed or changed."
+) => {
   if (!certificate.deletedAt) return;
 
   throw new BadRequestError({
-    message: `Certificate '${getCertificateDisplayName(certificate)}' was deleted on ${new Date(certificate.deletedAt).toISOString()}. Its certificate and private key are no longer available.`
+    message: `Certificate '${getCertificateDisplayName(certificate)}' was deleted on ${new Date(certificate.deletedAt).toISOString()}. ${consequence}`
   });
 };
 
-export const getCertificateDeletedMessage = (
-  certificate: TDeletableCertificate & { deletedAt: Date },
-  blockedAction = "be renewed or changed"
-) =>
-  `Certificate '${getCertificateDisplayName(certificate)}' was deleted on ${new Date(certificate.deletedAt).toISOString()} and can no longer ${blockedAction}.`;
-
-export const assertCertificateNotDeleted = (certificate: TDeletableCertificate, blockedAction?: string) => {
-  if (!certificate.deletedAt) return;
-
-  throw new BadRequestError({
-    message: getCertificateDeletedMessage({ ...certificate, deletedAt: certificate.deletedAt }, blockedAction)
-  });
-};
+export const assertCertificateMaterialAvailable = (certificate: TDeletableCertificate) =>
+  assertCertificateNotDeleted(certificate, "Its certificate and private key are no longer available.");
 
 export const linkRenewedCertificate = async (
   certificateDAL: Pick<TCertificateDALFactory, "findById" | "updateById">,
@@ -599,46 +576,4 @@ export const linkRenewedCertificate = async (
   }
 
   await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: renewedCertificateId }, tx);
-};
-
-type TRestorableImportData = {
-  applicationId: string | null;
-  caId: string | null;
-  profileId: string | null;
-  externalMetadata: unknown;
-  source: string;
-  altNames?: string;
-  renewBeforeDays?: number;
-};
-
-export const canRestoreDeletedCertificate = (
-  deletedCertificate: Pick<TCertificates, "deletedAt" | "projectId" | "applicationId" | "profileId" | "caId">,
-  target: Pick<TRestorableImportData, "applicationId" | "profileId" | "caId"> & { projectId: string }
-) =>
-  Boolean(deletedCertificate.deletedAt) &&
-  deletedCertificate.projectId === target.projectId &&
-  (deletedCertificate.applicationId ?? null) === target.applicationId &&
-  (deletedCertificate.profileId ?? null) === target.profileId &&
-  (target.profileId
-    ? !(deletedCertificate.caId && target.caId && deletedCertificate.caId !== target.caId)
-    : !deletedCertificate.caId);
-
-export const buildRestoredImportData = <T extends TRestorableImportData>(
-  deletedCertificate: TCertificates,
-  importedData: T
-) => {
-  return {
-    ...importedData,
-    caId: deletedCertificate.caId ?? importedData.caId,
-    profileId: deletedCertificate.profileId ?? importedData.profileId,
-    externalMetadata: deletedCertificate.externalMetadata ?? importedData.externalMetadata,
-    source:
-      deletedCertificate.source === CertificateSource.Discovered
-        ? importedData.source
-        : (deletedCertificate.source ?? null),
-    altNames: importedData.altNames ?? null,
-    renewBeforeDays: importedData.renewBeforeDays ?? null,
-    renewalError: null,
-    discoveryMetadata: null
-  };
 };

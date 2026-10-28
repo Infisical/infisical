@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName, TCertificates, TCertificatesInsert, TCertificatesUpdate } from "@app/db/schemas";
+import { TableName, TCertificates, TCertificatesInsert } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn/string";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
@@ -20,7 +20,6 @@ import {
   certificateHasWildcard
 } from "@app/services/certificate-common/certificate-quota-key";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
-import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { keySizeToAlgorithms } from "./certificate-fns";
 import { CertKeyAlgorithm, CertStatus } from "./certificate-types";
@@ -83,38 +82,6 @@ export const certificateDALFactory = (db: TDbClient) => {
       },
       tx
     );
-
-  const restoreDeleted = async (
-    id: string,
-    data: Omit<TCertificatesUpdate, "quotaKey" | "hasWildcard" | "status" | "revokedAt" | "revocationReason"> & {
-      commonName: string;
-    },
-    tx: Knex
-  ): Promise<TCertificates | undefined> => {
-    try {
-      const [restored] = (await tx(TableName.Certificate)
-        .where({ id })
-        .whereNotNull("deletedAt")
-        .update({
-          ...data,
-          quotaKey: buildCertificateQuotaKey({ commonName: data.commonName, altNames: data.altNames }),
-          hasWildcard: certificateHasWildcard({ commonName: data.commonName, altNames: data.altNames }),
-          keySource: CertKeySource.Infisical,
-          hsmConnectorId: null,
-          hsmKeyLabel: null,
-          hsmKeyId: null,
-          hsmPublicKeySpki: null,
-          deletedAt: null,
-          deletedByActorType: null,
-          deletedByActorId: null,
-          deletedVia: null
-        })
-        .returning("*")) as TCertificates[];
-      return restored;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Restore deleted certificate" });
-    }
-  };
 
   const findLatestActiveCertForSubscriber = async ({ subscriberId }: { subscriberId: string }) => {
     try {
@@ -1533,7 +1500,6 @@ export const certificateDALFactory = (db: TDbClient) => {
     ...certificateOrm,
     findByIdForUpdate,
     findByIdForShare,
-    restoreDeleted,
     create,
     countCertificatesInProject,
     countActiveCertificatesForSync,

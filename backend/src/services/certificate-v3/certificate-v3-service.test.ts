@@ -3157,7 +3157,7 @@ describe("CertificateV3Service", () => {
           certificateId: "cert-123",
           ...mockActor
         })
-      ).rejects.toThrow("was deleted on 2026-10-20T14:38:27.000Z and can no longer be renewed or changed");
+      ).rejects.toThrow("was deleted on 2026-10-20T14:38:27.000Z. It can no longer be renewed or changed");
     });
 
     it("should reject renewal if CA is inactive", async () => {

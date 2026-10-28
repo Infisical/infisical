@@ -60,11 +60,6 @@ export enum CertificateRenewalKeySource {
   Csr = "csr"
 }
 
-export enum CertificateRestoreSource {
-  Import = "import",
-  Discovery = "discovery"
-}
-
 export enum CertSource {
   Issued = "issued",
   Discovered = "discovered",

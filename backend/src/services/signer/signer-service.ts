@@ -580,7 +580,7 @@ export const signerServiceFactory = ({
     if (!lockedCertificate) {
       throw new NotFoundError({ message: `The certificate in DigiCert order ${imported.orderId} no longer exists.` });
     }
-    assertCertificateNotDeleted(lockedCertificate, "be used by a signer");
+    assertCertificateNotDeleted(lockedCertificate, "It can't be used by a signer.");
     const signerUsingCertificate = await signerDAL.findOne({ certificateId }, tx);
     if (signerUsingCertificate && signerUsingCertificate.id !== signerId) {
       throw new ConflictError({
@@ -669,7 +669,7 @@ export const signerServiceFactory = ({
       if (certificate.projectId !== dto.projectId) {
         throw new BadRequestError({ message: "Certificate must belong to the same organization" });
       }
-      assertCertificateNotDeleted(certificate, "be used by a signer");
+      assertCertificateNotDeleted(certificate, "It can't be used by a signer.");
       if (certificate.status === CertStatus.REVOKED) {
         throw new BadRequestError({ message: "Certificate has been revoked" });
       }
@@ -799,7 +799,7 @@ export const signerServiceFactory = ({
           if (!lockedCertificate) {
             throw new NotFoundError({ message: `Certificate with ID '${dto.certificateId}' not found` });
           }
-          assertCertificateNotDeleted(lockedCertificate, "be used by a signer");
+          assertCertificateNotDeleted(lockedCertificate, "It can't be used by a signer.");
         }
 
         const importedCertificateId = importedCertificate

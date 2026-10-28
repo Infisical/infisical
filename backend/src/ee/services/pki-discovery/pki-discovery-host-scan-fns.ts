@@ -3,7 +3,6 @@ import { Knex } from "knex";
 import net from "net";
 import pLimit from "p-limit";
 
-import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
@@ -50,12 +49,7 @@ import {
   TCertificateScanResponse
 } from "./pki-discovery-host-fns";
 import { TPkiDiscoveryInstallationDALFactory } from "./pki-discovery-installation-dal";
-import {
-  buildDeletedCertificatePolicy,
-  processDiscoveredCertificate,
-  TDeletedCertificatePolicy,
-  TKmsEncryptor
-} from "./pki-discovery-scan-fns";
+import { processDiscoveredCertificate, TKmsEncryptor } from "./pki-discovery-scan-fns";
 import { TPkiDiscoveryScanHistoryDALFactory } from "./pki-discovery-scan-history-dal";
 import {
   discardScanRunIfDeleted,
@@ -97,7 +91,6 @@ export type THostScanDeps = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "selectGatewayFromPool">;
   keyStore: Pick<TKeyStoreFactory, "incrementByAndRefreshExpiryIfUnderLimit" | "decrementByOrDelete">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
-  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 type TResolvedHost = {
@@ -318,7 +311,6 @@ type TWriteContext = {
   scanTime: Date;
   importStandaloneCaCertificates: boolean;
   kmsEncryptor: TKmsEncryptor;
-  deletedCertificatePolicy: TDeletedCertificatePolicy;
   certificateIdsByFingerprint: Map<string, string>;
   targetInstallationId?: string;
 };
@@ -362,8 +354,7 @@ const importCertificateChains = async (
       {
         certificateDAL: deps.certificateDAL,
         certificateBodyDAL: deps.certificateBodyDAL,
-        kmsEncryptor: ctx.kmsEncryptor,
-        deletedCertificatePolicy: ctx.deletedCertificatePolicy
+        kmsEncryptor: ctx.kmsEncryptor
       },
       {
         discoveredBy: ctx.discoveryId,
@@ -621,12 +612,6 @@ export const executeLinuxServerScan = async (discoveryId: string, deps: THostSca
         scanTime: startedAt,
         importStandaloneCaCertificates: targetConfig.importStandaloneCaCertificates,
         kmsEncryptor,
-        deletedCertificatePolicy: buildDeletedCertificatePolicy(deps, {
-          projectId: discoveryConfig.projectId,
-          discoveryId,
-          discoveryName: discoveryConfig.name,
-          restoreDeletedCertificates: discoveryConfig.restoreDeletedCertificates
-        }),
         certificateIdsByFingerprint: new Map()
       },
       writeLimit: pLimit(1),
