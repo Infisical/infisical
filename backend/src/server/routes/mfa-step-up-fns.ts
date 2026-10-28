@@ -44,15 +44,17 @@ export const ensureStepUpMfa = async (
     mfaSessionId,
     message,
     mfaMethod: mfaMethodOverride,
+    acceptedMfaMethods: acceptedMfaMethodsOverride,
     excludeMfaMethod
   }: {
     userId: string;
-    orgId: string;
+    orgId?: string;
     tokenVersionId: string;
     resourceId: TMfaStepUpResource;
     mfaSessionId?: string;
     message: string;
     mfaMethod?: MfaMethod;
+    acceptedMfaMethods?: MfaMethod[];
     excludeMfaMethod?: MfaMethod;
   }
 ) => {
@@ -63,7 +65,7 @@ export const ensureStepUpMfa = async (
   // Resolve the method first: a removal action may fall back to a substitute factor,
   // and a proof of that substitute must not unlock the other management actions.
   const { challenge: mfaMethod, accepted: acceptedMfaMethods } = mfaMethodOverride
-    ? { challenge: mfaMethodOverride, accepted: [mfaMethodOverride] }
+    ? { challenge: mfaMethodOverride, accepted: acceptedMfaMethodsOverride ?? [mfaMethodOverride] }
     : await server.services.user.getStepUpMfaMethod(userId, orgId, excludeMfaMethod);
 
   if (
@@ -105,5 +107,26 @@ export const ensureStepUpMfa = async (
     message,
     name: "SESSION_MFA_REQUIRED",
     details: { mfaSessionId: newMfaSessionId, mfaMethod }
+  });
+};
+
+// Gates every route that starts or persists a new factor. Reachable from the org-less
+// session login hands out before MFA, so it must never trust that session on its own.
+// Verifying the challenge opens the management grace window, which is what lets the
+// retried request through, so callers never pass the session id back.
+export const ensureFactorEnrollmentStepUpMfa = async (
+  server: FastifyZodProvider,
+  { userId, tokenVersionId, enrollingMethod }: { userId: string; tokenVersionId: string; enrollingMethod: MfaMethod }
+) => {
+  const mfaMethods = await server.services.user.getFactorEnrollmentStepUpMfaMethods(userId, enrollingMethod);
+  if (!mfaMethods) return;
+
+  await ensureStepUpMfa(server, {
+    userId,
+    tokenVersionId,
+    resourceId: MfaStepUpResource.MfaManagement,
+    message: "Verify with your existing two-factor method before adding a new one",
+    mfaMethod: mfaMethods.challenge,
+    acceptedMfaMethods: mfaMethods.accepted
   });
 };

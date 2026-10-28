@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
   ChevronLeftIcon,
@@ -10,6 +9,7 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Badge,
@@ -283,10 +283,8 @@ const PageContent = () => {
 export const SecretScanningDataSourceByIdPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Secret Scanning Data Source | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Secret Scanning Data Source" />
+      <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         renderGuardBanner
         passThrough={false}

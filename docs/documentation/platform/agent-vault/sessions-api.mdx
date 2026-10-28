@@ -46,24 +46,26 @@ The response includes an `accessToken`, which you send with each request in the 
 
 ## Step 3: Create a session
 
-Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) with the name of the access bundle and how long the session should last:
+Call [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) with the name of the access bundle, how long the session should last, and optionally a label that says what the session is for:
 
 ```bash
 curl -X POST https://app.infisical.com/api/v1/agent-vault/sessions \
   -H "Authorization: Bearer <access-token>" \
   -H "Content-Type: application/json" \
-  -d '{"accessBundles": ["<access-bundle-name>"], "ttl": "1h"}'
+  -d '{"accessBundles": ["<access-bundle-name>"], "ttl": "1h", "label": "nightly deploy"}'
 ```
 
 - `accessBundles` takes a list, but a session can have only one access bundle, so the list must have exactly one name
 - `ttl` accepts a duration of at least one minute, such as `30m`, `8h`, or `7d`, or `never`, and defaults to `7d` (see [Choose how long a session lasts](#choose-how-long-a-session-lasts) to pick a value)
+- `label` is optional and describes what the session is for, in up to 128 characters (see [Label a session](/documentation/platform/agent-vault/sessions#label-a-session))
 
-The response includes the session's ID, the session token, and when the session expires:
+The response includes the session's ID, its label, the session token, and when the session expires:
 
 ```json
 {
   "session": {
     "id": "6f1c2a9e-3b7d-4e8a-9c41-2d5f7b8e0a13",
+    "label": "nightly deploy",
     "token": "<session-token>",
     "expiresAt": "2026-10-07T19:00:00.000Z"
   }
@@ -125,7 +127,7 @@ Revoke the session even if the agent fails, for example in a `finally` block or 
 
 ## Step 6: Verify it works
 
-In Agent Vault, go to **Sessions** and select **All Sessions**. The **Identity** column shows the machine identity's name for the session you created. The session's **Status** is **Active** while the agent runs, and **Revoked** after [Step 5](#step-5-revoke-the-session).
+In Agent Vault, go to **Sessions** and select **All Sessions**. Find the session you created by its label in the **Label** column, or search for the label. The session's **Status** is **Active** while the agent runs, and **Revoked** after [Step 5](#step-5-revoke-the-session).
 
 [View the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to check which requests the agent made during the session.
 

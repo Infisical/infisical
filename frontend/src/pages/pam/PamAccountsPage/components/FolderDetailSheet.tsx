@@ -48,7 +48,6 @@ import {
   useRemoveFolderMember,
   useUpdatePamFolder
 } from "@app/hooks/api/pam";
-import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
 import { PamMemberKind, PamMembershipScope } from "../../components/memberEnums";
@@ -62,6 +61,7 @@ import { PAM_FOLDER_TABS, visiblePamTabs } from "../../components/pamResourceTab
 import { PendingInvitationBadge } from "../../components/PendingInvitationBadge";
 import { RemoveMemberConfirm } from "../../components/RemoveMemberConfirm";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
+import { usePamProductUsers } from "../../components/usePamProductUsers";
 import { AssignAccessModal, EditMemberTarget } from "./AssignAccessModal";
 import { FolderApprovalsTab } from "./FolderApprovalsTab";
 
@@ -181,7 +181,7 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
   const { user } = useUser();
   const { data: folderMembers, isLoading } = useListFolderMembers(folderId);
   const { data: resourceRoles } = useListPamResourceRoles();
-  const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
+  const { userMap } = usePamProductUsers();
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
   const groupMap = useMemo(
     () => new Map((orgGroups ?? []).map((g) => [g.id, g.name] as const)),
@@ -235,25 +235,6 @@ const PermissionsTab = ({ folderId }: { folderId: string }) => {
           .map((m) => m.identityId) as string[]
       ),
     [folderMembers]
-  );
-
-  const userMap = useMemo(
-    () =>
-      new Map(
-        (orgUsers ?? []).map((ou) => {
-          const name =
-            [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ") || ou.user.username;
-          return [
-            ou.user.id,
-            {
-              name,
-              email: ou.user.email ?? ou.inviteEmail ?? ou.user.username,
-              isPendingInvitation: ou.status === "invited"
-            }
-          ] as const;
-        })
-      ),
-    [orgUsers]
   );
 
   const resolvedMembers = useMemo(() => {

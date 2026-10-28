@@ -1,0 +1,85 @@
+---
+title: "Windows credential rotation for PAM"
+sidebarTitle: "Windows"
+description: "Rotate the passwords of local Windows and Active Directory accounts."
+---
+
+This page covers what's specific to rotating the password of a [Windows account](/documentation/platform/pam/accounts/windows) (a local account) or a [Windows AD account](/documentation/platform/pam/accounts/windows-ad) (a domain account). To turn on rotation and set a rotation account, see [Credential rotation](/documentation/platform/pam/credential-rotation/overview).
+
+Infisical changes Windows passwords over WinRM through a [Gateway](/documentation/platform/gateways/overview). The WinRM port, HTTPS setting, and CA certificate come from the account's connection details.
+
+When a Windows account rotates, Infisical also updates the services, scheduled tasks, and IIS application pools that run as the account. See [Dependencies](#dependencies).
+
+## Prerequisites
+
+- A Gateway that can reach the account's host (for a local account) or domain controller (for a domain account)
+- WinRM turned on and reachable on that host or domain controller
+
+If the network between the Gateway and the host isn't trusted, turn on WinRM over HTTPS on the account. Over HTTP, WinRM protects the connection only with NTLM message encryption.
+
+## Rotation account
+
+<Tabs>
+  <Tab title="Windows (local)">
+    For the rotation account, use a local administrator on the same host. A local administrator can reset the password and check the new one on the host.
+
+    The account can also change its own password, but only if it can sign in over WinRM and has the right to change its own password. Many local accounts can't, so use a local administrator where you can.
+  </Tab>
+  <Tab title="Windows AD (domain)">
+    For the rotation account, use a different domain account in the same domain. The rotation account needs permission to reset the target account's password, such as an account with delegated control over the target's organizational unit (OU).
+
+    The rotation account must be a different user from the account it rotates. Infisical rejects a rotation account with the same username as the target, because rotating the target would change the rotation account's own password.
+  </Tab>
+</Tabs>
+
+## How the password is changed
+
+<Tabs>
+  <Tab title="Windows (local)">
+    Infisical connects to the account's host over WinRM as the rotation account and runs:
+
+    ```powershell
+    Set-LocalUser -Name '<target-user>' -Password (ConvertTo-SecureString '<generated-password>' -AsPlainText -Force)
+    ```
+  </Tab>
+  <Tab title="Windows AD (domain)">
+    Infisical connects to the account's domain controller over WinRM as the rotation account and runs:
+
+    ```powershell
+    Import-Module ActiveDirectory
+    Set-ADAccountPassword -Identity '<target-user>' -Reset -NewPassword (ConvertTo-SecureString '<generated-password>' -AsPlainText -Force)
+    ```
+  </Tab>
+</Tabs>
+
+## Dependencies
+
+A dependency is a Windows service, scheduled task, or IIS application pool that runs as the account and stores a copy of the account's password. When the account rotates, Infisical connects over WinRM to each dependency's server as the rotation account and updates the dependency with the new password, so the dependency doesn't fail with the old one:
+
+| Type | What runs as the account | What Infisical does when the account rotates |
+|------|------------|--------------|
+| **Windows service** | A service whose **Log On As** account is the account | Updates the service's stored password, then restarts the service if it was running |
+| **Scheduled task** | A task that runs as the account with a stored password | Updates the task with the new password |
+| **IIS application pool** | An application pool whose identity is the account | Updates the application pool's password, then recycles the pool if it was started |
+
+### Find an account's dependencies
+
+Infisical finds dependencies when it scans an [Active Directory discovery source](/documentation/platform/pam/discovery/active-directory) that has **Discover account dependencies** turned on. This option is off by default.
+
+During the scan, Infisical connects over WinRM to each domain-joined Windows server in the source's scope and lists the services, scheduled tasks, and IIS application pools that run as an account it found. When you import an account, Infisical links the account's dependencies to the imported PAM account.
+
+Each scan updates the list. If a scan no longer finds a dependency on a server, Infisical removes the dependency.
+
+Infisical updates every dependency it finds on the scanned servers when the account rotates, so only include servers you trust in the discovery source's scope.
+
+To see an account's dependencies, go to **Privileged Access Management** > **Accounts**, open the options menu on the account's row, select **Configure**, and open the **Rotation** tab.
+
+### Check whether a dependency updated
+
+If Infisical can't update a dependency, the account's rotation still succeeds. The **Rotation Status** column on the **Rotation** tab shows the result for each dependency:
+
+| Status | Meaning |
+|--------|---------|
+| **Rotated** | The last rotation updated the dependency |
+| **Failed** | The last rotation couldn't update the dependency (point to the badge to see the error) |
+| **Never** | The account hasn't rotated since Infisical found the dependency |

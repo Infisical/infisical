@@ -397,8 +397,9 @@ export const kempLoadMasterPkiSyncFactory = ({
       let oldCertificateIdToRemove: string | undefined;
 
       if (typeof certificateId === "string") {
-        const syncRecordLookupId = certificate?.renewedFromCertificateId || certificateId;
-        const existingSyncRecord = syncRecordsByCertId.get(syncRecordLookupId);
+        const existingSyncRecord =
+          syncRecordsByCertId.get(certificate?.renewedFromCertificateId || certificateId) ??
+          (preserveItemOnRenewal ? syncRecordsByCertId.get(certificateId) : undefined);
 
         if (certificate?.renewedFromCertificateId && preserveItemOnRenewal && existingSyncRecord?.externalIdentifier) {
           targetIdentifier = existingSyncRecord.externalIdentifier;

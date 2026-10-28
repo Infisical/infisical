@@ -283,17 +283,71 @@ export const membershipUserDALFactory = (db: TDbClient) => {
     }
   };
 
-  // this right now only support sub organization
-  const listAvailableUsers = async (orgId: string, rootOrgId: string) => {
+  // Sub-org: root org users not in it yet. Project: anyone grantable in the project's org
+  // (findActorsWithActiveOrgAccess rule) without a direct project row.
+  const listAvailableUsers = async (scopeData: AccessScopeData, rootOrgId?: string | null) => {
     try {
+      const userColumns = [
+        db.ref("id").withSchema(TableName.Users),
+        db.ref("email").withSchema(TableName.Users),
+        db.ref("username").withSchema(TableName.Users),
+        db.ref("firstName").withSchema(TableName.Users),
+        db.ref("lastName").withSchema(TableName.Users)
+      ];
+
+      if (scopeData.scope === AccessScope.Project) {
+        const usersInProject = db
+          .replicaNode()(TableName.Membership)
+          .where(`${TableName.Membership}.scope`, AccessScope.Project)
+          .where(`${TableName.Membership}.scopeProjectId`, scopeData.projectId)
+          .whereNotNull(`${TableName.Membership}.actorUserId`)
+          .select("actorUserId");
+        const directOrgUsers = (activeOnly: boolean) =>
+          db
+            .replicaNode()(TableName.Membership)
+            .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+            .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
+            .whereNotNull(`${TableName.Membership}.actorUserId`)
+            .where((qb) => {
+              if (activeOnly) void qb.where(`${TableName.Membership}.isActive`, true);
+            })
+            .select("actorUserId");
+        const activeGroupOrgUsers = db
+          .replicaNode()(TableName.UserGroupMembership)
+          .join(
+            TableName.Membership,
+            `${TableName.Membership}.actorGroupId`,
+            `${TableName.UserGroupMembership}.groupId`
+          )
+          .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+          .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
+          .where(`${TableName.Membership}.isActive`, true)
+          .select(`${TableName.UserGroupMembership}.userId`);
+
+        return await db
+          .replicaNode()(TableName.Users)
+          .where(`${TableName.Users}.isGhost`, false)
+          .where((qb) => {
+            void qb.whereIn(`${TableName.Users}.id`, directOrgUsers(true)).orWhere((viaGroup) => {
+              void viaGroup
+                .whereIn(`${TableName.Users}.id`, activeGroupOrgUsers)
+                .whereNotIn(`${TableName.Users}.id`, directOrgUsers(false));
+            });
+          })
+          .whereNotIn(`${TableName.Users}.id`, usersInProject)
+          .select(userColumns);
+      }
+
+      if (!rootOrgId) return [];
+
       const usersConnectedToOrg = db
         .replicaNode()(TableName.Membership)
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
         .select("actorUserId");
 
-      const docs = await db
+      return await db
         .replicaNode()(TableName.Membership)
         .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
@@ -301,15 +355,7 @@ export const membershipUserDALFactory = (db: TDbClient) => {
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .where(`${TableName.Membership}.scopeOrgId`, rootOrgId)
         .whereNotIn(`${TableName.Membership}.actorUserId`, usersConnectedToOrg)
-        .select(
-          db.ref("id").withSchema(TableName.Users),
-          db.ref("email").withSchema(TableName.Users),
-          db.ref("username").withSchema(TableName.Users),
-          db.ref("firstName").withSchema(TableName.Users),
-          db.ref("lastName").withSchema(TableName.Users)
-        );
-
-      return docs;
+        .select(userColumns);
     } catch (error) {
       throw new DatabaseError({ error, name: "ListAvailableUsers" });
     }
