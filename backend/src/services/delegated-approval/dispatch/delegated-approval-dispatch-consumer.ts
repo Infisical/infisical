@@ -84,10 +84,10 @@ export const delegatedApprovalDispatchConsumerFactory = ({
   appConnectionDAL,
   kmsService
 }: TDelegatedApprovalDispatchConsumerDep): IEventConsumer<TDelegatedApprovalDispatchRequestedPayload> => {
-  const $markDispatchFailed = async (delegatedRequestId: string, statusReason: string) => {
+  const $markDispatchFailed = async (delegatedRequestId: string, eventId: string, statusReason: string) => {
     try {
       await delegatedApprovalRequestDAL.updateWithDetails(
-        { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.PendingDispatch },
+        { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.PendingDispatch, dispatchEventId: eventId },
         {
           status: DelegatedApprovalRequestStatus.FailedDispatch,
           details: { statusReason: toDelegatedApprovalStatusReason(statusReason) }
@@ -103,23 +103,27 @@ export const delegatedApprovalDispatchConsumerFactory = ({
 
   const $closeAfterExhaustedAttempts = async ({
     delegatedRequestId,
+    eventId,
     approvalRequestId,
     statusReason
   }: {
     delegatedRequestId: string;
+    eventId: string;
     approvalRequestId: string;
     statusReason: string;
   }) => {
     try {
       await delegatedApprovalRequestDAL.transaction(async (tx) => {
-        await delegatedApprovalRequestDAL.updateWithDetails(
-          { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.PendingDispatch },
+        const [closed] = await delegatedApprovalRequestDAL.updateWithDetails(
+          { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.PendingDispatch, dispatchEventId: eventId },
           {
             status: DelegatedApprovalRequestStatus.Failed,
             details: { statusReason: toDelegatedApprovalStatusReason(statusReason) }
           },
           tx
         );
+        if (!closed) return;
+
         await approvalRequestDAL.update(
           { id: approvalRequestId, status: ApprovalRequestStatus.Pending },
           { status: ApprovalRequestStatus.Cancelled },
@@ -136,6 +140,7 @@ export const delegatedApprovalDispatchConsumerFactory = ({
 
   const $dispatch = async (
     delegatedRequestId: string,
+    eventId: string,
     isFinalAttempt: boolean
   ): Promise<Omit<TEventConsumerResult, "id">> => {
     const context = await loadDelegatedApprovalContext(delegatedRequestId, {
@@ -151,6 +156,13 @@ export const delegatedApprovalDispatchConsumerFactory = ({
     }
 
     const { delegatedRequest, approvalRequest, delegatedPolicy } = context;
+
+    if (delegatedRequest.dispatchEventId !== eventId) {
+      logger.info(
+        `Delegated approval dispatch was superseded by a newer resend, skipping [delegatedRequestId=${delegatedRequestId}] [eventId=${eventId}]`
+      );
+      return { status: EventResultStatus.Delivered };
+    }
 
     const canDispatch =
       delegatedRequest.status === DelegatedApprovalRequestStatus.PendingDispatch ||
@@ -171,10 +183,16 @@ export const delegatedApprovalDispatchConsumerFactory = ({
     }
 
     if (delegatedRequest.status === DelegatedApprovalRequestStatus.FailedDispatch) {
-      await delegatedApprovalRequestDAL.updateWithDetails(
-        { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.FailedDispatch },
+      const [reopened] = await delegatedApprovalRequestDAL.updateWithDetails(
+        { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.FailedDispatch, dispatchEventId: eventId },
         { status: DelegatedApprovalRequestStatus.PendingDispatch, details: { statusReason: null } }
       );
+      if (!reopened) {
+        logger.info(
+          `Delegated approval request was resent or closed before this dispatch started, skipping [delegatedRequestId=${delegatedRequestId}] [eventId=${eventId}]`
+        );
+        return { status: EventResultStatus.Delivered };
+      }
     }
 
     try {
@@ -262,6 +280,7 @@ export const delegatedApprovalDispatchConsumerFactory = ({
       if (!terminal && isFinalAttempt && approvalRequest) {
         await $closeAfterExhaustedAttempts({
           delegatedRequestId,
+          eventId,
           approvalRequestId: approvalRequest.id,
           statusReason: `${message} Infisical could not send this request after ${MAX_OUTBOX_ATTEMPTS} attempts and closed it. Create a new request.`
         });
@@ -276,6 +295,7 @@ export const delegatedApprovalDispatchConsumerFactory = ({
       // outbox is still retrying.
       await $markDispatchFailed(
         delegatedRequestId,
+        eventId,
         terminal ? message : `${message} ${DELEGATED_APPROVAL_DISPATCH_RETRY_HINT}`
       );
 
@@ -297,7 +317,7 @@ export const delegatedApprovalDispatchConsumerFactory = ({
     );
     if (failure) return failure;
 
-    return { id: event.id, ...(await $dispatch(data.delegatedRequestId, event.isFinalAttempt)) };
+    return { id: event.id, ...(await $dispatch(data.delegatedRequestId, event.id, event.isFinalAttempt)) };
   };
 
   // Events for one request run serially, so two of them cannot both pass the providerRequestId check.

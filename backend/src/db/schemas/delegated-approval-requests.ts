@@ -20,7 +20,8 @@ export const DelegatedApprovalRequestsSchema = z.object({
   callbackAttempts: z.number().default(0),
   decisionReadRequestedAt: z.date().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  dispatchEventId: z.string().uuid()
 });
 
 export type TDelegatedApprovalRequests = z.infer<typeof DelegatedApprovalRequestsSchema>;

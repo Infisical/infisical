@@ -32,6 +32,7 @@ import {
   getSecretAccessRequestData,
   hasSameAccessCriteria,
   parseSecretAccessRequestData,
+  readSecretAccessPolicyConstraints,
   validateSecretAccessConstraints
 } from "@app/services/approval-policy/secret-access/secret-access-policy-fns";
 import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
@@ -347,17 +348,31 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       throw new BadRequestError({ message: "You already have a pending access request with the same criteria" });
     }
 
-    const { requestExpirationTime } = policy.constraints.constraints;
-    const parsedMs = requestExpirationTime ? ms(requestExpirationTime) : null;
-    const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
-
-    // A policy update locks the policy row for update, so sharing it here keeps a request from being
-    // created with approver steps the update is replacing with a delegated reviewer, or the reverse.
+    // A policy update locks this row, then rewrites its time limits, approver steps, and delegated reviewer
+    // together. Sharing the row waits that update out, so the limits are read from it before a request is
+    // created against the reviewer the update left in place.
     const { approvalRequest: created, policySteps } = await approvalRequestDAL.transaction(async (tx) => {
       const lockedPolicy = await approvalPolicyDAL.findByIdForShare(policy.id, tx);
       if (!lockedPolicy) {
         throw new NotFoundError({ message: `Policy '${policy.name}' was deleted before the request could be created` });
       }
+
+      const lockedConstraints = readSecretAccessPolicyConstraints(lockedPolicy.constraints);
+      if (!lockedConstraints) {
+        throw new BadRequestError({
+          message: `Policy '${policy.name}' could not be read. Submit the request again.`
+        });
+      }
+
+      const lockedConstraintValidation = validateSecretAccessConstraints(lockedConstraints, requestData);
+      if (!lockedConstraintValidation.valid) {
+        throw new BadRequestError({
+          message: lockedConstraintValidation.errors?.join("; ") ?? "Policy constraints not met"
+        });
+      }
+
+      const parsedMs = lockedConstraints.requestExpirationTime ? ms(lockedConstraints.requestExpirationTime) : null;
+      const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
 
       const currentSteps = await approvalPolicyDAL.findStepsByPolicyId(policy.id, tx);
       const delegatedPolicy = currentSteps.length

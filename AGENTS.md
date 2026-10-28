@@ -184,9 +184,11 @@ request goes `cancelled`, and the consumer returns `Failed`. A terminal failure 
 `failed_dispatch` on every attempt, because an admin can fix the cause and resend. A user resends a
 `failed_dispatch` request with `POST /api/v1/access-approvals/requests/:requestId/retry-delegated-dispatch`. The
 product's bridge checks who may retry, and `delegatedApprovalService.retryDispatch` checks the request can be
-retried and emits the same event with no transaction. The event id is derived (uuid v5) from the delegated
-request id and that row's `updatedAt`, so repeated emits of one attempt collapse on the outbox's
-`(consumer, eventId)` key, and a later resend still inserts after the status write bumps `updatedAt`. A batch dispatches up to 10 different requests at once;
+retried. A resend supersedes the event still in the outbox rather than running beside it: the row stores the
+live event id in `dispatchEventId`, and a resend writes a new random one (only while the row is
+`failed_dispatch`) and emits the event under it in one transaction. The consumer marks any event whose id no
+longer matches delivered without calling the provider or writing the row, so an older event's last attempt
+can never close a request the user resent, and concurrent resends call the provider once. A batch dispatches up to 10 different requests at once;
 events for one request stay serial. A second event for a request that was already delivered is marked delivered
 without calling the provider. A delegated request has
 no Infisical approvers, so `POST /api/v1/access-approvals/requests/:requestId/cancel-delegated-dispatch` is the only way to close

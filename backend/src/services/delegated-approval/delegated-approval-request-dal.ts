@@ -58,7 +58,7 @@ export const delegatedApprovalRequestDALFactory = (db: TDbClient) => {
   };
 
   const updateWithDetails = async (
-    filter: Partial<Pick<TDelegatedApprovalRequests, "id" | "requestId" | "status">>,
+    filter: Partial<Pick<TDelegatedApprovalRequests, "id" | "requestId" | "status" | "dispatchEventId">>,
     {
       details,
       ...columns
