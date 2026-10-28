@@ -13,7 +13,8 @@ import {
   ImportIcon,
   KeyIcon,
   RefreshCcwIcon,
-  RefreshCwIcon
+  RefreshCwIcon,
+  StickyNoteIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -57,7 +58,6 @@ import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
   TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
-  TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
   TABLE_ROW_NAME_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
@@ -295,6 +295,20 @@ export const SecretTableRow = ({
 
   const sortedEnvironments = [...environments];
 
+  const annotatedEnvironmentNames = isSingleEnvView
+    ? []
+    : environments
+        .filter(({ slug }) => {
+          const secret = getSecretByKey(slug, secretKey);
+          return Boolean(
+            secret?.comment ||
+              secret?.tags?.length ||
+              secret?.reminder ||
+              secret?.secretMetadata?.length
+          );
+        })
+        .map(({ name }) => name);
+
   if (expandedTableSort) {
     sortedEnvironments.sort((a, b) => {
       const comparison = a.name.localeCompare(b.name);
@@ -476,6 +490,18 @@ export const SecretTableRow = ({
                       {secretKey}
                     </TooltipContent>
                   </Tooltip>
+                  {!isExpanded && annotatedEnvironmentNames.length > 0 && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="flex shrink-0 items-center text-muted">
+                          <StickyNoteIcon className="size-3.5" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Annotated in {annotatedEnvironmentNames.join(", ")}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                   {!isExpanded &&
                     environments.some(
                       ({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectFolderGrant
@@ -711,102 +737,91 @@ export const SecretTableRow = ({
                               hasOverride && "border-b-border/50"
                             )}
                           />
-                          <TableCell
-                            isTruncatable
-                            className={twMerge(
-                              TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
-                              hasOverride && "border-l border-b-border/50 border-l-override"
-                            )}
-                          >
-                            <div className="flex h-8 items-center space-x-2">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="truncate">{name}</span>
-                                </TooltipTrigger>
-                                <TooltipContent side="right" className="max-w-2xl break-all">
-                                  {name}
-                                </TooltipContent>
-                              </Tooltip>
-                              {isImportedSecret && (
+                          <SecretEditTableRow
+                            nameCellContent={
+                              <>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <ImportIcon className="size-4 text-import" />
+                                    <span className="truncate">{name}</span>
                                   </TooltipTrigger>
-                                  <TooltipContent>
-                                    Imported from {importedSecret?.environmentInfo?.name}{" "}
-                                    environment
+                                  <TooltipContent side="right" className="max-w-2xl break-all">
+                                    {name}
                                   </TooltipContent>
                                 </Tooltip>
-                              )}
-                              {secret?.isRotatedSecret && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <RefreshCcwIcon className="size-4 text-secret-rotation" />
-                                  </TooltipTrigger>
-                                  <TooltipContent>Rotated secret</TooltipContent>
-                                </Tooltip>
-                              )}
-                              {secret?.isHoneyTokenSecret && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <HexagonIcon className="size-4 text-warning" />
-                                  </TooltipTrigger>
-                                  <TooltipContent>Honey Token secret</TooltipContent>
-                                </Tooltip>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell
-                            colSpan={2}
-                            className={twMerge("max-w-0", hasOverride && "border-b-border/50")}
-                          >
-                            <SecretEditTableRow
-                              secretPath={secretPath}
-                              isVisible={isSecretVisible}
-                              secretName={secretKey}
-                              isEmpty={secret ? secret.isEmpty : importedSecret?.secret?.isEmpty}
-                              secretValueHidden={secret?.secretValueHidden || false}
-                              defaultValue={getDefaultValue(secret, importedSecret)}
-                              secretId={secret?.id}
-                              isOverride={Boolean(secret?.idOverride)}
-                              isImportedSecret={isImportedSecret}
-                              importedSecret={importedSecret}
-                              isCreatable={isCreatable}
-                              onSecretDelete={onSecretDelete}
-                              onSecretCreate={onSecretCreate}
-                              onSecretUpdate={onSecretUpdate}
-                              onAddOverride={() => {
-                                setCreatingOverrideEnvs((prev) => new Set([...prev, slug]));
-                              }}
-                              environment={slug}
-                              environmentName={name}
-                              isRotatedSecret={secret?.isRotatedSecret}
-                              isHoneyTokenSecret={secret?.isHoneyTokenSecret}
-                              importedBy={importedBy}
-                              isSecretPresent={Boolean(secret)}
-                              comment={secret?.comment}
-                              tags={secret?.tags}
-                              secretMetadata={secret?.secretMetadata}
-                              skipMultilineEncoding={secret?.skipMultilineEncoding}
-                              reminder={secret?.reminder}
-                              revokedProjectFolderGrant={secret?.revokedProjectFolderGrant}
-                              onCopySecret={
-                                secret?.id
-                                  ? () =>
-                                      onCopySecret?.({
-                                        source: {
-                                          id: secret.id,
-                                          name: secretKey,
-                                          path: secret.path ?? secretPath,
-                                          isValueHidden: secret.secretValueHidden
-                                        },
-                                        environmentSlug: slug
-                                      })
-                                  : undefined
-                              }
-                              onAccessInsightsUpgrade={onAccessInsightsUpgrade}
-                            />
-                          </TableCell>
+                                {isImportedSecret && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <ImportIcon className="size-4 text-import" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      Imported from {importedSecret?.environmentInfo?.name}{" "}
+                                      environment
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                                {secret?.isRotatedSecret && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <RefreshCcwIcon className="size-4 text-secret-rotation" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>Rotated secret</TooltipContent>
+                                  </Tooltip>
+                                )}
+                                {secret?.isHoneyTokenSecret && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <HexagonIcon className="size-4 text-warning" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>Honey Token secret</TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </>
+                            }
+                            secretPath={secretPath}
+                            isVisible={isSecretVisible}
+                            secretName={secretKey}
+                            isEmpty={secret ? secret.isEmpty : importedSecret?.secret?.isEmpty}
+                            secretValueHidden={secret?.secretValueHidden || false}
+                            defaultValue={getDefaultValue(secret, importedSecret)}
+                            secretId={secret?.id}
+                            isOverride={Boolean(secret?.idOverride)}
+                            isImportedSecret={isImportedSecret}
+                            importedSecret={importedSecret}
+                            isCreatable={isCreatable}
+                            onSecretDelete={onSecretDelete}
+                            onSecretCreate={onSecretCreate}
+                            onSecretUpdate={onSecretUpdate}
+                            onAddOverride={() => {
+                              setCreatingOverrideEnvs((prev) => new Set([...prev, slug]));
+                            }}
+                            environment={slug}
+                            environmentName={name}
+                            isRotatedSecret={secret?.isRotatedSecret}
+                            isHoneyTokenSecret={secret?.isHoneyTokenSecret}
+                            importedBy={importedBy}
+                            isSecretPresent={Boolean(secret)}
+                            comment={secret?.comment}
+                            tags={secret?.tags}
+                            secretMetadata={secret?.secretMetadata}
+                            skipMultilineEncoding={secret?.skipMultilineEncoding}
+                            reminder={secret?.reminder}
+                            revokedProjectFolderGrant={secret?.revokedProjectFolderGrant}
+                            onCopySecret={
+                              secret?.id
+                                ? () =>
+                                    onCopySecret?.({
+                                      source: {
+                                        id: secret.id,
+                                        name: secretKey,
+                                        path: secret.path ?? secretPath,
+                                        isValueHidden: secret.secretValueHidden
+                                      },
+                                      environmentSlug: slug
+                                    })
+                                : undefined
+                            }
+                            onAccessInsightsUpgrade={onAccessInsightsUpgrade}
+                          />
                         </TableRow>
                         {showOverrideRow && (
                           <TableRow
