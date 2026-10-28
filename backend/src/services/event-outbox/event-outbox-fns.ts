@@ -10,12 +10,12 @@ export const parseEventPayload = <T extends z.ZodTypeAny>(
   schema: T,
   label: string
 ): { data: z.infer<T>; failure?: undefined } | { data?: undefined; failure: TEventConsumerResult } => {
-  const parsed = schema.safeParse(event.payload);
+  const parsed = schema.safeParse(event.data);
   if (parsed.success) return { data: parsed.data as z.infer<T> };
 
   return {
     failure: {
-      id: String(event.id),
+      id: event.id,
       status: EventResultStatus.Failed,
       error: `Unreadable ${label} payload: ${parsed.error.issues.map((issue) => issue.message).join(", ")}`
     }
@@ -36,7 +36,7 @@ export const runEventsSerially = async (
       results.push(await handleEvent(event));
     } catch (error) {
       results.push({
-        id: String(event.id),
+        id: event.id,
         status: EventResultStatus.Retry,
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -62,7 +62,7 @@ export const runEventsConcurrentlyByKey = async (
   const indexByKey = new Map<string, number>();
 
   events.forEach((event) => {
-    const key = keyOf(event) ?? `event:${String(event.id)}`;
+    const key = keyOf(event) ?? `event:${event.id}`;
     const existing = indexByKey.get(key);
     if (existing === undefined) {
       indexByKey.set(key, groups.length);

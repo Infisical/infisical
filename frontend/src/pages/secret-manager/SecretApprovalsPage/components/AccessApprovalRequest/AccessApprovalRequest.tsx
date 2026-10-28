@@ -1,7 +1,7 @@
 /* eslint-disable no-nested-ternary */
 /* eslint-disable react/jsx-no-useless-fragment */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
 import {
   BanIcon,
@@ -52,6 +52,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -899,14 +900,7 @@ export const AccessApprovalRequest = ({
                     environmentNamesBySlug[request.environmentName] ?? request.environmentName;
 
                   return (
-                    <TableRow
-                      key={request.id}
-                      tabIndex={0}
-                      onClick={() => handleSelectRequest(request)}
-                      onKeyDown={(evt) => {
-                        if (evt.key === "Enter") handleSelectRequest(request);
-                      }}
-                    >
+                    <TableRow key={request.id} linked>
                       <TableCell>
                         {request.isTemporary ? (
                           <Badge variant="info">
@@ -922,7 +916,15 @@ export const AccessApprovalRequest = ({
                           <Badge variant="neutral">Permanent</Badge>
                         )}
                       </TableCell>
-                      <TableCell title={environmentDisplayName}>{environmentDisplayName}</TableCell>
+                      <TableCell>
+                        <RowLink
+                          from={ROUTE_PATHS.SecretManager.ApprovalPage.path}
+                          to="."
+                          search={(prev) => ({ ...prev, requestId: request.id })}
+                        >
+                          {environmentDisplayName}
+                        </RowLink>
+                      </TableCell>
                       <TableCell title={request.policy.secretPath ?? undefined}>
                         {request.policy.secretPath}
                       </TableCell>
@@ -1006,11 +1008,7 @@ export const AccessApprovalRequest = ({
                           )}
                         </div>
                       </TableCell>
-                      <TableCell
-                        variant="action"
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => e.stopPropagation()}
-                      >
+                      <TableCell variant="action">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton variant="ghost" size="xs" aria-label="Request actions">
@@ -1018,9 +1016,15 @@ export const AccessApprovalRequest = ({
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleSelectRequest(request)}>
-                              <EyeIcon />
-                              View Request
+                            <DropdownMenuItem asChild>
+                              <Link
+                                from={ROUTE_PATHS.SecretManager.ApprovalPage.path}
+                                to="."
+                                search={(prev) => ({ ...prev, requestId: request.id })}
+                              >
+                                <EyeIcon />
+                                View Request
+                              </Link>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

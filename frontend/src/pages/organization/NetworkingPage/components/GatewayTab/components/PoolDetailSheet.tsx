@@ -279,6 +279,7 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
         </div>
 
         <AlertDialog
+          isPending={removeGateway.isPending}
           open={popUp.removeGateway.isOpen}
           confirmationValue={(popUp.removeGateway.data as { name: string } | undefined)?.name}
           onOpenChange={(open) => handlePopUpToggle("removeGateway", open)}
@@ -301,10 +302,9 @@ export const PoolDetailSheet = ({ isOpen, onOpenChange, pool }: Props) => {
               </Alert>
             </AlertDialogDescription>
             <AlertDialogFooter>
-              <AlertDialogCancel isDisabled={removeGateway.isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 variant="danger"
-                isPending={removeGateway.isPending}
                 onClick={(event) => {
                   event.preventDefault();
                   handleRemove();

@@ -131,7 +131,7 @@ describe("processNewCommitRaw", () => {
         findById: vi.fn().mockResolvedValue({ id: "project-1", secretDetectionIgnoreValues: ["ignored"] })
       },
       folderCommitDAL: { transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn(TRX)) },
-      folderDAL: { findBySecretPath: vi.fn().mockResolvedValue({ id: "folder-1" }) },
+      folderDAL: { findBySecretPath: vi.fn().mockResolvedValue({ id: "folder-1", environment: { name: "dev" } }) },
       secretApprovalRequestService: {
         generateSecretApprovalRequestV2Bridge: vi.fn().mockResolvedValue(approval),
         createSecretApprovalSideEffects: vi.fn().mockResolvedValue(undefined)
@@ -208,7 +208,7 @@ describe("processNewCommitRaw", () => {
       deps.secretApprovalRequestService.createSecretApprovalSideEffects.mock.invocationCallOrder[0];
     const transactionOrder = deps.folderCommitDAL.transaction.mock.invocationCallOrder[0];
     expect(sideEffectsOrder).toBeGreaterThan(transactionOrder);
-    expect(result).toMatchObject({ approvalId: "request-1" });
+    expect(result).toMatchObject({ approval: { id: "request-1" } });
   });
 
   test("a failed notification does not fail the save", async () => {
@@ -217,7 +217,7 @@ describe("processNewCommitRaw", () => {
     deps.secretApprovalRequestService.createSecretApprovalSideEffects.mockRejectedValueOnce(new Error("smtp down"));
 
     await expect(run({ update: [{ secretKey: "OTHER", secretValue: "v" }] })).resolves.toMatchObject({
-      approvalId: "request-1"
+      approval: { id: "request-1" }
     });
   });
 });

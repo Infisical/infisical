@@ -61,6 +61,7 @@ const DELEGATED_REQUEST_ID = "11111111-1111-1111-1111-111111111111";
 const APPROVAL_REQUEST_ID = "33333333-3333-3333-3333-333333333333";
 const ORG_ID = "22222222-2222-2222-2222-222222222222";
 const EXTERNAL_ID = "snow-1";
+const EVENT_ID = "44444444-4444-4444-8444-444444444444";
 const POLICY_NAME = "Production secrets";
 const DECISION_READ_REQUESTED_AT = new Date("2026-10-27T15:00:00.000Z");
 const TX = { tx: true } as never;
@@ -188,16 +189,18 @@ const buildConsumer = ({
 };
 
 const makeEvent = (overrides?: Partial<TEvent>): TEvent => ({
-  id: 1,
-  eventType: DelegatedApprovalCallbackEvent.SecretsManagementAccessRequest,
-  payload: {
+  specversion: "1.0",
+  id: "event-1",
+  source: "urn:infisical:secrets_management",
+  type: DelegatedApprovalCallbackEvent.SecretsManagementAccessRequest,
+  time: new Date().toISOString(),
+  data: {
     delegatedRequestId: DELEGATED_REQUEST_ID,
     approvalRequestId: APPROVAL_REQUEST_ID,
     orgId: ORG_ID,
     event: DelegatedApprovalCallbackEvent.SecretsManagementAccessRequest,
     externalId: EXTERNAL_ID
   },
-  occurredAt: new Date(),
   isFinalAttempt: false,
   ...overrides
 });
@@ -230,7 +233,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
 
     const results = await consumer.handle([makeEvent()]);
 
-    expect(results).toEqual([{ id: "1", status: EventResultStatus.Delivered }]);
+    expect(results).toEqual([{ id: "event-1", status: EventResultStatus.Delivered }]);
     expect(fetchDecision.mock.calls[0][0]).toEqual({
       delegatedRequestId: DELEGATED_REQUEST_ID,
       approvalRequestId: APPROVAL_REQUEST_ID,
@@ -262,7 +265,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
 
     const results = await consumer.handle([makeEvent()]);
 
-    expect(results).toEqual([{ id: "1", status: EventResultStatus.Delivered }]);
+    expect(results).toEqual([{ id: "event-1", status: EventResultStatus.Delivered }]);
     expect(row()?.status).toBe(DelegatedApprovalRequestStatus.Rejected);
     expect(approval()?.status).toBe(ApprovalRequestStatus.Rejected);
     expect(postApprovalTxRoutine).not.toHaveBeenCalled();
@@ -354,7 +357,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
     const results = await consumer.handle([makeEvent()]);
 
     expect(results).toEqual([
-      { id: "1", status: EventResultStatus.Retry, error: "ServiceNow has not recorded a decision yet." }
+      { id: "event-1", status: EventResultStatus.Retry, error: "ServiceNow has not recorded a decision yet." }
     ]);
     expect(row()).toMatchObject({
       status: DelegatedApprovalRequestStatus.WaitingApproval,
@@ -374,7 +377,11 @@ describe("delegatedApprovalDecisionConsumer", () => {
 
     const [result] = await consumer.handle([makeEvent()]);
 
-    expect(result).toEqual({ id: "1", status: EventResultStatus.Retry, error: "ServiceNow could not be reached." });
+    expect(result).toEqual({
+      id: "event-1",
+      status: EventResultStatus.Retry,
+      error: "ServiceNow could not be reached."
+    });
     expect(row()).toMatchObject({ status: DelegatedApprovalRequestStatus.WaitingApproval });
     expect(row()?.details.statusReason).toContain(DELEGATED_APPROVAL_DECISION_RETRY_HINT);
     expect(approval()?.status).toBe(ApprovalRequestStatus.Pending);
@@ -387,7 +394,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
     const [result] = await consumer.handle([makeEvent()]);
 
     expect(result).toEqual({
-      id: "1",
+      id: "event-1",
       status: EventResultStatus.Failed,
       error: "ServiceNow rejected the credentials."
     });
@@ -443,7 +450,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
 
     const results = await consumer.handle([makeEvent()]);
 
-    expect(results).toEqual([{ id: "1", status: EventResultStatus.Delivered }]);
+    expect(results).toEqual([{ id: "event-1", status: EventResultStatus.Delivered }]);
     expect(row()?.status).toBe(DelegatedApprovalRequestStatus.Failed);
     expect(row()?.details.statusReason).toContain("after the request was cancelled");
     expect(approval()?.status).toBe(ApprovalRequestStatus.Cancelled);
@@ -476,7 +483,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
 
     const results = await consumer.handle([makeEvent()]);
 
-    expect(results).toEqual([{ id: "1", status: EventResultStatus.Delivered }]);
+    expect(results).toEqual([{ id: "event-1", status: EventResultStatus.Delivered }]);
     expect(fetchDecision).not.toHaveBeenCalled();
   });
 
@@ -512,7 +519,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
     const results = await consumer.handle([makeEvent({ isFinalAttempt: true })]);
 
     expect(results).toEqual([
-      { id: "1", status: EventResultStatus.Failed, error: "ServiceNow has not recorded a decision yet." }
+      { id: "event-1", status: EventResultStatus.Failed, error: "ServiceNow has not recorded a decision yet." }
     ]);
     expect(row()).toMatchObject({
       status: DelegatedApprovalRequestStatus.WaitingApproval,
@@ -531,7 +538,11 @@ describe("delegatedApprovalDecisionConsumer", () => {
 
     const [result] = await consumer.handle([makeEvent({ isFinalAttempt: true })]);
 
-    expect(result).toEqual({ id: "1", status: EventResultStatus.Failed, error: "ServiceNow could not be reached." });
+    expect(result).toEqual({
+      id: "event-1",
+      status: EventResultStatus.Failed,
+      error: "ServiceNow could not be reached."
+    });
     expect(row()?.status).toBe(DelegatedApprovalRequestStatus.WaitingApproval);
     expect(row()?.details.statusReason).toBe(
       `ServiceNow could not be reached. ${DELEGATED_APPROVAL_DECISION_STOPPED_HINT}`
@@ -556,7 +567,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
 
       const [result] = await consumer.handle([makeEvent({ isFinalAttempt })]);
 
-      expect(result).toEqual({ id: "1", status, error: "The grant could not be written." });
+      expect(result).toEqual({ id: "event-1", status, error: "The grant could not be written." });
       expect(row()?.status).toBe(DelegatedApprovalRequestStatus.WaitingApproval);
       expect(row()?.details.statusReason).toBe(statusReason);
       expect(row()?.decisionReadRequestedAt).toEqual(isFinalAttempt ? null : DECISION_READ_REQUESTED_AT);
@@ -578,10 +589,10 @@ describe("delegatedApprovalDecisionConsumer", () => {
     });
 
     const { consumer } = buildConsumer();
-    const { payload } = makeEvent();
+    const { data } = makeEvent();
     const pending = consumer.handle([
-      makeEvent({ id: 1 }),
-      makeEvent({ id: 2, payload: { ...(payload as Record<string, unknown>), delegatedRequestId: otherRequestId } })
+      makeEvent({ id: "event-1" }),
+      makeEvent({ id: "event-2", data: { ...(data as Record<string, unknown>), delegatedRequestId: otherRequestId } })
     ]);
 
     try {
@@ -591,8 +602,8 @@ describe("delegatedApprovalDecisionConsumer", () => {
     }
 
     await expect(pending).resolves.toEqual([
-      { id: "1", status: EventResultStatus.Retry, error: "Not yet." },
-      { id: "2", status: EventResultStatus.Retry, error: "Not yet." }
+      { id: "event-1", status: EventResultStatus.Retry, error: "Not yet." },
+      { id: "event-2", status: EventResultStatus.Retry, error: "Not yet." }
     ]);
   });
 
@@ -615,7 +626,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
     });
 
     const { consumer } = buildConsumer();
-    const pending = consumer.handle([makeEvent({ id: 1 }), makeEvent({ id: 2 })]);
+    const pending = consumer.handle([makeEvent({ id: "event-1" }), makeEvent({ id: "event-2" })]);
 
     try {
       await vi.waitFor(() => expect(fetchDecision).toHaveBeenCalledTimes(1));
@@ -638,7 +649,7 @@ describe("delegatedApprovalDecisionConsumer", () => {
   test("fails an unreadable payload terminally", async () => {
     const { consumer } = buildConsumer();
 
-    const [result] = await consumer.handle([makeEvent({ payload: { delegatedRequestId: "not-a-uuid" } })]);
+    const [result] = await consumer.handle([makeEvent({ data: { delegatedRequestId: "not-a-uuid" } })]);
 
     expect(result.status).toBe(EventResultStatus.Failed);
     expect(result.error).toContain("Unreadable delegated approval callback payload");
@@ -722,12 +733,15 @@ describe("delegatedApprovalDecisionConsumer through the outbox", () => {
       .mockResolvedValueOnce(decided(DelegatedApprovalDecision.Approved));
     const built = buildConsumer();
     const { service, rows, elapseBackoff } = buildOutbox(built.consumer);
-    const { payload } = makeEvent();
+    const { data } = makeEvent();
 
-    await service.emit({
-      eventType: DelegatedApprovalCallbackEvent.SecretsManagementAccessRequest,
-      payload: payload as Record<string, unknown>
-    });
+    await service.emit([
+      {
+        id: EVENT_ID,
+        type: DelegatedApprovalCallbackEvent.SecretsManagementAccessRequest,
+        data: data as Record<string, unknown>
+      }
+    ]);
     await service.drain({ consumer: built.consumer.name });
 
     expect(rows[0]).toMatchObject({ status: EventOutboxStatus.Retry, attempts: 1, lastError: "Not yet." });
@@ -745,12 +759,15 @@ describe("delegatedApprovalDecisionConsumer through the outbox", () => {
     fetchDecision.mockResolvedValue({ status: "pending", reason: "Not yet." });
     const built = buildConsumer();
     const { service, rows, elapseBackoff } = buildOutbox(built.consumer);
-    const { payload } = makeEvent();
+    const { data } = makeEvent();
 
-    await service.emit({
-      eventType: DelegatedApprovalCallbackEvent.SecretsManagementAccessRequest,
-      payload: payload as Record<string, unknown>
-    });
+    await service.emit([
+      {
+        id: EVENT_ID,
+        type: DelegatedApprovalCallbackEvent.SecretsManagementAccessRequest,
+        data: data as Record<string, unknown>
+      }
+    ]);
 
     for (let attempt = 1; attempt < MAX_OUTBOX_ATTEMPTS; attempt += 1) {
       // eslint-disable-next-line no-await-in-loop -- one drain per attempt

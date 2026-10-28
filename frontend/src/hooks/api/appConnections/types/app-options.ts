@@ -387,6 +387,10 @@ export type TS3CompatibleConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.S3Compatible;
 };
 
+export type TJiraConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Jira;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -480,7 +484,8 @@ export type TAppConnectionOption =
   | TSpaceliftConnectionOption
   | TDaytonaConnectionOption
   | TServiceNowConnectionOption
-  | TS3CompatibleConnectionOption;
+  | TS3CompatibleConnectionOption
+  | TJiraConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -576,4 +581,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Daytona]: TDaytonaConnectionOption;
   [AppConnection.ServiceNow]: TServiceNowConnectionOption;
   [AppConnection.S3Compatible]: TS3CompatibleConnectionOption;
+  [AppConnection.Jira]: TJiraConnectionOption;
 };

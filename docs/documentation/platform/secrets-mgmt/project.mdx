@@ -61,11 +61,13 @@ The **Secrets Dashboard** page appears when you select a specific environment to
 
 ### Secrets
 
-To add a secret, select **Add Secret** at the top of the dashboard.
+To add a secret, select **Add New** > **New Secret** at the top of the dashboard.
 
 In a new project, you can fill the dashboard in one go by dropping a `.env`, `.json`, `.yml`, or `.csv` file onto the upload pane:
 
 ![Dashboard showing drag-and-drop pane for importing a .env file](/images/platform/project/drop-env-2.png)
+
+To upload more secrets later, select **Add New** > **Upload Secrets**, then upload a file or paste its contents.
 
 To delete a secret, hover over it, select the three dot menu on the right, then select **Delete Secret**.
 
@@ -74,6 +76,21 @@ To delete a secret, hover over it, select the three dot menu on the right, then 
 To delete several secrets at once, select their checkboxes, then select **Delete** at the top.
 
 ![Three secrets selected with the Delete button at the top of the dashboard](/images/platform/project/delete-multiple-2.png)
+
+### Import nested JSON as folders
+
+If the JSON you upload or paste through [Upload Secrets](#secrets) contains nested objects, the review step shows an **Import Nested Objects as Folders** toggle below **Overwrite Existing Secrets**. The toggle is off by default. With the toggle off, top-level keys with `null` values are skipped. Each other top-level key becomes one secret, and Infisical stores nested objects as JSON strings.
+
+If you turn the toggle on:
+
+- Each nested object becomes a folder inside the path you're uploading into (Infisical reuses folders that already exist)
+- Each value in a nested object that isn't itself an object becomes a secret in that object's folder
+- Arrays are stored as JSON strings, `null` as an empty value, and numbers and booleans as text
+- **Overwrite Existing Secrets** still decides whether secrets that already exist are updated or skipped
+
+For example, `{"data": {"item1": {"item2": "some-value"}}}` creates the secret `item2` with the value `some-value` in the folder `/data/item1`.
+
+Folder names can only contain letters, numbers, dashes, and underscores (up to 255 characters). Secret keys can't be empty or contain a colon or forward slash. If any key breaks these rules, the review step lists it, and you can't upload until you fix the JSON.
 
 ### Search
 

@@ -17,6 +17,8 @@ import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 
 import { AwsParameterStoreSyncOptionsSection } from "./AwsParameterStoreSyncOptionsSection";
 import { AwsSecretsManagerSyncOptionsSection } from "./AwsSecretsManagerSyncOptionsSection";
+import { CloudflarePagesSyncOptionsSection } from "./CloudflarePagesSyncOptionsSection";
+import { CloudflareWorkersSyncOptionsSection } from "./CloudflareWorkersSyncOptionsSection";
 import { FlyioSyncOptionsSection } from "./FlyioSyncOptionsSection";
 import { QoverySyncOptionsSection } from "./QoverySyncOptionsSection";
 import { RenderSyncOptionsSection } from "./RenderSyncOptionsSection";
@@ -58,6 +60,16 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
     case SecretSync.Qovery:
       AdditionalSyncOptionsComponent = <QoverySyncOptionsSection secretSync={secretSync} />;
       break;
+    case SecretSync.CloudflarePages:
+      AdditionalSyncOptionsComponent = (
+        <CloudflarePagesSyncOptionsSection secretSync={secretSync} />
+      );
+      break;
+    case SecretSync.CloudflareWorkers:
+      AdditionalSyncOptionsComponent = (
+        <CloudflareWorkersSyncOptionsSection secretSync={secretSync} />
+      );
+      break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
     case SecretSync.AzureKeyVault:
@@ -75,8 +87,6 @@ export const SecretSyncOptionsSection = ({ secretSync }: Props) => {
     case SecretSync.OnePass:
     case SecretSync.Heroku:
     case SecretSync.GitLab:
-    case SecretSync.CloudflarePages:
-    case SecretSync.CloudflareWorkers:
     case SecretSync.CloudflareSecretsStore:
     case SecretSync.Zabbix:
     case SecretSync.Railway:

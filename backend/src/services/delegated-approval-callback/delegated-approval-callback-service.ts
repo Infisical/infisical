@@ -11,7 +11,10 @@ import {
   DELEGATED_APPROVAL_CALLBACK_TOKEN_PREFIX,
   DELEGATED_APPROVAL_DECISION_READ_CLAIM_TTL_MS
 } from "./delegated-approval-callback-constants";
-import { TDelegatedApprovalCallbackEventPayload } from "./delegated-approval-callback-events";
+import {
+  buildDelegatedApprovalCallbackEventId,
+  TDelegatedApprovalCallbackEventPayload
+} from "./delegated-approval-callback-events";
 import { generateCallbackToken, isTokenMatch, rejectApprovalCallback } from "./delegated-approval-callback-fns";
 import {
   TDelegatedApprovalCallbackServiceFactoryDep,
@@ -131,7 +134,16 @@ export const delegatedApprovalCallbackServiceFactory = ({
         return { status: "exhausted", attempts } as const;
       }
 
-      await eventEmitter.emit({ eventType: event, idempotencyKey: `${delegatedRequest.id}:${attempts}`, payload }, tx);
+      await eventEmitter.emit(
+        [
+          {
+            id: buildDelegatedApprovalCallbackEventId({ delegatedRequestId: delegatedRequest.id, attempts }),
+            type: event,
+            data: payload
+          }
+        ],
+        tx
+      );
       return { status: "accepted", attempts } as const;
     });
 

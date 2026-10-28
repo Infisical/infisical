@@ -297,22 +297,21 @@ export const delegatedApprovalDispatchConsumerFactory = ({
     );
     if (failure) return failure;
 
-    return { id: String(event.id), ...(await $dispatch(data.delegatedRequestId, event.isFinalAttempt)) };
+    return { id: event.id, ...(await $dispatch(data.delegatedRequestId, event.isFinalAttempt)) };
   };
 
   // Events for one request run serially, so two of them cannot both pass the providerRequestId check.
   const handle = (events: TEvent[]): Promise<TEventConsumerResult[]> =>
     runEventsConcurrentlyByKey(events, {
-      keyOf: (event) =>
-        DelegatedApprovalDispatchRequestedPayloadSchema.safeParse(event.payload).data?.delegatedRequestId,
+      keyOf: (event) => DelegatedApprovalDispatchRequestedPayloadSchema.safeParse(event.data).data?.delegatedRequestId,
       concurrency: DELEGATED_APPROVAL_DISPATCH_CONCURRENCY,
       handleEvent: $handleEvent
     });
 
   return {
     name: DELEGATED_APPROVAL_DISPATCH_CONSUMER,
-    payloadSchema: DelegatedApprovalDispatchRequestedPayloadSchema,
-    subscribesTo: (eventType: string) => eventType === DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
+    dataSchema: DelegatedApprovalDispatchRequestedPayloadSchema,
+    subscribesTo: (type: string) => type === DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
     handle
   };
 };

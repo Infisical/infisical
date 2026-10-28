@@ -1,32 +1,128 @@
 ---
 title: "Privileged Access Management (PAM)"
-description: "Manage and secure access to critical infrastructure like databases and servers with policy-based controls, session recording, and audit trails."
+description: "Let people and AI agents connect to your infrastructure without giving them its credentials."
 sidebarTitle: "Privileged Access Management (PAM)"
 icon: "users"
 ---
 
-Infisical Privileged Access Management (PAM) lets you securely manage access to databases and servers. People connect through a browser or CLI, and so do [AI agents](/documentation/platform/pam/ai-agents/overview), running either as the person who started them or as a [machine identity](/documentation/platform/identities/machine-identities). Nothing ever sees the credentials, and every session is recorded and auditable.
+Infisical Privileged Access Management (PAM) lets you securely manage access to your databases, servers, clusters, and cloud accounts. It lets you give people and [AI agents](/documentation/platform/pam/ai-agents/overview) access without ever letting them access the actual credentials. Infisical records every session, and you decide who can connect to each account.
 
-<Card title="Get Started" icon="rocket" href="/documentation/platform/pam/quick-starts/launch-first-session">
-  New to PAM? Launch your first session in under 10 minutes.
+## Get started
+
+<Card title="Quickstart" icon="rocket" href="/documentation/platform/pam/quick-starts/launch-first-session">
+  Connect to a PostgreSQL database through Infisical PAM.
 </Card>
 
-## Learn more
-
-<CardGroup cols={2}>
-  <Card title="Core Concepts" icon="book" href="/documentation/platform/pam/concepts/pam-components">
-    Understand how templates, folders, and accounts work together.
+<CardGroup cols={3}>
+  <Card title="Concepts" icon="book-open" href="/documentation/platform/pam/concepts/overview">
+    Learn how Infisical PAM controls access to your infrastructure.
   </Card>
-  <Card title="Guides" icon="map" href="/documentation/platform/pam/guides/team-access">
-    End-to-end workflows for common scenarios.
-  </Card>
-  <Card title="Access Control" icon="shield-half" href="/documentation/platform/pam/concepts/access-control">
-    Understand roles and permissions.
-  </Card>
-  <Card title="AI Agents" icon="bot" href="/documentation/platform/pam/ai-agents/overview">
-    Let an agent work with real infrastructure, sandboxed and recorded.
+  <Card title="Session lifecycle" icon="circle-play" href="/documentation/platform/pam/concepts/session-lifecycle">
+    Learn what happens from the moment someone connects to an account until the session ends.
   </Card>
   <Card title="Architecture" icon="network" href="/documentation/platform/pam/architecture">
-    How Gateways proxy connections securely.
+    Learn how PAM connects people and agents to your infrastructure through a Gateway.
+  </Card>
+</CardGroup>
+
+## Accounts
+
+Add the databases, servers, clusters, and cloud accounts that people connect to:
+
+<CardGroup cols={3}>
+  <Card title="Accounts" icon="user-lock" href="/documentation/platform/pam/accounts/overview">
+    Store the credentials for a database or server that people and agents connect to through Infisical PAM.
+  </Card>
+  <Card title="Add an account" icon="plus" href="/documentation/platform/pam/accounts/add">
+    Store the connection details and credentials for a database or server in PAM.
+  </Card>
+  <Card title="Connect to an account" icon="plug" href="/documentation/platform/pam/accounts/connect">
+    Open a session on an account from your browser or the Infisical CLI.
+  </Card>
+  <Card title="View credentials" icon="eye" href="/documentation/platform/pam/accounts/view-credentials">
+    Reveal the password or key stored for an account.
+  </Card>
+  <Card title="Manage an account" icon="sliders-horizontal" href="/documentation/platform/pam/accounts/manage">
+    Change an account's details, access, and settings after you add it.
+  </Card>
+  <Card title="Account types" icon="layout-grid" href="/documentation/platform/pam/accounts/account-types">
+    Find the setup guide for each database, server, cluster, and cloud provider that PAM supports.
+  </Card>
+</CardGroup>
+
+## Access control
+
+Decide who can connect to each account, and which rules and approvals apply:
+
+<CardGroup cols={3}>
+  <Card title="Access control" icon="shield-half" href="/documentation/platform/pam/concepts/access-control">
+    Control who can manage PAM and who can connect to each account.
+  </Card>
+  <Card title="Folders" icon="folder-tree" href="/documentation/platform/pam/folders/overview">
+    Organize PAM accounts and control who can access them.
+  </Card>
+  <Card title="Account templates" icon="layers" href="/documentation/platform/pam/templates/overview">
+    Set the rules for connecting to the accounts that use a template.
+  </Card>
+  <Card title="Access requests" icon="hand" href="/documentation/platform/pam/access-requests/overview">
+    Require approval before a member can use a sensitive account.
+  </Card>
+  <Card title="Break-glass access" icon="siren" href="/documentation/platform/pam/access-requests/break-glass">
+    Let named responders grant themselves access in an emergency.
+  </Card>
+</CardGroup>
+
+## AI agents
+
+Let AI agents work with your infrastructure through PAM:
+
+<CardGroup cols={3}>
+  <Card title="AI agents" icon="bot" href="/documentation/platform/pam/ai-agents/overview">
+    Give an AI agent access to your databases and servers without giving it a credential.
+  </Card>
+  <Card title="Run an agent" icon="play" href="/documentation/platform/pam/ai-agents/run">
+    Start an AI agent with access to the PAM accounts its task needs.
+  </Card>
+  <Card title="Agent instructions" icon="file-text" href="/documentation/platform/pam/ai-agents/instructions">
+    Tell an AI agent which PAM accounts it can use and how to reach them.
+  </Card>
+  <Card title="Run unattended" icon="clock" href="/documentation/platform/pam/ai-agents/unattended">
+    Run an AI agent as its own machine identity.
+  </Card>
+  <Card title="Review and stop an agent" icon="eye" href="/documentation/platform/pam/ai-agents/review">
+    Check what an AI agent did with your accounts and remove its access.
+  </Card>
+</CardGroup>
+
+## Credential rotation
+
+Change the passwords stored in PAM on a schedule:
+
+<Card title="Credential rotation" icon="rotate-cw" href="/documentation/platform/pam/credential-rotation/overview">
+  Change the passwords of your PAM accounts on a schedule.
+</Card>
+
+## Monitoring
+
+Review what people and agents did with your accounts, check that stored credentials still work, and find accounts on your systems to import:
+
+<CardGroup cols={2}>
+  <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
+    Review and end the connections that people and agents make to your accounts.
+  </Card>
+  <Card title="Session recording" icon="video" href="/documentation/platform/pam/sessions/session-recording">
+    Review what happened during each session on your accounts.
+  </Card>
+  <Card title="External storage" icon="cloud" href="/documentation/platform/pam/sessions/external-storage">
+    Store session recordings in an S3-compatible bucket that you own.
+  </Card>
+  <Card title="Auditing" icon="clipboard-list" href="/documentation/platform/pam/auditing">
+    Track who accessed and changed what across PAM.
+  </Card>
+  <Card title="Credential health" icon="heart-pulse" href="/documentation/platform/pam/credential-health/overview">
+    Check on a schedule that the credentials stored for your PAM accounts still work.
+  </Card>
+  <Card title="Discovery" icon="radar" href="/documentation/platform/pam/discovery/overview">
+    Find accounts on your systems and import them into PAM.
   </Card>
 </CardGroup>

@@ -27,6 +27,8 @@ import {
 // eslint-disable-next-line import/first
 import { DelegatedApprovalCallbackEvent } from "./delegated-approval-callback-enums";
 // eslint-disable-next-line import/first
+import { buildDelegatedApprovalCallbackEventId } from "./delegated-approval-callback-events";
+// eslint-disable-next-line import/first
 import { delegatedApprovalCallbackServiceFactory } from "./delegated-approval-callback-service";
 
 const CIPHER_PREFIX = Buffer.from("enc:");
@@ -315,17 +317,19 @@ describe("handleCallback", () => {
       projectId: "project-1"
     });
     expect(eventEmitter.emit).toHaveBeenCalledWith(
-      {
-        eventType: EVENT,
-        idempotencyKey: "delegated-1:1",
-        payload: {
-          delegatedRequestId: "delegated-1",
-          approvalRequestId: "request-1",
-          orgId: "org-1",
-          event: EVENT,
-          externalId: EXTERNAL_ID
+      [
+        {
+          id: buildDelegatedApprovalCallbackEventId({ delegatedRequestId: "delegated-1", attempts: 1 }),
+          type: EVENT,
+          data: {
+            delegatedRequestId: "delegated-1",
+            approvalRequestId: "request-1",
+            orgId: "org-1",
+            event: EVENT,
+            externalId: EXTERNAL_ID
+          }
         }
-      },
+      ],
       TX
     );
   });

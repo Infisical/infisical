@@ -1,90 +1,76 @@
 ---
 title: "Azure CLI accounts"
 sidebarTitle: "Azure CLI"
-description: "Add and connect to Azure via a brokered service principal, using the Azure CLI."
+description: "Give people Azure CLI access to Azure as a service principal."
 ---
 
-Azure CLI accounts let you broker credential-less access to Azure. Instead of handing out a service principal's client secret, users request access through Infisical and run `az` commands as the target service principal through a [Gateway](/documentation/platform/gateways/overview), with every command logged. The secret never leaves Infisical.
+An Azure CLI account lets people run `az` commands as a Microsoft Entra ID service principal without handing out its client secret. When someone launches a session, Infisical gets short-lived access tokens for the service principal. Their `az` requests go through a [Gateway](/documentation/platform/gateways/overview), which adds the right token to each request. Azure CLI accounts only support the CLI, not browser access.
 
-<Note>
-Azure CLI accounts are available through the **CLI and API only**. There is no in-browser (web) access.
-</Note>
+Infisical records each request's method, URL, and response body. It leaves out the bodies of Azure Key Vault requests and responses, because they can contain secret values.
 
-## How it works
+## Prerequisites
 
-Each account points at a single Microsoft Entra ID service principal, identified by its tenant ID and client ID, with a client secret stored encrypted. When a user starts a session:
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
+- A Gateway that can reach the following hosts on port `443`: `login.microsoftonline.com`, `management.azure.com`, `graph.microsoft.com`, `*.vault.azure.net`, and `*.core.windows.net`
+- Permission to register applications in Microsoft Entra ID and to assign roles on the Azure resources the account should reach
+- The [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) on the machine of each person who connects
 
-1. Infisical obtains short-lived access tokens for the service principal (via the OAuth 2.0 client-credentials grant), one per supported Azure plane: Resource Manager, Microsoft Graph, Key Vault, and Storage.
-2. The user's `az` traffic is routed through a local proxy to the Infisical **Gateway**, which reaches Azure on their behalf.
-3. The Gateway injects the token for the plane each request targets before forwarding it, so the user never handles a real credential. To `az`, the local login only ever holds a placeholder token.
-
-A plane is only usable if the service principal has permission for it (RBAC for Resource Manager, Key Vault, and Storage; application permissions with admin consent for Microsoft Graph). Planes the principal can't get a token for are simply not brokered.
-
-## Creating an account
-
-Before adding the account, create a service principal in Azure and give it access.
+## Create a service principal
 
 <Steps>
-  <Step title="Create a service principal">
-    In the Azure Portal, go to **Microsoft Entra ID → App registrations → New registration**, give it a name (e.g., `infisical-pam`), and register it. From the app's **Overview**, record the **Application (client) ID** and **Directory (tenant) ID**.
+  <Step>
+    In the Azure portal, go to **Microsoft Entra ID** > **App registrations** and select **New registration**. Enter a name, such as `infisical-pam`, and register the app.
   </Step>
-  <Step title="Create a client secret">
-    In the app, go to **Certificates & secrets → New client secret**, then copy the secret **Value** immediately (it's shown only once). This is the secret you paste into Infisical, not the Secret ID.
+  <Step>
+    On the app's **Overview** page, copy the **Application (client) ID** and the **Directory (tenant) ID**.
   </Step>
-  <Step title="Grant the service principal access">
-    RBAC role assignments are made on the resource, not on the app. Open the subscription (or a resource group) you want to grant access to, go to **Access control (IAM) → Add role assignment**, pick a role (for example **Reader**), and on the **Members** tab select your app registration. Assign a more privileged role only if the session needs write access.
+  <Step>
+    Go to **Certificates & secrets** and select **New client secret**. Copy the secret's **Value**, not its **Secret ID**. Azure only shows the value once.
   </Step>
-  <Step title="Start adding the account in Infisical">
-    Go to **Privileged Access Management → Accounts** and select **Add Account**. Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select an Azure CLI [template](/documentation/platform/pam/templates/overview).
+  <Step>
+    Open the subscription or resource group the account should reach, go to **Access control (IAM)**, and select **Add role assignment**. Choose a role, such as **Reader**, and on the **Members** tab select the app you registered.
+  </Step>
+</Steps>
 
-    The template (or the account) must be assigned a [Gateway](/documentation/platform/gateways/overview): Azure traffic is proxied through it, so the Gateway needs outbound access on port `443` to `login.microsoftonline.com`, `management.azure.com`, `graph.microsoft.com`, `*.vault.azure.net`, and `*.core.windows.net`.
+People can only reach the Azure services that the service principal has access to. Azure Resource Manager, Key Vault, and Storage need an Azure role assignment. Microsoft Graph needs application permissions with admin consent.
+
+## Create an account
+
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
   </Step>
-  <Step title="Enter connection details and credentials">
+  <Step>
+    Select the **Folder** to add the account to and an Azure CLI **Account Template**, such as the default `azure-cli` [template](/documentation/platform/pam/templates/overview), then select **Next**.
+  </Step>
+  <Step>
+    Enter a **Name** for the account and the service principal's details:
+
     | Field | Description |
     |-------|-------------|
-    | **Name** | A descriptive name (e.g., `prod-reader`) |
-    | **Tenant ID** | The directory (tenant) ID, a GUID or a domain such as `contoso.onmicrosoft.com` |
-    | **Subscription ID** | Optional. The subscription the CLI session defaults to |
-    | **Client ID** | The application (client) ID of the service principal (a GUID) |
-    | **Client Secret** | A client secret for the service principal. Stored encrypted and never returned to clients |
+    | **Tenant ID** | The directory (tenant) ID, or a domain such as `contoso.onmicrosoft.com` |
+    | **Subscription ID** | The subscription that `az` uses by default during a session (optional) |
+    | **Gateway** | The Gateway that connects to Azure (only shown if the template doesn't set one) |
+    | **Client ID** | The application (client) ID |
+    | **Client Secret** | The client secret value |
   </Step>
-  <Step title="Save">
+  <Step>
     Select **Create**.
   </Step>
 </Steps>
 
-## Connecting
+## Connect
 
-Use the CLI to start a session. This requires the [Azure CLI (`az`)](https://learn.microsoft.com/cli/azure/install-azure-cli) to be installed locally.
+To learn how to launch a session, see [Connect to an account](/documentation/platform/pam/accounts/connect). The CLI command for the account is:
 
 ```bash
-infisical pam access my-folder/prod-reader
+infisical pam access <folder>/<account>
 ```
 
-The command starts an isolated, authenticated shell for the session. It doesn't touch your own `az` login. Run `az` commands as normal:
+The CLI opens a new shell that's signed in to Azure as the service principal. Your own `az` login isn't changed. Run `az` commands in that shell:
 
 ```bash
-az account show
 az group list
 ```
 
-Type `exit` to end the session (or press **Ctrl+C**, or wait for it to expire). The isolated session state is wiped when the session ends.
-
-**Flags:**
-- `--reason <reason>`: provide an access reason (if required by the template)
-- `--duration <duration>`: request a session duration (e.g., `30m`), capped at the template maximum
-
-<Note>
-An Azure session recording is a log of the HTTP requests and responses made to Azure during the session: each request's method and URL, and its response body. Key Vault request and response bodies are redacted in the log, since they carry secret values.
-</Note>
-
-## Next steps
-
-<CardGroup cols={2}>
-  <Card title="GCP Service Account Accounts" icon="google" iconType="brands" href="/documentation/platform/pam/accounts/gcp-service-account">
-    Add GCP service account accounts.
-  </Card>
-  <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
-    View and manage sessions.
-  </Card>
-</CardGroup>
+Type `exit` to end the session. The CLI then deletes the session's Azure CLI configuration.

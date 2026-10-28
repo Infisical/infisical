@@ -4,7 +4,10 @@ import { BadRequestError } from "@app/lib/errors";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 
 import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "./delegated-approval-enums";
-import { DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT } from "./delegated-approval-events";
+import {
+  buildDelegatedApprovalDispatchRequestedEventId,
+  DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT
+} from "./delegated-approval-events";
 import { delegatedApprovalServiceFactory } from "./delegated-approval-service";
 
 const UPDATED_AT = new Date("2026-10-23T13:00:00.000Z");
@@ -51,11 +54,13 @@ const createService = ({
   return { service, emit, create, findOne };
 };
 
-const dispatchRequestedEvent = {
-  eventType: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
-  idempotencyKey: `${DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT}:delegated-1:${UPDATED_AT.toISOString()}`,
-  payload: { delegatedRequestId: "delegated-1" }
-};
+const dispatchRequestedEvent = [
+  {
+    id: buildDelegatedApprovalDispatchRequestedEventId({ delegatedRequestId: "delegated-1", updatedAt: UPDATED_AT }),
+    type: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
+    data: { delegatedRequestId: "delegated-1" }
+  }
+];
 
 describe("delegatedApprovalService.createRequest", () => {
   test("records the dispatch event in the same transaction as the request row", async () => {
@@ -97,7 +102,7 @@ describe("delegatedApprovalService.retryDispatch", () => {
     expect(emit).toHaveBeenCalledWith(dispatchRequestedEvent, undefined);
   });
 
-  test("emits the same idempotency key when the same failed attempt is sent again", async () => {
+  test("emits the same event id when the same failed attempt is sent again", async () => {
     const { service, emit } = createService();
 
     await service.retryDispatch({ approvalRequest: pendingApprovalRequest });

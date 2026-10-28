@@ -327,10 +327,13 @@ export const pkiDiscoveryServiceFactory = ({
     );
 
     const discoveryType = (discovery.discoveryType as PkiDiscoveryType) || PkiDiscoveryType.Network;
-    const effectiveHasGateway =
-      gatewayId !== undefined || gatewayPoolId !== undefined
-        ? Boolean(gatewayId || gatewayPoolId)
-        : Boolean(discovery.gatewayId || discovery.gatewayPoolId);
+    const gatewayIdValue = gatewayPoolId ? null : gatewayId;
+    const gatewayPoolIdValue = gatewayId ? null : gatewayPoolId;
+    const isGatewayChanging = gatewayIdValue !== undefined || gatewayPoolIdValue !== undefined;
+    const effectiveHasGateway = Boolean(
+      (gatewayIdValue === undefined ? discovery.gatewayId : gatewayIdValue) ||
+        (gatewayPoolIdValue === undefined ? discovery.gatewayPoolId : gatewayPoolIdValue)
+    );
 
     $assertJobGatewayAllowed(discoveryType, Boolean(gatewayId || gatewayPoolId));
 
@@ -349,6 +352,10 @@ export const pkiDiscoveryServiceFactory = ({
           existingConnectionIds
         })
       : undefined;
+
+    if (!targetConfig && isGatewayChanging && discoveryType === PkiDiscoveryType.Network) {
+      $validateNetworkTarget(discovery.targetConfig as TPkiDiscoveryTargetConfig, effectiveHasGateway);
+    }
 
     if (gatewayId) {
       const gateway = await gatewayV2DAL.findOne({ id: gatewayId, orgId: actorOrgId });
@@ -383,9 +390,6 @@ export const pkiDiscoveryServiceFactory = ({
         actor: { type: actor, id: actorId, orgId: actorOrgId, authMethod: actorAuthMethod }
       });
     }
-
-    const gatewayIdValue = gatewayPoolId ? null : gatewayId;
-    const gatewayPoolIdValue = gatewayId ? null : gatewayPoolId;
 
     try {
       const updatedDiscovery = await pkiDiscoveryConfigDAL.updateById(discoveryId, {

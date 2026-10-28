@@ -1,5 +1,4 @@
 import { Fragment, ReactNode, useCallback } from "react";
-import { Helmet } from "react-helmet";
 import {
   FingerprintIcon,
   FolderIcon,
@@ -13,6 +12,7 @@ import {
   SecretAccessInsightsUpgradeIntent,
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
+import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader } from "@app/components/v3/platform";
 import {
   ProjectPermissionInsightsActions,
@@ -36,7 +36,7 @@ import {
   SecretAccessChart
 } from "./components";
 
-export const InsightsPage = withProjectPermission(
+const InsightsPageContent = withProjectPermission(
   () => {
     const { subscription } = useSubscription();
     const { currentProject, projectId } = useProject();
@@ -117,9 +117,6 @@ export const InsightsPage = withProjectPermission(
 
     return (
       <>
-        <Helmet>
-          <title>Insights</title>
-        </Helmet>
         <PageHeader
           className="mb-4 dashboard:mb-10"
           scope={ProjectType.SecretManager}
@@ -158,4 +155,11 @@ export const InsightsPage = withProjectPermission(
     subject: ProjectPermissionSub.Insights,
     accessRestrictedMode: "dialog"
   }
+);
+
+export const InsightsPage = () => (
+  <>
+    <PageTitle title="Insights" />
+    <InsightsPageContent />
+  </>
 );

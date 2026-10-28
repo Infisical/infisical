@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import { OrgMembershipRole, ProjectMembershipRole } from "@app/db/schemas";
+import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { additionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
@@ -23,7 +24,9 @@ const removalDeps = {
   membershipGroupDAL: membershipGroupDALFactory(testDb),
   projectKeyDAL: projectKeyDALFactory(testDb),
   additionalPrivilegeDAL: additionalPrivilegeDALFactory(testDb),
-  alertChannelRecipientDAL: alertChannelRecipientDALFactory(testDb)
+  alertChannelRecipientDAL: alertChannelRecipientDALFactory(testDb),
+  groupDAL: groupDALFactory(testDb),
+  eventEmitter: { emit: async () => {} }
 };
 
 const waitUntilBlockedBy = (pid: number) =>
