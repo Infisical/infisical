@@ -27,20 +27,41 @@ export type TAgentVaultDelegationView = {
   updatedAt: Date;
 };
 
+const DELEGATION = TableName.AgentVaultDelegation;
+const SUBJECTS = TableName.AgentVaultDelegationSubject;
+
+/**
+ * A selected delegation counts only while it names someone. Each subject cascades away with its Agent Vault membership,
+ * which can empty one, and an empty one covers no one, so it reads exactly like no delegation at all.
+ */
+const whereNamesSomeone = (query: Knex.QueryBuilder, conn: Knex) =>
+  query.where((live) => {
+    void live
+      .where(`${DELEGATION}.scope`, AgentVaultDelegationScope.AllMembers)
+      .orWhereExists(
+        conn(SUBJECTS).whereRaw(`??.?? = ??.??`, [SUBJECTS, "delegationId", DELEGATION, "id"]).select(conn.raw("1"))
+      );
+  });
+
 export const agentVaultDelegationDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultDelegation);
 
   // The row a conflict hits stays locked until the transaction ends, so two writes to one identity's delegation
   // run one after the other.
   const upsertScope = async (
-    { projectId, identityId, scope }: { projectId: string; identityId: string; scope: AgentVaultDelegationScope },
+    {
+      projectId,
+      identityId,
+      membershipId,
+      scope
+    }: { projectId: string; identityId: string; membershipId: string; scope: AgentVaultDelegationScope },
     tx: Knex
   ): Promise<TAgentVaultDelegations> => {
     try {
       const [row] = (await tx(TableName.AgentVaultDelegation)
-        .insert({ projectId, identityId, scope })
+        .insert({ projectId, identityId, membershipId, scope })
         .onConflict(["identityId", "projectId"])
-        .merge({ scope })
+        .merge({ membershipId, scope })
         .returning("*")) as TAgentVaultDelegations[];
       return row;
     } catch (error) {
@@ -65,7 +86,7 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
           projectId
         );
         if (identityIds) void query.whereIn(`${TableName.AgentVaultDelegation}.identityId`, identityIds);
-        return query;
+        return whereNamesSomeone(query, conn);
       };
 
       const countResult = (await filtered().count(`${TableName.AgentVaultDelegation}.id as count`).first()) as
@@ -90,12 +111,17 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
           `${TableName.AgentVaultDelegationSubject}.delegationId`,
           rows.map((row) => row.id)
         )
-        .leftJoin(TableName.Users, `${TableName.Users}.id`, `${TableName.AgentVaultDelegationSubject}.userId`)
-        .leftJoin(TableName.Groups, `${TableName.Groups}.id`, `${TableName.AgentVaultDelegationSubject}.groupId`)
+        .join(
+          TableName.Membership,
+          `${TableName.Membership}.id`,
+          `${TableName.AgentVaultDelegationSubject}.membershipId`
+        )
+        .leftJoin(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
+        .leftJoin(TableName.Groups, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
         .select(
           db.ref("delegationId").withSchema(TableName.AgentVaultDelegationSubject),
-          db.ref("userId").withSchema(TableName.AgentVaultDelegationSubject),
-          db.ref("groupId").withSchema(TableName.AgentVaultDelegationSubject),
+          db.ref("actorUserId").withSchema(TableName.Membership).as("userId"),
+          db.ref("actorGroupId").withSchema(TableName.Membership).as("groupId"),
           db.ref("createdAt").withSchema(TableName.AgentVaultDelegationSubject).as("addedAt"),
           db.ref("username").withSchema(TableName.Users),
           db.ref("email").withSchema(TableName.Users),
@@ -147,42 +173,50 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
 
   /**
    * Under all-members every user is covered, otherwise the users the delegation names and the members of the groups
-   * it names. Group membership is read the way the permission engine reads it, without isPending. A named user or
-   * group counts only while it holds its own Agent Vault membership, so a row left behind by a removal that didn't
-   * clear it, such as through the generic project membership routes, covers no one.
+   * it names. Group membership is read the way the permission engine reads it, without isPending. A subject exists
+   * only while its user's or group's own Agent Vault membership does, so this needs no membership check of its own.
    */
   const coversUser = async (
-    { delegation, userId }: { delegation: Pick<TAgentVaultDelegations, "id" | "scope" | "projectId">; userId: string },
+    { delegation, userId }: { delegation: Pick<TAgentVaultDelegations, "id" | "scope">; userId: string },
     tx?: Knex
   ): Promise<boolean> => {
     if (delegation.scope === AgentVaultDelegationScope.AllMembers) return true;
     try {
       const conn = tx || db.replicaNode();
-      const subjects = TableName.AgentVaultDelegationSubject;
-      const inAgentVault = (column: "actorUserId" | "actorGroupId", subjectColumn: "userId" | "groupId") =>
-        conn(TableName.Membership)
-          .where(`${TableName.Membership}.scope`, AccessScope.Project)
-          .where(`${TableName.Membership}.scopeProjectId`, delegation.projectId)
-          .whereRaw(`??.?? = ??.??`, [TableName.Membership, column, subjects, subjectColumn])
-          .select(conn.raw("1"));
-      const subject = await conn(subjects)
-        .where(`${subjects}.delegationId`, delegation.id)
+      const subject = await conn(SUBJECTS)
+        .join(TableName.Membership, `${TableName.Membership}.id`, `${SUBJECTS}.membershipId`)
+        .where(`${SUBJECTS}.delegationId`, delegation.id)
         .where((qb) => {
           void qb
-            .where((named) => {
-              void named.where(`${subjects}.userId`, userId).whereExists(inAgentVault("actorUserId", "userId"));
-            })
-            .orWhere((viaGroup) => {
-              void viaGroup
-                .whereIn(`${subjects}.groupId`, conn(TableName.UserGroupMembership).select("groupId").where({ userId }))
-                .whereExists(inAgentVault("actorGroupId", "groupId"));
-            });
+            .where(`${TableName.Membership}.actorUserId`, userId)
+            .orWhereIn(
+              `${TableName.Membership}.actorGroupId`,
+              conn(TableName.UserGroupMembership).select("groupId").where({ userId })
+            );
         })
-        .select(db.ref("id").withSchema(TableName.AgentVaultDelegationSubject))
+        .select(db.ref("id").withSchema(SUBJECTS))
         .first();
       return Boolean(subject);
     } catch (error) {
       throw new DatabaseError({ error, name: "Check Agent Vault delegation coverage" });
+    }
+  };
+
+  // Undefined when the identity has no delegation, or only one left naming no one.
+  const findForIdentity = async (
+    { projectId, identityId }: { projectId: string; identityId: string },
+    tx?: Knex
+  ): Promise<TAgentVaultDelegations | undefined> => {
+    try {
+      const conn = tx || db.replicaNode();
+      return (await whereNamesSomeone(
+        conn(DELEGATION).where(`${DELEGATION}.projectId`, projectId).where(`${DELEGATION}.identityId`, identityId),
+        conn
+      )
+        .select(selectAllTableCols(DELEGATION))
+        .first()) as TAgentVaultDelegations | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find Agent Vault delegation" });
     }
   };
 
@@ -191,14 +225,7 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
     { projectId, identityId, userId }: { projectId: string; identityId: string; userId: string },
     tx?: Knex
   ): Promise<boolean> => {
-    let delegation: TAgentVaultDelegations | undefined;
-    try {
-      delegation = (await (tx || db.replicaNode())(TableName.AgentVaultDelegation)
-        .where({ projectId, identityId })
-        .first()) as TAgentVaultDelegations | undefined;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find Agent Vault delegation" });
-    }
+    const delegation = await findForIdentity({ projectId, identityId }, tx);
     return delegation ? coversUser({ delegation, userId }, tx) : false;
   };
 
@@ -232,58 +259,17 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
         })
         .forShare()
         .select(
+          db.ref("id").withSchema(TableName.Membership),
           db.ref("actorIdentityId").withSchema(TableName.Membership),
           db.ref("actorUserId").withSchema(TableName.Membership),
           db.ref("actorGroupId").withSchema(TableName.Membership)
-        )) as Pick<TMemberships, "actorIdentityId" | "actorUserId" | "actorGroupId">[];
+        )) as Pick<TMemberships, "id" | "actorIdentityId" | "actorUserId" | "actorGroupId">[];
     } catch (error) {
       throw new DatabaseError({ error, name: "Lock Agent Vault memberships for a delegation" });
     }
   };
 
-  /**
-   * Takes users and groups leaving Agent Vault out of the project's delegations, and deletes a selected delegation
-   * left naming no one. The delegations that name them are locked first, so a save to one waits instead of changing
-   * it between these statements.
-   */
-  const removeSubjects = async (
-    { projectId, userIds, groupIds }: { projectId: string; userIds: string[]; groupIds: string[] },
-    tx: Knex
-  ) => {
-    if (!userIds.length && !groupIds.length) return;
-    const subjects = TableName.AgentVaultDelegationSubject;
-    const ofDelegation = () =>
-      tx(subjects)
-        .whereRaw(`??.?? = ??.??`, [subjects, "delegationId", TableName.AgentVaultDelegation, "id"])
-        .select(tx.raw("1"));
-    const namingThem = (query: Knex.QueryBuilder) =>
-      query.where((subject) => {
-        if (userIds.length) void subject.orWhereIn(`${subjects}.userId`, userIds);
-        if (groupIds.length) void subject.orWhereIn(`${subjects}.groupId`, groupIds);
-      });
-
-    try {
-      const delegationIds = (
-        (await tx(TableName.AgentVaultDelegation)
-          .where(`${TableName.AgentVaultDelegation}.projectId`, projectId)
-          .whereExists(namingThem(ofDelegation()))
-          .forUpdate()
-          .select(db.ref("id").withSchema(TableName.AgentVaultDelegation))) as { id: string }[]
-      ).map((row) => row.id);
-      if (!delegationIds.length) return;
-
-      await namingThem(tx(subjects).whereIn(`${subjects}.delegationId`, delegationIds)).delete();
-      await tx(TableName.AgentVaultDelegation)
-        .whereIn(`${TableName.AgentVaultDelegation}.id`, delegationIds)
-        .where(`${TableName.AgentVaultDelegation}.scope`, AgentVaultDelegationScope.Selected)
-        .whereNotExists(ofDelegation())
-        .delete();
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Remove users and groups from Agent Vault delegations" });
-    }
-  };
-
-  return { ...orm, upsertScope, findViews, coversUser, identityCoversUser, lockMemberships, removeSubjects };
+  return { ...orm, upsertScope, findViews, coversUser, findForIdentity, identityCoversUser, lockMemberships };
 };
 
 export const agentVaultDelegationSubjectDALFactory = (db: TDbClient) =>

@@ -16,7 +16,7 @@ import { TOnBehalfOfUser } from "../agent-vault-session/agent-vault-session-type
 import { TAgentVaultDelegationDALFactory } from "./agent-vault-delegation-dal";
 
 export type TOnBehalfOfDeps = {
-  agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "findOne" | "coversUser">;
+  agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "findForIdentity" | "coversUser">;
   userDAL: Pick<TUserDALFactory, "findOne">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -31,7 +31,7 @@ export const findCallerDelegation = async (
     throw new BadRequestError({ message: "Only a machine identity can start a session on behalf of a user" });
   }
 
-  const delegation = await agentVaultDelegationDAL.findOne({ projectId, identityId: ctx.actorId });
+  const delegation = await agentVaultDelegationDAL.findForIdentity({ projectId, identityId: ctx.actorId });
   if (!delegation) {
     throw new ForbiddenRequestError({
       message:

@@ -5138,36 +5138,52 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("a save checks only the users and groups it adds", async () => {
+    test("leaving the organization takes a user out of every delegation", async () => {
       const projectId = await getProjectId();
       const bot = await createMemberIdentity(`obo-departed-bot-${Date.now()}`);
+      const carolOnlyBot = await createMemberIdentity(`obo-departed-carol-bot-${Date.now()}`);
       const alice = await createAgentVaultUser("obo-departed-alice", projectId);
       const carol = await createAgentVaultUser("obo-departed-carol", projectId);
-      const dave = await createAgentVaultUser("obo-departed-dave", projectId);
-      const userIdsOf = (delegation: TDelegationDetail) => delegation.users.map((row) => row.id).sort();
+      const userIdsOf = (res: { json: () => { delegation: TDelegationDetail } }) =>
+        res.json().delegation.users.map((row) => row.id);
       try {
         await delegate(bot, { scope: "selected", userIds: [alice.userId, carol.userId] });
-        // Leaving the organization deletes the Agent Vault membership without Agent Vault's own removal.
-        await testDb("memberships")
-          .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: carol.userId })
-          .delete();
+        await delegate(carolOnlyBot, { scope: "selected", userIds: [carol.userId] });
 
-        const kept = await delegate(bot, { scope: "selected", userIds: [alice.userId, carol.userId, dave.userId] });
-        expect(userIdsOf(kept)).toEqual([alice.userId, carol.userId, dave.userId].sort());
-        const removed = await delegate(bot, { scope: "selected", userIds: [alice.userId, dave.userId] });
-        expect(userIdsOf(removed)).toEqual([alice.userId, dave.userId].sort());
+        const orgMembership = await testDb("memberships")
+          .where({ scope: AccessScope.Organization, scopeOrgId: seedData1.organization.id, actorUserId: carol.userId })
+          .first();
+        const left = await inject(
+          "DELETE",
+          `/api/v2/organizations/${seedData1.organization.id}/memberships/${orgMembership.id as string}`
+        );
+        expect(left.statusCode).toBe(200);
 
-        const added = await inject("PUT", delegationUrl(bot.id), {
+        expect(userIdsOf(await inject("GET", delegationUrl(bot.id)))).toEqual([alice.userId]);
+        // A selected delegation left naming no one reads like none at all, at every endpoint.
+        expect((await inject("GET", delegationUrl(carolOnlyBot.id))).statusCode).toBe(404);
+        const listed = await inject("GET", `${delegationsUrl}?machineIdentityIds=${carolOnlyBot.id}`);
+        expect(listed.json()).toMatchObject({ delegations: [], totalCount: 0 });
+        const minted = await mintFor(carolOnlyBot, { userId: alice.userId }, "any-bundle");
+        expect(minted.statusCode).toBe(403);
+        expect(minted.json().message).toContain("isn't allowed to start sessions on behalf of users");
+
+        // Carol is a new subject again, so naming her is checked like any other addition.
+        const readded = await inject("PUT", delegationUrl(bot.id), {
           scope: "selected",
           userIds: [alice.userId, carol.userId]
         });
-        expect(added.statusCode).toBe(400);
-        expect(added.json().message).toBe(
+        expect(readded.statusCode).toBe(400);
+        expect(readded.json().message).toBe(
           `User(s) '${carol.userId}' are not members of Agent Vault. Add them under Access Control first.`
         );
+        // An emptied delegation is replaced like any other.
+        const replaced = await delegate(carolOnlyBot, { scope: "selected", userIds: [alice.userId] });
+        expect(replaced.users.map((row) => row.id)).toEqual([alice.userId]);
       } finally {
         await bot.cleanup();
-        await deleteUsers([alice.userId, carol.userId, dave.userId]);
+        await carolOnlyBot.cleanup();
+        await deleteUsers([alice.userId, carol.userId]);
       }
     });
 
@@ -5244,7 +5260,7 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
-    test("a user or group stops covering anyone once it leaves Agent Vault some other way", async () => {
+    test("a user or group leaves every delegation when it leaves Agent Vault some other way", async () => {
       const projectId = await getProjectId();
       const stamp = Date.now();
       const bundle = await createAccessBundle(`obo-stale-${stamp}`);
@@ -5259,7 +5275,7 @@ describe("Agent Vault V1 Router", async () => {
         { groupId: named.id, userId: dave.userId },
         { groupId: other.id, userId: dave.userId }
       ]);
-      // The generic project membership routes remove a member without clearing delegations.
+      // Stands in for the generic project membership routes, which delete the membership and nothing else.
       const leaveAgentVault = (actor: { actorUserId: string } | { actorGroupId: string }) =>
         testDb("memberships")
           .where({ scope: AccessScope.Project, scopeProjectId: projectId, ...actor })
@@ -5275,6 +5291,8 @@ describe("Agent Vault V1 Router", async () => {
 
         await leaveAgentVault({ actorUserId: carol.userId });
         expect((await mintFor(bot, { userId: carol.userId }, bundle.name)).statusCode).toBe(403);
+        // Each subject went with its membership, so the emptied delegation is gone too.
+        expect((await inject("GET", delegationUrl(bot.id))).statusCode).toBe(404);
       } finally {
         await bot.cleanup();
         await deleteUsers([carol.userId, dave.userId]);

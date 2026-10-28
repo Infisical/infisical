@@ -48,8 +48,7 @@ tables:
     columns:
       - id
       - delegationId
-      - userId
-      - groupId
+      - membershipId
       - createdAt
 
   - name: agent_vault_delegations
@@ -58,6 +57,7 @@ tables:
       - id
       - projectId
       - identityId
+      - membershipId
       - scope
       - createdAt
       - updatedAt

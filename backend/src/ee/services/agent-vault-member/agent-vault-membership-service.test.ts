@@ -132,11 +132,7 @@ const buildService = ({
     usageMeteringService: { emitForProject: vi.fn() },
     agentVaultPersonalValueDAL: { deleteForActorsWithoutGrant: vi.fn().mockResolvedValue(0) },
     userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
-    identityGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
-    agentVaultDelegationDAL: {
-      delete: vi.fn().mockResolvedValue([]),
-      removeSubjects: vi.fn().mockResolvedValue(undefined)
-    }
+    identityGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) }
   };
 
   const service = agentVaultMembershipServiceFactory(
@@ -223,22 +219,6 @@ describe("agentVaultMembership guards", () => {
     expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).toHaveBeenCalledWith(
       { projectId: PROJECT_ID, accessBundleId: undefined, userIds: [], identityIds: [IDENTITY_ID] },
       expect.anything()
-    );
-  });
-
-  // A delegation left in place would let the identity act for users again the moment it is added back.
-  test("deletes the delegation of an identity it removes, in the same transaction", async () => {
-    const { service, deps, txs } = buildService({
-      identityProjectId: null,
-      productMemberships: [{ id: "mem-1" }],
-      adminMembershipIds: ["mem-other"]
-    });
-
-    await service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx });
-
-    expect(deps.agentVaultDelegationDAL.delete).toHaveBeenCalledWith(
-      { projectId: PROJECT_ID, $in: { identityId: [IDENTITY_ID] } },
-      txs[0]
     );
   });
 

@@ -36,7 +36,6 @@ import { resolveUsersBySsoExternalId } from "@app/services/user-alias/user-alias
 
 import { resolveAgentVaultActorNames, TAgentVaultActorName } from "../agent-vault/agent-vault-actor-name-fns";
 import { AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
-import { TAgentVaultDelegationDALFactory } from "../agent-vault-delegation/agent-vault-delegation-dal";
 import {
   clearPersonalValuesAfterRevoke,
   TClearPersonalValuesDeps
@@ -55,7 +54,6 @@ type TAgentVaultMembershipServiceFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById" | "findActorsWithActiveOrgAccess" | "lockActorsForOrgAccess">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emitForProject">;
-  agentVaultDelegationDAL: Pick<TAgentVaultDelegationDALFactory, "delete" | "removeSubjects">;
 } & TClearPersonalValuesDeps;
 
 export type TAgentVaultMembershipServiceFactory = ReturnType<typeof agentVaultMembershipServiceFactory>;
@@ -145,8 +143,7 @@ export const agentVaultMembershipServiceFactory = ({
   usageMeteringService,
   agentVaultPersonalValueDAL,
   userGroupMembershipDAL,
-  identityGroupMembershipDAL,
-  agentVaultDelegationDAL
+  identityGroupMembershipDAL
 }: TAgentVaultMembershipServiceFactoryDep) => {
   const getActorPermission = (projectId: string, ctx: TGenericPermission) =>
     permissionService.getProjectPermission({
@@ -688,23 +685,9 @@ export const agentVaultMembershipServiceFactory = ({
         })
       );
 
-      // membership_roles cascades on the membership FK, so the roles go with these rows.
+      // membership_roles and the delegation rows cascade on the membership FK, so the roles go with these rows, as do
+      // an identity's delegation and the users and groups a delegation names.
       await membershipDAL.delete({ $in: { id: membershipIds } }, tx);
-
-      // A delegation left behind would come back with a later add, so an identity rejoining acts for no one until an
-      // admin allows it again. Users and groups come out of the delegations that name them for the same reason.
-      const removedIdentityIds = named(held, AgentVaultMemberType.MachineIdentity);
-      if (removedIdentityIds.length) {
-        await agentVaultDelegationDAL.delete({ projectId, $in: { identityId: removedIdentityIds } }, tx);
-      }
-      await agentVaultDelegationDAL.removeSubjects(
-        {
-          projectId,
-          userIds: named(held, AgentVaultMemberType.User),
-          groupIds: named(held, AgentVaultMemberType.Group)
-        },
-        tx
-      );
 
       // Their bundle grants went above. Their own variables stay, as they would if they only lost a bundle.
       await clearPersonalValuesAfterRevoke(

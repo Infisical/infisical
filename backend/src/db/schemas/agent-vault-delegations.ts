@@ -11,6 +11,7 @@ export const AgentVaultDelegationsSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string(),
   identityId: z.string().uuid(),
+  membershipId: z.string().uuid(),
   scope: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()

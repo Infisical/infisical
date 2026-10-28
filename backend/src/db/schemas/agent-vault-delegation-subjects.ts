@@ -10,8 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const AgentVaultDelegationSubjectsSchema = z.object({
   id: z.string().uuid(),
   delegationId: z.string().uuid(),
-  userId: z.string().uuid().nullable().optional(),
-  groupId: z.string().uuid().nullable().optional(),
+  membershipId: z.string().uuid(),
   createdAt: z.date()
 });
 

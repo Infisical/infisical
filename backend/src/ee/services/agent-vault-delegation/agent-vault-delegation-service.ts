@@ -311,35 +311,41 @@ export const agentVaultDelegationServiceFactory = ({
         tx
       );
       // Project-scoped, so an identity from another org is a 404 like one that doesn't exist.
-      if (!memberships.some((row) => row.actorIdentityId === machineIdentityId)) {
+      const identityMembership = memberships.find((row) => row.actorIdentityId === machineIdentityId);
+      if (!identityMembership) {
         throw new NotFoundError({
           message: `Machine identity with ID '${machineIdentityId}' is not a member of Agent Vault. Add it under Access Control first.`
         });
       }
+      await assertSubjectsInAgentVault(
+        { projectId, userIds: wantedUserIds, groupIds: wantedGroupIds, memberships },
+        tx
+      );
 
-      const row = await agentVaultDelegationDAL.upsertScope({ projectId, identityId: machineIdentityId, scope }, tx);
+      const row = await agentVaultDelegationDAL.upsertScope(
+        { projectId, identityId: machineIdentityId, membershipId: identityMembership.id, scope },
+        tx
+      );
 
+      const wantedMembershipIds = new Set(
+        memberships
+          .filter(
+            (membership) =>
+              (membership.actorUserId && wantedUserIds.includes(membership.actorUserId)) ||
+              (membership.actorGroupId && wantedGroupIds.includes(membership.actorGroupId))
+          )
+          .map((membership) => membership.id)
+      );
       // Rows that stay are kept rather than rewritten, so each one's addedAt still says when it was added.
       const existing = await agentVaultDelegationSubjectDAL.find({ delegationId: row.id }, { tx });
-      const keptUserIds = new Set(existing.map((named) => named.userId).filter(Boolean));
-      const keptGroupIds = new Set(existing.map((named) => named.groupId).filter(Boolean));
-      const addedUserIds = wantedUserIds.filter((id) => !keptUserIds.has(id));
-      const addedGroupIds = wantedGroupIds.filter((id) => !keptGroupIds.has(id));
-
-      // Only the subjects being added, so one that has left Agent Vault some other way, such as by leaving the
-      // organization, can still be kept or taken out.
-      await assertSubjectsInAgentVault({ projectId, userIds: addedUserIds, groupIds: addedGroupIds, memberships }, tx);
-
-      const stale = existing.filter((named) =>
-        named.userId ? !wantedUserIds.includes(named.userId) : !wantedGroupIds.includes(named.groupId!)
-      );
+      const stale = existing.filter((named) => !wantedMembershipIds.has(named.membershipId));
       if (stale.length) {
         await agentVaultDelegationSubjectDAL.delete({ $in: { id: stale.map((named) => named.id) } }, tx);
       }
-      const added = [
-        ...addedUserIds.map((userId) => ({ delegationId: row.id, userId })),
-        ...addedGroupIds.map((groupId) => ({ delegationId: row.id, groupId }))
-      ];
+      const keptMembershipIds = new Set(existing.map((named) => named.membershipId));
+      const added = [...wantedMembershipIds]
+        .filter((membershipId) => !keptMembershipIds.has(membershipId))
+        .map((membershipId) => ({ delegationId: row.id, membershipId }));
       if (added.length) await agentVaultDelegationSubjectDAL.insertMany(added, tx);
 
       const {

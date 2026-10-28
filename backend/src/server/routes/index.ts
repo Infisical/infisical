@@ -2147,8 +2147,7 @@ export const registerRoutes = async (
     usageMeteringService,
     agentVaultPersonalValueDAL,
     userGroupMembershipDAL,
-    identityGroupMembershipDAL,
-    agentVaultDelegationDAL
+    identityGroupMembershipDAL
   });
 
   const pamProjectResolver = pamProjectResolverFactory({

@@ -27,7 +27,9 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   // Which users a machine identity may start sessions on behalf of: everyone in Agent Vault, or the users and
-  // groups listed in agent_vault_delegation_subjects. One row per identity.
+  // groups listed in agent_vault_delegation_subjects. One row per identity. A delegation and each of its subjects
+  // hang off an Agent Vault membership, so every way of leaving Agent Vault (Agent Vault's own removal, the generic
+  // project membership routes, leaving the organization, deleting the actor) takes them with it.
   if (!(await knex.schema.hasTable(TableName.AgentVaultDelegation))) {
     await knex.schema.createTable(TableName.AgentVaultDelegation, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
@@ -38,6 +40,10 @@ export async function up(knex: Knex): Promise<void> {
 
       t.uuid("identityId").notNullable();
       t.foreign("identityId").references("id").inTable(TableName.Identity).onDelete("CASCADE");
+
+      // The identity's own Agent Vault membership. Unique, so the index also serves the cascade.
+      t.uuid("membershipId").notNullable().unique();
+      t.foreign("membershipId").references("id").inTable(TableName.Membership).onDelete("CASCADE");
 
       t.string("scope", 32).notNullable();
 
@@ -63,28 +69,15 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("delegationId").references("id").inTable(TableName.AgentVaultDelegation).onDelete("CASCADE");
       t.index("delegationId");
 
-      t.uuid("userId");
-      t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
-
-      t.uuid("groupId");
-      t.foreign("groupId").references("id").inTable(TableName.Groups).onDelete("CASCADE");
+      // The Agent Vault membership of the user or group the delegation names.
+      t.uuid("membershipId").notNullable();
+      t.foreign("membershipId").references("id").inTable(TableName.Membership).onDelete("CASCADE");
 
       t.timestamp("createdAt", { useTz: true }).notNullable().defaultTo(knex.fn.now());
-    });
 
-    await knex.raw(
-      `ALTER TABLE ?? ADD CONSTRAINT "agent_vault_delegation_subjects_one_subject" CHECK (num_nonnulls("userId", "groupId") = 1)`,
-      [TableName.AgentVaultDelegationSubject]
-    );
-    // The subject column leads, so each index also serves its foreign key's cascade.
-    await knex.raw(
-      `CREATE UNIQUE INDEX "agent_vault_delegation_subjects_user_unique" ON ?? ("userId", "delegationId") WHERE "userId" IS NOT NULL`,
-      [TableName.AgentVaultDelegationSubject]
-    );
-    await knex.raw(
-      `CREATE UNIQUE INDEX "agent_vault_delegation_subjects_group_unique" ON ?? ("groupId", "delegationId") WHERE "groupId" IS NOT NULL`,
-      [TableName.AgentVaultDelegationSubject]
-    );
+      // membershipId leads, so the index also serves the membership foreign key's cascade.
+      t.unique(["membershipId", "delegationId"]);
+    });
   }
 }
 
