@@ -3361,6 +3361,7 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     appConnectionDAL,
     appConnectionService,
+    licenseService,
     eventEmitter: eventOutboxService
   });
 

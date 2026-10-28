@@ -538,11 +538,9 @@ export const ReviewAccessRequestModal = ({
     request.isApproved &&
     new Date() > new Date(request.privilege.temporaryAccessEndTime || ("" as string));
   const isReviewedByMe = request.reviewers.find((i) => i.userId === user.id);
-  const isDelegatedPending =
-    isDelegatedRequest &&
-    request.status === ApprovalStatus.PENDING &&
-    !hasExpired &&
-    !request.policy.deletedAt;
+  const isDelegatedOpen =
+    isDelegatedRequest && request.status === ApprovalStatus.PENDING && !request.policy.deletedAt;
+  const isDelegatedPending = isDelegatedOpen && !hasExpired;
 
   const canRetryDispatch =
     !isRetryingDelegatedDispatch &&
@@ -555,7 +553,7 @@ export const ReviewAccessRequestModal = ({
       ));
 
   const canCancelDelegatedRequest =
-    isDelegatedPending &&
+    isDelegatedOpen &&
     (request.isRequestedByCurrentUser ||
       permission.can(ProjectPermissionActions.Edit, ProjectPermissionSub.SecretApproval));
 

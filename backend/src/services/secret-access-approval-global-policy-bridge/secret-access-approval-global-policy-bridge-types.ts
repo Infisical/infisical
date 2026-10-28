@@ -57,7 +57,7 @@ export type TSecretAccessApprovalGlobalPolicyBridgeServiceFactoryDep = {
   >;
   delegatedApprovalService: Pick<
     TDelegatedApprovalServiceFactory,
-    "validateConnection" | "createPolicy" | "updatePolicy" | "deletePolicyByPolicyId"
+    "validateConnection" | "assertPlanAllowsPolicyEdit" | "createPolicy" | "updatePolicy" | "deletePolicyByPolicyId"
   >;
 };
 

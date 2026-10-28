@@ -191,3 +191,28 @@ describe("delegatedApprovalService.retryDispatch", () => {
     expect(emit).not.toHaveBeenCalled();
   });
 });
+
+describe("delegatedApprovalService.assertPlanAllowsPolicyEdit", () => {
+  const createPlanService = (enterpriseAppConnections: boolean) => {
+    const getPlan = vi.fn().mockResolvedValue({ enterpriseAppConnections });
+    const service = delegatedApprovalServiceFactory({ licenseService: { getPlan } } as never);
+    return { service, getPlan };
+  };
+
+  test("refuses the edit when the org's plan lacks enterprise app connections", async () => {
+    const { service, getPlan } = createPlanService(false);
+
+    await expect(service.assertPlanAllowsPolicyEdit(DelegatedApprovalPolicyType.ServiceNow, "org-1")).rejects.toThrow(
+      "remove the delegated approver to edit this policy"
+    );
+    expect(getPlan).toHaveBeenCalledWith("org-1");
+  });
+
+  test("allows the edit when the org's plan includes enterprise app connections", async () => {
+    const { service } = createPlanService(true);
+
+    await expect(
+      service.assertPlanAllowsPolicyEdit(DelegatedApprovalPolicyType.ServiceNow, "org-1")
+    ).resolves.toBeUndefined();
+  });
+});
