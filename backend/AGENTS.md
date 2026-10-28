@@ -206,6 +206,9 @@ Path alias: `@app/*` maps to `./src/*`.
 Oxlint (`.oxlintrc.json`) lints; its type-aware rules run through `oxlint-tsgolint` on TypeScript 7.
 Existing `eslint-disable` comments, including `@typescript-eslint/` rule names, are honoured by Oxlint.
 `import/no-cycle` is off: the backend has thousands of cycles through `@app/*` that ESLint's resolver never saw.
+Type-aware linting is the `--type-aware` CLI flag, not `options.typeAware`: Oxlint rejects that option in a nested
+config, which is what `backend/.oxlintrc.json` is to an editor opened at the repo root.
+Editor setup for the Oxc extension lives in `backend/.vscode/` and `backend/.zed/`.
 
 Oxfmt (`.oxfmtrc.json`) formats `src/**/*.ts` and sorts imports in this group order:
 1. Side-effect imports
