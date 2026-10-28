@@ -3,6 +3,7 @@ package syncs_test
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/github"
@@ -12,6 +13,7 @@ import (
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/stretchr/testify/require"
 )
 
@@ -207,22 +209,29 @@ func TestSecretSync_RecursiveTrigger(t *testing.T) {
 		t.Parallel()
 		spec.Why(t, `No secret-level write carries a folder delete, so the run has to be queued
 			by the delete itself. The sync exists before the secret is written, so the only
-			runs are the one for that write and the one for the delete.`)
+			runs are the one for that write and the one for the delete. The delete waits for
+			the write's run to record its sync time, and the final wait allows one 30 s lock
+			requeue in case that run had not yet released its lock.`)
 
 		// Setup
 		proj, conn, gh := setup(t)
 		secretmanager.CreateFolder(t, proj, "dev", "/audit/reports")
 		s := newSync(t, proj, conn, repoScope("acme", "app"), fromPath("/audit"), includeSubFolders(), autoSync(true))
 		s.awaitTerminal(t)
+		before := s.get(t).JSON200.SecretSync.LastSyncedAt
 		secretmanager.CreateSecret(t, proj, "dev", "AUDIT_KEY", "audit-value", secretmanager.WithPath("/audit/reports"))
 		gh.ExpectEvent[github.SecretCreated](t, created("AUDIT_KEY"), syncBudget)
+		wait.Until(t, "the write's sync run to record its sync time", func() bool {
+			got := s.get(t).JSON200.SecretSync.LastSyncedAt
+			return got != nil && (before == nil || got.After(*before))
+		})
 		mark := gh.Mark(t)
 
 		// Action
 		deleteFolder(t, proj, "dev", "/audit/reports")
 
 		// Assert
-		gh.ExpectEvent[github.SecretDeleted](t, named("AUDIT_KEY"), fakenet.Since(mark), syncBudget)
+		gh.ExpectEvent[github.SecretDeleted](t, named("AUDIT_KEY"), fakenet.Since(mark), fakenet.Within(60*time.Second))
 		require.NotContains(t, gh.Repo(t, "acme/app").Secrets, "AUDIT_KEY")
 	})
 }
