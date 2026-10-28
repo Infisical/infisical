@@ -56,18 +56,18 @@ Agent Vault can hold up to 500 global variables.
 
 ## Use a variable in a service
 
-You can use a variable in the following fields when [configuring a service](/documentation/platform/agent-vault/services#add-a-service):
+You can use a variable in the following fields when [configuring a service](/documentation/platform/agent-vault/services):
 
-- **Token** in a [Bearer](/documentation/platform/agent-vault/services#bearer) credential
-- **Username** and **Password** in a [Basic](/documentation/platform/agent-vault/services#basic) credential
-- **Value** in a [custom header](/documentation/platform/agent-vault/services#custom-headers)
-- **With** in a [substitution](/documentation/platform/agent-vault/services#substitutions)
+- **Token** in a [Bearer](/documentation/platform/agent-vault/http-apis#bearer) credential, or in an MCP server's [Bearer token](/documentation/platform/agent-vault/mcp-servers#bearer-token)
+- **Username** and **Password** in a [Basic](/documentation/platform/agent-vault/http-apis#basic) credential
+- **Value** in a custom header, for an [HTTP API](/documentation/platform/agent-vault/http-apis#custom-headers) or an [MCP server](/documentation/platform/agent-vault/mcp-servers#custom-headers)
+- **With** in a [substitution](/documentation/platform/agent-vault/http-apis#substitutions)
 
 To use a variable:
 
 <Steps>
   <Step>
-    [Add a service](/documentation/platform/agent-vault/services#add-a-service), or open an existing service's actions menu and select **Edit**. Then go to the **Credential** step.
+    [Add a service](/documentation/platform/agent-vault/services), or open an existing service's actions menu and select **Edit**. Then go to the **Credential** step.
   </Step>
   <Step>
     In a field that accepts variables, type `{{`. A list of your variables appears.

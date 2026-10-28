@@ -32,6 +32,7 @@ import { agentVaultServiceSubstitutionDALFactory } from "@app/ee/services/agent-
 import { agentVaultServiceVariableReferenceDALFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-service-variable-reference-dal";
 import { agentVaultMemberDALFactory } from "@app/ee/services/agent-vault-member/agent-vault-member-dal";
 import { agentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
+import { agentVaultOauthServiceFactory } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-service";
 import {
   agentVaultPersonalValueDALFactory,
   agentVaultPersonalValueReferenceDALFactory
@@ -2044,6 +2045,15 @@ export const registerRoutes = async (
   const agentVaultResolveDAL = agentVaultResolveDALFactory(db);
   const agentVaultSessionLogConfigDAL = agentVaultSessionLogConfigDALFactory(db);
 
+  const agentVaultOauthService = agentVaultOauthServiceFactory({
+    keyStore,
+    kmsService,
+    agentVaultServiceDAL,
+    agentVaultAccessBundleDAL,
+    permissionService,
+    membershipDAL
+  });
+
   const agentVaultVariableService = agentVaultVariableServiceFactory({
     agentVaultVariableDAL,
     agentVaultPersonalValueDAL,
@@ -2078,6 +2088,7 @@ export const registerRoutes = async (
     agentVaultMemberDAL,
     userGroupMembershipDAL,
     identityGroupMembershipDAL,
+    agentVaultOauthService,
     userDAL,
     groupDAL,
     identityDAL
@@ -2210,7 +2221,8 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     licenseService,
-    resourceAuthMethodService
+    resourceAuthMethodService,
+    agentVaultOauthService
   });
 
   const relayService = relayServiceFactory({
@@ -4819,6 +4831,7 @@ export const registerRoutes = async (
     pamProjectResolver,
     agentVaultProjectResolver,
     agentVaultAccessBundle: agentVaultAccessBundleService,
+    agentVaultOauth: agentVaultOauthService,
     agentVaultVariable: agentVaultVariableService,
     agentVaultPersonalValue: agentVaultPersonalValueService,
     agentVaultProxy: agentVaultProxyService,

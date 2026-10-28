@@ -74,6 +74,7 @@ import {
 import { TAgentVaultProxy, TAgentVaultProxyToken } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { ProxyFormDialog } from "./components/ProxyFormDialog";
@@ -161,6 +162,7 @@ export const AgentVaultProxiesPage = () => {
   const rotateProxyToken = useRotateAgentVaultProxyToken();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  useAgentVaultCreateIntent(() => setIsCreateOpen(true), isAdmin);
   const [proxyToEdit, setProxyToEdit] = useState<TAgentVaultProxy | null>(null);
   const [proxyToDelete, setProxyToDelete] = useState<TAgentVaultProxy | null>(null);
   const [proxyToRevoke, setProxyToRevoke] = useState<TAgentVaultProxy | null>(null);
@@ -263,6 +265,8 @@ export const AgentVaultProxiesPage = () => {
             <TableHeader>
               <TableRow>
                 <TableHead
+                  isTruncatable
+                  className="w-2/5"
                   sortDirection={sortColumn === SortColumn.Name ? sortDirection : "none"}
                   onSortChange={(direction) => handleSort(SortColumn.Name, direction)}
                 >
@@ -310,7 +314,7 @@ export const AgentVaultProxiesPage = () => {
               {!isPending &&
                 displayed.map((proxy) => (
                   <TableRow key={proxy.id}>
-                    <TableCell>
+                    <TableCell isTruncatable className="min-w-64">
                       <div className="flex items-center gap-2.5">
                         <span className="truncate" title={proxy.name}>
                           {proxy.name}

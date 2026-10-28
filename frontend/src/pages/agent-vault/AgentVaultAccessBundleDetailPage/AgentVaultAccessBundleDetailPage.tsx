@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import {
   ChevronLeftIcon,
   EllipsisIcon,
+  IdCardIcon,
   PackageIcon,
   PencilIcon,
   TrashIcon,
@@ -32,10 +33,15 @@ import {
   PageLoader
 } from "@app/components/v3";
 import { useOrganization, useProjectPermission } from "@app/context";
-import { useGetAgentVaultAccessBundle } from "@app/hooks/api/agentVault";
+import {
+  AgentVaultSessionScope,
+  useGetAgentVaultAccessBundle,
+  useListAgentVaultSessions
+} from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 import { DeleteAccessBundleDialog } from "@app/pages/agent-vault/AgentVaultAccessBundlesPage/components/DeleteAccessBundleDialog";
 
 import { ServicesCard } from "./components/ServicesCard";
@@ -56,12 +62,27 @@ export const AgentVaultAccessBundleDetailPage = () => {
   const needsSetup = (accessBundle?.services ?? []).filter(
     (service) => service.personalValues && !service.personalValues.isConfigured
   );
+  // Listing every session is admin-only, and only admins see the note that reads this.
+  const { data: sessions } = useListAgentVaultSessions(
+    { scope: AgentVaultSessionScope.All, limit: 1 },
+    {
+      enabled: isAdmin,
+      refetchInterval: (query) => ((query.state.data?.totalCount ?? 0) > 0 ? false : 30_000)
+    }
+  );
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isManageAccessOpen, setIsManageAccessOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isServiceSheetOpen, setIsServiceSheetOpen] = useState(false);
   const [serviceToEdit, setServiceToEdit] = useState<TAgentVaultService | null>(null);
+  useAgentVaultCreateIntent(
+    () => {
+      setServiceToEdit(null);
+      setIsServiceSheetOpen(true);
+    },
+    isAdmin && Boolean(accessBundle)
+  );
 
   if (isPending)
     return (
@@ -153,6 +174,25 @@ export const AgentVaultAccessBundleDetailPage = () => {
             <AlertAction>
               <Button variant="outline" size="sm" onClick={() => setServiceToSetUp(needsSetup[0])}>
                 Set Up {needsSetup[0].name}
+              </Button>
+            </AlertAction>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isAdmin && accessBundle.services.length > 0 && sessions?.totalCount === 0 && (
+        <Alert variant="info" className="mb-6">
+          <IdCardIcon />
+          <AlertDescription>
+            <p>This bundle is ready. Create a session with it to give an agent access.</p>
+            <AlertAction>
+              <Button variant="outline" size="sm" asChild>
+                <Link
+                  to="/organizations/$orgId/agent-vault/sessions"
+                  params={{ orgId: currentOrg.id }}
+                >
+                  Go to Sessions
+                </Link>
               </Button>
             </AlertAction>
           </AlertDescription>
