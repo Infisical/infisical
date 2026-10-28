@@ -83,11 +83,14 @@ export const sanitizeLogText = <T extends string | null | undefined>(value: T): 
 };
 
 // Two keys can clean up to the same string, so suffix the second one instead of losing a field.
-const disambiguate = (key: string, taken: Set<string>) => {
+// `nextSuffix` resumes the search where the last one stopped. Restarting at 2 is quadratic, and the
+// keys are user input (OIDC bound claims), so thousands of look-alikes would stall the audit queue.
+const disambiguate = (key: string, taken: Set<string>, nextSuffix: Map<string, number>) => {
   if (!taken.has(key)) return key;
 
-  let suffix = 2;
+  let suffix = nextSuffix.get(key) ?? 2;
   while (taken.has(`${key}~${suffix}`)) suffix += 1;
+  nextSuffix.set(key, suffix + 1);
   return `${key}~${suffix}`;
 };
 
@@ -159,12 +162,13 @@ export const sanitizeLogPayload = <T>(payload: T): T => {
       // first, would take the name and push the real field to `email~2`.
       const cleanKeys = new Set(entries.filter(([key]) => isClean(key)).map(([key]) => key));
       const taken = new Set(cleanKeys);
+      const nextSuffix = new Map<string, number>();
       entries.forEach(([key, value]) => {
         if (cleanKeys.has(key)) {
           assign(key, value);
           return;
         }
-        const sanitizedKey = disambiguate(sanitizeLogText(key), taken);
+        const sanitizedKey = disambiguate(sanitizeLogText(key), taken, nextSuffix);
         taken.add(sanitizedKey);
         assign(sanitizedKey, value);
       });

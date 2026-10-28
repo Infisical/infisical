@@ -168,6 +168,28 @@ describe("sanitizeLogPayload", () => {
     expect(sanitized).toEqual({ email: "real", "email~2": "spoofed", ab: 2, "ab~2": 3, "ab~3": 1 });
   });
 
+  test("suffixes thousands of look-alike keys without slowing down", () => {
+    const count = 20_000;
+    const WORD_JOINER = String.fromCharCode(0x2060);
+    // Each index written in binary with two invisible characters, so every key is distinct and short.
+    const invisible = (index: number) =>
+      [...index.toString(2)].map((bit) => (bit === "1" ? ZWSP : WORD_JOINER)).join("");
+    const lookAlikes = Object.fromEntries(Array.from({ length: count }, (_, index) => [`a${invisible(index)}`, index]));
+
+    const started = performance.now();
+    const sanitized = sanitizeLogPayload<Record<string, unknown>>({ a: "real", "a~3": "taken", ...lookAlikes });
+    const elapsedMs = performance.now() - started;
+
+    expect(Object.keys(sanitized)).toHaveLength(count + 2);
+    expect(sanitized.a).toBe("real");
+    expect(sanitized["a~2"]).toBe(0);
+    expect(sanitized["a~3"]).toBe("taken");
+    expect(sanitized["a~4"]).toBe(1);
+    expect(sanitized[`a~${count + 2}`]).toBe(count - 1);
+    // Restarting the search at 2 for every key took seconds here.
+    expect(elapsedMs).toBeLessThan(1000);
+  });
+
   test("keeps a key of __proto__ as an own property", () => {
     // Computed keys: the literal form would set the prototype as the object is built.
     const sanitized = sanitizeLogPayload({ ["__proto__"]: { sub: `a${NUL}b` }, [`__pro${ZWSP}to__`]: "second" });
