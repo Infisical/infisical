@@ -1,5 +1,6 @@
 import { ChangeResourceRecordSetsCommand, GetHostedZoneCommand, Route53Client } from "@aws-sdk/client-route-53";
 
+import { ProjectType } from "@app/db/schemas";
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
@@ -17,7 +18,10 @@ export type TRoute53Record = {
 const buildClient = async (connection: TAwsConnectionConfig) => {
   // Route 53 is a global service — the region passed here only affects the signer, not the data plane.
   // us-east-1 is AWS's canonical region for global services.
-  const config = await getAwsConnectionConfig(connection, AWSRegion.US_EAST_1);
+  const config = await getAwsConnectionConfig(
+    { ...connection, projectType: connection.projectType ?? ProjectType.CertificateManager },
+    AWSRegion.US_EAST_1
+  );
   return new Route53Client({
     sha256: CustomAWSHasher,
     useFipsEndpoint: crypto.isFipsModeEnabled(),

@@ -81,4 +81,22 @@ describe("getAwsConnectionConfig External ID", () => {
 
     expect(sts.externalIds).toEqual(["org-1", "proj-1"]);
   });
+
+  test("connections without projectType retry with org ID if project ID fails", async () => {
+    sts.rejectionsLeft = 1;
+
+    await getAwsConnectionConfig(assumeRoleConnection());
+
+    expect(sts.externalIds).toEqual(["proj-1", "org-1"]);
+  });
+
+  test("Certificate Manager connections with nested project metadata assume the role with org ID", async () => {
+    await getAwsConnectionConfig(
+      assumeRoleConnection({
+        project: { name: "Project", id: "proj-1", slug: "proj", type: ProjectType.CertificateManager }
+      } as unknown as Partial<TAwsConnectionConfig>)
+    );
+
+    expect(sts.externalIds).toEqual(["org-1"]);
+  });
 });

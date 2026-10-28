@@ -82,7 +82,8 @@ export const getAwsConnectionConfig = async (
   let secretAccessKey: string;
   let sessionToken: undefined | string;
 
-  const { method, credentials, orgId, projectId, version, projectType } = appConnection;
+  const { method, credentials, orgId, projectId, version } = appConnection;
+  const projectType = appConnection.projectType ?? (appConnection as { project?: { type?: string } }).project?.type;
 
   switch (method) {
     case AwsConnectionMethod.AssumeRole: {
@@ -119,8 +120,11 @@ export const getAwsConnectionConfig = async (
           if (projectId && projectId !== orgId) externalIds.push(projectId);
         } else if (projectType === ProjectType.AgentVault) {
           externalIds.push(orgId);
+        } else if (projectId) {
+          externalIds.push(projectId);
+          if (projectId !== orgId) externalIds.push(orgId);
         } else {
-          externalIds.push(projectId ?? orgId);
+          externalIds.push(orgId);
         }
       } else {
         externalIds.push(orgId);
