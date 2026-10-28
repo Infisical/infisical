@@ -23,7 +23,8 @@ export const enforceMfa = async (
     actorEmail,
     accountId,
     mfaSessionId,
-    tokenVersionId
+    tokenVersionId,
+    allowCliHandoff
   }: {
     userId: string;
     orgId: string;
@@ -31,6 +32,7 @@ export const enforceMfa = async (
     accountId: string;
     mfaSessionId?: string;
     tokenVersionId?: string;
+    allowCliHandoff?: boolean;
   }
 ) => {
   if (!mfaSessionId) {
@@ -42,7 +44,13 @@ export const enforceMfa = async (
     const mfaMethod = (orgMfaMethod ?? userMfaMethod ?? MfaMethod.EMAIL) as MfaMethod;
 
     // Bound to the session that raised the challenge
-    const newMfaSessionId = await mfaSessionService.createMfaSession(userId, accountId, mfaMethod, tokenVersionId);
+    const newMfaSessionId = await mfaSessionService.createMfaSession(
+      userId,
+      accountId,
+      mfaMethod,
+      tokenVersionId,
+      allowCliHandoff
+    );
 
     if (mfaMethod === MfaMethod.EMAIL && actorEmail) {
       await mfaSessionService.sendMfaCode(userId, actorEmail);

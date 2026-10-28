@@ -4,6 +4,7 @@ sidebarTitle: "PagerDuty"
 description: "Create PagerDuty incidents for certificate alerts."
 ---
 
+import AlertApiFields from "/snippets/documentation/platform/pki/applications/alerting/alert-api-fields.mdx";
 import StartAlert from "/snippets/documentation/platform/pki/applications/alerting/start-alert.mdx";
 
 A PagerDuty channel on a certificate [alert](/documentation/platform/pki/applications/alerting/overview) creates PagerDuty incidents through the [Events API v2](https://developer.pagerduty.com/docs/events-api-v2-overview), so your on-call team gets paged when certificates are about to expire or are revoked.
@@ -14,7 +15,7 @@ A PagerDuty channel on a certificate [alert](/documentation/platform/pki/applica
 
 ## Prerequisites
 
-- The Certificate Management **Admin** role to create a Certificate Management alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
+- The Certificate Management **Admin** role to create an organization-wide alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
 - A PagerDuty account that can create services or add integrations to an existing service
 
 ## Step 1: Get a PagerDuty integration key
@@ -39,23 +40,74 @@ A PagerDuty channel on a certificate [alert](/documentation/platform/pki/applica
   </Step>
 </Steps>
 
-## Step 2: Start an alert
+## Step 2: Create the alert
 
-<StartAlert />
+<Tabs>
+  <Tab title="Infisical UI">
+    <StartAlert />
 
-## Step 3: Add the PagerDuty channel
+    On the **Channels** step, add the PagerDuty channel:
 
-<Steps>
-  <Step>
-    Select **Add Channel** > **PagerDuty** and paste the key from [step 1](#step-1-get-a-pagerduty-integration-key) into **Integration key**.
-  </Step>
-  <Step>
-    Optionally, select **Send test** to send a test event to the PagerDuty service.
-  </Step>
-  <Step>
-    Select **Continue**, check the **Review** step, and select **Create Alert**.
-  </Step>
-</Steps>
+    <Steps>
+      <Step>
+        Select **Add Channel** > **PagerDuty** and paste the key from [step 1](#step-1-get-a-pagerduty-integration-key) into **Integration key**.
+      </Step>
+      <Step>
+        Optionally, select **Send test** to send a test event to the PagerDuty service.
+      </Step>
+      <Step>
+        Select **Continue**, check the **Review** step, and select **Create Alert**.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Send a request to the create alert endpoint with an [access token](/api-reference/overview/authentication) and a `pagerduty` channel, and set `integrationKey` in the channel's `config` to the key from [step 1](#step-1-get-a-pagerduty-integration-key).
+
+    <AlertApiFields />
+
+    <CodeGroup>
+    ```bash Organization-wide
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/alerts \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "certificates-expiring-this-month",
+        "resourceType": "cert-manager",
+        "eventType": "cert-manager.certificate.expiry",
+        "condition": { "alertBefore": "30d", "dailyReminder": true },
+        "channels": [
+          {
+            "name": "pki-on-call",
+            "channelType": "pagerduty",
+            "config": { "integrationKey": "<integration-key>" }
+          }
+        ]
+      }'
+    ```
+
+    ```bash Application
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/alerts \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "payments-api-revocations",
+        "resourceType": "cert-manager.application",
+        "resourceId": "<application-id>",
+        "eventType": "cert-manager.application.certificate.revocation",
+        "channels": [
+          {
+            "name": "payments-on-call",
+            "channelType": "pagerduty",
+            "config": { "integrationKey": "<integration-key>" }
+          }
+        ]
+      }'
+    ```
+    </CodeGroup>
+  </Tab>
+</Tabs>
 
 <Check>
   Your alert is set up. Infisical opens a PagerDuty incident whenever the alert fires.

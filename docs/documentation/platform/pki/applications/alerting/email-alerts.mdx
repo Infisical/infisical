@@ -4,6 +4,7 @@ sidebarTitle: "Email"
 description: "Send certificate alert notifications by email."
 ---
 
+import AlertApiFields from "/snippets/documentation/platform/pki/applications/alerting/alert-api-fields.mdx";
 import StartAlert from "/snippets/documentation/platform/pki/applications/alerting/start-alert.mdx";
 
 An email channel on a certificate [alert](/documentation/platform/pki/applications/alerting/overview) emails the recipients you choose whenever the alert fires. Email channels are available on every plan.
@@ -14,29 +15,86 @@ An email channel on a certificate [alert](/documentation/platform/pki/applicatio
 
 ## Prerequisites
 
-- The Certificate Management **Admin** role to create a Certificate Management alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
+- The Certificate Management **Admin** role to create an organization-wide alert, or the **Admin** [application role](/documentation/platform/pki/applications/overview#application-roles) to create an application alert
 - Recipients who are organization members, or addresses on one of your organization's [verified email domains](/documentation/platform/email-domain)
 
-## Step 1: Start an alert
+## Create the alert
 
-<StartAlert />
+<Tabs>
+  <Tab title="Infisical UI">
+    <StartAlert />
 
-## Step 2: Add the email channel
+    On the **Channels** step, add the email channel:
 
-<Steps>
-  <Step>
-    Select **Add Channel** > **Email**.
-  </Step>
-  <Step>
-    In **Recipients**, select organization members, or type an address on one of your organization's verified email domains and add it.
-  </Step>
-  <Step>
-    Optionally, select **Send test** to send a test email to the recipients.
-  </Step>
-  <Step>
-    Select **Continue**, check the **Review** step, and select **Create Alert**.
-  </Step>
-</Steps>
+    <Steps>
+      <Step>
+        Select **Add Channel** > **Email**.
+      </Step>
+      <Step>
+        In **Recipients**, select organization members, or type an address on one of your organization's verified email domains and add it.
+      </Step>
+      <Step>
+        Optionally, select **Send test** to send a test email to the recipients.
+      </Step>
+      <Step>
+        Select **Continue**, check the **Review** step, and select **Create Alert**.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    Send a request to the create alert endpoint with an [access token](/api-reference/overview/authentication) and an `email` channel.
+
+    <AlertApiFields />
+
+    Each entry in the channel's `recipients` array is one of these:
+
+    - An organization member, with `principalType` set to `user` and `principalId` set to the member's `user.id` from [the get user memberships endpoint](/api-reference/endpoints/organizations/memberships)
+    - An address on one of your organization's verified email domains, with `principalType` set to `email` and `principalId` set to the address
+
+    <CodeGroup>
+    ```bash Organization-wide
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/alerts \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "issued-certificates-expiring",
+        "resourceType": "cert-manager",
+        "eventType": "cert-manager.certificate.expiry",
+        "condition": { "alertBefore": "30d", "sources": ["issued"] },
+        "channels": [
+          {
+            "name": "platform-team",
+            "channelType": "email",
+            "recipients": [{ "principalType": "email", "principalId": "platform@example.com" }]
+          }
+        ]
+      }'
+    ```
+
+    ```bash Application
+    curl --request POST \
+      --url https://app.infisical.com/api/v1/alerts \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "name": "payments-api-expiring",
+        "resourceType": "cert-manager.application",
+        "resourceId": "<application-id>",
+        "eventType": "cert-manager.application.certificate.expiry",
+        "condition": { "alertBefore": "30d" },
+        "channels": [
+          {
+            "name": "payments-team",
+            "channelType": "email",
+            "recipients": [{ "principalType": "email", "principalId": "payments@example.com" }]
+          }
+        ]
+      }'
+    ```
+    </CodeGroup>
+  </Tab>
+</Tabs>
 
 <Check>
   Your alert is set up. Infisical emails the recipients whenever the alert fires.

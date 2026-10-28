@@ -20,14 +20,8 @@ import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { actorContext } from "./agent-vault-router-fns";
 import {
   AgentVaultActorRefSchema,
-  AgentVaultAllowedMethodsSchema,
-  AgentVaultAllowedPathPrefixesSchema,
   AgentVaultCreatedMemberSchema,
-  AgentVaultCredentialInputSchema,
-  AgentVaultCredentialUpdateSchema,
-  AgentVaultCustomHeadersInputSchema,
-  AgentVaultCustomHeadersUpdateSchema,
-  AgentVaultHostPatternSchema,
+  AgentVaultCreateServiceBodySchema,
   agentVaultListQuery,
   AgentVaultMemberIdsSchema,
   AgentVaultMemberRevokeIdsSchema,
@@ -37,8 +31,7 @@ import {
   AgentVaultPersonalValuesSchema,
   AgentVaultProductMemberSchema,
   AgentVaultServiceSchema,
-  AgentVaultSubstitutionsInputSchema,
-  AgentVaultSubstitutionsUpdateSchema
+  AgentVaultUpdateServiceBodySchema
 } from "./agent-vault-schemas";
 
 const AccessBundleDescriptionSchema = z
@@ -302,15 +295,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
-      body: z.object({
-        name: AgentVaultNameSchema.describe(AGENT_VAULT.SERVICE.name),
-        hostPattern: AgentVaultHostPatternSchema,
-        allowedMethods: AgentVaultAllowedMethodsSchema.optional(),
-        allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional(),
-        credential: AgentVaultCredentialInputSchema,
-        customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
-        substitutions: AgentVaultSubstitutionsInputSchema.optional()
-      }),
+      body: AgentVaultCreateServiceBodySchema,
       response: {
         200: z.object({ service: AgentVaultServiceSchema })
       }
@@ -335,18 +320,26 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             accessBundleName,
             serviceId: service.id,
             name: service.name,
+            serviceType: service.type,
+            serverUrl: service.serverUrl ?? undefined,
+            transport: service.transport ?? undefined,
             hostPattern: service.hostPattern,
             credentialType: service.credential.type,
             headerName:
               service.credential.type === AgentVaultCredentialType.Bearer ? service.credential.headerName : undefined,
             headerPrefix:
               service.credential.type === AgentVaultCredentialType.Bearer ? service.credential.headerPrefix : undefined,
+            oauthIssuer:
+              service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.issuer : undefined,
+            oauthScopes:
+              service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.grantedScopes : undefined,
             allowedMethods: service.allowedMethods,
             allowedPathPrefixes: service.allowedPathPrefixes,
             memberProvidedFields:
-              service.credential.type === AgentVaultCredentialType.Passthrough
-                ? undefined
-                : service.credential.memberProvidedFields,
+              service.credential.type === AgentVaultCredentialType.Bearer ||
+              service.credential.type === AgentVaultCredentialType.Basic
+                ? service.credential.memberProvidedFields
+                : undefined,
             customHeaderNames: service.customHeaders.map((header) => header.name),
             substitutionPlaceholders: service.substitutions.map((substitution) => substitution.placeholder),
             variableKeys: variableKeysOf(service)
@@ -359,6 +352,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         properties: {
           accessBundleId: req.params.accessBundleId,
           serviceId: service.id,
+          serviceType: service.type,
           credentialType: service.credential.type,
           hostPatternCount: parseHostPatterns(service.hostPattern).patterns.length,
           allowedMethodCount: service.allowedMethods?.length ?? 0,
@@ -386,27 +380,14 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
         serviceId: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId)
       }),
-      body: z
-        .object({
-          name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.SERVICE.name),
-          hostPattern: AgentVaultHostPatternSchema.optional(),
-          allowedMethods: AgentVaultAllowedMethodsSchema.optional(),
-          allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional(),
-          credential: AgentVaultCredentialUpdateSchema.optional(),
-          customHeaders: AgentVaultCustomHeadersUpdateSchema.optional(),
-          substitutions: AgentVaultSubstitutionsUpdateSchema.optional()
-        })
-        .refine(
-          (body) => Object.values(body).some((value) => value !== undefined),
-          "Provide at least one of 'name', 'hostPattern', 'allowedMethods', 'allowedPathPrefixes', 'credential', 'customHeaders' or 'substitutions' to update"
-        ),
+      body: AgentVaultUpdateServiceBodySchema,
       response: {
         200: z.object({ service: AgentVaultServiceSchema })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { service, accessBundleName, credentialReplaced } =
+      const { service, accessBundleName, update, credentialReplaced } =
         await server.services.agentVaultAccessBundle.updateService({
           projectId: req.internalAgentVaultProjectId,
           ctx: actorContext(req),
@@ -414,6 +395,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           serviceId: req.params.serviceId,
           ...req.body
         });
+      const isOauthAuthorized = req.body.credential?.type === AgentVaultCredentialType.OAuth;
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -427,7 +409,11 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             accessBundleName,
             serviceId: service.id,
             name: req.body.name,
-            hostPattern: req.body.hostPattern,
+            serviceType: service.type,
+            serverUrl: update.serverUrl,
+            transport: update.transport,
+            // Derived from the server URL for an MCP service, so it is reported whenever that changed.
+            hostPattern: update.hostPattern ?? (update.serverUrl ? service.hostPattern : undefined),
             credentialType: req.body.credential?.type,
             headerName:
               req.body.credential?.type === AgentVaultCredentialType.Bearer
@@ -437,11 +423,21 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               req.body.credential?.type === AgentVaultCredentialType.Bearer
                 ? req.body.credential.headerPrefix
                 : undefined,
-            allowedMethods: req.body.allowedMethods,
-            allowedPathPrefixes: req.body.allowedPathPrefixes,
+            oauthIssuer:
+              isOauthAuthorized && service.credential.type === AgentVaultCredentialType.OAuth
+                ? service.credential.issuer
+                : undefined,
+            oauthScopes:
+              isOauthAuthorized && service.credential.type === AgentVaultCredentialType.OAuth
+                ? service.credential.grantedScopes
+                : undefined,
+            allowedMethods: update.allowedMethods,
+            allowedPathPrefixes: update.allowedPathPrefixes,
             // The setting after the update, present whenever the update touched the credential.
             memberProvidedFields:
-              req.body.credential && service.credential.type !== AgentVaultCredentialType.Passthrough
+              req.body.credential &&
+              (service.credential.type === AgentVaultCredentialType.Bearer ||
+                service.credential.type === AgentVaultCredentialType.Basic)
                 ? service.credential.memberProvidedFields
                 : undefined,
             customHeaderNames: req.body.customHeaders?.map((header) => header.name),
@@ -450,13 +446,13 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
             customHeadersReplaced: req.body.customHeaders
               ?.filter((header) => header.value !== undefined)
               .map((header) => header.name),
-            substitutionPlaceholders: req.body.substitutions?.map((substitution) => substitution.placeholder),
-            substitutionsReplaced: req.body.substitutions
+            substitutionPlaceholders: update.substitutions?.map((substitution) => substitution.placeholder),
+            substitutionsReplaced: update.substitutions
               ?.filter((substitution) => substitution.value !== undefined)
               .map((substitution) => substitution.placeholder),
             credentialReplaced,
             variableKeys:
-              req.body.credential || req.body.customHeaders || req.body.substitutions
+              req.body.credential || req.body.customHeaders || update.substitutions
                 ? variableKeysOf(service)
                 : undefined
           }
@@ -468,6 +464,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         properties: {
           accessBundleId: req.params.accessBundleId,
           serviceId: service.id,
+          serviceType: service.type,
           credentialType: service.credential.type,
           hostPatternCount: parseHostPatterns(service.hostPattern).patterns.length,
           allowedMethodCount: service.allowedMethods?.length ?? 0,

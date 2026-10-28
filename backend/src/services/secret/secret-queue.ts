@@ -26,6 +26,7 @@ import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { highCardinalityMeter, recordLegacyRootKeyUsageMetric } from "@app/lib/telemetry/metrics";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { createManySecretsRawFnFactory, updateManySecretsRawFnFactory } from "@app/services/secret/secret-fns";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
@@ -122,6 +123,7 @@ type TSecretQueueFactoryDep = {
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   secretSyncQueue: Pick<TSecretSyncQueueFactory, "queueSecretSyncsSyncSecretsByPath">;
   reminderService: Pick<TReminderServiceFactory, "createReminder" | "deleteReminderBySecretId">;
   projectEventsService: TProjectEventsService;
@@ -189,6 +191,7 @@ export const secretQueueFactory = ({
   resourceMetadataDAL,
   secretSyncQueue,
   folderCommitService,
+  eventEmitter,
   reminderService,
   projectEventsService,
   licenseService,
@@ -316,7 +319,8 @@ export const secretQueueFactory = ({
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
-    folderCommitService
+    folderCommitService,
+    eventEmitter
   });
 
   const updateManySecretsRawFn = updateManySecretsRawFnFactory({
@@ -333,7 +337,8 @@ export const secretQueueFactory = ({
     secretV2BridgeDAL,
     secretVersionTagV2BridgeDAL,
     resourceMetadataDAL,
-    folderCommitService
+    folderCommitService,
+    eventEmitter
   });
 
   /**

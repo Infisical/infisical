@@ -74,6 +74,7 @@ import {
 import { TAgentVaultProxy, TAgentVaultProxyToken } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { ProxyFormDialog } from "./components/ProxyFormDialog";
@@ -161,6 +162,7 @@ export const AgentVaultProxiesPage = () => {
   const rotateProxyToken = useRotateAgentVaultProxyToken();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  useAgentVaultCreateIntent(() => setIsCreateOpen(true), isAdmin);
   const [proxyToEdit, setProxyToEdit] = useState<TAgentVaultProxy | null>(null);
   const [proxyToDelete, setProxyToDelete] = useState<TAgentVaultProxy | null>(null);
   const [proxyToRevoke, setProxyToRevoke] = useState<TAgentVaultProxy | null>(null);
