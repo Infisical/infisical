@@ -20,6 +20,7 @@ import {
 import { tags } from "@lezer/highlight";
 
 import { cn } from "../../utils";
+import { getChangedRange } from "./getChangedRange";
 
 type CodeEditorLanguage = "markdown" | "plain";
 
@@ -210,8 +211,9 @@ const CodeEditor = ({
   useEffect(() => {
     const view = viewRef.current;
     if (!view || view.state.doc.toString() === value) return;
+    // Only the changed range is replaced, so undo history for the rest of the text still maps to the right places.
     view.dispatch({
-      changes: { from: 0, to: view.state.doc.length, insert: value },
+      changes: getChangedRange(view.state.doc.toString(), value),
       annotations: [externalSync.of(true), Transaction.addToHistory.of(false)]
     });
   }, [value]);

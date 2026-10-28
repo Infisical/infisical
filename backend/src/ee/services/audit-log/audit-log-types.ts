@@ -6802,7 +6802,7 @@ interface AgentVaultSkillBundleDetachEvent {
   };
 }
 
-// Recorded per skill when a proxy fetches a session's skills at agent start, not when the agent reads them.
+// Recorded per skill when the CLI fetches a session's skills at agent start, not when the agent reads them.
 interface AgentVaultSkillDeliveredEvent {
   type: EventType.AGENT_VAULT_SKILL_DELIVERED;
   metadata: {

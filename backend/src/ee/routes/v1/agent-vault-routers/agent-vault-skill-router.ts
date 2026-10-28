@@ -5,10 +5,6 @@ import {
   AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT,
   skillSizeBucket
 } from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
-import {
-  AGENT_VAULT_SKILL_RESTORE_SOURCE,
-  AgentVaultSkillSource
-} from "@app/ee/services/agent-vault-skill/agent-vault-skill-types";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
@@ -72,7 +68,6 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
         event: PostHogEventTypes.AgentVaultSkillCreated,
         properties: {
           skillId: skill.id,
-          source: req.body.source ?? AgentVaultSkillSource.Api,
           fileCount: version.fileCount,
           sizeBucket: skillSizeBucket(version.sizeBytes)
         }
@@ -147,8 +142,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       operationId: "deleteAgentVaultSkill",
-      description:
-        "Delete a skill from Agent Vault. It is detached from every access bundle. Agents already running keep it until they restart.",
+      description: "Delete a skill from Agent Vault. It is detached from every access bundle.",
       tags: [ApiDocsTags.AgentVaultSkills],
       params: SkillIdParamsSchema,
       response: { 200: z.object({ skill: AgentVaultSkillSchema }) }
@@ -199,6 +193,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       body: AgentVaultSkillUploadSchema,
       response: {
         200: z.object({
+          skill: AgentVaultSkillSchema,
           version: AgentVaultSkillVersionSchema,
           unchanged: z.boolean().describe(AGENT_VAULT.SKILL.unchanged)
         })
@@ -241,14 +236,14 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
           properties: {
             skillId: skill.id,
             version: version.version,
-            source: req.body.source ?? AgentVaultSkillSource.Api,
+            isRestore: false,
             fileCount: version.fileCount,
             sizeBucket: skillSizeBucket(version.sizeBytes)
           }
         });
       }
 
-      return { version, unchanged };
+      return { skill, version, unchanged };
     }
   });
 
@@ -322,6 +317,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       params: SkillVersionParamsSchema,
       response: {
         200: z.object({
+          skill: AgentVaultSkillSchema,
           version: AgentVaultSkillVersionSchema,
           unchanged: z.boolean().describe(AGENT_VAULT.SKILL.restoreUnchanged)
         })
@@ -336,7 +332,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
         version: req.params.version
       });
 
-      if (unchanged) return { version, unchanged };
+      if (unchanged) return { skill, version, unchanged };
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -359,13 +355,13 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
         properties: {
           skillId: skill.id,
           version: version.version,
-          source: AGENT_VAULT_SKILL_RESTORE_SOURCE,
+          isRestore: true,
           fileCount: version.fileCount,
           sizeBucket: skillSizeBucket(version.sizeBytes)
         }
       });
 
-      return { version, unchanged };
+      return { skill, version, unchanged };
     }
   });
 };

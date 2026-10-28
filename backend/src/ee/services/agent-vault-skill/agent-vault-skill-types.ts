@@ -5,19 +5,6 @@ export enum AgentVaultSkillFileMode {
   Executable = "0755"
 }
 
-export enum AgentVaultSkillSource {
-  Cli = "cli",
-  Upload = "upload",
-  Form = "form",
-  Editor = "editor",
-  Api = "api"
-}
-
-// Analytics only: a restore publishes a version with no client upload behind it, so it is not a request source.
-export const AGENT_VAULT_SKILL_RESTORE_SOURCE = "restore";
-
-export type TAgentVaultSkillAnalyticsSource = AgentVaultSkillSource | typeof AGENT_VAULT_SKILL_RESTORE_SOURCE;
-
 export type TAgentVaultSkillFile = { path: string; mode: AgentVaultSkillFileMode; contentBase64: string };
 
 export type TAgentVaultSkillScoped = { projectId: string; ctx: TGenericPermission };

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useBlocker } from "@tanstack/react-router";
 import { UploadIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -41,7 +42,7 @@ import {
 } from "@app/helpers/agentVaultSkills";
 import { useDiscardChangesGuard } from "@app/hooks";
 import { useCreateAgentVaultSkill } from "@app/hooks/api/agentVault";
-import { TAgentVaultSkill } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultSkillSummary } from "@app/hooks/api/agentVault/types";
 
 import { SkillFilesEditor } from "./SkillFilesEditor";
 import { SkillUploadDialog, TSkillUpload } from "./SkillUploadDialog";
@@ -73,6 +74,13 @@ const HEADER_KEYS = ["name", "description"] as const;
 const withHeader = (text: string, values: FormData) =>
   HEADER_KEYS.reduce((next, key) => setSkillHeaderValue(next, key, values[key]), text);
 
+// The fields are single-line inputs, which drop line breaks, so a description written over several lines shows its
+// line breaks as spaces.
+const toFieldText = (value: unknown) =>
+  getSkillHeaderText(value)
+    .replace(/\n+$/, "")
+    .replace(/[ \t]*\n[ \t]*/g, " ");
+
 /** The header's name and description, or null when the text has no header or it can't be read. */
 const readHeaderFields = (text: string): FormData | null => {
   const { frontmatter } = splitFrontmatter(text);
@@ -80,7 +88,7 @@ const readHeaderFields = (text: string): FormData | null => {
   if (!header) return null;
   return {
     name: getSkillHeaderText(header.name),
-    description: getSkillHeaderText(header.description)
+    description: toFieldText(header.description)
   };
 };
 
@@ -90,7 +98,7 @@ type Props = {
   initialName?: string;
   description?: string;
   /** Awaited before the sheet closes, so the skill can't be created twice meanwhile. */
-  onCreated?: (skill: TAgentVaultSkill) => void | Promise<void>;
+  onCreated?: (skill: TAgentVaultSkillSummary) => void | Promise<void>;
   /** Whether the sheet confirms the new skill with a toast. Turn it off when the caller confirms it instead. */
   shouldNotify?: boolean;
 };
@@ -148,6 +156,16 @@ export const CreateSkillSheet = ({
 
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
     useDiscardChangesGuard({ isDirty: isDirty || areFilesDirty, onDiscard: close });
+
+  // The form stays dirty after the sheet closes, so only an open sheet blocks. Only a new page is blocked: the sheet is
+  // not in the URL, and opening the created skill changes only the search.
+  const hasChanges = isOpen && (isDirty || areFilesDirty);
+
+  const blocker = useBlocker({
+    shouldBlockFn: ({ current, next }) => hasChanges && next.pathname !== current.pathname,
+    enableBeforeUnload: hasChanges,
+    withResolver: true
+  });
 
   const getEntryText = (from = files) =>
     from.find((file) => file.path === SKILL_ENTRY_FILE)?.text ?? "";
@@ -220,15 +238,19 @@ export const CreateSkillSheet = ({
     const values = getValues();
     const entryText = HEADER_KEYS.reduce(
       (next, key) =>
-        header[key] === values[key] ? next : setSkillHeaderValue(next, key, values[key]),
+        header[key] === values[key] ||
+        (key === "description" &&
+          typeof header[key] === "string" &&
+          toFieldText(header[key]) === values[key])
+          ? next
+          : setSkillHeaderValue(next, key, values[key]),
       text
     );
 
-    let skill: TAgentVaultSkill;
+    let skill: TAgentVaultSkillSummary;
     try {
       ({ skill } = await createSkill.mutateAsync({
-        files: fromDraftFiles(setEntryText(files, entryText)),
-        source: "form"
+        files: fromDraftFiles(setEntryText(files, entryText))
       }));
     } catch {
       return;
@@ -365,6 +387,16 @@ export const CreateSkillSheet = ({
         onOpenChange={setIsDiscardDialogOpen}
         onDiscard={confirmDiscard}
         title="Discard Skill?"
+        description="The skill you are writing will be lost."
+      />
+
+      <DiscardChangesAlertDialog
+        open={blocker.status === "blocked"}
+        onOpenChange={(open) => {
+          if (!open) blocker.reset?.();
+        }}
+        onDiscard={() => blocker.proceed?.()}
+        title="Leave Without Saving?"
         description="The skill you are writing will be lost."
       />
     </>

@@ -45,10 +45,7 @@ import {
   AGENT_VAULT_SKILL_MAX_PATH_LENGTH,
   AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT
 } from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
-import {
-  AgentVaultSkillFileMode,
-  AgentVaultSkillSource
-} from "@app/ee/services/agent-vault-skill/agent-vault-skill-types";
+import { AgentVaultSkillFileMode } from "@app/ee/services/agent-vault-skill/agent-vault-skill-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 
@@ -806,8 +803,7 @@ export const AgentVaultSkillUploadSchema = z.object({
   files: AgentVaultSkillFileSchema.array()
     .min(1, "Upload at least SKILL.md")
     .max(AGENT_VAULT_SKILL_UPLOAD_MAX_FILES)
-    .describe(AGENT_VAULT.SKILL.files),
-  source: z.nativeEnum(AgentVaultSkillSource).optional().describe(AGENT_VAULT.SKILL.source)
+    .describe(AGENT_VAULT.SKILL.files)
 });
 
 export const AgentVaultSkillVersionParamSchema = z.coerce
@@ -837,7 +833,7 @@ export const AgentVaultSkillDetailSchema = AgentVaultSkillSchema.extend({
 });
 
 export const AgentVaultSkillVersionSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().uuid().describe(AGENT_VAULT.SKILL.versionId),
   version: z.number().describe(AGENT_VAULT.SKILL.version),
   sha256: z.string().describe(AGENT_VAULT.SKILL.sha256),
   sizeBytes: z.number().describe(AGENT_VAULT.SKILL.sizeBytes),

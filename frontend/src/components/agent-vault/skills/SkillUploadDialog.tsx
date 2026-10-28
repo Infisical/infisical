@@ -125,8 +125,7 @@ export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad
     try {
       const { version, unchanged } = await publishVersion.mutateAsync({
         skillId: skill.id,
-        files: filesToPublish,
-        source: "upload"
+        files: filesToPublish
       });
       createNotification({
         text: unchanged

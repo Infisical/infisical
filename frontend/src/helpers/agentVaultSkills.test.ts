@@ -60,6 +60,19 @@ describe("readSkillUpload", () => {
     expect(sortSkillFiles(files).map((file) => file.path)).toEqual(["SKILL.md", "scripts/run.sh"]);
   });
 
+  test("skips hidden files and folders", async () => {
+    const files = await readSkillUpload(
+      zipFile({
+        "code-review/SKILL.md": strToU8("a"),
+        "code-review/.env": strToU8("x"),
+        "code-review/.git/config": strToU8("x"),
+        "code-review/docs/.notes/a.md": strToU8("x"),
+        "code-review/docs/guide.md": strToU8("b")
+      })
+    );
+    expect(sortSkillFiles(files).map((file) => file.path)).toEqual(["SKILL.md", "docs/guide.md"]);
+  });
+
   test("keeps paths when the files are at the archive root", async () => {
     const files = await readSkillUpload(
       zipFile({ "SKILL.md": strToU8("a"), "docs/guide.md": strToU8("b") })
@@ -121,6 +134,13 @@ describe("formatSkillHeaderValue", () => {
     expect(formatSkillHeaderValue("'quoted'")).toBe("\"'quoted'\"");
     expect(formatSkillHeaderValue(" padded ")).toBe('" padded "');
   });
+
+  test("quotes words YAML 1.1 reads as booleans or null", () => {
+    ["yes", "no", "on", "off", "y", "N", "True", "NULL", "~"].forEach((value) =>
+      expect(formatSkillHeaderValue(value)).toBe(`"${value}"`)
+    );
+    expect(formatSkillHeaderValue("yesterday")).toBe("yesterday");
+  });
 });
 
 describe("setSkillHeaderValue", () => {
@@ -144,6 +164,24 @@ describe("setSkillHeaderValue", () => {
     );
     expect(setSkillHeaderValue("---\n---\nBody", "name", "a")).toBe("---\nname: a\n---\nBody");
     expect(setSkillHeaderValue("Body", "name", "a")).toBe("---\nname: a\n---\n\nBody");
+  });
+
+  test("rewrites a quoted key instead of adding a second one", () => {
+    expect(setSkillHeaderValue('---\n"name": a\n---\nBody', "name", "b")).toBe(
+      "---\nname: b\n---\nBody"
+    );
+    expect(setSkillHeaderValue("---\n'name' : a\n---\nBody", "name", "b")).toBe(
+      "---\nname: b\n---\nBody"
+    );
+  });
+
+  test("keeps a double-quoted value quoted", () => {
+    expect(setSkillHeaderValue("---\ndescription: Hi\n---\n", "description", "Hi ")).toBe(
+      '---\ndescription: "Hi "\n---\n'
+    );
+    expect(setSkillHeaderValue('---\ndescription: "Hi "\n---\n', "description", "Hi t")).toBe(
+      '---\ndescription: "Hi t"\n---\n'
+    );
   });
 
   test("keeps Windows line endings", () => {
@@ -446,6 +484,18 @@ describe("buildDiffRows", () => {
       { type: "context", text: "line 10", oldLine: 10, newLine: 10 }
     ]);
   });
+
+  test("marks the side without a final newline when only that changed", () => {
+    expect(buildDiffRows("a\nb", "a\nb\n")).toEqual([
+      { type: "context", text: "a", oldLine: 1, newLine: 1 },
+      { type: "removed", text: "b", oldLine: 2, newLine: null },
+      { type: "context", text: "\\ No newline at end of file", oldLine: null, newLine: null },
+      { type: "added", text: "b", oldLine: null, newLine: 2 }
+    ]);
+    expect(
+      buildDiffRows("a\nb", "a\nc").some((row) => row.type === "context" && row.oldLine === null)
+    ).toBe(false);
+  });
 });
 
 describe("modes and SKILL.md uploads", () => {
@@ -513,5 +563,19 @@ describe("splitFrontmatter", () => {
       frontmatter: "",
       body: "Body\n---\n"
     });
+  });
+
+  test("accepts trailing spaces after the opening marker", () => {
+    expect(splitFrontmatter("--- \nname: a\n---\nBody")).toEqual({
+      frontmatter: "name: a",
+      body: "Body"
+    });
+    expect(splitFrontmatter("---\t\r\nname: a\r\n---\r\nBody")).toEqual({
+      frontmatter: "name: a",
+      body: "Body"
+    });
+    expect(setSkillHeaderValue("--- \nname: a\n---\nBody", "name", "b")).toBe(
+      "--- \nname: b\n---\nBody"
+    );
   });
 });

@@ -21,6 +21,7 @@ import {
 import { agentVaultResolveDALFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-resolve-dal";
 import { agentVaultSessionDALFactory } from "@app/ee/services/agent-vault-session/agent-vault-session-dal";
 import { agentVaultSessionLogConfigDALFactory } from "@app/ee/services/agent-vault-session-log/agent-vault-session-log-config-dal";
+import { AGENT_VAULT_MAX_SKILLS } from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
 import { agentVaultVariableDALFactory } from "@app/ee/services/agent-vault-variable/agent-vault-variable-dal";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
@@ -48,6 +49,7 @@ import { projectDALFactory } from "@app/services/project/project-dal";
 import { roleDALFactory } from "@app/services/role/role-dal";
 import { secretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { serviceTokenDALFactory } from "@app/services/service-token/service-token-dal";
+import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { userDALFactory } from "@app/services/user/user-dal";
 
 declare const testKeyStore: TKeyStoreFactory;
@@ -4533,6 +4535,7 @@ describe("Agent Vault V1 Router", async () => {
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         projectDAL: projectDALFactory(testDb),
+        userDAL: userDALFactory(testDb),
         permissionService: buildPermissionService(),
         kmsService: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
@@ -4669,6 +4672,7 @@ describe("Agent Vault V1 Router", async () => {
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         projectDAL: projectDALFactory(testDb),
+        userDAL: userDALFactory(testDb),
         permissionService: buildPermissionService(),
         kmsService: {
           createCipherPairWithDataKey: () =>
@@ -4843,6 +4847,7 @@ describe("Agent Vault V1 Router", async () => {
         membershipDAL: membershipDALFactory(testDb),
         orgDAL: orgDALFactory(testDb),
         projectDAL: projectDALFactory(testDb),
+        userDAL: userDALFactory(testDb),
         permissionService: buildPermissionService(),
         kmsService: {
           createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
@@ -4914,7 +4919,7 @@ describe("Agent Vault V1 Router", async () => {
     ];
 
     const createSkill = async (name: string, body?: string) => {
-      const res = await inject("POST", skillsUrl, { files: skillFiles(name, body), source: "cli" });
+      const res = await inject("POST", skillsUrl, { files: skillFiles(name, body) });
       expect(res.statusCode).toBe(200);
       return JSON.parse(res.payload) as { skill: TSkill; version: TSkillVersion };
     };
@@ -5176,8 +5181,7 @@ describe("Agent Vault V1 Router", async () => {
             mode: "0644",
             contentBase64: Buffer.alloc(Math.round(1.05 * 1024 * 1024)).toString("base64")
           }
-        ]),
-        source: "editor"
+        ])
       });
       expect(res.statusCode).toBe(400);
       expect(JSON.parse(res.payload).message).toBe("File 'data/big.bin' is larger than 256 KB.");
@@ -5314,6 +5318,69 @@ describe("Agent Vault V1 Router", async () => {
 
       const detail = await inject("GET", `${skillsUrl}/${skill.id}`);
       expect(JSON.parse(detail.payload).skill).toMatchObject({ latestVersion: 3, description: "Current." });
+    });
+
+    test("restoring a version whose name line can't be rewritten to the current name is a 400", async () => {
+      const { skill } = await createSkill("block-old");
+      expect((await publish(skill.id, skillFiles("block-new"))).statusCode).toBe(200);
+
+      // The API now refuses a name it could not rewrite, so a version saved before that rule can only be stood in
+      // for by sealing one directly over version 1.
+      const files = skillFiles("block-old");
+      files[0].contentBase64 = Buffer.from(
+        "---\nname: >-\n  block-old\ndescription: Do the thing.\n---\nDo the thing.\n"
+      ).toString("base64");
+      const serialized = Buffer.from(JSON.stringify(files));
+      const { encryptor } = await projectCipher(
+        (await testDb("agent_vault_skills").where({ id: skill.id }).first()).projectId
+      );
+      await testDb("agent_vault_skill_versions")
+        .where({ skillId: skill.id, version: 1 })
+        .update({
+          encryptedFiles: encryptor({ plainText: serialized }).cipherTextBlob,
+          sha256: crypto.createHash("sha256").update(serialized).digest("hex"),
+          sizeBytes: Buffer.from(files[0].contentBase64, "base64").length
+        });
+
+      const restored = await inject("POST", `${skillsUrl}/${skill.id}/versions/1/restore`);
+      expect(restored.statusCode).toBe(400);
+      expect(JSON.parse(restored.payload).message).toBe(
+        "Version 1 of skill 'block-new' names 'block-old' in SKILL.md, and its 'name' line could not be changed to 'block-new'. Publish a new version instead."
+      );
+      const detail = await inject("GET", `${skillsUrl}/${skill.id}`);
+      expect(JSON.parse(detail.payload).skill).toMatchObject({ name: "block-new", latestVersion: 2 });
+    });
+
+    test("a restore that meets a rename made after it read the name is a 409, not a rename back", async () => {
+      const { skill } = await createSkill("race-skill", "First.");
+      expect((await publish(skill.id, skillFiles("race-skill", "Second."))).statusCode).toBe(200);
+
+      // Holding the skill row queues the restore on it after it has read the name. The rename is written under the
+      // same hold, standing in for a publish that renames, which would otherwise queue on the row too.
+      const trx = await testDb.transaction();
+      let restore: ReturnType<typeof inject> | undefined;
+      try {
+        const { rows } = await trx.raw("select pg_backend_pid() as pid");
+        await trx("agent_vault_skills").where({ id: skill.id }).forUpdate().first();
+
+        restore = inject("POST", `${skillsUrl}/${skill.id}/versions/1/restore`);
+        await waitUntilBlockedBy(rows[0].pid);
+        await trx("agent_vault_skills").where({ id: skill.id }).update({ name: "race-renamed" });
+        await trx.commit();
+
+        const res = await restore;
+        expect(res.statusCode).toBe(409);
+        expect(JSON.parse(res.payload).message).toBe(
+          "Skill 'race-skill' was renamed to 'race-renamed' while this version was being restored. Try again."
+        );
+      } catch (err) {
+        if (!trx.isCompleted()) await trx.rollback();
+        await restore?.catch(() => undefined);
+        throw err;
+      }
+
+      const detail = await inject("GET", `${skillsUrl}/${skill.id}`);
+      expect(JSON.parse(detail.payload).skill).toMatchObject({ name: "race-renamed", latestVersion: 2 });
     });
 
     test("a skill with more than 50 files is refused with a message saying so", async () => {
@@ -5502,18 +5569,6 @@ describe("Agent Vault V1 Router", async () => {
       });
     });
 
-    test("the proxy no longer serves skills", async () => {
-      const created = await inject("POST", "/api/v1/agent-vault/proxies", { name: "skills-gone-proxy" });
-      expect(created.statusCode).toBe(200);
-      const { proxyToken } = JSON.parse(created.payload) as { proxyToken: string };
-      const res = await testServer.inject({
-        method: "GET",
-        url: "/api/v1/agent-vault/proxy/skills",
-        headers: { authorization: `Bearer ${proxyToken}` }
-      });
-      expect(res.statusCode).toBe(404);
-    });
-
     test("a member's session gets only the skills its owner still reaches", async () => {
       const bundle = await createAccessBundle("skills-lost-grant-bundle");
       const otherBundle = await createAccessBundle("skills-lost-grant-other");
@@ -5555,6 +5610,86 @@ describe("Agent Vault V1 Router", async () => {
         expect(JSON.parse(after.payload)).toEqual({ skills: [] });
       } finally {
         await member.cleanup();
+      }
+    });
+    test("Agent Vault holds at most 64 skills", async () => {
+      const projectId = await getProjectId();
+      // Seeded directly: 64 creates through the API would be slow, and the cap counts skill rows only.
+      await testDb("agent_vault_skills").insert(
+        Array.from({ length: AGENT_VAULT_MAX_SKILLS }, (_, i) => ({
+          projectId,
+          name: `seeded-skill-${String(i).padStart(2, "0")}`,
+          description: "Seeded."
+        }))
+      );
+      try {
+        const over = await inject("POST", skillsUrl, { files: skillFiles("over-cap-skill") });
+        expect(over.statusCode).toBe(400);
+        expect(JSON.parse(over.payload).message).toBe(
+          "Agent Vault can hold at most 64 skills. Delete an unused one first."
+        );
+        expect(await testDb("agent_vault_skills").where({ projectId, name: "over-cap-skill" })).toHaveLength(0);
+
+        await testDb("agent_vault_skills").where({ projectId, name: "seeded-skill-00" }).del();
+        await createSkill("over-cap-skill");
+      } finally {
+        await testDb("agent_vault_skills").where({ projectId }).del();
+      }
+    });
+
+    test("publish and restore reply with the skill as it now stands", async () => {
+      const { skill } = await createSkill("summary-skill");
+
+      const renamed = await publish(skill.id, skillFiles("summary-renamed", "Renamed."));
+      expect(renamed.statusCode).toBe(200);
+      expect(JSON.parse(renamed.payload)).toMatchObject({
+        unchanged: false,
+        skill: { id: skill.id, name: "summary-renamed", description: "Renamed.", latestVersion: 2 },
+        version: { version: 2 }
+      });
+
+      const restored = await inject("POST", `${skillsUrl}/${skill.id}/versions/1/restore`);
+      expect(restored.statusCode).toBe(200);
+      expect(JSON.parse(restored.payload)).toMatchObject({
+        unchanged: false,
+        skill: { id: skill.id, name: "summary-renamed", description: "Do the thing.", latestVersion: 3 },
+        version: { version: 3 }
+      });
+    });
+
+    test("the Skills Delivered event is sent only when a session gets at least one skill", async () => {
+      const { telemetry } = (
+        globalThis as unknown as {
+          testServices: { telemetry: { sendPostHogEvents: (event: unknown) => Promise<void> } };
+        }
+      ).testServices;
+      const emptyBundle = await createAccessBundle("skills-event-empty-bundle");
+      const bundle = await createAccessBundle("skills-event-bundle");
+      const { skill } = await createSkill("event-skill");
+      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id })).statusCode).toBe(200);
+      const emptySession = await mintFor([emptyBundle]);
+      const session = await mintFor([bundle]);
+
+      const isSkillsDelivered = (call: unknown[]) =>
+        (call[0] as { event: string }).event === PostHogEventTypes.AgentVaultSkillsDelivered;
+      const sent = vi.spyOn(telemetry, "sendPostHogEvents").mockResolvedValue(undefined);
+      try {
+        const empty = await fetchSessionSkills(`Bearer ${emptySession.token}`);
+        expect(empty.statusCode).toBe(200);
+        expect(JSON.parse(empty.payload)).toEqual({ skills: [] });
+        expect(sent.mock.calls.filter(isSkillsDelivered)).toHaveLength(0);
+
+        const delivered = await fetchSessionSkills(`Bearer ${session.token}`);
+        expect(delivered.statusCode).toBe(200);
+        const events = sent.mock.calls.filter(isSkillsDelivered);
+        expect(events).toHaveLength(1);
+        expect(events[0][0]).toMatchObject({
+          distinctId: `agent-vault-session-${session.id}`,
+          organizationId: seedData1.organization.id,
+          properties: { orgId: seedData1.organization.id, actorType: ActorType.USER, skillCount: 1 }
+        });
+      } finally {
+        sent.mockRestore();
       }
     });
   });
@@ -6476,6 +6611,7 @@ describe("Agent Vault V1 Router", async () => {
           membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
           projectDAL: projectDALFactory(testDb),
+          userDAL: userDALFactory(testDb),
           permissionService: buildPermissionService(),
           kmsService: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })
@@ -6579,6 +6715,7 @@ describe("Agent Vault V1 Router", async () => {
           membershipDAL: membershipDALFactory(testDb),
           orgDAL: orgDALFactory(testDb),
           projectDAL: projectDALFactory(testDb),
+          userDAL: userDALFactory(testDb),
           permissionService: buildPermissionService(),
           kmsService: {
             createCipherPairWithDataKey: () => Promise.resolve({ decryptor: () => Buffer.from("{}") })

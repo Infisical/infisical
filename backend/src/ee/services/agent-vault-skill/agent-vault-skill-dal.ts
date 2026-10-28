@@ -122,6 +122,17 @@ export const agentVaultSkillDALFactory = (db: TDbClient) => {
     }
   };
 
+  const countInProject = async (projectId: string, tx?: Knex): Promise<number> => {
+    try {
+      const result = (await (tx || db)(TableName.AgentVaultSkill).where({ projectId }).count("id as count").first()) as
+        | { count: string | number }
+        | undefined;
+      return Number(result?.count ?? 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count agent vault skills" });
+    }
+  };
+
   // Taken by a delete, by a publish or restore, and by an attach so a skill being deleted can't gain a bundle on
   // its way out.
   const lockByIdInProject = async (
@@ -137,5 +148,5 @@ export const agentVaultSkillDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findForList, findSummaryByIdInProject, findByNameInProject, lockByIdInProject };
+  return { ...orm, findForList, findSummaryByIdInProject, findByNameInProject, countInProject, lockByIdInProject };
 };

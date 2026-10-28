@@ -46,9 +46,12 @@ import {
 } from "@app/context";
 import {
   buildSkillZip,
+  decodeSkillFile,
   fromDraftFiles,
+  getSkillEntryName,
   getSkillFileChanges,
   SKILL_ENTRY_FILE,
+  SKILL_NAME_RE,
   toDraftFiles,
   TSkillDraftFile
 } from "@app/helpers/agentVaultSkills";
@@ -117,6 +120,7 @@ const SkillSheetBody = ({
   const [edit, setEdit] = useState<TEditState | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [dialog, setDialog] = useState<TSkillDialog | null>(null);
+  const [discardCount, setDiscardCount] = useState(0);
 
   const version = viewedVersion ?? skill?.latestVersion;
   const {
@@ -177,7 +181,16 @@ const SkillSheetBody = ({
       isDirty: hasChanges,
       onDiscard: () => {
         isDirtyRef.current = false;
-        setEdit((prev) => prev && { ...prev, draft: prev.baseFiles });
+        const isLatest = Boolean(
+          skill && versionData && versionData.version === skill.latestVersion
+        );
+        setEdit((prev) => {
+          if (!prev) return prev;
+          return isLatest && versionData
+            ? { baseVersion: versionData.version, baseFiles: original, draft: original }
+            : { ...prev, draft: prev.baseFiles };
+        });
+        setDiscardCount((count) => count + 1);
         if (discardIntent.current === "close") closeSheet();
       }
     });
@@ -198,8 +211,7 @@ const SkillSheetBody = ({
     try {
       const { version: published, unchanged } = await publishVersion.mutateAsync({
         skillId: skill.id,
-        files: fromDraftFiles(edit.draft),
-        source: "editor"
+        files: fromDraftFiles(edit.draft)
       });
       createNotification({
         text: unchanged
@@ -238,8 +250,11 @@ const SkillSheetBody = ({
 
   const handleDownload = () => {
     if (!skill || !versionData) return;
+    const entry = versionData.files.find((file) => file.path === SKILL_ENTRY_FILE);
+    const entryName = getSkillEntryName(entry && decodeSkillFile(entry));
+    const folder = entryName && SKILL_NAME_RE.test(entryName) ? entryName : skill.name;
     FileSaver.saveAs(
-      new Blob([buildSkillZip(skill.name, versionData.files)], { type: "application/zip" }),
+      new Blob([buildSkillZip(folder, versionData.files)], { type: "application/zip" }),
       `${skill.name}-v${versionData.version}.zip`
     );
   };
@@ -257,6 +272,7 @@ const SkillSheetBody = ({
           }
           changedPaths={changedPaths}
           requiredPaths={[SKILL_ENTRY_FILE]}
+          historyKey={discardCount}
           className="h-[calc(100dvh-14rem)] min-h-96 shrink-0"
         />
       );
@@ -265,7 +281,7 @@ const SkillSheetBody = ({
       return (
         <Empty className="h-[calc(100dvh-14rem)] min-h-96 shrink-0 border">
           <EmptyHeader>
-            <EmptyTitle>Couldn&apos;t load this version.</EmptyTitle>
+            <EmptyTitle>Couldn&apos;t load this version</EmptyTitle>
           </EmptyHeader>
           <EmptyContent>
             <Button
@@ -299,7 +315,7 @@ const SkillSheetBody = ({
       return (
         <Empty className="m-4 border">
           <EmptyHeader>
-            <EmptyTitle>Couldn&apos;t load this skill.</EmptyTitle>
+            <EmptyTitle>Couldn&apos;t load this skill</EmptyTitle>
           </EmptyHeader>
           <EmptyContent>
             <Button

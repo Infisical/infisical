@@ -36,17 +36,12 @@ const SessionSkillSchema = z.object({
   files: AgentVaultSkillFilesResponseSchema
 });
 
-// The session row snapshots its owner at mint, so the event names them without another lookup.
-const sessionOwnerActor = (session: TAgentVaultSessions): UserActor | IdentityActor =>
-  session.userId
-    ? {
-        type: ActorType.USER,
-        metadata: {
-          userId: session.userId,
-          email: session.actorEmail ?? null,
-          username: session.actorEmail ?? session.actorName
-        }
-      }
+const sessionOwnerActor = (
+  session: TAgentVaultSessions,
+  ownerUser: { username: string; email: string | null } | null
+): UserActor | IdentityActor =>
+  session.userId && ownerUser
+    ? { type: ActorType.USER, metadata: { userId: session.userId, ...ownerUser } }
     : { type: ActorType.IDENTITY, metadata: { identityId: session.identityId!, name: session.actorName } };
 
 export const registerAgentVaultSessionSkillRouter = async (server: FastifyZodProvider) => {
@@ -76,11 +71,11 @@ export const registerAgentVaultSessionSkillRouter = async (server: FastifyZodPro
         });
       }
 
-      const { skills, session, orgId } = await server.services.agentVaultProxy.getSessionSkills({
+      const { skills, session, ownerUser, orgId } = await server.services.agentVaultProxy.getSessionSkills({
         sessionToken: authorization.data
       });
 
-      const actor = sessionOwnerActor(session);
+      const actor = sessionOwnerActor(session, ownerUser);
       await Promise.all(
         skills.map((skill) =>
           server.services.auditLog.createAuditLog({
@@ -104,20 +99,22 @@ export const registerAgentVaultSessionSkillRouter = async (server: FastifyZodPro
         )
       );
 
-      void server.services.telemetry
-        .sendPostHogEvents({
-          event: PostHogEventTypes.AgentVaultSkillsDelivered,
-          distinctId: `agent-vault-session-${session.id}`,
-          organizationId: orgId,
-          anonymous: true,
-          properties: {
-            orgId,
-            channel: req.auditLogInfo.userAgentType ?? UserAgentType.OTHER,
-            actorType: actor.type,
-            skillCount: skills.length
-          }
-        })
-        .catch(() => {});
+      if (skills.length > 0) {
+        void server.services.telemetry
+          .sendPostHogEvents({
+            event: PostHogEventTypes.AgentVaultSkillsDelivered,
+            distinctId: `agent-vault-session-${session.id}`,
+            organizationId: orgId,
+            anonymous: true,
+            properties: {
+              orgId,
+              channel: req.auditLogInfo.userAgentType ?? UserAgentType.OTHER,
+              actorType: actor.type,
+              skillCount: skills.length
+            }
+          })
+          .catch(() => {});
+      }
 
       return {
         skills: skills.map(({ id, name, version, sha256, files }) => ({ id, name, version, sha256, files }))

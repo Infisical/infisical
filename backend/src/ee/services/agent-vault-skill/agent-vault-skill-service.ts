@@ -7,6 +7,7 @@ import {
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -18,6 +19,7 @@ import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/
 import { TAgentVaultSkillBundleDALFactory } from "./agent-vault-skill-bundle-dal";
 import { TAgentVaultSkillDALFactory, TAgentVaultSkillSummaryRow } from "./agent-vault-skill-dal";
 import {
+  AGENT_VAULT_MAX_SKILLS,
   AGENT_VAULT_MAX_SKILLS_PER_BUNDLE,
   AGENT_VAULT_SKILL_MANIFEST,
   AGENT_VAULT_SKILL_VERSIONS_KEPT,
@@ -139,13 +141,24 @@ export const agentVaultSkillServiceFactory = ({
     const { encryptor } = await getProjectCipher(scoped.projectId);
     const encryptedFiles = encryptor({ plainText: validated.serialized }).cipherTextBlob;
 
+    // Serialised per project so the count is authoritative. The unique index backs the name check.
     const write = () =>
       agentVaultSkillDAL.transaction(async (tx) => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.CreateAgentVaultSkill(scoped.projectId)]);
+
         const existing = await agentVaultSkillDAL.findByNameInProject(
           { name: validated.name, projectId: scoped.projectId },
           tx
         );
         if (existing) throw new ConflictError({ message: duplicateNameMessage(validated.name) });
+
+        const skillCount = await agentVaultSkillDAL.countInProject(scoped.projectId, tx);
+        if (skillCount >= AGENT_VAULT_MAX_SKILLS) {
+          throw new BadRequestError({
+            message: `Agent Vault can hold at most ${AGENT_VAULT_MAX_SKILLS} skills. Delete an unused one first.`
+          });
+        }
 
         const skill = await agentVaultSkillDAL.create(
           { projectId: scoped.projectId, name: validated.name, description: validated.description },

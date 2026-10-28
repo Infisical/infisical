@@ -24,7 +24,7 @@ import {
   TAgentVaultService,
   TAgentVaultSession,
   TAgentVaultSessionLogSettingsState,
-  TAgentVaultSkill,
+  TAgentVaultSkillSummary,
   TAgentVaultSkillVersion,
   TAgentVaultVariable,
   TAgentVaultWrittenMember,
@@ -609,7 +609,7 @@ export const useCreateAgentVaultSkill = () => {
   return useMutation({
     mutationFn: async (params: TCreateAgentVaultSkillDTO) => {
       const { data } = await apiRequest.post<{
-        skill: TAgentVaultSkill;
+        skill: TAgentVaultSkillSummary;
         version: TAgentVaultSkillVersion;
       }>("/api/v1/agent-vault/skills", params);
       return data;
@@ -654,7 +654,7 @@ export const useDeleteAgentVaultSkill = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (skillId: string) => {
-      const { data } = await apiRequest.delete<{ skill: TAgentVaultSkill }>(
+      const { data } = await apiRequest.delete<{ skill: TAgentVaultSkillSummary }>(
         `/api/v1/agent-vault/skills/${skillId}`
       );
       return data.skill;

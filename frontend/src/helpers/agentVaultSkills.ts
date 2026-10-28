@@ -58,8 +58,9 @@ export const normalizeSkillPath = (path: string) =>
     .replace(/^(\.\/|\/)+/, "");
 
 // Archive tools add these beside the real files, and they would stop a single top-level folder from being stripped.
+// Hidden entries are skipped too, as the CLI skips them on push, so both ways publish the same files.
 const isArchiveNoise = (path: string) =>
-  path.startsWith("__MACOSX/") || path.split("/").pop() === ".DS_Store";
+  path.startsWith("__MACOSX/") || path.split("/").some((segment) => segment.startsWith("."));
 
 const stripSharedFolder = (paths: string[]) => {
   const [first] = paths;
@@ -357,8 +358,12 @@ export const getSkillHeaderText = (value: unknown) => {
   return "";
 };
 
+// Plain strings that YAML 1.1 parsers, such as Python's, read as booleans or null.
+const YAML_1_1_KEYWORD_RE = /^(?:y|n|yes|no|on|off|true|false|null|~)$/i;
+
 /** Writes a header value plain when YAML reads it back as the same string, else as a double-quoted JSON string. */
 export const formatSkillHeaderValue = (value: string) => {
+  if (YAML_1_1_KEYWORD_RE.test(value)) return JSON.stringify(value);
   try {
     if ((load(`v: ${value}`, { schema: JSON_SCHEMA }) as { v?: unknown } | null)?.v === value)
       return value;
@@ -368,23 +373,26 @@ export const formatSkillHeaderValue = (value: string) => {
   return JSON.stringify(value);
 };
 
-const FRONTMATTER_RE = /^(---\r?\n)(?:([\s\S]*?)\r?\n)??(---[ \t]*(?:\r?\n|$))/;
+const FRONTMATTER_RE = /^(---[ \t]*\r?\n)(?:([\s\S]*?)\r?\n)??(---[ \t]*(?:\r?\n|$))/;
 
 /**
  * Sets one top-level key in a SKILL.md header and leaves every other line of the file as it was. A value written over
  * several indented lines is replaced as a whole. Adds the key when the header lacks it, and a header when there is none.
  */
 export const setSkillHeaderValue = (text: string, key: string, value: string) => {
-  const entry = `${key}: ${formatSkillHeaderValue(value)}`;
   const match = FRONTMATTER_RE.exec(text);
-  if (!match) return `---\n${entry}\n---\n\n${text}`;
+  if (!match) return `---\n${key}: ${formatSkillHeaderValue(value)}\n---\n\n${text}`;
 
   const [whole, open, header, close] = match;
   const eol = open.endsWith("\r\n") ? "\r\n" : "\n";
   const lines = header === undefined ? [] : header.split(/\r?\n/);
-  const start = lines.findIndex(
-    (line) => line.startsWith(key) && /^[ \t]*:/.test(line.slice(key.length))
+  const keyForms = [key, `"${key}"`, `'${key}'`];
+  const start = lines.findIndex((line) =>
+    keyForms.some((form) => line.startsWith(form) && /^[ \t]*:/.test(line.slice(form.length)))
   );
+  // A value already in double quotes stays quoted, so typing a trailing space doesn't flip the line on each keystroke.
+  const isQuoted = start !== -1 && /^[^:]*:[ \t]*"/.test(lines[start]);
+  const entry = `${key}: ${isQuoted ? JSON.stringify(value) : formatSkillHeaderValue(value)}`;
   if (start === -1) {
     lines.push(entry);
   } else {
@@ -500,11 +508,16 @@ const splitLines = (value: string) => {
   return lines;
 };
 
+const NO_FINAL_NEWLINE = "\\ No newline at end of file";
+
 /** A unified line diff, with unchanged runs longer than twice `context` folded into a skip row. */
 export const buildDiffRows = (oldText: string, newText: string, context = 3): TDiffRow[] => {
   const rows: TDiffRow[] = [];
   let oldLine = 1;
   let newLine = 1;
+
+  const endsWithNewline = (text: string) => text === "" || text.endsWith("\n");
+  const isFinalNewlineChanged = endsWithNewline(oldText) !== endsWithNewline(newText);
 
   const changes = diffLines(oldText, newText);
   changes.forEach((change, index) => {
@@ -520,6 +533,8 @@ export const buildDiffRows = (oldText: string, newText: string, context = 3): TD
         if (change.added) newLine += 1;
         else oldLine += 1;
       });
+      if (isFinalNewlineChanged && !endsWithNewline(change.value))
+        rows.push({ type: "context", text: NO_FINAL_NEWLINE, oldLine: null, newLine: null });
       return;
     }
 

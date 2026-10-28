@@ -5,7 +5,6 @@ import {
   AgentVaultServiceType,
   AgentVaultTrafficPolicy
 } from "@app/ee/services/agent-vault/agent-vault-enums";
-import { TAgentVaultSkillAnalyticsSource } from "@app/ee/services/agent-vault-skill/agent-vault-skill-types";
 import {
   AcmeAccountActor,
   AcmeProfileActor,
@@ -2526,11 +2525,9 @@ export type TAgentVaultVariableDeletedEvent = {
   properties: TAgentVaultEventBase & { variableId: string; scope: string };
 };
 
-// source is what the client says it used ("api" when it says nothing, "restore" for a restore). sizeBucket keeps the
-// size a breakdown.
+// sizeBucket keeps the size a breakdown.
 type TAgentVaultSkillContentProperties = {
   skillId: string;
-  source: TAgentVaultSkillAnalyticsSource;
   fileCount: number;
   sizeBucket: string;
 };
@@ -2542,7 +2539,7 @@ export type TAgentVaultSkillCreatedEvent = {
 
 export type TAgentVaultSkillVersionPublishedEvent = {
   event: PostHogEventTypes.AgentVaultSkillVersionPublished;
-  properties: TAgentVaultEventBase & TAgentVaultSkillContentProperties & { version: number };
+  properties: TAgentVaultEventBase & TAgentVaultSkillContentProperties & { version: number; isRestore: boolean };
 };
 
 export type TAgentVaultSkillDeletedEvent = {

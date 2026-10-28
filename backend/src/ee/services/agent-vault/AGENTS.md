@@ -120,6 +120,7 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
   is enforced against the clock on every resolve; there is no expiry audit event, matching every other product.
 - **Sessions are never deleted**, so the Sessions page is a full history and a session's row keeps the key its
   logs need. Settled with the product owner.
+- Anyone with a session token can download its skills from Infisical with only the token (`GET /session/skills`).
 
 ## Proxies
 
@@ -366,13 +367,15 @@ an installed copy.
   parses the header itself. Any refusal is a 401, an unknown token included. It shares the owner checks of resolve
   and credential refresh (`$authorizeSessionOwner`), with the org taken from the session's project instead of a
   proxy. Each call writes one `agent-vault-skill-delivered` audit event per skill (data-access class) with the
-  session's owner as the actor, credited to the first session bundle that carries it, and one anonymous
+  session's owner as the actor (a user named as they are now, or from the session's snapshot if they are gone),
+  credited to the first session bundle that carries it, and, when there is at least one skill, one anonymous
   `Agent Vault Skills Delivered` PostHog event with the count. Nothing caches; the route uses `readLimit`.
 - Skills use the `agent-vault-skills` CASL subject. Members keep CASL `Read`, narrowed by reachability
   (`getAgentVaultReachability`): they see only skills attached to a bundle they can reach, each with only those
   bundles, and only the latest version's files. Anything else, an unreachable bundle's skill list included, is a 404.
   Listing versions checks `Edit`, so it is admin only. Creating, publishing, restoring and deleting are admin only. Attaching or detaching needs `Edit` on access bundles and `Read` on skills, and a
-  bundle holds at most 25 skills (`AGENT_VAULT_MAX_SKILLS_PER_BUNDLE`, checked under the bundle lock).
+  bundle holds at most 25 skills (`AGENT_VAULT_MAX_SKILLS_PER_BUNDLE`, checked under the bundle lock). Agent Vault
+  holds at most 64 skills (`AGENT_VAULT_MAX_SKILLS`, checked under a per-project advisory lock on create).
 
 ## Credentials at rest
 

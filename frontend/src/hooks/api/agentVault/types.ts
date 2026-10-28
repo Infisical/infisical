@@ -615,17 +615,19 @@ export type TAgentVaultSkillFile = {
   contentBase64: string;
 };
 
-export type TAgentVaultSkillSource = "cli" | "upload" | "form" | "editor";
-
-export type TAgentVaultSkill = {
+/** A skill as create and delete return it, without its access bundles. */
+export type TAgentVaultSkillSummary = {
   id: string;
   name: string;
   description: string;
   latestVersion: number;
-  /** Sorted by name. */
-  accessBundles: { id: string; name: string }[];
   createdAt: string;
   updatedAt: string;
+};
+
+export type TAgentVaultSkill = TAgentVaultSkillSummary & {
+  /** Sorted by name. */
+  accessBundles: { id: string; name: string }[];
 };
 
 export type TListAgentVaultSkillsDTO = {
@@ -663,7 +665,6 @@ export type TAgentVaultBundleSkill = {
 
 export type TCreateAgentVaultSkillDTO = {
   files: TAgentVaultSkillFile[];
-  source: TAgentVaultSkillSource;
 };
 
 export type TPublishAgentVaultSkillVersionDTO = TCreateAgentVaultSkillDTO & {

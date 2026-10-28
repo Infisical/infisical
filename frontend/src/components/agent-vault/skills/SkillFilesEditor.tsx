@@ -14,7 +14,6 @@ import {
   Badge,
   Button,
   ButtonGroup,
-  CodeEditor,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -34,6 +33,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { CodeEditor } from "@app/components/v3/generic/CodeEditor";
 import {
   base64ToBytes,
   formatSkillBytes,
@@ -145,6 +145,8 @@ type Props = {
   requiredPaths?: readonly string[];
   /** Which view Markdown files open in. Code is where an editable file is changed. */
   defaultView?: "preview" | "code";
+  /** Changing it gives every file a fresh undo history, so undo can't bring back text that was discarded. */
+  historyKey?: number;
   className?: string;
 };
 
@@ -157,6 +159,7 @@ export const SkillFilesEditor = ({
   changedPaths,
   requiredPaths = [],
   defaultView = "preview",
+  historyKey = 0,
   className
 }: Props) => {
   const [view, setView] = useState<"preview" | "code">(defaultView);
@@ -481,7 +484,7 @@ export const SkillFilesEditor = ({
               language={isMarkdown ? "markdown" : "plain"}
               isReadOnly={!isEditing}
               hasLineWrapping={isMarkdown}
-              stateKey={`${isEditing ? "edit" : "view"}:${selected.path}`}
+              stateKey={`${isEditing ? "edit" : "view"}:${historyKey}:${selected.path}`}
               aria-label={selected.path}
               isBorderless
               className={twMerge("h-full", (selected.text === null || showRendered) && "hidden")}

@@ -12,7 +12,7 @@ export * from "./Card";
 export * from "./Checkbox";
 export * from "./Code";
 export * from "./CodeBlock";
-export * from "./CodeEditor";
+// CodeMirror stays out of the shared v3 chunk that every page preloads; import it from ./CodeEditor directly.
 export * from "./ColorPicker";
 export * from "./Combobox";
 export * from "./Command";

@@ -29,6 +29,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import {
@@ -108,6 +109,7 @@ type TAgentVaultProxyServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "findResourceMembershipsForActor">;
   orgDAL: Pick<TOrgDALFactory, "findEffectiveOrgMembership">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
+  userDAL: Pick<TUserDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   licenseService: TSessionLogLicenseService;
@@ -154,6 +156,7 @@ export const agentVaultProxyServiceFactory = ({
   membershipDAL,
   orgDAL,
   projectDAL,
+  userDAL,
   permissionService,
   kmsService,
   licenseService,
@@ -1021,7 +1024,17 @@ export const agentVaultProxyServiceFactory = ({
       accessBundleName: row.accessBundleName
     }));
 
-    return { skills, session, orgId: project.orgId };
+    // The session snapshots its owner at mint. Name a user as they are now, as PAM does, and fall back to the
+    // snapshot for one who is gone.
+    let ownerUser: { username: string; email: string | null } | null = null;
+    if (session.userId) {
+      const user = await userDAL.findById(session.userId);
+      ownerUser = user
+        ? { username: user.username, email: user.email ?? null }
+        : { username: session.actorEmail ?? session.actorName, email: session.actorEmail ?? null };
+    }
+
+    return { skills, session, ownerUser, orgId: project.orgId };
   };
 
   return {

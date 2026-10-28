@@ -34,7 +34,7 @@ export const DeleteSkillDialog = ({ skill, onOpenChange, onDeleted }: Props) => 
       title={`Delete "${skill?.name}"`}
       description={
         accessBundles.length > 0
-          ? "Deleting it removes it from every access bundle below, along with every version. Agents already running keep it until they restart. This cannot be undone."
+          ? "Deleting it removes it from every access bundle below."
           : "This skill isn't attached to any access bundle. Every version of it is deleted. This cannot be undone."
       }
       confirmKey={skill?.name ?? ""}

@@ -29,6 +29,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -43,6 +44,7 @@ import {
 import {
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub,
+  useOrganization,
   useProjectPermission
 } from "@app/context";
 import {
@@ -59,6 +61,7 @@ import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 
 export const SkillsCard = () => {
   const { openSheet } = useAgentVaultSheetState("skillId");
+  const { currentOrg } = useOrganization();
   const { permission } = useProjectPermission();
   const canCreate = permission.can(
     ProjectPermissionAgentVaultSkillActions.Create,
@@ -182,16 +185,21 @@ export const SkillsCard = () => {
               ))}
             {!isPending &&
               displayed.map((skill) => (
-                <TableRow key={skill.id} onClick={() => openSkill(skill)}>
+                <TableRow key={skill.id} linked>
                   <TableCell isTruncatable>
-                    <span className="truncate" title={skill.name}>
+                    <RowLink
+                      to="/organizations/$orgId/agent-vault/skills"
+                      params={{ orgId: currentOrg.id }}
+                      search={{ skillId: skill.id }}
+                      title={skill.name}
+                    >
                       {skill.name}
-                    </span>
+                    </RowLink>
                   </TableCell>
                   <TableCell isTruncatable>
                     <SkillDescription description={skill.description} />
                   </TableCell>
-                  <TableCell onClick={(event) => event.stopPropagation()}>
+                  <TableCell>
                     <SkillBundleBadges accessBundles={skill.accessBundles} />
                   </TableCell>
                   <TableCell>

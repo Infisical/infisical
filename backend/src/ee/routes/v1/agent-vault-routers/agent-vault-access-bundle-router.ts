@@ -718,8 +718,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     schema: {
       hide: false,
       operationId: "detachAgentVaultAccessBundleSkill",
-      description:
-        "Detach a skill from an Agent Vault access bundle. Agents already running with the bundle keep the skill until they restart.",
+      description: "Detach a skill from an Agent Vault access bundle.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),

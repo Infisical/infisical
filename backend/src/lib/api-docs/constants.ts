@@ -4695,8 +4695,7 @@ export const AGENT_VAULT = {
       "The file's path inside the skill folder, using `/` between folders. No leading `/`, and no `.` or `..` parts. At most 255 characters, and each file or folder name at most 255 bytes.",
     fileMode: "The file's permissions: `0644` for a regular file, `0755` for one that can be run.",
     fileContent: "The file's content, encoded as base64.",
-    source:
-      "Where the upload came from: `cli`, `upload`, `form`, `editor` or `api`. Defaults to `api`. Used only for product analytics.",
+    versionId: "The ID of the version.",
     version: "The version number. Versions count up from 1, and the newest 20 are kept.",
     sha256: "The SHA-256 digest of the version's files, as hex.",
     sizeBytes: "The total size of the version's files in bytes.",

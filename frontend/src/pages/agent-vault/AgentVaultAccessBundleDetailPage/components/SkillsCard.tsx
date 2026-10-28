@@ -24,6 +24,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -35,6 +36,7 @@ import {
 import {
   ProjectPermissionAgentVaultSkillActions,
   ProjectPermissionSub,
+  useOrganization,
   useProjectPermission
 } from "@app/context";
 import {
@@ -42,7 +44,7 @@ import {
   useDetachAgentVaultAccessBundleSkill,
   useListAgentVaultAccessBundleSkills
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultBundleSkill, TAgentVaultSkill } from "@app/hooks/api/agentVault/types";
+import { TAgentVaultBundleSkill, TAgentVaultSkillSummary } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
@@ -57,6 +59,7 @@ type Props = {
 export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Props) => {
   const { permission } = useProjectPermission();
   const { openSheet } = useAgentVaultSheetState("skillId");
+  const { currentOrg } = useOrganization();
   const canCreateSkills = permission.can(
     ProjectPermissionAgentVaultSkillActions.Create,
     ProjectPermissionSub.AgentVaultSkills
@@ -69,7 +72,7 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [createName, setCreateName] = useState<string | null>(null);
 
-  const attachCreated = async (skill: TAgentVaultSkill) => {
+  const attachCreated = async (skill: TAgentVaultSkillSummary) => {
     try {
       await attachSkill.mutateAsync({ accessBundleId, skillId: skill.id });
       createNotification({
@@ -106,7 +109,7 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
         </CardDescription>
         {canManage && (
           <CardAction>
-            <Button variant="av" onClick={() => setIsAddOpen(true)}>
+            <Button variant="av" isDisabled={isPending} onClick={() => setIsAddOpen(true)}>
               <PlusIcon />
               Add Skills
             </Button>
@@ -152,11 +155,16 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
               ))}
             {!isPending &&
               bundleSkills.map((skill) => (
-                <TableRow key={skill.id} onClick={() => openSheet(skill.id)}>
+                <TableRow key={skill.id} linked>
                   <TableCell isTruncatable>
-                    <span className="truncate" title={skill.name}>
+                    <RowLink
+                      to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
+                      params={{ orgId: currentOrg.id, accessBundleId }}
+                      search={(prev) => ({ ...prev, skillId: skill.id })}
+                      title={skill.name}
+                    >
                       {skill.name}
-                    </span>
+                    </RowLink>
                   </TableCell>
                   <TableCell isTruncatable>
                     <SkillDescription description={skill.description} />
@@ -226,7 +234,7 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
           if (!isOpen) setSkillToRemove(null);
         }}
         title={`Remove "${skillToRemove?.name}" From "${accessBundleName}"`}
-        description="Agents that start with this bundle stop getting this skill. Agents already running keep it until they restart. The skill itself is not deleted."
+        description="The skill itself is not deleted."
         confirmKey={skillToRemove?.name ?? ""}
         confirmLabel="Remove"
         isPending={detachSkill.isPending}
