@@ -16,9 +16,9 @@ import { BadRequestError, ForbiddenRequestError, InternalServerError } from "@ap
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import { matchesAllowedEmailDomain } from "@app/lib/validator";
-import { ActorType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { ActorType } from "@app/services/auth/auth-type";
 import {
   filterRolesNeedingPrivilegeBoundary,
   resolveMembershipRoleSlugs

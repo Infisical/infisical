@@ -720,7 +720,8 @@
                     ]
                   },
                   "documentation/platform/agent-vault/guides/custom-agent",
-                  "documentation/platform/agent-vault/guides/modal"
+                  "documentation/platform/agent-vault/guides/modal",
+                  "documentation/platform/agent-vault/guides/daytona"
                 ]
               },
               {
@@ -2498,6 +2499,18 @@
                           "api-reference/endpoints/app-connections/stripe/create",
                           "api-reference/endpoints/app-connections/stripe/update",
                           "api-reference/endpoints/app-connections/stripe/delete"
+                        ]
+                      },
+                      {
+                        "group": "ServiceNow",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/servicenow/list",
+                          "api-reference/endpoints/app-connections/servicenow/available",
+                          "api-reference/endpoints/app-connections/servicenow/get-by-id",
+                          "api-reference/endpoints/app-connections/servicenow/get-by-name",
+                          "api-reference/endpoints/app-connections/servicenow/create",
+                          "api-reference/endpoints/app-connections/servicenow/update",
+                          "api-reference/endpoints/app-connections/servicenow/delete"
                         ]
                       },
                       {

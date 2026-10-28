@@ -1,11 +1,16 @@
-import { subject } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import { ApproverType } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { verifyRequestedPermissions } from "@app/ee/services/access-approval-request/access-approval-request-fns";
 import { ApprovalStatus } from "@app/ee/services/access-approval-request/access-approval-request-types";
 import { flattenActiveRolesFromMemberships } from "@app/ee/services/permission/permission-service";
-import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionApprovalRequestActions,
+  ProjectPermissionMemberActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { isGlobSubsetOfGlob } from "@app/lib/casl/glob-subset";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -20,6 +25,7 @@ import {
   ApprovalRequestStatus,
   ApprovalRequestStepStatus
 } from "@app/services/approval-policy/approval-policy-enums";
+import { isApprovalRequestExpired } from "@app/services/approval-policy/approval-policy-service";
 import { TApprovalRequest } from "@app/services/approval-policy/approval-policy-types";
 import { createApprovalRequestWithSteps } from "@app/services/approval-policy/approval-request-fns";
 import {
@@ -32,6 +38,7 @@ import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-a
 import { ActorType } from "@app/services/auth/auth-type";
 import { AccessRequestWebhookAction, WebhookEvents } from "@app/services/webhook/webhook-types";
 
+import { externallyReviewedAccessRequestMessage } from "./secret-access-approval-global-request-bridge-constants";
 import {
   collectSecretAccessPolicyGroupIds,
   collectSecretAccessRequestUserIds,
@@ -44,9 +51,12 @@ import {
   toSecretAccessRequestListItem
 } from "./secret-access-approval-global-request-bridge-fns";
 import {
+  TCancelSecretAccessApprovalGlobalRequestDTO,
   TCountSecretAccessApprovalGlobalRequestsDTO,
   TCreateSecretAccessApprovalGlobalRequestDTO,
   TListSecretAccessApprovalGlobalRequestsDTO,
+  TNotifyDelegatedDecisionDTO,
+  TRetrySecretAccessApprovalGlobalRequestDispatchDTO,
   TReviewSecretAccessApprovalGlobalRequestDTO,
   TRevokeSecretAccessApprovalGlobalRequestDTO,
   TSecretAccessApprovalGlobalRequestBridgeServiceFactoryDep
@@ -70,6 +80,8 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
   additionalPrivilegeDAL,
   secretAccessApprovalGlobalPolicyBridgeDAL,
   secretAccessApprovalGlobalRequestBridgeDAL,
+  approvalPolicyDAL,
+  delegatedApprovalService,
   smtpService,
   notificationService,
   kmsService,
@@ -109,10 +121,11 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     if (!requests.length) return [];
 
     const requestIds = requests.map((request) => request.id);
-    const [policies, grants, approvals] = await Promise.all([
+    const [policies, grants, approvals, delegatedRequests] = await Promise.all([
       secretAccessApprovalGlobalPolicyBridgeDAL.findSecretAccessPolicies({ projectId: filter.projectId }),
       secretAccessApprovalGlobalRequestBridgeDAL.findGrantsByRequestIds(requestIds),
-      secretAccessApprovalGlobalRequestBridgeDAL.findApprovalsByRequestIds(requestIds)
+      secretAccessApprovalGlobalRequestBridgeDAL.findApprovalsByRequestIds(requestIds),
+      delegatedApprovalService.getRequestsByRequestIds(requestIds)
     ]);
 
     const [privileges, groupMembers] = await Promise.all([
@@ -134,7 +147,8 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       approvals,
       groupMembers,
       users,
-      orgMemberships
+      orgMemberships,
+      delegatedRequests
     });
   };
 
@@ -253,6 +267,26 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     }
   };
 
+  const $describeRequestForAudit = async (request: Awaited<ReturnType<typeof $findRequestById>>) => {
+    if (!request.policyId) {
+      throw new BadRequestError({ message: "The policy associated with this access request has been deleted." });
+    }
+    const policy = await $findPolicyById(
+      request.policyId,
+      "The policy associated with this access request has been deleted."
+    );
+    const { envSlug, secretPath } = verifyRequestedPermissions({
+      permissions: getSecretAccessRequestData(request).permissions
+    });
+    return {
+      policyName: policy.name,
+      requesterName: request.requesterName,
+      requesterEmail: request.requesterEmail,
+      environment: envSlug,
+      secretPath
+    };
+  };
+
   const isGlobalAccessApprovalRequest = async (requestId: string) =>
     Boolean(await approvalRequestDAL.findOne({ id: requestId, type: ApprovalPolicyType.SecretAccess }));
 
@@ -291,9 +325,6 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     ]);
     if (!requestedByUser) throw new ForbiddenRequestError({ message: "User not found" });
     if (!project) throw new NotFoundError({ message: `Project with ID '${projectId}' not found` });
-    if (!policy.steps.length) {
-      throw new BadRequestError({ message: `Policy '${policy.name}' has no approvers configured` });
-    }
 
     const activeGrant = await secretAccessApprovalGlobalResource.canAccess(projectId, requestedByUserId, {
       envId,
@@ -320,14 +351,35 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     const parsedMs = requestExpirationTime ? ms(requestExpirationTime) : null;
     const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
 
-    const created = await approvalRequestDAL.transaction((tx) =>
-      createApprovalRequestWithSteps(
+    // A policy update locks this row, then rewrites its environments, secret path, time limits, approver
+    // steps, and delegated reviewer in the same transaction, which moves updatedAt. Sharing the row waits that
+    // update out, and an unchanged updatedAt means the scope and limits this request was checked against still hold.
+    const { approvalRequest: created, policySteps } = await approvalRequestDAL.transaction(async (tx) => {
+      const lockedPolicy = await approvalPolicyDAL.findByIdForShare(policy.id, tx);
+      if (!lockedPolicy) {
+        throw new NotFoundError({ message: `Policy '${policy.name}' was deleted before the request could be created` });
+      }
+      if (new Date(lockedPolicy.updatedAt).getTime() !== new Date(policy.updatedAt).getTime()) {
+        throw new BadRequestError({
+          message: `Policy '${policy.name}' was changed while the request was being created. Submit the request again.`
+        });
+      }
+
+      const currentSteps = await approvalPolicyDAL.findStepsByPolicyId(policy.id, tx);
+      const delegatedPolicy = currentSteps.length
+        ? null
+        : await delegatedApprovalService.getPolicyByPolicyId(policy.id, tx);
+      if (!currentSteps.length && !delegatedPolicy) {
+        throw new BadRequestError({ message: `Policy '${policy.name}' has no approvers configured` });
+      }
+
+      const approvalRequest = await createApprovalRequestWithSteps(
         {
           projectId,
           organizationId: actorOrgId,
           policyId: policy.id,
           policyType: ApprovalPolicyType.SecretAccess,
-          policySteps: policy.steps,
+          policySteps: currentSteps,
           requestData,
           justification: note || null,
           expiresAt,
@@ -338,32 +390,39 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
         },
         { approvalRequestDAL, approvalRequestStepsDAL, approvalRequestStepEligibleApproversDAL },
         tx
-      )
-    );
+      );
+      if (delegatedPolicy) {
+        await delegatedApprovalService.createRequest({ approvalRequest, delegatedPolicy }, tx);
+      }
+      return { approvalRequest, policySteps: currentSteps };
+    });
 
     const request = await $findRequestById(created.id);
-    await notifySecretAccessStepApprovers(
-      {
-        step: policy.steps[0],
-        request,
-        project,
-        requestedByUser,
-        data: requestData,
-        environment: { slug: envSlug },
-        secretPath
-      },
-      {
-        userDAL,
-        userGroupMembershipDAL,
-        projectDAL,
-        projectSlackConfigDAL,
-        kmsService,
-        microsoftTeamsService,
-        projectMicrosoftTeamsConfigDAL,
-        notificationService,
-        smtpService
-      }
-    );
+    const [firstStep] = policySteps;
+    if (firstStep) {
+      await notifySecretAccessStepApprovers(
+        {
+          step: firstStep,
+          request,
+          project,
+          requestedByUser,
+          data: requestData,
+          environment: { slug: envSlug },
+          secretPath
+        },
+        {
+          userDAL,
+          userGroupMembershipDAL,
+          projectDAL,
+          projectSlackConfigDAL,
+          kmsService,
+          microsoftTeamsService,
+          projectMicrosoftTeamsConfigDAL,
+          notificationService,
+          smtpService
+        }
+      );
+    }
 
     const legacyRequest = toLegacyAccessApprovalRequest(request);
 
@@ -371,7 +430,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       action: AccessRequestWebhookAction.Created,
       request: legacyRequest,
       project,
-      policy: { ...policy, hasSequencedApprovers: policy.steps.length > 1 },
+      policy: { ...policy, hasSequencedApprovers: policySteps.length > 1 },
       requestedByUser,
       envName
     });
@@ -389,16 +448,6 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     actorAuthMethod
   }: TReviewSecretAccessApprovalGlobalRequestDTO) => {
     const request = await $findRequestById(requestId);
-    if (!request.policyId) {
-      throw new BadRequestError({ message: "The policy associated with this access request has been deleted." });
-    }
-    const policy = await $findPolicyById(
-      request.policyId,
-      "The policy associated with this access request has been deleted."
-    );
-    if (!request.requesterId) {
-      throw new NotFoundError({ message: "The user who created this access request no longer exists" });
-    }
 
     const { memberships } = await permissionService.getProjectPermission({
       actor,
@@ -419,10 +468,24 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       throw new ForbiddenRequestError({ message: "You are not authorized to review this request" });
     }
 
+    if (!request.policyId) {
+      throw new BadRequestError({ message: "The policy associated with this access request has been deleted." });
+    }
+    const policy = await $findPolicyById(
+      request.policyId,
+      "The policy associated with this access request has been deleted."
+    );
+    if (policy.delegatedApproval) {
+      throw new BadRequestError({ message: externallyReviewedAccessRequestMessage(requestId) });
+    }
+    if (!request.requesterId) {
+      throw new NotFoundError({ message: "The user who created this access request no longer exists" });
+    }
+
     if (request.status !== ApprovalRequestStatus.Pending) {
       throw new BadRequestError({ message: "The request has been closed" });
     }
-    if (request.expiresAt && new Date(request.expiresAt) < new Date()) {
+    if (isApprovalRequestExpired(request)) {
       await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Expired });
       throw new BadRequestError({ message: "This access request has expired and can no longer be reviewed" });
     }
@@ -524,7 +587,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
         if (!locked || locked.status !== ApprovalRequestStatus.Pending) {
           throw new BadRequestError({ message: "The request has been closed" });
         }
-        if (locked.expiresAt && new Date(locked.expiresAt) < new Date()) {
+        if (isApprovalRequestExpired(locked)) {
           throw new BadRequestError({ message: "This access request has expired and can no longer be reviewed" });
         }
 
@@ -600,7 +663,7 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
         throw new BadRequestError({ message: "The request has been closed" });
       }
 
-      if (locked.expiresAt && new Date(locked.expiresAt) < new Date()) {
+      if (isApprovalRequestExpired(locked)) {
         throw new BadRequestError({ message: "This access request has expired and can no longer be reviewed" });
       }
 
@@ -814,12 +877,133 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
     return { request: revoked, projectId: request.projectId };
   };
 
+  const retryDelegatedApprovalDispatch = async ({
+    requestId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }: TRetrySecretAccessApprovalGlobalRequestDispatchDTO) => {
+    const request = await $findRequestById(requestId);
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: request.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    if (request.requesterId !== actorId) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionApprovalRequestActions.Read,
+        ProjectPermissionSub.ApprovalRequests
+      );
+    }
+
+    const auditDetails = await $describeRequestForAudit(request);
+    const { delegatedPolicy } = await delegatedApprovalService.retryDispatch({ approvalRequest: request });
+
+    return {
+      request: { ...toLegacyAccessApprovalRequest(request), policyId: delegatedPolicy.policyId },
+      projectId: request.projectId,
+      delegatedApprovalType: delegatedPolicy.type,
+      ...auditDetails
+    };
+  };
+
+  // Fires the same webhook a reviewer's decision does, for a decision read back from the delegated
+  // approval system. The decision itself is already committed by the time this runs.
+  const notifyDelegatedDecision = async ({ requestId }: TNotifyDelegatedDecisionDTO) => {
+    const request = await $findRequestByIdFromPrimary(requestId);
+    if (!request.policyId || !request.requesterId) {
+      logger.warn(
+        `Skipping access request webhook, policy or requester missing [requestId=${requestId}] [action=${AccessRequestWebhookAction.Reviewed}]`
+      );
+      return;
+    }
+
+    const [policy, project, requestedByUser] = await Promise.all([
+      $findPolicyById(request.policyId, "The policy associated with this access request has been deleted."),
+      projectDAL.findById(request.projectId),
+      userDAL.findById(request.requesterId)
+    ]);
+    if (!project || !requestedByUser) {
+      logger.warn(
+        `Skipping access request webhook, project or requester not found [requestId=${requestId}] [action=${AccessRequestWebhookAction.Reviewed}]`
+      );
+      return;
+    }
+
+    // we need to check this, because I believe this is sending the webhook only, but it does not send any email for the user that created the policy
+    await $queueAccessRequestWebhook({
+      action: AccessRequestWebhookAction.Reviewed,
+      request: toLegacyAccessApprovalRequest(request),
+      project,
+      policy: { ...policy, hasSequencedApprovers: policy.approvers.some((a) => (a.sequence ?? 1) > 1) },
+      requestedByUser,
+      envName: policy.environment.name
+    });
+  };
+
+  const cancelAccessApprovalRequest = async ({
+    requestId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }: TCancelSecretAccessApprovalGlobalRequestDTO) => {
+    const request = await $findRequestById(requestId);
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: request.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    if (request.requesterId !== actorId) {
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionActions.Edit,
+        ProjectPermissionSub.SecretApproval
+      );
+    }
+
+    const delegatedRequest = await delegatedApprovalService.getRequestByRequestId(request.id);
+    if (!delegatedRequest) {
+      throw new BadRequestError({
+        message: `Access request with ID '${requestId}' is not reviewed in an external approval system. Reject it instead.`
+      });
+    }
+
+    const auditDetails = await $describeRequestForAudit(request);
+    const cancelled = await approvalRequestDAL.transaction(async (tx) => {
+      const locked = await approvalRequestDAL.findByIdForUpdate(requestId, tx);
+      if (!locked || locked.status !== ApprovalRequestStatus.Pending || !locked.policyId) {
+        throw new BadRequestError({ message: "Only pending requests can be cancelled" });
+      }
+      return approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Cancelled }, tx);
+    });
+
+    return {
+      request: toLegacyAccessApprovalRequest({ ...request, ...cancelled }),
+      projectId: request.projectId,
+      ...auditDetails
+    };
+  };
+
   return {
     isGlobalAccessApprovalRequest,
     listAccessApprovalRequests,
     countAccessApprovalRequests,
     createAccessApprovalRequest,
     reviewAccessApprovalRequest,
-    revokeAccessApprovalRequest
+    revokeAccessApprovalRequest,
+    retryDelegatedApprovalDispatch,
+    cancelAccessApprovalRequest,
+    notifyDelegatedDecision
   };
 };

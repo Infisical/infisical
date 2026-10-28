@@ -1,6 +1,12 @@
 import { z } from "zod";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import { AGENT_VAULT_MAX_GRANTEES } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
+import {
+  AGENT_VAULT_SKILL_MAX_PATH_LENGTH,
+  AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT
+} from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
+import { AgentVaultSkillFileMode } from "@app/ee/services/agent-vault-skill/agent-vault-skill-types";
 import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
@@ -40,12 +46,6 @@ import {
   AGENT_VAULT_VARIABLE_KEY_RE,
   AGENT_VAULT_VARIABLE_VALUE_MAX_LENGTH
 } from "@app/ee/services/agent-vault/agent-vault-variable-fns";
-import { AGENT_VAULT_MAX_GRANTEES } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
-import {
-  AGENT_VAULT_SKILL_MAX_PATH_LENGTH,
-  AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT
-} from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
-import { AgentVaultSkillFileMode } from "@app/ee/services/agent-vault-skill/agent-vault-skill-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 

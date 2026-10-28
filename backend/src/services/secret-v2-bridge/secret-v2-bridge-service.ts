@@ -52,20 +52,12 @@ import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
-import { TSecretQueueFactory } from "../secret/secret-queue";
-import {
-  PersonalOverridesBehavior,
-  SecretImportReferencesBehavior,
-  SecretSortField,
-  TGetASecretByIdDTO,
-  TRedactSecretVersionValueDTO
-} from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
@@ -76,6 +68,14 @@ import {
 } from "../secret-validation-rule/secret-validation-rule-errors";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TValidateSecretsDTO } from "../secret-validation-rule/secret-validation-rule-types";
+import { TSecretQueueFactory } from "../secret/secret-queue";
+import {
+  PersonalOverridesBehavior,
+  SecretImportReferencesBehavior,
+  SecretSortField,
+  TGetASecretByIdDTO,
+  TRedactSecretVersionValueDTO
+} from "../secret/secret-types";
 import { createSecretBlindIndexer } from "./secret-blind-index-fns";
 import { secretMetadataServiceFactory } from "./secret-metadata-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";

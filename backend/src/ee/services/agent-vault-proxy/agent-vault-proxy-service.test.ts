@@ -8,13 +8,13 @@ import {
 import { ConflictError } from "@app/lib/errors";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
+import { AGENT_VAULT_SERVICE_MOVED_MESSAGE } from "../agent-vault-oauth/agent-vault-oauth-service";
+import { TRefreshServiceTokenDTO } from "../agent-vault-oauth/agent-vault-oauth-types";
 import {
   AgentVaultCredentialType,
   AgentVaultOauthStatus,
   AgentVaultServiceType
 } from "../agent-vault/agent-vault-enums";
-import { AGENT_VAULT_SERVICE_MOVED_MESSAGE } from "../agent-vault-oauth/agent-vault-oauth-service";
-import { TRefreshServiceTokenDTO } from "../agent-vault-oauth/agent-vault-oauth-types";
 import { agentVaultProxyServiceFactory } from "./agent-vault-proxy-service";
 import { TResolveServiceRow } from "./agent-vault-resolve-dal";
 

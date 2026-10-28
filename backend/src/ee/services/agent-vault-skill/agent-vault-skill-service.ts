@@ -13,9 +13,9 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
+import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
-import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
 import { TAgentVaultSkillBundleDALFactory } from "./agent-vault-skill-bundle-dal";
 import { TAgentVaultSkillDALFactory, TAgentVaultSkillSummaryRow } from "./agent-vault-skill-dal";
 import {
@@ -406,12 +406,10 @@ export const agentVaultSkillServiceFactory = ({
       accessBundleIds
     );
     return {
-      skills: skills.map(
-        (skill): TAgentVaultSkillWithBundles => ({
-          ...projectSkill(skill),
-          accessBundles: bundlesBySkill.get(skill.id) ?? []
-        })
-      ),
+      skills: skills.map((skill): TAgentVaultSkillWithBundles => ({
+        ...projectSkill(skill),
+        accessBundles: bundlesBySkill.get(skill.id) ?? []
+      })),
       totalCount
     };
   };
