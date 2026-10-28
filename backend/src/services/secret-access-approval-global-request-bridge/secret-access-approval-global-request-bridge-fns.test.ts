@@ -432,7 +432,7 @@ describe("composeSecretAccessRequestRows", () => {
           {
             requestId: "req-1",
             status: DelegatedApprovalRequestStatus.FailedDispatch,
-            statusReason: "ServiceNow could not be reached."
+            details: { statusReason: "ServiceNow could not be reached." }
           }
         ]
       })
@@ -501,7 +501,7 @@ describe("toSecretAccessRequestListItem", () => {
     const item = toItem({
       requests: [request({ policyId: null, status: ApprovalRequestStatus.Cancelled })],
       delegatedRequests: [
-        { requestId: "req-1", status: DelegatedApprovalRequestStatus.WaitingApproval, statusReason: null }
+        { requestId: "req-1", status: DelegatedApprovalRequestStatus.WaitingApproval, details: { statusReason: null } }
       ]
     });
 

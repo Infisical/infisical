@@ -20,14 +20,13 @@ import { assertPolicyTypeSupportsDelegatedApproval, listDelegatedApprovalOptions
 import { DELEGATED_APPROVAL_CONNECTION_MAP, DELEGATED_APPROVAL_NAME_MAP } from "./delegated-approval-maps";
 import { TDelegatedApprovalPolicyDALFactory } from "./delegated-approval-policy-dal";
 import { TDelegatedApprovalRequestDALFactory } from "./delegated-approval-request-dal";
+import { toDelegatedApprovalRequest } from "./delegated-approval-request-fns";
 import {
   TCreateDelegatedApprovalPolicyDTO,
   TCreateDelegatedApprovalRequestDTO,
   TDelegatedApprovalPolicy,
-  TDelegatedApprovalRequest,
   TRetryDelegatedApprovalRequestDispatchDTO,
   TUpdateDelegatedApprovalPolicyDTO,
-  TUpdateDelegatedApprovalRequestDTO,
   TValidateDelegatedApprovalConnectionDTO
 } from "./delegated-approval-types";
 
@@ -151,21 +150,27 @@ export const delegatedApprovalServiceFactory = ({
     return (policy as TDelegatedApprovalPolicy | undefined) ?? null;
   };
 
-  const createRequest = async ({ approvalRequest }: TCreateDelegatedApprovalRequestDTO, tx?: Knex) => {
+  const createRequest = async ({ approvalRequest, delegatedPolicy }: TCreateDelegatedApprovalRequestDTO, tx?: Knex) => {
     assertPolicyTypeSupportsDelegatedApproval(approvalRequest.type);
 
     const dispatchEventId = crypto.randomUUID();
     try {
-      const request = (await delegatedApprovalRequestDAL.create(
-        { requestId: approvalRequest.id, status: DelegatedApprovalRequestStatus.PendingDispatch, dispatchEventId },
+      const request = await delegatedApprovalRequestDAL.create(
+        {
+          requestId: approvalRequest.id,
+          providerType: delegatedPolicy.type,
+          status: DelegatedApprovalRequestStatus.PendingDispatch,
+          details: {},
+          dispatchEventId
+        },
         tx
-      )) as TDelegatedApprovalRequest;
+      );
       await emitDelegatedApprovalDispatchRequested(
         eventEmitter,
         { delegatedRequestId: request.id, dispatchEventId },
         tx
       );
-      return request;
+      return toDelegatedApprovalRequest(request);
     } catch (err) {
       if (hasPostgresErrorCode(err, DatabaseErrorCode.UniqueViolation)) {
         throw new BadRequestError({
@@ -181,13 +186,13 @@ export const delegatedApprovalServiceFactory = ({
 
   const getRequestByRequestId = async (requestId: string, tx?: Knex) => {
     const request = await delegatedApprovalRequestDAL.findOne({ requestId }, tx);
-    return (request as TDelegatedApprovalRequest | undefined) ?? null;
+    return request ? toDelegatedApprovalRequest(request) : null;
   };
 
   const getRequestsByRequestIds = async (requestIds: string[], tx?: Knex) => {
     if (!requestIds.length) return [];
     const requests = await delegatedApprovalRequestDAL.find({ $in: { requestId: requestIds } }, { tx });
-    return requests as TDelegatedApprovalRequest[];
+    return requests.map(toDelegatedApprovalRequest);
   };
 
   const retryDispatch = async ({ approvalRequest }: TRetryDelegatedApprovalRequestDispatchDTO) => {
@@ -237,38 +242,15 @@ export const delegatedApprovalServiceFactory = ({
         { delegatedRequestId: resent.id, dispatchEventId },
         tx
       );
-      return resent as TDelegatedApprovalRequest;
+      return toDelegatedApprovalRequest(resent);
     });
 
     return { delegatedRequest: resentRequest, delegatedPolicy };
   };
 
-  const updateRequest = async ({ requestId, status, statusReason }: TUpdateDelegatedApprovalRequestDTO, tx?: Knex) => {
-    const patch = {
-      ...(status !== undefined && { status }),
-      ...(statusReason !== undefined && { statusReason })
-    };
-
-    if (Object.keys(patch).length === 0) {
-      const existing = await delegatedApprovalRequestDAL.findOne({ requestId }, tx);
-      if (!existing) {
-        throw new NotFoundError({
-          message: `Approval request with ID '${requestId}' has no delegated approval request`
-        });
-      }
-      return existing as TDelegatedApprovalRequest;
-    }
-
-    const [request] = await delegatedApprovalRequestDAL.update({ requestId }, patch, tx);
-    if (!request) {
-      throw new NotFoundError({ message: `Approval request with ID '${requestId}' has no delegated approval request` });
-    }
-    return request as TDelegatedApprovalRequest;
-  };
-
   const deleteRequestByRequestId = async (requestId: string, tx?: Knex) => {
     const [request] = await delegatedApprovalRequestDAL.delete({ requestId }, tx);
-    return (request as TDelegatedApprovalRequest | undefined) ?? null;
+    return request ? toDelegatedApprovalRequest(request) : null;
   };
 
   return {
@@ -282,7 +264,6 @@ export const delegatedApprovalServiceFactory = ({
     getRequestByRequestId,
     getRequestsByRequestIds,
     retryDispatch,
-    updateRequest,
     deleteRequestByRequestId
   };
 };

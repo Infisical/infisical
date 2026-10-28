@@ -2,6 +2,7 @@ import { TApprovalRequests, TDelegatedApprovalPolicies, TDelegatedApprovalReques
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { DelegatedApprovalPolicyType, DelegatedApprovalRequestStatus } from "./delegated-approval-enums";
+import { TDelegatedApprovalRequestDetails } from "./delegated-approval-schemas";
 
 export type TDelegatedApprovalListItem = {
   name: string;
@@ -13,8 +14,12 @@ export type TDelegatedApprovalPolicy = Omit<TDelegatedApprovalPolicies, "type"> 
   type: DelegatedApprovalPolicyType;
 };
 
-export type TDelegatedApprovalRequest = Omit<TDelegatedApprovalRequests, "status"> & {
+export type { TDelegatedApprovalRequestDetails };
+
+export type TDelegatedApprovalRequest = Omit<TDelegatedApprovalRequests, "providerType" | "status" | "details"> & {
+  providerType: DelegatedApprovalPolicyType;
   status: DelegatedApprovalRequestStatus;
+  details: TDelegatedApprovalRequestDetails;
 };
 
 export type TValidateDelegatedApprovalConnectionDTO = {
@@ -40,14 +45,9 @@ export type TUpdateDelegatedApprovalPolicyDTO = {
 
 export type TCreateDelegatedApprovalRequestDTO = {
   approvalRequest: Pick<TApprovalRequests, "id" | "type">;
+  delegatedPolicy: Pick<TDelegatedApprovalPolicy, "type">;
 };
 
 export type TRetryDelegatedApprovalRequestDispatchDTO = {
   approvalRequest: Pick<TApprovalRequests, "id" | "policyId" | "status" | "expiresAt">;
-};
-
-export type TUpdateDelegatedApprovalRequestDTO = {
-  requestId: string;
-  status?: DelegatedApprovalRequestStatus;
-  statusReason?: string | null;
 };

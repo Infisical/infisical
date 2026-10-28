@@ -11,6 +11,7 @@ const failedRequest = {
   id: "delegated-1",
   requestId: "req-1",
   status: DelegatedApprovalRequestStatus.FailedDispatch,
+  details: { statusReason: "ServiceNow could not be reached." },
   dispatchEventId: "44444444-4444-4444-8444-444444444444"
 };
 const serviceNowPolicy = {
@@ -37,7 +38,7 @@ const createService = ({
 } = {}) => {
   const emit = vi.fn().mockResolvedValue(undefined);
   const findOne = vi.fn().mockResolvedValue(delegatedRequest);
-  const create = vi.fn().mockImplementation(async (row: { requestId: string; status: string }) => ({
+  const create = vi.fn().mockImplementation(async (row: { requestId: string; status: string; details: object }) => ({
     id: "delegated-1",
     ...row
   }));
@@ -72,13 +73,22 @@ describe("delegatedApprovalService.createRequest", () => {
   test("records the dispatch event in the same transaction as the request row", async () => {
     const { service, emit, create } = createService();
 
-    const request = await service.createRequest({ approvalRequest: pendingApprovalRequest as never }, TX);
+    const request = await service.createRequest(
+      { approvalRequest: pendingApprovalRequest as never, delegatedPolicy: serviceNowPolicy },
+      TX
+    );
 
-    expect(request).toMatchObject({ id: "delegated-1", status: DelegatedApprovalRequestStatus.PendingDispatch });
+    expect(request).toMatchObject({
+      id: "delegated-1",
+      providerType: DelegatedApprovalPolicyType.ServiceNow,
+      status: DelegatedApprovalRequestStatus.PendingDispatch
+    });
     expect(create).toHaveBeenCalledWith(
       {
         requestId: "req-1",
+        providerType: DelegatedApprovalPolicyType.ServiceNow,
         status: DelegatedApprovalRequestStatus.PendingDispatch,
+        details: {},
         dispatchEventId: expect.any(String) as string
       },
       TX

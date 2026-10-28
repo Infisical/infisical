@@ -28,7 +28,7 @@ import {
 import { DELEGATED_APPROVAL_CONNECTION_MAP } from "../delegated-approval-maps";
 import { TDelegatedApprovalPolicyDALFactory } from "../delegated-approval-policy-dal";
 import { TDelegatedApprovalRequestDALFactory } from "../delegated-approval-request-dal";
-import { DELEGATED_APPROVAL_STATUS_REASON_MAX_CHARS } from "./delegated-approval-dispatch-constants";
+import { toDelegatedApprovalStatusReason } from "../delegated-approval-request-fns";
 import {
   getDelegatedApprovalDispatchDetailsBuilder,
   getDelegatedApprovalProvider
@@ -42,7 +42,7 @@ const DELEGATED_APPROVAL_DISPATCH_CONCURRENCY = 10;
 type TDelegatedApprovalDispatchConsumerDep = {
   delegatedApprovalRequestDAL: Pick<
     TDelegatedApprovalRequestDALFactory,
-    "findById" | "primaryNode" | "transaction" | "update" | "updateById"
+    "findById" | "primaryNode" | "transaction" | "updateById" | "updateWithDetails"
   >;
   delegatedApprovalPolicyDAL: Pick<TDelegatedApprovalPolicyDALFactory, "findOne">;
   delegatedApprovalCallbackService: Pick<
@@ -68,11 +68,11 @@ export const delegatedApprovalDispatchConsumerFactory = ({
 }: TDelegatedApprovalDispatchConsumerDep): IEventConsumer<TDelegatedApprovalDispatchRequestedPayload> => {
   const $markDispatchFailed = async (delegatedRequestId: string, eventId: string, statusReason: string) => {
     try {
-      await delegatedApprovalRequestDAL.update(
+      await delegatedApprovalRequestDAL.updateWithDetails(
         { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.PendingDispatch, dispatchEventId: eventId },
         {
           status: DelegatedApprovalRequestStatus.FailedDispatch,
-          statusReason: statusReason.slice(0, DELEGATED_APPROVAL_STATUS_REASON_MAX_CHARS)
+          details: { statusReason: toDelegatedApprovalStatusReason(statusReason) }
         }
       );
     } catch (error) {
@@ -96,11 +96,11 @@ export const delegatedApprovalDispatchConsumerFactory = ({
   }) => {
     try {
       await delegatedApprovalRequestDAL.transaction(async (tx) => {
-        const [closed] = await delegatedApprovalRequestDAL.update(
+        const [closed] = await delegatedApprovalRequestDAL.updateWithDetails(
           { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.PendingDispatch, dispatchEventId: eventId },
           {
             status: DelegatedApprovalRequestStatus.Failed,
-            statusReason: statusReason.slice(0, DELEGATED_APPROVAL_STATUS_REASON_MAX_CHARS)
+            details: { statusReason: toDelegatedApprovalStatusReason(statusReason) }
           },
           tx
         );
@@ -175,9 +175,9 @@ export const delegatedApprovalDispatchConsumerFactory = ({
     }
 
     if (delegatedRequest.status === DelegatedApprovalRequestStatus.FailedDispatch) {
-      const [reopened] = await delegatedApprovalRequestDAL.update(
+      const [reopened] = await delegatedApprovalRequestDAL.updateWithDetails(
         { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.FailedDispatch, dispatchEventId: eventId },
-        { status: DelegatedApprovalRequestStatus.PendingDispatch, statusReason: null }
+        { status: DelegatedApprovalRequestStatus.PendingDispatch, details: { statusReason: null } }
       );
       if (!reopened) {
         logger.info(
@@ -256,9 +256,13 @@ export const delegatedApprovalDispatchConsumerFactory = ({
 
       const { providerRequestId } = await provider.dispatch(input, connection);
 
-      const [waitingRequest] = await delegatedApprovalRequestDAL.update(
+      const [waitingRequest] = await delegatedApprovalRequestDAL.updateWithDetails(
         { id: delegatedRequestId, status: DelegatedApprovalRequestStatus.PendingDispatch },
-        { status: DelegatedApprovalRequestStatus.WaitingApproval, statusReason: null, providerRequestId }
+        {
+          status: DelegatedApprovalRequestStatus.WaitingApproval,
+          providerRequestId,
+          details: { statusReason: null }
+        }
       );
       if (!waitingRequest) {
         await delegatedApprovalRequestDAL.updateById(delegatedRequestId, { providerRequestId });

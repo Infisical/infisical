@@ -332,7 +332,7 @@ export type TSecretAccessRequestListInput = {
   groupMembers: { groupId: string; userId: string }[];
   users: Pick<TUsers, "id" | "email" | "username" | "firstName" | "lastName">[];
   orgMemberships: { actorUserId?: string | null; isActive: boolean }[];
-  delegatedRequests: Pick<TDelegatedApprovalRequest, "requestId" | "status" | "statusReason">[];
+  delegatedRequests: Pick<TDelegatedApprovalRequest, "requestId" | "status" | "details">[];
 };
 
 export type TPolicySubject = { type: string; id?: string | null };
@@ -489,7 +489,7 @@ export const composeSecretAccessRequestRows = ({
       delegatedApproval: delegatedRequest
         ? {
             status: delegatedRequest.status,
-            statusReason: delegatedRequest.statusReason ?? null
+            statusReason: delegatedRequest.details.statusReason ?? null
           }
         : null,
       environment: policy?.environment ?? null,
