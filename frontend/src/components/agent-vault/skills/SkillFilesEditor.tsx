@@ -35,8 +35,6 @@ import {
 } from "@app/components/v3";
 import { CodeEditor } from "@app/components/v3/generic/CodeEditor";
 import {
-  base64ToBytes,
-  formatSkillBytes,
   getSkillBaseName,
   getSkillEntryNameError,
   getSkillFolders,
@@ -55,11 +53,6 @@ import {
 type TTreeTarget = { path: string; type: FileTreeItemType } | null;
 
 type TContextMenu = { x: number; y: number; target: TTreeTarget };
-
-const fileSize = (file: TSkillDraftFile) =>
-  file.text === null
-    ? base64ToBytes(file.contentBase64).length
-    : new TextEncoder().encode(file.text).length;
 
 type InlineNameInputProps = {
   initialValue: string;
@@ -427,9 +420,6 @@ export const SkillFilesEditor = ({
               {selected.path}
             </span>
             {selected.mode === "0755" && <Badge variant="neutral">Executable</Badge>}
-            <span className="shrink-0 text-xs text-muted">
-              {formatSkillBytes(fileSize(selected))}
-            </span>
             {canPreview && (
               <ButtonGroup aria-label="How to show the file">
                 <Button
