@@ -77,6 +77,7 @@ const createHarness = (initial: TSyncState, { lockFails = false, staleLoad = fal
   };
   const snapshot = { ...state };
   const secretSyncDAL = {
+    findConnectionId: vi.fn(async () => state.connectionId),
     // Every attempt reloads the sync, as the real handler does.
     findById: vi.fn(async () => (staleLoad ? { ...snapshot } : { ...state })),
     // A conditional UPDATE: only a row still matching the filter is changed and returned.
