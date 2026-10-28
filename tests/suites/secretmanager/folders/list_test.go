@@ -3,6 +3,7 @@ package folders_test
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture"
@@ -66,13 +67,14 @@ func TestFolder_List(t *testing.T) {
 		secretmanager.CreateSecret(t, proj, "prod", "SHARED_KEY", "from-prod")
 		secretmanager.CreateFolder(t, proj, "dev", "/app")
 		secretmanager.CreateImport(t, proj, "dev", secretmanager.Location{Env: "prod", Path: "/"}, secretmanager.Replicated())
+		// One worker serves every tenant's replication jobs, so a run can queue behind others.
 		wait.Until(t, "the replicated import to carry the source secret", func() bool {
 			res, err := tn.Admin.API.ListSecretsV4WithResponse(t.Context(), &api.ListSecretsV4Params{
 				ProjectId: &proj.ID, Environment: new("dev"),
 			})
 			return err == nil && res.JSON200 != nil && res.JSON200.Imports != nil &&
 				len(*res.JSON200.Imports) == 1 && len((*res.JSON200.Imports)[0].Secrets) == 1
-		})
+		}, wait.Timeout(60*time.Second))
 
 		// Action
 		flat := folderNames(t, proj, "dev", "/")

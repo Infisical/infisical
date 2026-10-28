@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture"
@@ -162,6 +163,7 @@ func TestSecretVersion_Redact(t *testing.T) {
 func replicatedSecretID(t *testing.T, proj *fixture.Project, env, key string) string {
 	t.Helper()
 	var id string
+	// One worker serves every tenant's replication jobs, so a run can queue behind others.
 	wait.Until(t, fmt.Sprintf("%s to be replicated into %s", key, env), func() bool {
 		res, err := proj.Tenant().Admin.API.ListSecretsV4WithResponse(t.Context(), &api.ListSecretsV4Params{
 			ProjectId:      &proj.ID,
@@ -180,6 +182,6 @@ func replicatedSecretID(t *testing.T, proj *fixture.Project, env, key string) st
 			}
 		}
 		return false
-	})
+	}, wait.Timeout(60*time.Second))
 	return id
 }

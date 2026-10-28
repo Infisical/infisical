@@ -3,6 +3,7 @@ package approvals_test
 import (
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/license"
@@ -136,7 +137,9 @@ func TestSecretApprovalPolicy_Enforce(t *testing.T) {
 		secretmanager.CreateImport(t, proj, "dev", secretmanager.Location{Env: "prod", Path: "/"}, secretmanager.Replicated())
 
 		// Assert
-		wait.Until(t, "the replication to open a change request", func() bool { return openRequestCount(t, proj) == 1 })
+		// One worker serves every tenant's replication jobs, so a run can queue behind others.
+		wait.Until(t, "the replication to open a change request", func() bool { return openRequestCount(t, proj) == 1 },
+			wait.Timeout(60*time.Second))
 		held := getRequest(t, proj, onlyOpenRequest(t, proj))
 		require.Equal(t, []change{{Op: "create", Key: "API_KEY"}}, held.Changes)
 		listed, err := proj.Tenant().Admin.API.ListSecretsV4WithResponse(t.Context(), &api.ListSecretsV4Params{
