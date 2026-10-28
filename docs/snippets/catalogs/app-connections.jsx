@@ -699,4 +699,12 @@ export const appConnections = [
       "Learn how to connect Keeper Commander Service Mode to sync secrets from Infisical.",
     category: "Security",
   },
+  {
+    name: "Jira",
+    slug: "jira",
+    path: "/integrations/app-connections/jira",
+    description:
+      "Learn how to connect Jira Cloud or Jira Data Center so Infisical can read your Jira tickets.",
+    category: "SaaS",
+  },
 ];

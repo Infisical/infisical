@@ -35,6 +35,8 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
+import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import {
   TApprovalPolicyDALFactory,
@@ -198,6 +200,7 @@ type TSignerServiceFactoryDep = {
     "create" | "find" | "delete" | "transaction" | "findResourceMembershipsForActor"
   >;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
+  orgDAL: Pick<TOrgDALFactory, "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
@@ -370,7 +373,8 @@ export const signerServiceFactory = ({
   membershipDAL,
   membershipRoleDAL,
   hsmConnectorService,
-  licenseService
+  licenseService,
+  orgDAL
 }: TSignerServiceFactoryDep) => {
   const hsmCertIssuanceDeps = {
     certificateAuthorityDAL,
@@ -916,6 +920,11 @@ export const signerServiceFactory = ({
               });
             }
           }
+
+          await lockAndAssertActiveOrgAccess(
+            { orgDAL, orgId: dto.actorOrgId, userIds: pendingUserIds, identityIds: pendingIdentityIds },
+            tx
+          );
         }
 
         for (const member of pendingMembers) {

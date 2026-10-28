@@ -688,6 +688,7 @@ describe("Agent Vault session logs", async () => {
       await configure();
       const bundle = await createAccessBundle(`session-logs-resolve-badkey-${Date.now()}`);
       const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
         name: "datadog",
         hostPattern: "api.datadoghq.com",
         credential: { type: "bearer", headerName: "DD-API-KEY", headerPrefix: "", value: "abc123" }
@@ -757,6 +758,42 @@ describe("Agent Vault session logs", async () => {
 
       const res = await proxy.postChunk(session.id, chunkBody());
       expect(res.statusCode).toBe(401);
+    });
+
+    test("leaves a session whose owner was deleted untouched, so its late-log window stays closed", async () => {
+      await configure();
+      const bundle = await createAccessBundle(`session-logs-ownerless-${Date.now()}`);
+      const member = await createMemberIdentity(`session-logs-ownerless-${Date.now()}`);
+      const granted = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/members`, {
+        machineIdentityIds: [member.id]
+      });
+      expect(granted.statusCode).toBe(200);
+      const minted = await member.as("POST", "/api/v1/agent-vault/sessions", {
+        accessBundles: [bundle.name],
+        ttl: "1h"
+      });
+      expect(minted.statusCode, minted.payload).toBe(200);
+      const { id: sessionId } = minted.json().session as { id: string };
+
+      expect((await member.cleanup()).statusCode).toBe(200);
+      const before = await testDb("agent_vault_sessions").where({ id: sessionId }).first();
+      expect(before.identityId).toBeNull();
+
+      const relabelled = await inject("PATCH", `/api/v1/agent-vault/sessions/${sessionId}`, { label: "afterwards" });
+      expect(relabelled.statusCode).toBe(400);
+      expect(relabelled.json().message).toBe(
+        "The user or machine identity that owned this session was deleted, so its label can't be changed."
+      );
+
+      const revoked = await inject("POST", `/api/v1/agent-vault/sessions/${sessionId}/revoke`);
+      expect(revoked.statusCode).toBe(200);
+      expect(revoked.json().session.status).toBe("revoked");
+
+      // updatedAt is the only record of when the owner went, so neither call may move it.
+      const after = await testDb("agent_vault_sessions").where({ id: sessionId }).first();
+      expect(after.updatedAt.getTime()).toBe(before.updatedAt.getTime());
+      expect(after.revokedAt).toBeNull();
+      expect(after.label).toBeNull();
     });
 
     test("still accepts a chunk from a session revoked minutes ago", async () => {

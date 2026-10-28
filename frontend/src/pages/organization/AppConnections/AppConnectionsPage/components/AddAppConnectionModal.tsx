@@ -24,6 +24,7 @@ type Props = {
   projectId?: string;
   projectType?: ProjectType;
   app?: AppConnection;
+  apps?: AppConnection[];
   onComplete?: (appConnection: TAppConnection) => void;
 };
 
@@ -33,6 +34,7 @@ export const AddAppConnectionModal = ({
   projectId,
   projectType,
   app,
+  apps,
   onComplete
 }: Props) => {
   // When `app` is preset (inline create from another flow, or an OAuth reopen) we skip the provider
@@ -137,6 +139,7 @@ export const AddAppConnectionModal = ({
                   setSelectedApp(nextApp);
                 }}
                 projectType={projectType}
+                apps={apps}
               />
             </div>
           )}

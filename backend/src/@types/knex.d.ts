@@ -23,6 +23,12 @@ import {
   TAgentVaultAccessBundles,
   TAgentVaultAccessBundlesInsert,
   TAgentVaultAccessBundlesUpdate,
+  TAgentVaultPersonalValueReferences,
+  TAgentVaultPersonalValueReferencesInsert,
+  TAgentVaultPersonalValueReferencesUpdate,
+  TAgentVaultPersonalValues,
+  TAgentVaultPersonalValuesInsert,
+  TAgentVaultPersonalValuesUpdate,
   TAgentVaultProxies,
   TAgentVaultProxiesInsert,
   TAgentVaultProxiesUpdate,
@@ -77,6 +83,15 @@ import {
   TApprovalPolicies,
   TApprovalPoliciesInsert,
   TApprovalPoliciesUpdate,
+  TApprovalPolicyAutoApprovalConditions,
+  TApprovalPolicyAutoApprovalConditionsInsert,
+  TApprovalPolicyAutoApprovalConditionsUpdate,
+  TApprovalPolicyAutoApprovalInputs,
+  TApprovalPolicyAutoApprovalInputsInsert,
+  TApprovalPolicyAutoApprovalInputsUpdate,
+  TApprovalPolicyAutoApprovalRules,
+  TApprovalPolicyAutoApprovalRulesInsert,
+  TApprovalPolicyAutoApprovalRulesUpdate,
   TApprovalPolicyBypassers,
   TApprovalPolicyBypassersInsert,
   TApprovalPolicyBypassersUpdate,
@@ -1830,6 +1845,16 @@ declare module "knex/types/tables" {
       TAgentVaultVariablesInsert,
       TAgentVaultVariablesUpdate
     >;
+    [TableName.AgentVaultPersonalValue]: KnexOriginal.CompositeTableType<
+      TAgentVaultPersonalValues,
+      TAgentVaultPersonalValuesInsert,
+      TAgentVaultPersonalValuesUpdate
+    >;
+    [TableName.AgentVaultPersonalValueReference]: KnexOriginal.CompositeTableType<
+      TAgentVaultPersonalValueReferences,
+      TAgentVaultPersonalValueReferencesInsert,
+      TAgentVaultPersonalValueReferencesUpdate
+    >;
     [TableName.AgentVaultServiceVariableReference]: KnexOriginal.CompositeTableType<
       TAgentVaultServiceVariableReferences,
       TAgentVaultServiceVariableReferencesInsert,
@@ -1938,6 +1963,21 @@ declare module "knex/types/tables" {
       TApprovalPolicyBypassers,
       TApprovalPolicyBypassersInsert,
       TApprovalPolicyBypassersUpdate
+    >;
+    [TableName.ApprovalPolicyAutoApprovalInputs]: KnexOriginal.CompositeTableType<
+      TApprovalPolicyAutoApprovalInputs,
+      TApprovalPolicyAutoApprovalInputsInsert,
+      TApprovalPolicyAutoApprovalInputsUpdate
+    >;
+    [TableName.ApprovalPolicyAutoApprovalRules]: KnexOriginal.CompositeTableType<
+      TApprovalPolicyAutoApprovalRules,
+      TApprovalPolicyAutoApprovalRulesInsert,
+      TApprovalPolicyAutoApprovalRulesUpdate
+    >;
+    [TableName.ApprovalPolicyAutoApprovalConditions]: KnexOriginal.CompositeTableType<
+      TApprovalPolicyAutoApprovalConditions,
+      TApprovalPolicyAutoApprovalConditionsInsert,
+      TApprovalPolicyAutoApprovalConditionsUpdate
     >;
     [TableName.ApprovalPolicySecretEnvironment]: KnexOriginal.CompositeTableType<
       TApprovalPolicySecretEnvironments,

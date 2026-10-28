@@ -1,10 +1,10 @@
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon } from "lucide-react";
 
 import { CustomRolesUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -283,10 +283,8 @@ export const UserDetailsByIDPage = () => {
   const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={t("page-titles.user")} />
+      <link rel="icon" href="/infisical.ico" />
       <Page />
     </>
   );

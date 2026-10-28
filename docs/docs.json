@@ -632,6 +632,7 @@
                   "documentation/platform/pam/folders/overview",
                   "documentation/platform/pam/templates/overview",
                   "documentation/platform/pam/access-requests/overview",
+                  "documentation/platform/pam/access-requests/auto-approval",
                   "documentation/platform/pam/access-requests/break-glass"
                 ]
               },
@@ -718,14 +719,23 @@
                       "documentation/platform/agent-vault/guides/openclaw-gateway"
                     ]
                   },
-                  "documentation/platform/agent-vault/guides/custom-agent"
+                  "documentation/platform/agent-vault/guides/custom-agent",
+                  "documentation/platform/agent-vault/guides/modal",
+                  "documentation/platform/agent-vault/guides/daytona"
                 ]
               },
               {
                 "group": "Concepts",
                 "pages": [
                   "documentation/platform/agent-vault/access-bundles",
-                  "documentation/platform/agent-vault/services",
+                  {
+                    "group": "Services",
+                    "root": "documentation/platform/agent-vault/services",
+                    "pages": [
+                      "documentation/platform/agent-vault/http-apis",
+                      "documentation/platform/agent-vault/mcp-servers"
+                    ]
+                  },
                   "documentation/platform/agent-vault/variables",
                   {
                     "group": "Sessions",
@@ -1077,6 +1087,7 @@
                   "integrations/app-connections/heroku",
                   "integrations/app-connections/hpe-ilo",
                   "integrations/app-connections/humanitec",
+                  "integrations/app-connections/jira",
                   "integrations/app-connections/keeper",
                   "integrations/app-connections/kemp-loadmaster",
                   "integrations/app-connections/external-infisical",
@@ -1503,7 +1514,6 @@
                       "api-reference/endpoints/projects/get-project",
                       "api-reference/endpoints/projects/list-projects",
                       "api-reference/endpoints/projects/update-project",
-                      "api-reference/endpoints/projects/secret-snapshots",
                       {
                         "group": "Legacy",
                         "pages": [
@@ -2116,6 +2126,18 @@
                           "api-reference/endpoints/app-connections/external-infisical/create",
                           "api-reference/endpoints/app-connections/external-infisical/update",
                           "api-reference/endpoints/app-connections/external-infisical/delete"
+                        ]
+                      },
+                      {
+                        "group": "Jira",
+                        "pages": [
+                          "api-reference/endpoints/app-connections/jira/list",
+                          "api-reference/endpoints/app-connections/jira/available",
+                          "api-reference/endpoints/app-connections/jira/get-by-id",
+                          "api-reference/endpoints/app-connections/jira/get-by-name",
+                          "api-reference/endpoints/app-connections/jira/create",
+                          "api-reference/endpoints/app-connections/jira/update",
+                          "api-reference/endpoints/app-connections/jira/delete"
                         ]
                       },
                       {
@@ -3357,9 +3379,7 @@
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/create",
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/update",
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/delete",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/import-secrets",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/remove-secrets"
+                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets"
                         ]
                       },
                       {
@@ -4505,7 +4525,9 @@
                     "pages": [
                       "api-reference/endpoints/agent-vault-services/create",
                       "api-reference/endpoints/agent-vault-services/update",
-                      "api-reference/endpoints/agent-vault-services/delete"
+                      "api-reference/endpoints/agent-vault-services/delete",
+                      "api-reference/endpoints/agent-vault-services/set-personal-values",
+                      "api-reference/endpoints/agent-vault-services/delete-personal-values"
                     ]
                   },
                   {
@@ -4554,6 +4576,7 @@
                       "api-reference/endpoints/agent-vault-sessions/list",
                       "api-reference/endpoints/agent-vault-sessions/get",
                       "api-reference/endpoints/agent-vault-sessions/create",
+                      "api-reference/endpoints/agent-vault-sessions/update",
                       "api-reference/endpoints/agent-vault-sessions/revoke",
                       "api-reference/endpoints/agent-vault-session-logs/list",
                       "api-reference/endpoints/agent-vault-session-logs/tail"

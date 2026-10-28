@@ -78,6 +78,8 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorType } from "@app/services/auth/auth-type";
+import { EventModificationType } from "@app/services/event-outbox/event-definition";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -86,8 +88,10 @@ import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/res
 import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { previousSecretLocation } from "@app/services/secret-folder/secret-folder-events";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
+import { emitSecretsModified } from "@app/services/secret-v2-bridge/secret-events";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
 import {
   fnSecretBulkDelete,
@@ -174,6 +178,7 @@ export type TSecretRotationV2ServiceFactoryDep = {
   queueService: Pick<TQueueServiceFactory, "queue">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "update" | "updateById" | "transaction">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
@@ -249,6 +254,7 @@ export const secretRotationV2ServiceFactory = ({
   keyStore,
   queueService,
   folderCommitService,
+  eventEmitter,
   appConnectionDAL,
   gatewayV2Service,
   gatewayPoolService,
@@ -728,6 +734,8 @@ export const secretRotationV2ServiceFactory = ({
           );
 
           const mappedSecrets = await fnSecretBulkInsert({
+            eventEmitter,
+            eventScope: { projectId, environment, secretPath: folder.path },
             folderId: folder.id,
             orgId: connection.orgId,
             tx,
@@ -866,6 +874,8 @@ export const secretRotationV2ServiceFactory = ({
 
           // update mapped secrets names
           await fnSecretBulkUpdate({
+            eventEmitter,
+            eventScope: { projectId, environment: environment.slug, secretPath: folder.path },
             folderId,
             orgId: connection.orgId,
             tx,
@@ -988,6 +998,8 @@ export const secretRotationV2ServiceFactory = ({
       secretRotationV2DAL.transaction(async (tx) => {
         if (deleteSecrets) {
           await fnSecretBulkDelete({
+            eventEmitter,
+            eventScope: { projectId, environment: environment.slug, secretPath: folder.path },
             secretDAL: secretV2BridgeDAL,
             secretQueueService,
             inputSecrets: Object.values(secretsMapping as TSecretRotationV2["secretsMapping"]).map((secretKey) => ({
@@ -1173,10 +1185,21 @@ export const secretRotationV2ServiceFactory = ({
           );
         });
 
-        await secretV2BridgeDAL.deleteMany(
+        const overwrittenSecrets = await secretV2BridgeDAL.deleteMany(
           conflictingDestinationSecrets.map((s) => ({ key: s.key, type: SecretType.Shared })),
           destinationFolder.id,
           actor.id,
+          tx
+        );
+        await emitSecretsModified(
+          eventEmitter,
+          {
+            projectId,
+            environment: destinationEnvironment,
+            secretPath: destinationFolder.path,
+            modificationType: EventModificationType.Deleted
+          },
+          overwrittenSecrets,
           tx
         );
       }
@@ -1210,6 +1233,22 @@ export const secretRotationV2ServiceFactory = ({
           tx
         );
 
+        await emitSecretsModified(
+          eventEmitter,
+          {
+            projectId,
+            environment: destinationEnvironment,
+            secretPath: destinationFolder.path,
+            modificationType: EventModificationType.Updated,
+            previous: previousSecretLocation(
+              { environment: environment.slug, secretPath: folder.path },
+              { environment: destinationEnvironment, secretPath: destinationFolder.path }
+            )
+          },
+          sourceSecrets,
+          tx
+        );
+
         for await (const secret of sourceSecrets) {
           await fnUpdateMovedSecretReferences({
             orgId: actor.orgId,
@@ -1227,6 +1266,7 @@ export const secretRotationV2ServiceFactory = ({
             folderCommitService,
             folderDAL,
             secretQueueService,
+            eventEmitter,
             encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
             decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
             blindIndexer,
@@ -1412,6 +1452,8 @@ export const secretRotationV2ServiceFactory = ({
             );
 
             await fnSecretBulkUpdate({
+              eventEmitter,
+              eventScope: { projectId, environment: environment.slug, secretPath: folder.path },
               folderId,
               orgId: connection.orgId,
               tx,
@@ -2150,6 +2192,8 @@ export const secretRotationV2ServiceFactory = ({
           const passwordBuffer = Buffer.from(localAccountCredentials.password);
 
           await fnSecretBulkUpdate({
+            eventEmitter,
+            eventScope: { projectId, environment: environment.slug, secretPath: folder.path },
             folderId,
             orgId: connection.orgId,
             tx,

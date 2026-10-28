@@ -35,7 +35,7 @@ export * from "./Loader";
 export * from "./Pagination";
 export * from "./Popover";
 export * from "./RadioGroup";
-export * from "./ReactSelect";
+export * from "./RowLink";
 export * from "./ScrollableContent";
 export * from "./Select";
 export * from "./SelectedActionBar";

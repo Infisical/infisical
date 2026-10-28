@@ -54,7 +54,7 @@ This guide walks you through running the [Hermes Agent](https://hermes-agent.nou
 - An Infisical organization where you're an Agent Vault admin
 - Two machines on the same private network, one for the Agent Vault proxy and one for Hermes (physical machines, virtual machines, or containers)
 - [Hermes Agent](https://hermes-agent.nousresearch.com/docs/getting-started/quickstart) installed on the Hermes machine, with the [gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) set up and working with your real API keys
-- The [Infisical CLI](/cli/install) 0.43.133 or later installed on the Agent Vault machine (earlier versions don't apply [substitutions](/documentation/platform/agent-vault/services#substitutions))
+- The [Infisical CLI](/cli/install) 0.43.133 or later installed on the Agent Vault machine (earlier versions don't apply [substitutions](/documentation/platform/agent-vault/http-apis#substitutions))
 - [`curl`](https://curl.se/download.html) and [`jq`](https://jqlang.org/download/) installed on the Hermes machine
 
 <SeparateMachinesNote />
@@ -82,8 +82,8 @@ Most Hermes setups have three kinds of API keys:
 | Kind | Example keys | Service to add in Step 2 |
 | --- | --- | --- |
 | Model provider (the LLM API Hermes sends its prompts to) | `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` | The provider's template, such as **OpenRouter**, **Anthropic**, or **OpenAI** |
-| Messaging platform (where you chat with Hermes) | `TELEGRAM_BOT_TOKEN` | A **Custom** service for `api.telegram.org` |
-| External APIs | `GITHUB_TOKEN` | The API's template, such as **GitHub** (or a **Custom** service if Infisical has no template for the API) |
+| Messaging platform (where you chat with Hermes) | `TELEGRAM_BOT_TOKEN` | A **Custom HTTP API** service for `api.telegram.org` |
+| External APIs | `GITHUB_TOKEN` | The API's template, such as **GitHub** (or a **Custom HTTP API** service if Infisical has no template for the API) |
 
 <Note>
 If your `~/.hermes/.env` contains any keys that hold non-sensitive information, those keys don't need services in Agent Vault. This includes settings like allowed user IDs and channel IDs.
@@ -107,13 +107,13 @@ First, create an [access bundle](/documentation/platform/agent-vault/access-bund
     Select the access bundle you just created, then select **Add Service**.
   </Step>
   <Step>
-    On the **Choose a template** panel, pick the template for the API, or select **Custom** and enter the API's host.
+    On the **Choose a template** panel, pick the template for the API, or select **Custom HTTP API** and enter the API's host.
   </Step>
   <Step>
     On the **Credential** step, paste the real value of the API key from `~/.hermes/.env`.
 
     <Note>
-    [Add a substitution](/documentation/platform/agent-vault/services#add-a-substitution) for each key instead if either of these is true:
+    [Add a substitution](/documentation/platform/agent-vault/http-apis#add-a-substitution) for each key instead if either of these is true:
 
     - The API expects the key outside a header, such as in the URL path. For example, Telegram's bot token goes in the URL of every request: `https://api.telegram.org/bot<token>/getUpdates`
     - The API uses more than one key (one service can hold a substitution for each key, and an access bundle can't have two services for the same host)
@@ -394,7 +394,7 @@ Hermes writes the gateway's logs to `~/.hermes/logs/gateway.log`. On Linux, you 
 
     - The session was revoked or has expired (check the **Sessions** page in Infisical, and [replace the session](#revoke-or-replace-the-session) if needed)
     - Under the proxy's [strict traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), no service in the bundle covers the host Hermes called (add a service that does, or use a pass-through service)
-    - The service covers the host, but doesn't allow the request's method or path (check the service's [methods and paths](/documentation/platform/agent-vault/services#methods-and-paths))
+    - The service covers the host, but doesn't allow the request's method or path (check the service's [methods and paths](/documentation/platform/agent-vault/http-apis#methods-and-paths))
   </Accordion>
   <Accordion title="Requests to Telegram fail with a 502">
     The proxy can only attach credentials to a request that names the API by its hostname (`api.telegram.org`). Hermes's Telegram adapter can connect to Telegram by IP address instead, and for those requests the proxy can't verify Telegram's certificate, so it returns a 502. The proxy logs these requests with `decision=error` and an IP address as the host.

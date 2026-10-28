@@ -1,10 +1,9 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -169,13 +168,10 @@ export const PkiCollectionPage = () => {
 };
 
 export const PkiCollectionDetailsByIDPage = () => {
-  const { t } = useTranslation();
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: "PKI Collection" })}</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="PKI Collection" />
+      <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         renderGuardBanner
         passThrough={false}
