@@ -52,6 +52,15 @@ import {
 
 type TTreeTarget = { path: string; type: FileTreeItemType } | null;
 
+/**
+ * For the sheet around the editor: Escape in a file or folder name box cancels only that box. The sheet listens for
+ * Escape on the document before the box sees it, so the box can't stop it from closing the sheet itself.
+ */
+export const keepOpenOnNameInputEscape = (event: KeyboardEvent) => {
+  if (event.target instanceof Element && event.target.closest("[data-skill-name-input]"))
+    event.preventDefault();
+};
+
 type TContextMenu = { x: number; y: number; target: TTreeTarget };
 
 type InlineNameInputProps = {
@@ -113,6 +122,7 @@ const InlineNameInput = ({
           if (value && value !== initialValue && !getError(value)) onCommit(value);
           else onCancel();
         }}
+        data-skill-name-input
         aria-label={isFile ? "File name" : "Folder name"}
         aria-invalid={Boolean(error)}
         spellCheck={false}

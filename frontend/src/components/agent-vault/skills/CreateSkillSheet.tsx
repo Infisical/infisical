@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { UploadIcon } from "lucide-react";
@@ -24,6 +24,7 @@ import {
 import {
   fromDraftFiles,
   getReservedSkillNameMessage,
+  getSkillHeaderError,
   getSkillHeaderText,
   isReservedSkillName,
   newDraftFile,
@@ -43,7 +44,7 @@ import { useDiscardChangesGuard } from "@app/hooks";
 import { useCreateAgentVaultSkill } from "@app/hooks/api/agentVault";
 import { TAgentVaultSkillSummary } from "@app/hooks/api/agentVault/types";
 
-import { SkillFilesEditor } from "./SkillFilesEditor";
+import { keepOpenOnNameInputEscape, SkillFilesEditor } from "./SkillFilesEditor";
 import { SkillUploadDialog, TSkillUpload } from "./SkillUploadDialog";
 
 const schema = z.object({
@@ -159,6 +160,12 @@ export const CreateSkillSheet = ({
   const getEntryText = (from = files) =>
     from.find((file) => file.path === SKILL_ENTRY_FILE)?.text ?? "";
 
+  const entryHeader = splitFrontmatter(getEntryText()).frontmatter;
+  const headerError = useMemo(
+    () => (entryHeader === null ? null : getSkillHeaderError(entryHeader)),
+    [entryHeader]
+  );
+
   const setEntryText = (from: TSkillDraftFile[], text: string) =>
     from.map((file) => (file.path === SKILL_ENTRY_FILE ? { ...file, text } : file));
 
@@ -173,6 +180,8 @@ export const CreateSkillSheet = ({
   };
 
   const handleFieldChange = (key: (typeof HEADER_KEYS)[number], value: string) => {
+    // While the header was broken the other field couldn't follow it, so it catches up once this edit repairs it.
+    if (headerError) syncFieldsFromHeader(setSkillHeaderValue(getEntryText(), key, value));
     setFiles((prev) => setEntryText(prev, setSkillHeaderValue(getEntryText(prev), key, value)));
     setBodyError(null);
   };
@@ -211,11 +220,7 @@ export const CreateSkillSheet = ({
     const text = getEntryText();
     const { frontmatter, body } = splitFrontmatter(text);
     const header = frontmatter === null ? {} : parseSkillHeader(frontmatter);
-    if (!header) {
-      setSelectedPath(SKILL_ENTRY_FILE);
-      setBodyError(`The header in ${SKILL_ENTRY_FILE} is not valid YAML.`);
-      return;
-    }
+    if (!header) return;
     if (!body.trim()) {
       setSelectedPath(SKILL_ENTRY_FILE);
       setBodyError(`Write the instructions in ${SKILL_ENTRY_FILE}.`);
@@ -250,6 +255,16 @@ export const CreateSkillSheet = ({
     close();
   };
 
+  // A broken header is reported before the fields' checks, since the fields can't show what it holds.
+  const handleCreate = (event: FormEvent<HTMLFormElement>) => {
+    if (headerError) {
+      event.preventDefault();
+      setSelectedPath(SKILL_ENTRY_FILE);
+      return;
+    }
+    handleSubmit(onSubmit)(event);
+  };
+
   return (
     <>
       <Sheet open={isOpen} onOpenChange={(open) => !open && requestDiscard()}>
@@ -258,8 +273,9 @@ export const CreateSkillSheet = ({
           className="flex h-full max-h-full w-full flex-col gap-y-0"
           isPending={isSubmitting}
           onOpenAutoFocus={(event) => event.preventDefault()}
+          onEscapeKeyDown={keepOpenOnNameInputEscape}
         >
-          <form onSubmit={handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col">
+          <form onSubmit={handleCreate} className="flex min-h-0 flex-1 flex-col">
             <SheetHeader className="pr-12">
               <div className="flex flex-wrap items-start gap-3">
                 <div className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -332,6 +348,7 @@ export const CreateSkillSheet = ({
               <Field>
                 <FieldLabel>Files</FieldLabel>
                 <FieldContent>
+                  <FieldError>{headerError ?? bodyError}</FieldError>
                   <SkillFilesEditor
                     files={files}
                     selectedPath={selectedPath}
@@ -343,7 +360,6 @@ export const CreateSkillSheet = ({
                     requiredPaths={[SKILL_ENTRY_FILE]}
                     className="h-[calc(100dvh-14rem)] min-h-96"
                   />
-                  <FieldError>{bodyError}</FieldError>
                 </FieldContent>
               </Field>
             </div>

@@ -625,6 +625,7 @@ export const usePublishAgentVaultSkillVersion = () => {
   return useMutation({
     mutationFn: async ({ skillId, ...params }: TPublishAgentVaultSkillVersionDTO) => {
       const { data } = await apiRequest.post<{
+        skill: TAgentVaultSkillSummary;
         version: TAgentVaultSkillVersion;
         unchanged: boolean;
       }>(`/api/v1/agent-vault/skills/${skillId}/versions`, params);

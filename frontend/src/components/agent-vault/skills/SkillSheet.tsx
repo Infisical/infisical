@@ -67,7 +67,7 @@ import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import { DeleteSkillDialog } from "./DeleteSkillDialog";
 import { SaveSkillVersionSheet } from "./SaveSkillVersionSheet";
-import { SkillFilesEditor } from "./SkillFilesEditor";
+import { keepOpenOnNameInputEscape, SkillFilesEditor } from "./SkillFilesEditor";
 import { SkillUploadDialog } from "./SkillUploadDialog";
 import { SkillVersionHistoryDialog } from "./SkillVersionHistoryDialog";
 
@@ -190,14 +190,18 @@ const SkillSheetBody = ({
   const handleSave = async () => {
     if (!skill || !edit) return;
     try {
-      const { version: published, unchanged } = await publishVersion.mutateAsync({
+      const {
+        skill: saved,
+        version: published,
+        unchanged
+      } = await publishVersion.mutateAsync({
         skillId: skill.id,
         files: fromDraftFiles(edit.draft)
       });
       createNotification({
         text: unchanged
-          ? `No changes. Version ${published.version} of "${skill.name}" already has these files.`
-          : `Saved version ${published.version} of "${skill.name}"`,
+          ? `No changes. Version ${published.version} of "${saved.name}" already has these files.`
+          : `Saved version ${published.version} of "${saved.name}"`,
         type: unchanged ? "info" : "success"
       });
       setDialog(null);
@@ -516,6 +520,7 @@ export const SkillSheet = () => {
         className="flex h-full max-h-full w-full flex-col gap-y-0"
         isPending={publishVersion.isPending}
         onOpenAutoFocus={(event) => event.preventDefault()}
+        onEscapeKeyDown={keepOpenOnNameInputEscape}
       >
         <SkillSheetBody
           key={shownSkillId}

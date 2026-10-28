@@ -2,7 +2,7 @@ import { history, undo } from "@codemirror/commands";
 import { EditorState, Transaction } from "@codemirror/state";
 import { describe, expect, test } from "vitest";
 
-import { getChangedRange } from "./getChangedRange";
+import { getChangedRange, toEditorText } from "./getChangedRange";
 
 const createView = (doc: string) => {
   const view = { state: EditorState.create({ doc, extensions: [history()] }) };
@@ -12,10 +12,14 @@ const createView = (doc: string) => {
       view.state = view.state.update({ changes: { from, to, insert } }).state;
     },
     syncFromOutside: (value: string) => {
+      const text = toEditorText(value);
+      if (view.state.doc.toString() === text) return undefined;
+      const changes = getChangedRange(view.state.doc.toString(), text);
       view.state = view.state.update({
-        changes: getChangedRange(view.state.doc.toString(), value),
+        changes,
         annotations: Transaction.addToHistory.of(false)
       }).state;
+      return changes;
     },
     undo: () =>
       undo({
@@ -50,5 +54,23 @@ describe("getChangedRange", () => {
     editor.undo();
 
     expect(editor.view.state.doc.toString()).toBe(doc.replace("name: a", "name: abc"));
+  });
+
+  test("syncs a Windows (CRLF) file without adding lines, and an edit to one line as that line only", () => {
+    const value = "---\r\nname: a\r\n---\r\n\r\nline one\r\nline two\r\n";
+    const editor = createView(value);
+
+    expect(editor.syncFromOutside(value)).toBeUndefined();
+    expect(editor.view.state.doc.lines).toBe(7);
+    expect(editor.view.state.doc.toString()).toBe(toEditorText(value));
+
+    expect(editor.syncFromOutside(value.replace("line one", "line one edited"))).toEqual({
+      from: toEditorText(value).indexOf("line one") + 8,
+      to: toEditorText(value).indexOf("line one") + 8,
+      insert: " edited"
+    });
+    expect(editor.view.state.doc.toString()).toBe(
+      "---\nname: a\n---\n\nline one edited\nline two\n"
+    );
   });
 });

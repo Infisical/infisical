@@ -15,6 +15,7 @@ import {
   getSkillEntryNameError,
   getSkillFileChanges,
   getSkillFolders,
+  getSkillHeaderError,
   getSkillHeaderText,
   getSkillParentPath,
   getSkillPathError,
@@ -88,6 +89,37 @@ describe("readSkillUpload", () => {
       })
     );
     expect(sortSkillFiles(files).map((file) => file.path)).toEqual(["SKILL.md", "scripts/run.sh"]);
+  });
+
+  test("reads UTF-8 names from a macOS zip that doesn't flag them as UTF-8", async () => {
+    const archive = zipSync({
+      "café/SKILL.md": strToU8("a"),
+      "café/docs/日本語.md": strToU8("b"),
+      "café/Ünïcödé 🎉.txt": strToU8("c")
+    });
+    // Clears the UTF-8 flag (bit 11) in each local and central header, as macOS's zip and Finder write them.
+    const view = new DataView(archive.buffer);
+    const clearUtf8Flag = (offset: number) => {
+      const flags = view.getUint16(offset, true);
+      if (Math.floor(flags / 0x800) % 2 === 1) view.setUint16(offset, flags - 0x800, true);
+    };
+    for (let i = 0; i + 4 <= archive.length; i += 1) {
+      const signature = view.getUint32(i, true);
+      if (signature === 0x04034b50) clearUtf8Flag(i + 6);
+      if (signature === 0x02014b50) clearUtf8Flag(i + 8);
+    }
+    const files = await readSkillUpload(new File([archive], "skill.zip"));
+    expect(sortSkillFiles(files).map((file) => file.path)).toEqual([
+      "SKILL.md",
+      "docs/日本語.md",
+      "Ünïcödé 🎉.txt"
+    ]);
+  });
+
+  test("keeps a Latin-1 name that isn't valid UTF-8", async () => {
+    const archive = zipSync({ "SKILL.md": strToU8("a"), "caf\u00e9.md": strToU8("b") });
+    const files = await readSkillUpload(new File([archive], "skill.zip"));
+    expect(sortSkillFiles(files).map((file) => file.path)).toEqual(["SKILL.md", "caf\u00e9.md"]);
   });
 
   test("refuses an entry over the file limit before inflating it", async () => {
@@ -410,6 +442,51 @@ describe("parseSkillHeader", () => {
     expect(parseSkillHeader("name: [unclosed")).toBeNull();
     expect(parseSkillHeader("- a\n- b")).toBeNull();
     expect(parseSkillHeader("just text")).toBeNull();
+  });
+});
+
+describe("getSkillHeaderError", () => {
+  test("names the line and key of an unquoted value with ': ', as in real skills", () => {
+    expect(
+      getSkillHeaderError(
+        "name: audit\ndescription: Audit a large multi-repo change set for coherence: reverse-engineer what it was built to do\ndisable-model-invocation: true\nargument-hint: [repo paths and/or head ref]"
+      )
+    ).toBe(
+      "Line 3 of SKILL.md: the 'description' value contains ': '. Put the value in double quotes."
+    );
+    expect(
+      getSkillHeaderError(
+        "name: infi\ndescription: Drive a local Infisical dev stack: print an org-scoped user JWT\nargument-hint: login | relay <name>"
+      )
+    ).toBe(
+      "Line 3 of SKILL.md: the 'description' value contains ': '. Put the value in double quotes."
+    );
+    expect(
+      getSkillHeaderError(
+        "name: scrutinize\r\ndescription: Saif's full PR review. Verifies: every claim\r\ndisable-model-invocation: true"
+      )
+    ).toBe(
+      "Line 3 of SKILL.md: the 'description' value contains ': '. Put the value in double quotes."
+    );
+  });
+
+  test("gives the parser's reason and the line for other broken YAML", () => {
+    expect(getSkillHeaderError("name: a\ndescription: d\n  bad: indent")).toBe(
+      "Line 4 of SKILL.md: the header is not valid YAML (bad indentation of a mapping entry)."
+    );
+    expect(getSkillHeaderError("name: a\r\ndescription: d\r\n  bad: indent")).toBe(
+      "Line 4 of SKILL.md: the header is not valid YAML (bad indentation of a mapping entry)."
+    );
+  });
+
+  test("returns null for a header that parses, quoted colons included", () => {
+    expect(getSkillHeaderError('name: a\ndescription: "Review: then fix"')).toBeNull();
+    expect(getSkillHeaderError("name: a\ndescription: >\n  Review: then fix")).toBeNull();
+    expect(getSkillHeaderError("")).toBeNull();
+  });
+
+  test("keeps the generic message for a header that isn't a list of key: value lines", () => {
+    expect(getSkillHeaderError("- a\n- b")).toBe("The header in SKILL.md is not valid YAML.");
   });
 });
 

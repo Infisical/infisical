@@ -1,6 +1,6 @@
 import { diffLines } from "diff";
 import { unzipSync, zipSync } from "fflate";
-import { JSON_SCHEMA, load } from "js-yaml";
+import { JSON_SCHEMA, load, YAMLException } from "js-yaml";
 
 import { TAgentVaultSkillFile, TAgentVaultSkillFileMode } from "@app/hooks/api/agentVault/types";
 
@@ -72,6 +72,22 @@ const stripSharedFolder = (paths: string[]) => {
     : paths;
 };
 
+// Archive tools on macOS write UTF-8 names without the zip flag that says so, and fflate then reads each byte as a
+// Latin-1 character. A name whose characters are all bytes and which decodes as UTF-8 is read as UTF-8 instead.
+const decodeZipName = (name: string) => {
+  const bytes = new Uint8Array(name.length);
+  for (let i = 0; i < name.length; i += 1) {
+    const code = name.charCodeAt(i);
+    if (code > 0xff) return name;
+    bytes[i] = code;
+  }
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return name;
+  }
+};
+
 const readZip = (data: Uint8Array): TAgentVaultSkillFile[] => {
   let count = 0;
   let total = 0;
@@ -80,7 +96,7 @@ const readZip = (data: Uint8Array): TAgentVaultSkillFile[] => {
   try {
     entries = unzipSync(data, {
       filter: ({ name: rawName, originalSize }) => {
-        const name = normalizeSkillPath(rawName);
+        const name = normalizeSkillPath(decodeZipName(rawName));
         if (rawName.endsWith("/") || rawName.endsWith("\\") || isArchiveNoise(name)) return false;
         count += 1;
         total += originalSize;
@@ -107,7 +123,7 @@ const readZip = (data: Uint8Array): TAgentVaultSkillFile[] => {
   }
 
   if (names.length === 0) throw new SkillPackageError("This archive holds no files.");
-  const paths = stripSharedFolder(names.map(normalizeSkillPath));
+  const paths = stripSharedFolder(names.map((name) => normalizeSkillPath(decodeZipName(name))));
 
   return names.map((name, index) => ({
     path: paths[index],
@@ -349,6 +365,51 @@ export const parseSkillHeader = (frontmatter: string): Record<string, unknown> |
   if (parsed === undefined || parsed === null) return {};
   if (typeof parsed !== "object" || Array.isArray(parsed)) return null;
   return parsed as Record<string, unknown>;
+};
+
+const QUOTED_OR_FLOW_START = ['"', "'", "|", ">", "[", "{"];
+
+// The usual way a hand-written header breaks: an unquoted value such as `description: Review: then fix`.
+const findUnquotedColonValue = (lines: string[]) => {
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const first = line[0];
+    if (first !== undefined && first !== " " && first !== "\t" && first !== "#" && first !== "-") {
+      const separator = line.indexOf(": ");
+      if (separator > 0) {
+        const value = line.slice(separator + 2).trimStart();
+        const comment = value.indexOf(" #");
+        const scalar = comment === -1 ? value : value.slice(0, comment);
+        if (scalar.length && !QUOTED_OR_FLOW_START.includes(scalar[0]) && scalar.includes(": "))
+          return { line: i, key: line.slice(0, separator).trimEnd() };
+      }
+    }
+  }
+  return null;
+};
+
+/**
+ * Why a SKILL.md header can't be read, in the words the server and CLI use, or null when it can. Mirrors
+ * yamlErrorMessage in the backend's agent-vault-skill-fns.ts.
+ */
+export const getSkillHeaderError = (frontmatter: string): string | null => {
+  try {
+    load(frontmatter, { schema: JSON_SCHEMA });
+  } catch (error) {
+    // The header starts on the line after the opening '---', so its first line is line 2 of the file.
+    const unquoted = findUnquotedColonValue(frontmatter.split(/\r?\n/));
+    if (unquoted)
+      return `Line ${unquoted.line + 2} of ${SKILL_ENTRY_FILE}: the '${unquoted.key}' value contains ': '. Put the value in double quotes.`;
+    if (error instanceof YAMLException && typeof error.mark?.line === "number") {
+      const reason = (error.reason ?? "").split("\n")[0].trim().replace(/\.+$/, "");
+      if (reason)
+        return `Line ${error.mark.line + 2} of ${SKILL_ENTRY_FILE}: the header is not valid YAML (${reason}).`;
+    }
+    return `The header in ${SKILL_ENTRY_FILE} is not valid YAML.`;
+  }
+  return parseSkillHeader(frontmatter)
+    ? null
+    : `The header in ${SKILL_ENTRY_FILE} is not valid YAML.`;
 };
 
 /** A header value as a text field shows it: `12` as "12", and a missing or empty value as "". */

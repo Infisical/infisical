@@ -20,7 +20,7 @@ import {
 import { tags } from "@lezer/highlight";
 
 import { cn } from "../../utils";
-import { getChangedRange } from "./getChangedRange";
+import { getChangedRange, toEditorText } from "./getChangedRange";
 
 type CodeEditorLanguage = "markdown" | "plain";
 
@@ -199,7 +199,9 @@ const CodeEditor = ({
     }
     stateKeyRef.current = stateKey;
     const saved = stateKey === undefined ? undefined : savedStatesRef.current.get(stateKey);
-    view.setState(saved && saved.doc.toString() === value ? saved : createState(value));
+    view.setState(
+      saved && saved.doc.toString() === toEditorText(value) ? saved : createState(value)
+    );
     // A saved state still holds the options it was put aside with.
     view.dispatch({
       effects: compartmentRef.current.reconfigure(configurableExtensions(options))
@@ -210,10 +212,11 @@ const CodeEditor = ({
 
   useEffect(() => {
     const view = viewRef.current;
-    if (!view || view.state.doc.toString() === value) return;
+    const text = toEditorText(value);
+    if (!view || view.state.doc.toString() === text) return;
     // Only the changed range is replaced, so undo history for the rest of the text still maps to the right places.
     view.dispatch({
-      changes: getChangedRange(view.state.doc.toString(), value),
+      changes: getChangedRange(view.state.doc.toString(), text),
       annotations: [externalSync.of(true), Transaction.addToHistory.of(false)]
     });
   }, [value]);

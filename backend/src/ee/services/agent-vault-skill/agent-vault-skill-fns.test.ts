@@ -273,12 +273,92 @@ describe("parseSkillHeader", () => {
     expectBadRequest(() => parse(manifest(`name: a\ndescription: |\n  ${"d".repeat(1025)}`)), /longer than 1024/);
   });
 
-  test("refuses a header that is not valid YAML", () => {
-    expectBadRequest(() => parse(manifest("name: a\ndescription: [unclosed")), "SKILL.md header is not valid YAML.");
-    expectBadRequest(() => parse(manifest("name: a\nname: b\ndescription: c")), "SKILL.md header is not valid YAML.");
+  test("refuses a header that is not valid YAML and names the line", () => {
+    expectBadRequest(
+      () => parse(manifest("name: a\ndescription: [unclosed")),
+      "Line 4 of SKILL.md: the header is not valid YAML (unexpected end of the stream within a flow collection)."
+    );
+    expectBadRequest(
+      () => parse(manifest("name: a\nname: b\ndescription: c")),
+      "Line 3 of SKILL.md: the header is not valid YAML (duplicated mapping key)."
+    );
     expectBadRequest(
       () => parse(manifest("name: !!js/function 'x'\ndescription: b")),
-      "SKILL.md header is not valid YAML."
+      "Line 2 of SKILL.md: the header is not valid YAML (unknown tag !<tag:yaml.org,2002:js/function>)."
+    );
+  });
+
+  test.each([
+    [
+      "audit",
+      'name: audit\ndescription: Audit a large multi-repo change set for coherence: reverse-engineer what it was built to do\ndisable-model-invocation: true\nargument-hint: [repo paths and/or head ref, e.g. "../cli feat/x"]'
+    ],
+    [
+      "infi",
+      "name: infi\ndescription: Drive a local Infisical dev stack: print an org-scoped user JWT\nargument-hint: login | relay <name>"
+    ],
+    [
+      "scrutinize",
+      "name: scrutinize\ndescription: Saif's full PR review. Leaves its own pointer questions: every file and suspicious line\ndisable-model-invocation: true"
+    ]
+  ])("names the unquoted ': ' in the %s skill's description", (_, header) => {
+    expectBadRequest(
+      () => parse(manifest(header)),
+      "Line 3 of SKILL.md: the 'description' value contains ': '. Put the value in double quotes."
+    );
+  });
+
+  test("ignores ': ' in quoted values and comments when naming the broken line", () => {
+    expectBadRequest(
+      () => parse(manifest('name: a\ndescription: "x: y" # see: below\nhint: one: two')),
+      "Line 4 of SKILL.md: the 'hint' value contains ': '. Put the value in double quotes."
+    );
+  });
+
+  test("counts lines from the opening '---' with a byte order mark and CRLF line endings", () => {
+    const header = "name: a\r\ndescription: Review: then fix";
+    expectBadRequest(
+      () => parse(`\uFEFF---\r\n${header}\r\n---\r\nbody\r\n`),
+      "Line 3 of SKILL.md: the 'description' value contains ': '. Put the value in double quotes."
+    );
+    expectBadRequest(
+      () => parse("\uFEFF---\r\nname: a\r\nname: b\r\n---\r\n"),
+      "Line 3 of SKILL.md: the header is not valid YAML (duplicated mapping key)."
+    );
+  });
+
+  test("accepts a CRLF header without seeing control characters", () => {
+    expect(parse("---\r\nname: a\r\ndescription: |\r\n  one\r\n  two\r\n---\r\n")).toEqual({
+      name: "a",
+      description: "one\ntwo"
+    });
+  });
+
+  test.each([
+    ["NUL", "\\0"],
+    ["ESC", "\\e"],
+    ["BEL", "\\a"],
+    ["CR", "\\r"],
+    ["DEL", "\\x7f"]
+  ])("refuses a %s control character in the name and the description", (_, escape) => {
+    expectBadRequest(
+      () => parse(manifest(`name: "a${escape}"\ndescription: b`)),
+      "The 'name' in SKILL.md contains a control character."
+    );
+    expectBadRequest(
+      () => parse(manifest(`name: a\ndescription: "x${escape}y"`)),
+      "The 'description' in SKILL.md contains a control character."
+    );
+  });
+
+  test("allows tabs and newlines in the description", () => {
+    expect(parse(manifest('name: a\ndescription: "x\\ty\\nz"')).description).toBe("x\ty\nz");
+  });
+
+  test("refuses a raw control character as invalid YAML", () => {
+    expectBadRequest(
+      () => parse(manifest("name: a\ndescription: x\u0007y")),
+      "Line 3 of SKILL.md: the header is not valid YAML (the stream contains non-printable characters)."
     );
   });
 
@@ -445,7 +525,7 @@ describe("validateSkillFiles name line", () => {
   ])("refuses a name a restore could not rewrite: %s", (header) => {
     expectBadRequest(
       () => validateSkillFiles([skillMd(header)]),
-      "Write the name on a single line in SKILL.md, like 'name: code-review'."
+      "Write the name as a plain line in SKILL.md, like 'name: code-review'."
     );
   });
 });

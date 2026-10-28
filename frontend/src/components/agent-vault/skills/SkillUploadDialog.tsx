@@ -123,14 +123,18 @@ export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad
   const handleSubmit = async () => {
     if (upload.status !== "ready" || !skill) return;
     try {
-      const { version, unchanged } = await publishVersion.mutateAsync({
+      const {
+        skill: saved,
+        version,
+        unchanged
+      } = await publishVersion.mutateAsync({
         skillId: skill.id,
         files: filesToPublish
       });
       createNotification({
         text: unchanged
-          ? `No changes. Version ${version.version} of "${skill.name}" already has these files.`
-          : `Saved version ${version.version} of "${skill.name}"`,
+          ? `No changes. Version ${version.version} of "${saved.name}" already has these files.`
+          : `Saved version ${version.version} of "${saved.name}"`,
         type: unchanged ? "info" : "success"
       });
       onSaved?.();

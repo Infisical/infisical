@@ -1,4 +1,4 @@
-import { JSON_SCHEMA, load } from "js-yaml";
+import { JSON_SCHEMA, load, YAMLException } from "js-yaml";
 
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
@@ -20,6 +20,7 @@ export const AGENT_VAULT_SKILL_VERSIONS_KEPT = 20;
 export const AGENT_VAULT_MAX_SKILLS_PER_BUNDLE = 25;
 export const AGENT_VAULT_MAX_SKILLS = 64;
 
+// Files travel as base64, so a proxy in front of Infisical must accept bodies this large (nginx defaults to 1m).
 // The schema caps content only at the body limit, so an oversize file in a request of up to about 1.5 MB of file
 // content (base64 adds a third) gets the 400 that names it. A larger request gets "Request body is too large".
 export const AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT = 2 * 1024 * 1024;
@@ -127,14 +128,61 @@ const extractHeader = (content: Buffer) => {
   return header;
 };
 
+const FLOW_OR_QUOTED_START = ['"', "'", "|", ">", "[", "{"];
+
+// The usual way a hand-written header breaks: an unquoted value such as `description: Review: then fix`.
+const findUnquotedColonValue = (headerLines: string[]) => {
+  for (let i = 0; i < headerLines.length; i += 1) {
+    const line = headerLines[i];
+    const first = line[0];
+    if (first !== undefined && first !== " " && first !== "\t" && first !== "#" && first !== "-") {
+      const separator = line.indexOf(": ");
+      if (separator > 0) {
+        const value = line.slice(separator + 2).trimStart();
+        const comment = value.indexOf(" #");
+        const scalar = comment === -1 ? value : value.slice(0, comment);
+        if (scalar.length && !FLOW_OR_QUOTED_START.includes(scalar[0]) && scalar.includes(": ")) {
+          return { line: i, key: line.slice(0, separator).trimEnd() };
+        }
+      }
+    }
+  }
+  return null;
+};
+
+const yamlErrorMessage = (header: string, error: unknown) => {
+  // The header starts on the line after the opening '---', so its first line is line 2 of the file.
+  const unquoted = findUnquotedColonValue(header.split("\n"));
+  if (unquoted) {
+    return `Line ${unquoted.line + 2} of ${AGENT_VAULT_SKILL_MANIFEST}: the '${unquoted.key}' value contains ': '. Put the value in double quotes.`;
+  }
+  if (error instanceof YAMLException && typeof error.mark?.line === "number") {
+    let reason = (error.reason ?? "").split("\n")[0].trim();
+    while (reason.endsWith(".")) reason = reason.slice(0, -1);
+    if (reason.length) {
+      return `Line ${error.mark.line + 2} of ${AGENT_VAULT_SKILL_MANIFEST}: the header is not valid YAML (${reason}).`;
+    }
+  }
+  return `${AGENT_VAULT_SKILL_MANIFEST} header is not valid YAML.`;
+};
+
+// Tab and newline are allowed; a CRLF file is fine because its line endings are dropped before parsing.
+const hasControlCharacter = (value: string) => {
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i);
+    if ((code <= 0x1f && code !== 0x09 && code !== 0x0a) || code === 0x7f) return true;
+  }
+  return false;
+};
+
 export const parseSkillHeader = (content: Buffer): { name: string; description: string } => {
   const header = extractHeader(content);
 
   let parsed: unknown;
   try {
     parsed = load(header, { schema: JSON_SCHEMA });
-  } catch {
-    throw new BadRequestError({ message: `${AGENT_VAULT_SKILL_MANIFEST} header is not valid YAML.` });
+  } catch (error) {
+    throw new BadRequestError({ message: yamlErrorMessage(header, error) });
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new BadRequestError({
@@ -151,6 +199,9 @@ export const parseSkillHeader = (content: Buffer): { name: string; description: 
     throw new BadRequestError({
       message: `The 'name' in ${AGENT_VAULT_SKILL_MANIFEST} must be text. Put it in quotes.`
     });
+  }
+  if (hasControlCharacter(name)) {
+    throw new BadRequestError({ message: `The 'name' in ${AGENT_VAULT_SKILL_MANIFEST} contains a control character.` });
   }
   if (name.length > AGENT_VAULT_SKILL_NAME_MAX_LENGTH) {
     throw new BadRequestError({
@@ -173,6 +224,11 @@ export const parseSkillHeader = (content: Buffer): { name: string; description: 
   if (typeof description !== "string") {
     throw new BadRequestError({
       message: `The 'description' in ${AGENT_VAULT_SKILL_MANIFEST} must be text. Put it in quotes.`
+    });
+  }
+  if (hasControlCharacter(description)) {
+    throw new BadRequestError({
+      message: `The 'description' in ${AGENT_VAULT_SKILL_MANIFEST} contains a control character.`
     });
   }
   const trimmedDescription = description.trim();
@@ -317,7 +373,7 @@ export const validateSkillFiles = (
   // A restore rewrites this line to keep the skill's current name, so every stored version must have one it can find.
   if (!replaceSkillHeaderName(manifest.content, name)) {
     throw new BadRequestError({
-      message: `Write the name on a single line in ${AGENT_VAULT_SKILL_MANIFEST}, like 'name: ${name}'.`
+      message: `Write the name as a plain line in ${AGENT_VAULT_SKILL_MANIFEST}, like 'name: ${name}'.`
     });
   }
 

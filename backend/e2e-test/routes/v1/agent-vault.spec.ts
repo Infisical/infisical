@@ -5217,7 +5217,37 @@ describe("Agent Vault V1 Router", async () => {
         ]
       });
       expect(badYaml.statusCode).toBe(400);
-      expect(JSON.parse(badYaml.payload).message).toBe("SKILL.md header is not valid YAML.");
+      expect(JSON.parse(badYaml.payload).message).toBe(
+        "Line 3 of SKILL.md: the header is not valid YAML (unexpected end of the stream within a flow collection)."
+      );
+
+      const unquotedColon = await inject("POST", skillsUrl, {
+        files: [
+          {
+            path: "SKILL.md",
+            mode: "0644",
+            contentBase64: Buffer.from("---\nname: colon\ndescription: Review: then fix\n---\n").toString("base64")
+          }
+        ]
+      });
+      expect(unquotedColon.statusCode).toBe(400);
+      expect(JSON.parse(unquotedColon.payload).message).toBe(
+        "Line 3 of SKILL.md: the 'description' value contains ': '. Put the value in double quotes."
+      );
+
+      const controlCharacter = await inject("POST", skillsUrl, {
+        files: [
+          {
+            path: "SKILL.md",
+            mode: "0644",
+            contentBase64: Buffer.from('---\nname: ctrl\ndescription: "x\\0y"\n---\n').toString("base64")
+          }
+        ]
+      });
+      expect(controlCharacter.statusCode).toBe(400);
+      expect(JSON.parse(controlCharacter.payload).message).toBe(
+        "The 'description' in SKILL.md contains a control character."
+      );
     });
 
     test("publishing the same content is a no-op, and a new name in SKILL.md renames the skill", async () => {

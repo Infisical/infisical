@@ -8,3 +8,6 @@ export const getChangedRange = (current: string, next: string) => {
     end += 1;
   return { from: start, to: current.length - end, insert: next.slice(start, next.length - end) };
 };
+
+// CodeMirror splits lines on \r\n and \r as well and its document joins them with \n, so a value is compared in that form.
+export const toEditorText = (value: string) => value.replace(/\r\n?/g, "\n");
