@@ -111,15 +111,15 @@ func (e env) newHoneyToken(t *testing.T) uuid.UUID {
 	return res.JSON200.HoneyToken.Id
 }
 
-// planted is the access key id the mapped secrets hold.
-func (e env) planted(t *testing.T) string {
+// planted is the value one mapped secret holds.
+func (e env) planted(t *testing.T, key string) string {
 	t.Helper()
 	for _, s := range secretmanager.ListSecrets(t, e.proj, "dev") {
-		if s.Key == accessKeyIDKey {
+		if s.Key == key {
 			return s.Value
 		}
 	}
-	t.Fatalf("the mapped secret %s is missing", accessKeyIDKey)
+	require.Failf(t, "mapped secret missing", "the mapped secret %s is missing", key)
 	return ""
 }
 

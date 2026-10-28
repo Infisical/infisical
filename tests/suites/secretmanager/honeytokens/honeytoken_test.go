@@ -29,7 +29,8 @@ func TestHoneyToken_Create(t *testing.T) {
 		require.Len(t, users, 1)
 		for _, u := range users {
 			require.Len(t, u.AccessKeys, 1)
-			require.Equal(t, u.AccessKeys[0].AccessKeyID, e.planted(t))
+			require.Equal(t, u.AccessKeys[0].AccessKeyID, e.planted(t, accessKeyIDKey))
+			require.Equal(t, u.AccessKeys[0].SecretAccessKey, e.planted(t, secretAccessKeyKey))
 		}
 		require.ElementsMatch(t, []string{accessKeyIDKey, secretAccessKeyKey}, e.secretKeys(t))
 	})
@@ -62,7 +63,7 @@ func TestHoneyToken_Trigger(t *testing.T) {
 		tokenID := e.newHoneyToken(t)
 
 		// Action
-		res := e.trigger(t, e.planted(t), e.signingKey)
+		res := e.trigger(t, e.planted(t, accessKeyIDKey), e.signingKey)
 
 		// Assert
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "%s", apierr.Body(res.Body))
@@ -79,7 +80,7 @@ func TestHoneyToken_Trigger(t *testing.T) {
 		tokenID := e.newHoneyToken(t)
 
 		// Action
-		res := e.trigger(t, e.planted(t), randomHex(t, 32))
+		res := e.trigger(t, e.planted(t, accessKeyIDKey), randomHex(t, 32))
 
 		// Assert
 		require.Equal(t, http.StatusUnauthorized, res.StatusCode())
@@ -117,7 +118,7 @@ func TestHoneyToken_Revoke(t *testing.T) {
 		// Setup
 		e := setup(t)
 		tokenID := e.newHoneyToken(t)
-		planted := e.planted(t)
+		planted := e.planted(t, accessKeyIDKey)
 		e.tn.SetPlan(t, license.Enterprise().Without(license.HoneyTokens))
 
 		// Action
@@ -126,7 +127,7 @@ func TestHoneyToken_Revoke(t *testing.T) {
 		// Assert
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.Contains(t, apierr.Body(res.Body), "Failed to revoke honey token due to plan restriction")
-		require.Equal(t, planted, e.planted(t))
+		require.Equal(t, planted, e.planted(t, accessKeyIDKey))
 		require.Len(t, e.honeyUsers(t), 1)
 	})
 }

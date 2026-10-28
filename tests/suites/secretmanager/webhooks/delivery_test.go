@@ -218,16 +218,18 @@ func TestWebhook_Delivery(t *testing.T) {
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 		secretmanager.CreateFolder(t, proj, "dev", "/shared")
 		secretmanager.CreateFolder(t, proj, "dev", "/app")
-		secretmanager.CreateImport(t, proj, "dev", secretmanager.Location{Env: "dev", Path: "/shared"},
-			secretmanager.IntoPath("/app"))
 		sink := fixture.NewWebhookSink(t, tn, webhook.Service)
 		newHook(t, proj, sink.URL, atPath("/app"))
+		secretmanager.CreateImport(t, proj, "dev", secretmanager.Location{Env: "dev", Path: "/shared"},
+			secretmanager.IntoPath("/app"))
+		sink.ExpectEvent[webhook.DeliveryReceived](t, event(secretModified), importBudget)
+		mark := sink.Mark(t)
 
 		// Action
 		secretmanager.CreateSecret(t, proj, "dev", "SHARED_KEY", "value", secretmanager.WithPath("/shared"))
 
 		// Assert
-		got := sink.ExpectEvent[webhook.DeliveryReceived](t, event(secretModified), importBudget)
+		got := sink.ExpectEvent[webhook.DeliveryReceived](t, event(secretModified), importBudget, fakenet.Since(mark))
 		require.Equal(t, "/app", decodeGeneral(t, got.Delivery).Project.SecretPath)
 	})
 }

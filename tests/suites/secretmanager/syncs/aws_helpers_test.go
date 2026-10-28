@@ -105,6 +105,9 @@ func newAWSSync(tt *testing.T, p *fixture.Project, conn *fixture.AppConnection, 
 	if cfg.disableSecretDeletion {
 		options["disableSecretDeletion"] = true
 	}
+	if cfg.includeSubFolders {
+		options["includeAllSubFolders"] = true
+	}
 	if len(cfg.tags) > 0 {
 		tags := []map[string]string{}
 		for k, v := range cfg.tags {
@@ -125,6 +128,9 @@ func newAWSSync(tt *testing.T, p *fixture.Project, conn *fixture.AppConnection, 
 	require.NoError(tt, err)
 
 	client := p.Tenant().Admin.API
+	if cfg.as != nil {
+		client = cfg.as.API
+	}
 	var status int
 	var body []byte
 	if dest.parameterStore {
