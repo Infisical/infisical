@@ -150,11 +150,88 @@ const findUnquotedColonValue = (headerLines: string[]) => {
   return null;
 };
 
+const UNCLOSED_VALUE_OPENERS = ["[", "{", '"', "'"];
+const QUOTE_MAY_FOLLOW = ["", "[", "{", ",", ":"];
+
+const isBlank = (char: string | undefined) => char === " " || char === "\t" || char === "\n";
+
+// A flow or quoted value may continue on indented lines, so its whole block is scanned before calling it unclosed.
+const valueCloses = (text: string) => {
+  let depth = 0;
+  let quote = "";
+  let previous = "";
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    if (quote === '"') {
+      if (char === "\\") {
+        i += 1;
+      } else if (char === '"') {
+        if (depth === 0) return true;
+        quote = "";
+        previous = char;
+      }
+    } else if (quote === "'") {
+      if (char === "'" && text[i + 1] === "'") {
+        i += 1;
+      } else if (char === "'") {
+        if (depth === 0) return true;
+        quote = "";
+        previous = char;
+      }
+    } else if (char === "#" && (i === 0 || isBlank(text[i - 1]))) {
+      const newline = text.indexOf("\n", i);
+      if (newline === -1) return false;
+      i = newline;
+    } else if ((char === '"' || char === "'") && QUOTE_MAY_FOLLOW.includes(previous)) {
+      quote = char;
+    } else {
+      if (char === "[" || char === "{") depth += 1;
+      if (char === "]" || char === "}") {
+        depth -= 1;
+        if (depth === 0) return true;
+      }
+      if (!isBlank(char)) previous = char;
+    }
+  }
+  return false;
+};
+
+const findUnclosedValue = (headerLines: string[]) => {
+  for (let i = 0; i < headerLines.length; i += 1) {
+    const line = headerLines[i];
+    const first = line[0];
+    if (first !== undefined && first !== " " && first !== "\t" && first !== "#" && first !== "-") {
+      const separator = line.indexOf(": ");
+      if (separator > 0) {
+        const value = line.slice(separator + 2).trimStart();
+        if (UNCLOSED_VALUE_OPENERS.includes(value[0])) {
+          let end = i + 1;
+          while (end < headerLines.length && (headerLines[end] === "" || isBlank(headerLines[end][0]))) end += 1;
+          if (!valueCloses([value, ...headerLines.slice(i + 1, end)].join("\n"))) {
+            return { line: i, key: line.slice(0, separator).trimEnd(), opener: value[0] };
+          }
+        }
+      }
+    }
+  }
+  return null;
+};
+
+const describeOpener = (opener: string) => {
+  if (opener === '"') return "a double quote";
+  if (opener === "'") return "a single quote";
+  return `a '${opener}'`;
+};
+
 const yamlErrorMessage = (header: string, error: unknown) => {
   // The header starts on the line after the opening '---', so its first line is line 2 of the file.
   const unquoted = findUnquotedColonValue(header.split("\n"));
   if (unquoted) {
     return `Line ${unquoted.line + 2} of ${AGENT_VAULT_SKILL_MANIFEST}: the '${unquoted.key}' value contains ': '. Put the value in double quotes.`;
+  }
+  const unclosed = findUnclosedValue(header.split("\n"));
+  if (unclosed) {
+    return `Line ${unclosed.line + 2} of ${AGENT_VAULT_SKILL_MANIFEST}: the '${unclosed.key}' value opens ${describeOpener(unclosed.opener)} that never closes.`;
   }
   if (error instanceof YAMLException && typeof error.mark?.line === "number") {
     let reason = (error.reason ?? "").split("\n")[0].trim();

@@ -276,7 +276,7 @@ describe("parseSkillHeader", () => {
   test("refuses a header that is not valid YAML and names the line", () => {
     expectBadRequest(
       () => parse(manifest("name: a\ndescription: [unclosed")),
-      "Line 4 of SKILL.md: the header is not valid YAML (unexpected end of the stream within a flow collection)."
+      "Line 3 of SKILL.md: the 'description' value opens a '[' that never closes."
     );
     expectBadRequest(
       () => parse(manifest("name: a\nname: b\ndescription: c")),
@@ -325,6 +325,18 @@ describe("parseSkillHeader", () => {
       () => parse("\uFEFF---\r\nname: a\r\nname: b\r\n---\r\n"),
       "Line 3 of SKILL.md: the header is not valid YAML (duplicated mapping key)."
     );
+  });
+
+  test.each([
+    ["---\nname: a\ndescription: d\nx: 1\nhint: [x\n---\n", "opens a '[' that never closes"],
+    ["---\nname: a\ndescription: d\nx: 1\nhint: {x\n---\n", "opens a '{' that never closes"],
+    ['---\nname: a\ndescription: d\nx: 1\nhint: "x\n---\n', "opens a double quote that never closes"],
+    ["---\nname: a\ndescription: d\nx: 1\nhint: 'x\n---\n", "opens a single quote that never closes"],
+    ["---\nname: a\nlist: [a,\n  b]\nhint: {x\n---\n", "opens a '{' that never closes"],
+    ["---\r\nname: a\r\ndescription: d\r\nx: 1\r\nhint: [x\r\n---\r\n", "opens a '[' that never closes"],
+    ["\uFEFF---\nname: a\ndescription: d\nx: 1\nhint: [x\n---\n", "opens a '[' that never closes"]
+  ])("names the line of a value that never closes in %j", (text, problem) => {
+    expectBadRequest(() => parse(text), `Line 5 of SKILL.md: the 'hint' value ${problem}.`);
   });
 
   test("accepts a CRLF header without seeing control characters", () => {

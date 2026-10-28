@@ -479,6 +479,30 @@ describe("getSkillHeaderError", () => {
     );
   });
 
+  test.each([
+    ["---\nname: a\ndescription: d\nx: 1\nhint: [x\n---\n", "opens a '[' that never closes"],
+    ["---\nname: a\ndescription: d\nx: 1\nhint: {x\n---\n", "opens a '{' that never closes"],
+    [
+      '---\nname: a\ndescription: d\nx: 1\nhint: "x\n---\n',
+      "opens a double quote that never closes"
+    ],
+    [
+      "---\nname: a\ndescription: d\nx: 1\nhint: 'x\n---\n",
+      "opens a single quote that never closes"
+    ],
+    ["---\nname: a\nlist: [a,\n  b]\nhint: {x\n---\n", "opens a '{' that never closes"],
+    [
+      "---\r\nname: a\r\ndescription: d\r\nx: 1\r\nhint: [x\r\n---\r\n",
+      "opens a '[' that never closes"
+    ],
+    ["\uFEFF---\nname: a\ndescription: d\nx: 1\nhint: [x\n---\n", "opens a '[' that never closes"]
+  ])("names the line of a value that never closes in %j", (text, problem) => {
+    const { frontmatter } = splitFrontmatter(new TextDecoder().decode(strToU8(text)));
+    expect(getSkillHeaderError(frontmatter ?? "")).toBe(
+      `Line 5 of SKILL.md: the 'hint' value ${problem}.`
+    );
+  });
+
   test("returns null for a header that parses, quoted colons included", () => {
     expect(getSkillHeaderError('name: a\ndescription: "Review: then fix"')).toBeNull();
     expect(getSkillHeaderError("name: a\ndescription: >\n  Review: then fix")).toBeNull();
