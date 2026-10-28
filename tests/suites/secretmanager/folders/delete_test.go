@@ -1,6 +1,7 @@
 package folders_test
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +23,7 @@ func TestFolder_Delete(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		gone := newFolder(t, proj, "dev", "/app/gone")
+		gone := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app/gone"))
 		secretmanager.CreateFolder(t, proj, "dev", "/app/kept")
 
 		// Action
@@ -43,7 +45,7 @@ func TestFolder_Delete(t *testing.T) {
 			// Setup
 			tn := h.NewTenant(t)
 			proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-			folderID := newFolder(t, proj, "dev", "/app")
+			folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
 			if content == "a secret" {
 				secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "value", secretmanager.WithPath("/app"))
 			} else {
@@ -71,7 +73,7 @@ func TestFolder_Delete(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		folderID := newFolder(t, proj, "dev", "/app")
+		folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
 		secretmanager.CreateFolder(t, proj, "dev", "/app/api")
 		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "value", secretmanager.WithPath("/app/api"))
 
@@ -95,8 +97,8 @@ func TestFolder_Delete(t *testing.T) {
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 		committer := proj.NewUser(t, fixture.WithPrincipalName("committer"))
 		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
-		folderID := newFolder(t, proj, "dev", "/app")
-		newPolicy(t, proj, reviewer, "dev", "/app", "app-guard")
+		folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
+		secretmanager.CreateApprovalPolicy(t, proj, secretmanager.Location{Env: "dev", Path: "/app"}, reviewer)
 		held, err := committer.API.CreateSecretV4WithResponse(t.Context(), "API_KEY", api.CreateSecretV4JSONRequestBody{
 			ProjectId: proj.ID, Environment: "dev", SecretPath: new("/app"), SecretValue: "value",
 		})
@@ -124,10 +126,10 @@ func TestFolder_Delete(t *testing.T) {
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
-		folderID := newFolder(t, proj, "dev", "/app")
+		folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
 		secretmanager.CreateFolder(t, proj, "dev", "/app/api")
 		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "value", secretmanager.WithPath("/app/api"))
-		newPolicy(t, proj, reviewer, "dev", "/app/api", "api-guard")
+		guard := secretmanager.CreateApprovalPolicy(t, proj, secretmanager.Location{Env: "dev", Path: "/app/api"}, reviewer)
 
 		// Action
 		res, err := tn.Admin.API.DeleteSecretFolderWithResponse(t.Context(), folderID.String(), api.DeleteSecretFolderJSONRequestBody{
@@ -138,7 +140,7 @@ func TestFolder_Delete(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.Equal(t,
-			`You cannot delete the selected folder because it contains one or more secrets that are protected by the change policy "api-guard" at folder path "/app/api". Please remove the secrets at folder path "/app/api" and try again.`,
+			fmt.Sprintf(`You cannot delete the selected folder because it contains one or more secrets that are protected by the change policy %q at folder path "/app/api". Please remove the secrets at folder path "/app/api" and try again.`, guard),
 			res.JSON400.Message)
 		require.Equal(t, []string{"API_KEY"}, secretKeys(t, proj, "dev", "/app/api"))
 	})
@@ -149,7 +151,7 @@ func TestFolder_Delete(t *testing.T) {
 		// Setup
 		proj := fixture.NewProject(t, h.NewTenant(t), fixture.WithProjectType("secret-manager"))
 		viewer := proj.NewMachineIdentity(t, fixture.WithRoles("viewer"))
-		folderID := newFolder(t, proj, "dev", "/app")
+		folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
 
 		// Action
 		res, err := viewer.API.DeleteSecretFolderWithResponse(t.Context(), folderID.String(), api.DeleteSecretFolderJSONRequestBody{

@@ -321,6 +321,14 @@ func readGuarded(t *testing.T, actor *harness.Principal, proj *fixture.Project) 
 
 // awaitRead waits until actor can or cannot read the guarded secret. Grants land
 // in the permission cache up to ten seconds late, in both directions.
+// requireNothingGranted checks that a request still short of its approvals has granted
+// no privilege and that the requester still cannot read the guarded secret.
+func requireNothingGranted(t *testing.T, g guarded, requestID string) {
+	t.Helper()
+	require.Nil(t, requestByID(t, g.proj, requestID).Privilege, "a pending request already holds a privilege")
+	require.Equal(t, http.StatusForbidden, readGuarded(t, g.requester, g.proj))
+}
+
 func awaitRead(t *testing.T, actor *harness.Principal, proj *fixture.Project, allowed bool) {
 	t.Helper()
 	what := "the requester to read the guarded secret"

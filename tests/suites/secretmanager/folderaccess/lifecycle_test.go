@@ -70,7 +70,7 @@ func TestFolderAccess_Lifecycle(t *testing.T) {
 
 		// Setup
 		proj := newProject(t, h.NewTenant(t))
-		parentID := newFolder(t, proj, "dev", "/a")
+		parentID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/a"))
 		secretmanager.CreateFolder(t, proj, "dev", "/a/b")
 		secretmanager.CreateFolder(t, proj, "dev", "/dest")
 		secretmanager.CreateSecret(t, proj, "dev", "B_KEY", "b-value", secretmanager.WithPath("/a/b"))
@@ -132,9 +132,9 @@ func TestFolderAccess_Lifecycle(t *testing.T) {
 		ids := map[string]string{}
 		for _, p := range []string{"/rename-me", "/describe-me", "/batch-me", "/move-me", "/move-parent/child",
 			"/delete-me", "/delete-parent/child", "/dest"} {
-			ids[p] = newFolder(t, proj, "dev", p).String()
+			ids[p] = uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", p)).String()
 		}
-		ids["/move-parent"] = folderIDAt(t, proj, "/", "move-parent")
+		ids["/move-parent"] = secretmanager.FolderID(t, proj, "dev", "/", "move-parent")
 		holder := proj.NewMachineIdentity(t, fixture.WithRoles("no-access"))
 		for _, p := range []string{"/rename-me", "/describe-me", "/batch-me", "/move-me", "/move-parent/child",
 			"/delete-me", "/delete-parent/child"} {
@@ -212,7 +212,7 @@ func TestFolderAccess_Lifecycle(t *testing.T) {
 
 		// Setup
 		proj := newProject(t, h.NewTenant(t))
-		folderID := newFolder(t, proj, "dev", "/mine")
+		folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/mine"))
 		secretmanager.CreateFolder(t, proj, "dev", "/dest")
 		owner := proj.NewUser(t, fixture.WithPrincipalName("owner"))
 		secretmanager.GrantFolderAccess(t, proj, owner, at("/mine"), secretmanager.FolderFullAccess)
@@ -284,21 +284,4 @@ func TestFolderAccess_Lifecycle(t *testing.T) {
 		})
 		require.Equal(t, map[string]string{"AFTER": "v"}, secretsAt(t, proj, "/app"))
 	})
-}
-
-// folderIDAt finds a folder created implicitly as a parent, whose ID no create call
-// returned.
-func folderIDAt(t *testing.T, proj *fixture.Project, parent, name string) string {
-	t.Helper()
-	res, err := proj.Tenant().Admin.API.ListSecretFoldersWithResponse(t.Context(),
-		&api.ListSecretFoldersParams{ProjectId: proj.ID, Environment: "dev", Path: parent})
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "listing folders in %s returned %d: %s", parent, res.StatusCode(), apierr.Body(res.Body))
-	for _, f := range res.JSON200.Folders {
-		if f.Name == name {
-			return f.Id.String()
-		}
-	}
-	t.Fatalf("no folder %s under %s", name, parent)
-	return ""
 }

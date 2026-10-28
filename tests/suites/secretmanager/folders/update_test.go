@@ -8,6 +8,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,7 +22,7 @@ func TestFolder_Update(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		api1 := newFolder(t, proj, "dev", "/app/api")
+		api1 := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app/api"))
 		secretmanager.CreateFolder(t, proj, "dev", "/app/web")
 
 		// Action
@@ -42,7 +43,7 @@ func TestFolder_Update(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		folderID := newFolder(t, proj, "dev", "/app")
+		folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
 		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "value", secretmanager.WithPath("/app"))
 
 		// Action

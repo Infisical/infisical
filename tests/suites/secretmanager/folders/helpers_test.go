@@ -3,7 +3,6 @@ package folders_test
 import (
 	"context"
 	"net/http"
-	"path"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -13,20 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
-
-// newFolder creates a folder at an absolute path and returns its ID, which update,
-// delete and move take.
-func newFolder(t *testing.T, proj *fixture.Project, env, folderPath string) uuid.UUID {
-	t.Helper()
-	parent, name := path.Split(path.Clean(folderPath))
-	res, err := proj.Tenant().Admin.API.CreateSecretFolderWithResponse(t.Context(), api.CreateSecretFolderJSONRequestBody{
-		ProjectId: proj.ID, Environment: env, Name: name, Path: &parent,
-	})
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "creating folder %s in %s returned %d: %s",
-		folderPath, env, res.StatusCode(), apierr.Body(res.Body))
-	return res.JSON200.Folder.Id
-}
 
 // folderNames lists the folders directly under a path, as the admin sees them.
 func folderNames(t *testing.T, proj *fixture.Project, env, parentPath string) []string {
@@ -83,24 +68,4 @@ func moveFolder(t *testing.T, actor *harness.Principal, proj *fixture.Project, f
 	})
 	require.NoError(t, err)
 	return res
-}
-
-// newPolicy protects env:secretPath with one required approval from reviewer.
-func newPolicy(t *testing.T, proj *fixture.Project, reviewer *harness.Principal, env, secretPath, name string) {
-	t.Helper()
-	var approver api.CreateSecretApprovalPolicyJSONBody_Approvers_Item
-	require.NoError(t, approver.FromCreateSecretApprovalPolicyJSONBodyApprovers1(api.CreateSecretApprovalPolicyJSONBodyApprovers1{
-		Type: api.CreateSecretApprovalPolicyJSONBodyApprovers1TypeUser,
-		Id:   new(reviewer.ID.String()),
-	}))
-	res, err := proj.Tenant().Admin.API.CreateSecretApprovalPolicyWithResponse(t.Context(), api.CreateSecretApprovalPolicyJSONRequestBody{
-		ProjectId:   proj.ID,
-		Name:        &name,
-		Environment: &env,
-		SecretPath:  secretPath,
-		Approvals:   new(float32(1)),
-		Approvers:   []api.CreateSecretApprovalPolicyJSONBody_Approvers_Item{approver},
-	})
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "creating the policy returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 }

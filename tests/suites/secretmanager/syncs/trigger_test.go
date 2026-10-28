@@ -9,6 +9,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/infra/fakenet"
 	"github.com/Infisical/infisical/tests/internal/spec"
+	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/stretchr/testify/require"
 )
 
@@ -161,15 +162,21 @@ func TestSecretSync_Trigger(t *testing.T) {
 		proj, conn, gh := setup(t)
 		secretmanager.CreateFolder(t, proj, "dev", "/a")
 		secretmanager.CreateFolder(t, proj, "dev", "/b")
-		secretmanager.CreateImport(t, proj, "dev", secretmanager.Location{Env: "dev", Path: "/b"}, secretmanager.IntoPath("/a"))
 		s := newSync(t, proj, conn, repoScope("acme", "app"), fromPath("/a"), autoSync(true))
 		s.awaitTerminal(t)
+		before := s.get(t).JSON200.SecretSync.LastSyncedAt
+		secretmanager.CreateImport(t, proj, "dev", secretmanager.Location{Env: "dev", Path: "/b"}, secretmanager.IntoPath("/a"))
+		wait.Until(t, "the sync run that creating the import queues", func() bool {
+			got := s.get(t).JSON200.SecretSync.LastSyncedAt
+			return got != nil && (before == nil || got.After(*before))
+		})
+		mark := gh.Mark(t)
 
 		// Action
 		secretmanager.CreateSecret(t, proj, "dev", "LATE_KEY", "late-value", secretmanager.WithPath("/b"))
 
 		// Assert
-		gh.ExpectEvent[github.SecretCreated](t, created("LATE_KEY"), syncBudget)
+		gh.ExpectEvent[github.SecretCreated](t, created("LATE_KEY"), syncBudget, fakenet.Since(mark))
 		require.Equal(t, "late-value", gh.Repo(t, "acme/app").Secrets["LATE_KEY"].Value)
 	})
 }

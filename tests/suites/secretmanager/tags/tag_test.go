@@ -9,6 +9,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +33,7 @@ func TestSecretTag_Create(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "creating a duplicate returned %s", res.Body)
-		require.Equal(t, "Tag already exists", errorMessage(t, res.Body))
+		require.Equal(t, "Tag already exists", apierr.Message(res.Body))
 		require.Equal(t, []string{"backend"}, slugsIn(t, proj))
 	})
 
@@ -92,7 +93,7 @@ func TestSecretTag_Update(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "renaming onto a taken slug returned %s", res.Body)
-		require.Equal(t, "Tag already exists", errorMessage(t, res.Body))
+		require.Equal(t, "Tag already exists", apierr.Message(res.Body))
 		require.Equal(t, []string{"backend", "frontend"}, slugsIn(t, proj))
 	})
 }
@@ -135,6 +136,6 @@ func TestSecretTag_Get(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "reading an unknown tag returned %s", res.Body)
-		require.Equal(t, fmt.Sprintf("Tag with ID '%s' not found", unknown), errorMessage(t, res.Body))
+		require.Equal(t, fmt.Sprintf("Tag with ID '%s' not found", unknown), apierr.Message(res.Body))
 	})
 }

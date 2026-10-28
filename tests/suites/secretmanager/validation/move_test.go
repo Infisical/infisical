@@ -89,7 +89,7 @@ func TestSecretValidationRule_Move(t *testing.T) {
 
 		// Setup
 		tn, proj := strictProject(t)
-		folderID := newFolder(t, proj, "prod", "/lenient/short-values")
+		folderID := secretmanager.CreateFolder(t, proj, "prod", "/lenient/short-values")
 		secretmanager.CreateSecret(t, proj, "prod", "NESTED_TOO_SHORT", "x", secretmanager.WithPath("/lenient/short-values"))
 
 		// Action

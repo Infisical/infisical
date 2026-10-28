@@ -8,6 +8,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,7 +37,7 @@ func TestSecretVersion_List(t *testing.T) {
 			body   []byte
 		}{{dashboard.StatusCode(), dashboard.Body}, {byID.StatusCode(), byID.Body}} {
 			requireStatus(t, http.StatusForbidden, res.status, res.body)
-			require.Equal(t, "You do not have permission to read secret versions", errorMessage(t, res.body))
+			require.Equal(t, "You do not have permission to read secret versions", apierr.Message(res.body))
 			require.NotContains(t, string(res.body), "hunter2")
 		}
 	})

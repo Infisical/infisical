@@ -216,7 +216,7 @@ func TestFolderAccess_GrantRules(t *testing.T) {
 
 			// Setup
 			proj := newProject(t, h.NewTenant(t))
-			folderID := newFolder(t, proj, "dev", "/app")
+			folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
 			member := k.member(t, proj, "no-access")
 
 			// Action
@@ -237,7 +237,7 @@ func TestFolderAccess_GrantRules(t *testing.T) {
 
 			// Setup
 			proj := newProject(t, h.NewTenant(t))
-			folderID := newFolder(t, proj, "dev", "/app")
+			folderID := uuid.MustParse(secretmanager.CreateFolder(t, proj, "dev", "/app"))
 			member := k.member(t, proj, "no-access")
 			admin := proj.Tenant().Admin
 			created := grantAs(t, admin, proj, member, at("/app"), secretmanager.FolderRead, nil)

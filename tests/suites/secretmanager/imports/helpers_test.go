@@ -110,6 +110,7 @@ func importedSecrets(t *testing.T, reader *harness.Principal, proj *fixture.Proj
 	for _, imp := range body.Imports {
 		g := importedGroup{Env: imp.Environment, Path: imp.SecretPath, Secrets: map[string]string{}}
 		for _, s := range imp.Secrets {
+			require.NotContainsf(t, g.Secrets, s.SecretKey, "the import of %s:%s lists %s more than once", imp.Environment, imp.SecretPath, s.SecretKey)
 			g.Secrets[s.SecretKey] = s.SecretValue
 		}
 		groups = append(groups, g)

@@ -18,16 +18,17 @@ import (
 func TestSecretSync_Status(t *testing.T) {
 	t.Parallel()
 
-	t.Run("should end succeeded and deliver the value when the destination fails once", func(t *testing.T) {
+	t.Run("should end succeeded and deliver the value when the first sync job fails", func(t *testing.T) {
 		t.Parallel()
-		spec.Why(t, `A provider error is retried by the queue with backoff. One failure costs a
-			3 s retry, which fits the wait; a failure on every attempt would not.`)
+		spec.Why(t, `The HTTP client retries a 500 three times inside one job, so four failures
+			fail the first job. The queue then retries the job after a 3 s backoff, which fits
+			the wait; a failure on every attempt would not.`)
 
 		// Setup
 		proj, conn, gh := setup(t)
 		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "api-value")
 		s := newSync(t, proj, conn, repoScope("acme", "app"))
-		gh.Fail(t, "PUT", "/repos/acme/app/actions/secrets/*", http.StatusInternalServerError, fakenet.Times(1))
+		gh.Fail(t, "PUT", "/repos/acme/app/actions/secrets/*", http.StatusInternalServerError, fakenet.Times(4))
 
 		// Action
 		got := s.triggerExpectingFailure(t)
@@ -35,7 +36,7 @@ func TestSecretSync_Status(t *testing.T) {
 		// Assert
 		require.Equalf(t, "succeeded", got.status, "the sync did not recover: %s", got.message)
 		require.Equal(t, "api-value", gh.Repo(t, "acme/app").Secrets["API_KEY"].Value)
-		require.Equal(t, 2, gh.Received(t, "PUT", "/repos/acme/app/actions/secrets/API_KEY"))
+		require.Equal(t, 5, gh.Received(t, "PUT", "/repos/acme/app/actions/secrets/API_KEY"))
 	})
 
 	t.Run("should leave lastSyncedAt empty after a failed run and set it after a successful one", func(t *testing.T) {
