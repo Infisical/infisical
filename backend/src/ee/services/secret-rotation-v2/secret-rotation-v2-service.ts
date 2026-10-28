@@ -85,8 +85,6 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
-import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
-import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { previousSecretLocation } from "@app/services/secret-folder/secret-folder-events";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
@@ -105,6 +103,8 @@ import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/se
 import { SecretValidationRuleType } from "@app/services/secret-validation-rule/secret-validation-rule-enums";
 import { convertSecretRotationToValidationRuleProvider } from "@app/services/secret-validation-rule/secret-validation-rule-fns";
 import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
+import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
+import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { WebhookEvents } from "@app/services/webhook/webhook-types";
