@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-import { AgentVaultOauthAuthorizationStatus } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
   MAX_CLIENT_ID_LENGTH,
   MAX_CLIENT_SECRET_LENGTH
 } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-client-fns";
 import { OAUTH_VSCHAR_PATTERN } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-token-fns";
 import { AgentVaultOauthRegistration } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-types";
+import { AgentVaultOauthAuthorizationStatus } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";

@@ -5,12 +5,6 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { exportPqcKeyToPem, getPqcCrypto, isPqcAlgorithm, isPqcCryptoKey } from "@app/lib/crypto/pqc";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
-import {
-  CertExtendedKeyUsageNameToOID,
-  CertKeyAlgorithm,
-  CertKeyType,
-  CertSignatureAlgorithm
-} from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityWithAssociatedCa } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
@@ -20,6 +14,12 @@ import {
   signatureAlgorithmToAlgCfg
 } from "@app/services/certificate-authority/certificate-authority-fns";
 import { TSubjectRule } from "@app/services/certificate-policy/certificate-policy-types";
+import {
+  CertExtendedKeyUsageNameToOID,
+  CertKeyAlgorithm,
+  CertKeyType,
+  CertSignatureAlgorithm
+} from "@app/services/certificate/certificate-types";
 
 import {
   CERT_SUBJECT_ALTERNATIVE_NAMES,

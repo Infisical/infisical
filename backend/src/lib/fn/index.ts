@@ -3,6 +3,7 @@
 // Code taken to keep in in house and to adjust somethings for our needs
 export * from "./argv";
 export * from "./array";
+export * from "./buffer";
 export * from "./dates";
 export * from "./object";
 export * from "./scan-window";

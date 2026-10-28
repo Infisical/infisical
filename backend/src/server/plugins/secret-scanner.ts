@@ -1,5 +1,5 @@
-import type { EmitterWebhookEventName } from "@octokit/webhooks/dist-types/types";
 import { PushEvent } from "@octokit/webhooks-types";
+import type { EmitterWebhookEventName } from "@octokit/webhooks/dist-types/types";
 import { Probot } from "probot";
 import SmeeClient from "smee-client";
 

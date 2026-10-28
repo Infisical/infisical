@@ -9,11 +9,11 @@ import {
   DIGICERT_CS_PRODUCT_NAME_IDS,
   isDigiCertOrgValidatedForProduct
 } from "@app/services/app-connection/digicert/digicert-connection-fns";
+import { TDigiCertExternalMetadata } from "@app/services/certificate-common/external-metadata-schemas";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { extractExternallyIssuedCertificateFields } from "@app/services/certificate/certificate-fns";
 import { CertStatus } from "@app/services/certificate/certificate-types";
-import { TDigiCertExternalMetadata } from "@app/services/certificate-common/external-metadata-schemas";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";

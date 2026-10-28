@@ -13,9 +13,9 @@ import {
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 
 import { TEventEmitter } from "../event-outbox/event-outbox-types";
-import { TProjectAccessRevokeServiceFactory, TRevokedProjectAccess } from "../membership/project-access-revoke-service";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { assertWillRetainOrgAdmin } from "../membership-user/membership-user-fns";
+import { TProjectAccessRevokeServiceFactory, TRevokedProjectAccess } from "../membership/project-access-revoke-service";
 
 type TDeleteOrgMemberships = {
   orgMembershipIds: string[];

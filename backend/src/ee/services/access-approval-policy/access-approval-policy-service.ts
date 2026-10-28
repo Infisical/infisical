@@ -11,8 +11,8 @@ import {
   TApprovalPolicySecretEnvironmentDALFactory
 } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { secretAccessApprovalGlobalPolicyExists } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-fns";
 import { TSecretAccessApprovalGlobalPolicyBridgeServiceFactory } from "@app/services/secret-access-approval-global-policy-bridge/secret-access-approval-global-policy-bridge-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
