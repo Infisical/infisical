@@ -1187,6 +1187,25 @@ the same transaction. Keys are released on CA delete, on project hard delete, an
 fails after its key was made. AWS KMS schedules deletion with a 30-day window; HSM keeps its key. A
 failure is logged, never thrown, so the original outcome stands.
 
+### OIDC issuer (outbound workload identity federation)
+
+`services/oidc-issuer` signs short-lived JWTs that cloud providers exchange for access tokens, so a
+connection needs no stored client secret. Each org is its own issuer at
+`/api/v1/oidc-issuer/organizations/<orgId>`, with public discovery and JWKS routes under `.well-known`.
+The issuer URL and each consumer's `sub` format are one-way doors: customers copy both into their provider.
+
+- **Keys are reserved `sign-verify` `kms_keys` rows named `oidc-issuer-*`, not a new `keyUsage`.** The
+  CMEK router accepts any `KmsKeyUsage`, so a new value would be creatable through the public API.
+  Customers cannot create reserved keys, which is what makes the name prefix safe.
+- **Keys are created on the first sign, never on a JWKS fetch**, so existing orgs need no backfill.
+- **The second newest key signs.** The newest is published a full 24h period before it takes over, and
+  rotation keeps at most three keys. It runs under a Redis lock, so no database connection is held while
+  RSA keys are generated; the lock is renewed while it runs, and nothing is written once it is lost.
+- **The JWKS is cached in Redis for 10 minutes**, because building it decrypts every key on an anonymous
+  route. The 24h lead makes a stale set safe. Empty sets are never cached, in Redis or over HTTP.
+- **Fresh keys are read on the primary.** Signing and the JWKS a rotation caches pass a `tx` to
+  `getPublicKey` and `signWithKmsKey`, because a read replica may not have a key created moments earlier.
+
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:
@@ -1243,6 +1262,40 @@ Two things to get right in a ClickHouse aggregate. `createdAt` is a `DateTime64(
 timezone, so pin day grouping and bound parameters to `'UTC'` or they follow the server's timezone. And
 the table is a `ReplacingMergeTree`: a retried batch inserts the same `id` twice and the copy goes away
 only at some later merge, so read with `FINAL` when an exact count matters.
+
+### Free Text in Audit Events
+
+A name, reason, comment or justification can carry ANSI escapes, bidi overrides or zero-width
+characters. They are valid JSON but rewrite a terminal line, reorder text in a SIEM, or make two values
+look identical. Two layers handle them, both built on `src/lib/validator/log-safe-text.ts`:
+
+- **The route rejects them.** Wrap any free-text field that reaches an audit event in `auditSafeText`
+  (`src/server/lib/schemas.ts`), so the caller gets a 422 naming the problem and can fix the input:
+
+  ```ts
+  name: auditSafeText(z.string().trim().min(1).max(255)),
+  reason: auditSafeText(z.string().trim().max(500), { allowMultiline: true }).optional(),
+  ```
+
+- **The sink strips them.** `audit-log-queue.ts` runs actor and event metadata through
+  `sanitizeLogPayload` and `ipAddress`, `userAgent` and `projectName` through `sanitizeLogText`. They
+  strip control, ANSI, bidi and zero-width characters, turn CR and U+2028/U+2029 into LF, drop lone
+  surrogates (Postgres jsonb rejects them, failing the whole batch), and suffix metadata keys that
+  collide after cleaning (`email~2`) instead of dropping one. This covers what the API cannot reject
+  (IdP claims, user agents, legacy rows), so do not strip values yourself before logging.
+
+Rules for the route check:
+
+- **`allowMultiline: true` for textarea fields** (reasons, comments, justifications). It keeps tab, LF
+  and CR; single-line fields reject them.
+- **Keep the bound inside the wrapper.** `auditSafeText` takes a `ZodString`, so `.max()`, `.trim()` and
+  `.min()` go on the inner schema and `.optional()`, `.nullable()` and `.describe()` go outside.
+- **Only validate a value the caller is setting.** A schema check on an editable field blocks every edit
+  of a row that already holds a legacy value, because clients resend the whole body. For updates, check
+  in the service with `containsLogUnsafeCharacters` and `LOG_UNSAFE_TEXT_MESSAGE`, and only when the
+  value differs from the stored one, as `identity-service.ts` and `project-template-service.ts` do.
+  Write-once fields (approval comments, justifications, break-glass reasons) can use the schema directly.
+- **Never put it on a response schema.** Stored rows predate the check and would fail serialization.
 
 ### Audit Log Event Classes and Settings
 

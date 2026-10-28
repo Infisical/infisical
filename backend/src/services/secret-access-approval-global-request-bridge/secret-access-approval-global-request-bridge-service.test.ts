@@ -217,6 +217,7 @@ const snapshotPolicy = {
   id: "policy-1",
   name: "Prod access",
   enforcementLevel: "hard",
+  updatedAt: new Date("2026-10-28T10:00:00.000Z"),
   constraints: {
     version: 1 as const,
     constraints: {
@@ -227,17 +228,8 @@ const snapshotPolicy = {
   }
 };
 
-const lockedConstraints = (requestExpirationTime: string | null, maxTimePeriod: string | null) => ({
-  version: 1 as const,
-  constraints: {
-    allowedSelfApprovals: true,
-    requestExpirationTime,
-    maxTimePeriod
-  }
-});
-
-const createRequestService = ({ constraints = lockedConstraints("2h", null) } = {}) => {
-  const findByIdForShare = vi.fn().mockResolvedValue({ id: "policy-1", constraints });
+const createRequestService = ({ lockedUpdatedAt = snapshotPolicy.updatedAt } = {}) => {
+  const findByIdForShare = vi.fn().mockResolvedValue({ id: "policy-1", updatedAt: lockedUpdatedAt });
   const create = vi.fn().mockResolvedValue({ id: "req-1" });
   const createRequest = vi.fn().mockResolvedValue({ id: "delegated-1" });
 
@@ -299,10 +291,12 @@ const submitAccessRequest = (
   } as Parameters<ReturnType<typeof createRequestService>["service"]["createAccessApprovalRequest"]>[0]);
 
 describe("secretAccessApprovalGlobalRequestBridge.createAccessApprovalRequest", () => {
-  test("creates a delegated request using the expiration on the locked policy", async () => {
+  test("creates a delegated request while holding the lock on the unchanged policy", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-10-28T12:00:00.000Z"));
-    const { service, findByIdForShare, create, createRequest } = createRequestService();
+    const { service, findByIdForShare, create, createRequest } = createRequestService({
+      lockedUpdatedAt: new Date(snapshotPolicy.updatedAt.getTime())
+    });
 
     try {
       await submitAccessRequest(service);
@@ -310,7 +304,7 @@ describe("secretAccessApprovalGlobalRequestBridge.createAccessApprovalRequest", 
       expect(findByIdForShare).toHaveBeenCalledWith("policy-1", "tx");
       expect(findByIdForShare.mock.invocationCallOrder[0]).toBeLessThan(create.mock.invocationCallOrder[0]);
       expect(create).toHaveBeenCalledWith(
-        expect.objectContaining({ expiresAt: new Date("2026-10-28T14:00:00.000Z") }),
+        expect.objectContaining({ expiresAt: new Date("2026-10-28T13:00:00.000Z") }),
         "tx"
       );
       expect(findByIdForShare.mock.invocationCallOrder[0]).toBeLessThan(createRequest.mock.invocationCallOrder[0]);
@@ -322,13 +316,13 @@ describe("secretAccessApprovalGlobalRequestBridge.createAccessApprovalRequest", 
     }
   });
 
-  test("refuses when the locked max time period is shorter than the requested range", async () => {
+  test("refuses when the policy was updated after the request matched it", async () => {
     const { service, create, createRequest } = createRequestService({
-      constraints: lockedConstraints(null, "1h")
+      lockedUpdatedAt: new Date("2026-10-28T10:05:00.000Z")
     });
 
-    await expect(submitAccessRequest(service, { isTemporary: true, temporaryRange: "2h" })).rejects.toThrow(
-      "Requested access time range is limited to 1h by policy"
+    await expect(submitAccessRequest(service)).rejects.toThrow(
+      "Policy 'Prod access' was changed while the request was being created. Submit the request again."
     );
     expect(create).not.toHaveBeenCalled();
     expect(createRequest).not.toHaveBeenCalled();

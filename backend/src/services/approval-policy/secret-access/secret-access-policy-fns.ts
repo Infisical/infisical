@@ -82,11 +82,6 @@ const StoredConstraintsSchema = z.object({
   constraints: SecretAccessPolicyConstraintsSchema
 });
 
-export const readSecretAccessPolicyConstraints = (constraints: unknown): TSecretAccessPolicyConstraints | null => {
-  const parsed = StoredConstraintsSchema.safeParse(constraints);
-  return parsed.success ? parsed.data.constraints : null;
-};
-
 export const getSecretAccessAllowedSelfApprovals = (policy: {
   allowedSelfApprovals?: boolean;
   constraints?: unknown;

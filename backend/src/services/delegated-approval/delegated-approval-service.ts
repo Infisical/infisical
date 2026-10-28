@@ -2,12 +2,14 @@ import crypto from "node:crypto";
 
 import { Knex } from "knex";
 
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { enterpriseAppCheck } from "@app/services/app-connection/app-connection-fns";
 import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
@@ -36,6 +38,7 @@ type TDelegatedApprovalServiceFactoryDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   eventEmitter: TEventEmitter;
 };
 
@@ -55,6 +58,7 @@ export const delegatedApprovalServiceFactory = ({
   approvalPolicyDAL,
   appConnectionDAL,
   appConnectionService,
+  licenseService,
   eventEmitter
 }: TDelegatedApprovalServiceFactoryDep) => {
   const $assertConnectionMatches = async (
@@ -89,6 +93,15 @@ export const delegatedApprovalServiceFactory = ({
       DELEGATED_APPROVAL_CONNECTION_MAP[type],
       { connectionId, projectId },
       actor
+    );
+  };
+
+  const assertPlanAllowsPolicyEdit = async (type: DelegatedApprovalPolicyType, orgId: string) => {
+    await enterpriseAppCheck(
+      licenseService,
+      DELEGATED_APPROVAL_CONNECTION_MAP[type],
+      orgId,
+      `Failed to update policy: ${DELEGATED_APPROVAL_NAME_MAP[type]} delegated approval is only available on plans with enterprise app connections. Upgrade your plan, or remove the delegated approver to edit this policy.`
     );
   };
 
@@ -257,6 +270,7 @@ export const delegatedApprovalServiceFactory = ({
   return {
     listDelegatedApprovalOptions,
     validateConnection,
+    assertPlanAllowsPolicyEdit,
     createPolicy,
     getPolicyByPolicyId,
     updatePolicy,

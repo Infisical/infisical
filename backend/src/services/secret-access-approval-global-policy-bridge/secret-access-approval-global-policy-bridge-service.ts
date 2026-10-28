@@ -616,11 +616,16 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       (envs.length !== currentEnvSlugs.size || envs.some((env) => !currentEnvSlugs.has(env.slug)));
     const scopeChanged = nextSecretPath !== policy.secretPath || environmentsChanged;
 
-    if (delegatedApproval && isDelegatedApprovalChanged(policy.delegatedApproval, delegatedApproval)) {
-      await delegatedApprovalService.validateConnection(
-        { ...delegatedApproval, projectId: policy.projectId },
-        orgActor
-      );
+    const nextDelegatedApproval = delegatedApproval === undefined ? policy.delegatedApproval : delegatedApproval;
+    if (nextDelegatedApproval) {
+      // we might need to change this in the future to check a specific permission if this is changed on the license server
+      await delegatedApprovalService.assertPlanAllowsPolicyEdit(nextDelegatedApproval.type, actorOrgId);
+      if (isDelegatedApprovalChanged(policy.delegatedApproval, nextDelegatedApproval)) {
+        await delegatedApprovalService.validateConnection(
+          { ...nextDelegatedApproval, projectId: policy.projectId },
+          orgActor
+        );
+      }
     }
 
     return approvalPolicyDAL.transaction(async (tx) => {
