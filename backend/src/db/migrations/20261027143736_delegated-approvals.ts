@@ -28,12 +28,18 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("requestId").notNullable().unique();
       t.foreign("requestId").references("id").inTable(TableName.ApprovalRequests).onDelete("CASCADE");
 
+      t.string("providerType", 50).notNullable();
       t.string("status", 50).notNullable();
-      t.binary("callbackTokenHash").nullable().unique();
-      t.text("statusReason").nullable();
+      t.binary("encryptedCallbackToken").nullable();
+      t.jsonb("details").notNullable();
       t.string("providerRequestId").nullable();
+      t.integer("callbackAttempts").notNullable().defaultTo(0);
+      t.timestamp("decisionReadRequestedAt", { useTz: true }).nullable();
+      t.uuid("dispatchEventId").notNullable();
 
       t.timestamps(true, true, true);
+
+      t.unique(["providerRequestId", "providerType"]);
     });
     await createOnUpdateTrigger(knex, TableName.DelegatedApprovalRequests);
   }
