@@ -189,19 +189,41 @@ If your flow fills in **Approved By** or **Decision Notes** on the record, Infis
 
 ## Troubleshooting
 
-| Symptom                                                                        | Cause and fix                                                                                                                                                                                                                                                                                                                                                                |
-| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A request shows **Not Submitted** in Infisical                                 | Infisical couldn't create the record, and the reason on the request says why: the integration user's credentials or role, a missing Infisical application, or, if you self-host, a missing `SITE_URL`. Fix the cause, then select **Retry**. For connection problems, see [ServiceNow connection troubleshooting](/integrations/app-connections/servicenow#troubleshooting). |
-| A request shows **Submitting** for a long time                                 | Infisical can't reach the instance, or the instance returns errors. Infisical keeps trying for about an hour, then closes the request. Check that the instance is up and reachable from Infisical.                                                                                                                                                                           |
-| Record created but nothing happens                                             | No active flow matches the record. Verify your flow is activated and its trigger condition matches the record's field values.                                                                                                                                                                                                                                                |
-| Approvers see duplicate approvals                                              | Two flows match the same record. Make the trigger conditions mutually exclusive and deactivate the one you no longer want. Only the first flow to finish notifies Infisical. In the other flow, **Infisical - Notify Decision** returns an error.                                                                                                                            |
-| State stuck at Notifying Infisical                                             | The flow stopped partway through **Infisical - Notify Decision**. Check the flow's **Executions** tab in Flow Designer.                                                                                                                                                                                                                                                      |
-| Callback Failed with HTTP 403                                                  | Infisical refused the notice because it already applied a decision to this request or closed it, the request was deleted along with its project, or ServiceNow notified Infisical about the request more than five times. Check the request's status in Infisical, and create the request again if the requester still needs access.                                         |
-| Callback Failed with a connection error                                        | The ServiceNow instance can't reach the **Callback URL** on the record. Fix the instance's outbound firewall rules, then select **Resend to Infisical** on the request in the **Admin Console**. If the URL itself is wrong, correct `SITE_URL` and create the request again.                                                                                                |
-| Callback Failed with an invalid decision                                       | The flow passed a value other than `approved` or `rejected` to **Infisical - Notify Decision**. **Resend to Infisical** can't help, because no decision was recorded. Fix the flow, then cancel the request in Infisical and create it again.                                                                                                                                |
-| Callback Failed on a record that has no callback URL, event, or callback token | Someone created the record in ServiceNow by hand, so ServiceNow can't notify Infisical about it. Test your flows with requests made in Infisical.                                                                                                                                                                                                                            |
-| Request expired before approval                                                | The policy's **Request Expiration** elapsed while the request sat in ServiceNow. Extend it, or shorten your approval SLA.                                                                                                                                                                                                                                                    |
-| Infisical says the request couldn't be completed in ServiceNow                 | Infisical closed the request without granting access. See [Requests closed by Infisical](#requests-closed-by-infisical).                                                                                                                                                                                                                                                     |
+<AccordionGroup>
+  <Accordion title="A request shows **Not Submitted** in Infisical">
+    Infisical couldn't create the record, and the reason on the request says why: the integration user's credentials or role, a missing Infisical application, or, if you self-host, a missing `SITE_URL`. Fix the cause, then select **Retry**. For connection problems, see [ServiceNow connection troubleshooting](/integrations/app-connections/servicenow#troubleshooting).
+  </Accordion>
+  <Accordion title="A request shows **Submitting** for a long time">
+    Infisical can't reach the instance, or the instance returns errors. Infisical keeps trying for about an hour, then closes the request. Check that the instance is up and reachable from Infisical.
+  </Accordion>
+  <Accordion title="Record created but nothing happens">
+    No active flow matches the record. Verify your flow is activated and its trigger condition matches the record's field values.
+  </Accordion>
+  <Accordion title="Approvers see duplicate approvals">
+    Two flows match the same record. Make the trigger conditions mutually exclusive and deactivate the one you no longer want. Only the first flow to finish notifies Infisical. In the other flow, **Infisical - Notify Decision** returns an error.
+  </Accordion>
+  <Accordion title="State stuck at Notifying Infisical">
+    The flow stopped partway through **Infisical - Notify Decision**. Check the flow's **Executions** tab in Flow Designer.
+  </Accordion>
+  <Accordion title="Callback Failed with HTTP 403">
+    Infisical refused the notice because it already applied a decision to this request or closed it, the request was deleted along with its project, or ServiceNow notified Infisical about the request more than five times. Check the request's status in Infisical, and create the request again if the requester still needs access.
+  </Accordion>
+  <Accordion title="Callback Failed with a connection error">
+    The ServiceNow instance can't reach the **Callback URL** on the record. Fix the instance's outbound firewall rules, then select **Resend to Infisical** on the request in the **Admin Console**. If the URL itself is wrong, correct `SITE_URL` and create the request again.
+  </Accordion>
+  <Accordion title="Callback Failed with an invalid decision">
+    The flow passed a value other than `approved` or `rejected` to **Infisical - Notify Decision**. **Resend to Infisical** can't help, because no decision was recorded. Fix the flow, then cancel the request in Infisical and create it again.
+  </Accordion>
+  <Accordion title="Callback Failed on a record that has no callback URL, event, or callback token">
+    Someone created the record in ServiceNow by hand, so ServiceNow can't notify Infisical about it. Test your flows with requests made in Infisical.
+  </Accordion>
+  <Accordion title="Request expired before approval">
+    The policy's **Request Expiration** elapsed while the request sat in ServiceNow. Extend it, or shorten your approval SLA.
+  </Accordion>
+  <Accordion title="Infisical says the request couldn't be completed in ServiceNow">
+    Infisical closed the request without granting access. See [Requests closed by Infisical](#requests-closed-by-infisical).
+  </Accordion>
+</AccordionGroup>
 
 ### Requests closed by Infisical
 

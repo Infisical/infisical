@@ -141,19 +141,23 @@ Now that your ServiceNow app connection is configured, you can use it to set up 
 
 ## Troubleshooting
 
-| Symptom                                                                                                                     | Cause and fix                                                                                                                                                                                       |
-| --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Infisical asks you to verify the username and password of the integration user                                              | The username or password is wrong, or the user is locked out or inactive. Check the credentials with the command after this table.                                                                  |
-| Infisical says the instance URL redirected                                                                                  | The URL isn't the base URL of your instance, or the instance is hibernating. Wake the instance, then enter its base URL.                                                                            |
-| Infisical can't reach the instance                                                                                          | The instance URL is wrong, or the instance blocks traffic from Infisical. Allow [Infisical's IP addresses](/documentation/setup/networking) on the instance's IP access control list.               |
-| An access request shows **Not Submitted**, and its reason says the instance has no Infisical Approvals application endpoint | The Infisical application isn't installed or active on the instance. Install it, then select **Retry** on the request.                                                                              |
-| An access request shows **Not Submitted**, and its reason says the instance rejected the integration user's credentials     | The integration user's password changed, or the user doesn't have the `x_infis_approvals.secret-manager-integration` role. Update the connection or the user, then select **Retry** on the request. |
-| Infisical won't delete the connection                                                                                       | An access policy still uses the connection. Select another connection on the policy, or switch the policy back to Infisical approvals, then delete the connection.                                  |
-
-A web service user can't sign in to the ServiceNow UI, so check its credentials from the command line instead:
-
-```bash
-curl -u '<username>:<password>' https://<instance>.service-now.com/api/now/ui/user/current_user
-```
-
-If the username and password work, ServiceNow returns a `200` response with the integration user's details.
+<AccordionGroup>
+  <Accordion title="Infisical asks you to verify the username and password of the integration user">
+    The username or password is wrong, or the user is locked out or inactive.
+  </Accordion>
+  <Accordion title="Infisical says the instance URL redirected">
+    The URL isn't the base URL of your instance, or the instance is hibernating. Wake the instance, then enter its base URL.
+  </Accordion>
+  <Accordion title="Infisical can't reach the instance">
+    The instance URL is wrong, or the instance blocks traffic from Infisical. Allow [Infisical's IP addresses](/documentation/setup/networking) on the instance's IP access control list.
+  </Accordion>
+  <Accordion title="An access request shows **Not Submitted**, and its reason says the instance has no Infisical Approvals application endpoint">
+    The Infisical application isn't installed or active on the instance. Install it, then select **Retry** on the request.
+  </Accordion>
+  <Accordion title="An access request shows **Not Submitted**, and its reason says the instance rejected the integration user's credentials">
+    The integration user's password changed, or the user doesn't have the `x_infis_approvals.secret-manager-integration` role. Update the connection or the user, then select **Retry** on the request.
+  </Accordion>
+  <Accordion title="Infisical won't delete the connection">
+    An access policy still uses the connection. Select another connection on the policy, or switch the policy back to Infisical approvals, then delete the connection.
+  </Accordion>
+</AccordionGroup>
