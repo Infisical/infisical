@@ -10,6 +10,7 @@ import {
   DENO_DEPLOY_APPS_MAX_PAGES,
   DENO_DEPLOY_APPS_PAGE_SIZE,
   listDenoDeployApps,
+  toDenoDeployProviderError,
   validateDenoDeployConnectionCredentials
 } from "./deno-deploy-connection-fns";
 import { TDenoDeployConnection, TDenoDeployConnectionConfig } from "./deno-deploy-connection-types";
@@ -154,5 +155,32 @@ describe("listDenoDeployApps", () => {
     expect(apps).toHaveLength(DENO_DEPLOY_APPS_MAX_PAGES * DENO_DEPLOY_APPS_PAGE_SIZE);
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn.mock.calls[0][1]).toContain(`${DENO_DEPLOY_APPS_MAX_PAGES} pages`);
+  });
+
+  it.each([401, 403])("names Deno Deploy when listing fails with %s", async (status) => {
+    get.mockRejectedValue(axiosError(status));
+
+    const error = await listDenoDeployApps(connection).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect((error as BadRequestError).message).toContain("list Deno Deploy apps");
+    expect((error as BadRequestError).message).toContain("access token was rejected");
+  });
+
+  it("explains a failure to reach Deno Deploy when listing apps", async () => {
+    get.mockRejectedValue(new AxiosError("Network Error"));
+
+    const error = await listDenoDeployApps(connection).catch((err: unknown) => err);
+
+    expect(error).toBeInstanceOf(BadRequestError);
+    expect((error as BadRequestError).message).toContain("list Deno Deploy apps");
+    expect((error as BadRequestError).message).toContain("could not reach Deno Deploy");
+  });
+});
+
+describe("toDenoDeployProviderError", () => {
+  it("keeps an existing BadRequestError", () => {
+    const existing = new BadRequestError({ message: "already mapped" });
+    expect(toDenoDeployProviderError(existing, "list Deno Deploy apps")).toBe(existing);
   });
 });

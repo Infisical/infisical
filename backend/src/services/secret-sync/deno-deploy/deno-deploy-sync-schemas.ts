@@ -13,8 +13,16 @@ import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types"
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { DenoDeploySyncContext } from "./deno-deploy-sync-enums";
 
+export const DENO_DEPLOY_APP_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+
 const DenoDeploySyncDestinationConfigSchema = z.object({
-  appId: z.string().trim().min(1, "App required").max(255).describe(SecretSyncs.DESTINATION_CONFIG.DENO_DEPLOY.appId),
+  appId: z
+    .string()
+    .trim()
+    .min(1, "App required")
+    .max(255)
+    .regex(DENO_DEPLOY_APP_ID_PATTERN, "App ID can only contain letters, digits, hyphens and underscores")
+    .describe(SecretSyncs.DESTINATION_CONFIG.DENO_DEPLOY.appId),
   appSlug: z
     .string()
     .trim()

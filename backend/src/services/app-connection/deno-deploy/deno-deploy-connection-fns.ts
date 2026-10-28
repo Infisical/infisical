@@ -44,29 +44,28 @@ const getNextCursorFromLinkHeader = (linkHeader: unknown): string | undefined =>
   }
 };
 
-const toDenoDeployCredentialError = (error: unknown) => {
+export const toDenoDeployProviderError = (error: unknown, action: string) => {
+  if (error instanceof BadRequestError) return error;
+
   if (isAxiosError(error)) {
     const status = error.response?.status;
     if (status === 401 || status === 403) {
       return new BadRequestError({
-        message:
-          "Unable to validate connection: the Deno Deploy access token was rejected. Verify the token and try again."
+        message: `Unable to ${action}: the Deno Deploy access token was rejected. Verify the token and try again.`
       });
     }
     if (status) {
       return new BadRequestError({
-        message: `Unable to validate connection: Deno Deploy returned ${status}. Verify the access token and try again.`
+        message: `Unable to ${action}: Deno Deploy returned ${status}. Verify the access token and try again.`
       });
     }
     return new BadRequestError({
-      message: "Unable to validate connection: could not reach Deno Deploy. Verify the access token and try again."
+      message: `Unable to ${action}: could not reach Deno Deploy. Verify the access token and try again.`
     });
   }
 
-  if (error instanceof BadRequestError) return error;
-
   return new BadRequestError({
-    message: "Unable to validate connection: verify the access token and try again."
+    message: `Unable to ${action}: verify the access token and try again.`
   });
 };
 
@@ -79,7 +78,7 @@ export const validateDenoDeployConnectionCredentials = async (config: TDenoDeplo
       headers: getDenoDeployAuthHeaders(accessToken)
     });
   } catch (error: unknown) {
-    throw toDenoDeployCredentialError(error);
+    throw toDenoDeployProviderError(error, "validate connection");
   }
 
   return {
@@ -93,24 +92,28 @@ export const listDenoDeployApps = async (appConnection: TDenoDeployConnection): 
   const apps: TDenoDeployApp[] = [];
   let cursor: string | undefined;
 
-  for (let page = 0; page < DENO_DEPLOY_APPS_MAX_PAGES; page += 1) {
-    const { data, headers } = await request.get<TDenoDeployApp[]>(`${IntegrationUrls.DENO_DEPLOY_API_URL}/v2/apps`, {
-      params: {
-        limit: DENO_DEPLOY_APPS_PAGE_SIZE,
-        ...(cursor ? { cursor } : {})
-      },
-      headers: getDenoDeployAuthHeaders(accessToken)
-    });
+  try {
+    for (let page = 0; page < DENO_DEPLOY_APPS_MAX_PAGES; page += 1) {
+      const { data, headers } = await request.get<TDenoDeployApp[]>(`${IntegrationUrls.DENO_DEPLOY_API_URL}/v2/apps`, {
+        params: {
+          limit: DENO_DEPLOY_APPS_PAGE_SIZE,
+          ...(cursor ? { cursor } : {})
+        },
+        headers: getDenoDeployAuthHeaders(accessToken)
+      });
 
-    apps.push(
-      ...data.map((app) => ({
-        id: app.id,
-        slug: app.slug
-      }))
-    );
+      apps.push(
+        ...data.map((app) => ({
+          id: app.id,
+          slug: app.slug
+        }))
+      );
 
-    cursor = getNextCursorFromLinkHeader(headers.link);
-    if (!cursor) return apps;
+      cursor = getNextCursorFromLinkHeader(headers.link);
+      if (!cursor) return apps;
+    }
+  } catch (error) {
+    throw toDenoDeployProviderError(error, "list Deno Deploy apps");
   }
 
   logger.warn(

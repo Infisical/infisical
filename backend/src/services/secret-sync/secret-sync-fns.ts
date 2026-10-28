@@ -763,11 +763,11 @@ export const parseSyncErrorMessage = (err: unknown): string => {
   if (err instanceof SecretSyncError) {
     const innerError: Record<string, unknown> | string | undefined =
       err.error instanceof AxiosError
-        ? (err.error.response?.data as Record<string, unknown>)
+        ? ((err.error.response?.data as Record<string, unknown> | undefined) ?? err.error.message)
         : (err.error as Error)?.message;
     errorMessage = JSON.stringify({
       secretKey: err.secretKey,
-      message: err.message || undefined,
+      message: err.message || (typeof innerError === "string" ? innerError : undefined) || "An unknown error occurred.",
       error: innerError
     });
   } else if (err instanceof AxiosError) {

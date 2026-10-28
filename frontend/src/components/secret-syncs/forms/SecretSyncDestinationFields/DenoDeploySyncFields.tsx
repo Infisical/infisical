@@ -1,4 +1,5 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { AxiosError } from "axios";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
@@ -23,6 +24,10 @@ import {
 
 import { TSecretSyncForm } from "../schemas";
 
+const getListAppsErrorMessage = (error: unknown) =>
+  (error as AxiosError<{ message?: string }>)?.response?.data?.message ??
+  "Unable to load Deno Deploy apps. Verify the access token and try again.";
+
 export const DenoDeploySyncFields = () => {
   const { control, setValue } = useFormContext<
     TSecretSyncForm & { destination: SecretSync.DenoDeploy }
@@ -30,9 +35,15 @@ export const DenoDeploySyncFields = () => {
 
   const connectionId = useWatch({ name: "connection.id", control });
 
-  const { data: apps, isLoading: isAppsLoading } = useDenoDeployConnectionListApps(connectionId, {
+  const {
+    data: apps,
+    isLoading: isAppsLoading,
+    error: appsError
+  } = useDenoDeployConnectionListApps(connectionId, {
     enabled: Boolean(connectionId)
   });
+
+  const appsErrorMessage = appsError ? getListAppsErrorMessage(appsError) : undefined;
 
   return (
     <FieldGroup>
@@ -57,9 +68,11 @@ export const DenoDeploySyncFields = () => {
             <FieldContent>
               <Combobox
                 aria-labelledby="secret-sync-deno-deploy-app-id-label"
-                aria-describedby={error ? "secret-sync-deno-deploy-app-id-error" : undefined}
+                aria-describedby={
+                  error || appsErrorMessage ? "secret-sync-deno-deploy-app-id-error" : undefined
+                }
                 id="secret-sync-deno-deploy-app-id"
-                isError={Boolean(error)}
+                isError={Boolean(error) || Boolean(appsErrorMessage)}
                 isLoading={isAppsLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={apps?.find((app) => app.id === value) ?? null}
@@ -67,14 +80,18 @@ export const DenoDeploySyncFields = () => {
                   onChange(option?.id ?? null);
                   setValue("destinationConfig.appSlug", option?.slug ?? "");
                 }}
-                options={apps}
+                options={apps ?? []}
                 placeholder="Select an app..."
+                emptyMessage={appsErrorMessage}
                 getOptionLabel={(option) => option.slug}
                 getOptionValue={(option) => option.id}
                 getOptionKeywords={(option) => [option.id, option.slug]}
                 modal
               />
-              <FieldError id="secret-sync-deno-deploy-app-id-error" errors={[error]} />
+              <FieldError
+                id="secret-sync-deno-deploy-app-id-error"
+                errors={[error, appsErrorMessage ? { message: appsErrorMessage } : undefined]}
+              />
             </FieldContent>
           </Field>
         )}

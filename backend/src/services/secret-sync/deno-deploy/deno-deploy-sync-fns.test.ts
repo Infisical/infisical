@@ -3,17 +3,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
+import { parseSyncErrorMessage } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
 
 import { DenoDeploySyncContext } from "./deno-deploy-sync-enums";
 import { DenoDeploySyncFns } from "./deno-deploy-sync-fns";
+import { DENO_DEPLOY_APP_ID_PATTERN } from "./deno-deploy-sync-schemas";
 import { TDenoDeployApp, TDenoDeploySyncWithCredentials } from "./deno-deploy-sync-types";
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({}) }));
-vi.mock("@app/services/secret-sync/secret-sync-fns", () => ({ matchesSchema: () => true }));
 
 const { get, patch } = vi.hoisted(() => ({ get: vi.fn(), patch: vi.fn() }));
-vi.mock("@app/lib/config/request", () => ({ request: { get, patch } }));
+vi.mock("@app/lib/config/request", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/config/request")>();
+  return {
+    ...actual,
+    request: { ...actual.request, get, patch }
+  };
+});
 
 const sync = {
   destination: "deno-deploy",
@@ -85,6 +92,55 @@ describe("DenoDeploySyncFns", () => {
     expect(patchEnvVars()).toEqual([
       { key: "KEEP", value: "new-value", secret: true, contexts: [DenoDeploySyncContext.Production] },
       { id: "gone-id", delete: true }
+    ]);
+  });
+
+  it("deletes only owned variables that match the key prefix and suffix", async () => {
+    get.mockResolvedValue({
+      data: appWith([
+        {
+          id: "keep-id",
+          key: "prod_KEEP_sfx",
+          secret: true,
+          contexts: [DenoDeploySyncContext.Production]
+        },
+        {
+          id: "stale-id",
+          key: "prod_STALE_sfx",
+          secret: true,
+          contexts: [DenoDeploySyncContext.Production]
+        },
+        {
+          id: "foreign-id",
+          key: "FOREIGN",
+          secret: true,
+          contexts: [DenoDeploySyncContext.Production]
+        },
+        {
+          id: "prefix-only-id",
+          key: "prod_OTHER",
+          secret: true,
+          contexts: [DenoDeploySyncContext.Production]
+        }
+      ])
+    });
+
+    await DenoDeploySyncFns.syncSecrets(
+      {
+        ...sync,
+        syncOptions: { disableSecretDeletion: false, keySchema: "{{environment}}_{{secretKey}}_sfx" }
+      } as TDenoDeploySyncWithCredentials,
+      payloadOf({ prod_KEEP_sfx: "new-value" })
+    );
+
+    expect(patchEnvVars()).toEqual([
+      {
+        key: "prod_KEEP_sfx",
+        value: "new-value",
+        secret: true,
+        contexts: [DenoDeploySyncContext.Production]
+      },
+      { id: "stale-id", delete: true }
     ]);
   });
 
@@ -233,5 +289,54 @@ describe("DenoDeploySyncFns", () => {
       shouldRetry: false,
       message: "env var key is invalid"
     });
+  });
+
+  it("encodes the app ID as a single path segment on GET and PATCH", async () => {
+    const appId = "abc/../other?x=1";
+    await DenoDeploySyncFns.syncSecrets(
+      {
+        ...sync,
+        destinationConfig: { ...sync.destinationConfig, appId }
+      } as TDenoDeploySyncWithCredentials,
+      payloadOf({ API_KEY: "value" })
+    );
+
+    const expectedUrl = `${IntegrationUrls.DENO_DEPLOY_API_URL}/v2/apps/${encodeURIComponent(appId)}`;
+    expect(get).toHaveBeenCalledWith(expectedUrl, expect.anything());
+    expect(patch).toHaveBeenCalledWith(expectedUrl, expect.anything(), expect.anything());
+  });
+
+  it("maps a network failure to a Deno Deploy error message", async () => {
+    get.mockRejectedValue(new AxiosError("Network Error"));
+
+    const error = await DenoDeploySyncFns.syncSecrets(sync, payloadOf({ API_KEY: "value" })).catch(
+      (err: unknown) => err
+    );
+
+    expect(error).toBeInstanceOf(SecretSyncError);
+    expect((error as SecretSyncError).message).toContain("Deno Deploy");
+    expect(parseSyncErrorMessage(error)).toContain("Network Error");
+    expect(parseSyncErrorMessage(error)).not.toBe("{}");
+  });
+});
+
+describe("parseSyncErrorMessage", () => {
+  it("falls back to the Axios message when a SecretSyncError has no response body", () => {
+    const error = new SecretSyncError({ error: new AxiosError("Network Error") });
+
+    expect(JSON.parse(parseSyncErrorMessage(error))).toEqual({
+      message: "Network Error",
+      error: "Network Error"
+    });
+  });
+});
+
+describe("DENO_DEPLOY_APP_ID_PATTERN", () => {
+  it.each(["11111111-1111-1111-1111-111111111111", "app-1", "App_2"])("accepts %s", (appId) => {
+    expect(DENO_DEPLOY_APP_ID_PATTERN.test(appId)).toBe(true);
+  });
+
+  it.each(["abc/def", "abc?x=1", "abc#frag", "abc other", "abc.def"])("rejects %s", (appId) => {
+    expect(DENO_DEPLOY_APP_ID_PATTERN.test(appId)).toBe(false);
   });
 });

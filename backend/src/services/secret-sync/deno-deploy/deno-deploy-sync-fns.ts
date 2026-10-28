@@ -76,9 +76,20 @@ export const overlapsDenoDeployContext = (
 };
 
 const getDenoDeployErrorMessage = (error: unknown) => {
-  if (!isAxiosError(error)) return undefined;
+  if (!isAxiosError(error)) return error instanceof Error ? error.message : undefined;
+
   const body = error.response?.data as { error?: { message?: unknown } } | undefined;
-  return typeof body?.error?.message === "string" && body.error.message ? body.error.message : undefined;
+  if (typeof body?.error?.message === "string" && body.error.message) return body.error.message;
+
+  const status = error.response?.status;
+  if (status === 401 || status === 403) {
+    return "The Deno Deploy access token was rejected. Verify the token and try again.";
+  }
+  if (status) {
+    return `Deno Deploy returned ${status}. Verify the access token and try again.`;
+  }
+
+  return "Could not reach Deno Deploy. Verify the access token and try again.";
 };
 
 const toDenoDeploySyncError = (error: unknown, secretKey?: string) => {
@@ -91,6 +102,9 @@ const toDenoDeploySyncError = (error: unknown, secretKey?: string) => {
   return new SecretSyncError({ error, secretKey, shouldRetry, message });
 };
 
+const denoDeployAppUrl = (appId: string) =>
+  `${IntegrationUrls.DENO_DEPLOY_API_URL}/v2/apps/${encodeURIComponent(appId)}`;
+
 const getApp = async (secretSync: TDenoDeploySyncWithCredentials): Promise<TDenoDeployApp> => {
   const {
     destinationConfig: { appId, appSlug },
@@ -100,7 +114,7 @@ const getApp = async (secretSync: TDenoDeploySyncWithCredentials): Promise<TDeno
   } = secretSync;
 
   try {
-    const { data } = await request.get<TDenoDeployApp>(`${IntegrationUrls.DENO_DEPLOY_API_URL}/v2/apps/${appId}`, {
+    const { data } = await request.get<TDenoDeployApp>(denoDeployAppUrl(appId), {
       headers: getDenoDeployAuthHeaders(accessToken)
     });
     return data;
@@ -127,7 +141,7 @@ const patchEnvVars = async (secretSync: TDenoDeploySyncWithCredentials, envVars:
 
   try {
     await request.patch(
-      `${IntegrationUrls.DENO_DEPLOY_API_URL}/v2/apps/${appId}`,
+      denoDeployAppUrl(appId),
       { env_vars: envVars },
       { headers: getDenoDeployAuthHeaders(accessToken) }
     );

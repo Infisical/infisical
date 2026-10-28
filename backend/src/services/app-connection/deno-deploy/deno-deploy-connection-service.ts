@@ -2,7 +2,7 @@ import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";
-import { listDenoDeployApps } from "./deno-deploy-connection-fns";
+import { listDenoDeployApps, toDenoDeployProviderError } from "./deno-deploy-connection-fns";
 import { TDenoDeployConnection } from "./deno-deploy-connection-types";
 
 type TGetAppConnectionFunc = (
@@ -16,11 +16,10 @@ export const denoDeployConnectionService = (getAppConnection: TGetAppConnectionF
     const appConnection = await getAppConnection(AppConnection.DenoDeploy, connectionId, actor);
 
     try {
-      const apps = await listDenoDeployApps(appConnection);
-      return apps;
+      return await listDenoDeployApps(appConnection);
     } catch (error) {
       logger.error(error, "Failed to list Deno Deploy apps");
-      return [];
+      throw toDenoDeployProviderError(error, "list Deno Deploy apps");
     }
   };
 
