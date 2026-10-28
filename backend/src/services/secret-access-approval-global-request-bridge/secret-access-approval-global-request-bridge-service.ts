@@ -31,7 +31,6 @@ import {
   getSecretAccessRequestData,
   hasSameAccessCriteria,
   parseSecretAccessRequestData,
-  readSecretAccessPolicyConstraints,
   validateSecretAccessConstraints
 } from "@app/services/approval-policy/secret-access/secret-access-policy-fns";
 import { TSecretAccessRequestData } from "@app/services/approval-policy/secret-access/secret-access-policy-types";
@@ -346,31 +345,23 @@ export const secretAccessApprovalGlobalRequestBridgeServiceFactory = ({
       throw new BadRequestError({ message: "You already have a pending access request with the same criteria" });
     }
 
-    // A policy update locks this row, then rewrites its time limits, approver steps, and delegated reviewer
-    // together. Sharing the row waits that update out, so the limits are read from it before a request is
-    // created against the reviewer the update left in place.
+    const { requestExpirationTime } = policy.constraints.constraints;
+    const parsedMs = requestExpirationTime ? ms(requestExpirationTime) : null;
+    const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
+
+    // A policy update locks this row, then rewrites its environments, secret path, time limits, approver
+    // steps, and delegated reviewer in the same transaction, which moves updatedAt. Sharing the row waits that
+    // update out, and an unchanged updatedAt means the scope and limits this request was checked against still hold.
     const { approvalRequest: created, policySteps } = await approvalRequestDAL.transaction(async (tx) => {
       const lockedPolicy = await approvalPolicyDAL.findByIdForShare(policy.id, tx);
       if (!lockedPolicy) {
         throw new NotFoundError({ message: `Policy '${policy.name}' was deleted before the request could be created` });
       }
-
-      const lockedConstraints = readSecretAccessPolicyConstraints(lockedPolicy.constraints);
-      if (!lockedConstraints) {
+      if (new Date(lockedPolicy.updatedAt).getTime() !== new Date(policy.updatedAt).getTime()) {
         throw new BadRequestError({
-          message: `Policy '${policy.name}' could not be read. Submit the request again.`
+          message: `Policy '${policy.name}' was changed while the request was being created. Submit the request again.`
         });
       }
-
-      const lockedConstraintValidation = validateSecretAccessConstraints(lockedConstraints, requestData);
-      if (!lockedConstraintValidation.valid) {
-        throw new BadRequestError({
-          message: lockedConstraintValidation.errors?.join("; ") ?? "Policy constraints not met"
-        });
-      }
-
-      const parsedMs = lockedConstraints.requestExpirationTime ? ms(lockedConstraints.requestExpirationTime) : null;
-      const expiresAt = parsedMs && !Number.isNaN(parsedMs) ? new Date(Date.now() + parsedMs) : null;
 
       const currentSteps = await approvalPolicyDAL.findStepsByPolicyId(policy.id, tx);
       const delegatedPolicy = currentSteps.length
