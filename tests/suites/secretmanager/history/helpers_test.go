@@ -3,7 +3,6 @@ package history_test
 import (
 	"bytes"
 	"encoding/json"
-	"path"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -77,19 +76,6 @@ func folderID(t *testing.T, proj *fixture.Project, env, folderPath string) strin
 	return res.JSON200.FolderId
 }
 
-// newFolder creates a folder and returns its ID, which the folder update and delete
-// routes take.
-func newFolder(t *testing.T, proj *fixture.Project, env, folderPath string) string {
-	t.Helper()
-	parent, name := path.Split(path.Clean(folderPath))
-	res, err := proj.Tenant().Admin.API.CreateSecretFolderWithResponse(t.Context(), api.CreateSecretFolderJSONRequestBody{
-		ProjectId: proj.ID, Environment: env, Name: name, Path: &parent,
-	})
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "creating folder %s returned %d: %s", folderPath, res.StatusCode(), apierr.Body(res.Body))
-	return res.JSON200.Folder.Id.String()
-}
-
 type version struct {
 	ID         string
 	Version    float32
@@ -136,15 +122,6 @@ func versionValue(t *testing.T, pr *harness.Principal, secretID, n string) strin
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "reading version %s of %s returned %d: %s", n, secretID, res.StatusCode(), apierr.Body(res.Body))
 	return res.JSON200.Value
-}
-
-func errorMessage(t *testing.T, body []byte) string {
-	t.Helper()
-	var e struct {
-		Message string `json:"message"`
-	}
-	require.NoErrorf(t, json.Unmarshal(body, &e), "decoding error body %s", apierr.Body(body))
-	return e.Message
 }
 
 func postJSON(t *testing.T, v any) *bytes.Reader {

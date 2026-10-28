@@ -8,6 +8,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
@@ -40,7 +41,7 @@ func TestFolderCommit_Revert(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
-		require.Equal(t, "Cannot revert the first commit", errorMessage(t, res.Body))
+		require.Equal(t, "Cannot revert the first commit", apierr.Message(res.Body))
 		require.Equal(t, []string{"FIRST"}, keys(t, proj))
 		require.Len(t, commitsAt(t, tn.Admin, proj, "dev", "/"), 1)
 	})

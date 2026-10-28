@@ -69,22 +69,6 @@ func childLocations(n referenceNode) []string {
 	return locations
 }
 
-func folderID(t *testing.T, proj *fixture.Project, env, parent, name string) string {
-	t.Helper()
-	res, err := proj.Tenant().Admin.API.ListSecretFoldersWithResponse(t.Context(), &api.ListSecretFoldersParams{
-		ProjectId: proj.ID, Environment: env, Path: parent,
-	})
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "listing folders returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	for _, f := range res.JSON200.Folders {
-		if f.Name == name {
-			return f.Id.String()
-		}
-	}
-	require.Failf(t, "folder not found", "no folder %s under %s:%s", name, env, parent)
-	return ""
-}
-
 // describeOnlyUser can see secret names but not their values.
 func describeOnlyUser(t *testing.T, proj *fixture.Project, name string) *harness.Principal {
 	t.Helper()

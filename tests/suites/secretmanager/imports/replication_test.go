@@ -181,7 +181,7 @@ func TestSecretReplication_Copy(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		protect(t, proj, "dev", "/")
+		secretmanager.CreateApprovalPolicy(t, proj, secretmanager.Location{Env: "dev", Path: "/"}, tn.Admin)
 		secretmanager.CreateSecret(t, proj, "staging", "KEY", "value")
 
 		// Action
@@ -303,27 +303,6 @@ func listAt(t *testing.T, actor *harness.Principal, proj *fixture.Project, env, 
 	})
 	require.NoError(t, err)
 	return res
-}
-
-// protect puts env:folderPath under a change policy with the tenant administrator as
-// its only approver.
-func protect(t *testing.T, proj *fixture.Project, env, folderPath string) {
-	t.Helper()
-	admin := proj.Tenant().Admin
-	var approver api.CreateSecretApprovalPolicyJSONBody_Approvers_Item
-	require.NoError(t, approver.FromCreateSecretApprovalPolicyJSONBodyApprovers1(api.CreateSecretApprovalPolicyJSONBodyApprovers1{
-		Type: api.CreateSecretApprovalPolicyJSONBodyApprovers1TypeUser,
-		Id:   new(admin.ID.String()),
-	}))
-	res, err := admin.API.CreateSecretApprovalPolicyWithResponse(t.Context(), api.CreateSecretApprovalPolicyJSONRequestBody{
-		ProjectId:   proj.ID,
-		Environment: &env,
-		SecretPath:  folderPath,
-		Approvals:   new(float32(1)),
-		Approvers:   []api.CreateSecretApprovalPolicyJSONBody_Approvers_Item{approver},
-	})
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "creating the policy returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 }
 
 func openRequests(t *testing.T, proj *fixture.Project) int {

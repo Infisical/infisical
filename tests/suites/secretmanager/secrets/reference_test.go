@@ -537,7 +537,7 @@ func TestSecretReference_Rewrite(t *testing.T) {
 		secretmanager.CreateSecret(t, proj, "dev", "REF", "${dev.app.KEY}")
 
 		// Action
-		res, err := tn.Admin.API.UpdateSecretFolderWithResponse(t.Context(), folderID(t, proj, "dev", "/", "app"),
+		res, err := tn.Admin.API.UpdateSecretFolderWithResponse(t.Context(), secretmanager.FolderID(t, proj, "dev", "/", "app"),
 			api.UpdateSecretFolderJSONRequestBody{ProjectId: proj.ID, Environment: "dev", Path: new("/"), Name: "svc"})
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, res.StatusCode(), "renaming the folder returned %s", apierr.Body(res.Body))
