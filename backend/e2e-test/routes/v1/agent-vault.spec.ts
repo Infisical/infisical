@@ -5214,6 +5214,75 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("a save locks the identity before its membership, the order deleting the identity takes them", async () => {
+      const projectId = await getProjectId();
+      const bot = await createMemberIdentity(`obo-lock-order-bot-${Date.now()}`);
+      // Deleting the identity locks its row, then the cascade deletes its memberships. With the membership locked
+      // first, the save would hold it while its foreign key waited on the identity, and Postgres would abort one of
+      // the two as a deadlock.
+      const trx = await testDb.transaction();
+      try {
+        const { rows } = await trx.raw("select pg_backend_pid() as pid");
+        await trx("identities").where({ id: bot.id }).forUpdate().first();
+
+        const pending = inject("PUT", delegationUrl(bot.id), { scope: "all-members" });
+        await waitUntilBlockedBy(rows[0].pid);
+
+        await trx("memberships")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorIdentityId: bot.id })
+          .delete();
+        await trx.commit();
+
+        const saved = await pending;
+        expect(saved.statusCode).toBe(404);
+        expect((await inject("GET", delegationUrl(bot.id))).statusCode).toBe(404);
+      } catch (err) {
+        if (!trx.isCompleted()) await trx.rollback();
+        throw err;
+      } finally {
+        await bot.cleanup();
+      }
+    });
+
+    test("a user or group stops covering anyone once it leaves Agent Vault some other way", async () => {
+      const projectId = await getProjectId();
+      const stamp = Date.now();
+      const bundle = await createAccessBundle(`obo-stale-${stamp}`);
+      const bot = await createMemberIdentity(`obo-stale-bot-${stamp}`);
+      const named = await createProjectGroup(projectId, `obo-stale-named-${stamp}`, ProjectMembershipRole.Member);
+      const other = await createProjectGroup(projectId, `obo-stale-other-${stamp}`, ProjectMembershipRole.Member);
+      // Carol is a direct member and in the other group, so she keeps Agent Vault access after either removal.
+      const carol = await createAgentVaultUser("obo-stale-carol", projectId);
+      const dave = await createAgentVaultUser("obo-stale-dave", null);
+      await testDb("user_group_membership").insert([
+        { groupId: other.id, userId: carol.userId },
+        { groupId: named.id, userId: dave.userId },
+        { groupId: other.id, userId: dave.userId }
+      ]);
+      // The generic project membership routes remove a member without clearing delegations.
+      const leaveAgentVault = (actor: { actorUserId: string } | { actorGroupId: string }) =>
+        testDb("memberships")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, ...actor })
+          .delete();
+      try {
+        await grantBundle(bundle.id, { groupIds: [other.id], machineIdentityIds: [bot.id] });
+        await delegate(bot, { scope: "selected", userIds: [carol.userId], groupIds: [named.id] });
+        expect((await mintFor(bot, { userId: carol.userId }, bundle.name)).statusCode).toBe(200);
+        expect((await mintFor(bot, { userId: dave.userId }, bundle.name)).statusCode).toBe(200);
+
+        await leaveAgentVault({ actorGroupId: named.id });
+        expect((await mintFor(bot, { userId: dave.userId }, bundle.name)).statusCode).toBe(403);
+
+        await leaveAgentVault({ actorUserId: carol.userId });
+        expect((await mintFor(bot, { userId: carol.userId }, bundle.name)).statusCode).toBe(403);
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([carol.userId, dave.userId]);
+        await named.cleanup();
+        await other.cleanup();
+      }
+    });
+
     test("a delegation shows the bundles each user and group can use that the identity can't", async () => {
       const projectId = await getProjectId();
       const stamp = Date.now();

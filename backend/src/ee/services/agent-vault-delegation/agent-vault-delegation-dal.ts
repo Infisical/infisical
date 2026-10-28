@@ -147,24 +147,36 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
 
   /**
    * Under all-members every user is covered, otherwise the users the delegation names and the members of the groups
-   * it names. Group membership is read the way the permission engine reads it, without isPending.
+   * it names. Group membership is read the way the permission engine reads it, without isPending. A named user or
+   * group counts only while it holds its own Agent Vault membership, so a row left behind by a removal that didn't
+   * clear it, such as through the generic project membership routes, covers no one.
    */
   const coversUser = async (
-    { delegation, userId }: { delegation: Pick<TAgentVaultDelegations, "id" | "scope">; userId: string },
+    { delegation, userId }: { delegation: Pick<TAgentVaultDelegations, "id" | "scope" | "projectId">; userId: string },
     tx?: Knex
   ): Promise<boolean> => {
     if (delegation.scope === AgentVaultDelegationScope.AllMembers) return true;
     try {
       const conn = tx || db.replicaNode();
-      const subject = await conn(TableName.AgentVaultDelegationSubject)
-        .where(`${TableName.AgentVaultDelegationSubject}.delegationId`, delegation.id)
+      const subjects = TableName.AgentVaultDelegationSubject;
+      const inAgentVault = (column: "actorUserId" | "actorGroupId", subjectColumn: "userId" | "groupId") =>
+        conn(TableName.Membership)
+          .where(`${TableName.Membership}.scope`, AccessScope.Project)
+          .where(`${TableName.Membership}.scopeProjectId`, delegation.projectId)
+          .whereRaw(`??.?? = ??.??`, [TableName.Membership, column, subjects, subjectColumn])
+          .select(conn.raw("1"));
+      const subject = await conn(subjects)
+        .where(`${subjects}.delegationId`, delegation.id)
         .where((qb) => {
           void qb
-            .where(`${TableName.AgentVaultDelegationSubject}.userId`, userId)
-            .orWhereIn(
-              `${TableName.AgentVaultDelegationSubject}.groupId`,
-              conn(TableName.UserGroupMembership).select("groupId").where({ userId })
-            );
+            .where((named) => {
+              void named.where(`${subjects}.userId`, userId).whereExists(inAgentVault("actorUserId", "userId"));
+            })
+            .orWhere((viaGroup) => {
+              void viaGroup
+                .whereIn(`${subjects}.groupId`, conn(TableName.UserGroupMembership).select("groupId").where({ userId }))
+                .whereExists(inAgentVault("actorGroupId", "groupId"));
+            });
         })
         .select(db.ref("id").withSchema(TableName.AgentVaultDelegationSubject))
         .first();
@@ -193,7 +205,9 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
   /**
    * The Agent Vault memberships of the identity and of the users and groups a save names, taken FOR SHARE. Removing a
    * member deletes its row in a transaction of its own, so a save waits for a removal in flight and then sees the row
-   * gone, and a removal that starts later waits for the save and then clears what it wrote.
+   * gone, and a removal that starts later waits for the save and then clears what it wrote. The identity, user and
+   * group rows are taken FOR KEY SHARE first, the lock the save's foreign keys take anyway: deleting one of them
+   * deletes it before the cascade reaches its memberships, so locking in that order keeps the two from deadlocking.
    */
   const lockMemberships = async (
     {
@@ -205,6 +219,9 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
     tx: Knex
   ) => {
     try {
+      await tx(TableName.Identity).where({ id: identityId }).forKeyShare().select("id");
+      if (userIds.length) await tx(TableName.Users).whereIn("id", userIds).orderBy("id").forKeyShare().select("id");
+      if (groupIds.length) await tx(TableName.Groups).whereIn("id", groupIds).orderBy("id").forKeyShare().select("id");
       return (await tx(TableName.Membership)
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
         .where(`${TableName.Membership}.scopeProjectId`, projectId)
