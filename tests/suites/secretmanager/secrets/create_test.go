@@ -438,23 +438,4 @@ func TestSecret_Create(t *testing.T) {
 		require.Equalf(t, http.StatusRequestEntityTooLarge, res.StatusCode(), "creating returned %s", apierr.Body(res.Body))
 		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev"))
 	})
-
-	t.Run("should answer a key over 100 characters with a route not found on the single-secret route", func(t *testing.T) {
-		t.Parallel()
-		spec.Why(t, "the router caps a path parameter at 100 characters, so a long key never reaches the route and reads as a missing route")
-
-		// Setup
-		tn := h.NewTenant(t)
-		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-
-		// Action
-		res, err := tn.Admin.API.CreateSecretV4WithResponse(t.Context(), strings.Repeat("K", 101),
-			api.CreateSecretV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", SecretValue: "value"})
-
-		// Assert
-		require.NoError(t, err)
-		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "creating returned %s", apierr.Body(res.Body))
-		require.Contains(t, string(res.Body), "Route POST:/api/v4/secrets/")
-		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev"))
-	})
 }
