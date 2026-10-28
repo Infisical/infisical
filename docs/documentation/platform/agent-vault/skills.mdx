@@ -60,10 +60,10 @@ You can push a skill folder with the CLI, or create the skill in Infisical.
     Log in to the CLI as an Agent Vault admin, then run the following command on the host that has the skill folder:
 
     ```bash
-    infisical agent-vault skills push <path-to-skill-folder>
+    infisical agent-vault skills push ./skills/code-review
     ```
 
-    The CLI reads the skill's name from `SKILL.md`. If no skill has that name yet, the CLI creates the skill. Otherwise, the CLI publishes the folder as a new version of the existing skill.
+    The CLI finds the skill by the `name` in `SKILL.md`. It creates the skill if it doesn't exist yet, and adds a new version if it does.
 
     To push from a script or CI, authenticate as a [machine identity](/documentation/platform/identities/machine-identities) with the [Admin role in Agent Vault](/documentation/platform/agent-vault/access-control#product-membership). For the flags, see [infisical agent-vault skills push](/cli/reference#agent-vault-skills-push).
   </Tab>
