@@ -153,6 +153,7 @@ import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/mic
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TOauthClientServiceFactory } from "@app/services/oauth-client/oauth-client-service";
 import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { TOrgProductStatsServiceFactory } from "@app/services/org-product-stats/org-product-stats-service";
@@ -312,6 +313,7 @@ declare module "fastify" {
       signup: TAuthSignupFactory;
       authToken: TAuthTokenServiceFactory;
       oauthClient: TOauthClientServiceFactory;
+      oidcIssuer: TOidcIssuerServiceFactory;
       permission: TPermissionServiceFactory;
       org: TOrgServiceFactory;
       oidc: TOidcConfigServiceFactory;

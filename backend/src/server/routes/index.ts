@@ -479,6 +479,7 @@ import { oauthClientServiceFactory } from "@app/services/oauth-client/oauth-clie
 import { objectStorageServiceFactory } from "@app/services/object-storage/object-storage-service";
 import { offlineUsageReportDALFactory } from "@app/services/offline-usage-report/offline-usage-report-dal";
 import { offlineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
+import { oidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
 import { orgAccessReconcileConsumerFactory } from "@app/services/org/org-access-reconcile-consumer";
 import { orgAccessSweepQueueFactory } from "@app/services/org/org-access-sweep-queue";
@@ -1076,6 +1077,8 @@ export const registerRoutes = async (
     keyStore,
     envConfig
   });
+
+  const oidcIssuerService = oidcIssuerServiceFactory({ kmsDAL, kmsService, keyStore });
 
   const encryptionKeyRotationService = encryptionKeyRotationServiceFactory({
     kmsService,
@@ -4756,6 +4759,7 @@ export const registerRoutes = async (
     oidc: oidcService,
     authToken: tokenService,
     oauthClient: oauthClientService,
+    oidcIssuer: oidcIssuerService,
     superAdmin: superAdminService,
     encryptionKeyRotation: encryptionKeyRotationService,
     offlineUsageReport: offlineUsageReportService,

@@ -1177,6 +1177,25 @@ the same transaction. Keys are released on CA delete, on project hard delete, an
 fails after its key was made. AWS KMS schedules deletion with a 30-day window; HSM keeps its key. A
 failure is logged, never thrown, so the original outcome stands.
 
+### OIDC issuer (outbound workload identity federation)
+
+`services/oidc-issuer` signs short-lived JWTs that cloud providers exchange for access tokens, so a
+connection needs no stored client secret. Each org is its own issuer at
+`/api/v1/oidc-issuer/organizations/<orgId>`, with public discovery and JWKS routes under `.well-known`.
+The issuer URL and each consumer's `sub` format are one-way doors: customers copy both into their provider.
+
+- **Keys are reserved `sign-verify` `kms_keys` rows named `oidc-issuer-*`, not a new `keyUsage`.** The
+  CMEK router accepts any `KmsKeyUsage`, so a new value would be creatable through the public API.
+  Customers cannot create reserved keys, which is what makes the name prefix safe.
+- **Keys are created on the first sign, never on a JWKS fetch**, so existing orgs need no backfill.
+- **The second newest key signs.** The newest is published a full 24h period before it takes over, and
+  rotation keeps at most three keys. It runs under a Redis lock, so no database connection is held while
+  RSA keys are generated; the lock is renewed while it runs, and nothing is written once it is lost.
+- **The JWKS is cached in Redis for 10 minutes**, because building it decrypts every key on an anonymous
+  route. The 24h lead makes a stale set safe. Empty sets are never cached, in Redis or over HTTP.
+- **Fresh keys are read on the primary.** Signing and the JWKS a rotation caches pass a `tx` to
+  `getPublicKey` and `signWithKmsKey`, because a read replica may not have a key created moments earlier.
+
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:
