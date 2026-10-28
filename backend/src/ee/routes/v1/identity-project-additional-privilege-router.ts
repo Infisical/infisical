@@ -26,6 +26,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "createIdentityAdditionalPrivilegePermanent",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "Create a permanent or a non expiry specific privilege for identity.",
       security: [
@@ -108,6 +109,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "createIdentityAdditionalPrivilegeTemporary",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "Create a temporary or a expiring specific privilege for identity.",
       security: [
@@ -202,6 +204,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "updateIdentityAdditionalPrivilege",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "Update a specific privilege of an identity.",
       security: [
@@ -314,6 +317,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "deleteIdentityAdditionalPrivilege",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "Delete a specific privilege of an identity.",
       security: [
@@ -378,6 +382,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "getIdentityAdditionalPrivilegeBySlug",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "Retrieve details of a specific privilege by privilege slug.",
       security: [
@@ -444,6 +449,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
     },
     schema: {
       hide: false,
+      operationId: "listIdentityAdditionalPrivileges",
       tags: [ApiDocsTags.IdentitySpecificPrivilegesV1],
       description: "List of a specific privilege of an identity in a project.",
       security: [
