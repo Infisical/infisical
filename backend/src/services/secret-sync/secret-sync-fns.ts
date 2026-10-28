@@ -57,6 +57,7 @@ import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns"
 import { CLOUDFLARE_SECRETS_STORE_SYNC_LIST_OPTION, CloudflareSecretsStoreSyncFns } from "./cloudflare-secrets-store";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
 import { DAYTONA_SYNC_LIST_OPTION, DaytonaSyncFns } from "./daytona";
+import { DENO_DEPLOY_SYNC_LIST_OPTION, DenoDeploySyncFns } from "./deno-deploy";
 import { DEVIN_SYNC_LIST_OPTION, DevinSyncFns } from "./devin";
 import {
   DIGITAL_OCEAN_APP_PLATFORM_SYNC_LIST_OPTION,
@@ -151,6 +152,7 @@ const SECRET_SYNC_LIST_OPTIONS: Record<SecretSync, TSecretSyncListItem> = {
   [SecretSync.Cloud66]: CLOUD66_SYNC_LIST_OPTION,
   [SecretSync.Spacelift]: SPACELIFT_SYNC_LIST_OPTION,
   [SecretSync.Daytona]: DAYTONA_SYNC_LIST_OPTION,
+  [SecretSync.DenoDeploy]: DENO_DEPLOY_SYNC_LIST_OPTION,
   [SecretSync.Keeper]: KEEPER_SYNC_LIST_OPTION
 };
 
@@ -409,6 +411,8 @@ export const SecretSyncFns = {
         return SpaceliftSyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Daytona:
         return DaytonaSyncFns.syncSecrets(secretSync, payload);
+      case SecretSync.DenoDeploy:
+        return DenoDeploySyncFns.syncSecrets(secretSync, payload);
       case SecretSync.Keeper:
         return KeeperSyncFns.syncSecrets(secretSync, payload);
       default:
@@ -595,6 +599,9 @@ export const SecretSyncFns = {
       case SecretSync.Daytona:
         secretMap = await DaytonaSyncFns.getSecrets();
         break;
+      case SecretSync.DenoDeploy:
+        secretMap = await DenoDeploySyncFns.getSecrets(secretSync);
+        break;
       case SecretSync.Keeper:
         secretMap = await KeeperSyncFns.getSecrets(secretSync);
         break;
@@ -736,6 +743,8 @@ export const SecretSyncFns = {
         return SpaceliftSyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Daytona:
         return DaytonaSyncFns.removeSecrets(secretSync, payload);
+      case SecretSync.DenoDeploy:
+        return DenoDeploySyncFns.removeSecrets(secretSync, payload);
       case SecretSync.Keeper:
         return KeeperSyncFns.removeSecrets(secretSync, payload);
       default:

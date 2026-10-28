@@ -1,0 +1,86 @@
+---
+title: "Deno Deploy connection"
+sidebarTitle: "Deno Deploy"
+description: "Learn how to configure a Deno Deploy connection for Infisical."
+---
+
+import CreateAccessToken from "/snippets/app-connections/deno-deploy/create-access-token.mdx";
+import ConnectionFormFields from "/snippets/app-connections/deno-deploy/form-fields.mdx";
+
+A Deno Deploy connection authenticates Infisical to [Deno Deploy](https://dash.deno.com) with an organization access token, so Infisical can sync environment variables to a Deno Deploy app.
+
+The token is scoped to one Deno Deploy organization. Infisical uses it to list that organization's apps and to write environment variables. An optional organization ID is stored with the connection for your reference and isn't sent to Deno Deploy.
+
+<Note>
+    This guide only authenticates Infisical with Deno Deploy. Once the app connection is ready, you can [use it to set up integrations](#step-3-configure-integrations).
+</Note>
+
+## Prerequisites
+
+- A [Deno Deploy organization](https://docs.deno.com/deploy/reference/organizations/) where you can create access tokens
+
+## Step 1: Create a Deno Deploy access token
+
+Infisical authenticates to Deno Deploy with an organization access token that can list apps and update environment variables.
+
+<CreateAccessToken />
+
+## Step 2: Create the app connection
+
+Next, create the app connection in Infisical.
+
+<Tip>
+    To create the connection using the API, use the [Create Deno Deploy Connection](/api-reference/endpoints/app-connections/deno-deploy/create) endpoint.
+</Tip>
+
+<View title="Organization-level">
+    <Steps>
+        <Step>
+            In the sidebar, select **Integrations**, then open the **App Connections** tab.
+
+            ![App Connections Tab](/images/app-connections/general/add-connection.png)
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **Deno Deploy**.
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to Deno Deploy**.
+        </Step>
+    </Steps>
+</View>
+
+<View title="Project-level">
+    <Steps>
+        <Step>
+            In your Secrets Manager project, select **Integrations** from the sidebar, then open the **App Connections** tab.
+        </Step>
+        <Step>
+            Select **Add Connection** and choose **Deno Deploy**.
+        </Step>
+        <Step>
+            Fill out the form's fields:
+
+            <ConnectionFormFields />
+
+            Then, select **Connect to Deno Deploy**.
+        </Step>
+    </Steps>
+</View>
+
+Infisical checks the token by listing apps in Deno Deploy. If Deno Deploy rejects the token, the connection isn't created.
+
+<Check>
+    Your Deno Deploy app connection is ready to use.
+</Check>
+
+## Step 3: Configure integrations
+
+Now that your Deno Deploy app connection is configured, you can use it to set up the following integrations:
+
+<Card title="Deno Deploy Secret Sync" icon="refresh-cw" href="/integrations/secret-syncs/deno-deploy">
+    Sync secrets from Infisical to a Deno Deploy app's environment variables.
+</Card>

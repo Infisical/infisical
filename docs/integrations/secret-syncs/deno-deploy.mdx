@@ -1,0 +1,154 @@
+---
+title: "Deno Deploy sync"
+sidebarTitle: "Deno Deploy"
+description: "Learn how to configure a Deno Deploy sync for Infisical."
+---
+
+import CreateAccessToken from "/snippets/app-connections/deno-deploy/create-access-token.mdx";
+import ConnectionFormFields from "/snippets/app-connections/deno-deploy/form-fields.mdx";
+
+A Deno Deploy Secret Sync pushes secrets from Infisical into a Deno Deploy app's environment variables, where deployments in the selected context read them at runtime. Each Infisical secret becomes a Deno Deploy environment variable with the same name unless you customize key names to add a prefix or suffix.
+
+<Note>
+    The Deno Deploy Secret Sync requires a [Deno Deploy app connection](/integrations/app-connections/deno-deploy). This guide walks you through creating a project-scoped app connection.
+</Note>
+
+## Prerequisites
+
+- A [project with secrets configured](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret)
+- A [Deno Deploy organization](https://docs.deno.com/deploy/reference/organizations/) where you can create access tokens
+- A [Deno Deploy app](https://docs.deno.com/deploy/reference/organizations/) to receive the environment variables
+
+## Step 1: Create a Deno Deploy access token
+
+Infisical authenticates to Deno Deploy with an organization access token that can list apps and update environment variables.
+
+<CreateAccessToken />
+
+## Step 2: Set up the sync in Infisical
+
+<Tip>
+    To create the sync using the API, use the [Create Deno Deploy Sync](/api-reference/endpoints/secret-syncs/deno-deploy/create) endpoint.
+</Tip>
+
+<Steps>
+    <Step>
+        In your project, go to **Integrations** and open the **Secret Syncs** tab. Select **+ Add Sync**.
+
+        ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+
+        Then, select the **Deno Deploy** sync.
+    </Step>
+    <Step>
+        Under **Source**, choose which secrets to sync from Infisical:
+
+        - **Environment**: The project environment to retrieve secrets from
+        - **Secret Path**: The folder path to retrieve secrets from
+
+        <Note>
+            Deno Deploy environment variable names must be 1 to 128 characters, can't contain `=`, and can't start with `DENO_`, `LD_`, or `OTEL_` except for an allowlist of Deno runtime names (`DENO_AUTH_TOKENS`, `DENO_COMPAT`, `DENO_CONDITIONS`, `DENO_DEPLOY_ENDPOINT`, and `DENO_DEPLOY_TOKEN`). If any secret at this path has a name Deno Deploy rejects, the sync fails without writing any secrets, and the error names the rejected key. Infisical also skips secrets whose values are empty.
+        </Note>
+
+        <Tip>
+            If you need to sync secrets from multiple folder locations, use [secret imports](/documentation/platform/secret-reference#secret-imports).
+        </Tip>
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Destination**, create or select the Deno Deploy app connection the sync will use, then choose where secrets go in Deno Deploy.
+
+        <Tabs>
+            <Tab title="Create a new app connection">
+                Under **Deno Deploy Connection**, select **Create Connection** in the dropdown, then fill in:
+
+                <ConnectionFormFields />
+
+                Select **Connect to Deno Deploy**. Infisical returns you to the sync form with the new connection selected.
+
+                <Note>
+                    This creates a connection scoped to the current project. To share the connection across other projects, [create it at the organization level](/integrations/app-connections/deno-deploy#step-2-create-the-app-connection) first, then select it here.
+                </Note>
+            </Tab>
+            <Tab title="Use an existing connection">
+                Under **Deno Deploy Connection**, select the app connection you'd like to use.
+            </Tab>
+        </Tabs>
+
+        - **App**: The Deno Deploy app that receives the environment variables
+        - **Context**: The Deno Deploy deployment context to write to. **Production** is the default. **Preview** is for preview deployments, **Build** is for the build, and **All** applies the variables to every context
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Initial Sync Behavior**, choose how Infisical handles secrets that already exist in Deno Deploy on the first sync:
+
+        - **Overwrite Deno Deploy**: Infisical writes its secrets to Deno Deploy. No secrets are imported from Deno Deploy
+        - **Import from Deno Deploy, prioritize Infisical**: Infisical imports unmasked Deno Deploy variables first. If a key exists in both places, the Infisical value is kept
+        - **Import from Deno Deploy, prioritize Deno Deploy**: Infisical imports unmasked Deno Deploy variables first. If a key exists in both places, the Deno Deploy value overwrites the Infisical value
+
+        <Note>
+            Deno Deploy omits the value of any variable marked as a secret, so Infisical can import only unmasked variables. Variables Infisical writes are always stored as secrets in Deno Deploy, so later imports skip those keys.
+        </Note>
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Sync Options**, choose how secrets are synced:
+
+        - **Prevent secret deletion**: When enabled, Infisical adds and updates secrets in Deno Deploy but never deletes them; enable this if you manage some Deno Deploy variables outside of Infisical
+        - **Auto-sync on changes**: When enabled, secrets sync to Deno Deploy automatically as the source changes; turn it off to sync manually only
+        - **Customize key names**: Adds a prefix or suffix to every synced name, using `{{secretKey}}` for the original name and `{{environment}}` for the environment slug
+
+        <Warning>
+            The sync owns environment variables on the selected app whose contexts match the destination context exactly. Variables in other contexts are left alone.
+
+            If a Deno Deploy variable already exists for overlapping contexts, such as `all` versus `production`, the sync fails without writing. Change the destination context or remove the existing variable in Deno Deploy before syncing.
+
+            If you don't customize key names, the sync treats every exact-context match as a variable it manages:
+
+            - If a Deno Deploy variable has the same name as an Infisical secret, the sync overwrites the value and stores it as a secret
+            - If **Prevent secret deletion** is off, every owned variable that isn't in Infisical is deleted
+
+            With customized key names, the sync writes only names with your prefix or suffix, and deletes only owned variables whose names match it.
+
+            Before the first sync, customize key names or keep **Prevent secret deletion** on. **Prevent secret deletion** is on by default when you create the sync in the UI, but off unless you set `disableSecretDeletion` when you create it through the API.
+        </Warning>
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Give the sync a **Name** and an optional **Description**. The name must be slug-friendly.
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Review your Deno Deploy Sync configuration, then select **Create Sync**.
+
+        <Check>
+            The sync is created. If **Auto-sync on changes** is enabled, it begins syncing secrets to the Deno Deploy app right away.
+        </Check>
+    </Step>
+</Steps>
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="What happens to running Deno Deploy isolates after a sync?">
+        Deno Deploy restarts running isolates when environment variables change. Every successful sync that writes or deletes variables restarts those isolates. There's no option to skip the restart.
+    </Accordion>
+    <Accordion title="Can I sync the same secret name to production and preview?">
+        Yes, with two syncs that use the same app and different contexts. Don't use **All** on one sync if another sync writes the same name to a specific context. Deno Deploy treats those as overlapping, and Infisical refuses the write so it doesn't replace a broader context with a narrower one.
+    </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+    <Card title="Deno Deploy connection" icon="plug" href="/integrations/app-connections/deno-deploy">
+        Create or update the Deno Deploy app connection the sync uses.
+    </Card>
+    <Card title="Secret Syncs" icon="refresh-cw" href="/integrations/secret-syncs/overview">
+        See the other destinations Infisical can sync secrets to.
+    </Card>
+</CardGroup>

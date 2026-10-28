@@ -24,6 +24,7 @@ import { TDatabricksConnection } from "./databricks-connection";
 import { TDatadogConnection } from "./datadog-connection";
 import { TDaytonaConnection } from "./daytona-connection";
 import { TDbtConnection } from "./dbt-connection";
+import { TDenoDeployConnection } from "./deno-deploy-connection";
 import { TDevinConnection } from "./devin-connection";
 import { TDigiCertConnection } from "./digicert-connection";
 import { TDigitalOceanConnection } from "./digital-ocean";
@@ -118,6 +119,7 @@ export * from "./databricks-connection";
 export * from "./datadog-connection";
 export * from "./daytona-connection";
 export * from "./dbt-connection";
+export * from "./deno-deploy-connection";
 export * from "./devin-connection";
 export * from "./digicert-connection";
 export * from "./dns-made-easy-connection";
@@ -276,6 +278,7 @@ export type TAppConnection =
   | TPowerDnsConnection
   | TSpaceliftConnection
   | TDaytonaConnection
+  | TDenoDeployConnection
   | TStripeConnection
   | TKeeperConnection
   | THpeIloConnection

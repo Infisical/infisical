@@ -45,6 +45,7 @@ import {
 } from "@app/services/secret-sync/cloudflare-workers/cloudflare-workers-schemas";
 import { DatabricksSyncListItemSchema, DatabricksSyncSchema } from "@app/services/secret-sync/databricks";
 import { DaytonaSyncListItemSchema, DaytonaSyncSchema } from "@app/services/secret-sync/daytona";
+import { DenoDeploySyncListItemSchema, DenoDeploySyncSchema } from "@app/services/secret-sync/deno-deploy";
 import { DevinSyncListItemSchema, DevinSyncSchema } from "@app/services/secret-sync/devin";
 import {
   DigitalOceanAppPlatformSyncListItemSchema,
@@ -140,6 +141,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   Cloud66SyncSchema,
   SpaceliftSyncSchema,
   DaytonaSyncSchema,
+  DenoDeploySyncSchema,
   KeeperSyncSchema
 ]);
 
@@ -195,6 +197,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   Cloud66SyncListItemSchema,
   SpaceliftSyncListItemSchema,
   DaytonaSyncListItemSchema,
+  DenoDeploySyncListItemSchema,
   KeeperSyncListItemSchema
 ]);
 

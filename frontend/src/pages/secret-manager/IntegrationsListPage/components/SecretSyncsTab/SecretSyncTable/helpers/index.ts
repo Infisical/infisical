@@ -301,6 +301,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = secretSync.connection.name;
       secondaryText = "Daytona Organization";
       break;
+    case SecretSync.DenoDeploy:
+      primaryText = destinationConfig.appSlug || destinationConfig.appId;
+      secondaryText = `Context - ${destinationConfig.context}`;
+      break;
     case SecretSync.Keeper:
       primaryText = destinationConfig.folderName || destinationConfig.folderUid;
       secondaryText = "Shared Folder";

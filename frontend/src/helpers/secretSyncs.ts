@@ -328,6 +328,12 @@ export const SECRET_SYNC_MAP: Record<
     category: "PLATFORM",
     description: "Organization secrets for Daytona sandboxes."
   },
+  [SecretSync.DenoDeploy]: {
+    name: "Deno Deploy",
+    image: "Deno.svg",
+    category: "HOSTING",
+    description: "Environment variables for Deno Deploy apps."
+  },
   [SecretSync.Keeper]: {
     name: "Keeper Password Manager",
     image: "Keeper.png",
@@ -395,6 +401,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Cloud66]: AppConnection.Cloud66,
   [SecretSync.Spacelift]: AppConnection.Spacelift,
   [SecretSync.Daytona]: AppConnection.Daytona,
+  [SecretSync.DenoDeploy]: AppConnection.DenoDeploy,
   [SecretSync.Keeper]: AppConnection.Keeper
 };
 
