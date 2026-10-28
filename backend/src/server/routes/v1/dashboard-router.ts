@@ -12,7 +12,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { prefixWithSlash, removeTrailingSlash } from "@app/lib/fn";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, secretsLimit } from "@app/server/config/rateLimiter";
-import { slugSchema } from "@app/server/lib/schemas";
+import { SecretNameSchema, slugSchema } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -1998,39 +1998,50 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         }
       ],
       querystring: z.object({
-        projectId: z.string().trim().min(1).max(64),
-        environment: z.string().trim().min(1).max(64),
+        projectId: z.string().trim().uuid(),
+        environments: z
+          .string()
+          .trim()
+          .max(4000)
+          .transform(decodeURIComponent)
+          .transform((value) => value.split(",").filter(Boolean))
+          .pipe(slugSchema({ field: "Environment" }).array().min(1).max(100)),
         secretPath: z.string().trim().max(1000).default("/").transform(removeTrailingSlash),
-        secretKey: z.string().trim().min(1).max(500)
+        secretKey: z.string().trim().max(500).pipe(SecretNameSchema)
       }),
       response: {
         200: z.object({
-          exists: z.boolean()
+          existingEnvironments: z.string().array()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, environment, secretPath, secretKey } = req.query;
+      const { projectId, environments, secretPath, secretKey } = req.query;
 
-      const { secrets } = await server.services.secret.getSecretsRaw({
-        personalOverridesBehavior: PersonalOverridesBehavior.NeverInclude,
-        secretImportReferencesBehavior: SecretImportReferencesBehavior.SourceEnvironment,
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        viewSecretValue: false,
-        throwOnMissingReadValuePermission: false,
-        projectId,
-        environment,
-        path: secretPath,
-        keys: [secretKey]
-      });
+      const existingEnvironments: string[] = [];
+      for (const environment of environments) {
+        // eslint-disable-next-line no-await-in-loop
+        const { secrets } = await server.services.secret.getSecretsRaw({
+          personalOverridesBehavior: PersonalOverridesBehavior.NeverInclude,
+          secretImportReferencesBehavior: SecretImportReferencesBehavior.SourceEnvironment,
+          actorId: req.permission.id,
+          actor: req.permission.type,
+          actorOrgId: req.permission.orgId,
+          actorAuthMethod: req.permission.authMethod,
+          viewSecretValue: false,
+          throwOnMissingReadValuePermission: false,
+          projectId,
+          environment,
+          path: secretPath,
+          keys: [secretKey]
+        });
 
-      return {
-        exists: secrets.some((secret) => secret.secretKey === secretKey && secret.type === SecretType.Shared)
-      };
+        if (secrets.some((secret) => secret.secretKey === secretKey && secret.type === SecretType.Shared))
+          existingEnvironments.push(environment);
+      }
+
+      return { existingEnvironments };
     }
   });
 

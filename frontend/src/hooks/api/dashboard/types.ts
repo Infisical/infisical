@@ -239,7 +239,7 @@ export type TSearchSecretsByMetadataResponse = {
 
 export type TGetSecretKeyExistsDTO = {
   projectId: string;
-  environment: string;
+  environments: string[];
   secretPath: string;
   secretKey: string;
 };

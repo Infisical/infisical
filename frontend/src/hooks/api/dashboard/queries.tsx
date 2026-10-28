@@ -29,6 +29,7 @@ import {
   TSecretMetadataPage
 } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
+import { queryClient as appQueryClient } from "@app/hooks/api/reactQuery";
 import { mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
 import { groupBy, unique } from "@app/lib/fn/array";
 
@@ -126,13 +127,22 @@ export const fetchSecretMetadata = async (params: TGetSecretMetadataDTO, signal?
   return data;
 };
 
-export const fetchSecretKeyExists = async (params: TGetSecretKeyExistsDTO) => {
-  const { data } = await apiRequest.get<{ exists: boolean }>(
-    "/api/v1/dashboard/secret-key-exists",
-    { params }
-  );
-  return data.exists;
-};
+export const fetchSecretKeyExistingEnvironments = ({
+  environments,
+  ...params
+}: TGetSecretKeyExistsDTO) =>
+  appQueryClient.fetchQuery({
+    queryKey: ["secret-key-exists", { environments, ...params }],
+    staleTime: 10 * 1000,
+    retry: false,
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ existingEnvironments: string[] }>(
+        "/api/v1/dashboard/secret-key-exists",
+        { params: { ...params, environments: encodeURIComponent(environments.join(",")) } }
+      );
+      return data.existingEnvironments;
+    }
+  });
 
 export const fetchProjectSecretsOverview = async ({
   environments,

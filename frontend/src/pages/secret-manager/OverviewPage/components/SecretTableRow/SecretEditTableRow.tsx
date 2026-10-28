@@ -93,7 +93,10 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useDiscardChangesGuard, usePopUp, useTimedReset, useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
-import { fetchSecretKeyExists, useGetSecretValue } from "@app/hooks/api/dashboard/queries";
+import {
+  fetchSecretKeyExistingEnvironments,
+  useGetSecretValue
+} from "@app/hooks/api/dashboard/queries";
 import { Reminder } from "@app/hooks/api/reminders/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
@@ -514,15 +517,16 @@ export const SecretEditTableRow = ({
       promise: Promise.resolve()
     };
     check.promise = new Promise<void>((resolve) => {
-      setTimeout(resolve, 300);
+      setTimeout(resolve, 500);
     }).then(async () => {
       if (isCancelled) return;
-      check.exists = await fetchSecretKeyExists({
+      const existingEnvironments = await fetchSecretKeyExistingEnvironments({
         projectId: currentProject.id,
-        environment,
+        environments: [environment],
         secretPath,
         secretKey: check.key
-      }).catch(() => false);
+      }).catch(() => []);
+      check.exists = existingEnvironments.length > 0;
       if (!isCancelled) applyBatchEditsRef.current?.();
     });
     keyCheckRef.current = check;
@@ -679,6 +683,7 @@ export const SecretEditTableRow = ({
             text: "A secret with this name already exists"
           });
           effectiveKeyDirty = false;
+          isKeyCheckPending = false;
         } else if (isKeyCheckPending) {
           effectiveKeyDirty = false;
         }
@@ -776,7 +781,13 @@ export const SecretEditTableRow = ({
 
   const savePendingRow = async (knownPendingChangeId?: string) => {
     if (!onPendingSave) return;
-    await keyCheckRef.current?.promise;
+    let keyCheck = keyCheckRef.current;
+    while (keyCheck && keyCheck.exists === undefined) {
+      // eslint-disable-next-line no-await-in-loop
+      await keyCheck.promise;
+      if (keyCheckRef.current === keyCheck) break;
+      keyCheck = keyCheckRef.current;
+    }
     const pendingChangeId = knownPendingChangeId ?? findPendingChangeId();
     if (batchAutoApplyTimer.current) {
       clearTimeout(batchAutoApplyTimer.current);

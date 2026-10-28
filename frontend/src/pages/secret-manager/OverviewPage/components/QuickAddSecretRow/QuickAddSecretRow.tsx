@@ -18,32 +18,13 @@ import {
   useSecretInputActionShortcuts
 } from "@app/components/v3";
 import { useProject } from "@app/context";
-import { fetchSecretKeyExists } from "@app/hooks/api/dashboard/queries";
+import { fetchSecretKeyExistingEnvironments } from "@app/hooks/api/dashboard/queries";
 
 import { overviewCountBucket, useOverviewTelemetry } from "../../OverviewTelemetry";
 import { TABLE_ROW_ACTIVE_FILTER_CLASS_NAME } from "../tableRowActionStyles";
 import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
 
 type TParsedEnv = Record<string, { value: string; comments: string[] }>;
-
-const findEnvironmentsWithSecretKey = async ({
-  projectId,
-  environments,
-  secretPath,
-  secretKey
-}: {
-  projectId: string;
-  environments: string[];
-  secretPath: string;
-  secretKey: string;
-}) => {
-  const results = await Promise.all(
-    environments.map((environment) =>
-      fetchSecretKeyExists({ projectId, environment, secretPath, secretKey }).catch(() => false)
-    )
-  );
-  return environments.filter((_, index) => results[index]);
-};
 
 const getDuplicateKeyError = (environmentsWithKey: string[], isMultiEnvironmentView: boolean) =>
   isMultiEnvironmentView
@@ -138,15 +119,19 @@ export const QuickAddSecretRow = ({
 
     let isCancelled = false;
     const timer = setTimeout(async () => {
-      const environmentsWithKey = await findEnvironmentsWithSecretKey({
+      const environmentsWithKey = await fetchSecretKeyExistingEnvironments({
         projectId: currentProject.id,
         environments: environmentSlugs.split(","),
         secretPath,
         secretKey
-      });
-      if (!isCancelled && environmentsWithKey.length)
-        setError(getDuplicateKeyError(environmentsWithKey, isMultiEnvironmentView));
-    }, 300);
+      }).catch(() => []);
+      if (isCancelled) return;
+      setError(
+        environmentsWithKey.length
+          ? getDuplicateKeyError(environmentsWithKey, isMultiEnvironmentView)
+          : undefined
+      );
+    }, 500);
 
     return () => {
       isCancelled = true;
@@ -184,8 +169,8 @@ export const QuickAddSecretRow = ({
       return;
     }
 
-    if (existingSecretKeys.includes(normalizedKey)) {
-      setError("A secret with this name already exists");
+    if (error || existingSecretKeys.includes(normalizedKey)) {
+      setError(error ?? "A secret with this name already exists");
       if (refocus) keyInputRef.current?.focus();
       return;
     }
@@ -194,16 +179,18 @@ export const QuickAddSecretRow = ({
     setError(undefined);
 
     try {
-      const environmentsWithKey = await findEnvironmentsWithSecretKey({
-        projectId: currentProject.id,
-        environments,
-        secretPath,
-        secretKey: normalizedKey
-      });
-      if (environmentsWithKey.length) {
-        setError(getDuplicateKeyError(environmentsWithKey, isMultiEnvironmentView));
-        if (refocus) setTimeout(() => keyInputRef.current?.focus(), 0);
-        return;
+      if (isDirectSave) {
+        const environmentsWithKey = await fetchSecretKeyExistingEnvironments({
+          projectId: currentProject.id,
+          environments,
+          secretPath,
+          secretKey: normalizedKey
+        }).catch(() => []);
+        if (environmentsWithKey.length) {
+          setError(getDuplicateKeyError(environmentsWithKey, isMultiEnvironmentView));
+          if (refocus) setTimeout(() => keyInputRef.current?.focus(), 0);
+          return;
+        }
       }
 
       await Promise.all(
@@ -214,6 +201,7 @@ export const QuickAddSecretRow = ({
       setKey("");
       setValue("");
       setComment("");
+      setError(undefined);
       const { activeElement } = document;
       if (activeElement instanceof HTMLElement && rowRef.current?.contains(activeElement)) {
         activeElement.blur();
