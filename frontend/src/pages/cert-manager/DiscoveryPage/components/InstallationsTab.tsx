@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon, SearchIcon } from "lucide-react";
 
@@ -23,6 +22,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -34,8 +34,9 @@ import {
 import {
   ProjectPermissionPkiCertificateInstallationActions,
   ProjectPermissionSub,
-  useOrganization
+  useProject
 } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import {
   TPkiInstallation,
   useDeletePkiInstallation,
@@ -69,8 +70,7 @@ type Props = {
 const PAGE_SIZE = 25;
 
 export const InstallationsTab = ({ projectId }: Props) => {
-  const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentProject } = useProject();
   const [page, setPage] = useState(1);
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter, 300);
@@ -182,19 +182,7 @@ export const InstallationsTab = ({ projectId }: Props) => {
               </TableHeader>
               <TableBody>
                 {installations.map((installation) => (
-                  <TableRow
-                    key={installation.id}
-                    className="cursor-pointer"
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/cert-manager/discovery/installations/$installationId",
-                        params: {
-                          orgId: currentOrg.id,
-                          installationId: installation.id
-                        }
-                      })
-                    }
-                  >
+                  <TableRow key={installation.id} linked>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <DiscoveryTypeIcon
@@ -205,9 +193,15 @@ export const InstallationsTab = ({ projectId }: Props) => {
                           }
                           className="size-4 shrink-0"
                         />
-                        <span className="truncate">
+                        <RowLink
+                          {...getInstancePinningLink(
+                            currentProject.orgId,
+                            currentProject,
+                            `discovery/installations/${installation.id}`
+                          )!}
+                        >
                           {installation.name || getEndpoint(installation)}
-                        </span>
+                        </RowLink>
                         {getKeystoreStatusBadge(installation)}
                       </div>
                     </TableCell>
@@ -221,7 +215,7 @@ export const InstallationsTab = ({ projectId }: Props) => {
                     <TableCell>
                       {format(new Date(installation.lastSeenAt), "MMM dd, yyyy HH:mm")}
                     </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell data-row-interactive>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton variant="ghost" size="xs">

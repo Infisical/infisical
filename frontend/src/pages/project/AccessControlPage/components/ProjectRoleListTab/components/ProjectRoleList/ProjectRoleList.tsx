@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -84,7 +84,6 @@ type RoleSortState = {
 
 export const ProjectRoleList = () => {
   const scopeVariant = useScopeVariant();
-  const navigate = useNavigate();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "role",
     "deleteRole",
@@ -381,15 +380,11 @@ export const ProjectRoleList = () => {
                                 a={ProjectPermissionSub.Role}
                               >
                                 {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      navigate(roleLink);
-                                    }}
-                                    isDisabled={!isAllowed}
-                                  >
-                                    {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
-                                    {`${isNonMutatable ? "View" : "Edit"} Role`}
+                                  <DropdownMenuItem asChild isDisabled={!isAllowed}>
+                                    <Link {...roleLink}>
+                                      {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
+                                      {`${isNonMutatable ? "View" : "Edit"} Role`}
+                                    </Link>
                                   </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>

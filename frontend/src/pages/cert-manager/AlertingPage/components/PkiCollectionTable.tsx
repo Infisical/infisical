@@ -1,6 +1,5 @@
 import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -12,6 +11,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   IconButton,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -20,12 +20,8 @@ import {
   TableRow,
   TableSkeletonRows
 } from "@app/components/v3";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionSub,
-  useOrganization,
-  useProject
-} from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useListWorkspacePkiCollections } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -37,8 +33,6 @@ type Props = {
 };
 
 export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
-  const { currentOrg } = useOrganization();
-  const navigate = useNavigate();
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
 
@@ -71,19 +65,18 @@ export const PkiCollectionTable = ({ handlePopUpOpen }: Props) => {
           {!isPending &&
             data?.collections.map((pkiCollection) => {
               return (
-                <TableRow
-                  key={`pki-collection-${pkiCollection.id}`}
-                  onClick={() =>
-                    navigate({
-                      to: "/organizations/$orgId/cert-manager/pki-collections/$collectionId",
-                      params: {
-                        orgId: currentOrg.id,
-                        collectionId: pkiCollection.id
-                      }
-                    })
-                  }
-                >
-                  <TableCell>{pkiCollection.name}</TableCell>
+                <TableRow key={`pki-collection-${pkiCollection.id}`} linked>
+                  <TableCell>
+                    <RowLink
+                      {...getInstancePinningLink(
+                        currentProject.orgId,
+                        currentProject,
+                        `pki-collections/${pkiCollection.id}`
+                      )!}
+                    >
+                      {pkiCollection.name}
+                    </RowLink>
+                  </TableCell>
                   <TableCell>
                     {pkiCollection.description ? pkiCollection.description : "-"}
                   </TableCell>
