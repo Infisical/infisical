@@ -15,6 +15,7 @@ import {
   AccordionTrigger,
   Button,
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
@@ -178,177 +179,179 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
   const onSubmit = handleSubmit((data) => onCreateProject(data));
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-4">
-        <Controller
-          control={control}
-          name="name"
-          defaultValue=""
-          render={({ field, fieldState: { error } }) => (
-            <Field>
-              <FieldLabel htmlFor="new-project-name">Project Name</FieldLabel>
-              <Input
-                id="new-project-name"
-                {...field}
-                placeholder="Type your project name"
-                isError={Boolean(error)}
-                autoComplete="off"
-                name="new-project-name"
-              />
-              {error && <FieldError>{error.message}</FieldError>}
-            </Field>
-          )}
-        />
-        <Controller
-          control={control}
-          name="description"
-          defaultValue=""
-          render={({ field, fieldState: { error } }) => (
-            <Field>
-              <FieldLabel htmlFor="new-project-description">
-                Project Description <span className="text-muted">- Optional</span>
-              </FieldLabel>
-              <TextArea
-                id="new-project-description"
-                placeholder="Project description"
-                {...field}
-                rows={3}
-                isError={Boolean(error)}
-                className="thin-scrollbar resize-none"
-              />
-              {error && <FieldError>{error.message}</FieldError>}
-            </Field>
-          )}
-        />
-      </div>
-      <Accordion type="single" collapsible variant="ghost">
-        <AccordionItem value="advance-settings" className="border-b-0">
-          <AccordionTrigger>Advanced Settings</AccordionTrigger>
-          <AccordionContent>
-            <div className="flex flex-col gap-4">
-              <Controller
-                control={control}
-                name="template"
-                render={({ field: { value, onChange } }) => (
-                  <OrgPermissionCan
-                    I={OrgPermissionActions.Read}
-                    a={OrgPermissionSubjects.ProjectTemplates}
-                  >
-                    {(isAllowed) => (
-                      <Field>
-                        <FieldLabel htmlFor="new-project-template">
-                          Project Template
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <InfoIcon className="text-muted" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                              <p>
-                                Create this project from a template to provision it with custom
-                                environments and roles.
-                              </p>
-                              {subscription && !subscription.projectTemplates && (
-                                <p className="pt-2">Project templates are a paid feature.</p>
-                              )}
-                            </TooltipContent>
-                          </Tooltip>
-                        </FieldLabel>
-                        <Select
-                          value={value}
-                          onValueChange={onChange}
-                          disabled={!isAllowed || !subscription?.projectTemplates}
-                        >
-                          <SelectTrigger id="new-project-template" className="w-full">
-                            <SelectValue placeholder={InfisicalProjectTemplate.Default} />
-                          </SelectTrigger>
-                          <SelectContent position="popper">
-                            {projectTemplates.length
-                              ? projectTemplates.map((template) => (
-                                  <SelectItem key={template.id} value={template.name}>
-                                    {template.name}
-                                  </SelectItem>
-                                ))
-                              : Object.values(InfisicalProjectTemplate).map((template) => (
-                                  <SelectItem key={template} value={template}>
-                                    {template}
-                                  </SelectItem>
-                                ))}
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                    )}
-                  </OrgPermissionCan>
-                )}
-              />
-              <Controller
-                control={control}
-                name="kmsKeyId"
-                render={({ field: { value, onChange }, fieldState: { error } }) => (
-                  <Field>
-                    <FieldLabel htmlFor="new-project-kms">KMS</FieldLabel>
-                    <Select
-                      value={value}
-                      onValueChange={(kmsValue) => {
-                        if (kmsValue === ADD_EXTERNAL_KMS_OPTION) {
-                          handleAddExternalKms();
-                          return;
-                        }
-                        onChange(kmsValue);
-                      }}
+    <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
+      <DialogBody className="-mx-6 space-y-4 px-6">
+        <div className="flex flex-col gap-4">
+          <Controller
+            control={control}
+            name="name"
+            defaultValue=""
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="new-project-name">Project Name</FieldLabel>
+                <Input
+                  id="new-project-name"
+                  {...field}
+                  placeholder="Type your project name"
+                  isError={Boolean(error)}
+                  autoComplete="off"
+                  name="new-project-name"
+                />
+                {error && <FieldError>{error.message}</FieldError>}
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="description"
+            defaultValue=""
+            render={({ field, fieldState: { error } }) => (
+              <Field>
+                <FieldLabel htmlFor="new-project-description">
+                  Project Description <span className="text-muted">- Optional</span>
+                </FieldLabel>
+                <TextArea
+                  id="new-project-description"
+                  placeholder="Project description"
+                  {...field}
+                  rows={3}
+                  isError={Boolean(error)}
+                  className="thin-scrollbar resize-none"
+                />
+                {error && <FieldError>{error.message}</FieldError>}
+              </Field>
+            )}
+          />
+        </div>
+        <Accordion type="single" collapsible variant="ghost">
+          <AccordionItem value="advance-settings" className="border-b-0">
+            <AccordionTrigger>Advanced Settings</AccordionTrigger>
+            <AccordionContent>
+              <div className="flex flex-col gap-4">
+                <Controller
+                  control={control}
+                  name="template"
+                  render={({ field: { value, onChange } }) => (
+                    <OrgPermissionCan
+                      I={OrgPermissionActions.Read}
+                      a={OrgPermissionSubjects.ProjectTemplates}
                     >
-                      <SelectTrigger id="new-project-kms" className="w-full">
-                        <SelectValue placeholder="Default Infisical KMS" />
-                      </SelectTrigger>
-                      <SelectContent position="popper">
-                        <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
-                          Default Infisical KMS
-                        </SelectItem>
-                        {externalKmsList?.map((kms) => (
-                          <SelectItem value={kms.id} key={`kms-${kms.id}`}>
-                            {kms.name}
+                      {(isAllowed) => (
+                        <Field>
+                          <FieldLabel htmlFor="new-project-template">
+                            Project Template
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <InfoIcon className="text-muted" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <p>
+                                  Create this project from a template to provision it with custom
+                                  environments and roles.
+                                </p>
+                                {subscription && !subscription.projectTemplates && (
+                                  <p className="pt-2">Project templates are a paid feature.</p>
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
+                          </FieldLabel>
+                          <Select
+                            value={value}
+                            onValueChange={onChange}
+                            disabled={!isAllowed || !subscription?.projectTemplates}
+                          >
+                            <SelectTrigger id="new-project-template" className="w-full">
+                              <SelectValue placeholder={InfisicalProjectTemplate.Default} />
+                            </SelectTrigger>
+                            <SelectContent position="popper">
+                              {projectTemplates.length
+                                ? projectTemplates.map((template) => (
+                                    <SelectItem key={template.id} value={template.name}>
+                                      {template.name}
+                                    </SelectItem>
+                                  ))
+                                : Object.values(InfisicalProjectTemplate).map((template) => (
+                                    <SelectItem key={template} value={template}>
+                                      {template}
+                                    </SelectItem>
+                                  ))}
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                      )}
+                    </OrgPermissionCan>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="kmsKeyId"
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <Field>
+                      <FieldLabel htmlFor="new-project-kms">KMS</FieldLabel>
+                      <Select
+                        value={value}
+                        onValueChange={(kmsValue) => {
+                          if (kmsValue === ADD_EXTERNAL_KMS_OPTION) {
+                            handleAddExternalKms();
+                            return;
+                          }
+                          onChange(kmsValue);
+                        }}
+                      >
+                        <SelectTrigger id="new-project-kms" className="w-full">
+                          <SelectValue placeholder="Default Infisical KMS" />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          <SelectItem value={INTERNAL_KMS_KEY_ID} key="kms-internal">
+                            Default Infisical KMS
                           </SelectItem>
-                        ))}
-                        <SelectSeparator />
-                        {canAddExternalKms ? (
-                          <SelectItem value={ADD_EXTERNAL_KMS_OPTION} key="kms-add-external">
-                            <span className="flex items-center gap-2 text-accent">
-                              <Plus />
-                              Add external KMS
-                            </span>
-                          </SelectItem>
-                        ) : (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
-                              <span tabIndex={0} className="block">
-                                <SelectItem
-                                  value={ADD_EXTERNAL_KMS_OPTION}
-                                  key="kms-add-external"
-                                  disabled
-                                >
-                                  <span className="flex items-center gap-2 text-accent">
-                                    <Plus />
-                                    Add external KMS
-                                  </span>
-                                </SelectItem>
+                          {externalKmsList?.map((kms) => (
+                            <SelectItem value={kms.id} key={`kms-${kms.id}`}>
+                              {kms.name}
+                            </SelectItem>
+                          ))}
+                          <SelectSeparator />
+                          {canAddExternalKms ? (
+                            <SelectItem value={ADD_EXTERNAL_KMS_OPTION} key="kms-add-external">
+                              <span className="flex items-center gap-2 text-accent">
+                                <Plus />
+                                Add external KMS
                               </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="right">
-                              You do not have permission to add an external KMS.
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {error && <FieldError>{error.message}</FieldError>}
-                  </Field>
-                )}
-              />
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-      <DialogFooter>
+                            </SelectItem>
+                          ) : (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+                                <span tabIndex={0} className="block">
+                                  <SelectItem
+                                    value={ADD_EXTERNAL_KMS_OPTION}
+                                    key="kms-add-external"
+                                    disabled
+                                  >
+                                    <span className="flex items-center gap-2 text-accent">
+                                      <Plus />
+                                      Add external KMS
+                                    </span>
+                                  </SelectItem>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="right">
+                                You do not have permission to add an external KMS.
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {error && <FieldError>{error.message}</FieldError>}
+                    </Field>
+                  )}
+                />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </DialogBody>
+      <DialogFooter className="static">
         <DialogClose asChild>
           <Button type="button" variant="ghost">
             Cancel
@@ -388,7 +391,7 @@ export const NewProjectModal: FC<NewProjectModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {ProjectIcon && <ProjectIcon className="size-5 text-muted" />}
