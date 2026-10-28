@@ -9,6 +9,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,7 +29,7 @@ func TestFolderCommit_List(t *testing.T) {
 		secretmanager.CreateSecret(t, proj, "dev", "DB_PASS", "first")
 		secretmanager.UpdateSecret(t, proj, "dev", "DB_PASS", "second")
 		secretmanager.DeleteSecret(t, proj, "dev", "DB_PASS")
-		folder := newFolder(t, proj, "dev", "/app")
+		folder := secretmanager.CreateFolder(t, proj, "dev", "/app")
 		renamed, err := tn.Admin.API.UpdateSecretFolderWithResponse(t.Context(), folder, api.UpdateSecretFolderJSONRequestBody{
 			ProjectId: proj.ID, Environment: "dev", Name: "api", Path: root,
 		})
@@ -86,7 +87,7 @@ func TestFolderCommit_List(t *testing.T) {
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 		secretmanager.CreateSecret(t, proj, "dev", "DB_PASS", "v")
 		rootCommit := headCommit(t, proj, "dev", "/")
-		other := newFolder(t, proj, "dev", "/app")
+		other := secretmanager.CreateFolder(t, proj, "dev", "/app")
 
 		// Action
 		res, err := tn.Admin.API.CompareFolderCommitWithResponse(t.Context(), rootCommit.ID, &api.CompareFolderCommitParams{
@@ -97,6 +98,6 @@ func TestFolderCommit_List(t *testing.T) {
 		require.NoError(t, err)
 		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
 		require.Equal(t, fmt.Sprintf("Commit with ID '%s' does not belong to folder with ID '%s'", rootCommit.ID, other),
-			errorMessage(t, res.Body))
+			apierr.Message(res.Body))
 	})
 }

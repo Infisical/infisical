@@ -31,6 +31,7 @@ func TestRole_DenyRules(t *testing.T) {
 		prod := listSecrets(t, reader, proj, "prod", "/", false)
 
 		// Assert
+		require.Equalf(t, http.StatusOK, prod.status, "listing prod: %s", prod.body)
 		require.NotContains(t, prod.values, "KEY")
 		require.NotContains(t, string(prod.body), "prod-value")
 		require.Equal(t, "dev-value", listSecrets(t, reader, proj, "dev", "/", false).values["KEY"])
@@ -52,6 +53,7 @@ func TestRole_DenyRules(t *testing.T) {
 		locked := listSecrets(t, reader, proj, "dev", "/locked", false)
 
 		// Assert
+		require.Equalf(t, http.StatusOK, locked.status, "listing /locked: %s", locked.body)
 		require.NotContains(t, locked.values, "LOCKED")
 		require.NotContains(t, string(locked.body), "locked-value")
 		require.Equal(t, "open-value", listSecrets(t, reader, proj, "dev", "/", false).values["OPEN"])
@@ -97,6 +99,7 @@ func TestRole_DenyRules(t *testing.T) {
 		locked := listSecrets(t, member, proj, "dev", "/locked", false)
 
 		// Assert
+		require.Equalf(t, http.StatusOK, locked.status, "listing /locked: %s", locked.body)
 		require.NotContains(t, locked.values, "LOCKED")
 		require.NotContains(t, string(locked.body), "locked-value")
 		require.Equal(t, "open-value", listSecrets(t, member, proj, "dev", "/", false).values["OPEN"])

@@ -114,8 +114,9 @@ func TestFolderAccess_Tiers(t *testing.T) {
 		// Assert
 		require.Equalf(t, http.StatusOK, byManager.StatusCode(), "creating a sync as the manager: %s", byManager.Body)
 		require.Equalf(t, http.StatusForbidden, byEditor.StatusCode(), "creating a sync as the editor: %s", byEditor.Body)
-		require.NotEqualf(t, http.StatusForbidden, rotationByManager.StatusCode(),
+		require.Equalf(t, http.StatusNotFound, rotationByManager.StatusCode(),
 			"the manager passes the rotation permission check and fails only on the made-up connection: %s", rotationByManager.Body)
+		require.Contains(t, string(rotationByManager.Body), "Could not find App Connection with ID")
 	})
 
 	t.Run("should let a full-access holder grant others and delete folders inside the granted one but not the folder itself", func(t *testing.T) {

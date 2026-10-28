@@ -2,7 +2,6 @@ package validation_test
 
 import (
 	"net/http"
-	"path"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -109,20 +108,6 @@ func updateSecret(t *testing.T, pr *harness.Principal, proj *fixture.Project, en
 	})
 	require.NoError(t, err)
 	return res
-}
-
-func newFolder(t *testing.T, proj *fixture.Project, env, folderPath string) string {
-	t.Helper()
-	parent, name := path.Split(path.Clean(folderPath))
-	res, err := proj.Tenant().Admin.API.CreateSecretFolderWithResponse(t.Context(), api.CreateSecretFolderJSONRequestBody{
-		ProjectId:   proj.ID,
-		Environment: env,
-		Name:        name,
-		Path:        &parent,
-	})
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "creating folder %s returned %d: %s", folderPath, res.StatusCode(), apierr.Body(res.Body))
-	return res.JSON200.Folder.Id.String()
 }
 
 func folderNamesAt(t *testing.T, proj *fixture.Project, env, folderPath string) []string {

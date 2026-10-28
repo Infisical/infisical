@@ -9,6 +9,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/wait"
 	"github.com/stretchr/testify/require"
 )
@@ -61,7 +62,7 @@ func TestSecretVersion_Redact(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
-		require.Equal(t, "Cannot redact the latest version", errorMessage(t, res.Body))
+		require.Equal(t, "Cannot redact the latest version", apierr.Message(res.Body))
 		require.False(t, versionNumber(t, versionsOf(t, tn.Admin, secret.ID), 2).IsRedacted)
 		require.Equal(t, "second", versionValue(t, tn.Admin, secret.ID, "2"))
 	})
@@ -85,7 +86,7 @@ func TestSecretVersion_Redact(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		requireStatus(t, http.StatusBadRequest, again.StatusCode(), again.Body)
-		require.Equal(t, fmt.Sprintf("Secret version with ID '%s' is already redacted", first.ID), errorMessage(t, again.Body))
+		require.Equal(t, fmt.Sprintf("Secret version with ID '%s' is already redacted", first.ID), apierr.Message(again.Body))
 		require.True(t, versionNumber(t, versionsOf(t, tn.Admin, secret.ID), 1).IsRedacted)
 	})
 
@@ -150,7 +151,7 @@ func TestSecretVersion_Redact(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		requireStatus(t, http.StatusForbidden, res.StatusCode(), res.Body)
-		require.Equal(t, "You are not allowed to access this secret", errorMessage(t, res.Body))
+		require.Equal(t, "You are not allowed to access this secret", apierr.Message(res.Body))
 		require.False(t, versionNumber(t, versionsOf(t, owner, override.ID), 1).IsRedacted)
 		require.Equal(t, "mine-1", versionValue(t, owner, override.ID, "1"))
 	})

@@ -113,7 +113,7 @@ func TestEnvironment_Delete(t *testing.T) {
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
 		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
-		newPolicy(t, proj, reviewer, "staging")
+		secretmanager.CreateApprovalPolicy(t, proj, secretmanager.Location{Env: "staging", Path: "/"}, reviewer)
 
 		// Action
 		res, err := tn.Admin.API.DeleteEnvironmentWithResponse(t.Context(), proj.ID, envID(t, proj, "staging"), nil)

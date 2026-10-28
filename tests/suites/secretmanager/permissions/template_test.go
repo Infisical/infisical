@@ -38,6 +38,7 @@ func TestRole_IdentityTemplating(t *testing.T) {
 		// Assert
 		require.Equalf(t, http.StatusOK, own.status, "listing its own team's folder: %s", own.body)
 		require.Equal(t, map[string]string{"KEY": "backend"}, own.values)
+		require.Equalf(t, http.StatusOK, other.status, "listing another team's folder: %s", other.body)
 		require.NotContains(t, other.values, "KEY")
 	})
 

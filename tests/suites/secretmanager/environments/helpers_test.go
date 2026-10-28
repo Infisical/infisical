@@ -6,7 +6,6 @@ import (
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture"
-	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/stretchr/testify/require"
 )
@@ -63,23 +62,4 @@ func deleteEnv(t *testing.T, proj *fixture.Project, id string, hard bool) {
 	res, err := proj.Tenant().Admin.API.DeleteEnvironmentWithResponse(t.Context(), proj.ID, id, params)
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "deleting environment %s returned %s", id, apierr.Body(res.Body))
-}
-
-// newPolicy protects env:/ with one required approval from reviewer.
-func newPolicy(t *testing.T, proj *fixture.Project, reviewer *harness.Principal, env string) {
-	t.Helper()
-	var approver api.CreateSecretApprovalPolicyJSONBody_Approvers_Item
-	require.NoError(t, approver.FromCreateSecretApprovalPolicyJSONBodyApprovers1(api.CreateSecretApprovalPolicyJSONBodyApprovers1{
-		Type: api.CreateSecretApprovalPolicyJSONBodyApprovers1TypeUser,
-		Id:   new(reviewer.ID.String()),
-	}))
-	res, err := proj.Tenant().Admin.API.CreateSecretApprovalPolicyWithResponse(t.Context(), api.CreateSecretApprovalPolicyJSONRequestBody{
-		ProjectId:   proj.ID,
-		Environment: &env,
-		SecretPath:  "/",
-		Approvals:   new(float32(1)),
-		Approvers:   []api.CreateSecretApprovalPolicyJSONBody_Approvers_Item{approver},
-	})
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "creating the policy returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
 }
