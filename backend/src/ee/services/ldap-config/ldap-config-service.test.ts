@@ -1,3 +1,5 @@
+import dns from "node:dns/promises";
+
 import { createMongoAbility } from "@casl/ability";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -44,6 +46,15 @@ describe("testLDAPConnection", () => {
 
   test("refuses a private address without connecting", async () => {
     await expect(testConnection("ldap://127.0.0.1:389")).rejects.toThrow("Local IPs not allowed as URL");
+    expect(testLDAPConfig).not.toHaveBeenCalled();
+  });
+
+  test("returns false without connecting when the hostname does not resolve", async () => {
+    vi.spyOn(dns, "lookup").mockRejectedValueOnce(
+      Object.assign(new Error("getaddrinfo ENOTFOUND ldap.example.com"), { code: "ENOTFOUND" })
+    );
+
+    await expect(testConnection("ldap://ldap.example.com:389")).resolves.toBe(false);
     expect(testLDAPConfig).not.toHaveBeenCalled();
   });
 
