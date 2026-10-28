@@ -288,7 +288,7 @@ export const FormWithExternalFooter: Story = {
     docs: {
       description: {
         story:
-          "Prefer this shape for forms whose content can grow, such as accordions or dynamic field lists. The `<form>` wraps only the fields, `DialogFooter` stays a direct child of `DialogContent`, and the submit button points at the form with the `form` attribute. The dialog scrolls as one flow and the sticky footer stays at the bottom with content passing flush beneath it, so no scroll or position overrides are needed. Wrapping the footer inside the form still works for short, static content."
+          "Prefer this shape for small Dialog forms (1 to 2 fields) whose content can still grow, such as an expandable advanced section. Multi-field or scrollable forms belong in a Sheet. The `<form>` wraps only the fields, `DialogFooter` stays a direct child of `DialogContent`, and the submit button points at the form with the `form` attribute. The dialog scrolls as one flow and the sticky footer stays at the bottom with content passing flush beneath it, so no scroll or position overrides are needed. Wrapping the footer inside the form still works for short, static content."
       }
     }
   },
@@ -307,7 +307,7 @@ export const FormWithExternalFooter: Story = {
           className="flex flex-col gap-4"
           onSubmit={(e) => e.preventDefault()}
         >
-          {Array.from({ length: 8 }).map((_, i) => (
+          {Array.from({ length: 2 }).map((_, i) => (
             // eslint-disable-next-line react/no-array-index-key
             <div key={i} className="flex flex-col gap-2">
               <Label htmlFor={`dialog-external-field-${i}`}>Field {i + 1}</Label>
