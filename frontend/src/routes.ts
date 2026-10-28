@@ -493,6 +493,7 @@ export const routes = rootRoute("root.tsx", [
   middleware("authenticate.tsx", [
     route("/password-setup", "auth/PasswordSetupPage/route.tsx"),
     route("/mfa-session/$mfaSessionId", "MfaSessionPage/route.tsx"),
+    route("/agent-vault/oauth/callback", "agent-vault/AgentVaultOAuthCallbackPage/route.tsx"),
     route("/personal-settings", [
       layout("user/layout.tsx", [index("user/PersonalSettingsPage/route.tsx")])
     ]),

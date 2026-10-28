@@ -56,10 +56,13 @@ describe("agent vault project roles", () => {
     expect(admin.can(ProjectPermissionActions.Create, ProjectPermissionSub.ServiceTokens)).toBe(false);
   });
 
-  test("a member can mint and revoke sessions and read a proxy fingerprint, and nothing more", () => {
+  test("a member can mint, label and revoke sessions and read a proxy fingerprint, and nothing more", () => {
     const member = abilityFor(ProjectMembershipRole.Member);
 
     expect(member.can(ProjectPermissionAgentVaultSessionActions.Create, ProjectPermissionSub.AgentVaultSessions)).toBe(
+      true
+    );
+    expect(member.can(ProjectPermissionAgentVaultSessionActions.Edit, ProjectPermissionSub.AgentVaultSessions)).toBe(
       true
     );
     expect(member.can(ProjectPermissionAgentVaultSessionActions.Revoke, ProjectPermissionSub.AgentVaultSessions)).toBe(

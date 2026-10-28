@@ -169,31 +169,28 @@ export const ProjectNav = () => {
         >
           <SidebarGroup className="flex-1">
             <SidebarGroupLabel asChild>
-              <button
-                className="cursor-pointer hover:bg-foreground/[0.025]"
-                type="button"
-                onClick={() => {
-                  if (intermediateAvailable) {
-                    navigate({
-                      to: "/organizations/$orgId/projects/$type",
-                      params: {
-                        orgId: currentOrg.id,
-                        type: projectTypeToUrlSlug(currentProject.type)
-                      }
-                    });
-                    return;
-                  }
-                  navigate({
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    to: "/organizations/$orgId/projects" as any,
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    params: { orgId: currentOrg.id } as any
-                  });
-                }}
-              >
-                <ChevronLeft />
-                <span>{projectLabel}</span>
-              </button>
+              {intermediateAvailable ? (
+                <Link
+                  className="cursor-pointer hover:bg-foreground/[0.025]"
+                  to="/organizations/$orgId/projects/$type"
+                  params={{
+                    orgId: currentOrg.id,
+                    type: projectTypeToUrlSlug(currentProject.type)
+                  }}
+                >
+                  <ChevronLeft />
+                  <span>{projectLabel}</span>
+                </Link>
+              ) : (
+                <Link
+                  className="cursor-pointer hover:bg-foreground/[0.025]"
+                  to="/organizations/$orgId/projects"
+                  params={{ orgId: currentOrg.id }}
+                >
+                  <ChevronLeft />
+                  <span>{projectLabel}</span>
+                </Link>
+              )}
             </SidebarGroupLabel>
             <NavComponent onSubmenuOpen={handleSubmenuOpen} />
             {showProductSettings && (

@@ -24,7 +24,8 @@ export const AgentVaultSessionsSchema = z.object({
   encryptedSessionLogKey: zodBuffer.nullable().optional(),
   actorType: z.string().nullable().optional(),
   actingIdentityId: z.string().uuid().nullable().optional(),
-  actingIdentityName: z.string().nullable().optional()
+  actingIdentityName: z.string().nullable().optional(),
+  label: z.string().nullable().optional()
 });
 
 export type TAgentVaultSessions = z.infer<typeof AgentVaultSessionsSchema>;

@@ -2,6 +2,7 @@ import { IdentityAuthMethod, ProjectType, SecretFolderRole } from "@app/db/schem
 import {
   AgentVaultCredentialType,
   AgentVaultMemberType,
+  AgentVaultServiceType,
   AgentVaultTrafficPolicy
 } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
@@ -2465,6 +2466,7 @@ export type TAgentVaultServiceCreatedEvent = {
   properties: TAgentVaultEventBase & {
     accessBundleId: string;
     serviceId: string;
+    serviceType: AgentVaultServiceType;
     credentialType: AgentVaultCredentialType;
     hostPatternCount: number;
     allowedMethodCount: number;
@@ -2480,6 +2482,7 @@ export type TAgentVaultServiceUpdatedEvent = {
   properties: TAgentVaultEventBase & {
     accessBundleId: string;
     serviceId: string;
+    serviceType: AgentVaultServiceType;
     credentialType: AgentVaultCredentialType;
     hostPatternCount: number;
     allowedMethodCount: number;

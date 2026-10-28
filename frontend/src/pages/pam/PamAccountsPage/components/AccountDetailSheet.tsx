@@ -72,7 +72,6 @@ import {
   useRemoveAccountMember,
   useUpdatePamAccount
 } from "@app/hooks/api/pam";
-import { useGetOrgUsers } from "@app/hooks/api/users/queries";
 import { PamSheetTab, usePamSheetState } from "@app/hooks/usePamSheetState";
 
 import { AccountPlatformIcon } from "../../components/AccountPlatformIcon";
@@ -89,6 +88,7 @@ import { PendingInvitationBadge } from "../../components/PendingInvitationBadge"
 import { RemoveMemberConfirm } from "../../components/RemoveMemberConfirm";
 import { SheetSaveBar } from "../../components/SheetSaveBar";
 import { TabWarningPing } from "../../components/TabWarningPing";
+import { usePamProductUsers } from "../../components/usePamProductUsers";
 import { AssignAccessModal, EditMemberTarget } from "./AssignAccessModal";
 import { EditAccountForm } from "./EditAccountForm";
 import { RecordingConnectionPicker } from "./RecordingConnectionPicker";
@@ -137,7 +137,7 @@ const PermissionsTab = ({
     navigate({ search: { folderId, tab: PamSheetTab.Permissions } as any });
   };
   const { data: resourceRoles } = useListPamResourceRoles();
-  const { data: orgUsers } = useGetOrgUsers(currentOrg.id);
+  const { userMap } = usePamProductUsers();
   const { data: orgGroups } = useGetOrganizationGroups(currentOrg.id);
   const groupMap = useMemo(
     () => new Map((orgGroups ?? []).map((g) => [g.id, g.name] as const)),
@@ -191,25 +191,6 @@ const PermissionsTab = ({
           .map((m) => m.identityId) as string[]
       ),
     [accountMembers]
-  );
-
-  const userMap = useMemo(
-    () =>
-      new Map(
-        (orgUsers ?? []).map((ou) => {
-          const name =
-            [ou.user.firstName, ou.user.lastName].filter(Boolean).join(" ") || ou.user.username;
-          return [
-            ou.user.id,
-            {
-              name,
-              email: ou.user.email ?? ou.inviteEmail ?? ou.user.username,
-              isPendingInvitation: ou.status === "invited"
-            }
-          ] as const;
-        })
-      ),
-    [orgUsers]
   );
 
   const directMembers = useMemo<ResolvedMember[]>(() => {

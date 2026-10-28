@@ -80,3 +80,4 @@ docs/snippets/documentation/platform/secret-scanning/ignore-one-line.mdx:generic
 frontend/src/pages/secret-scanning/layout.tsx:generic-api-key:9
 frontend/src/pages/organization/BillingV2Page/billing-v2-offline-usage.ts:generic-api-key:18
 tests/suites/sso/scim/tokens_test.go:jwt:342
+frontend/src/hooks/api/appConnections/types/app-options.ts:atlassian-api-token:386

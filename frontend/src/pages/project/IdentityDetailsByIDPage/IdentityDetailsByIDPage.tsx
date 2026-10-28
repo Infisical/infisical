@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
 import { useQuery } from "@tanstack/react-query";
@@ -18,6 +17,7 @@ import {
 import { IdentityDelegationSection } from "@app/components/agent-vault/IdentityDelegationSection";
 import { AssumePrivilegesDialog } from "@app/components/assume-privileges";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
 import {
   Alert,
@@ -496,19 +496,11 @@ const Page = () => {
 
 export const IdentityDetailsByIDPage = () => {
   const { t } = useTranslation();
-  const { currentProject } = useProject();
-  const isAgentVault = currentProject?.type === ProjectType.AgentVault;
 
   return (
     <>
-      <Helmet>
-        <title>
-          {t("common.head-title", {
-            title: isAgentVault ? "Machine Identity" : t("settings.members.title")
-          })}
-        </title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={t("page-titles.machine-identity")} />
+      <link rel="icon" href="/infisical.ico" />
       <ProjectPermissionCan
         I={ProjectPermissionActions.Read}
         a={ProjectPermissionSub.Identity}

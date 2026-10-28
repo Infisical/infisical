@@ -140,6 +140,8 @@ export const onRequestError = (
   _context?: unknown,
   mutation?: { meta?: Record<string, unknown> }
 ) => {
+  // For a mutation whose caller shows every failure in place, where a toast would repeat it.
+  if (mutation?.meta?.skipErrorToast) return;
   if (axios.isAxiosError(error)) {
     const serverResponse = error.response?.data as TApiErrors;
     const handledErrorCodes = mutation?.meta?.handledErrorCodes;

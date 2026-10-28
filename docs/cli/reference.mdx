@@ -221,6 +221,7 @@ You set the proxy's traffic policy, exceptions, and poll interval in Infisical, 
     { name: "--client-id", value: "<string>", type: "string", description: "The client ID of the machine identity that creates the session, for `--access-bundle`. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID`." },
     { name: "--client-secret", value: "<string>", type: "string", description: "The client secret of the machine identity that creates the session, for `--access-bundle`. Can also be set with `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET`." },
     { name: "--keep-session", type: "bool", description: "Leave a session created with `--access-bundle` active when the agent exits, instead of revoking it. Can't be combined with `--session-token`." },
+    { name: "--label", value: "<string>", type: "string", description: "A short description of what a session created with `--access-bundle` is for, shown on the **Sessions** page, such as `nightly deploy`. Up to 128 characters, without line breaks, tabs, or invisible characters. Can't be combined with `--session-token`." },
     { name: "--no-ca-trust", type: "bool", description: "Skip writing the certificate authority, setting the trust variables, and adding it to the macOS keychain, for a machine that already trusts this proxy. `--ca-fingerprint` is still checked." },
     { name: "--no-proxy", value: "<string>", type: "string", description: "More hosts for the agent to reach directly instead of through the proxy, separated by commas. Always merged with `localhost,127.0.0.1` and any `NO_PROXY` in your environment." },
     { name: "--proxy", value: "<string>", type: "string", description: "The Agent Vault proxy's address as `host:port`, such as `10.0.1.5:17323`. A leading `http://` or `https://` is dropped. Required unless `INFISICAL_AGENT_VAULT_PROXY_ADDRESS` is set." },
@@ -236,7 +237,7 @@ You set the proxy's traffic policy, exceptions, and poll interval in Infisical, 
   ]}
   examples={[
     { title: "Run an agent with a session token", code: "infisical agent-vault run --session-token=<session-token> --proxy=10.0.1.5:17323 -- claude" },
-    { title: "Create a session from an access bundle", code: "infisical agent-vault run --access-bundle=code-review --ttl=8h --proxy=10.0.1.5:17323 -- claude" },
+    { title: "Create a session from an access bundle", code: "infisical agent-vault run --access-bundle=code-review --ttl=8h --label=\"review PR 123\" --proxy=10.0.1.5:17323 -- claude" },
     { title: "Pin the proxy's certificate authority", code: "infisical agent-vault run --session-token=<session-token> --proxy=10.0.1.5:17323 --ca-fingerprint=SHA256:9F:2C:... -- claude" },
     { title: "Create the session as a machine identity", code: "infisical agent-vault run \\\n  --access-bundle=code-review \\\n  --client-id=<client-id> \\\n  --client-secret=<client-secret> \\\n  --proxy=10.0.1.5:17323 \\\n  -- claude" },
     { title: "Read the settings from environment variables", code: "export INFISICAL_AGENT_VAULT_PROXY_ADDRESS=10.0.1.5:17323\nexport INFISICAL_AGENT_VAULT_SESSION_TOKEN=<session-token>\ninfisical agent-vault run -- claude" },
@@ -1325,7 +1326,7 @@ For an agent on your own computer, [infisical sm agent-proxy run](/cli/reference
 
 Launch an agent that sends its requests through an agent proxy on another host, started with [infisical sm agent-proxy start](/cli/reference#sm-agent-proxy-start). See [Standalone Agent Proxy](/documentation/platform/agent-proxy/standalone-agent-proxy).
 
-The command authenticates as the agent's machine identity, with `--client-id` and `--client-secret` or a token. It doesn't use your login. It then starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the variables that make the agent's HTTP clients trust your organization's root certificate. See [what `connect` puts in the agent's environment](/documentation/platform/agent-proxy/standalone-agent-proxy#what-connect-puts-in-the-agents-environment).
+The command authenticates as the agent's machine identity, with `--client-id` and `--client-secret` or a token. It doesn't use your login. It then starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the variables that make the agent's HTTP clients trust your organization's root certificate. See [what `connect` puts in the agent's environment](/documentation/platform/agent-proxy/standalone-agent-proxy#what-connect-puts-in-the-agent’s-environment).
 
 If the agent can read a secret or lease a dynamic secret that a proxied service brokers to it, the command refuses to start, because the agent would get the real value and bypass the proxy.
 

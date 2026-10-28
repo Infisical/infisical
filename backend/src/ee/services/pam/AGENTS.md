@@ -205,6 +205,13 @@ leaves the stored list alone so a steps-only client can't switch break-glass off
 `bypassReason`, and `PAM_ACCESS_POLICY_BYPASSED` must carry `accountId`/`folderId` or the event is hidden
 from folder and account auditors (see the audit-log gotcha under Permissions).
 
+**Auto-approval** also needs both gates: the template's `allow-auto-approval` (false without
+`requires-approval`, like break-glass) and rules on the folder's approval policy, which PAM saves through the
+folder's approval configuration. The rules belong to the shared approval module; PAM only implements
+`allowsAutoApproval`, the notification, and `PAM_ACCESS_REQUEST_AUTO_APPROVED`. A break-glass request skips
+them, since it approves itself. A folder can have rules and no approvers; its requests are then granted by a
+rule or refused at submission.
+
 ## Discovery
 
 `pam-discovery/`: a **source** (a credential account + gateway) scans and stages **discovered accounts**

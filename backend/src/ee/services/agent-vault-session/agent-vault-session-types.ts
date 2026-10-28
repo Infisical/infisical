@@ -18,6 +18,7 @@ export type TMintSessionDTO = {
   actorEmail: string | null;
   ttl?: string;
   onBehalfOf?: TOnBehalfOfUser;
+  label: string | null;
 };
 
 export type TListSessionsDTO = {
@@ -40,6 +41,9 @@ export type TGetSessionByIdDTO = TRevokeSessionDTO;
 
 /** The machine identity that started a session on its actor's behalf. `id` is null once the identity is deleted. */
 export type TAgentVaultSessionActingIdentity = { id: string | null; name: string };
+export type TUpdateSessionLabelDTO = TRevokeSessionDTO & {
+  label: string | null;
+};
 
 export type TAgentVaultSessionActor =
   | {

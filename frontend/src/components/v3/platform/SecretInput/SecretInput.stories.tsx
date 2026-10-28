@@ -12,6 +12,10 @@ const meta = {
   },
   tags: ["autodocs"],
   argTypes: {
+    valueAlwaysHidden: {
+      description:
+        "Visual-only mask for user-typed values. Focus still binds the real textarea value for editing and copying; isVisible overrides the mask. Not a permission boundary."
+    },
     variant: {
       control: "select",
       options: ["default", "plain"]

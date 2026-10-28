@@ -36,16 +36,6 @@ export type TGetAwsAuthDTO = {
   identityId: string;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TAwsGetCallerIdentityHeaders = {
-  "Content-Type": string;
-  Host: string;
-  "X-Amz-Date": string;
-  "Content-Length": number;
-  "x-amz-security-token": string;
-  Authorization?: string;
-  authorization?: string;
-};
-
 export type TGetCallerIdentityResponse = {
   GetCallerIdentityResponse: {
     GetCallerIdentityResult: {
