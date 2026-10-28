@@ -363,13 +363,13 @@ import { certificateServiceFactory } from "@app/services/certificate/certificate
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { convertorServiceFactory } from "@app/services/convertor/convertor-service";
 import { delegatedApprovalCallbackServiceFactory } from "@app/services/delegated-approval-callback/delegated-approval-callback-service";
+import { delegatedApprovalDecisionConsumerFactory } from "@app/services/delegated-approval-decision/delegated-approval-decision-consumer";
+import { delegatedApprovalDecisionMapsFactory } from "@app/services/delegated-approval-decision/delegated-approval-decision-maps";
+import { delegatedApprovalDecisionServiceFactory } from "@app/services/delegated-approval-decision/delegated-approval-decision-service";
 import { delegatedApprovalPolicyDALFactory } from "@app/services/delegated-approval/delegated-approval-policy-dal";
 import { delegatedApprovalRequestDALFactory } from "@app/services/delegated-approval/delegated-approval-request-dal";
 import { delegatedApprovalServiceFactory } from "@app/services/delegated-approval/delegated-approval-service";
 import { delegatedApprovalDispatchConsumerFactory } from "@app/services/delegated-approval/dispatch/delegated-approval-dispatch-consumer";
-import { delegatedApprovalDecisionConsumerFactory } from "@app/services/delegated-approval-decision/delegated-approval-decision-consumer";
-import { delegatedApprovalDecisionMapsFactory } from "@app/services/delegated-approval-decision/delegated-approval-decision-maps";
-import { delegatedApprovalDecisionServiceFactory } from "@app/services/delegated-approval-decision/delegated-approval-decision-service";
 import { encryptionKeyRotationServiceFactory } from "@app/services/encryption-key-rotation/encryption-key-rotation-service";
 import { acmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
 import { apiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";

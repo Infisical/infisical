@@ -8,10 +8,10 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TAppConnection } from "@app/services/app-connection/app-connection-types";
 import { TServiceNowConnection } from "@app/services/app-connection/servicenow";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
-import { DelegatedApprovalPolicyType } from "@app/services/delegated-approval/delegated-approval-enums";
 import { DelegatedApprovalCallbackEvent } from "@app/services/delegated-approval-callback/delegated-approval-callback-enums";
 import { DelegatedApprovalDecision } from "@app/services/delegated-approval-decision/delegated-approval-decision-enums";
 import { TDelegatedApprovalDecisionReadResult } from "@app/services/delegated-approval-decision/delegated-approval-decision-types";
+import { DelegatedApprovalPolicyType } from "@app/services/delegated-approval/delegated-approval-enums";
 
 import {
   TDelegatedApprovalDispatchDetails,

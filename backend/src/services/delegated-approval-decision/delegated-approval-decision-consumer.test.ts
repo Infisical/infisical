@@ -3,12 +3,12 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { TEventOutbox } from "@app/db/schemas";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
+import { DelegatedApprovalCallbackEvent } from "@app/services/delegated-approval-callback/delegated-approval-callback-enums";
 import {
   DelegatedApprovalPolicyType,
   DelegatedApprovalRequestStatus
 } from "@app/services/delegated-approval/delegated-approval-enums";
 import { TDelegatedApprovalRequestDetails } from "@app/services/delegated-approval/delegated-approval-schemas";
-import { DelegatedApprovalCallbackEvent } from "@app/services/delegated-approval-callback/delegated-approval-callback-enums";
 import { eventOutboxRegistryFactory } from "@app/services/event-outbox/event-outbox-registry";
 import { eventOutboxServiceFactory } from "@app/services/event-outbox/event-outbox-service";
 import {
