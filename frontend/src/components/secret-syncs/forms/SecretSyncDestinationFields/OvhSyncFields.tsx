@@ -39,8 +39,8 @@ export const OvhSyncFields = () => {
                   <Info />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-sm">
-                  The path in OVH OKMS where secrets will be stored as key/value pairs. If the path
-                  does not exist, it will be created.
+                  The path in OVHcloud KMS where secrets will be stored as key/value pairs. If the
+                  path does not exist, it will be created.
                 </TooltipContent>
               </Tooltip>
             </FieldLabel>

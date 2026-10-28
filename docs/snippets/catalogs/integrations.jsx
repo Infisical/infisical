@@ -113,7 +113,7 @@ export const integrations = [
   { name: "Octopus Deploy", path: "/integrations/secret-syncs/octopus-deploy", description: "Learn how to sync secrets from Infisical to Octopus Deploy.", type: "Secret Sync", tag: "DevOps Tools" },
   { name: "Azure Entra ID SCIM", path: "/integrations/secret-syncs/azure-entra-id-scim", description: "Learn how to sync SCIM provisioning tokens from Infisical to Azure Entra ID.", type: "Secret Sync", tag: "Identity & Auth" },
   { name: "Infisical", path: "/integrations/secret-syncs/external-infisical", description: "Learn how to sync secrets from one Infisical instance to another.", type: "Secret Sync", tag: "Security" },
-  { name: "OVH", path: "/integrations/secret-syncs/ovh", description: "Learn how to sync secrets from Infisical to OVH Secret Manager.", type: "Secret Sync", tag: "Cloud Providers" },
+  { name: "OVHcloud", path: "/integrations/secret-syncs/ovh", description: "Learn how to sync secrets from Infisical to OVHcloud Secret Manager.", type: "Secret Sync", tag: "Cloud Providers" },
   { name: "Travis CI", path: "/integrations/secret-syncs/travis-ci", description: "Learn how to sync secrets from Infisical to Travis CI.", type: "Secret Sync", tag: "CI/CD" },
   { name: "Snowflake", path: "/integrations/secret-syncs/snowflake", description: "Learn how to sync secrets from Infisical to Snowflake.", type: "Secret Sync", tag: "Databases" },
   { name: "Trigger.dev", path: "/integrations/secret-syncs/trigger-dev", description: "Learn how to sync secrets from Infisical to Trigger.dev.", type: "Secret Sync", tag: "DevOps Tools" },
