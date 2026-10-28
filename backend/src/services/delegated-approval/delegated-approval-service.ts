@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import { Knex } from "knex";
 
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -152,14 +154,15 @@ export const delegatedApprovalServiceFactory = ({
   const createRequest = async ({ approvalRequest }: TCreateDelegatedApprovalRequestDTO, tx?: Knex) => {
     assertPolicyTypeSupportsDelegatedApproval(approvalRequest.type);
 
+    const dispatchEventId = crypto.randomUUID();
     try {
       const request = (await delegatedApprovalRequestDAL.create(
-        { requestId: approvalRequest.id, status: DelegatedApprovalRequestStatus.PendingDispatch },
+        { requestId: approvalRequest.id, status: DelegatedApprovalRequestStatus.PendingDispatch, dispatchEventId },
         tx
       )) as TDelegatedApprovalRequest;
       await emitDelegatedApprovalDispatchRequested(
         eventEmitter,
-        { delegatedRequestId: request.id, updatedAt: request.updatedAt },
+        { delegatedRequestId: request.id, dispatchEventId },
         tx
       );
       return request;
@@ -210,18 +213,34 @@ export const delegatedApprovalServiceFactory = ({
       });
     }
 
-    if (delegatedRequest.status !== DelegatedApprovalRequestStatus.FailedDispatch) {
-      throw new BadRequestError({
-        message: `Only requests that failed to reach ${DELEGATED_APPROVAL_NAME_MAP[delegatedPolicy.type]} can be sent again`
-      });
-    }
-
-    await emitDelegatedApprovalDispatchRequested(eventEmitter, {
-      delegatedRequestId: delegatedRequest.id,
-      updatedAt: delegatedRequest.updatedAt
+    const notResendableError = new BadRequestError({
+      message: `Only requests that failed to reach ${DELEGATED_APPROVAL_NAME_MAP[delegatedPolicy.type]} can be sent again`
     });
 
-    return { delegatedRequest, delegatedPolicy };
+    if (delegatedRequest.status !== DelegatedApprovalRequestStatus.FailedDispatch) {
+      throw notResendableError;
+    }
+
+    // Conditional on failed_dispatch so it serializes with the consumer reopening the row for the event this
+    // replaces: whichever takes the row first wins, and the other backs off.
+    const dispatchEventId = crypto.randomUUID();
+    const resentRequest = await delegatedApprovalRequestDAL.transaction(async (tx) => {
+      const [resent] = await delegatedApprovalRequestDAL.update(
+        { id: delegatedRequest.id, status: DelegatedApprovalRequestStatus.FailedDispatch },
+        { dispatchEventId },
+        tx
+      );
+      if (!resent) throw notResendableError;
+
+      await emitDelegatedApprovalDispatchRequested(
+        eventEmitter,
+        { delegatedRequestId: resent.id, dispatchEventId },
+        tx
+      );
+      return resent as TDelegatedApprovalRequest;
+    });
+
+    return { delegatedRequest: resentRequest, delegatedPolicy };
   };
 
   const updateRequest = async ({ requestId, status, statusReason }: TUpdateDelegatedApprovalRequestDTO, tx?: Knex) => {
