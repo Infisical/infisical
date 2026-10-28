@@ -1,0 +1,158 @@
+---
+title: "Convex sync"
+sidebarTitle: "Convex"
+description: "Learn how to configure a Convex sync for Infisical."
+---
+
+import CreatePersonalAccessToken from "/snippets/app-connections/convex/create-personal-access-token.mdx";
+import ConnectionFormFields from "/snippets/app-connections/convex/form-fields.mdx";
+
+A Convex Secret Sync pushes secrets from Infisical into a Convex deployment's environment variables, where Convex functions can read them at runtime. Each Infisical secret becomes a Convex environment variable with the same name, unless you customize key names to add a prefix or suffix.
+
+<Note>
+    The Convex Secret Sync requires a [Convex app connection](/integrations/app-connections/convex). This guide walks you through creating a project-scoped app connection.
+</Note>
+
+## Prerequisites
+
+- A [project with secrets configured](/documentation/platform/secrets-mgmt/quick-starts/deliver-first-secret)
+- A [Convex account](https://dashboard.convex.dev) with a deployment you can manage
+
+## Step 1: Create a personal access token in Convex
+
+Infisical authenticates to Convex with a personal access token that can list deployments and manage their environment variables.
+
+<CreatePersonalAccessToken />
+
+## Step 2: Set up the sync in Infisical
+
+<Tip>
+    To create the sync using the API, use the [Create Convex Sync](/api-reference/endpoints/secret-syncs/convex/create) endpoint.
+</Tip>
+
+<Steps>
+    <Step>
+        In your project, go to **Integrations** and open the **Secret Syncs** tab. Select **+ Add Sync**.
+
+        ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
+
+        Then, select the **Convex** sync.
+
+        ![Select Convex](/images/secret-syncs/convex/select-option.png)
+    </Step>
+    <Step>
+        Under **Source**, choose which secrets to sync from Infisical:
+
+        - **Environment**: The project environment to retrieve secrets from
+        - **Secret Path**: The folder path to retrieve secrets from
+
+        <Note>
+            Convex environment variable names must start with a letter or underscore and contain only letters, digits, and underscores. If any secret at this path has a name Convex rejects, the sync fails without writing any secrets, and the error names each rejected key.
+        </Note>
+
+        <Tip>
+            If you need to sync secrets from multiple folder locations, use [secret imports](/documentation/platform/secret-reference#secret-imports).
+        </Tip>
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Destination**, create or select the Convex app connection the sync will use, then choose the deployment secrets go to.
+
+        <Tabs>
+            <Tab title="Create a new app connection">
+                Under **Convex Connection**, select **Create Connection** in the dropdown, then fill in:
+
+                <ConnectionFormFields />
+
+                Select **Connect to Convex**. Infisical returns you to the sync form with the new connection selected.
+
+                <Note>
+                    This creates a connection scoped to the current project. To share the connection across other projects, [create it at the organization level](/integrations/app-connections/convex#setup-convex-connection-in-infisical) first, then select it here.
+                </Note>
+            </Tab>
+            <Tab title="Use an existing connection">
+                Under **Convex Connection**, select the app connection you'd like to use.
+            </Tab>
+        </Tabs>
+
+        - **Deployment**: The Convex deployment to sync secrets to, chosen from the deployments the connection can access
+
+        ![Configure Destination](/images/secret-syncs/convex/configure-destination.png)
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Under **Initial Sync Behavior**, choose how Infisical handles environment variables that already exist in Convex on the first sync:
+
+        - **Overwrite Convex**: Infisical imports nothing, and writes its secrets to the deployment
+        - **Import from Convex, prioritize Infisical**: Infisical first imports environment variables from the deployment; if a secret exists in both places, Infisical keeps its own value
+        - **Import from Convex, prioritize Convex**: Infisical first imports environment variables from the deployment; if a secret exists in both places, the Convex value replaces the Infisical value
+
+        Then select **Continue**.
+
+        ![Initial Sync Behavior](/images/secret-syncs/convex/initial-sync-behavior.png)
+    </Step>
+    <Step>
+        Under **Sync Options**, choose how secrets are synced:
+
+        - **Prevent secret deletion**: When enabled, Infisical adds and updates environment variables in Convex but never deletes them; enable this if you manage some Convex variables outside of Infisical
+        - **Auto-sync on changes**: When enabled, secrets sync to Convex automatically as the source changes; turn it off to sync manually only
+        - **Customize key names**: Adds a prefix or suffix to every synced name, using `{{secretKey}}` for the original name and `{{environment}}` for the environment slug
+
+        <Warning>
+            Convex environment variables belong to the whole deployment, so a sync can change variables that were created outside Infisical. If you don't customize key names, the sync treats every variable in the deployment as one it manages, except variables whose names start with `CONVEX_`:
+
+            - If a Convex variable has the same name as an Infisical secret, the sync overwrites the Convex variable's value
+            - If **Prevent secret deletion** is off, every Convex variable that isn't in Infisical is deleted
+
+            Infisical never writes or deletes variables whose names start with `CONVEX_`.
+
+            With customized key names, the sync writes only names with your prefix or suffix, and deletes only Convex variables whose names match it.
+
+            Before the first sync, customize key names or keep **Prevent secret deletion** on. **Prevent secret deletion** is on by default when you create the sync in the UI, but off unless you set `disableSecretDeletion` when you create it through the API.
+        </Warning>
+
+        ![Configure Sync Options](/images/secret-syncs/convex/configure-sync-options.png)
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Give the sync a **Name** and an optional **Description**. The name must be slug-friendly.
+
+        ![Sync Details](/images/secret-syncs/convex/configure-details.png)
+
+        Then select **Continue**.
+    </Step>
+    <Step>
+        Review your Convex Sync configuration, then select **Create Sync**.
+
+        ![Review and Create](/images/secret-syncs/convex/review-configuration.png)
+
+        <Check>
+            The sync is created. If **Auto-sync on changes** is enabled, it begins syncing secrets to your Convex deployment right away.
+        </Check>
+    </Step>
+</Steps>
+
+## FAQ
+
+<AccordionGroup>
+    <Accordion title="Why didn't Infisical sync a CONVEX_ variable?">
+        Infisical never writes or deletes environment variables whose names start with `CONVEX_`. Convex reserves those names for the deployment.
+    </Accordion>
+    <Accordion title="What happens to empty Infisical secrets?">
+        Infisical skips empty values and doesn't create or update a Convex environment variable for those secrets.
+    </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+    <Card title="Convex" icon="plug" href="/integrations/app-connections/convex">
+        Create a Convex connection at the organization level to share it across projects.
+    </Card>
+    <Card title="Overview" icon="refresh-cw" href="/integrations/secret-syncs/overview">
+        See every destination you can sync secrets to.
+    </Card>
+</CardGroup>

@@ -95,6 +95,7 @@ import { cloud66ConnectionService } from "./cloud-66/cloud-66-connection-service
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
 import { ValidateConvexConnectionCredentialsSchema } from "./convex";
+import { convexConnectionService } from "./convex/convex-connection-service";
 import { TAppConnectionCredentialRotationServiceFactory } from "./credential-rotation";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
@@ -1495,6 +1496,7 @@ export const appConnectionServiceFactory = ({
     triggerDev: triggerDevConnectionService(connectAppConnectionById),
     gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     cloudflare: cloudflareConnectionService(connectAppConnectionById),
+    convex: convexConnectionService(connectAppConnectionById),
     venafi: venafiConnectionService(connectAppConnectionById),
     azureAdcs: azureAdcsConnectionService(connectAppConnectionById),
     adcs: adcsConnectionService(connectAppConnectionById, gatewayV2Service, gatewayPoolService),

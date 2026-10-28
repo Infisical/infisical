@@ -3546,6 +3546,10 @@ export const SecretSyncs = {
       variableType:
         "The type of environment variable to sync secrets as: secret_text (default) or plain_text. If a secret already exists in the environment as the other type, the sync fails and nothing is changed. Syncs created before this option existed have no type and skip those secrets instead. Infisical only deletes variables of this type."
     },
+    CONVEX: {
+      deploymentUrl: "The URL of the Convex deployment to sync secrets to.",
+      deploymentName: "The name of the Convex deployment to sync secrets to."
+    },
     CLOUDFLARE_WORKERS: {
       scriptId: "The ID of the Cloudflare Workers script to sync secrets to.",
       variableType:

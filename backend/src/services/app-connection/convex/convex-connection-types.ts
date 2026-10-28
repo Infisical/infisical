@@ -20,3 +20,9 @@ export type TValidateConvexConnectionCredentialsSchema = typeof ValidateConvexCo
 export type TConvexConnectionConfig = DiscriminativePick<TConvexConnectionInput, "method" | "app" | "credentials"> & {
   orgId: string;
 };
+
+export type TConvexDeployment = {
+  deploymentUrl: string;
+  name: string;
+  deploymentType: string;
+};

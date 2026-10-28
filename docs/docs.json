@@ -346,6 +346,7 @@
                       "integrations/secret-syncs/cloudflare-pages",
                       "integrations/secret-syncs/cloudflare-secrets-store",
                       "integrations/secret-syncs/cloudflare-workers",
+                      "integrations/secret-syncs/convex",
                       "integrations/secret-syncs/databricks",
                       "integrations/secret-syncs/daytona",
                       "integrations/secret-syncs/devin",
@@ -3514,6 +3515,20 @@
                           "api-reference/endpoints/secret-syncs/cloudflare-workers/delete",
                           "api-reference/endpoints/secret-syncs/cloudflare-workers/sync-secrets",
                           "api-reference/endpoints/secret-syncs/cloudflare-workers/remove-secrets"
+                        ]
+                      },
+                      {
+                        "group": "Convex",
+                        "pages": [
+                          "api-reference/endpoints/secret-syncs/convex/list",
+                          "api-reference/endpoints/secret-syncs/convex/get-by-id",
+                          "api-reference/endpoints/secret-syncs/convex/get-by-name",
+                          "api-reference/endpoints/secret-syncs/convex/create",
+                          "api-reference/endpoints/secret-syncs/convex/update",
+                          "api-reference/endpoints/secret-syncs/convex/delete",
+                          "api-reference/endpoints/secret-syncs/convex/sync-secrets",
+                          "api-reference/endpoints/secret-syncs/convex/import-secrets",
+                          "api-reference/endpoints/secret-syncs/convex/remove-secrets"
                         ]
                       },
                       {
