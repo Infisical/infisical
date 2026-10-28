@@ -5,7 +5,7 @@ description: "Instructions you keep in Agent Vault and install for agents you st
 
 A skill is a folder of instructions that an AI agent loads when a task needs it, such as how your team reviews pull requests or how to cut a release. Skills follow the [Agent Skills](https://agentskills.io) format, so the same folder works in Claude Code, Codex, and other agents that support it.
 
-An [access bundle](/documentation/platform/agent-vault/access-bundles) defines which APIs an agent can call. If you attach a skill to an access bundle, the CLI installs the skill for each agent that you start with that access bundle through `infisical agent-vault run`. Agents that use the proxy without `infisical agent-vault run`, such as the [Hermes gateway](/documentation/platform/agent-vault/guides/hermes-gateway) and [OpenClaw gateway](/documentation/platform/agent-vault/guides/openclaw-gateway) setups, don't get skills.
+An [access bundle](/documentation/platform/agent-vault/access-bundles) defines the services, such as external APIs or MCP servers, that an agent can access during a session. If you attach a skill to an access bundle, the CLI installs the skill for each agent that you start with that access bundle through `infisical agent-vault run`. Agents that use the proxy without `infisical agent-vault run`, such as the [Hermes gateway](/documentation/platform/agent-vault/guides/hermes-gateway) and [OpenClaw gateway](/documentation/platform/agent-vault/guides/openclaw-gateway) setups, don't get skills.
 
 <Info>
   [Agent Vault members](/documentation/platform/agent-vault/access-control#product-membership) can view the latest version of each skill attached to the access bundles granted to them.
