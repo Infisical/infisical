@@ -1499,7 +1499,7 @@ export const signerServiceFactory = ({
     let revokedSignerName: string | null = null;
     const attached = await signerDAL.transaction(async (tx) => {
       const lockedSigner = await signerDAL.findByIdForUpdate(signerId, tx);
-      if (lockedSigner?.status === SignerStatus.Revoked) {
+      if (lockedSigner && (await $hasRevokedCertificate(lockedSigner, tx))) {
         revokedSignerName = lockedSigner.name;
         return null;
       }
@@ -1890,7 +1890,7 @@ export const signerServiceFactory = ({
         throw new BadRequestError({ message: `Signer '${signer.name}' has no certificate to revoke.` });
       }
       const currentCert = await certificateDAL.findById(lockedSigner.certificateId, tx);
-      if (lockedSigner.status === SignerStatus.Revoked || currentCert?.status === CertStatus.REVOKED) {
+      if (currentCert?.status === CertStatus.REVOKED) {
         throw new BadRequestError({ message: revokedCertificateMessage(signer.name) });
       }
       const digicertOrder = DigiCertExternalMetadataSchema.safeParse(currentCert?.externalMetadata);

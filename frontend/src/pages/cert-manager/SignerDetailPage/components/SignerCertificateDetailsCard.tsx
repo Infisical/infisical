@@ -43,7 +43,7 @@ export const SignerCertificateDetailsCard = ({ signer }: Props) => {
             </Detail>
             <Detail>
               <DetailLabel>Serial Number</DetailLabel>
-              <DetailValue className="flex items-start gap-2 font-mono text-xs">
+              <DetailValue className="flex items-start gap-2 font-mono">
                 {signer.certificateSerialNumber ? (
                   <>
                     <span className="break-all">{signer.certificateSerialNumber}</span>
@@ -82,7 +82,7 @@ export const SignerCertificateDetailsCard = ({ signer }: Props) => {
             {signer.certificateHsmKeyLabel && (
               <Detail>
                 <DetailLabel>HSM Key Label</DetailLabel>
-                <DetailValue className="flex items-start gap-2 font-mono text-xs">
+                <DetailValue className="flex items-start gap-2 font-mono">
                   <span className="break-all">{signer.certificateHsmKeyLabel}</span>
                   <CopyButton
                     className="shrink-0"
@@ -95,7 +95,7 @@ export const SignerCertificateDetailsCard = ({ signer }: Props) => {
             {orderId && (
               <Detail>
                 <DetailLabel>DigiCert Order ID</DetailLabel>
-                <DetailValue className="flex items-start gap-2 font-mono text-xs">
+                <DetailValue className="flex items-start gap-2 font-mono">
                   <span className="break-all">{orderId}</span>
                   <CopyButton
                     className="shrink-0"

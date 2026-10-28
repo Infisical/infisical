@@ -18,6 +18,7 @@ import {
   CertKeyAlgorithm,
   CertKeyUsage,
   CertSignatureAlgorithm,
+  CertStatus,
   CrlReason
 } from "../certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
@@ -28,6 +29,7 @@ import {
   CodeSigningOrderStatus,
   DigiCertLifecycleMode
 } from "../certificate-authority/digicert/digicert-certificate-authority-enums";
+import { DigiCertExternalMetadataSchema } from "../certificate-common/external-metadata-schemas";
 import { THsmConnectorServiceFactory } from "../hsm-connector/hsm-connector-service";
 import { THsmConnectorServiceActor } from "../hsm-connector/hsm-connector-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -532,7 +534,19 @@ export const signerIssuanceServiceFactory = ({
             message: `The issued certificate is already used by signer '${signerUsingCertificate.name}'.`
           });
         }
-        if (lockedSigner?.status === SignerStatus.Revoked) {
+        const currentCert = lockedSigner?.certificateId
+          ? await certificateDAL.findById(lockedSigner.certificateId, tx)
+          : null;
+        const lifecycle = (job.externalOrderRef as TDigiCertExternalOrderRef | null)?.digicert?.lifecycle;
+        const currentOrder = DigiCertExternalMetadataSchema.safeParse(currentCert?.externalMetadata);
+        const isRevokedByThisReissue =
+          lifecycle?.mode === DigiCertLifecycleMode.Reissue &&
+          currentOrder.success &&
+          currentOrder.data.orderId === lifecycle.previousOrderId;
+        if (
+          lockedSigner?.status === SignerStatus.Revoked ||
+          (currentCert?.status === CertStatus.REVOKED && !isRevokedByThisReissue)
+        ) {
           isRefusedForRevokedSigner = true;
           throw new BadRequestError({
             message: "The signer's certificate was revoked during issuance. Create a new signer to keep signing."

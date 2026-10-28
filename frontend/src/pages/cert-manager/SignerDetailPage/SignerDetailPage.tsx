@@ -149,7 +149,8 @@ export const SignerDetailPage = () => {
     hasLiveCertificate &&
     Boolean(signer.caId) &&
     signer.status !== SignerStatus.Pending &&
-    signer.status !== SignerStatus.Disabled;
+    signer.status !== SignerStatus.Disabled &&
+    signer.status !== SignerStatus.Revoked;
   const canRevokeCertificate =
     hasLiveCertificate &&
     signer.status !== SignerStatus.Pending &&
