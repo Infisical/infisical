@@ -22,8 +22,14 @@ vi.mock("@app/lib/logger", () => ({
 }));
 
 vi.mock("@app/lib/telemetry/metrics", () => ({
+  EventOutboxRejectReason: {
+    InvalidEvent: "invalid_event",
+    DataTooLarge: "data_too_large",
+    DataRejected: "data_rejected"
+  },
   recordEventOutboxLagMetric: () => {},
-  recordEventOutboxExhaustedMetric: () => {}
+  recordEventOutboxExhaustedMetric: () => {},
+  recordEventOutboxRejectedMetric: () => {}
 }));
 
 const { dispatch } = vi.hoisted(() => ({ dispatch: vi.fn() }));
@@ -44,6 +50,7 @@ vi.mock("@app/services/app-connection/app-connection-fns", () => ({
 }));
 
 const DELEGATED_REQUEST_ID = "11111111-1111-1111-1111-111111111111";
+const EVENT_ID = "44444444-4444-4444-8444-444444444444";
 const ORG_ID = "22222222-2222-2222-2222-222222222222";
 const RETRY_REASON =
   "ServiceNow did not respond. Infisical will retry automatically. If it keeps failing, send the request again.";
@@ -129,10 +136,12 @@ const buildConsumer = ({
 };
 
 const makeEvent = (overrides?: Partial<TEvent>): TEvent => ({
-  id: 1,
-  eventType: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
-  payload: { delegatedRequestId: DELEGATED_REQUEST_ID },
-  occurredAt: new Date(),
+  specversion: "1.0",
+  id: "event-1",
+  source: "urn:infisical:delegated-approval",
+  type: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
+  time: new Date().toISOString(),
+  data: { delegatedRequestId: DELEGATED_REQUEST_ID },
   isFinalAttempt: false,
   ...overrides
 });
@@ -148,7 +157,7 @@ describe("delegatedApprovalDispatchConsumer", () => {
 
     const results = await consumer.handle([makeEvent()]);
 
-    expect(results).toEqual([{ id: "1", status: EventResultStatus.Delivered }]);
+    expect(results).toEqual([{ id: "event-1", status: EventResultStatus.Delivered }]);
     expect(dispatch).toHaveBeenCalledTimes(1);
     expect(dispatch.mock.calls[0][0]).toMatchObject({
       delegatedRequestId: DELEGATED_REQUEST_ID,
@@ -168,7 +177,7 @@ describe("delegatedApprovalDispatchConsumer", () => {
 
     const results = await consumer.handle([makeEvent()]);
 
-    expect(results).toEqual([{ id: "1", status: EventResultStatus.Retry, error: "ServiceNow did not respond." }]);
+    expect(results).toEqual([{ id: "event-1", status: EventResultStatus.Retry, error: "ServiceNow did not respond." }]);
     expect(row()).toMatchObject({ status: DelegatedApprovalRequestStatus.FailedDispatch, statusReason: RETRY_REASON });
   });
 
@@ -179,7 +188,7 @@ describe("delegatedApprovalDispatchConsumer", () => {
     const results = await consumer.handle([makeEvent()]);
 
     expect(results).toEqual([
-      { id: "1", status: EventResultStatus.Failed, error: "ServiceNow rejected the credentials." }
+      { id: "event-1", status: EventResultStatus.Failed, error: "ServiceNow rejected the credentials." }
     ]);
     expect(row()).toMatchObject({
       status: DelegatedApprovalRequestStatus.FailedDispatch,
@@ -193,7 +202,9 @@ describe("delegatedApprovalDispatchConsumer", () => {
 
     const results = await consumer.handle([makeEvent({ isFinalAttempt: true })]);
 
-    expect(results).toEqual([{ id: "1", status: EventResultStatus.Failed, error: "ServiceNow did not respond." }]);
+    expect(results).toEqual([
+      { id: "event-1", status: EventResultStatus.Failed, error: "ServiceNow did not respond." }
+    ]);
     expect(row()).toMatchObject({
       status: DelegatedApprovalRequestStatus.Failed,
       statusReason: `ServiceNow did not respond. Infisical could not send this request after ${MAX_OUTBOX_ATTEMPTS} attempts and closed it. Create a new request.`
@@ -253,7 +264,7 @@ describe("delegatedApprovalDispatchConsumer", () => {
 
     const results = await consumer.handle([makeEvent()]);
 
-    expect(results).toEqual([{ id: "1", status: EventResultStatus.Delivered }]);
+    expect(results).toEqual([{ id: "event-1", status: EventResultStatus.Delivered }]);
     expect(dispatch).not.toHaveBeenCalled();
   });
 
@@ -278,8 +289,8 @@ describe("delegatedApprovalDispatchConsumer", () => {
     });
 
     const pending = consumer.handle([
-      makeEvent({ id: 1 }),
-      makeEvent({ id: 2, payload: { delegatedRequestId: otherRequestId } })
+      makeEvent({ id: "event-1" }),
+      makeEvent({ id: "event-2", data: { delegatedRequestId: otherRequestId } })
     ]);
 
     try {
@@ -289,8 +300,8 @@ describe("delegatedApprovalDispatchConsumer", () => {
     }
 
     await expect(pending).resolves.toEqual([
-      { id: "1", status: EventResultStatus.Delivered },
-      { id: "2", status: EventResultStatus.Delivered }
+      { id: "event-1", status: EventResultStatus.Delivered },
+      { id: "event-2", status: EventResultStatus.Delivered }
     ]);
   });
 
@@ -313,7 +324,7 @@ describe("delegatedApprovalDispatchConsumer", () => {
     });
 
     const { consumer } = buildConsumer();
-    const pending = consumer.handle([makeEvent({ id: 1 }), makeEvent({ id: 2 })]);
+    const pending = consumer.handle([makeEvent({ id: "event-1" }), makeEvent({ id: "event-2" })]);
 
     try {
       await vi.waitFor(() => expect(dispatch).toHaveBeenCalledTimes(1));
@@ -336,7 +347,7 @@ describe("delegatedApprovalDispatchConsumer", () => {
   test("fails an unreadable payload terminally", async () => {
     const { consumer } = buildConsumer();
 
-    const [result] = await consumer.handle([makeEvent({ payload: { delegatedRequestId: "not-a-uuid" } })]);
+    const [result] = await consumer.handle([makeEvent({ data: { delegatedRequestId: "not-a-uuid" } })]);
 
     expect(result.status).toBe(EventResultStatus.Failed);
     expect(result.error).toContain("Unreadable delegated approval dispatch payload");
@@ -422,7 +433,13 @@ describe("delegatedApprovalDispatchConsumer through the outbox", () => {
     const { service, rows, elapseBackoff } = buildOutbox(consumer);
 
     await service.emit(
-      { eventType: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT, payload: { delegatedRequestId: DELEGATED_REQUEST_ID } },
+      [
+        {
+          id: EVENT_ID,
+          type: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
+          data: { delegatedRequestId: DELEGATED_REQUEST_ID }
+        }
+      ],
       PRIMARY
     );
     expect(rows).toHaveLength(1);
@@ -458,7 +475,13 @@ describe("delegatedApprovalDispatchConsumer through the outbox", () => {
     const { service, rows, elapseBackoff } = buildOutbox(consumer);
 
     await service.emit(
-      { eventType: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT, payload: { delegatedRequestId: DELEGATED_REQUEST_ID } },
+      [
+        {
+          id: EVENT_ID,
+          type: DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
+          data: { delegatedRequestId: DELEGATED_REQUEST_ID }
+        }
+      ],
       PRIMARY
     );
 

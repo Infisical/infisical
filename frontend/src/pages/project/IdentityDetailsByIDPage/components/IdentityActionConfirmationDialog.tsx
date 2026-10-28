@@ -57,11 +57,10 @@ export const IdentityActionConfirmationDialog = ({
 
   return (
     <AlertDialog
+      isPending={isPending}
       open={open}
       confirmationValue={confirmationText}
-      onOpenChange={(nextOpen) => {
-        if (!isPending) onOpenChange(nextOpen);
-      }}
+      onOpenChange={onOpenChange}
     >
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -78,11 +77,10 @@ export const IdentityActionConfirmationDialog = ({
         </AlertDialogHeader>
         <AlertDialogConfirmationField onConfirm={() => handleConfirm().catch(() => undefined)} />
         <AlertDialogFooter>
-          <AlertDialogCancel isDisabled={isPending}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
             type="button"
             variant="danger"
-            isPending={isPending}
             isDisabled={isDisabled}
             onClick={(event) => {
               event.preventDefault();

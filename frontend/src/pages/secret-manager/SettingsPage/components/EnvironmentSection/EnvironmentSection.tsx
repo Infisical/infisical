@@ -303,10 +303,10 @@ export const EnvironmentSection = () => {
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog
+        isPending={isDeletePending}
         open={popUp.hardDeleteEnv.isOpen}
         confirmationValue={hardDeleteEnvData?.slug}
         onOpenChange={(isOpen) => {
-          if (!isOpen && isDeletePending) return;
           handlePopUpToggle("hardDeleteEnv", isOpen);
         }}
       >
@@ -329,18 +329,16 @@ export const EnvironmentSection = () => {
             </AlertDescription>
           </Alert>
           <AlertDialogConfirmationField
-            inputProps={{ disabled: isDeletePending }}
             onConfirm={() => onEnvHardDeleteSubmit().catch(() => undefined)}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isDeletePending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
               onClick={(event) => {
                 event.preventDefault();
                 onEnvHardDeleteSubmit().catch(() => undefined);
               }}
-              isPending={isDeletePending}
             >
               Delete Now
             </AlertDialogAction>

@@ -291,9 +291,9 @@ export const delegatedApprovalDispatchConsumerFactory = ({
   };
 
   const $handleEvent = async (event: TEvent): Promise<TEventConsumerResult> => {
-    const id = String(event.id);
+    const { id } = event;
 
-    const payload = DelegatedApprovalDispatchRequestedPayloadSchema.safeParse(event.payload);
+    const payload = DelegatedApprovalDispatchRequestedPayloadSchema.safeParse(event.data);
     if (!payload.success) {
       return {
         id,
@@ -310,7 +310,7 @@ export const delegatedApprovalDispatchConsumerFactory = ({
       return await $handleEvent(event);
     } catch (error) {
       return {
-        id: String(event.id),
+        id: event.id,
         status: EventResultStatus.Retry,
         error: error instanceof Error ? error.message : "Unknown error"
       };
@@ -323,8 +323,8 @@ export const delegatedApprovalDispatchConsumerFactory = ({
     const indexByRequest = new Map<string, number>();
 
     events.forEach((event) => {
-      const payload = DelegatedApprovalDispatchRequestedPayloadSchema.safeParse(event.payload);
-      const key = payload.success ? payload.data.delegatedRequestId : `event:${String(event.id)}`;
+      const payload = DelegatedApprovalDispatchRequestedPayloadSchema.safeParse(event.data);
+      const key = payload.success ? payload.data.delegatedRequestId : `event:${event.id}`;
       const existing = indexByRequest.get(key);
       if (existing === undefined) {
         indexByRequest.set(key, groups.length);
@@ -358,8 +358,8 @@ export const delegatedApprovalDispatchConsumerFactory = ({
 
   return {
     name: DELEGATED_APPROVAL_DISPATCH_CONSUMER,
-    payloadSchema: DelegatedApprovalDispatchRequestedPayloadSchema,
-    subscribesTo: (eventType: string) => eventType === DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
+    dataSchema: DelegatedApprovalDispatchRequestedPayloadSchema,
+    subscribesTo: (type: string) => type === DELEGATED_APPROVAL_DISPATCH_REQUESTED_EVENT,
     handle
   };
 };

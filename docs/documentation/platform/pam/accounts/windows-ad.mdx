@@ -1,101 +1,70 @@
 ---
 title: "Windows Active Directory accounts"
 sidebarTitle: "Windows AD"
-description: "Add and connect to Windows servers through Active Directory."
+description: "Give people remote desktop access to Windows servers with an Active Directory account."
 ---
 
-Windows AD accounts let you manage access to Windows servers using Active Directory domain credentials. Users connect through Web Access (a browser-based RDP client) or CLI (using your own RDP client) to any allowed host, and every [session](/documentation/platform/pam/sessions/overview) is recorded.
+A Windows AD account lets people open a remote desktop (RDP) session as an Active Directory domain account without seeing its password. One account can sign in to several servers, and you choose which ones in the account's list of allowed hosts. People connect with an RDP client in the browser or with their own RDP client through the Infisical CLI, and Infisical records each [session](/documentation/platform/pam/sessions/overview).
 
-<Note>
-Windows AD accounts require session recordings to be stored in an external S3 bucket. Configure this in the [template](/documentation/platform/pam/templates/overview) before creating Windows AD accounts.
-</Note>
+To sign in to one server with a local Windows account, use a [Windows account](/documentation/platform/pam/accounts/windows) instead.
 
-## Creating an account
+<Info>
+  Windows AD accounts are available under Infisical's [Enterprise](https://infisical.com/pricing) plan.
+</Info>
+
+## Prerequisites
+
+- The Admin [role](/documentation/platform/pam/concepts/access-control) on the [folder](/documentation/platform/pam/folders/overview) you'll add the account to
+- A [Gateway](/documentation/platform/gateways/overview) that can reach each allowed host on its RDP port
+- A Windows AD [template](/documentation/platform/pam/templates/overview) that stores recordings in [your own S3 bucket](/documentation/platform/pam/sessions/external-storage) (the default Windows AD template stores them in Infisical's database, so a Product Admin must change it or create another template)
+
+## Create an account
 
 <Steps>
-  <Step title="Start adding an account">
-    Go to **Privileged Access Management → Accounts** and select **Add Account**.
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and select **Add Account**.
   </Step>
-  <Step title="Select a folder and template">
-    Choose which [folder](/documentation/platform/pam/folders/overview) to add the account to, then select a Windows AD [template](/documentation/platform/pam/templates/overview).
+  <Step>
+    Select the **Folder** to add the account to and a Windows AD **Account Template**, then select **Next**.
   </Step>
-  <Step title="Enter connection details">
+  <Step>
+    Enter a **Name** for the account and the domain's connection details:
+
     | Field | Description |
     |-------|-------------|
-    | **Name** | A descriptive name (e.g., `domain-admin`) |
-    | **FQDN** | Fully qualified domain name (e.g., `corp.example.com`) |
-    | **DC Address** | Domain controller hostname or IP for LDAP |
-    | **Allowed Hosts** | Hostnames or IPs this account can connect to (one per line) |
-    | **LDAP Port** | LDAP port (default: 389) |
-    | **RDP Port** | RDP port (default: 3389) |
-    | **Use LDAPS** | Enable LDAP over SSL |
+    | **FQDN** | The domain's fully qualified domain name, such as `corp.example.com` |
+    | **DC Address** | The hostname or IP address of a domain controller |
+    | **Allowed Hosts** | The hostnames or IP addresses of the servers people can connect to (one per line) |
+    | **LDAP Port** | The domain controller's LDAP port (defaults to `389`) |
+    | **RDP Port** | The RDP port of the allowed hosts (defaults to `3389`) |
+    | **Use LDAPS** | Whether to connect to the domain controller over LDAPS |
+    | **WinRM Port** and **Use WinRM HTTPS** | How to connect to WinRM (defaults to port `5985` over HTTP) |
+    | **Gateway** | The Gateway that connects to the hosts (only shown if the template doesn't set one) |
+
+    Infisical uses the domain controller and WinRM settings for [credential rotation](/documentation/platform/pam/credential-rotation/windows), [credential health](/documentation/platform/pam/credential-health/overview) checks, and [dependency](/documentation/platform/pam/credential-rotation/windows#dependencies) detection, not for RDP sessions.
   </Step>
-  <Step title="Enter credentials">
-    | Field | Description |
-    |-------|-------------|
-    | **Username** | Domain username in `DOMAIN\username` format (e.g., `CORP\Administrator`) |
-    | **Password** | Domain password |
+  <Step>
+    Enter the **Username** in `DOMAIN\username` format, such as `CORP\Administrator`, and the **Password**.
   </Step>
-  <Step title="Save">
+  <Step>
     Select **Create**.
   </Step>
 </Steps>
 
-## Connecting
+## Connect
 
-<Tabs>
-  <Tab title="Web Access">
-    Web Access provides a browser-based RDP client:
+People can open a remote desktop in the browser or connect through the CLI. To learn how to launch a session, see [Connect to an account](/documentation/platform/pam/accounts/connect).
 
-    1. Go to **Privileged Access Management → Accounts**
-    2. Find the account and click the rocket icon (or select **Launch Session** from the menu)
-    3. If the account has multiple allowed hosts, select which host to connect to
-    4. Click **Connect in Browser**
-    5. A remote desktop session opens in a new tab
+If the account has more than one allowed host, select the **Host** to connect to when you launch the session. In the CLI, pass the host with `--target`:
 
-    You get a full Windows desktop. To disconnect, log out or close the tab.
-  </Tab>
-  <Tab title="CLI">
-    The CLI starts a local proxy that you connect to with your own RDP client:
+```bash
+infisical pam access <folder>/<account> --target <host>
+```
 
-    ```bash
-    infisical pam access <folder>/<account>
-    ```
+The CLI starts a local proxy and prints its port. Point your RDP client at `localhost` on that port, for example:
 
-    If the account has multiple allowed hosts, use `--target` to specify which one:
-    ```bash
-    infisical pam access <folder>/<account> --target <host>
-    ```
+```bash
+xfreerdp /v:localhost:<port>
+```
 
-    The command prints the local port. Connect your RDP client to `localhost` on that port:
-
-    ```bash
-    # Example using xfreerdp
-    xfreerdp /v:localhost:53306
-    ```
-
-    <Tip>
-    The port is dynamically assigned. Use the `--port` flag if you need a specific port:
-    `infisical pam access <folder>/<account> --port 13389`
-    </Tip>
-
-    Press `Ctrl+C` to end the session and close the proxy.
-  </Tab>
-</Tabs>
-
-## Allowed hosts
-
-Unlike single-server Windows accounts, Windows AD accounts can connect to multiple hosts. When you create the account, you define the list of allowed hosts. Users choose which host to connect to when launching a session.
-
-This is useful for domain admin accounts that need access to multiple servers — you can manage a single account with one set of credentials while controlling which servers it can access.
-
-## Next steps
-
-<CardGroup cols={2}>
-  <Card title="Windows Accounts" icon="windows" iconType="brands" href="/documentation/platform/pam/accounts/windows">
-    Add single-server Windows accounts.
-  </Card>
-  <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
-    View and manage sessions.
-  </Card>
-</CardGroup>
+Press `Ctrl+C` to end the session.

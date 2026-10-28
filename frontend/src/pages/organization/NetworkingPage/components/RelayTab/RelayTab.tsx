@@ -46,6 +46,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -232,21 +233,17 @@ export const RelayTab = withPermission(
                     </TableRow>
                   ))}
                 {filteredRelays?.map((el) => (
-                  <TableRow
-                    key={el.id}
-                    onClick={
-                      el.orgId
-                        ? () =>
-                            navigate({
-                              to: "/organizations/$orgId/networking/relays/$relayId",
-                              params: { orgId, relayId: el.id }
-                            })
-                        : undefined
-                    }
-                  >
+                  <TableRow key={el.id} linked={Boolean(el.orgId)}>
                     <TableCell>
                       <div className="flex min-w-0 items-center gap-2">
-                        <span className="min-w-0 flex-1 truncate">{el.name}</span>
+                        <RowLink
+                          to="/organizations/$orgId/networking/relays/$relayId"
+                          params={{ orgId, relayId: el.id }}
+                          disabled={!el.orgId}
+                          className="min-w-0 flex-1"
+                        >
+                          {el.name}
+                        </RowLink>
                         {!el.orgId && (
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -264,7 +261,7 @@ export const RelayTab = withPermission(
                     <TableCell>
                       <RelayHealthStatus heartbeat={el.heartbeat} />
                     </TableCell>
-                    <TableCell variant="action" onClick={(event) => event.stopPropagation()}>
+                    <TableCell variant="action">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton aria-label="Relay options" variant="ghost" size="sm">
@@ -300,6 +297,7 @@ export const RelayTab = withPermission(
             </Table>
           )}
           <AlertDialog
+            isPending={deleteRelayById.isPending}
             open={popUp.deleteRelay.isOpen}
             confirmationValue={(popUp.deleteRelay.data as { name?: string })?.name || "relay"}
             onOpenChange={(open) => handlePopUpToggle("deleteRelay", open)}
@@ -320,10 +318,9 @@ export const RelayTab = withPermission(
                 <AlertDescription>Deleting this relay cannot be undone.</AlertDescription>
               </Alert>
               <AlertDialogFooter>
-                <AlertDialogCancel isDisabled={deleteRelayById.isPending}>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   variant="danger"
-                  isPending={deleteRelayById.isPending}
                   onClick={(event) => {
                     event.preventDefault();
                     handleDeleteRelay();

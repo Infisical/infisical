@@ -60,7 +60,8 @@ export const registerDeprecatedProjectMembershipRouter = async (server: FastifyZ
         },
         data: {
           roles: [],
-          usernames: usernamesAndEmails
+          usernames: usernamesAndEmails,
+          skipUsersWithOrgAccess: true
         }
       });
 

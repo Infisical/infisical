@@ -340,6 +340,7 @@ const HoneyTokenDetailsContent = ({
         </AlertDialogContent>
       </AlertDialog>
       <AlertDialog
+        isPending={isRevoking}
         open={isRevokeOpen}
         confirmationValue={honeyToken.name}
         onOpenChange={setIsRevokeOpen}
@@ -359,17 +360,16 @@ const HoneyTokenDetailsContent = ({
           </AlertDialogHeader>
           <AlertDialogConfirmationField
             onConfirm={() => {
-              if (!isRevoking) handleRevoke().catch(() => undefined);
+              handleRevoke().catch(() => undefined);
             }}
           />
           <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={isRevoking}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               variant="danger"
-              isPending={isRevoking}
               onClick={(event) => {
                 event.preventDefault();
-                if (!isRevoking) handleRevoke().catch(() => undefined);
+                handleRevoke().catch(() => undefined);
               }}
             >
               Revoke

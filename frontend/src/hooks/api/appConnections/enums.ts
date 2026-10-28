@@ -91,5 +91,6 @@ export enum AppConnection {
   Keeper = "keeper",
   HpeIloRedFish = "hpe-ilo",
   ServiceNow = "servicenow",
-  S3Compatible = "s3-compatible"
+  S3Compatible = "s3-compatible",
+  Jira = "jira"
 }

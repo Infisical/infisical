@@ -1,0 +1,182 @@
+---
+title: "MCP servers"
+description: "Remote MCP servers that an AI agent can use during a session without holding their credentials."
+---
+
+An MCP service lets an agent use a remote [MCP server](https://modelcontextprotocol.io/), such as Linear's or Notion's, during a [session](/documentation/platform/agent-vault/sessions). It's one of the two types of [service](/documentation/platform/agent-vault/services) you can add to an access bundle. The other type, an HTTP service, covers a web API that the agent calls directly.
+
+You add the MCP server to your agent with its real URL and no credentials. When the agent connects to the server, the [proxy](/documentation/platform/agent-vault/proxies) attaches the service's credential, so the agent can call the server's tools without ever holding the credential.
+
+## Prerequisites
+
+- The [Admin role](/documentation/platform/agent-vault/access-control) in Agent Vault
+- An [access bundle](/documentation/platform/agent-vault/access-bundles) to add the MCP server to
+- A running [proxy](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it) that your agent can reach
+- An account with the MCP server's provider, or a token the server accepts
+
+## Add an MCP server
+
+<Steps>
+  <Step>
+    In Agent Vault, go to **Access Bundles**. Select your access bundle, then select **Add Service**.
+  </Step>
+  <Step>
+    On the **Choose a template** panel, pick a template under **MCP Servers**, or select **Custom MCP Server** to connect any other remote MCP server.
+  </Step>
+  <Step>
+    On the **Details** step, enter a **Name**, and check the [**Transport** and **Server URL**](#server-url-and-transport). A template fills in the transport and server URL for you. Select **Continue**.
+  </Step>
+  <Step>
+    On the **Credential** step, pick a **Credential Type** and set up the [credential](#credential-types). Select **Continue**.
+  </Step>
+  <Step>
+    On the **Review** step, select **Add Service**. The service appears in the bundle's list with the type **MCP Server**.
+  </Step>
+</Steps>
+
+Next, [connect your agent](#connect-your-agent) to the MCP server.
+
+## Server URL and transport
+
+- **Server URL:** The URL your agent connects to, such as `https://mcp.linear.app/mcp` (it must start with `https://`, and can't include a username, password, query string, or fragment)
+- **Transport:** **Streamable HTTP** for most servers, or **SSE** if the server uses the older HTTP+SSE transport
+
+The service covers every request to the server URL's host, whatever the path. If the URL includes a port other than `443`, the service covers only that port. Two services in the same access bundle can't cover the same host, as described in [host conflicts](/documentation/platform/agent-vault/http-apis#host-conflicts).
+
+## Credential types
+
+### OAuth
+
+With OAuth, you sign in to the provider from Infisical, and Infisical stores the tokens the provider returns. If the provider also returns a refresh token, Infisical renews the access token before the token expires. If the provider doesn't return one, [reauthorize the service](#troubleshooting) when the access token expires or the server rejects it. The proxy only receives the access token, and the agent never receives any token.
+
+<Steps>
+  <Step>
+    Under **Credential Type**, select **OAuth**, then select **Authorize**.
+
+    <Note>
+      Some servers, such as GitHub's, don't let Infisical register itself as an OAuth client. For these servers, Infisical asks for an OAuth app of your own instead. Create an OAuth app with the provider, and set its redirect URI to the **Redirect URI** that Infisical shows. Then enter the app's **Client ID** and **Client Secret** (leave **Client Secret** empty for a public client), and authorize again.
+    </Note>
+  </Step>
+  <Step>
+    In the pop-up window, sign in to the provider and approve access.
+  </Step>
+  <Step>
+    When Infisical shows **Authorized** and the scopes the provider granted, select **Continue**. **Continue** stays disabled until the authorization succeeds.
+  </Step>
+</Steps>
+
+<Warning>
+  Every session that uses the access bundle calls tools as the account you signed in with. Sign in with an account that has only the access your agents need.
+</Warning>
+
+### Bearer token
+
+With a Bearer token, you paste a token the MCP server accepts into **Token**, such as a [GitHub personal access token](https://github.com/settings/tokens) for GitHub MCP. The proxy sends the token as `Authorization: Bearer <token>`.
+
+To send the token in a different header or with a different prefix, expand **Advanced Options** and change **Header Name** or **Prefix**. To use a token that several services share, type `{{` in **Token** and select a [variable](/documentation/platform/agent-vault/variables).
+
+## Custom headers
+
+If the MCP server needs another header besides the credential, such as an organization ID, add it as a custom header. The proxy adds custom headers to every request to the server, whichever auth method the service uses.
+
+<Steps>
+  <Step>
+    On the **Credential** step, expand **Advanced Options** and select **Add Custom Header**.
+  </Step>
+  <Step>
+    Enter the header's **Name**, an optional **Prefix**, and the **Value**. To use a [variable](/documentation/platform/agent-vault/variables), type `{{` in **Value**.
+  </Step>
+</Steps>
+
+Infisical won't save a custom header with the same name as the credential's header, which is `Authorization` unless you changed a Bearer token's **Header Name**. Infisical also won't save a header that the proxy sets itself, such as `Host` or `Content-Length`.
+
+## Connect your agent
+
+<Steps>
+  <Step>
+    [Create a session](/documentation/platform/agent-vault/sessions#create-a-session) for the access bundle, and copy the `infisical agent-vault run` command it gives you.
+  </Step>
+  <Step>
+    Add the MCP server to your agent by its server URL. Don't add a token, and don't sign in to the server from the agent.
+
+    <Tabs>
+      <Tab title="Claude Code">
+        ```bash
+        claude mcp add --transport http linear https://mcp.linear.app/mcp
+        ```
+
+        If the service uses the SSE transport, use `--transport sse` instead.
+      </Tab>
+      <Tab title="Codex">
+        In `~/.codex/config.toml`, add the server by its URL:
+
+        ```toml
+        [mcp_servers.linear]
+        url = "https://mcp.linear.app/mcp"
+        ```
+
+        Codex connects to remote MCP servers only over Streamable HTTP. If the service uses the SSE transport, use an agent that supports SSE, such as Claude Code.
+
+        Don't use `codex mcp add`, which starts the server's OAuth sign-in from the agent, and don't run `codex mcp login` for the server.
+      </Tab>
+      <Tab title="OpenCode">
+        In `opencode.json`, add the server as a remote MCP server with OAuth turned off:
+
+        ```json
+        {
+          "$schema": "https://opencode.ai/config.json",
+          "mcp": {
+            "linear": {
+              "type": "remote",
+              "url": "https://mcp.linear.app/mcp",
+              "oauth": false
+            }
+          }
+        }
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+  <Step>
+    Start the agent with the command from the session. For example, with Claude Code:
+
+    ```bash
+    infisical agent-vault run --session-token <session-token> --proxy <proxy-host>:17323 -- claude
+    ```
+  </Step>
+  <Step>
+    Ask the agent to use one of the server's tools, such as listing your Linear issues. The call appears in the [session's logs](/documentation/platform/agent-vault/session-logs#viewing-session-logs) with the [tool name](/documentation/platform/agent-vault/session-logs#mcp-tool-calls).
+  </Step>
+</Steps>
+
+## Limitations
+
+- **Remote servers only:** An MCP service covers MCP servers that the agent reaches over HTTPS. A local MCP server that the agent starts as a process isn't an MCP service, but you can add [HTTP services](/documentation/platform/agent-vault/http-apis) for the APIs that the local server calls
+- **No OAuth on private networks:** Infisical connects to the MCP server and to the provider to set up OAuth and refresh the access token, so if either one is on a private network, use a [Bearer token](#bearer-token) instead, or set [`ALLOW_INTERNAL_IP_CONNECTIONS`](/self-hosting/configuration/envars#param-allow-internal-ip-connections) to `true` if you self-host Infisical on that network
+- **No tool filtering:** The agent can call every tool the server offers to the credential, so limit what the agent can do through the credential's own permissions
+- **No connectors that run in a vendor's cloud:** Custom connectors in claude.ai or ChatGPT connect from the vendor's servers, so their traffic never reaches your proxy
+- **No WebSocket transports:** The proxy doesn't support [WebSocket connections](/documentation/platform/agent-vault/proxies#supported-connections)
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="The agent gets a 502 response from the MCP server">
+    If the server rejects an OAuth service's token, the proxy gets a fresh token from Infisical and sends the request again. If that doesn't work, or if the server rejects a Bearer token, the proxy returns a `502` response to the agent. Its message says what to do:
+
+    - **The service needs to be reauthorized:** The provider no longer accepts the service's login, or the server asked for scopes the authorization lacks. The access bundle's **Services** table shows **Needs Reauthorization** or **Missing Scopes** for the service. Open the service's menu, select **Edit**, and continue to the **Credential** step. Select **Reauthorize**, sign in to the provider again, then continue and select **Save**.
+    - **Try again in a moment:** The proxy couldn't get a valid token from Infisical this time. Try the tool call again.
+    - **The service's credential was rejected:** The server rejected the service's Bearer token. Edit the service and paste a new token.
+  </Accordion>
+  <Accordion title="Authorize fails on a self-hosted instance">
+    The redirect URI that Infisical gives the provider is your instance's `SITE_URL` followed by `/agent-vault/oauth/callback`. Check that:
+
+    - `SITE_URL` is set to the URL you use to open Infisical
+    - `SITE_URL` uses `https://` (providers such as Linear refuse a redirect URI on plain `http://` unless the host is `localhost`)
+  </Accordion>
+  <Accordion title="The agent asks you to sign in to the MCP server">
+    The request reached the server without a credential. Check that:
+
+    - The agent runs through `infisical agent-vault run` with a session for the access bundle
+    - The server URL in the agent has the same host as the service's **Server URL**
+  </Accordion>
+</AccordionGroup>

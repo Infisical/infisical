@@ -95,7 +95,7 @@ type TAuthLoginServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   mfaLockoutService: Pick<
     TMfaLockoutServiceFactory,
-    "handleFailedMfaAttempt" | "resetMfaLockStatus" | "recordRecentMfaAuth"
+    "handleFailedMfaAttempt" | "resetMfaLockStatus" | "recordRecentMfaAuth" | "clearRecentMfaAuth"
   >;
 };
 
@@ -256,6 +256,10 @@ export const authLoginServiceFactory = ({
       tx
     );
     if (!tokenSession) throw new Error("Failed to create token");
+
+    // Logins from the same IP and user agent reuse one session row, so a password-only
+    // login would otherwise inherit the MFA an earlier login proved on it.
+    if (!isMfaVerified) await mfaLockoutService.clearRecentMfaAuth(userId, tokenSession.id);
 
     let tokenSessionExpiresIn: string | number = cfg.JWT_AUTH_LIFETIME;
     let refreshTokenExpiresIn: string | number = cfg.JWT_REFRESH_LIFETIME;
