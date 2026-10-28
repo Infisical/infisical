@@ -69,6 +69,7 @@ export enum ApiDocsTags {
   Integrations = "Integrations",
   ServiceTokens = "Service Tokens",
   AuditLogs = "Audit Logs",
+  Alerting = "Alerting",
   PkiCertificateAuthorities = "PKI Certificate Authorities",
   PkiCertificates = "PKI Certificates",
   PkiCertificatePolicies = "PKI Certificate Policies",
