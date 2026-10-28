@@ -56,8 +56,13 @@ export const useSetAgentVaultDelegation = () => {
       );
       return data.delegation;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.delegations(currentOrg.id) });
+    // A save sends the whole list, so the next edit has to start from this one, not from a refetch
+    // that reads a replica which may not have the write yet.
+    onSuccess: (delegation, { machineIdentityId }) => {
+      queryClient.setQueryData(
+        agentVaultKeys.delegation(currentOrg.id, machineIdentityId),
+        delegation
+      );
     }
   });
 };
@@ -72,8 +77,8 @@ export const useDeleteAgentVaultDelegation = () => {
       );
       return data.delegation;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: agentVaultKeys.delegations(currentOrg.id) });
+    onSuccess: (_, { machineIdentityId }) => {
+      queryClient.setQueryData(agentVaultKeys.delegation(currentOrg.id, machineIdentityId), null);
     }
   });
 };

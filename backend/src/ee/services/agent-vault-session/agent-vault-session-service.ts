@@ -334,7 +334,12 @@ export const agentVaultSessionServiceFactory = ({
               ...session,
               revokedAt: current.revokedAt ?? null,
               userId: current.userId ?? null,
-              identityId: current.identityId ?? null
+              identityId: current.identityId ?? null,
+              actingIdentityId: current.actingIdentityId ?? null,
+              actingIdentity: session.actingIdentity && {
+                ...session.actingIdentity,
+                id: current.actingIdentityId ?? null
+              }
             }
           : session
       ),

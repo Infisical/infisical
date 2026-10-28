@@ -5026,6 +5026,44 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("a revoke that finds the acting identity just deleted reports the session as it is now", async () => {
+      const bundle = await createAccessBundle(`obo-revoke-race-${Date.now()}`);
+      const bot = await createMemberIdentity(`obo-revoke-race-bot-${Date.now()}`);
+      try {
+        await grantBundle(bundle.id, { machineIdentityIds: [bot.id] });
+        await delegate(bot, { scope: "selected", userIds: [seedData1.id] });
+        const minted = await mintFor(bot, { userId: seedData1.id }, bundle.name);
+        expect(minted.statusCode).toBe(200);
+        const sessionId = minted.json().session.id as string;
+
+        // The revoke reads the session first, then queues its write behind this lock. Deleting the identity sets
+        // actingIdentityId to NULL, so the write skips the row and the answer comes from a read of the primary.
+        const trx = await testDb.transaction();
+        try {
+          const { rows } = await trx.raw("select pg_backend_pid() as pid");
+          await trx("agent_vault_sessions").where({ id: sessionId }).forUpdate().first();
+
+          const pending = inject("POST", `${sessionsUrl}/${sessionId}/revoke`);
+          await waitUntilBlockedBy(rows[0].pid);
+          await trx("agent_vault_sessions").where({ id: sessionId }).update({ actingIdentityId: null });
+          await trx.commit();
+
+          const revoked = await pending;
+          expect(revoked.statusCode).toBe(200);
+          expect(revoked.json().session).toMatchObject({
+            status: "revoked",
+            revokedAt: null,
+            actingIdentity: { id: null, name: expect.stringContaining("obo-revoke-race-bot-") }
+          });
+        } catch (err) {
+          if (!trx.isCompleted()) await trx.rollback();
+          throw err;
+        }
+      } finally {
+        await bot.cleanup();
+      }
+    });
+
     test("a delegation names Agent Vault members, and only an admin or the identity itself reads it", async () => {
       const projectId = await getProjectId();
       const bot = await createMemberIdentity(`obo-api-bot-${Date.now()}`);
