@@ -205,7 +205,7 @@ const SkillSheetBody = ({
         type: unchanged ? "info" : "success"
       });
       setDialog(null);
-      setEdit((prev) => prev && { ...prev, baseFiles: prev.draft });
+      setEdit((prev) => prev && { ...prev, baseVersion: published.version, baseFiles: prev.draft });
       setViewedVersion(null);
     } catch {
       // The global mutation handler shows the server's message.
@@ -358,7 +358,12 @@ const SkillSheetBody = ({
                       </DropdownMenuItem>
                     )}
                     {canEdit && (
-                      <DropdownMenuItem onClick={() => setDialog("upload")}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setDialog("upload");
+                          refetchSkill();
+                        }}
+                      >
                         <UploadIcon />
                         Upload New Version
                       </DropdownMenuItem>

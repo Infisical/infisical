@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { FileTextIcon, RotateCwIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
@@ -68,6 +68,8 @@ export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad
     skill?.latestVersion
   );
   const [upload, setUpload] = useState<TUploadState>({ status: "empty" });
+  // A file on a cloud or network drive can take seconds to read; a read that outlives its upload is dropped.
+  const readIdRef = useRef(0);
 
   // A new version keeps the modes the previous one gave each path, and a lone .md replaces only SKILL.md.
   const filesToPublish = useMemo(() => {
@@ -81,6 +83,7 @@ export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad
   }, [upload, skill, latest.data]);
 
   const close = () => {
+    readIdRef.current += 1;
     setUpload({ status: "empty" });
     onOpenChange(false);
   };
@@ -89,6 +92,8 @@ export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad
     useDiscardChangesGuard({ isDirty: upload.status !== "empty", onDiscard: close });
 
   const selectFile = async (file?: File) => {
+    readIdRef.current += 1;
+    const readId = readIdRef.current;
     if (!file) {
       setUpload({ status: "empty" });
       return;
@@ -96,6 +101,7 @@ export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad
     setUpload({ status: "reading", file });
     try {
       const files = await readSkillUpload(file);
+      if (readId !== readIdRef.current) return;
       // Creating: the editor is the review step, so the files go straight there.
       if (!skill) {
         onLoad?.({
@@ -112,6 +118,7 @@ export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad
         isEntryOnly: file.name.toLowerCase().endsWith(".md")
       });
     } catch (error) {
+      if (readId !== readIdRef.current) return;
       setUpload({
         status: "invalid",
         file,
