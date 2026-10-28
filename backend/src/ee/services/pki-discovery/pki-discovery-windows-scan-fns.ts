@@ -256,7 +256,8 @@ const STORE_NAMES: Record<string, string> = {
 
 export const summarizeWindowsScanIssues = (
   hostIdentifier: string,
-  response: TWindowsCertificateScanResponse
+  response: TWindowsCertificateScanResponse,
+  importStandaloneCa = false
 ): string[] => {
   const issues: string[] = [];
   const denied = response.deniedStores ?? [];
@@ -270,7 +271,7 @@ export const summarizeWindowsScanIssues = (
   const unreadable = (response.certificates ?? []).filter(
     (cert) =>
       cert.status !== HostCertificateFileStatus.Ok &&
-      !(CA_ONLY_WINDOWS_STORES as readonly string[]).includes(cert.store)
+      (importStandaloneCa || !(CA_ONLY_WINDOWS_STORES as readonly string[]).includes(cert.store))
   );
   if (unreadable.length > 0) {
     const listed = unreadable
@@ -331,7 +332,7 @@ const scanWindowsConnection = async (
     const response = await withConnectionScanSlot(host.connectionId, AppConnection.WinRM, deps, () =>
       runWindowsCertificateScan(host, run.targetConfig.certificateStores, deps)
     );
-    issues.push(...summarizeWindowsScanIssues(host.hostIdentifier, response));
+    issues.push(...summarizeWindowsScanIssues(host.hostIdentifier, response, run.ctx.importStandaloneCaCertificates));
 
     const scannedHost = { ...host, hostname: response.host.hostname };
     const pool = (response.pool ?? []).map((der) => Buffer.from(der, "base64"));

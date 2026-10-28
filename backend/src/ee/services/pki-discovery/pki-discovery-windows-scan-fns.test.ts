@@ -173,6 +173,25 @@ describe("summarizeWindowsScanIssues", () => {
     ]);
   });
 
+  test("reports unreadable CA store certificates only when CA certificates are imported", () => {
+    const response = {
+      host: { hostname: "web-01" },
+      certificates: [
+        {
+          store: WindowsCertificateStore.IntermediateCertificationAuthorities,
+          thumbprint: "CC",
+          hasPrivateKey: false,
+          status: HostCertificateFileStatus.ParseError,
+          chains: []
+        }
+      ]
+    };
+    expect(summarizeWindowsScanIssues("web-01", response)).toEqual([]);
+    expect(summarizeWindowsScanIssues("web-01", response, true)).toEqual([
+      "web-01: These certificates could not be read: Intermediate Certification Authorities (CC)"
+    ]);
+  });
+
   test("tells the user to select fewer stores when the response was too large", () => {
     expect(
       summarizeWindowsScanIssues("web-01", {
