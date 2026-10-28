@@ -14,8 +14,8 @@ All commands run from the `backend/` directory:
 
 - `npm run dev` — start dev server with tsx watch + pino-pretty logging (`dev:docker` is the same with the debugger on 9229)
 - `npm run build` — production build via tsdown (`tsdown.config.ts`) with sourcemaps
-- `npm run lint:fix` — ESLint autofix
-- `npm run type:check` — TypeScript check (uses 8GB heap)
+- `npm run lint:fix` — Oxlint autofix, then Oxfmt formatting (`npm run lint` checks both without writing, as CI does)
+- `npm run type:check` — TypeScript 7 (native compiler) check
 - `make reviewable-api` (from repo root) — runs `lint:fix` + `type:check` (run before PRs)
 
 The backend runs on Node 26. TypeScript files run directly through tsx (dev server, scripts, the
@@ -201,16 +201,27 @@ Notes:
 
 Path alias: `@app/*` maps to `./src/*`.
 
-## ESLint & Import Ordering
+## Linting, Formatting & Import Ordering
 
-Config in `.eslintrc.js`. Uses `simple-import-sort` with this group order:
+Oxlint (`.oxlintrc.json`) lints; its type-aware rules run through `oxlint-tsgolint` on TypeScript 7.
+Existing `eslint-disable` comments, including `@typescript-eslint/` rule names, are honoured by Oxlint.
+`import/no-cycle` is off: the backend has thousands of cycles through `@app/*` that ESLint's resolver never saw.
+Type-aware linting is the `--type-aware` CLI flag, not `options.typeAware`: Oxlint rejects that option in a nested
+config, which is what `backend/.oxlintrc.json` is to an editor opened at the repo root.
+Editor setup for the Oxc extension lives in `backend/.vscode/` and `backend/.zed/`.
+
+Oxfmt (`.oxfmtrc.json`) formats `src/**/*.ts` and sorts imports in this group order:
 1. Side-effect imports
 2. `node:` builtins
 3. Third-party packages
 4. `@app/` imports
-5. `@lib/` imports
-6. `@server/` imports
-7. Relative imports
+5. Other absolute imports (`e2e-test/`)
+6. Relative imports
+
+Since TypeScript 5.7, `Buffer` is typed as possibly `SharedArrayBuffer`-backed, which WebCrypto, `@peculiar/x509`,
+asn1 and pkijs reject. Declare `Buffer<ArrayBuffer>` (not the deprecated `NonSharedBuffer` alias) where a function really
+returns one (for example `Buffer.concat`, `Buffer.from`, cipher output), and use `asNonSharedBuffer` from `@app/lib/fn` at a call
+site that receives a plain `Buffer`.
 
 ## Architecture
 
@@ -1380,7 +1391,7 @@ OpenTelemetry metric setup lives in `src/lib/telemetry/`. Instruments are define
 
 **Recording is fire-and-forget.** Every `.add()` / `.record()` and every `record*Metric` helper is wrapped in `safely()` in `metrics.ts`, so a broken exporter, a bad instrument name, or a config read before `initEnvConfig()` can never throw into the code being measured. A measurement is an observation of the work, never a step in it — so call sites do not need their own try/catch, and must not treat a metric as something that can fail. The swallow is silent because the logger is itself initialised from config.
 
-**A new instrument goes on `InfisicalCore` and carries only bounded attributes.** The per-actor labels on the legacy meters are a deliberate exception, not a precedent: they are allowed only through `highCardinalityMeter`, so that `OTEL_DROP_HIGH_CARDINALITY_METERS` can switch them off. Do not put unbounded attributes on any other meter, and do not acquire a meter outside `src/lib/telemetry/` — ESLint blocks both `@opentelemetry/*` imports and `getMeter` access there, so use `highCardinalityMeter` for per-actor instruments and `resolveCoreMeter` for `InfisicalCore` observable gauges.
+**A new instrument goes on `InfisicalCore` and carries only bounded attributes.** The per-actor labels on the legacy meters are a deliberate exception, not a precedent: they are allowed only through `highCardinalityMeter`, so that `OTEL_DROP_HIGH_CARDINALITY_METERS` can switch them off. Do not put unbounded attributes on any other meter, and do not acquire a meter outside `src/lib/telemetry/` — Oxlint blocks both `@opentelemetry/*` imports and `getMeter` access there, so use `highCardinalityMeter` for per-actor instruments and `resolveCoreMeter` for `InfisicalCore` observable gauges.
 
 The gate has to sit at the call site because **a `DROP` aggregation does not bound memory; only an attributes processor does.** The SDK filters attributes *before* hashing them (so the allowlist View is bounded) but consults the aggregator *after* (so a dropped data point has already been keyed by its full attribute set). Under cumulative temporality — which `OTEL_EXPORT_TYPE=prometheus` mandates — `TemporalMetricProcessor` then retains one entry per distinct attribute set, with no cardinality cap, for the lifetime of the process. A meter whose data points are dropped therefore still leaks heap if anything records to it, which is why the flag stops the recording (`shouldRecordHighCardinalityMetrics` in `metrics.ts`) *and* the View strips attributes. With the flag off — the self-hosted default — that retention is the operator's informed choice; the tradeoff is documented in the monitoring guide.
 
@@ -1458,7 +1469,7 @@ Consequences worth knowing:
 - **A migration must never call `*WithRootEncryptionKey` or `buildSecretBlindIndexFromName`.** Migrations run
   before `kmsService.startService`, so they cannot reach the snapshot and fall back to `process.env`, which on
   a rotated instance is the wrong key: decrypts fail the auth tag, encrypts silently write unreadable rows.
-  ESLint blocks this under `src/db/migrations/`; the pre-existing call sites carry a file-level disable
+  Oxlint blocks this under `src/db/migrations/`; the pre-existing call sites carry a file-level disable
   explaining why they are safe.
 - **Exactly one retained key survives a promotion, enforced at promotion, not by the GC.** A second
   rotation before the first was completed would otherwise leave an older wrapper of the root key that

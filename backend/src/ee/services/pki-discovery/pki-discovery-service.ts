@@ -332,7 +332,7 @@ export const pkiDiscoveryServiceFactory = ({
     const isGatewayChanging = gatewayIdValue !== undefined || gatewayPoolIdValue !== undefined;
     const effectiveHasGateway = Boolean(
       (gatewayIdValue === undefined ? discovery.gatewayId : gatewayIdValue) ||
-        (gatewayPoolIdValue === undefined ? discovery.gatewayPoolId : gatewayPoolIdValue)
+      (gatewayPoolIdValue === undefined ? discovery.gatewayPoolId : gatewayPoolIdValue)
     );
 
     $assertJobGatewayAllowed(discoveryType, Boolean(gatewayId || gatewayPoolId));

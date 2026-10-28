@@ -9,7 +9,6 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { SecretOperations } from "@app/services/secret/secret-types";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
 import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
@@ -21,6 +20,7 @@ import {
 } from "@app/services/secret-validation-rule/secret-validation-rule-errors";
 import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { TValidateSecretsDTO } from "@app/services/secret-validation-rule/secret-validation-rule-types";
+import { SecretOperations } from "@app/services/secret/secret-types";
 
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import {

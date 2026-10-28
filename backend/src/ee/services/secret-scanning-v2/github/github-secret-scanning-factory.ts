@@ -1,8 +1,6 @@
 import { join } from "path";
 import { ProbotOctokit } from "probot";
 
-import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
-import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import {
   SecretScanningDataSource,
   SecretScanningFindingSeverity
@@ -25,6 +23,8 @@ import {
   TSecretScanningFactoryTeardown,
   TSecretScanningFactoryValidateConfigUpdate
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
+import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { BasicRepositoryRegex } from "@app/lib/regex";
