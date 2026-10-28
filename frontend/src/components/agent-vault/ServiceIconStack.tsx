@@ -98,8 +98,9 @@ export const ServiceIconStack = ({ hostPatterns, maxVisible = 4, className }: Pr
   return (
     // The leftmost chip has to paint on top, and flex-row-reverse cannot do it: reversing the
     // direction moves a chip visually and its paint order follows, so the right edge wins either
-    // way. `isolate` confines these depths to the stack.
-    <div className={cn("isolate flex items-center -space-x-1.5", className)}>
+    // way. `isolate` confines these depths to the stack, which also traps the chips below a linked
+    // row's overlay, so the stack itself is marked interactive for RowLink to lift it.
+    <div data-row-interactive className={cn("isolate flex items-center -space-x-1.5", className)}>
       {/* A screen reader never opens the hover tooltips, so it reads the names here. First, since the
           spacing puts a negative margin on every child but the last, and the last has to stay a chip. */}
       <span className="sr-only">{icons.map((icon) => icon.label).join(", ")}</span>
@@ -119,9 +120,16 @@ export const ServiceIconStack = ({ hostPatterns, maxVisible = 4, className }: Pr
       {hidden.length > 0 && (
         <Tooltip>
           <TooltipTrigger asChild>
+            {/* Inside a linked row, RowLink lifts every tooltip trigger to z-10, so the overflow chip
+                needs its own depth to stay under the last icon like the rest of the stack. */}
             <div
               aria-hidden
-              className={cn(chipClassName, stackedChipClassName, "text-[10px] font-medium")}
+              className={cn(
+                chipClassName,
+                stackedChipClassName,
+                "relative text-[10px] font-medium"
+              )}
+              style={{ zIndex: 0 }}
             >
               +{hidden.length}
             </div>
