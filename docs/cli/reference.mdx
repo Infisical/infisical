@@ -630,20 +630,6 @@ Without `--all` or `--profile`, the command logs out of the profile in effect. S
 </CLICommand>
 
 <CLICommand
-  id="migrate-config"
-  command="migrate-config"
-  examples={[
-    { title: "Convert the legacy project config", code: "infisical migrate-config" },
-  ]}
->
-
-Convert a legacy `.infisical.json` into `.infisical.yaml`. The command looks for the project config in the current directory, then in each parent directory. It writes `.infisical.yaml` next to the file it finds, copies every setting into it, and deletes `.infisical.json`.
-
-If the project already uses `.infisical.yaml`, the command changes nothing. It warns you when a leftover `.infisical.json` sits in the same directory, because `.infisical.yaml` takes precedence and the old file is no longer read. See [Migrate to .infisical.yaml](/cli/project-config-migration) for the full steps.
-
-</CLICommand>
-
-<CLICommand
   id="org"
   command="org"
 >
