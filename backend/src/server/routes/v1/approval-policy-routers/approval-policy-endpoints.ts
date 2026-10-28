@@ -5,6 +5,7 @@ import { APPROVAL_POLICY_AUTO_APPROVAL } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { auditSafeText } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { isUserSessionAuth } from "@app/server/plugins/auth/inject-identity";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -629,7 +630,7 @@ export const registerApprovalPolicyEndpoints = ({
         requestId: z.string().uuid()
       }),
       body: z.object({
-        comment: z.string().optional()
+        comment: auditSafeText(z.string(), { allowMultiline: true }).optional()
       }),
       response: {
         200: z.object({
@@ -693,7 +694,7 @@ export const registerApprovalPolicyEndpoints = ({
         requestId: z.string().uuid()
       }),
       body: z.object({
-        bypassReason: z.string().min(10).max(500)
+        bypassReason: auditSafeText(z.string().min(10).max(500), { allowMultiline: true })
       }),
       response: {
         200: z.object({
@@ -758,7 +759,7 @@ export const registerApprovalPolicyEndpoints = ({
         requestId: z.string().uuid()
       }),
       body: z.object({
-        comment: z.string().optional()
+        comment: auditSafeText(z.string(), { allowMultiline: true }).optional()
       }),
       response: {
         200: z.object({

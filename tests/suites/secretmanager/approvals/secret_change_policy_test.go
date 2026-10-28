@@ -9,6 +9,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
@@ -330,6 +331,34 @@ func TestSecretApprovalPolicy_Create(t *testing.T) {
 			"Failed to create secret approval policy due to plan restriction. Upgrade plan to create secret approval policy.",
 			res.JSON400.Message)
 		secretmanager.CreateSecret(t, proj, "dev", "API_KEY", "value", secretmanager.As(committer))
+	})
+
+	t.Run("should refuse and create no policy when a secret change policy receives a delegated approval", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		reviewer := proj.NewUser(t, fixture.WithPrincipalName("reviewer"))
+		conn := newDelegatedApprovalSystem(t, tn)
+
+		// Action
+		res, err := tn.Admin.API.CreateSecretApprovalPolicyWithBodyWithResponse(t.Context(), "application/json",
+			jsonBody(t, map[string]any{
+				"projectId":         proj.ID,
+				"environment":       "dev",
+				"secretPath":        "/",
+				"approvers":         []map[string]any{{"type": "user", "id": reviewer.ID}},
+				"delegatedApproval": delegatedApproval(conn),
+			}))
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusBadRequest, res.StatusCode(), "%s", apierr.Body(res.Body))
+		require.Equal(t,
+			"Only secret access policies can be handled by a delegated approval system. Remove delegatedApproval from the request.",
+			res.JSON400.Message)
+		require.Nil(t, policyAt(t, proj, "dev", "/"))
 	})
 }
 

@@ -1,5 +1,6 @@
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { THsmConnectorDALFactory } from "@app/services/hsm-connector/hsm-connector-dal";
@@ -77,7 +78,7 @@ export const hsmCaKeySourceFactory = ({
 
       const caPublicKey = await crypto.nativeCrypto.subtle.importKey(
         "spki",
-        publicKeySpki,
+        asNonSharedBuffer(publicKeySpki),
         caKeyAlgorithmToHsmShape(keyAlgorithm).importParams,
         true,
         ["verify"]

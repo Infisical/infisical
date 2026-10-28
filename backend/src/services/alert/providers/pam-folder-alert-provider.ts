@@ -2,12 +2,12 @@ import { ForbiddenError } from "@casl/ability";
 import { z } from "zod";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { PamAccessType } from "@app/ee/services/pam/pam-enums";
-import { checkFolderPermission, verifyProductMembership } from "@app/ee/services/pam/pam-permission";
 import {
   PAM_FOLDER_RESOURCE_TYPE,
   PamAccessRequestEvent
 } from "@app/ee/services/pam-access-request/pam-access-request-events";
+import { PamAccessType } from "@app/ee/services/pam/pam-enums";
+import { checkFolderPermission, verifyProductMembership } from "@app/ee/services/pam/pam-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ResourcePermissionPamResourceActions,

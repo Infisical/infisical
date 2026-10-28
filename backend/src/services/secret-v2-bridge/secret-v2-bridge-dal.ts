@@ -16,8 +16,8 @@ import {
   TFindOpt
 } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
-import { SecretSortField } from "@app/services/secret/secret-types";
 import type { TFindSecretsByFolderIdsFilter } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import { SecretSortField } from "@app/services/secret/secret-types";
 
 export const SecretServiceCacheKeys = {
   get productKey() {

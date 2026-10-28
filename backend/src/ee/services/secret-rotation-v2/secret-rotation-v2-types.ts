@@ -4,8 +4,8 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { OrderByDirection } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { TConstraints } from "@app/services/secret-validation-rule/secret-validation-rule-types";
+import { SecretsOrderBy } from "@app/services/secret/secret-types";
 
 import { TGatewayPoolServiceFactory } from "../gateway-pool/gateway-pool-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
