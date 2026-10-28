@@ -413,10 +413,18 @@ export type TUpdateAgentVaultSessionLabelDTO = {
 
 export type TAgentVaultProxySettingsDTO = {
   name: string;
-  description?: string | null;
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
+};
+
+export type TCreateAgentVaultProxyDTO = TAgentVaultProxySettingsDTO & {
+  description?: string;
+};
+
+export type TUpdateAgentVaultProxyDTO = Partial<TAgentVaultProxySettingsDTO> & {
+  proxyId: string;
+  description?: string | null;
 };
 
 export type TAgentVaultSessionLogExternalStorage = {

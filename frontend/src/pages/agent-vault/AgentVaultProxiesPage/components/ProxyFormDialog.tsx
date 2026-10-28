@@ -28,11 +28,11 @@ import {
   Input,
   RadioGroup,
   RadioGroupItem,
-  TextArea,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { agentVaultDescriptionSchema } from "@app/helpers/agentVaultDescription";
 import { addHostListIssues } from "@app/helpers/agentVaultHostPattern";
 import {
   AgentVaultTrafficPolicy,
@@ -58,7 +58,7 @@ const TRAFFIC_POLICY_CHOICES = [
 const schema = z
   .object({
     name: slugSchema({ max: 64, field: "Name" }),
-    description: z.string().trim().max(256).optional(),
+    description: agentVaultDescriptionSchema.optional(),
     trafficPolicy: z.nativeEnum(AgentVaultTrafficPolicy),
     allowedHosts: z.string().trim().max(1024).optional(),
     // Guarded before coercion: z.coerce turns "" into 0, which would report the range error instead.
@@ -176,10 +176,12 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
       };
 
       if (proxy) {
+        const description = data.description || null;
         await updateProxy.mutateAsync({
           proxyId: proxy.id,
           ...payload,
-          description: data.description || null
+          // Sent only when changed, so the update's audit event doesn't read as clearing it.
+          description: description !== (proxy.description ?? null) ? description : undefined
         });
         createNotification({ text: `Proxy "${data.name}" updated`, type: "success" });
       } else {
@@ -306,9 +308,8 @@ export const ProxyFormDialog = ({ isOpen, onOpenChange, proxy, onCreated }: Prop
                 <Field>
                   <FieldLabel>Description</FieldLabel>
                   <FieldContent>
-                    <TextArea
+                    <Input
                       {...field}
-                      rows={2}
                       placeholder="Egress for the staging cluster"
                       isError={Boolean(fieldState.error)}
                     />

@@ -6460,6 +6460,7 @@ interface AgentVaultProxyRegisterEvent {
   metadata: {
     proxyId: string;
     name: string;
+    description: string | null;
   };
 }
 

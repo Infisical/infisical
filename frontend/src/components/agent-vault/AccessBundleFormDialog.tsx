@@ -17,9 +17,9 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
-  Input,
-  TextArea
+  Input
 } from "@app/components/v3";
+import { agentVaultDescriptionSchema } from "@app/helpers/agentVaultDescription";
 import {
   useCreateAgentVaultAccessBundle,
   useUpdateAgentVaultAccessBundle
@@ -29,7 +29,7 @@ import { slugSchema } from "@app/lib/schemas";
 
 const schema = z.object({
   name: slugSchema({ max: 64, field: "Name" }),
-  description: z.string().trim().max(256).optional()
+  description: agentVaultDescriptionSchema.optional()
 });
 
 type FormData = z.infer<typeof schema>;
@@ -68,10 +68,13 @@ export const AccessBundleFormDialog = ({
     try {
       let createdAccessBundle: TAgentVaultAccessBundle | undefined;
       if (accessBundle) {
+        const nextDescription = description || null;
         await updateAccessBundle.mutateAsync({
           accessBundleId: accessBundle.id,
           name,
-          description: description || null
+          // Sent only when changed, so the update's audit event doesn't read as clearing it.
+          description:
+            nextDescription !== (accessBundle.description ?? null) ? nextDescription : undefined
         });
       } else {
         createdAccessBundle = await createAccessBundle.mutateAsync({
@@ -127,9 +130,8 @@ export const AccessBundleFormDialog = ({
               <Field>
                 <FieldLabel>Description</FieldLabel>
                 <FieldContent>
-                  <TextArea
+                  <Input
                     {...field}
-                    rows={2}
                     placeholder="Paging, metrics, issue tracking"
                     isError={Boolean(fieldState.error)}
                   />
