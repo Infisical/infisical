@@ -13,13 +13,11 @@ This quickstart walks you through the setup shared by every Agent Vault workflow
 
 ## Step 1: Add your credentials
 
-First, create an 
-
-An access bundle is a list of services, and each service holds the credential for one API. Agents never see the credentials. They only get a [session](/documentation/platform/agent-vault/sessions) for the access bundle, which the guide in [Step 2](#step-2-connect-your-agents) has you create.
-
 <Tabs>
   <Tab title="Infisical dashboard">
     ### Create an access bundle
+
+   In Agent Vault, an [access bundle](/documentation/platform/agent-vault/access-bundles) defines the [services](/documentation/platform/agent-vault/services) your agents can reach. To create an access bundle:
 
     <Steps>
       <Step>
@@ -78,47 +76,111 @@ An access bundle is a list of services, and each service holds the credential fo
 
     Call [the login endpoint for Universal Auth](/api-reference/endpoints/universal-auth/login) with the client ID and client secret:
 
-    ```bash
-    curl -X POST https://app.infisical.com/api/v1/auth/universal-auth/login \
-      -H "Content-Type: application/json" \
-      -d '{"clientId": "<client-id>", "clientSecret": "<client-secret>"}'
-    ```
+    <CodeGroup>
+      ```bash US Cloud
+      curl -X POST https://app.infisical.com/api/v1/auth/universal-auth/login \
+        -H "Content-Type: application/json" \
+        -d '{"clientId": "<client-id>", "clientSecret": "<client-secret>"}'
+      ```
 
-    The response includes an `accessToken`, which you send with each request in the next steps. If you self-host Infisical, replace `https://app.infisical.com` with the address of your instance in every request.
+      ```bash EU Cloud
+      curl -X POST https://eu.infisical.com/api/v1/auth/universal-auth/login \
+        -H "Content-Type: application/json" \
+        -d '{"clientId": "<client-id>", "clientSecret": "<client-secret>"}'
+      ```
+
+      ```bash Self-hosted
+      curl -X POST <your-instance-url>/api/v1/auth/universal-auth/login \
+        -H "Content-Type: application/json" \
+        -d '{"clientId": "<client-id>", "clientSecret": "<client-secret>"}'
+      ```
+    </CodeGroup>
+
+    The response includes an `accessToken`, which you send with each request in the next steps.
 
     ### Create an access bundle
 
-    Call [the endpoint that creates an access bundle](/api-reference/endpoints/agent-vault-access-bundles/create) with a name for the access bundle:
+    Call [the endpoint to create an access bundle](/api-reference/endpoints/agent-vault-access-bundles/create), replacing `<access-token>` with the `accessToken` from the login response. In the body, send a name for the access bundle:
 
-    ```bash
-    curl -X POST https://app.infisical.com/api/v1/agent-vault/access-bundles \
-      -H "Authorization: Bearer <access-token>" \
-      -H "Content-Type: application/json" \
-      -d '{"name": "code-review"}'
-    ```
+    <CodeGroup>
+      ```bash US Cloud
+      curl -X POST https://app.infisical.com/api/v1/agent-vault/access-bundles \
+        -H "Authorization: Bearer <access-token>" \
+        -H "Content-Type: application/json" \
+        -d '{"name": "code-review"}'
+      ```
+
+      ```bash EU Cloud
+      curl -X POST https://eu.infisical.com/api/v1/agent-vault/access-bundles \
+        -H "Authorization: Bearer <access-token>" \
+        -H "Content-Type: application/json" \
+        -d '{"name": "code-review"}'
+      ```
+
+      ```bash Self-hosted
+      curl -X POST <your-instance-url>/api/v1/agent-vault/access-bundles \
+        -H "Authorization: Bearer <access-token>" \
+        -H "Content-Type: application/json" \
+        -d '{"name": "code-review"}'
+      ```
+    </CodeGroup>
 
     The response includes the access bundle's `id`, which you need to add a service.
 
     ### Add a service
 
-    Call [the endpoint that creates a service](/api-reference/endpoints/agent-vault-services/create) with the hosts that the credential applies to and the credential itself. For example, to add a GitHub personal access token:
+    Call [the endpoint to create a service](/api-reference/endpoints/agent-vault-services/create), replacing `<access-bundle-id>` in the URL with the `id` from the previous step and `<access-token>` with the `accessToken` from the login response.
+    
+    In the body, send the hosts that the credential applies to and the credential itself. For example, to add a GitHub personal access token:
 
-    ```bash
-    curl -X POST https://app.infisical.com/api/v1/agent-vault/access-bundles/<access-bundle-id>/services \
-      -H "Authorization: Bearer <access-token>" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "name": "github",
-        "hostPattern": "api.github.com, github.com",
-        "credential": {
-          "type": "basic",
-          "username": "x-access-token",
-          "password": "<github-token>"
-        }
-      }'
-    ```
+    <CodeGroup>
+      ```bash US Cloud
+      curl -X POST https://app.infisical.com/api/v1/agent-vault/access-bundles/<access-bundle-id>/services \
+        -H "Authorization: Bearer <access-token>" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "name": "github",
+          "hostPattern": "api.github.com, github.com",
+          "credential": {
+            "type": "basic",
+            "username": "x-access-token",
+            "password": "<github-token>"
+          }
+        }'
+      ```
 
-    `credential.type` is `bearer` for an API that takes a token in a header, `basic` for an API that takes a username and password, or `passthrough` for a host that the agent can call without a credential. See the [services documentation](/documentation/platform/agent-vault/services) for every field.
+      ```bash EU Cloud
+      curl -X POST https://eu.infisical.com/api/v1/agent-vault/access-bundles/<access-bundle-id>/services \
+        -H "Authorization: Bearer <access-token>" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "name": "github",
+          "hostPattern": "api.github.com, github.com",
+          "credential": {
+            "type": "basic",
+            "username": "x-access-token",
+            "password": "<github-token>"
+          }
+        }'
+      ```
+
+      ```bash Self-hosted
+      curl -X POST <your-instance-url>/api/v1/agent-vault/access-bundles/<access-bundle-id>/services \
+        -H "Authorization: Bearer <access-token>" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "name": "github",
+          "hostPattern": "api.github.com, github.com",
+          "credential": {
+            "type": "basic",
+            "username": "x-access-token",
+            "password": "<github-token>"
+          }
+        }'
+      ```
+    </CodeGroup>
+
+    Set `credential.type` to `bearer` for an API that takes a token in a header, `basic` for an API that takes a username and password, or `passthrough` for a host that the agent can call without a credential.
 
     Repeat this request for each API your agents call.
   </Tab>
@@ -126,9 +188,13 @@ An access bundle is a list of services, and each service holds the credential fo
 
 ## Step 2: Connect your agents
 
-Pick the guide for where your agents run. Each guide sets up a [proxy](/documentation/platform/agent-vault/proxies) and sessions for that setup, using the access bundle from [Step 1](#step-1-add-your-credentials). If you're not sure which guide fits, [plan your setup](/documentation/platform/agent-vault/plan-your-setup) to get a recommendation.
+Pick the guide for where your agents run. Each guide walks you through setting up a [proxy](/documentation/platform/agent-vault/proxies) and creating [sessions](/documentation/platform/agent-vault/sessions) for your agents.
 
-### Local agents
+<Tip>
+If you're not sure which guide fits, [plan your setup](/documentation/platform/agent-vault/plan-your-setup) to get a recommendation.
+</Tip>
+
+### Local development
 
 Launch an agent from your terminal with the Infisical CLI.
 
@@ -145,10 +211,10 @@ Launch an agent from your terminal with the Infisical CLI.
 Start each agent in its own sandbox, with its own proxy.
 
 <CardGroup cols={2}>
-  <Card title="Modal sandboxes" icon="box" href="/documentation/platform/agent-vault/guides/modal">
-    Run an Agent Vault proxy in each Modal sandbox so the agent never holds a credential.
+  <Card title="Modal sandboxes" icon="/images/agent-vault-agents/modal.svg" href="/documentation/platform/agent-vault/guides/modal">
+    Run an Agent Vault proxy in each Modal sandbox so the agent never sees a credential.
   </Card>
-  <Card title="Daytona sandboxes" icon="box" href="/documentation/platform/agent-vault/guides/daytona">
+  <Card title="Daytona sandboxes" icon="/images/agent-vault-agents/daytona.svg" href="/documentation/platform/agent-vault/guides/daytona">
     Run an Agent Vault proxy beside each Daytona sandbox so the agent never holds a credential.
   </Card>
 </CardGroup>

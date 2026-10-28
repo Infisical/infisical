@@ -703,7 +703,7 @@
                 "group": "Guides",
                 "pages": [
                   {
-                    "group": "Local agents",
+                    "group": "Local development",
                     "pages": [
                       "documentation/platform/agent-vault/guides/claude-code",
                       "documentation/platform/agent-vault/guides/codex",
