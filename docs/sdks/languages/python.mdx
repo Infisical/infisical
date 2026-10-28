@@ -75,7 +75,7 @@ The SDK methods are organized into the following high-level categories:
 3. `dynamic_secrets`: Manages dynamic secrets and leases.
 4. `kms`: Perform cryptographic operations with Infisical KMS.
 5. `folders`: Manages folder-related operations.
-6. `agent_vault`: Manages Agent Vault sessions and proxies.
+6. `agent_vault`: Manages [Agent Vault](/documentation/platform/agent-vault/overview) sessions and proxies
 
 ### `auth`
 
@@ -819,11 +819,7 @@ deleted_folder = client.folders.delete_folder(
 
 ### `agent_vault.sessions`
 
-This sub-class manages [Agent Vault sessions](/documentation/platform/agent-vault/sessions). A session lets an AI agent use the services in one [access bundle](/documentation/platform/agent-vault/access-bundles) until the session expires or someone revokes it.
-
-<Note>
-  `agent_vault` requires `infisicalsdk` version 1.0.19 or newer.
-</Note>
+This sub-class manages [Agent Vault sessions](/documentation/platform/agent-vault/sessions). A session lets an AI agent use the [services](/documentation/platform/agent-vault/services) in one [access bundle](/documentation/platform/agent-vault/access-bundles) until the session expires or someone revokes it.
 
 What the client can do with sessions depends on the [Agent Vault role](/documentation/platform/agent-vault/access-control#product-membership) of the user or machine identity that the client logs in as:
 
@@ -831,6 +827,10 @@ What the client can do with sessions depends on the [Agent Vault role](/document
 | --- | --- | --- |
 | **Admin** | Any access bundle | Every session |
 | **Member** | The access bundles [granted](/documentation/platform/agent-vault/access-bundles#grant-access) to the identity | The identity's own sessions |
+
+<Note>
+  `agent_vault` requires `infisicalsdk` version 1.0.19 or newer.
+</Note>
 
 #### List sessions
 
@@ -847,9 +847,9 @@ sessions = client.agent_vault.sessions.list(
 ```
 
 **Parameters:**
-- `scope` (Union[AgentVaultSessionScope, str], optional): whose sessions to list, either `AgentVaultSessionScope.MINE` for the identity's own sessions (the default) or `AgentVaultSessionScope.ALL` for every session (admins only)
+- `scope` (Union[AgentVaultSessionScope, str], optional): whose sessions to list, either `AgentVaultSessionScope.MINE` for the identity's own sessions or `AgentVaultSessionScope.ALL` for every session if the identity is an admin (defaults to `MINE`)
 - `statuses` (List[Union[AgentVaultSessionStatus, str]], optional): the statuses to include, from `ACTIVE`, `REVOKED`, and `EXPIRED` (defaults to all three)
-- `search` (str, optional): text to find in each session's label, owner name, owner email, or access bundle name
+- `search` (str, optional): text to find in each session's [label](/documentation/platform/agent-vault/sessions#label-a-session), owner name, owner email, or access bundle name
 - `limit` (int, optional): the maximum number of sessions to return, from 1 to 100 (defaults to `20`)
 - `offset` (int, optional): the number of sessions to skip (defaults to `0`)
 
@@ -888,11 +888,11 @@ session = client.agent_vault.sessions.create(
 **Returns:**
 - `CreatedAgentVaultSession`: the new session, with the session token in `token` (Infisical returns the token only once)
 
-Pass `session.token` to the agent as [Start the agent with the session token](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token) describes.
+To pass `session.token` to the agent, follow the steps in [Start the agent with the session token](/documentation/platform/agent-vault/sessions-api#step-4-start-the-agent-with-the-session-token).
 
 #### Update session label
 
-Add, change, or remove a session's [label](/documentation/platform/agent-vault/sessions#label-a-session), for example to record what the agent is working on. You can also change the label after the session expires or is revoked.
+Add, change, or remove a session's label, for example to record what the agent is working on. You can also change the label after the session expires or is revoked.
 
 ```python
 session = client.agent_vault.sessions.update(
@@ -903,7 +903,7 @@ session = client.agent_vault.sessions.update(
 
 **Parameters:**
 - `session_id` (str): the ID of the session
-- `label` (Optional[str]): the new label (up to 128 characters, without line breaks, tabs, or invisible characters), or `None` to remove the label
+- `label` (Optional[str]): the new label, or `None` to remove the label (up to 128 characters, without line breaks, tabs, or invisible characters)
 
 **Returns:**
 - `AgentVaultSession`: the updated session
@@ -930,11 +930,11 @@ finally:
 
 This sub-class manages [Agent Vault proxies](/documentation/platform/agent-vault/proxies). A proxy attaches API credentials to the requests that agents send through it.
 
+To use any method in this section except `list`, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership).
+
 <Note>
   `agent_vault` requires `infisicalsdk` version 1.0.19 or newer.
 </Note>
-
-To use any method in this section except `list`, the client must log in as a user or machine identity with the **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership).
 
 #### List proxies
 
@@ -975,20 +975,22 @@ response = client.agent_vault.proxies.create(
 
 **Parameters:**
 - `name` (str): the name of the proxy, in lowercase letters, numbers, and hyphens (up to 64 characters)
-- `traffic_policy` (Union[AgentVaultTrafficPolicy, str], optional): the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), either `ANY_HOST` to forward requests to any host (the default) or `BUNDLE_HOSTS` to refuse requests to hosts that no service in the session's access bundle covers
+- `traffic_policy` (Union[AgentVaultTrafficPolicy, str], optional): the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), either `ANY_HOST` to forward requests to any host or `BUNDLE_HOSTS` to refuse requests to hosts that no service in the session's access bundle covers (defaults to `ANY_HOST`)
 - `allowed_hosts` (Union[List[str], str], optional): hosts that agents can reach under `BUNDLE_HOSTS` even if no service covers them, as a list or a comma-separated string (see [Exceptions](/documentation/platform/agent-vault/proxies#exceptions))
 - `poll_interval` (int, optional): how often, in seconds, the proxy checks its sessions and settings with Infisical, from 10 to 300 (defaults to `60`)
 
 **Returns:**
 - `AgentVaultProxyWithTokenResponse`: the proxy in `proxy`, and its proxy token in `proxyToken` (Infisical returns the token only once)
 
-Start the proxy with the proxy token, as [Create a proxy and start it](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it) shows.
+To start the proxy with the proxy token, run one of the commands in [Create a proxy and start it](/documentation/platform/agent-vault/proxies#create-a-proxy-and-start-it).
 
 #### Update proxy
 
-Values you don't pass stay as they are. If the proxy is running, it applies the changes within one poll interval.
+The proxy's name and settings that you don't pass stay as they are. If the proxy is running, it applies the changes within one poll interval.
 
 ```python
+from infisical_sdk import AgentVaultTrafficPolicy
+
 proxy = client.agent_vault.proxies.update(
     proxy_id="<proxy-id>",
     name="edge-proxy", # Optional
@@ -1025,11 +1027,11 @@ proxy = client.agent_vault.proxies.delete(
 </Warning>
 
 **Returns:**
-- `AgentVaultProxy`: the deleted proxy, with only `id` and `name` set
+- `AgentVaultProxy`: the deleted proxy, with values only in `id` and `name`
 
 #### Rotate proxy token
 
-Issue a new proxy token if the current one leaked, or to bring back a proxy whose access you revoked. The old token stops working right away. To restart the proxy and its agents, follow the steps in [Rotate a proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxy’s-token).
+Issue a new proxy token if the current one leaked, or to restore a proxy whose access you revoked. The old token stops working right away. To restart the proxy and its agents, follow the steps in [Rotate a proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxy’s-token).
 
 ```python
 response = client.agent_vault.proxies.rotate_token(
