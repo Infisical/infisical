@@ -15,7 +15,6 @@ import {
   AccordionTrigger,
   Button,
   Dialog,
-  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,
@@ -179,8 +178,8 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
   const onSubmit = handleSubmit((data) => onCreateProject(data));
 
   return (
-    <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
-      <DialogBody className="-mx-6 -my-1 space-y-4 px-6 py-1">
+    <>
+      <form id="new-project-form" onSubmit={onSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-4">
           <Controller
             control={control}
@@ -350,14 +349,20 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
             </AccordionContent>
           </AccordionItem>
         </Accordion>
-      </DialogBody>
-      <DialogFooter className="static">
+      </form>
+      <DialogFooter>
         <DialogClose asChild>
           <Button type="button" variant="ghost">
             Cancel
           </Button>
         </DialogClose>
-        <Button type="submit" variant="project" isPending={isSubmitting} isDisabled={isSubmitting}>
+        <Button
+          type="submit"
+          form="new-project-form"
+          variant="project"
+          isPending={isSubmitting}
+          isDisabled={isSubmitting}
+        >
           Create Project
         </Button>
       </DialogFooter>
@@ -370,7 +375,7 @@ const NewProjectForm = ({ onOpenChange, projectType: fixedProjectType }: NewProj
           isEnterpriseFeature: Boolean(popUp.upgradePlan.data?.isEnterpriseFeature)
         }}
       />
-    </form>
+    </>
   );
 };
 
@@ -391,7 +396,7 @@ export const NewProjectModal: FC<NewProjectModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl overflow-hidden">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {ProjectIcon && <ProjectIcon className="size-5 text-muted" />}
