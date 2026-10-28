@@ -65,7 +65,7 @@ You can push a skill folder with the CLI, or create the skill in Infisical.
 
     The CLI finds the skill by the `name` in `SKILL.md`. It creates the skill if it doesn't exist yet, and adds a new version if it does.
 
-    To push from a script or CI, authenticate as a [machine identity](/documentation/platform/identities/machine-identities) with the [Admin role in Agent Vault](/documentation/platform/agent-vault/access-control#product-membership). For the flags, see [infisical agent-vault skills push](/cli/reference#agent-vault-skills-push).
+    In a script or CI, where nobody can log in, use a [machine identity](/documentation/platform/identities/machine-identities) with the [Admin role in Agent Vault](/documentation/platform/agent-vault/access-control#product-membership) instead. For the flags, see [infisical agent-vault skills push](/cli/reference#agent-vault-skills-push).
   </Tab>
   <Tab title="Infisical">
     <Steps>
