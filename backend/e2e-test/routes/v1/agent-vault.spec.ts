@@ -5656,7 +5656,7 @@ describe("Agent Vault V1 Router", async () => {
         const over = await inject("POST", skillsUrl, { files: skillFiles("over-cap-skill") });
         expect(over.statusCode).toBe(400);
         expect(JSON.parse(over.payload).message).toBe(
-          "Agent Vault can hold at most 64 skills. Delete an unused one first."
+          "This organization already has 64 skills, the most allowed. Delete an unused one first."
         );
         expect(await testDb("agent_vault_skills").where({ projectId, name: "over-cap-skill" })).toHaveLength(0);
 

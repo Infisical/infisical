@@ -32,7 +32,7 @@ description: Reviews a pull request against the team checklist. Use when asked t
 2. Check each item in checklist.md.
 ```
 
-- `name`: the name agents know the skill by, with up to 64 lowercase letters, numbers, and single hyphens, not starting or ending with a hyphen, and not a name that Windows reserves for devices, such as `con`, `aux`, or `com1`
+- `name`: the name agents know the skill by, with up to 64 lowercase letters, numbers, and single hyphens, not starting or ending with a hyphen
 - `description`: the text an agent reads to decide when to use the skill (up to 1,024 characters)
 
 The folder can also hold other files that the instructions refer to, such as scripts, templates, or reference documents. Each skill can hold:
@@ -41,7 +41,7 @@ The folder can also hold other files that the instructions refer to, such as scr
 - Up to 256 KB per file
 - Up to 1 MB in total
 
-Agent Vault can hold up to 64 skills.
+Each organization can have up to 64 skills.
 
 <Warning>
   Don't put API keys, tokens, or other secrets in a skill. Anyone with a session token can download the session's skills, and the CLI saves them as plain files on each agent's host. To let an agent use a credential, add the credential to a [service](/documentation/platform/agent-vault/services) instead.

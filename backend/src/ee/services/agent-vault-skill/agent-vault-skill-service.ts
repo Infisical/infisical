@@ -156,7 +156,7 @@ export const agentVaultSkillServiceFactory = ({
         const skillCount = await agentVaultSkillDAL.countInProject(scoped.projectId, tx);
         if (skillCount >= AGENT_VAULT_MAX_SKILLS) {
           throw new BadRequestError({
-            message: `Agent Vault can hold at most ${AGENT_VAULT_MAX_SKILLS} skills. Delete an unused one first.`
+            message: `This organization already has ${AGENT_VAULT_MAX_SKILLS} skills, the most allowed. Delete an unused one first.`
           });
         }
 
