@@ -16,6 +16,22 @@ vi.mock("@app/services/secret-sync/secret-sync-fns", () => ({
   matchesSchema: vi.fn((secret: string) => secret === "OBSOLETE_KEY" || secret === "EXISTING_KEY")
 }));
 
+type TGraphQLRequestBody = {
+  query?: string;
+  variables?: Record<string, unknown>;
+};
+
+type TMachinesSecretRequestBody = {
+  values?: Record<string, string | null>;
+};
+
+type TMachineUpdateRequestBody = {
+  config?: Record<string, unknown>;
+  region?: string;
+  skip_launch?: boolean;
+  min_secrets_version?: number;
+};
+
 const sync = {
   destination: SecretSync.Flyio,
   destinationConfig: { appId: "my-app-id" },
@@ -37,12 +53,13 @@ describe("FlyioSyncFns", () => {
 
   describe("syncSecrets", () => {
     it("updates secrets via Machines API and redeploys machines with min_secrets_version", async () => {
-      post.mockImplementation(async (url: string, body: any) => {
+      post.mockImplementation(async (url: string, body?: unknown) => {
         if (url.includes("api.fly.io/graphql")) {
-          if (body?.query?.includes("GetAppName")) {
+          const graphqlBody = body as TGraphQLRequestBody | undefined;
+          if (graphqlBody?.query?.includes("GetAppName")) {
             return { data: { data: { app: { name: "resolved-app-name" } } } };
           }
-          if (body?.query?.includes("GetAppSecrets")) {
+          if (graphqlBody?.query?.includes("GetAppSecrets")) {
             return {
               data: {
                 data: {
@@ -83,7 +100,7 @@ describe("FlyioSyncFns", () => {
       // Verify Machines API POST /apps/{appName}/secrets was called with new keys and null for deletion
       const secretsPostCall = post.mock.calls.find(([url]) => url.includes("/apps/resolved-app-name/secrets"));
       expect(secretsPostCall).toBeDefined();
-      expect(secretsPostCall![1]).toEqual({
+      expect(secretsPostCall?.[1] as TMachinesSecretRequestBody).toEqual({
         values: {
           NEW_KEY: "secret-val",
           EXISTING_KEY: "new-val",
@@ -94,7 +111,7 @@ describe("FlyioSyncFns", () => {
       // Verify machine m1 was updated with min_secrets_version = 42
       const machinePostCall = post.mock.calls.find(([url]) => url.includes("/machines/m1"));
       expect(machinePostCall).toBeDefined();
-      expect(machinePostCall![1]).toMatchObject({
+      expect(machinePostCall?.[1] as TMachineUpdateRequestBody).toMatchObject({
         min_secrets_version: 42,
         region: "iad",
         skip_launch: false
@@ -111,8 +128,9 @@ describe("FlyioSyncFns", () => {
         syncOptions: { disableSecretDeletion: true, autoRedeploy: false }
       } as unknown as TFlyioSyncWithCredentials;
 
-      post.mockImplementation(async (url: string, body: any) => {
-        if (url.includes("api.fly.io/graphql") && body?.query?.includes("GetAppName")) {
+      post.mockImplementation(async (url: string, body?: unknown) => {
+        const graphqlBody = body as TGraphQLRequestBody | undefined;
+        if (url.includes("api.fly.io/graphql") && graphqlBody?.query?.includes("GetAppName")) {
           return { data: { data: { app: { name: "my-app" } } } };
         }
         if (url.includes("/apps/my-app/secrets")) {
@@ -125,19 +143,25 @@ describe("FlyioSyncFns", () => {
 
       const secretsPostCall = post.mock.calls.find(([url]) => url.includes("/apps/my-app/secrets"));
       expect(secretsPostCall).toBeDefined();
-      expect(secretsPostCall![1]).toEqual({
+      expect(secretsPostCall?.[1] as TMachinesSecretRequestBody).toEqual({
         values: {
           KEY: "val"
         }
       });
       // GetAppSecrets should not be called
       const graphqlCalls = post.mock.calls.filter(([url]) => url.includes("api.fly.io/graphql"));
-      expect(graphqlCalls.some(([, b]: [string, any]) => b?.query?.includes("GetAppSecrets"))).toBe(false);
+      expect(
+        graphqlCalls.some(([, b]) => {
+          const body = b as TGraphQLRequestBody | undefined;
+          return body?.query?.includes("GetAppSecrets");
+        })
+      ).toBe(false);
     });
 
     it("wraps Machines API errors in SecretSyncError", async () => {
-      post.mockImplementation(async (url: string, body: any) => {
-        if (url.includes("api.fly.io/graphql") && body?.query?.includes("GetAppName")) {
+      post.mockImplementation(async (url: string, body?: unknown) => {
+        const graphqlBody = body as TGraphQLRequestBody | undefined;
+        if (url.includes("api.fly.io/graphql") && graphqlBody?.query?.includes("GetAppName")) {
           return { data: { data: { app: { name: "my-app" } } } };
         }
         if (url.includes("/apps/my-app/secrets")) {
@@ -152,12 +176,13 @@ describe("FlyioSyncFns", () => {
 
   describe("removeSecrets", () => {
     it("deletes specified secrets via Machines API and auto-redeploys", async () => {
-      post.mockImplementation(async (url: string, body: any) => {
+      post.mockImplementation(async (url: string, body?: unknown) => {
         if (url.includes("api.fly.io/graphql")) {
-          if (body?.query?.includes("GetAppName")) {
+          const graphqlBody = body as TGraphQLRequestBody | undefined;
+          if (graphqlBody?.query?.includes("GetAppName")) {
             return { data: { data: { app: { name: "resolved-app" } } } };
           }
-          if (body?.query?.includes("GetAppSecrets")) {
+          if (graphqlBody?.query?.includes("GetAppSecrets")) {
             return {
               data: {
                 data: {
@@ -194,7 +219,7 @@ describe("FlyioSyncFns", () => {
 
       const secretsPostCall = post.mock.calls.find(([url]) => url.includes("/apps/resolved-app/secrets"));
       expect(secretsPostCall).toBeDefined();
-      expect(secretsPostCall![1]).toEqual({
+      expect(secretsPostCall?.[1] as TMachinesSecretRequestBody).toEqual({
         values: {
           KEY_A: null
         }
@@ -202,7 +227,7 @@ describe("FlyioSyncFns", () => {
 
       const machinePostCall = post.mock.calls.find(([url]) => url.includes("/machines/m1"));
       expect(machinePostCall).toBeDefined();
-      expect(machinePostCall![1]).toMatchObject({
+      expect(machinePostCall?.[1] as TMachineUpdateRequestBody).toMatchObject({
         min_secrets_version: 10
       });
     });
