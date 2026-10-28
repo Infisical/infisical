@@ -1,7 +1,6 @@
 package tags_test
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
@@ -47,13 +46,4 @@ func createTaggedSecret(t *testing.T, proj *fixture.Project, key string, tagIDs 
 	})
 	require.NoError(t, err)
 	require.NotNilf(t, res.JSON200, "creating %s returned %d: %s", key, res.StatusCode(), apierr.Body(res.Body))
-}
-
-func errorMessage(t *testing.T, body []byte) string {
-	t.Helper()
-	var e struct {
-		Message string `json:"message"`
-	}
-	require.NoErrorf(t, json.Unmarshal(body, &e), "decoding error body %s", apierr.Body(body))
-	return e.Message
 }

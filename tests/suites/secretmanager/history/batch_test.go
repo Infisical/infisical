@@ -8,6 +8,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/stretchr/testify/require"
 )
 
@@ -85,7 +86,7 @@ func TestFolderCommit_Batch(t *testing.T) {
 		require.NoError(t, err)
 		requireStatus(t, http.StatusBadRequest, res.StatusCode(), res.Body)
 		require.Equal(t, "Secret names must be in UPPERCASE per project requirements: lower_key. You can disable this requirement in project settings",
-			errorMessage(t, res.Body))
+			apierr.Message(res.Body))
 		keys := []string{}
 		for _, s := range secretmanager.ListSecrets(t, proj, "dev") {
 			keys = append(keys, s.Key)

@@ -172,12 +172,14 @@ func TestAccessApprovalRequest_Steps(t *testing.T) {
 		requestID := openRequest(t, g.requester, g.proj, guardedPath, nil)
 		approve(t, a, requestID)
 		require.Equal(t, "pending", statusOf(t, g.proj, requestID))
+		requireNothingGranted(t, g, requestID)
 
 		// Action
 		approve(t, b, requestID)
 
 		// Assert
 		require.Equal(t, "approved", statusOf(t, g.proj, requestID))
+		awaitRead(t, g.requester, g.proj, true)
 		late := reviewAs(t, c, requestID, "approved")
 		require.Equal(t, http.StatusBadRequest, late.status)
 		require.Equal(t, "The request has been closed", late.message(t))
@@ -211,12 +213,14 @@ func TestAccessApprovalRequest_Steps(t *testing.T) {
 		requestID := openRequest(t, g.requester, g.proj, guardedPath, nil)
 		approve(t, a, requestID)
 		require.Equal(t, "pending", statusOf(t, g.proj, requestID))
+		requireNothingGranted(t, g, requestID)
 
 		// Action
 		approve(t, b, requestID)
 
 		// Assert
 		require.Equal(t, "approved", statusOf(t, g.proj, requestID))
+		awaitRead(t, g.requester, g.proj, true)
 	})
 
 	t.Run("should open the second step only after the first, and need its own two approvals", func(t *testing.T) {
@@ -231,8 +235,10 @@ func TestAccessApprovalRequest_Steps(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, early.status)
 		require.Equal(t, "You are not a reviewer in this step", early.message(t))
 		approve(t, a, requestID)
+		requireNothingGranted(t, g, requestID)
 		approve(t, b, requestID)
 		require.Equal(t, "pending", statusOf(t, g.proj, requestID))
+		requireNothingGranted(t, g, requestID)
 
 		// Action
 		approve(t, c, requestID)

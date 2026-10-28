@@ -9,6 +9,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -57,7 +58,7 @@ func TestSecretTag_Lifecycle(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusNotFound, res.StatusCode(), "batch create returned %s", res.Body)
-		require.Equal(t, "Tag not found. Found known", errorMessage(t, res.Body))
+		require.Equal(t, "Tag not found. Found known", apierr.Message(res.Body))
 		require.Empty(t, secretmanager.ListSecrets(t, proj, "dev"))
 	})
 }

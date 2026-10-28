@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
-	"path"
 	"testing"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -160,18 +158,6 @@ func listGrantsAs(t *testing.T, actor *harness.Principal, proj *fixture.Project,
 	res, err := actor.API.ListUserFolderAccessWithResponse(t.Context(), proj.ID, target.ID)
 	require.NoError(t, err)
 	return res.StatusCode(), res.Body
-}
-
-// newFolder creates a folder and returns its ID, which rename, move and delete take.
-func newFolder(t *testing.T, proj *fixture.Project, env, folderPath string) uuid.UUID {
-	t.Helper()
-	parent, name := path.Split(path.Clean(folderPath))
-	res, err := proj.Tenant().Admin.API.CreateSecretFolderWithResponse(t.Context(), api.CreateSecretFolderJSONRequestBody{
-		ProjectId: proj.ID, Environment: env, Name: name, Path: &parent,
-	})
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "creating folder %s returned %d: %s", folderPath, res.StatusCode(), apierr.Body(res.Body))
-	return res.JSON200.Folder.Id
 }
 
 // listing is one v4 list with values requested: its status and each secret's value by

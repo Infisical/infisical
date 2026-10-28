@@ -8,6 +8,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/stretchr/testify/require"
 )
 
@@ -86,7 +87,7 @@ func TestFolderCommit_Rollback(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 		requireStatus(t, http.StatusNotFound, res.StatusCode(), res.Body)
-		require.Equal(t, "Target commit not found", errorMessage(t, res.Body))
+		require.Equal(t, "Target commit not found", apierr.Message(res.Body))
 		require.Equal(t, map[string]string{"ROOT": "v"}, valuesAt(t, proj, "/"))
 	})
 
