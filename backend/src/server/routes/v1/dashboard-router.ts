@@ -2021,24 +2021,29 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
 
       const existingEnvironments: string[] = [];
       for (const environment of environments) {
-        // eslint-disable-next-line no-await-in-loop
-        const { secrets } = await server.services.secret.getSecretsRaw({
-          personalOverridesBehavior: PersonalOverridesBehavior.NeverInclude,
-          secretImportReferencesBehavior: SecretImportReferencesBehavior.SourceEnvironment,
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod,
-          viewSecretValue: false,
-          throwOnMissingReadValuePermission: false,
-          projectId,
-          environment,
-          path: secretPath,
-          keys: [secretKey]
-        });
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const { secrets } = await server.services.secret.getSecretsRaw({
+            personalOverridesBehavior: PersonalOverridesBehavior.NeverInclude,
+            secretImportReferencesBehavior: SecretImportReferencesBehavior.SourceEnvironment,
+            actorId: req.permission.id,
+            actor: req.permission.type,
+            actorOrgId: req.permission.orgId,
+            actorAuthMethod: req.permission.authMethod,
+            viewSecretValue: false,
+            throwOnMissingReadValuePermission: false,
+            projectId,
+            environment,
+            path: secretPath,
+            keys: [secretKey]
+          });
 
-        if (secrets.some((secret) => secret.secretKey === secretKey && secret.type === SecretType.Shared))
-          existingEnvironments.push(environment);
+          if (secrets.some((secret) => secret.secretKey === secretKey && secret.type === SecretType.Shared))
+            existingEnvironments.push(environment);
+        } catch (error) {
+          // the folder can be missing in some environments, which means the key is free there
+          if (!(error instanceof NotFoundError)) throw error;
+        }
       }
 
       return { existingEnvironments };

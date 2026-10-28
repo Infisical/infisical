@@ -169,7 +169,7 @@ export const QuickAddSecretRow = ({
       return;
     }
 
-    if (error || existingSecretKeys.includes(normalizedKey)) {
+    if ((!isDirectSave && error) || existingSecretKeys.includes(normalizedKey)) {
       setError(error ?? "A secret with this name already exists");
       if (refocus) keyInputRef.current?.focus();
       return;
