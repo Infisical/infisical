@@ -101,7 +101,8 @@ func TestProjectFolderGrant_Create(t *testing.T) {
 		res := createGrant(t, tn.Admin, source, foreign, sourceRoot)
 
 		// Assert
-		require.GreaterOrEqual(t, res.StatusCode(), http.StatusBadRequest)
+		require.Truef(t, res.StatusCode() >= http.StatusBadRequest && res.StatusCode() < http.StatusInternalServerError,
+			"granting to another organization's project returned %d, not a refusal: %s", res.StatusCode(), apierr.Body(res.Body))
 		require.NotContains(t, string(res.Body), foreign.Name)
 		require.NotContains(t, string(res.Body), foreign.Slug)
 		require.Empty(t, givenGrants(t, source))

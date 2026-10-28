@@ -43,8 +43,9 @@ func TestSharedSecret_Access(t *testing.T) {
 		res := access(t, mine.Admin.API, id, nil)
 
 		// Assert
-		require.NotEqualf(t, http.StatusOK, res.StatusCode(),
-			"tenant %s read tenant %s's organization share", mine.OrgSlug, theirs.OrgSlug)
+		require.Truef(t, res.StatusCode() >= http.StatusBadRequest && res.StatusCode() < http.StatusInternalServerError,
+			"tenant %s reading tenant %s's organization share returned %d, not a refusal: %s",
+			mine.OrgSlug, theirs.OrgSlug, res.StatusCode(), apierr.Body(res.Body))
 		require.NotContains(t, string(res.Body), "org-only")
 		require.Equal(t, "org-only", revealed(t, access(t, theirs.Admin.API, id, nil)), "the refused access used up the only view")
 	})

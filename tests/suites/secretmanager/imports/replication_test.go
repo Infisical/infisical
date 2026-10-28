@@ -12,6 +12,7 @@ import (
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -177,6 +178,9 @@ func TestSecretReplication_Copy(t *testing.T) {
 
 	t.Run("should open a change request instead of writing when the replica path has a policy", func(t *testing.T) {
 		t.Parallel()
+		spec.Why(t, `Creating the source secret and creating the import each queue a replication
+			run, and each run that finds the replica unwritten opens its own request, so the
+			claim is that at least one is open, not exactly one.`)
 
 		// Setup
 		tn := h.NewTenant(t)
@@ -189,7 +193,7 @@ func TestSecretReplication_Copy(t *testing.T) {
 
 		// Assert
 		waitReplicated(t, proj, "dev", "/", devImport, time.Time{})
-		require.Equal(t, 1, openRequests(t, proj))
+		require.GreaterOrEqual(t, openRequests(t, proj), 1)
 		require.Empty(t, importedValues(importedSecrets(t, tn.Admin, proj, "dev", "/")))
 	})
 }
