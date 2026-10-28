@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import axios from "axios";
+import { FolderIcon, KeyIcon } from "lucide-react";
 
 import { GoToSecretButton } from "@app/components/secrets/GoToSecretButton";
 import {
@@ -19,6 +20,8 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableHead,
+  TableHeader,
   TableRow
 } from "@app/components/v3";
 import { useProject } from "@app/context";
@@ -46,12 +49,11 @@ const ActorSecrets = ({ data }: SecretsProps) => {
   const environmentNames = new Map(currentProject.environments.map((env) => [env.slug, env.name]));
   // The list stops at 200, leaves out what the viewer cannot see, and drops secrets deleted since the computation.
   const unlistedCount = Math.max(0, data.actor.unusedSecretCount - data.secrets.length);
-  const byEnvironment = new Map<string, typeof data.secrets>();
+  const byEnvironment = new Map<string, Map<string, typeof data.secrets>>();
   data.secrets.forEach((secret) => {
-    byEnvironment.set(secret.environment, [
-      ...(byEnvironment.get(secret.environment) ?? []),
-      secret
-    ]);
+    const byPath = byEnvironment.get(secret.environment) ?? new Map<string, typeof data.secrets>();
+    byPath.set(secret.secretPath, [...(byPath.get(secret.secretPath) ?? []), secret]);
+    byEnvironment.set(secret.environment, byPath);
   });
 
   if (data.secrets.length === 0) {
@@ -71,40 +73,68 @@ const ActorSecrets = ({ data }: SecretsProps) => {
 
   return (
     <div className="flex flex-col gap-6">
-      {[...byEnvironment.entries()].map(([environment, secrets]) => {
-        const isExpanded = expanded.has(environment);
-        const shown = isExpanded ? secrets : secrets.slice(0, PREVIEW_ROWS);
-        const hidden = secrets.length - shown.length;
+      {[...byEnvironment.entries()].map(([environment, byPath]) => {
+        const total = [...byPath.values()].reduce((sum, secrets) => sum + secrets.length, 0);
+        let remaining = expanded.has(environment) ? total : PREVIEW_ROWS;
+        const groups = [...byPath.entries()].flatMap(([secretPath, secrets]) => {
+          const shown = secrets.slice(0, remaining);
+          remaining -= shown.length;
+          return shown.length > 0 ? [{ secretPath, secrets, shown }] : [];
+        });
+        const hidden = total - groups.reduce((sum, group) => sum + group.shown.length, 0);
         return (
           <div key={environment} className="flex flex-col gap-2">
-            <div className="flex items-baseline gap-2">
-              <h3 className="font-alliance text-sm">
-                {environmentNames.get(environment) ?? environment}
-              </h3>
-              <span className="text-xs text-muted">{secrets.length} unused</span>
-            </div>
             <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead colSpan={2} className="h-9">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-sm text-foreground">
+                        {environmentNames.get(environment) ?? environment}
+                      </span>
+                      <span className="text-xs text-muted">{total} unused</span>
+                    </div>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
               <TableBody>
-                {shown.map((secret) => (
-                  <TableRow key={`${secret.secretPath}/${secret.secretKey}`} className="group/row">
-                    <TableCell isTruncatable className="max-w-64 font-mono">
-                      <span className="truncate">{secret.secretKey}</span>
+                {groups.map(({ secretPath, secrets, shown }) => [
+                  <TableRow
+                    key={`path:${secretPath}`}
+                    className="bg-foreground/[0.03] hover:bg-foreground/[0.03]"
+                  >
+                    <TableCell colSpan={2} isTruncatable className="h-8">
+                      <div className="flex items-center gap-2">
+                        <FolderIcon className="size-3.5 shrink-0 text-folder" />
+                        <span className="truncate text-xs">{secretPath}</span>
+                        <span className="shrink-0 text-xs text-muted">{secrets.length}</span>
+                      </div>
                     </TableCell>
-                    <TableCell isTruncatable className="max-w-48 text-muted">
-                      <span className="truncate">{secret.secretPath}</span>
-                    </TableCell>
-                    <TableCell variant="action">
-                      <GoToSecretButton
-                        orgId={orgId as string}
-                        projectId={projectId}
-                        secretKey={secret.secretKey}
-                        secretPath={secret.secretPath}
-                        environmentSlug={environment}
-                        isProjectMember
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                  </TableRow>,
+                  ...shown.map((secret) => (
+                    <TableRow
+                      key={`secret:${secretPath}/${secret.secretKey}`}
+                      className="group/row"
+                    >
+                      <TableCell isTruncatable className="max-w-64 pl-8">
+                        <div className="flex items-center gap-2">
+                          <KeyIcon className="size-4 shrink-0 text-muted" />
+                          <span className="truncate font-mono">{secret.secretKey}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell variant="action">
+                        <GoToSecretButton
+                          orgId={orgId as string}
+                          projectId={projectId}
+                          secretKey={secret.secretKey}
+                          secretPath={secretPath}
+                          environmentSlug={environment}
+                          isProjectMember
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ])}
               </TableBody>
             </Table>
             {hidden > 0 && (
