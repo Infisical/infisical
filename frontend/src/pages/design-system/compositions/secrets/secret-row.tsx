@@ -56,7 +56,13 @@ import {
 } from "@app/components/v4/ui/table";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
-import { readableValue, type Resource, type Secret, versionsOf } from "../secrets-model";
+import {
+  readableValue,
+  type Resource,
+  type Scope,
+  type Secret,
+  versionsOf
+} from "../secrets-model";
 import { environmentLabel, LOCAL_ONLY } from "./flows/shared";
 import { AccessInsightsSheet } from "./row-actions/access-insights-sheet";
 import { CommentForm, MetadataForm, ReminderSheet, TagForm } from "./row-actions/annotations";
@@ -76,6 +82,12 @@ import {
   SelectCell,
   StatusCell
 } from "./overview-cells";
+import {
+  hasReference,
+  ReferenceEditor,
+  ReferenceText,
+  ResolvedValueButton
+} from "./secret-references";
 
 import styles from "./overview.module.css";
 
@@ -122,8 +134,17 @@ const copy = async (
   }
 };
 
-function SecretValue({ secret, visible }: { secret?: Secret; visible: boolean }) {
+function SecretValue({
+  secret,
+  visible,
+  pending
+}: {
+  secret?: Secret;
+  visible: boolean;
+  pending?: boolean;
+}) {
   const [focused, setFocused] = useState(false);
+  const [resolving, setResolving] = useState(false);
   if (!secret) return <span className={styles.subtle}>Not set in this environment</span>;
   const value = readableValue(secret);
   if (value === undefined)
@@ -138,23 +159,35 @@ function SecretValue({ secret, visible }: { secret?: Secret; visible: boolean })
       </span>
     );
   return (
-    <span
-      className={styles.value}
-      role="textbox"
-      aria-readonly
-      tabIndex={0}
-      aria-label={`Value of ${secret.name}, focus to reveal`}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-    >
-      {value === "" && <span className={styles.emptyValue}>Empty</span>}
-      {value !== "" && (visible || focused ? value : mask)}
-    </span>
+    <>
+      {(focused || resolving) && hasReference(value) && (
+        <ResolvedValueButton
+          secret={secret}
+          disabledReason={pending ? "Save pending changes to view resolved value" : undefined}
+          open={resolving}
+          onOpenChange={setResolving}
+        />
+      )}
+      <span
+        className={styles.value}
+        role="textbox"
+        aria-readonly
+        tabIndex={0}
+        aria-label={`Value of ${secret.name}, focus to reveal`}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+      >
+        {value === "" && <span className={styles.emptyValue}>Empty</span>}
+        {value !== "" &&
+          (visible || focused || resolving ? <ReferenceText value={value} scope={secret} /> : mask)}
+      </span>
+    </>
   );
 }
 
 function InlineEditor({
   label,
+  scope,
   initial,
   placeholder,
   saveLabel,
@@ -165,6 +198,7 @@ function InlineEditor({
   idle
 }: {
   label: string;
+  scope: Scope;
   initial: string;
   placeholder?: string;
   saveLabel: string;
@@ -175,19 +209,14 @@ function InlineEditor({
   idle?: ReactNode;
 }) {
   const [draft, setDraft] = useState(initial);
+  const root = useRef<HTMLDivElement>(null);
   const dirty = dirtyFromStart || draft !== initial;
   return (
-    <div className={styles.inlineEdit}>
-      <Input
-        autoFocus
-        mono
-        className={styles.inlineInput}
-        aria-label={label}
-        placeholder={placeholder}
-        autoComplete="off"
-        spellCheck={false}
+    <div ref={root} className={styles.inlineEdit}>
+      <ReferenceEditor
         value={draft}
-        onChange={(event) => setDraft(event.target.value)}
+        scope={scope}
+        onValueChange={setDraft}
         onKeyDown={(event) => {
           if (event.key === "Enter" && dirty) {
             event.preventDefault();
@@ -199,10 +228,22 @@ function InlineEditor({
           }
         }}
         onBlur={(event) => {
-          if (!dirty && !event.currentTarget.parentElement?.contains(event.relatedTarget as Node))
-            onCancel();
+          if (!dirty && !root.current?.contains(event.relatedTarget as Node)) onCancel();
         }}
-      />
+      >
+        {(control) => (
+          <Input
+            {...control}
+            autoFocus
+            mono
+            className={styles.inlineInput}
+            aria-label={label}
+            placeholder={placeholder}
+            autoComplete="off"
+            spellCheck={false}
+          />
+        )}
+      </ReferenceEditor>
       {dirty ? (
         <span className={styles.quickActions}>
           <Button variant="ghost" size="xs" onClick={onCancel}>
@@ -630,6 +671,7 @@ function OverrideValue({
     return (
       <InlineEditor
         label={`Personal override for ${secret.name}`}
+        scope={secret}
         initial={creating ? "" : value}
         placeholder="Enter personal override..."
         dirtyFromStart={creating}
@@ -659,7 +701,7 @@ function OverrideValue({
         aria-label={`Personal override for ${secret.name}, focus to edit`}
         onFocus={() => setEditing(true)}
       >
-        {visible ? value || " " : mask}
+        {visible ? <ReferenceText value={value || " "} scope={secret} /> : mask}
       </span>
       <TableRowActions>
         <ActionButton
@@ -777,7 +819,11 @@ export function SecretRow({
           </TableCell>
           <TableCell className={styles.valueCell}>
             <div className={styles.nameLine}>
-              <SecretValue secret={first} visible={revealAll} />
+              <SecretValue
+                secret={first}
+                visible={revealAll}
+                pending={Boolean(ctx.pending?.[first.id])}
+              />
               <Indicators secret={first} />
               <SecretActions
                 secret={first}
@@ -931,6 +977,7 @@ export function SecretRow({
                         {secret && editing === environment.value ? (
                           <InlineEditor
                             label={`Value of ${name} in ${environment.label}`}
+                            scope={secret}
                             initial={readableValue(secret) ?? ""}
                             saveLabel="Save"
                             undoLabel="Undo"
@@ -939,7 +986,11 @@ export function SecretRow({
                           />
                         ) : (
                           <div className={styles.nameLine}>
-                            <SecretValue secret={secret} visible={rowVisible} />
+                            <SecretValue
+                              secret={secret}
+                              visible={rowVisible}
+                              pending={Boolean(secret && ctx.pending?.[secret.id])}
+                            />
                             {secret && <Indicators secret={secret} />}
                             {secret ? (
                               <SecretActions

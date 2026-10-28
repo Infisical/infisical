@@ -778,7 +778,8 @@ export const baselineOverlays = [
     referenceNames: ["Tooltip"],
     behavior: [
       "The shortcut specimen owns a Mod+K binding scoped to its focused region. Its button and binding open the same local search, which filters fictional connections and exposes the selected record. Editing and composition keys remain with their controls.",
-      "Tooltip opens after a hover delay and immediately from focus; side, alignment, wrapping and a displayed shortcut are explicit."
+      "Tooltip opens after a hover delay and immediately from focus; side, alignment, wrapping and a displayed shortcut are explicit.",
+      "Content renders as one inline text run beside the shortcut, so inline code stays inside the sentence. Long content needs wrap; wrapped content breaks long inline code so it never runs past the surface."
     ],
     accessibility: [
       "The trigger retains its own accessible name. Tooltip shortcut text describes a host binding; it does not register a hotkey."

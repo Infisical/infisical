@@ -46,7 +46,7 @@ function Tooltip({
             align={align}
             className={wrap ? "whitespace-normal" : "whitespace-nowrap"}
           >
-            {content}
+            <span className={menu.tooltipText}>{content}</span>
             {shortcut && <Kbd>{shortcut}</Kbd>}
           </TooltipContent>
         </>

@@ -59,6 +59,12 @@
   font-weight: var(--v4-type-small-font-weight);
   letter-spacing: var(--v4-type-small-letter-spacing);
 }
+.tooltipText {
+  min-width: 0;
+}
+.tooltip code {
+  overflow-wrap: anywhere;
+}
 .tooltip:has([data-slot="kbd"]) {
   padding-inline-end: var(--v4-space-6);
 }

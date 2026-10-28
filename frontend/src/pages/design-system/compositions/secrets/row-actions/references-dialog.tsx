@@ -1,3 +1,5 @@
+import { EyeOffIcon } from "lucide-react";
+
 import {
   Dialog,
   DialogContent,
@@ -13,34 +15,14 @@ import { SmallText } from "@app/components/v4/ui/text";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { readableValue, type Resource, type Scope, type Secret } from "../../secrets-model";
+import {
+  expandReferences,
+  findSecret as find,
+  referencesIn,
+  resolveReference as resolve
+} from "../secret-references";
 
 import styles from "./row-actions.module.css";
-
-type Target = Scope & { key: string };
-
-const referencesIn = (value: string) =>
-  [...value.matchAll(/\$\{([^}]+)\}/g)].map((match) => match[1].trim());
-
-const resolve = (reference: string, base: Scope): Target => {
-  const segments = reference.split(".");
-  if (segments.length === 1) return { ...base, key: reference };
-  return {
-    project: base.project,
-    environment: segments[0],
-    path: `/${segments.slice(1, -1).join("/")}`,
-    key: segments.at(-1) ?? ""
-  };
-};
-
-const find = (resources: readonly Resource[], target: Target) =>
-  resources.find(
-    (resource): resource is Secret =>
-      resource.kind === "secret" &&
-      resource.project === target.project &&
-      resource.environment === target.environment &&
-      resource.path === target.path &&
-      resource.name === target.key
-  );
 
 const location = (target: Scope) => `${target.environment} ${target.path}`;
 
@@ -73,19 +55,6 @@ export function ReferencesDialog({
   onOpenChange: (open: boolean) => void;
   onNavigate: (environment: string, path: string, key: string) => void;
 }) {
-  let circular = false;
-  const expand = (value: string, base: Scope, seen: string[]): string =>
-    value.replace(/\$\{([^}]+)\}/g, (raw, reference: string) => {
-      const target = resolve(reference.trim(), base);
-      const id = `${location(target)} ${target.key}`;
-      const found = find(resources, target);
-      if (!found || readableValue(found) === undefined) return raw;
-      if (seen.includes(id)) {
-        circular = true;
-        return raw;
-      }
-      return expand(readableValue(found) ?? "", found, [...seen, id]);
-    });
   const nodeFor = (reference: string, base: Scope, seen: string[]): FileTreeNode => {
     const target = resolve(reference, base);
     const id = `${location(target)} ${target.key}`;
@@ -101,8 +70,19 @@ export function ReferencesDialog({
       id: [...seen, id].join(">"),
       name: target.key,
       icon: "key",
-      meta: found ? location(target) : `${location(target)} (not found)`,
-      disabled: !found,
+      meta:
+        found && readableValue(found) ? (
+          location(target)
+        ) : (
+          <span className={styles.nodeMeta}>
+            {location(target)}
+            <Tooltip content="No value">
+              <span className={styles.hint} data-tone="bad">
+                <Icon icon={EyeOffIcon} size={14} label="Referenced secret has no value" />
+              </span>
+            </Tooltip>
+          </span>
+        ),
       ...(children.length ? { children, type: "folder" as const } : { type: "file" as const })
     };
   };
@@ -110,7 +90,11 @@ export function ReferencesDialog({
   const tree = referencesIn(readableValue(secret) ?? "").map((reference) =>
     nodeFor(reference, secret, [self])
   );
-  const expanded = expand(readableValue(secret) ?? "", secret, [self]);
+  const {
+    value: expanded,
+    circular,
+    forbidden
+  } = expandReferences(readableValue(secret) ?? "", secret, resources);
   const dependents = dependentsOf(resources, secret);
   const go = (environment: string, path: string, key: string) => {
     onOpenChange(false);
@@ -130,7 +114,7 @@ export function ReferencesDialog({
         </DialogHeader>
         <div className={styles.referenceBody}>
           <Field label="Expanded value">
-            <SecretInput value={expanded} label="Expanded value" />
+            <SecretInput value={forbidden ? "" : expanded} label="Expanded value" />
           </Field>
           {circular && (
             <SmallText muted>
@@ -151,23 +135,29 @@ export function ReferencesDialog({
               </Tooltip>
             </h3>
             <div className={styles.treeFrame}>
-              <FileTree
-                label="Reference tree"
-                items={tree}
-                defaultExpanded={tree.map((node) => node.id)}
-                selectable="all"
-                selected={null}
-                onSelect={(id, node) => {
-                  if (node.disabled) return;
-                  const [environment, path, key] = (id.split(">").at(-1) ?? "").split(" ");
-                  go(environment, path, key);
-                }}
-                empty={
-                  <SmallText muted className={styles.center}>
-                    This secret does not contain references
-                  </SmallText>
-                }
-              />
+              {forbidden ? (
+                <SmallText role="alert" className={styles.treeError}>
+                  <Icon name="alert" size={14} />
+                  Error fetching secret reference tree
+                </SmallText>
+              ) : (
+                <FileTree
+                  label="Reference tree"
+                  items={tree}
+                  defaultExpanded={tree.map((node) => node.id)}
+                  selectable="all"
+                  selected={null}
+                  onSelect={(id) => {
+                    const [environment, path, key] = (id.split(">").at(-1) ?? "").split(" ");
+                    go(environment, path, key);
+                  }}
+                  empty={
+                    <SmallText muted className={styles.center}>
+                      This secret does not contain references
+                    </SmallText>
+                  }
+                />
+              )}
             </div>
             <SmallText muted>
               Click a secret key to navigate to it (expand/collapse with the arrow).

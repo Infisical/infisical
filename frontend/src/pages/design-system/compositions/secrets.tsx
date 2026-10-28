@@ -53,7 +53,7 @@ import {
   TableRow
 } from "@app/components/v4/ui/table";
 import type { ToastItem } from "@app/components/v4/ui/toast-stack";
-import { Tooltip, TooltipProvider } from "@app/components/v4/ui/tooltip";
+import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/top-bar";
 
 import {
@@ -88,6 +88,7 @@ import { ImportActions } from "./secrets/row-actions/import-actions";
 import { ProxiedServiceActions } from "./secrets/row-actions/proxied-service-actions";
 import { RotationActions } from "./secrets/row-actions/rotation-actions";
 import type { RowAction } from "./secrets/row-actions/types";
+import { type ReferenceSource, ReferenceSourceProvider } from "./secrets/secret-references";
 import { SecretRow, type SecretRowHandlers } from "./secrets/secret-row";
 import { CreateSecretSyncSheet } from "./secrets/secret-sync/create-secret-sync-sheet";
 import { SecretSyncStatusBadge } from "./secrets/secret-sync/secret-sync-status-badge";
@@ -1016,8 +1017,19 @@ function Overview({ scenario }: { scenario: Scenario }) {
     </DropdownMenu>
   );
 
+  const referenceSource: ReferenceSource = {
+    project,
+    environments: projectEnvironments,
+    resources,
+    onFocusReference: ({ environment, path: nextPath, key }) => {
+      if (nextPath !== undefined && nextPath !== path) navigate(nextPath);
+      if (environment) setEnvironmentIds([environment]);
+      setQuery(key ?? (nextPath !== undefined && nextPath !== path ? "" : query));
+    },
+    report: (message) => pushToast({ tone: "bad", title: message })
+  };
   return (
-    <TooltipProvider>
+    <ReferenceSourceProvider value={referenceSource}>
       <AppShell ref={root} className={styles.shell}>
         <Sidebar
           label="Secrets navigation"
@@ -1700,7 +1712,7 @@ function Overview({ scenario }: { scenario: Scenario }) {
           onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))}
         />
       </AppShell>
-    </TooltipProvider>
+    </ReferenceSourceProvider>
   );
 }
 

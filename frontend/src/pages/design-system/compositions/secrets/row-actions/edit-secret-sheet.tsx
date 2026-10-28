@@ -150,6 +150,7 @@ export function EditSecretSheet({
                 errors={errors}
                 tagOptions={options}
                 editing={{ valueCleared: patch.value !== undefined && !entry.value }}
+                scope={secret}
                 onPatch={(value) => setEntry((current) => ({ ...current, ...value }))}
                 onClearError={(key) =>
                   setErrors((current) => {

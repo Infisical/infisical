@@ -202,6 +202,12 @@ const referencingDatabaseUrl =
   "postgres://${APP_DB_USERNAME}:${APP_DB_PASSWORD}@db.dev.example.test:5432/payments";
 // eslint-disable-next-line no-template-curly-in-string -- Infisical secret reference syntax, not a JS template
 const corsOrigins = "https://app.dev.example.test,${dev.API_BASE_URL}";
+// eslint-disable-next-line no-template-curly-in-string -- Infisical secret reference syntax, not a JS template
+const sentryDsn = "https://${SENTRY_PUBLIC_KEY}@o0.ingest.sentry.example.test/0";
+// eslint-disable-next-line no-template-curly-in-string -- Infisical secret reference syntax, not a JS template
+const stripeAuthHeader = "Bearer ${STRIPE_SECRET_KEY}";
+// eslint-disable-next-line no-template-curly-in-string -- Infisical secret reference syntax, not a JS template
+const webhookRetryLimit = "${dev.workers.QUEUE_CONCURRENCY}";
 
 export function createResources(scenario: Scenario): Resource[] {
   if (scenario === "empty" || scenario === "no-environments" || scenario === "legacy") return [];
@@ -387,7 +393,8 @@ export function createResources(scenario: Scenario): Resource[] {
     { name: "JWT_SIGNING_KEY", envs: all, override: "fake-personal-jwt-key" },
     { name: "LOG_LEVEL", envs: all, comment: "Raise to debug only while investigating." },
     { name: "REDIS_URL", envs: ["dev", "staging"] },
-    { name: "SENTRY_DSN", envs: ["prod"] },
+    { name: "SENTRY_DSN", envs: ["prod"], values: { prod: sentryDsn } },
+    { name: "STRIPE_AUTH_HEADER", envs: ["dev"], values: { dev: stripeAuthHeader } },
     { name: "STRIPE_SECRET_KEY", envs: ["dev", "prod"] },
     { name: "STRIPE_WEBHOOK_SECRET", envs: all, empty: ["staging"] },
     ...(scenario === "large"
@@ -467,7 +474,12 @@ export function createResources(scenario: Scenario): Resource[] {
     { name: "PAYPAL_CLIENT_SECRET", envs: all, empty: ["staging"] },
     { name: "RATE_LIMIT_PER_MIN", envs: all, comment: "Applies per API key." },
     { name: "SIGNING_SECRET", envs: all },
-    { name: "WEBHOOK_RETRY_LIMIT", envs: all, tags: ["webhooks"] }
+    {
+      name: "WEBHOOK_RETRY_LIMIT",
+      envs: all,
+      tags: ["webhooks"],
+      values: { dev: webhookRetryLimit }
+    }
   ]);
   secrets("/workers", [{ name: "QUEUE_CONCURRENCY", envs: ["dev", "staging"] }]);
   secrets("/api/v1", [{ name: "V1_SUNSET_DATE", envs: ["staging"] }]);

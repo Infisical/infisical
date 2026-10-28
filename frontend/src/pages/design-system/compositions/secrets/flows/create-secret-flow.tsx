@@ -28,7 +28,9 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { getKeyValue } from "@app/helpers/parseEnvVar";
 import { slugSchema } from "@app/lib/schemas/slugSchema";
 
+import type { Scope } from "../../secrets-model";
 import { NEXT_PHASE } from "../overview-cells";
+import { ReferenceEditor } from "../secret-references";
 import { PasswordGenerator } from "./password-generator";
 import {
   DiscardDialog,
@@ -71,6 +73,7 @@ export function SecretEntryFields({
   tagOptions,
   keyRef,
   editing,
+  scope,
   onPatch,
   onClearError,
   onPaste,
@@ -84,6 +87,7 @@ export function SecretEntryFields({
   tagOptions: { value: string; label: string }[];
   keyRef?: (element: HTMLInputElement | null) => void;
   editing?: { valueCleared: boolean };
+  scope?: Scope;
   onPatch: (value: Partial<Entry>) => void;
   onClearError: (key: string) => void;
   onPaste?: (event: ClipboardEvent<HTMLInputElement>) => void;
@@ -143,6 +147,7 @@ export function SecretEntryFields({
         <div className={styles.labelRow}>
           <FieldLabel htmlFor={`${entry.id}-value`}>Value</FieldLabel>
           <Tooltip
+            wrap
             content={
               <>
                 You can add references to other secrets using the format{" "}
@@ -165,16 +170,24 @@ export function SecretEntryFields({
             />
           </span>
         </div>
-        <Textarea
-          id={`${entry.id}-value`}
-          className={styles.mono}
+        <ReferenceEditor
+          multiline
           value={entry.value}
-          placeholder="Enter secret value..."
-          autoComplete="off"
-          spellCheck={false}
-          autoFocus={Boolean(editing)}
-          onChange={(event) => onPatch({ value: event.target.value })}
-        />
+          scope={scope}
+          onValueChange={(value) => onPatch({ value })}
+        >
+          {(control) => (
+            <Textarea
+              {...control}
+              id={`${entry.id}-value`}
+              className={styles.mono}
+              placeholder="Enter secret value..."
+              autoComplete="off"
+              spellCheck={false}
+              autoFocus={Boolean(editing)}
+            />
+          )}
+        </ReferenceEditor>
         {editing?.valueCleared && (
           <SmallText muted>Saving removes the value, not the secret.</SmallText>
         )}
@@ -551,6 +564,11 @@ export function CreateSecretFlow({
                   framed={entries.length > 1}
                   errors={errors}
                   tagOptions={tagOptions}
+                  scope={{
+                    project: scope.project,
+                    environment: selected[0] ?? "",
+                    path: scope.path
+                  }}
                   keyRef={(element) => {
                     keyInputs.current[entry.id] = element;
                   }}
