@@ -40,7 +40,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { HIDDEN_SECRET_VALUE } from "@app/const/secrets";
-import { useProject, useProjectPermission } from "@app/context";
+import { ProjectPermissionActions, useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub
@@ -50,6 +50,7 @@ import { useUpdateSecretV3 } from "@app/hooks/api";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { ProjectEnv } from "@app/hooks/api/types";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { useOverviewTelemetry } from "../../OverviewTelemetry";
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
@@ -295,16 +296,28 @@ export const SecretTableRow = ({
 
   const sortedEnvironments = [...environments];
 
+  const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
   const annotatedEnvironmentNames = isSingleEnvView
     ? []
     : environments
         .filter(({ slug }) => {
           const secret = getSecretByKey(slug, secretKey);
+          if (!secret) return false;
+          const canDescribeSecret = hasSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.DescribeSecret,
+            {
+              environment: slug,
+              secretPath,
+              secretName: secretKey,
+              secretTags: secret.tags?.map(({ slug: tagSlug }) => tagSlug) ?? []
+            }
+          );
           return Boolean(
-            secret?.comment ||
-              secret?.tags?.length ||
-              secret?.reminder ||
-              secret?.secretMetadata?.length
+            (secret.comment && canDescribeSecret && !secret.revokedProjectFolderGrant) ||
+              (canReadTags && secret.tags?.length) ||
+              secret.reminder ||
+              secret.secretMetadata?.length
           );
         })
         .map(({ name }) => name);
