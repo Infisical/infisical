@@ -219,7 +219,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           type: EventType.AGENT_VAULT_ACCESS_BUNDLE_UPDATE,
           metadata: {
             accessBundleId: accessBundle.id,
-            name: req.body.name,
+            name: accessBundle.name,
             description: req.body.description
           }
         }

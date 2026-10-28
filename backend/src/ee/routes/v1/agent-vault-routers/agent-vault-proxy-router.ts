@@ -179,7 +179,7 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
         projectId: req.internalAgentVaultProjectId,
         event: {
           type: EventType.AGENT_VAULT_PROXY_UPDATE,
-          metadata: { proxyId: proxy.id, ...req.body }
+          metadata: { proxyId: proxy.id, ...req.body, name: proxy.name }
         }
       });
 

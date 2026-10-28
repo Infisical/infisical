@@ -6494,7 +6494,7 @@ interface AgentVaultProxyUpdateEvent {
   type: EventType.AGENT_VAULT_PROXY_UPDATE;
   metadata: {
     proxyId: string;
-    name?: string;
+    name: string;
     description?: string | null;
     trafficPolicy?: string;
     allowedHosts?: string | null;
@@ -6552,7 +6552,7 @@ interface AgentVaultAccessBundleUpdateEvent {
   type: EventType.AGENT_VAULT_ACCESS_BUNDLE_UPDATE;
   metadata: {
     accessBundleId: string;
-    name?: string;
+    name: string;
     description?: string | null;
   };
 }
