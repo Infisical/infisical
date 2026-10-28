@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -80,7 +80,6 @@ enum RolesOrderBy {
 }
 
 export const OrgRoleTable = () => {
-  const navigate = useNavigate();
   const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
 
@@ -377,21 +376,17 @@ export const OrgRoleTable = () => {
                                   a={OrgPermissionSubjects.Role}
                                 >
                                   {(isAllowed) => (
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        navigate({
-                                          to: "/organizations/$orgId/roles/$roleId",
-                                          params: {
-                                            roleId: id,
-                                            orgId
-                                          }
-                                        });
-                                      }}
-                                      isDisabled={!isAllowed}
-                                    >
-                                      {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
-                                      {`${isNonMutatable ? "View" : "Edit"} Role`}
+                                    <DropdownMenuItem asChild isDisabled={!isAllowed}>
+                                      <Link
+                                        to="/organizations/$orgId/roles/$roleId"
+                                        params={{
+                                          roleId: id,
+                                          orgId
+                                        }}
+                                      >
+                                        {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
+                                        {`${isNonMutatable ? "View" : "Edit"} Role`}
+                                      </Link>
                                     </DropdownMenuItem>
                                   )}
                                 </OrgPermissionCan>

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon } from "lucide-react";
 
@@ -32,7 +32,6 @@ type Props = {
 
 export const GroupProjectRow = ({ project, handlePopUpOpen }: Props) => {
   const { data: workspaces } = useGetUserProjects();
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
 
   const isAccessible = useMemo(() => {
@@ -82,14 +81,10 @@ export const GroupProjectRow = ({ project, handlePopUpOpen }: Props) => {
             </IconButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              isDisabled={!isAccessible}
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate({ ...projectLink, search: projectSearch });
-              }}
-            >
-              Access Project
+            <DropdownMenuItem asChild isDisabled={!isAccessible}>
+              <Link {...projectLink} search={projectSearch}>
+                Access Project
+              </Link>
             </DropdownMenuItem>
             <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
               {(isAllowed) => (
