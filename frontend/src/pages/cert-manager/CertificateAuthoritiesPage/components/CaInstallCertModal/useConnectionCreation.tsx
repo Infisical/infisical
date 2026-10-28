@@ -10,12 +10,13 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { AppConnectionForm } from "@app/pages/organization/AppConnections/AppConnectionsPage/components/AppConnectionForm";
 
 export const useConnectionCreation = (
-  app: AppConnection,
+  app: AppConnection | undefined,
   onCreated: (connection: TAppConnection) => void
 ): ComboboxDialogCreationConfig<TAvailableAppConnection> | undefined => {
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
   const [isDirty, setIsDirty] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const cancelRef = useRef<VoidFunction>(() => {});
   // Bumped on dismissal so a create request that resolves after the dialog closed is ignored.
   const attemptRef = useRef(0);
@@ -36,6 +37,7 @@ export const useConnectionCreation = (
   };
 
   if (
+    !app ||
     !permission.can(
       ProjectPermissionAppConnectionActions.Create,
       ProjectPermissionSub.AppConnections
@@ -52,6 +54,7 @@ export const useConnectionCreation = (
     description: "The new connection is selected once it is created.",
     emptyLabel: label,
     formatLabel: () => label,
+    isPending,
     onDismiss: requestCancel,
     renderForm: ({ complete, cancel }) => (
       <>
@@ -61,6 +64,7 @@ export const useConnectionCreation = (
           projectId={currentProject.id}
           projectType={currentProject.type}
           onDirtyChange={setIsDirty}
+          onPendingChange={setIsPending}
           onComplete={(connection) => {
             if (attempt !== attemptRef.current) return;
             setIsDirty(false);

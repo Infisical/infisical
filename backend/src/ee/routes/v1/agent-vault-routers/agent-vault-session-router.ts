@@ -6,6 +6,11 @@ import {
 } from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
 import { AgentVaultSessionScope, AgentVaultSessionStatus } from "@app/ee/services/agent-vault/agent-vault-enums";
 import {
+  agentVaultSessionLabelSchema,
+  agentVaultSessionLabelUpdateSchema,
+  describeSessionForAudit
+} from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
+import {
   AGENT_VAULT_MAX_SESSION_BUNDLES,
   AGENT_VAULT_SESSION_DEFAULT_TTL,
   AGENT_VAULT_SESSION_MAX_TTL_MS,
@@ -34,6 +39,7 @@ const SessionAccessBundleSchema = z.object({
 
 const SessionSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
+  label: z.string().nullable().describe(AGENT_VAULT.SESSION.label),
   actor: AgentVaultSessionActorSchema,
   status: z.nativeEnum(AgentVaultSessionStatus),
   expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
@@ -161,12 +167,14 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
               });
             }
           })
-          .describe(AGENT_VAULT.SESSION.ttl)
+          .describe(AGENT_VAULT.SESSION.ttl),
+        label: agentVaultSessionLabelSchema.describe(AGENT_VAULT.SESSION.label)
       }),
       response: {
         200: z.object({
           session: z.object({
             id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
+            label: z.string().nullable().describe(AGENT_VAULT.SESSION.label),
             token: z.string().describe(AGENT_VAULT.SESSION.token),
             expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
             createdAt: z.date(),
@@ -204,6 +212,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           type: EventType.AGENT_VAULT_SESSION_MINT,
           metadata: {
             sessionId: session.id,
+            label: session.label,
             accessBundleId: session.accessBundles[0].id,
             accessBundleName: session.accessBundles[0].name,
             expiresAt: session.expiresAt?.toISOString() ?? null
@@ -221,6 +230,51 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
       });
 
       return { session: { ...session, token } };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:sessionId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "updateAgentVaultSession",
+      description: "Update the label of an Agent Vault session",
+      tags: [ApiDocsTags.AgentVaultSessions],
+      params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
+      body: z.object({
+        label: agentVaultSessionLabelUpdateSchema.describe(AGENT_VAULT.SESSION.updateLabel)
+      }),
+      response: { 200: z.object({ session: SessionWithAccessBundlesSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { session, previousLabel } = await server.services.agentVaultSession.updateSessionLabel({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        sessionId: req.params.sessionId,
+        label: req.body.label
+      });
+
+      if (previousLabel !== session.label) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.internalAgentVaultProjectId,
+          event: {
+            type: EventType.AGENT_VAULT_SESSION_UPDATE,
+            metadata: {
+              sessionId: session.id,
+              label: session.label,
+              previousLabel,
+              ...describeSessionForAudit(session)
+            }
+          }
+        });
+      }
+
+      return { session };
     }
   });
 
@@ -252,7 +306,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           projectId: req.internalAgentVaultProjectId,
           event: {
             type: EventType.AGENT_VAULT_SESSION_REVOKE,
-            metadata: { sessionId: session.id }
+            metadata: { sessionId: session.id, label: session.label, ...describeSessionForAudit(session) }
           }
         });
 

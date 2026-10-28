@@ -6,12 +6,26 @@ import { PamAccessType } from "@app/ee/services/pam/pam-enums";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { ApprovalPolicyType, ApproverType } from "@app/services/approval-policy/approval-policy-enums";
+import {
+  ApprovalAuditAction,
+  ApprovalPolicyType,
+  ApproverType
+} from "@app/services/approval-policy/approval-policy-enums";
+import {
+  AutoApprovalInputDetailsSchema,
+  AutoApprovalInputValuesSchema,
+  AutoApprovalOutcomeSchema
+} from "@app/services/approval-policy/auto-approval/auto-approval-schemas";
 import { parsePamAccessDuration } from "@app/services/approval-policy/pam-access/pam-access-policy-fns";
-import { AuthMode } from "@app/services/auth/auth-type";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
-const EnrichedRequestSchema = ApprovalRequestsSchema.extend({
+// The evidence holds data fetched from other services, so only its outcome is returned
+const RequestSchema = ApprovalRequestsSchema.omit({ autoApprovalEvidence: true }).extend({
+  autoApproval: AutoApprovalOutcomeSchema.optional()
+});
+
+const EnrichedRequestSchema = RequestSchema.extend({
   accountName: z.string().nullable(),
   accountType: z.string().nullable(),
   folderName: z.string().nullable(),
@@ -51,14 +65,15 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
             .optional()
             .describe(
               "Self-approve the request immediately instead of waiting for an approver. Requires break-glass eligibility and a reason of at least 10 characters, which is reused as the bypass reason."
-            )
+            ),
+          autoApprovalInputs: AutoApprovalInputValuesSchema.optional()
         })
         .refine((b) => Boolean(b.accountId) || Boolean(b.path), {
           message: "Either 'accountId' or 'path' is required"
         }),
       response: {
         200: z.object({
-          request: ApprovalRequestsSchema
+          request: RequestSchema
         })
       }
     },
@@ -72,6 +87,7 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
         duration: req.body.duration,
         accessType: req.body.accessType,
         breakGlass: req.body.breakGlass,
+        autoApprovalInputs: req.body.autoApprovalInputs,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorOrgId: req.permission.orgId,
@@ -127,6 +143,23 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
             }
           }
         });
+      }
+
+      if (result.request.autoApprovedAt) {
+        const autoApprovedEvent = await server.services.approvalPolicy.buildAuditEvent({
+          action: ApprovalAuditAction.RequestAutoApproved,
+          request: result.request,
+          actorId: req.permission.id
+        });
+        if (autoApprovedEvent) {
+          await server.services.auditLog.createAuditLog({
+            ...req.auditLogInfo,
+            actor: { type: ActorType.PLATFORM, metadata: {} },
+            orgId: req.permission.orgId,
+            projectId: req.internalPamProjectId,
+            event: autoApprovedEvent
+          });
+        }
       }
 
       void server.services.telemetry
@@ -246,6 +279,8 @@ export const registerPamAccessRequestRouter = async (server: FastifyZodProvider)
       }),
       response: {
         200: z.object({
+          autoApprovalInputs: AutoApprovalInputDetailsSchema.array(),
+          autoApprovalOnly: z.boolean(),
           steps: z.array(
             z.object({
               requiredApprovals: z.number(),

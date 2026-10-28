@@ -171,7 +171,7 @@ const DefaultSecretSyncSourceFields = () => {
             {isChecking && (
               <div className="flex items-center gap-2">
                 <Spinner size="xs" />
-                <p className="text-xs text-mineshaft-300">
+                <p className="text-xs text-label">
                   Checking for naming conflicts across folders...
                 </p>
               </div>

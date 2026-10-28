@@ -36,6 +36,8 @@ import { NotificationType } from "@app/services/notification/notification-types"
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
+import { PostHogEventTypes, TSecretScanningScanCompletedEvent } from "@app/services/telemetry/telemetry-types";
 
 import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
 import { SecretScanningDataSource, SecretScanningScanStatus, SecretScanningScanType } from "./secret-scanning-v2-enums";
@@ -62,6 +64,7 @@ type TSecretRotationV2QueueServiceFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "setItemWithExpiryNX" | "getItemPrimary" | "deleteItem">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TSecretScanningV2QueueServiceFactory = ReturnType<typeof secretScanningV2QueueServiceFactory>;
@@ -95,7 +98,8 @@ export const secretScanningV2QueueServiceFactory = ({
   auditLogService,
   keyStore,
   appConnectionDAL,
-  notificationService
+  notificationService,
+  telemetryService
 }: TSecretRotationV2QueueServiceFactoryDep) => {
   /**
    * Full scans of one resource are serialized across pods by a lease in Redis holding the ID of the
@@ -169,6 +173,20 @@ export const secretScanningV2QueueServiceFactory = ({
     );
 
     return failedScans.length > 0;
+  };
+
+  // Callers emit only after their guarded status update matched, so a retried job cannot count a scan twice.
+  const sendScanTelemetry = (
+    dataSource: { projectId: string; connection?: { orgId: string } | null },
+    event: TSecretScanningScanCompletedEvent
+  ) => {
+    void telemetryService
+      .sendPostHogEvents({
+        ...event,
+        distinctId: `platform/${dataSource.projectId}`,
+        organizationId: dataSource.connection?.orgId
+      })
+      .catch(() => {});
   };
 
   // Jobs are keyed by scan, and finished jobs are removed, so submitting one that is still waiting or running is a
@@ -521,6 +539,15 @@ export const secretScanningV2QueueServiceFactory = ({
       // part of this scan's total, and a resumed attempt never scanned the batches they came from.
       const findingsCount = await secretScanningV2DAL.findings.countByScanId(scanId);
 
+      sendScanTelemetry(dataSource, {
+        event: PostHogEventTypes.SecretScanningScanCompleted,
+        properties: {
+          type: dataSource.type as SecretScanningDataSource,
+          scanType: SecretScanningScanType.Historical,
+          findingCount: findingsCount
+        }
+      });
+
       if (findingsCount) {
         await queueService.queue(
           QueueName.SecretScanningV2,
@@ -817,6 +844,15 @@ export const secretScanningV2QueueServiceFactory = ({
       }
 
       const newFindings = allFindings.filter((finding) => finding.scanId === scanId);
+
+      sendScanTelemetry(dataSource, {
+        event: PostHogEventTypes.SecretScanningScanCompleted,
+        properties: {
+          type: dataSource.type as SecretScanningDataSource,
+          scanType: SecretScanningScanType.Realtime,
+          findingCount: newFindings.length
+        }
+      });
 
       if (newFindings.length) {
         const finding = newFindings[0] as TSecretScanningFinding;

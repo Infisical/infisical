@@ -366,7 +366,7 @@ export const ProjectCategoryOverview = () => {
 
   const navigateToAgentVault = () => {
     navigate({
-      to: "/organizations/$orgId/agent-vault/sessions",
+      to: "/organizations/$orgId/agent-vault",
       params: { orgId: currentOrg?.id ?? "" }
     });
   };

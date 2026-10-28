@@ -1,19 +1,17 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { InfoIcon } from "lucide-react";
 
 import { TSecretRotationV2Form } from "@app/components/secret-rotations-v2/forms/schemas";
 import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
+  Combobox,
   Field,
   FieldFeedback,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import { useDatabricksConnectionListServicePrincipals } from "@app/hooks/api/appConnections/databricks";
-import { TDatabricksServicePrincipal } from "@app/hooks/api/appConnections/databricks/types";
 import { SecretRotation } from "@app/hooks/api/secretRotationsV2";
 
 export const DatabricksServicePrincipalSecretRotationParametersFields = () => {
@@ -39,22 +37,23 @@ export const DatabricksServicePrincipalSecretRotationParametersFields = () => {
           <FieldLabelWithTooltip htmlFor="databricks-service-principal">
             Service Principal
           </FieldLabelWithTooltip>
-          <FilterableSelect
-            inputId="databricks-service-principal"
+          <Combobox
+            id="databricks-service-principal"
             isLoading={isServicePrincipalsPending && Boolean(connectionId)}
             isDisabled={!connectionId}
             value={servicePrincipals?.find((sp) => sp.id === value) ?? null}
             onBlur={onBlur}
-            onChange={(option) => {
-              const selectedSp = option as SingleValue<TDatabricksServicePrincipal>;
-              onChange(selectedSp?.id ?? null);
-              setValue("parameters.servicePrincipalName", selectedSp?.name ?? "");
-              setValue("parameters.clientId", selectedSp?.clientId ?? "");
+            onValueChange={(selectedSp) => {
+              onChange(selectedSp.id);
+              setValue("parameters.servicePrincipalName", selectedSp.name);
+              setValue("parameters.clientId", selectedSp.clientId);
             }}
+            isClearable={false}
             options={servicePrincipals}
             placeholder="Select a service principal..."
             getOptionLabel={(option) => option.name}
             getOptionValue={(option) => option.id}
+            getOptionKeywords={(option) => [option.id]}
             isError={Boolean(error)}
             aria-describedby="databricks-service-principal-feedback"
           />
