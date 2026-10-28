@@ -339,6 +339,20 @@ describe("parseSkillHeader", () => {
     expectBadRequest(() => parse(text), `Line 5 of SKILL.md: the 'hint' value ${problem}.`);
   });
 
+  test.each([
+    '---\ndescription: "first\nsecond"\nname: a\nname: b\n---\n',
+    "---\nhint: [a,\n# note\n  b]\nname: a\nname: b\n---\n"
+  ])("does not blame a value that continues at column zero in %j", (text) => {
+    expectBadRequest(() => parse(text), /duplicated mapping key/);
+  });
+
+  test("still names a quote left open before the next key", () => {
+    expectBadRequest(
+      () => parse('---\nname: "oops\ndescription: y\n---\n'),
+      "Line 2 of SKILL.md: the 'name' value opens a double quote that never closes."
+    );
+  });
+
   test("accepts a CRLF header without seeing control characters", () => {
     expect(parse("---\r\nname: a\r\ndescription: |\r\n  one\r\n  two\r\n---\r\n")).toEqual({
       name: "a",

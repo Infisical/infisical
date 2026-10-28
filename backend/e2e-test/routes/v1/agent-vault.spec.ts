@@ -5218,7 +5218,7 @@ describe("Agent Vault V1 Router", async () => {
       });
       expect(badYaml.statusCode).toBe(400);
       expect(JSON.parse(badYaml.payload).message).toBe(
-        "Line 3 of SKILL.md: the header is not valid YAML (unexpected end of the stream within a flow collection)."
+        "Line 2 of SKILL.md: the 'name' value opens a '[' that never closes."
       );
 
       const unquotedColon = await inject("POST", skillsUrl, {

@@ -503,6 +503,21 @@ describe("getSkillHeaderError", () => {
     );
   });
 
+  test.each([
+    '---\ndescription: "first\nsecond"\nname: a\nname: b\n---\n',
+    "---\nhint: [a,\n# note\n  b]\nname: a\nname: b\n---\n"
+  ])("does not blame a value that continues at column zero in %j", (text) => {
+    const { frontmatter } = splitFrontmatter(text);
+    expect(getSkillHeaderError(frontmatter ?? "")).toMatch(/duplicated mapping key/);
+  });
+
+  test("still names a quote left open before the next key", () => {
+    const { frontmatter } = splitFrontmatter('---\nname: "oops\ndescription: y\n---\n');
+    expect(getSkillHeaderError(frontmatter ?? "")).toBe(
+      "Line 2 of SKILL.md: the 'name' value opens a double quote that never closes."
+    );
+  });
+
   test("returns null for a header that parses, quoted colons included", () => {
     expect(getSkillHeaderError('name: a\ndescription: "Review: then fix"')).toBeNull();
     expect(getSkillHeaderError("name: a\ndescription: >\n  Review: then fix")).toBeNull();

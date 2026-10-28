@@ -30,17 +30,20 @@ const components: Components = {
     </h3>
   ),
   h4: ({ node, className, children, ...props }) => (
-    <h4 className={cn("mt-4 mb-2 text-base font-medium first:mt-0", className)} {...props}>
+    <h4 className={cn("mt-4 mb-2 font-alliance text-base first:mt-0", className)} {...props}>
       {children}
     </h4>
   ),
   h5: ({ node, className, children, ...props }) => (
-    <h5 className={cn("mt-4 mb-2 text-sm font-medium first:mt-0", className)} {...props}>
+    <h5 className={cn("mt-4 mb-2 font-alliance text-sm first:mt-0", className)} {...props}>
       {children}
     </h5>
   ),
   h6: ({ node, className, children, ...props }) => (
-    <h6 className={cn("mt-4 mb-2 text-sm text-label first:mt-0", className)} {...props}>
+    <h6
+      className={cn("mt-4 mb-2 font-alliance text-sm text-label first:mt-0", className)}
+      {...props}
+    >
       {children}
     </h6>
   ),

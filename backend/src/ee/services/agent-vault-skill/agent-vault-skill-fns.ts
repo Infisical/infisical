@@ -196,6 +196,15 @@ const valueCloses = (text: string) => {
   return false;
 };
 
+// A quoted or flow value may continue on lines that start at column zero, and comments may sit between its lines,
+// so only the next top-level key ends it.
+const startsTopLevelKey = (line: string) => {
+  const first = line[0];
+  if (first === undefined || first === " " || first === "\t" || first === "#" || first === "-") return false;
+  const colon = line.indexOf(":");
+  return colon > 0 && (colon === line.length - 1 || line[colon + 1] === " " || line[colon + 1] === "\t");
+};
+
 const findUnclosedValue = (headerLines: string[]) => {
   for (let i = 0; i < headerLines.length; i += 1) {
     const line = headerLines[i];
@@ -206,7 +215,7 @@ const findUnclosedValue = (headerLines: string[]) => {
         const value = line.slice(separator + 2).trimStart();
         if (UNCLOSED_VALUE_OPENERS.includes(value[0])) {
           let end = i + 1;
-          while (end < headerLines.length && (headerLines[end] === "" || isBlank(headerLines[end][0]))) end += 1;
+          while (end < headerLines.length && !startsTopLevelKey(headerLines[end])) end += 1;
           if (!valueCloses([value, ...headerLines.slice(i + 1, end)].join("\n"))) {
             return { line: i, key: line.slice(0, separator).trimEnd(), opener: value[0] };
           }
