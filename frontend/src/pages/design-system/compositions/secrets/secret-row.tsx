@@ -180,6 +180,7 @@ function InlineEditor({
     <div className={styles.inlineEdit}>
       <Input
         autoFocus
+        mono
         className={styles.inlineInput}
         aria-label={label}
         placeholder={placeholder}

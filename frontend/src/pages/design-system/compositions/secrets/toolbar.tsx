@@ -429,6 +429,7 @@ export function QuickAddRow({
       <TableCell colSpan={colSpan} className={styles.valueCell}>
         <div className={styles.nameLine}>
           <Input
+            mono
             className={styles.inlineInput}
             ref={valueRef}
             aria-label="New secret value"
