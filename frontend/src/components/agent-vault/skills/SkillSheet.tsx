@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useBlocker } from "@tanstack/react-router";
 import axios from "axios";
 import { format } from "date-fns";
 import FileSaver from "file-saver";
@@ -82,7 +81,6 @@ type TEditState = {
 type TSkillDialog = "history" | "upload" | "delete" | "save";
 
 type TSkillSheetBodyProps = {
-  skillId: string | undefined;
   shownSkillId: string;
   closeSheet: () => Promise<void>;
   publishVersion: ReturnType<typeof usePublishAgentVaultSkillVersion>;
@@ -90,7 +88,6 @@ type TSkillSheetBodyProps = {
 };
 
 const SkillSheetBody = ({
-  skillId,
   shownSkillId,
   closeSheet,
   publishVersion,
@@ -160,27 +157,11 @@ const SkillSheetBody = ({
     );
   }, [canEdit, skill, versionData, original]);
 
-  // Read by the blocker, which can run before a discard's state update has rendered.
-  const isDirtyRef = useRef(false);
-  isDirtyRef.current = hasChanges;
-  const skillIdRef = useRef(skillId);
-  skillIdRef.current = skillId;
-
-  const blocker = useBlocker({
-    shouldBlockFn: ({ current, next }) =>
-      isDirtyRef.current &&
-      (next.pathname !== current.pathname ||
-        (next.search as { skillId?: string }).skillId !== skillIdRef.current),
-    enableBeforeUnload: hasChanges,
-    withResolver: true
-  });
-
   const discardIntent = useRef<"stop" | "close">("stop");
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
     useDiscardChangesGuard({
       isDirty: hasChanges,
       onDiscard: () => {
-        isDirtyRef.current = false;
         const isLatest = Boolean(
           skill && versionData && versionData.version === skill.latestVersion
         );
@@ -512,16 +493,6 @@ const SkillSheetBody = ({
         title="Discard Changes?"
         description="Your edits to this skill will be lost."
       />
-
-      <DiscardChangesAlertDialog
-        open={blocker.status === "blocked"}
-        onOpenChange={(open) => {
-          if (!open) blocker.reset?.();
-        }}
-        onDiscard={() => blocker.proceed?.()}
-        title="Leave Without Saving?"
-        description="Your edits to this skill will be lost."
-      />
     </>
   );
 };
@@ -548,7 +519,6 @@ export const SkillSheet = () => {
       >
         <SkillSheetBody
           key={shownSkillId}
-          skillId={skillId}
           shownSkillId={shownSkillId}
           closeSheet={closeSheet}
           publishVersion={publishVersion}

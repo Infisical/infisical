@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useBlocker } from "@tanstack/react-router";
 import { UploadIcon } from "lucide-react";
 import { z } from "zod";
 
@@ -156,16 +155,6 @@ export const CreateSkillSheet = ({
 
   const { confirmDiscard, isDiscardDialogOpen, requestDiscard, setIsDiscardDialogOpen } =
     useDiscardChangesGuard({ isDirty: isDirty || areFilesDirty, onDiscard: close });
-
-  // The form stays dirty after the sheet closes, so only an open sheet blocks. Only a new page is blocked: the sheet is
-  // not in the URL, and opening the created skill changes only the search.
-  const hasChanges = isOpen && (isDirty || areFilesDirty);
-
-  const blocker = useBlocker({
-    shouldBlockFn: ({ current, next }) => hasChanges && next.pathname !== current.pathname,
-    enableBeforeUnload: hasChanges,
-    withResolver: true
-  });
 
   const getEntryText = (from = files) =>
     from.find((file) => file.path === SKILL_ENTRY_FILE)?.text ?? "";
@@ -387,16 +376,6 @@ export const CreateSkillSheet = ({
         onOpenChange={setIsDiscardDialogOpen}
         onDiscard={confirmDiscard}
         title="Discard Skill?"
-        description="The skill you are writing will be lost."
-      />
-
-      <DiscardChangesAlertDialog
-        open={blocker.status === "blocked"}
-        onOpenChange={(open) => {
-          if (!open) blocker.reset?.();
-        }}
-        onDiscard={() => blocker.proceed?.()}
-        title="Leave Without Saving?"
         description="The skill you are writing will be lost."
       />
     </>
