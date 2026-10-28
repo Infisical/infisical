@@ -19,7 +19,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { getInstancePinningLink } from "@app/helpers/project";
@@ -99,11 +102,17 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId, isScanRu
                         {installation.name || getEndpoint(installation)}
                       </RowLink>
                     </TableCell>
-                    <TableCell
-                      className="max-w-44 truncate"
-                      title={installation.primaryCertName ?? undefined}
-                    >
-                      {installation.primaryCertName || "N/A"}
+                    <TableCell className="max-w-44">
+                      {installation.primaryCertName ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="block truncate">{installation.primaryCertName}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>{installation.primaryCertName}</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        "N/A"
+                      )}
                     </TableCell>
                     <TableCell>{getGatewayLabel(installation) || "N/A"}</TableCell>
                     <TableCell>

@@ -29,7 +29,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionPkiCertificateInstallationActions,
@@ -202,11 +205,17 @@ export const InstallationsTab = ({ projectId }: Props) => {
                         {getKeystoreStatusBadge(installation)}
                       </div>
                     </TableCell>
-                    <TableCell
-                      className="max-w-56 truncate"
-                      title={installation.primaryCertName ?? undefined}
-                    >
-                      {installation.primaryCertName || <span className="text-accent">—</span>}
+                    <TableCell className="max-w-56">
+                      {installation.primaryCertName ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="block truncate">{installation.primaryCertName}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>{installation.primaryCertName}</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <span className="text-accent">—</span>
+                      )}
                     </TableCell>
                     <TableCell>{getGatewayLabel(installation) || "N/A"}</TableCell>
                     <TableCell>
