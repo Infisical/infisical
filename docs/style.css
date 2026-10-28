@@ -2856,3 +2856,16 @@ html[data-cli-nav] #sidebar-content li > a[aria-current="page"] {
 html.dark[data-cli-nav] #sidebar-content li > a[aria-current="page"] {
   color: #9f9f9f;
 }
+
+/* Card and sidebar icons take one image, so swap in the dark-mode logo here. */
+html.dark img[src$="/images/agent-vault-agents/OpenAI.png"] {
+  content: url("images/agent-vault-agents/OpenAIWhite.png");
+}
+
+html.dark img[src$="/images/agent-vault-agents/hermes.png"] {
+  content: url("images/agent-vault-agents/hermes.on-dark.png");
+}
+
+html.dark img[src$="/images/agent-vault-agents/opencode.svg"] {
+  content: url("images/agent-vault-agents/opencode.on-dark.svg");
+}

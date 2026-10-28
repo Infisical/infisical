@@ -700,28 +700,33 @@
                 ]
               },
               {
-                "group": "Agent guides",
+                "group": "Guides",
                 "pages": [
-                  "documentation/platform/agent-vault/guides/claude-code",
-                  "documentation/platform/agent-vault/guides/codex",
-                  "documentation/platform/agent-vault/guides/opencode",
                   {
-                    "group": "Hermes Agent",
-                    "root": "documentation/platform/agent-vault/guides/hermes",
+                    "group": "Local agents",
                     "pages": [
-                      "documentation/platform/agent-vault/guides/hermes-gateway"
+                      "documentation/platform/agent-vault/guides/claude-code",
+                      "documentation/platform/agent-vault/guides/codex",
+                      "documentation/platform/agent-vault/guides/opencode",
+                      "documentation/platform/agent-vault/guides/hermes",
+                      "documentation/platform/agent-vault/guides/openclaw"
                     ]
                   },
                   {
-                    "group": "OpenClaw",
-                    "root": "documentation/platform/agent-vault/guides/openclaw",
+                    "group": "Sandboxes",
                     "pages": [
+                      "documentation/platform/agent-vault/guides/modal",
+                      "documentation/platform/agent-vault/guides/daytona"
+                    ]
+                  },
+                  {
+                    "group": "Messaging gateways",
+                    "pages": [
+                      "documentation/platform/agent-vault/guides/hermes-gateway",
                       "documentation/platform/agent-vault/guides/openclaw-gateway"
                     ]
                   },
-                  "documentation/platform/agent-vault/guides/custom-agent",
-                  "documentation/platform/agent-vault/guides/modal",
-                  "documentation/platform/agent-vault/guides/daytona"
+                  "documentation/platform/agent-vault/guides/custom-agent"
                 ]
               },
               {
