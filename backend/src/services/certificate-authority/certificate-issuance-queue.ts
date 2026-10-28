@@ -451,7 +451,7 @@ export const certificateIssuanceQueueFactory = ({
       }
 
       if (isRenewal && originalCertificateId && attemptsMade === 0) {
-        const originalCertificate = await certificateDAL.findById(originalCertificateId);
+        const originalCertificate = await certificateDAL.findById(originalCertificateId, certificateDAL.primaryNode());
         if (originalCertificate) assertCertificateNotDeleted(originalCertificate);
       }
 

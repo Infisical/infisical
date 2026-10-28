@@ -123,7 +123,7 @@ export const getCertificateDeletionWarning = (
       ? "This removes the certificate."
       : "This removes the certificate and its private key.";
 
-  return `${removed}${getCertificateTrustWarning(certificate, canRevoke, isRevocableAfterDeletion)}${getCertificateSyncRemovalWarning(holdingSyncs)}`;
+  return `${removed}${getCertificateTrustWarning(certificate, canRevoke, isRevocableAfterDeletion)}${getCertificateSyncRemovalWarning(holdingSyncs)} This cannot be undone.`;
 };
 
 export const isExpiringWithinOneDay = (notAfter: string): boolean => {

@@ -92,7 +92,7 @@ describe("getCertificateDeletionWarning", () => {
         notAfter: past,
         hasPrivateKey: false
       })
-    ).toBe("This removes the certificate.");
+    ).toBe("This removes the certificate. This cannot be undone.");
   });
 
   it("says nothing about trust for a revoked or expired certificate", () => {
