@@ -1,24 +1,24 @@
 import { AxiosError } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { listConvexDeployments } from "./convex-connection-fns";
+import { BadRequestError } from "@app/lib/errors";
+
+import {
+  listConvexDeployments,
+  normalizeConvexDeploymentUrl,
+  resolveConvexDeploymentDestination
+} from "./convex-connection-fns";
 import { TConvexConnection } from "./convex-connection-types";
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({}) }));
 
-const { get, blockLocalAndPrivateIpAddresses } = vi.hoisted(() => ({
-  get: vi.fn(),
-  blockLocalAndPrivateIpAddresses: vi.fn().mockResolvedValue(undefined)
-}));
-
-vi.mock("@app/lib/config/request", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  request: { get }
+const { get } = vi.hoisted(() => ({
+  get: vi.fn()
 }));
 
 vi.mock("@app/lib/validator", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  blockLocalAndPrivateIpAddresses
+  safeRequest: { get }
 }));
 
 vi.mock("@app/lib/logger", () => ({
@@ -50,10 +50,23 @@ const axiosError = (status: number) => {
   return error;
 };
 
+describe("normalizeConvexDeploymentUrl", () => {
+  it("strips trailing slashes and lowercases the host", () => {
+    expect(normalizeConvexDeploymentUrl("https://Playful-Otter-123.convex.cloud/")).toBe(
+      "https://playful-otter-123.convex.cloud"
+    );
+  });
+
+  it("drops a default HTTPS port and a trailing path slash", () => {
+    expect(normalizeConvexDeploymentUrl("https://playful-otter-123.convex.cloud:443/api/")).toBe(
+      "https://playful-otter-123.convex.cloud/api"
+    );
+  });
+});
+
 describe("listConvexDeployments", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    blockLocalAndPrivateIpAddresses.mockResolvedValue(undefined);
   });
 
   it("lists team deployments from token details", async () => {
@@ -79,7 +92,7 @@ describe("listConvexDeployments", () => {
         deploymentType: "prod"
       }
     ]);
-    expect(blockLocalAndPrivateIpAddresses).toHaveBeenCalledWith(BASE_URL);
+    expect(get).toHaveBeenCalledWith(`${BASE_URL}/v1/token_details`, expect.anything());
   });
 
   it("lists project deployments from token details", async () => {
@@ -166,5 +179,101 @@ describe("listConvexDeployments", () => {
         deploymentType: "prod"
       }
     ]);
+  });
+
+  it("normalizes listed deployment URLs so trailing slashes collapse", async () => {
+    get.mockImplementation(async (url: string) => {
+      if (url.endsWith("/v1/token_details")) {
+        return { data: { teamId: 41 } };
+      }
+      if (url.includes("/v1/teams/41/list_deployments")) {
+        return {
+          data: {
+            items: [deployment("playful-otter-123", "https://playful-otter-123.convex.cloud/")],
+            pagination: { hasMore: false }
+          }
+        };
+      }
+      throw new Error(`unexpected url ${url}`);
+    });
+
+    await expect(listConvexDeployments(connection)).resolves.toEqual([
+      {
+        name: "playful-otter-123",
+        deploymentUrl: "https://playful-otter-123.convex.cloud",
+        deploymentType: "prod"
+      }
+    ]);
+  });
+});
+
+describe("resolveConvexDeploymentDestination", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    get.mockImplementation(async (url: string) => {
+      if (url.endsWith("/v1/token_details")) {
+        return { data: { teamId: 41 } };
+      }
+      if (url.includes("/v1/teams/41/list_deployments")) {
+        return {
+          data: {
+            items: [deployment("playful-otter-123")],
+            pagination: { hasMore: false }
+          }
+        };
+      }
+      throw new Error(`unexpected url ${url}`);
+    });
+  });
+
+  it("accepts a listed deployment URL even when the caller adds a trailing slash", async () => {
+    await expect(
+      resolveConvexDeploymentDestination(connection, {
+        deploymentUrl: "https://playful-otter-123.convex.cloud/",
+        deploymentName: "stale-name"
+      })
+    ).resolves.toEqual({
+      deploymentUrl: "https://playful-otter-123.convex.cloud",
+      deploymentName: "playful-otter-123"
+    });
+
+    expect(get.mock.calls.every((call) => String(call[0]).startsWith(BASE_URL))).toBe(true);
+  });
+
+  it("refuses a deployment URL that the connection cannot access", async () => {
+    const attackerUrl = "https://attacker.example";
+
+    await expect(
+      resolveConvexDeploymentDestination(connection, {
+        deploymentUrl: attackerUrl,
+        deploymentName: "attacker"
+      })
+    ).rejects.toMatchObject({
+      name: "BadRequest",
+      message:
+        "The selected Convex deployment is not available on this connection. Choose a deployment the connection can access."
+    });
+
+    expect(get.mock.calls.some((call) => String(call[0]).startsWith(attackerUrl))).toBe(false);
+  });
+
+  it("wraps listing failures as a Convex provider error", async () => {
+    get.mockRejectedValue(new Error("Convex API is unavailable"));
+
+    await expect(
+      resolveConvexDeploymentDestination(connection, {
+        deploymentUrl: "https://playful-otter-123.convex.cloud",
+        deploymentName: "playful-otter-123"
+      })
+    ).rejects.toBeInstanceOf(BadRequestError);
+
+    await expect(
+      resolveConvexDeploymentDestination(connection, {
+        deploymentUrl: "https://playful-otter-123.convex.cloud",
+        deploymentName: "playful-otter-123"
+      })
+    ).rejects.toMatchObject({
+      message: "Failed to verify the Convex deployment against this connection: Convex API is unavailable"
+    });
   });
 });

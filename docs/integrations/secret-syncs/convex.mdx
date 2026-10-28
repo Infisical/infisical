@@ -37,8 +37,6 @@ Infisical authenticates to Convex with a personal access token that can list dep
         ![Secret Syncs Tab](/images/secret-syncs/general/secret-sync-tab.png)
 
         Then, select the **Convex** sync.
-
-        ![Select Convex](/images/secret-syncs/convex/select-option.png)
     </Step>
     <Step>
         Under **Source**, choose which secrets to sync from Infisical:
@@ -78,8 +76,6 @@ Infisical authenticates to Convex with a personal access token that can list dep
 
         - **Deployment**: The Convex deployment to sync secrets to, chosen from the deployments the connection can access
 
-        ![Configure Destination](/images/secret-syncs/convex/configure-destination.png)
-
         Then select **Continue**.
     </Step>
     <Step>
@@ -90,8 +86,6 @@ Infisical authenticates to Convex with a personal access token that can list dep
         - **Import from Convex, prioritize Convex**: Infisical first imports environment variables from the deployment; if a secret exists in both places, the Convex value replaces the Infisical value
 
         Then select **Continue**.
-
-        ![Initial Sync Behavior](/images/secret-syncs/convex/initial-sync-behavior.png)
     </Step>
     <Step>
         Under **Sync Options**, choose how secrets are synced:
@@ -113,21 +107,15 @@ Infisical authenticates to Convex with a personal access token that can list dep
             Before the first sync, customize key names or keep **Prevent secret deletion** on. **Prevent secret deletion** is on by default when you create the sync in the UI, but off unless you set `disableSecretDeletion` when you create it through the API.
         </Warning>
 
-        ![Configure Sync Options](/images/secret-syncs/convex/configure-sync-options.png)
-
         Then select **Continue**.
     </Step>
     <Step>
         Give the sync a **Name** and an optional **Description**. The name must be slug-friendly.
 
-        ![Sync Details](/images/secret-syncs/convex/configure-details.png)
-
         Then select **Continue**.
     </Step>
     <Step>
         Review your Convex Sync configuration, then select **Create Sync**.
-
-        ![Review and Create](/images/secret-syncs/convex/review-configuration.png)
 
         <Check>
             The sync is created. If **Auto-sync on changes** is enabled, it begins syncing secrets to your Convex deployment right away.

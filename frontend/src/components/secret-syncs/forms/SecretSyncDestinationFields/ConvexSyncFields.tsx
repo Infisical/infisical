@@ -1,4 +1,5 @@
 import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { AxiosError } from "axios";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
 import {
@@ -14,6 +15,9 @@ import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
 
+const getFetchErrorMessage = (error: unknown, fallback: string) =>
+  (error as AxiosError<{ message?: string }>)?.response?.data?.message ?? fallback;
+
 export const ConvexSyncFields = () => {
   const { control, setValue } = useFormContext<
     TSecretSyncForm & { destination: SecretSync.Convex }
@@ -21,12 +25,24 @@ export const ConvexSyncFields = () => {
 
   const connectionId = useWatch({ name: "connection.id", control });
 
-  const { data: deployments, isLoading: isDeploymentsLoading } = useConvexConnectionListDeployments(
-    connectionId,
-    {
-      enabled: Boolean(connectionId)
-    }
-  );
+  const {
+    data: deployments,
+    isLoading: isDeploymentsLoading,
+    isError: isDeploymentsError,
+    error: deploymentsError
+  } = useConvexConnectionListDeployments(connectionId, {
+    enabled: Boolean(connectionId)
+  });
+
+  const deploymentsFetchError =
+    connectionId && isDeploymentsError
+      ? {
+          message: getFetchErrorMessage(
+            deploymentsError,
+            "Failed to list Convex deployments. Check the connection."
+          )
+        }
+      : undefined;
 
   return (
     <FieldGroup>
@@ -40,46 +56,54 @@ export const ConvexSyncFields = () => {
       <Controller
         name="destinationConfig.deploymentUrl"
         control={control}
-        render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <Field>
-            <FieldLabel
-              id="secret-sync-convex-deployment-label"
-              htmlFor="secret-sync-convex-deployment"
-            >
-              Deployment
-            </FieldLabel>
-            <FieldContent>
-              <Combobox
-                aria-labelledby="secret-sync-convex-deployment-label"
-                aria-describedby={error ? "secret-sync-convex-deployment-error" : undefined}
-                id="secret-sync-convex-deployment"
-                isError={Boolean(error)}
-                isLoading={isDeploymentsLoading && Boolean(connectionId)}
-                isDisabled={!connectionId}
-                value={
-                  deployments?.find((deployment) => deployment.deploymentUrl === value) ?? null
-                }
-                onValueChange={(option) => {
-                  onChange(option?.deploymentUrl ?? "");
-                  setValue("destinationConfig.deploymentName", option?.name ?? "");
-                }}
-                options={deployments}
-                placeholder="Select a deployment..."
-                getOptionLabel={(option) =>
-                  option.deploymentType ? `${option.name} (${option.deploymentType})` : option.name
-                }
-                getOptionValue={(option) => option.deploymentUrl}
-                getOptionKeywords={(option) => [
-                  option.name,
-                  option.deploymentUrl,
-                  option.deploymentType
-                ]}
-                modal
-              />
-              <FieldError id="secret-sync-convex-deployment-error" errors={[error]} />
-            </FieldContent>
-          </Field>
-        )}
+        render={({ field: { value, onChange }, fieldState: { error } }) => {
+          const combinedError = error ?? deploymentsFetchError;
+
+          return (
+            <Field>
+              <FieldLabel
+                id="secret-sync-convex-deployment-label"
+                htmlFor="secret-sync-convex-deployment"
+              >
+                Deployment
+              </FieldLabel>
+              <FieldContent>
+                <Combobox
+                  aria-labelledby="secret-sync-convex-deployment-label"
+                  aria-describedby={
+                    combinedError ? "secret-sync-convex-deployment-error" : undefined
+                  }
+                  id="secret-sync-convex-deployment"
+                  isError={Boolean(combinedError)}
+                  isLoading={isDeploymentsLoading && Boolean(connectionId)}
+                  isDisabled={!connectionId}
+                  value={
+                    deployments?.find((deployment) => deployment.deploymentUrl === value) ?? null
+                  }
+                  onValueChange={(option) => {
+                    onChange(option?.deploymentUrl ?? "");
+                    setValue("destinationConfig.deploymentName", option?.name ?? "");
+                  }}
+                  options={deployments ?? []}
+                  placeholder="Select a deployment..."
+                  getOptionLabel={(option) =>
+                    option.deploymentType
+                      ? `${option.name} (${option.deploymentType})`
+                      : option.name
+                  }
+                  getOptionValue={(option) => option.deploymentUrl}
+                  getOptionKeywords={(option) => [
+                    option.name,
+                    option.deploymentUrl,
+                    option.deploymentType
+                  ]}
+                  modal
+                />
+                <FieldError id="secret-sync-convex-deployment-error" errors={[combinedError]} />
+              </FieldContent>
+            </Field>
+          );
+        }}
       />
     </FieldGroup>
   );

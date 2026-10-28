@@ -1,26 +1,34 @@
 import { AxiosError } from "axios";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+
 import { TSecretSyncPayload } from "../secret-sync-payload";
-import { ConvexSyncFns } from "./convex-sync-fns";
+import { convexPreSaveTransformDestinationConfig, ConvexSyncFns } from "./convex-sync-fns";
 import { TConvexSyncWithCredentials } from "./convex-sync-types";
 
 vi.mock("@app/lib/config/env", () => ({ getConfig: () => ({}) }));
 
-const { get, post, blockLocalAndPrivateIpAddresses } = vi.hoisted(() => ({
+const { get, post, decryptAppConnectionCredentials, resolveConvexDeploymentDestination, findById } = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn().mockResolvedValue({ data: {} }),
-  blockLocalAndPrivateIpAddresses: vi.fn().mockResolvedValue(undefined)
-}));
-
-vi.mock("@app/lib/config/request", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  request: { get, post }
+  decryptAppConnectionCredentials: vi.fn(),
+  resolveConvexDeploymentDestination: vi.fn(),
+  findById: vi.fn()
 }));
 
 vi.mock("@app/lib/validator", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  blockLocalAndPrivateIpAddresses
+  safeRequest: { get, post }
+}));
+
+vi.mock("@app/services/app-connection/app-connection-fns", () => ({
+  decryptAppConnectionCredentials
+}));
+
+vi.mock("@app/services/app-connection/convex/convex-connection-fns", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  resolveConvexDeploymentDestination
 }));
 
 const DEPLOYMENT_URL = "https://playful-otter-123.convex.cloud";
@@ -68,7 +76,6 @@ describe("ConvexSyncFns", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     post.mockResolvedValue({ data: {} });
-    blockLocalAndPrivateIpAddresses.mockResolvedValue(undefined);
   });
 
   it("upserts secrets in one update request", async () => {
@@ -77,7 +84,6 @@ describe("ConvexSyncFns", () => {
       payloadOf({ API_KEY: "key", NEW_VAR: "new" })
     );
 
-    expect(blockLocalAndPrivateIpAddresses).toHaveBeenCalledWith(DEPLOYMENT_URL);
     expect(get).not.toHaveBeenCalled();
     expect(post).toHaveBeenCalledWith(
       UPDATE_URL,
@@ -206,5 +212,69 @@ describe("ConvexSyncFns", () => {
 
     expect(get).not.toHaveBeenCalled();
     expect(post).not.toHaveBeenCalled();
+  });
+});
+
+describe("convexPreSaveTransformDestinationConfig", () => {
+  const connectionId = "11111111-1111-4111-8111-111111111111";
+  const destinationConfig = {
+    deploymentUrl: "https://attacker.example",
+    deploymentName: "attacker"
+  };
+  const deps = {
+    appConnectionDAL: { findById, updateById: vi.fn() },
+    kmsService: { createCipherPairWithDataKey: vi.fn() },
+    secretV2BridgeDAL: { findOne: vi.fn() }
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    findById.mockResolvedValue({
+      id: connectionId,
+      app: AppConnection.Convex,
+      orgId: "org",
+      projectId: null,
+      encryptedCredentials: Buffer.from("enc")
+    });
+    decryptAppConnectionCredentials.mockResolvedValue({ accessToken: "pat-token" });
+    resolveConvexDeploymentDestination.mockResolvedValue({
+      deploymentUrl: "https://playful-otter-123.convex.cloud",
+      deploymentName: "playful-otter-123"
+    });
+  });
+
+  it("leaves the destination unchanged when it is not being written", async () => {
+    await expect(
+      convexPreSaveTransformDestinationConfig({ destinationConfig: undefined, connectionId }, deps)
+    ).resolves.toBeUndefined();
+    expect(findById).not.toHaveBeenCalled();
+    expect(resolveConvexDeploymentDestination).not.toHaveBeenCalled();
+  });
+
+  it("resolves the selected deployment against the connection before saving", async () => {
+    await expect(convexPreSaveTransformDestinationConfig({ destinationConfig, connectionId }, deps)).resolves.toEqual({
+      deploymentUrl: "https://playful-otter-123.convex.cloud",
+      deploymentName: "playful-otter-123"
+    });
+
+    expect(decryptAppConnectionCredentials).toHaveBeenCalledWith(
+      expect.objectContaining({ orgId: "org", projectId: null })
+    );
+    expect(resolveConvexDeploymentDestination).toHaveBeenCalledWith(
+      { credentials: { accessToken: "pat-token" } },
+      destinationConfig
+    );
+  });
+
+  it("refuses a missing connection", async () => {
+    findById.mockResolvedValue(undefined);
+
+    await expect(
+      convexPreSaveTransformDestinationConfig({ destinationConfig, connectionId }, deps)
+    ).rejects.toMatchObject({
+      name: "NotFound",
+      message: `Could not find connection with ID '${connectionId}'`
+    });
+    expect(resolveConvexDeploymentDestination).not.toHaveBeenCalled();
   });
 });

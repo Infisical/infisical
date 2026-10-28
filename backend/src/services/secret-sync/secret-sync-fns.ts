@@ -57,6 +57,7 @@ import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns"
 import { CLOUDFLARE_SECRETS_STORE_SYNC_LIST_OPTION, CloudflareSecretsStoreSyncFns } from "./cloudflare-secrets-store";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
 import { CONVEX_SYNC_LIST_OPTION, ConvexSyncFns } from "./convex";
+import { convexPreSaveTransformDestinationConfig } from "./convex/convex-sync-fns";
 import { DAYTONA_SYNC_LIST_OPTION, DaytonaSyncFns } from "./daytona";
 import { DEVIN_SYNC_LIST_OPTION, DevinSyncFns } from "./devin";
 import {
@@ -167,6 +168,7 @@ const PRE_SAVE_TRANSFORM_SYNC_OPTIONS_MAP: Partial<Record<SecretSync, TPreSaveTr
 const PRE_SAVE_TRANSFORM_DESTINATION_CONFIG_MAP: Partial<Record<SecretSync, TPreSaveTransformDestinationConfigFn>> = {
   [SecretSync.AzureEntraIdScim]: azureEntraIdScimPreSaveTransformDestinationConfig,
   [SecretSync.Chef]: chefPreSaveTransformDestinationConfig,
+  [SecretSync.Convex]: convexPreSaveTransformDestinationConfig,
   [SecretSync.GCPSecretManager]: gcpPreSaveTransformDestinationConfig
 };
 

@@ -1,11 +1,17 @@
-import { isAxiosError } from "axios";
-
-import { request } from "@app/lib/config/request";
-import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { safeRequest } from "@app/lib/validator";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
+import {
+  getConvexErrorMessage,
+  resolveConvexDeploymentDestination
+} from "@app/services/app-connection/convex/convex-connection-fns";
+import { TConvexConnection } from "@app/services/app-connection/convex/convex-connection-types";
+import { normalizeConvexDeploymentUrl } from "@app/services/app-connection/convex/convex-url";
 import { SecretSyncError } from "@app/services/secret-sync/secret-sync-errors";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretSyncPayload } from "@app/services/secret-sync/secret-sync-payload";
-import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
+import { TPreSaveTransformDestinationConfigFn, TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
 import { TConvexEnvVarChange, TConvexSyncWithCredentials } from "./convex-sync-types";
 
@@ -14,39 +20,24 @@ const CONVEX_ENV_VAR_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 const isConvexReservedKey = (key: string) => key.startsWith(CONVEX_RESERVED_PREFIX);
 
-const convexErrorMessage = (error: unknown) => {
-  if (isAxiosError(error)) {
-    const data: unknown = error.response?.data;
-    if (typeof data === "string" && data.trim()) return data.trim();
-    if (
-      data &&
-      typeof data === "object" &&
-      "message" in data &&
-      typeof data.message === "string" &&
-      data.message.trim()
-    ) {
-      return data.message.trim();
-    }
-    if (error.response?.status) return `Convex returned HTTP ${error.response.status}`;
-    return error.message;
-  }
-
-  return error instanceof Error ? error.message : "Unknown error";
-};
-
 const throwConvexSyncError = (error: unknown, fallback: string): never => {
   if (error instanceof SecretSyncError) throw error;
 
   throw new SecretSyncError({
     error,
-    message: `${fallback}: ${convexErrorMessage(error)}`
+    message: `${fallback}: ${getConvexErrorMessage(error)}`
   });
 };
 
-const getDeploymentApiUrl = async (deploymentUrl: string) => {
-  const trimmed = deploymentUrl.replace(/\/+$/, "");
-  await blockLocalAndPrivateIpAddresses(trimmed);
-  return `${trimmed}/api/v1`;
+const getDeploymentApiUrl = (deploymentUrl: string) => {
+  try {
+    return `${normalizeConvexDeploymentUrl(deploymentUrl)}/api/v1`;
+  } catch {
+    throw new SecretSyncError({
+      message: "Invalid Convex deployment URL.",
+      shouldRetry: false
+    });
+  }
 };
 
 const getDeploymentAuthHeaders = (accessToken: string) => ({
@@ -96,8 +87,8 @@ const listConvexEnvironmentVariables = async (
   } = secretSync;
 
   try {
-    const apiUrl = await getDeploymentApiUrl(deploymentUrl);
-    const { data } = await request.get<unknown>(`${apiUrl}/list_environment_variables`, {
+    const apiUrl = getDeploymentApiUrl(deploymentUrl);
+    const { data } = await safeRequest.get<unknown>(`${apiUrl}/list_environment_variables`, {
       headers: getDeploymentAuthHeaders(accessToken)
     });
     return parseEnvironmentVariables(data);
@@ -120,8 +111,8 @@ const updateConvexEnvironmentVariables = async (
   } = secretSync;
 
   try {
-    const apiUrl = await getDeploymentApiUrl(deploymentUrl);
-    await request.post(
+    const apiUrl = getDeploymentApiUrl(deploymentUrl);
+    await safeRequest.post(
       `${apiUrl}/update_environment_variables`,
       { changes },
       { headers: getDeploymentAuthHeaders(accessToken) }
@@ -133,6 +124,40 @@ const updateConvexEnvironmentVariables = async (
 
 const collectInvalidSecretKeys = (secretMap: TSecretMap) =>
   Object.keys(secretMap).filter((key) => !isConvexReservedKey(key) && !CONVEX_ENV_VAR_NAME_PATTERN.test(key));
+
+export const convexPreSaveTransformDestinationConfig: TPreSaveTransformDestinationConfigFn = async (
+  { destinationConfig, connectionId },
+  { appConnectionDAL, kmsService }
+) => {
+  if (!destinationConfig) return destinationConfig;
+
+  const appConnection = await appConnectionDAL.findById(connectionId);
+  if (!appConnection) {
+    throw new NotFoundError({
+      message: `Could not find connection with ID '${connectionId}'`
+    });
+  }
+
+  if (appConnection.app !== AppConnection.Convex) {
+    throw new BadRequestError({
+      message: `Connection with ID '${connectionId}' is not a Convex connection`
+    });
+  }
+
+  const credentials = (await decryptAppConnectionCredentials({
+    orgId: appConnection.orgId,
+    encryptedCredentials: appConnection.encryptedCredentials,
+    kmsService,
+    projectId: appConnection.projectId
+  })) as TConvexConnection["credentials"];
+
+  const resolved = await resolveConvexDeploymentDestination({ credentials }, destinationConfig);
+
+  return {
+    ...destinationConfig,
+    ...resolved
+  };
+};
 
 export const ConvexSyncFns = {
   syncSecrets: async (secretSync: TConvexSyncWithCredentials, payload: TSecretSyncPayload) => {

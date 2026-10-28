@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { SecretSyncs } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { normalizeConvexDeploymentUrl } from "@app/services/app-connection/convex/convex-url";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
   BaseSecretSyncSchema,
@@ -12,7 +13,7 @@ import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types"
 
 import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 
-const ConvexSyncDestinationConfigSchema = z.object({
+export const ConvexSyncDestinationConfigSchema = z.object({
   deploymentUrl: z
     .string()
     .trim()
@@ -20,6 +21,7 @@ const ConvexSyncDestinationConfigSchema = z.object({
     .url("Invalid Convex deployment URL")
     .max(2048)
     .refine((url) => url.startsWith("https://"), "Deployment URL must use HTTPS")
+    .transform((url) => normalizeConvexDeploymentUrl(url))
     .describe(SecretSyncs.DESTINATION_CONFIG.CONVEX.deploymentUrl),
   deploymentName: z
     .string()
