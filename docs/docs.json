@@ -721,7 +721,8 @@
                   },
                   "documentation/platform/agent-vault/guides/custom-agent",
                   "documentation/platform/agent-vault/guides/modal",
-                  "documentation/platform/agent-vault/guides/daytona"
+                  "documentation/platform/agent-vault/guides/daytona",
+                  "documentation/platform/agent-vault/guides/docker"
                 ]
               },
               {
