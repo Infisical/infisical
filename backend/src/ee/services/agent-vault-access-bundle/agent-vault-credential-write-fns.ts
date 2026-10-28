@@ -54,7 +54,9 @@ export const isStoredSecretReplaced = (
 ) => {
   if (written === undefined) return false;
   if (credential.type !== stored.credentialType) return Boolean(stored.encryptedCredential) || written !== null;
-  if (credential.type === AgentVaultCredentialType.Passthrough) return false;
+  if (credential.type === AgentVaultCredentialType.Passthrough || credential.type === AgentVaultCredentialType.OAuth) {
+    return false;
+  }
 
   const previousMemberFields = (stored.memberProvidedFields ?? []) as TAgentVaultMemberProvidedField[];
   const keyOfField: readonly (readonly [TAgentVaultMemberProvidedField, string])[] =
@@ -68,12 +70,16 @@ export const isStoredSecretReplaced = (
   );
 };
 
+const OAUTH_NEEDS_AUTHORIZATION_MESSAGE = "An OAuth credential needs a completed authorization";
+
 export const BASIC_NEEDS_A_HALF_MESSAGE =
   "A basic credential needs a username, a password, or both. Set one, or leave one to each member.";
 
 // NULL, never an empty list, is what the column stores for a credential the admin sets in full.
 export const memberFieldsOf = (credential: TAgentVaultCredentialInput): TAgentVaultMemberProvidedField[] | null => {
-  if (credential.type === AgentVaultCredentialType.Passthrough) return null;
+  if (credential.type === AgentVaultCredentialType.Passthrough || credential.type === AgentVaultCredentialType.OAuth) {
+    return null;
+  }
   const fields = [...new Set<TAgentVaultMemberProvidedField>(credential.memberProvidedFields ?? [])];
   return fields.length ? fields : null;
 };
@@ -120,6 +126,9 @@ export const splitCredential = (credential: TAgentVaultCredentialInput): TCreden
         memberProvidedFields
       };
     }
+    // Its tokens come from a completed authorization, never from the request.
+    case AgentVaultCredentialType.OAuth:
+      throw new BadRequestError({ message: OAUTH_NEEDS_AUTHORIZATION_MESSAGE });
     default:
       return { config: { type: AgentVaultCredentialType.Passthrough }, secret: null, memberProvidedFields: null };
   }
@@ -127,7 +136,11 @@ export const splitCredential = (credential: TAgentVaultCredentialInput): TCreden
 
 // The member-provided fields a PATCH ends with: an omitted list keeps the stored one.
 export const nextMemberFieldsOf = (credential: TAgentVaultCredentialUpdate, stored: TAgentVaultServices) => {
-  if (credential.type !== stored.credentialType || credential.type === AgentVaultCredentialType.Passthrough) {
+  if (
+    credential.type !== stored.credentialType ||
+    credential.type === AgentVaultCredentialType.Passthrough ||
+    credential.type === AgentVaultCredentialType.OAuth
+  ) {
     return memberFieldsOf(credential);
   }
   if (credential.memberProvidedFields === undefined) {
@@ -141,6 +154,9 @@ export const mergeCredential = (
   stored: TAgentVaultServices,
   storedSecret: Record<string, string> | null
 ): TCredentialWrite => {
+  if (credential.type === AgentVaultCredentialType.OAuth) {
+    throw new BadRequestError({ message: OAUTH_NEEDS_AUTHORIZATION_MESSAGE });
+  }
   if (credential.type !== stored.credentialType) {
     if (
       credential.type === AgentVaultCredentialType.Bearer &&

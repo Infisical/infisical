@@ -53,8 +53,8 @@ const zodToJsonSchemaOptions = {
 /**
  * Normalizes a JSON schema for OpenAPI output.
  *
- * Two jobs. It removes properties marked with "x-hidden": true, so a field can be
- * hidden from the docs while still being validated
+ * Two jobs. It removes properties and union variants marked with "x-hidden": true, so a
+ * field or variant can be hidden from the docs while still being validated
  * (usage: .describe(JSON.stringify({ "x-hidden": true }))). And it flattens JSON
  * Schema tuple form, which zod-to-json-schema emits for z.tuple() even under its
  * openApi3 target: OpenAPI 3.0 has no tuple type and requires `items` to be a single
@@ -110,12 +110,17 @@ const removeHiddenProperties = (schema: FreeformRecord, keepHidden = false): Fre
     result.allOf = result.allOf.map((v: FreeformRecord) => removeHiddenProperties(v, keepHidden));
   }
 
+  const visibleVariants = (variants: FreeformRecord[]) =>
+    variants
+      .filter((v) => keepHidden || !v?.["x-hidden"])
+      .map((v: FreeformRecord) => removeHiddenProperties(v, keepHidden));
+
   if (result.oneOf && Array.isArray(result.oneOf)) {
-    result.oneOf = result.oneOf.map((v: FreeformRecord) => removeHiddenProperties(v, keepHidden));
+    result.oneOf = visibleVariants(result.oneOf);
   }
 
   if (result.anyOf && Array.isArray(result.anyOf)) {
-    result.anyOf = result.anyOf.map((v: FreeformRecord) => removeHiddenProperties(v, keepHidden));
+    result.anyOf = visibleVariants(result.anyOf);
   }
 
   return result;

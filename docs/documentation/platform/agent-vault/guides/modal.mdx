@@ -77,7 +77,7 @@ Create an [access bundle](/documentation/platform/agent-vault/access-bundles) th
     On the **Credential** step, paste the real API key.
 
     <Note>
-      If the API expects the key somewhere other than a header, such as in the URL, [add a substitution](/documentation/platform/agent-vault/services#add-a-substitution) instead, and have the agent send the placeholder you enter in **Replace**.
+      If the API expects the key somewhere other than a header, such as in the URL, [add a substitution](/documentation/platform/agent-vault/http-apis#add-a-substitution) instead, and have the agent send the placeholder you enter in **Replace**.
     </Note>
   </Step>
   <Step>
@@ -707,7 +707,7 @@ Claude Code replies, even though its sandbox has no Anthropic API key and can't 
   Each run now gets its own sandbox, proxy, and session. The only credential in the agent's container is a session token, and your code revokes the session when the run ends.
 </Check>
 
-To check which requests the agent made, [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs), then [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) in Agent Vault. Requests that got a credential have the outcome **Brokered**.
+To check which requests the agent made, [set up session logs](/documentation/platform/agent-vault/session-logs), then [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) in Agent Vault. Requests that got a credential have the outcome **Brokered**.
 
 ## Security considerations
 
@@ -720,7 +720,7 @@ The agent's container can't connect to the internet directly, but it has two kin
 
 ### Compromised sandboxes
 
-Each sidecar has a copy of the proxy token. If you think someone took control of a sandbox, [rotate the proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxys-token), then put the new token in the `agent-vault-proxy` secret in Modal.
+Each sidecar has a copy of the proxy token. If you think someone took control of a sandbox, [rotate the proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxy’s-token), then put the new token in the `agent-vault-proxy` secret in Modal.
 
 ## Troubleshooting
 

@@ -44,11 +44,11 @@ import {
   AWS_TRUST_BINDING_REQUIRED_MESSAGE,
   extractPrincipalArn,
   extractPrincipalArnEntity,
-  hasAwsTrustBinding
+  hasAwsTrustBinding,
+  parseSignedGetCallerIdentityRequest
 } from "./identity-aws-auth-fns";
 import {
   TAttachAwsAuthDTO,
-  TAwsGetCallerIdentityHeaders,
   TGetAwsAuthDTO,
   TGetCallerIdentityResponse,
   TLoginAwsAuthDTO,
@@ -76,40 +76,6 @@ type TIdentityAwsAuthServiceFactoryDep = {
 };
 
 export type TIdentityAwsAuthServiceFactory = ReturnType<typeof identityAwsAuthServiceFactory>;
-
-const awsRegionFromHeader = (authorizationHeader: string): string | null => {
-  // https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-auth-using-authorization-header.html
-  // The Authorization header takes the following form.
-  //  Authorization: AWS4-HMAC-SHA256
-  //	Credential=AKIAIOSFODNN7EXAMPLE/20230719/us-east-1/sts/aws4_request,
-  // 	SignedHeaders=content-length;content-type;host;x-amz-date,
-  //	Signature=fe5f80f77d5fa3beca038a248ff027d0445342fe2855ddc963176630326f1024
-  //
-  // The credential is in the form of "<your-access-key-id>/<date>/<aws-region>/<aws-service>/aws4_request"xi
-  try {
-    const fields = authorizationHeader.split(" ");
-    for (const field of fields) {
-      if (field.startsWith("Credential=")) {
-        const parts = field.split("/");
-        if (parts.length >= 3) {
-          return parts[2];
-        }
-      }
-    }
-  } catch {
-    return null;
-  }
-  return null;
-};
-
-function isValidAwsRegion(region: string | null): boolean {
-  const validRegionPattern = new RE2("^[a-z0-9-]+$");
-  if (typeof region !== "string" || region.length === 0 || region.length > 20) {
-    return false;
-  }
-
-  return validRegionPattern.test(region);
-}
 
 export const identityAwsAuthServiceFactory = ({
   identityDAL,
@@ -158,17 +124,11 @@ export const identityAwsAuthServiceFactory = ({
         logger.warn(`AWS Auth Login: identity has no trust binding, allowing [identity-id=${identity.id}]`);
       }
 
-      const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
-      const body: string = Buffer.from(iamRequestBody, "base64").toString();
-
-      const authHeader = headers.Authorization || headers.authorization;
-      const region = authHeader ? awsRegionFromHeader(authHeader) : null;
-
-      if (!isValidAwsRegion(region)) {
-        throw new BadRequestError({ message: "Invalid AWS region" });
-      }
-
-      const url = region ? `https://sts.${region}.amazonaws.com` : identityAwsAuth.stsEndpoint;
+      const { url, headers, body } = parseSignedGetCallerIdentityRequest({
+        iamHttpRequestMethod,
+        iamRequestBody,
+        iamRequestHeaders
+      });
 
       const {
         data: {
@@ -177,7 +137,7 @@ export const identityAwsAuthServiceFactory = ({
           }
         }
       }: { data: TGetCallerIdentityResponse } = await request({
-        method: iamHttpRequestMethod,
+        method: "POST",
         url,
         headers,
         data: body

@@ -77,6 +77,16 @@ export const ocspLimit: RateLimitOptions = {
   keyGenerator: (req) => req.realIp
 };
 
+// Cloud providers fetch the OIDC issuer's discovery document and JWKS from egress addresses shared by all of
+// their tenants, so readLimit would let one org's token exchanges throttle another's. Responses are small and
+// cacheable; this only has to stop one address flooding us.
+export const oidcIssuerLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 600,
+  keyGenerator: (req) => req.realIp
+};
+
 // Gateways report load every 10s (6/min each), so 10 leaves room for tick drift and a restart
 // landing in the same window without leaving headroom for a flood. Keyed by the reporting gateway
 // rather than by IP, because the write limiter's IP key is shared: ~100 gateways behind one NAT
@@ -104,6 +114,18 @@ export const agentVaultResolveLimit: RateLimitOptions = {
   keyGenerator: (req) => {
     const actorId = (req as { permission?: { id?: string } }).permission?.id;
     return actorId ? `agent-vault-resolve:${actorId}` : req.realIp;
+  }
+};
+
+// Its own bucket, so a proxy retrying refreshes against a failing provider can't eat into resolve. A refresh
+// follows an upstream 401 or 403, so steady traffic needs few; this leaves room for many sessions at once.
+export const agentVaultCredentialRefreshLimit: RateLimitOptions = {
+  timeWindow: 60 * 1000,
+  hook: "preValidation",
+  max: 600,
+  keyGenerator: (req) => {
+    const actorId = (req as { permission?: { id?: string } }).permission?.id;
+    return actorId ? `agent-vault-credential-refresh:${actorId}` : req.realIp;
   }
 };
 

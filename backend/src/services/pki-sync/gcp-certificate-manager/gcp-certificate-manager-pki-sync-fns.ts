@@ -407,7 +407,8 @@ export const gcpCertificateManagerPkiSyncFactory = ({
 
     const syncRecordLookupId = renewedFromCertificateId || certificateId;
     const existingSyncRecord =
-      typeof syncRecordLookupId === "string" ? syncRecordsByCertId.get(syncRecordLookupId) : undefined;
+      (typeof syncRecordLookupId === "string" ? syncRecordsByCertId.get(syncRecordLookupId) : undefined) ??
+      (preserveItemOnRenewal && typeof certificateId === "string" ? syncRecordsByCertId.get(certificateId) : undefined);
     const reusableResourceName =
       preserveItemOnRenewal &&
       existingSyncRecord?.externalIdentifier &&

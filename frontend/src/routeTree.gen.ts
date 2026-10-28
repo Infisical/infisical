@@ -46,6 +46,7 @@ import { Route as authLoginPageRouteImport } from './pages/auth/LoginPage/route'
 import { Route as redirectsPamAccessRedirectImport } from './pages/redirects/pam-access-redirect'
 import { Route as adminLayoutImport } from './pages/admin/layout'
 import { Route as authProviderErrorPageRouteImport } from './pages/auth/ProviderErrorPage/route'
+import { Route as agentVaultAgentVaultOAuthCallbackPageRouteImport } from './pages/agent-vault/AgentVaultOAuthCallbackPage/route'
 import { Route as adminWelcomePageRouteImport } from './pages/admin/WelcomePage/route'
 import { Route as adminSetupPageRouteImport } from './pages/admin/SetupPage/route'
 import { Route as userPersonalSettingsPageRouteImport } from './pages/user/PersonalSettingsPage/route'
@@ -669,6 +670,13 @@ const authProviderErrorPageRouteRoute = authProviderErrorPageRouteImport.update(
     getParentRoute: () => RestrictLoginSignupLoginRoute,
   } as any,
 )
+
+const agentVaultAgentVaultOAuthCallbackPageRouteRoute =
+  agentVaultAgentVaultOAuthCallbackPageRouteImport.update({
+    id: '/agent-vault/oauth/callback',
+    path: '/agent-vault/oauth/callback',
+    getParentRoute: () => middlewaresAuthenticateRoute,
+  } as any)
 
 const adminWelcomePageRouteRoute = adminWelcomePageRouteImport.update({
   id: '/welcome',
@@ -3000,6 +3008,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/welcome'
       preLoaderRoute: typeof adminWelcomePageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsAdminImport
+    }
+    '/_authenticate/agent-vault/oauth/callback': {
+      id: '/_authenticate/agent-vault/oauth/callback'
+      path: '/agent-vault/oauth/callback'
+      fullPath: '/agent-vault/oauth/callback'
+      preLoaderRoute: typeof agentVaultAgentVaultOAuthCallbackPageRouteImport
+      parentRoute: typeof middlewaresAuthenticateImport
     }
     '/_restrict-login-signup/login/provider/error': {
       id: '/_restrict-login-signup/login/provider/error'
@@ -6158,6 +6173,7 @@ interface middlewaresAuthenticateRouteChildren {
   organizationOauthConsentPageRouteRoute: typeof organizationOauthConsentPageRouteRoute
   organizationNoOrgPageRouteRoute: typeof organizationNoOrgPageRouteRoute
   organizationSignupOnboardingPageRouteRoute: typeof organizationSignupOnboardingPageRouteRoute
+  agentVaultAgentVaultOAuthCallbackPageRouteRoute: typeof agentVaultAgentVaultOAuthCallbackPageRouteRoute
 }
 
 const middlewaresAuthenticateRouteChildren: middlewaresAuthenticateRouteChildren =
@@ -6173,6 +6189,8 @@ const middlewaresAuthenticateRouteChildren: middlewaresAuthenticateRouteChildren
     organizationNoOrgPageRouteRoute: organizationNoOrgPageRouteRoute,
     organizationSignupOnboardingPageRouteRoute:
       organizationSignupOnboardingPageRouteRoute,
+    agentVaultAgentVaultOAuthCallbackPageRouteRoute:
+      agentVaultAgentVaultOAuthCallbackPageRouteRoute,
   }
 
 const middlewaresAuthenticateRouteWithChildren =
@@ -6286,6 +6304,7 @@ export interface FileRoutesByFullPath {
   '/personal-settings/': typeof userPersonalSettingsPageRouteRoute
   '/admin/setup': typeof adminSetupPageRouteRoute
   '/admin/welcome': typeof adminWelcomePageRouteRoute
+  '/agent-vault/oauth/callback': typeof agentVaultAgentVaultOAuthCallbackPageRouteRoute
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/pam/access': typeof redirectsPamAccessRedirectRoute
@@ -6580,6 +6599,7 @@ export interface FileRoutesByTo {
   '/admin': typeof adminGeneralPageRouteRoute
   '/admin/setup': typeof adminSetupPageRouteRoute
   '/admin/welcome': typeof adminWelcomePageRouteRoute
+  '/agent-vault/oauth/callback': typeof agentVaultAgentVaultOAuthCallbackPageRouteRoute
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/pam/access': typeof redirectsPamAccessRedirectRoute
@@ -6856,6 +6876,7 @@ export interface FileRoutesById {
   '/_authenticate/personal-settings/_layout/': typeof userPersonalSettingsPageRouteRoute
   '/_authenticate/_inject-org-details/admin/setup': typeof adminSetupPageRouteRoute
   '/_authenticate/_inject-org-details/admin/welcome': typeof adminWelcomePageRouteRoute
+  '/_authenticate/agent-vault/oauth/callback': typeof agentVaultAgentVaultOAuthCallbackPageRouteRoute
   '/_restrict-login-signup/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/_authenticate/_inject-org-details/admin/_admin-layout': typeof adminLayoutRouteWithChildren
@@ -7162,6 +7183,7 @@ export interface FileRouteTypes {
     | '/personal-settings/'
     | '/admin/setup'
     | '/admin/welcome'
+    | '/agent-vault/oauth/callback'
     | '/login/provider/error'
     | '/integrations'
     | '/pam/access'
@@ -7455,6 +7477,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/setup'
     | '/admin/welcome'
+    | '/agent-vault/oauth/callback'
     | '/login/provider/error'
     | '/integrations'
     | '/pam/access'
@@ -7729,6 +7752,7 @@ export interface FileRouteTypes {
     | '/_authenticate/personal-settings/_layout/'
     | '/_authenticate/_inject-org-details/admin/setup'
     | '/_authenticate/_inject-org-details/admin/welcome'
+    | '/_authenticate/agent-vault/oauth/callback'
     | '/_restrict-login-signup/login/provider/error'
     | '/_authenticate/_inject-org-details/_org-layout/integrations'
     | '/_authenticate/_inject-org-details/admin/_admin-layout'
@@ -8060,7 +8084,8 @@ export const routeTree = rootRoute
         "/_authenticate/mfa-session/$mfaSessionId",
         "/_authenticate/organization/oauth-consent",
         "/_authenticate/organizations/none",
-        "/_authenticate/organizations/onboarding"
+        "/_authenticate/organizations/onboarding",
+        "/_authenticate/agent-vault/oauth/callback"
       ]
     },
     "/_restrict-login-signup": {
@@ -8240,6 +8265,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/admin/welcome": {
       "filePath": "admin/WelcomePage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/admin"
+    },
+    "/_authenticate/agent-vault/oauth/callback": {
+      "filePath": "agent-vault/AgentVaultOAuthCallbackPage/route.tsx",
+      "parent": "/_authenticate"
     },
     "/_restrict-login-signup/login/provider/error": {
       "filePath": "auth/ProviderErrorPage/route.tsx",

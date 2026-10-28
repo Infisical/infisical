@@ -310,6 +310,7 @@ export enum ProjectPermissionAgentVaultAccessBundleActions {
 export enum ProjectPermissionAgentVaultSessionActions {
   Read = "read",
   Create = "create",
+  Edit = "edit",
   Revoke = "revoke"
 }
 

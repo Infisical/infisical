@@ -50,6 +50,7 @@ import { SendsPreview } from "./SendsPreview";
 import {
   CREDENTIAL_LABELS,
   FORM_FIELD_OF_CREDENTIAL_FIELD,
+  HTTP_CREDENTIAL_TYPES,
   TServiceForm,
   UNCHANGED_SECRET
 } from "./serviceSchema";
@@ -275,7 +276,8 @@ const MEMBER_FIELDS_OF_TYPE: Record<AgentVaultCredentialType, TAgentVaultMemberP
     AgentVaultVariableReferenceField.CredentialUsername,
     AgentVaultVariableReferenceField.CredentialValue
   ],
-  [AgentVaultCredentialType.Passthrough]: []
+  [AgentVaultCredentialType.Passthrough]: [],
+  [AgentVaultCredentialType.OAuth]: []
 };
 
 const MemberProvidedToggle = ({
@@ -480,7 +482,7 @@ export const CredentialFields = ({ storedType, storedMemberFields = [] }: Props)
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  {Object.values(AgentVaultCredentialType).map((value) => (
+                  {HTTP_CREDENTIAL_TYPES.map((value) => (
                     <SelectItem key={value} value={value}>
                       {CREDENTIAL_LABELS[value]}
                     </SelectItem>
