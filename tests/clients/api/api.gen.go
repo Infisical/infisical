@@ -59480,10 +59480,10 @@ type ListAccessApprovalRequests500JSONResponseBodyStatusCode float32
 
 // CreateAccessApprovalRequestJSONBody defines parameters for CreateAccessApprovalRequest.
 type CreateAccessApprovalRequestJSONBody struct {
-	IsTemporary    bool       `json:"isTemporary"`
-	Note           *string    `json:"note,omitempty"`
-	Permissions    [][]string `json:"permissions"`
-	TemporaryRange *string    `json:"temporaryRange,omitempty"`
+	IsTemporary    bool            `json:"isTemporary"`
+	Note           *string         `json:"note,omitempty"`
+	Permissions    [][]interface{} `json:"permissions"`
+	TemporaryRange *string         `json:"temporaryRange,omitempty"`
 }
 
 // CreateAccessApprovalRequestParams defines parameters for CreateAccessApprovalRequest.
@@ -63979,20 +63979,12 @@ type LoginWithUniversalAuth500JSONResponseBodyStatusCode float32
 
 // GetAccessibleSecretsParams defines parameters for GetAccessibleSecrets.
 type GetAccessibleSecretsParams struct {
-	ProjectId   string  `form:"projectId" json:"projectId"`
-	Environment string  `form:"environment" json:"environment"`
-	SecretPath  *string `form:"secretPath,omitempty" json:"secretPath,omitempty"`
-	Recursive   *struct {
-		union json.RawMessage
-	} `form:"recursive,omitempty" json:"recursive,omitempty"`
+	ProjectId      string                                    `form:"projectId" json:"projectId"`
+	Environment    string                                    `form:"environment" json:"environment"`
+	SecretPath     *string                                   `form:"secretPath,omitempty" json:"secretPath,omitempty"`
+	Recursive      *bool                                     `form:"recursive,omitempty" json:"recursive,omitempty"`
 	FilterByAction *GetAccessibleSecretsParamsFilterByAction `form:"filterByAction,omitempty" json:"filterByAction,omitempty"`
 }
-
-// GetAccessibleSecretsParamsRecursive0 defines parameters for GetAccessibleSecrets.
-type GetAccessibleSecretsParamsRecursive0 = bool
-
-// GetAccessibleSecretsParamsRecursive1 defines parameters for GetAccessibleSecrets.
-type GetAccessibleSecretsParamsRecursive1 = string
 
 // GetAccessibleSecretsParamsFilterByAction defines parameters for GetAccessibleSecrets.
 type GetAccessibleSecretsParamsFilterByAction string
@@ -64180,29 +64172,13 @@ type GetSecretVersionValue500JSONResponseBodyStatusCode float32
 
 // GetSecretsByKeysParams defines parameters for GetSecretsByKeys.
 type GetSecretsByKeysParams struct {
-	ProjectId       string  `form:"projectId" json:"projectId"`
-	Environment     string  `form:"environment" json:"environment"`
-	SecretPath      *string `form:"secretPath,omitempty" json:"secretPath,omitempty"`
-	Keys            string  `form:"keys" json:"keys"`
-	ViewSecretValue *struct {
-		union json.RawMessage
-	} `form:"viewSecretValue,omitempty" json:"viewSecretValue,omitempty"`
-	HideUnreadableValues *struct {
-		union json.RawMessage
-	} `form:"hideUnreadableValues,omitempty" json:"hideUnreadableValues,omitempty"`
+	ProjectId            string  `form:"projectId" json:"projectId"`
+	Environment          string  `form:"environment" json:"environment"`
+	SecretPath           *string `form:"secretPath,omitempty" json:"secretPath,omitempty"`
+	Keys                 string  `form:"keys" json:"keys"`
+	ViewSecretValue      *bool   `form:"viewSecretValue,omitempty" json:"viewSecretValue,omitempty"`
+	HideUnreadableValues *bool   `form:"hideUnreadableValues,omitempty" json:"hideUnreadableValues,omitempty"`
 }
-
-// GetSecretsByKeysParamsViewSecretValue0 defines parameters for GetSecretsByKeys.
-type GetSecretsByKeysParamsViewSecretValue0 = bool
-
-// GetSecretsByKeysParamsViewSecretValue1 defines parameters for GetSecretsByKeys.
-type GetSecretsByKeysParamsViewSecretValue1 = string
-
-// GetSecretsByKeysParamsHideUnreadableValues0 defines parameters for GetSecretsByKeys.
-type GetSecretsByKeysParamsHideUnreadableValues0 = bool
-
-// GetSecretsByKeysParamsHideUnreadableValues1 defines parameters for GetSecretsByKeys.
-type GetSecretsByKeysParamsHideUnreadableValues1 = string
 
 // GetSecretsByKeys400JSONResponseBodyStatusCode defines parameters for GetSecretsByKeys.
 type GetSecretsByKeys400JSONResponseBodyStatusCode float32
@@ -66417,39 +66393,25 @@ type ListProjectSecretsDetailsParams struct {
 	Tags *string `form:"tags,omitempty" json:"tags,omitempty"`
 
 	// IncludeSecrets Whether to include project secrets in the response.
-	IncludeSecrets *struct {
-		union json.RawMessage
-	} `form:"includeSecrets,omitempty" json:"includeSecrets,omitempty"`
+	IncludeSecrets *bool `form:"includeSecrets,omitempty" json:"includeSecrets,omitempty"`
 
 	// IncludeFolders Whether to include project folders in the response.
-	IncludeFolders *struct {
-		union json.RawMessage
-	} `form:"includeFolders,omitempty" json:"includeFolders,omitempty"`
+	IncludeFolders *bool `form:"includeFolders,omitempty" json:"includeFolders,omitempty"`
 
 	// IncludeDynamicSecrets Whether to include dynamic project secrets in the response.
-	IncludeDynamicSecrets *struct {
-		union json.RawMessage
-	} `form:"includeDynamicSecrets,omitempty" json:"includeDynamicSecrets,omitempty"`
+	IncludeDynamicSecrets *bool `form:"includeDynamicSecrets,omitempty" json:"includeDynamicSecrets,omitempty"`
 
 	// IncludeImports Whether to include project secret imports in the response.
-	IncludeImports *struct {
-		union json.RawMessage
-	} `form:"includeImports,omitempty" json:"includeImports,omitempty"`
+	IncludeImports *bool `form:"includeImports,omitempty" json:"includeImports,omitempty"`
 
 	// IncludeSecretRotations Whether to include secret rotations in the response.
-	IncludeSecretRotations *struct {
-		union json.RawMessage
-	} `form:"includeSecretRotations,omitempty" json:"includeSecretRotations,omitempty"`
+	IncludeSecretRotations *bool `form:"includeSecretRotations,omitempty" json:"includeSecretRotations,omitempty"`
 
 	// IncludeHoneyTokens Whether to include honey tokens in the response.
-	IncludeHoneyTokens *struct {
-		union json.RawMessage
-	} `form:"includeHoneyTokens,omitempty" json:"includeHoneyTokens,omitempty"`
+	IncludeHoneyTokens *bool `form:"includeHoneyTokens,omitempty" json:"includeHoneyTokens,omitempty"`
 
 	// IncludeProxiedServices Whether to include proxied services in the response.
-	IncludeProxiedServices *struct {
-		union json.RawMessage
-	} `form:"includeProxiedServices,omitempty" json:"includeProxiedServices,omitempty"`
+	IncludeProxiedServices *bool `form:"includeProxiedServices,omitempty" json:"includeProxiedServices,omitempty"`
 }
 
 // ListProjectSecretsDetailsParamsOrderBy defines parameters for ListProjectSecretsDetails.
@@ -66457,48 +66419,6 @@ type ListProjectSecretsDetailsParamsOrderBy string
 
 // ListProjectSecretsDetailsParamsOrderDirection defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetailsParamsOrderDirection string
-
-// ListProjectSecretsDetailsParamsIncludeSecrets0 defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParamsIncludeSecrets0 = bool
-
-// ListProjectSecretsDetailsParamsIncludeSecrets1 defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParamsIncludeSecrets1 = string
-
-// ListProjectSecretsDetailsParamsIncludeFolders0 defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParamsIncludeFolders0 = bool
-
-// ListProjectSecretsDetailsParamsIncludeFolders1 defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParamsIncludeFolders1 = string
-
-// ListProjectSecretsDetailsParamsIncludeDynamicSecrets0 defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParamsIncludeDynamicSecrets0 = bool
-
-// ListProjectSecretsDetailsParamsIncludeDynamicSecrets1 defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParamsIncludeDynamicSecrets1 = string
-
-// ListProjectSecretsDetailsParamsIncludeImports0 defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParamsIncludeImports0 = bool
-
-// ListProjectSecretsDetailsParamsIncludeImports1 defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParamsIncludeImports1 = string
-
-// ListProjectSecretsDetailsParamsIncludeSecretRotations0 defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParamsIncludeSecretRotations0 = bool
-
-// ListProjectSecretsDetailsParamsIncludeSecretRotations1 defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParamsIncludeSecretRotations1 = string
-
-// ListProjectSecretsDetailsParamsIncludeHoneyTokens0 defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParamsIncludeHoneyTokens0 = bool
-
-// ListProjectSecretsDetailsParamsIncludeHoneyTokens1 defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParamsIncludeHoneyTokens1 = string
-
-// ListProjectSecretsDetailsParamsIncludeProxiedServices0 defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParamsIncludeProxiedServices0 = bool
-
-// ListProjectSecretsDetailsParamsIncludeProxiedServices1 defines parameters for ListProjectSecretsDetails.
-type ListProjectSecretsDetailsParamsIncludeProxiedServices1 = string
 
 // ListProjectSecretsDetails200JSONResponseBodySecretRotations0 defines parameters for ListProjectSecretsDetails.
 type ListProjectSecretsDetails200JSONResponseBodySecretRotations0 struct {
@@ -68697,39 +68617,25 @@ type ListProjectSecretsOverviewParams struct {
 	Tags *string `form:"tags,omitempty" json:"tags,omitempty"`
 
 	// IncludeSecrets Whether to include project secrets in the response.
-	IncludeSecrets *struct {
-		union json.RawMessage
-	} `form:"includeSecrets,omitempty" json:"includeSecrets,omitempty"`
+	IncludeSecrets *bool `form:"includeSecrets,omitempty" json:"includeSecrets,omitempty"`
 
 	// IncludeFolders Whether to include project folders in the response.
-	IncludeFolders *struct {
-		union json.RawMessage
-	} `form:"includeFolders,omitempty" json:"includeFolders,omitempty"`
+	IncludeFolders *bool `form:"includeFolders,omitempty" json:"includeFolders,omitempty"`
 
 	// IncludeImports Whether to include project secret imports in the response.
-	IncludeImports *struct {
-		union json.RawMessage
-	} `form:"includeImports,omitempty" json:"includeImports,omitempty"`
+	IncludeImports *bool `form:"includeImports,omitempty" json:"includeImports,omitempty"`
 
 	// IncludeSecretRotations Whether to include project secret rotations in the response.
-	IncludeSecretRotations *struct {
-		union json.RawMessage
-	} `form:"includeSecretRotations,omitempty" json:"includeSecretRotations,omitempty"`
+	IncludeSecretRotations *bool `form:"includeSecretRotations,omitempty" json:"includeSecretRotations,omitempty"`
 
 	// IncludeDynamicSecrets Whether to include dynamic project secrets in the response.
-	IncludeDynamicSecrets *struct {
-		union json.RawMessage
-	} `form:"includeDynamicSecrets,omitempty" json:"includeDynamicSecrets,omitempty"`
+	IncludeDynamicSecrets *bool `form:"includeDynamicSecrets,omitempty" json:"includeDynamicSecrets,omitempty"`
 
 	// IncludeHoneyTokens Whether to include honey tokens in the response.
-	IncludeHoneyTokens *struct {
-		union json.RawMessage
-	} `form:"includeHoneyTokens,omitempty" json:"includeHoneyTokens,omitempty"`
+	IncludeHoneyTokens *bool `form:"includeHoneyTokens,omitempty" json:"includeHoneyTokens,omitempty"`
 
 	// IncludeProxiedServices Whether to include proxied services in the response.
-	IncludeProxiedServices *struct {
-		union json.RawMessage
-	} `form:"includeProxiedServices,omitempty" json:"includeProxiedServices,omitempty"`
+	IncludeProxiedServices *bool `form:"includeProxiedServices,omitempty" json:"includeProxiedServices,omitempty"`
 }
 
 // ListProjectSecretsOverviewParamsOrderBy defines parameters for ListProjectSecretsOverview.
@@ -68737,48 +68643,6 @@ type ListProjectSecretsOverviewParamsOrderBy string
 
 // ListProjectSecretsOverviewParamsOrderDirection defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverviewParamsOrderDirection string
-
-// ListProjectSecretsOverviewParamsIncludeSecrets0 defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParamsIncludeSecrets0 = bool
-
-// ListProjectSecretsOverviewParamsIncludeSecrets1 defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParamsIncludeSecrets1 = string
-
-// ListProjectSecretsOverviewParamsIncludeFolders0 defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParamsIncludeFolders0 = bool
-
-// ListProjectSecretsOverviewParamsIncludeFolders1 defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParamsIncludeFolders1 = string
-
-// ListProjectSecretsOverviewParamsIncludeImports0 defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParamsIncludeImports0 = bool
-
-// ListProjectSecretsOverviewParamsIncludeImports1 defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParamsIncludeImports1 = string
-
-// ListProjectSecretsOverviewParamsIncludeSecretRotations0 defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParamsIncludeSecretRotations0 = bool
-
-// ListProjectSecretsOverviewParamsIncludeSecretRotations1 defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParamsIncludeSecretRotations1 = string
-
-// ListProjectSecretsOverviewParamsIncludeDynamicSecrets0 defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParamsIncludeDynamicSecrets0 = bool
-
-// ListProjectSecretsOverviewParamsIncludeDynamicSecrets1 defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParamsIncludeDynamicSecrets1 = string
-
-// ListProjectSecretsOverviewParamsIncludeHoneyTokens0 defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParamsIncludeHoneyTokens0 = bool
-
-// ListProjectSecretsOverviewParamsIncludeHoneyTokens1 defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParamsIncludeHoneyTokens1 = string
-
-// ListProjectSecretsOverviewParamsIncludeProxiedServices0 defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParamsIncludeProxiedServices0 = bool
-
-// ListProjectSecretsOverviewParamsIncludeProxiedServices1 defines parameters for ListProjectSecretsOverview.
-type ListProjectSecretsOverviewParamsIncludeProxiedServices1 = string
 
 // ListProjectSecretsOverview200JSONResponseBodySecretRotations0 defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverview200JSONResponseBodySecretRotations0 struct {
@@ -74989,17 +74853,9 @@ type GetFolderCommitChanges500JSONResponseBodyStatusCode float32
 // CompareFolderCommitParams defines parameters for CompareFolderCommit.
 type CompareFolderCommitParams struct {
 	FolderId     string `form:"folderId" json:"folderId"`
-	DeepRollback *struct {
-		union json.RawMessage
-	} `form:"deepRollback,omitempty" json:"deepRollback,omitempty"`
-	ProjectId string `form:"projectId" json:"projectId"`
+	DeepRollback *bool  `form:"deepRollback,omitempty" json:"deepRollback,omitempty"`
+	ProjectId    string `form:"projectId" json:"projectId"`
 }
-
-// CompareFolderCommitParamsDeepRollback0 defines parameters for CompareFolderCommit.
-type CompareFolderCommitParamsDeepRollback0 = bool
-
-// CompareFolderCommitParamsDeepRollback1 defines parameters for CompareFolderCommit.
-type CompareFolderCommitParamsDeepRollback1 = string
 
 // CompareFolderCommit200JSONResponseBodyChanges0 defines parameters for CompareFolderCommit.
 type CompareFolderCommit200JSONResponseBodyChanges0 struct {
@@ -77544,16 +77400,8 @@ type UpdateProjectMembership500JSONResponseBodyStatusCode float32
 // GetProjectMembershipPermissionAuditParams defines parameters for GetProjectMembershipPermissionAudit.
 type GetProjectMembershipPermissionAuditParams struct {
 	// IncludeFolderPermissions Whether to include folder-scoped access grants in the returned permission sources.
-	IncludeFolderPermissions *struct {
-		union json.RawMessage
-	} `form:"includeFolderPermissions,omitempty" json:"includeFolderPermissions,omitempty"`
+	IncludeFolderPermissions *bool `form:"includeFolderPermissions,omitempty" json:"includeFolderPermissions,omitempty"`
 }
-
-// GetProjectMembershipPermissionAuditParamsIncludeFolderPermissions0 defines parameters for GetProjectMembershipPermissionAudit.
-type GetProjectMembershipPermissionAuditParamsIncludeFolderPermissions0 = bool
-
-// GetProjectMembershipPermissionAuditParamsIncludeFolderPermissions1 defines parameters for GetProjectMembershipPermissionAudit.
-type GetProjectMembershipPermissionAuditParamsIncludeFolderPermissions1 = string
 
 // GetProjectMembershipPermissionAudit200JSONResponseBodySourcesType defines parameters for GetProjectMembershipPermissionAudit.
 type GetProjectMembershipPermissionAudit200JSONResponseBodySourcesType string
@@ -83027,16 +82875,8 @@ type ListSecretFoldersParams struct {
 	Path string `form:"path" json:"path"`
 
 	// Recursive Whether or not to fetch all folders from the specified base path, and all of its subdirectories.
-	Recursive *struct {
-		union json.RawMessage
-	} `form:"recursive,omitempty" json:"recursive,omitempty"`
+	Recursive *bool `form:"recursive,omitempty" json:"recursive,omitempty"`
 }
-
-// ListSecretFoldersParamsRecursive0 defines parameters for ListSecretFolders.
-type ListSecretFoldersParamsRecursive0 = bool
-
-// ListSecretFoldersParamsRecursive1 defines parameters for ListSecretFolders.
-type ListSecretFoldersParamsRecursive1 = string
 
 // ListSecretFolders400JSONResponseBodyStatusCode defines parameters for ListSecretFolders.
 type ListSecretFolders400JSONResponseBodyStatusCode float32
@@ -120024,7 +119864,7 @@ func NewGetAccessibleSecretsRequest(server string, params *GetAccessibleSecretsP
 
 		if params.Recursive != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "recursive", *params.Recursive, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "recursive", *params.Recursive, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -120559,7 +120399,7 @@ func NewGetSecretsByKeysRequest(server string, params *GetSecretsByKeysParams) (
 
 		if params.ViewSecretValue != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "viewSecretValue", *params.ViewSecretValue, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "viewSecretValue", *params.ViewSecretValue, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -120571,7 +120411,7 @@ func NewGetSecretsByKeysRequest(server string, params *GetSecretsByKeysParams) (
 
 		if params.HideUnreadableValues != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "hideUnreadableValues", *params.HideUnreadableValues, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "hideUnreadableValues", *params.HideUnreadableValues, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -120941,7 +120781,7 @@ func NewListProjectSecretsDetailsRequest(server string, params *ListProjectSecre
 
 		if params.IncludeSecrets != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeSecrets", *params.IncludeSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeSecrets", *params.IncludeSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -120953,7 +120793,7 @@ func NewListProjectSecretsDetailsRequest(server string, params *ListProjectSecre
 
 		if params.IncludeFolders != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeFolders", *params.IncludeFolders, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeFolders", *params.IncludeFolders, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -120965,7 +120805,7 @@ func NewListProjectSecretsDetailsRequest(server string, params *ListProjectSecre
 
 		if params.IncludeDynamicSecrets != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeDynamicSecrets", *params.IncludeDynamicSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeDynamicSecrets", *params.IncludeDynamicSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -120977,7 +120817,7 @@ func NewListProjectSecretsDetailsRequest(server string, params *ListProjectSecre
 
 		if params.IncludeImports != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeImports", *params.IncludeImports, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeImports", *params.IncludeImports, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -120989,7 +120829,7 @@ func NewListProjectSecretsDetailsRequest(server string, params *ListProjectSecre
 
 		if params.IncludeSecretRotations != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeSecretRotations", *params.IncludeSecretRotations, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeSecretRotations", *params.IncludeSecretRotations, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -121001,7 +120841,7 @@ func NewListProjectSecretsDetailsRequest(server string, params *ListProjectSecre
 
 		if params.IncludeHoneyTokens != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeHoneyTokens", *params.IncludeHoneyTokens, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeHoneyTokens", *params.IncludeHoneyTokens, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -121013,7 +120853,7 @@ func NewListProjectSecretsDetailsRequest(server string, params *ListProjectSecre
 
 		if params.IncludeProxiedServices != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeProxiedServices", *params.IncludeProxiedServices, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeProxiedServices", *params.IncludeProxiedServices, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -121179,7 +121019,7 @@ func NewListProjectSecretsOverviewRequest(server string, params *ListProjectSecr
 
 		if params.IncludeSecrets != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeSecrets", *params.IncludeSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeSecrets", *params.IncludeSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -121191,7 +121031,7 @@ func NewListProjectSecretsOverviewRequest(server string, params *ListProjectSecr
 
 		if params.IncludeFolders != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeFolders", *params.IncludeFolders, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeFolders", *params.IncludeFolders, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -121203,7 +121043,7 @@ func NewListProjectSecretsOverviewRequest(server string, params *ListProjectSecr
 
 		if params.IncludeImports != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeImports", *params.IncludeImports, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeImports", *params.IncludeImports, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -121215,7 +121055,7 @@ func NewListProjectSecretsOverviewRequest(server string, params *ListProjectSecr
 
 		if params.IncludeSecretRotations != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeSecretRotations", *params.IncludeSecretRotations, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeSecretRotations", *params.IncludeSecretRotations, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -121227,7 +121067,7 @@ func NewListProjectSecretsOverviewRequest(server string, params *ListProjectSecr
 
 		if params.IncludeDynamicSecrets != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeDynamicSecrets", *params.IncludeDynamicSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeDynamicSecrets", *params.IncludeDynamicSecrets, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -121239,7 +121079,7 @@ func NewListProjectSecretsOverviewRequest(server string, params *ListProjectSecr
 
 		if params.IncludeHoneyTokens != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeHoneyTokens", *params.IncludeHoneyTokens, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeHoneyTokens", *params.IncludeHoneyTokens, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -121251,7 +121091,7 @@ func NewListProjectSecretsOverviewRequest(server string, params *ListProjectSecr
 
 		if params.IncludeProxiedServices != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeProxiedServices", *params.IncludeProxiedServices, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeProxiedServices", *params.IncludeProxiedServices, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -125928,7 +125768,7 @@ func NewCompareFolderCommitRequest(server string, commitId string, params *Compa
 
 		if params.DeepRollback != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "deepRollback", *params.DeepRollback, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "deepRollback", *params.DeepRollback, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -129359,7 +129199,7 @@ func NewGetProjectMembershipPermissionAuditRequest(server string, projectId stri
 
 		if params.IncludeFolderPermissions != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeFolderPermissions", *params.IncludeFolderPermissions, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "includeFolderPermissions", *params.IncludeFolderPermissions, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
@@ -135838,7 +135678,7 @@ func NewListSecretFoldersRequest(server string, params *ListSecretFoldersParams)
 
 		if params.Recursive != nil {
 
-			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "recursive", *params.Recursive, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "", Format: ""}); err != nil {
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "recursive", *params.Recursive, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
 				return nil, err
 			} else {
 				for _, qp := range strings.Split(queryFrag, "&") {
