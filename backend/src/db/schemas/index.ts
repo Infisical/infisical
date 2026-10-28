@@ -59,6 +59,8 @@ export * from "./certificate-syncs";
 export * from "./certificate-template-est-configs";
 export * from "./certificate-templates";
 export * from "./certificates";
+export * from "./delegated-approval-policies";
+export * from "./delegated-approval-requests";
 export * from "./dynamic-secret-leases";
 export * from "./dynamic-secrets";
 export * from "./email-domains";

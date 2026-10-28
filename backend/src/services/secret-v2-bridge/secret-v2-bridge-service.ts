@@ -47,24 +47,17 @@ import {
 } from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
+import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TOrgDALFactory } from "../org/org-dal";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectFolderGrantDALFactory } from "../project-folder-grant/project-folder-grant-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TReminderServiceFactory } from "../reminder/reminder-types";
 import { TResourceMetadataDALFactory } from "../resource-metadata/resource-metadata-dal";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
-import { TSecretQueueFactory } from "../secret/secret-queue";
-import {
-  PersonalOverridesBehavior,
-  SecretImportReferencesBehavior,
-  SecretSortField,
-  TGetASecretByIdDTO,
-  TRedactSecretVersionValueDTO
-} from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import { fnSecretsV2FromImports } from "../secret-import/secret-import-fns";
@@ -75,6 +68,14 @@ import {
 } from "../secret-validation-rule/secret-validation-rule-errors";
 import { TSecretValidationRuleServiceFactory } from "../secret-validation-rule/secret-validation-rule-service";
 import { TValidateSecretsDTO } from "../secret-validation-rule/secret-validation-rule-types";
+import { TSecretQueueFactory } from "../secret/secret-queue";
+import {
+  PersonalOverridesBehavior,
+  SecretImportReferencesBehavior,
+  SecretSortField,
+  TGetASecretByIdDTO,
+  TRedactSecretVersionValueDTO
+} from "../secret/secret-types";
 import { createSecretBlindIndexer } from "./secret-blind-index-fns";
 import { secretMetadataServiceFactory } from "./secret-metadata-service";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";
@@ -153,6 +154,7 @@ type TSecretV2BridgeServiceFactoryDep = {
   secretTagDAL: TSecretTagDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionFingerprint">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "findBySlugs">;
   folderDAL: Pick<
     TSecretFolderDALFactory,
@@ -205,6 +207,7 @@ export const secretV2BridgeServiceFactory = ({
   secretTagDAL,
   secretVersionDAL,
   folderCommitService,
+  eventEmitter,
   folderDAL,
   permissionService,
   secretQueueService,
@@ -481,6 +484,8 @@ export const secretV2BridgeServiceFactory = ({
     const secret = await secretDAL.transaction(async (tx) => {
       const [createdSecret] = await fnSecretBulkInsert({
         folderId,
+        eventEmitter,
+        eventScope: { projectId, environment, secretPath: folder.path },
         orgId: actorOrgId,
         inputSecrets: [
           {
@@ -807,6 +812,8 @@ export const secretV2BridgeServiceFactory = ({
     const updatedSecret = await secretDAL.transaction(async (tx) => {
       const modifiedSecretsInDB = await fnSecretBulkUpdate({
         folderId,
+        eventEmitter,
+        eventScope: { projectId, environment, secretPath: folder.path },
         orgId: actorOrgId,
         resourceMetadataDAL,
         folderCommitService,
@@ -858,6 +865,7 @@ export const secretV2BridgeServiceFactory = ({
           folderCommitService,
           folderDAL,
           secretQueueService,
+          eventEmitter,
           encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
           decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
           blindIndexer,
@@ -996,6 +1004,8 @@ export const secretV2BridgeServiceFactory = ({
         const modifiedSecretsInDB = await fnSecretBulkDelete({
           projectId,
           folderId,
+          eventEmitter,
+          eventScope: { projectId, environment, secretPath: folder.path },
           actorId,
           actorType: actor,
           folderCommitService,
@@ -2332,6 +2342,8 @@ export const secretV2BridgeServiceFactory = ({
       const modifiedSecretsInDB = await fnSecretBulkInsert({
         inputSecrets: inputSecretsWithBlindIndex,
         folderId,
+        eventEmitter,
+        eventScope: { projectId, environment, secretPath: `/${secretPath.split("/").filter(Boolean).join("/")}` },
         commitChanges,
         orgId: actorOrgId,
         secretDAL,
@@ -2733,6 +2745,8 @@ export const secretV2BridgeServiceFactory = ({
 
         const bulkUpdatedSecrets = await fnSecretBulkUpdate({
           folderId,
+          eventEmitter,
+          eventScope: { projectId, environment, secretPath },
           orgId: actorOrgId,
           folderCommitService,
           tx,
@@ -2765,6 +2779,7 @@ export const secretV2BridgeServiceFactory = ({
               folderCommitService,
               folderDAL,
               secretQueueService,
+              eventEmitter,
               encryptor: ({ plainText }) => secretManagerEncryptor({ plainText }),
               decryptor: ({ cipherTextBlob }) => secretManagerDecryptor({ cipherTextBlob }),
               blindIndexer,
@@ -2818,6 +2833,8 @@ export const secretV2BridgeServiceFactory = ({
           const bulkInsertedSecrets = await fnSecretBulkInsert({
             inputSecrets: inputSecretsForCreate,
             folderId,
+            eventEmitter,
+            eventScope: { projectId, environment, secretPath: folder.path },
             orgId: actorOrgId,
             secretDAL,
             resourceMetadataDAL,
@@ -2992,6 +3009,8 @@ export const secretV2BridgeServiceFactory = ({
         })),
         projectId,
         folderId,
+        eventEmitter,
+        eventScope: { projectId, environment, secretPath: folder.path },
         actorId,
         actorType: actor,
         commitChanges,
@@ -3290,6 +3309,7 @@ export const secretV2BridgeServiceFactory = ({
         secretVersionTagDAL,
         resourceMetadataDAL,
         folderCommitService,
+        eventEmitter,
         secretApprovalPolicyService,
         secretApprovalRequestCreationFns,
         secretQueueService,

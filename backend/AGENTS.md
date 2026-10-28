@@ -14,8 +14,8 @@ All commands run from the `backend/` directory:
 
 - `npm run dev` — start dev server with tsx watch + pino-pretty logging (`dev:docker` is the same with the debugger on 9229)
 - `npm run build` — production build via tsdown (`tsdown.config.ts`) with sourcemaps
-- `npm run lint:fix` — ESLint autofix
-- `npm run type:check` — TypeScript check (uses 8GB heap)
+- `npm run lint:fix` — Oxlint autofix, then Oxfmt formatting (`npm run lint` checks both without writing, as CI does)
+- `npm run type:check` — TypeScript 7 (native compiler) check
 - `make reviewable-api` (from repo root) — runs `lint:fix` + `type:check` (run before PRs)
 
 The backend runs on Node 26. TypeScript files run directly through tsx (dev server, scripts, the
@@ -201,16 +201,27 @@ Notes:
 
 Path alias: `@app/*` maps to `./src/*`.
 
-## ESLint & Import Ordering
+## Linting, Formatting & Import Ordering
 
-Config in `.eslintrc.js`. Uses `simple-import-sort` with this group order:
+Oxlint (`.oxlintrc.json`) lints; its type-aware rules run through `oxlint-tsgolint` on TypeScript 7.
+Existing `eslint-disable` comments, including `@typescript-eslint/` rule names, are honoured by Oxlint.
+`import/no-cycle` is off: the backend has thousands of cycles through `@app/*` that ESLint's resolver never saw.
+Type-aware linting is the `--type-aware` CLI flag, not `options.typeAware`: Oxlint rejects that option in a nested
+config, which is what `backend/.oxlintrc.json` is to an editor opened at the repo root.
+Editor setup for the Oxc extension lives in `backend/.vscode/` and `backend/.zed/`.
+
+Oxfmt (`.oxfmtrc.json`) formats `src/**/*.ts` and sorts imports in this group order:
 1. Side-effect imports
 2. `node:` builtins
 3. Third-party packages
 4. `@app/` imports
-5. `@lib/` imports
-6. `@server/` imports
-7. Relative imports
+5. Other absolute imports (`e2e-test/`)
+6. Relative imports
+
+Since TypeScript 5.7, `Buffer` is typed as possibly `SharedArrayBuffer`-backed, which WebCrypto, `@peculiar/x509`,
+asn1 and pkijs reject. Declare `Buffer<ArrayBuffer>` (not the deprecated `NonSharedBuffer` alias) where a function really
+returns one (for example `Buffer.concat`, `Buffer.from`, cipher output), and use `asNonSharedBuffer` from `@app/lib/fn` at a call
+site that receives a plain `Buffer`.
 
 ## Architecture
 
@@ -774,37 +785,71 @@ Invariants worth knowing before extending it:
 an event is exactly as durable as the business write. Enqueueing to Redis after commit loses the event
 whenever the pod dies or Redis is down in that window. It's not alert-specific:
 `alert-event-consumer.ts` is one consumer on the shared registry, and anything else that needs
-at-least-once delivery of a domain event registers next to it.
+at-least-once delivery of a domain event registers next to it. The delegated approval dispatch consumer
+(`delegated-approval/dispatch/delegated-approval-dispatch-consumer.ts`) is the second: it calls the external
+approval system inline from `handle()` and maps the outcome to `Delivered` / `Retry` / `Failed`, with no queue hop.
 
 **Naming:** the outbox is an implementation detail to both sides of it. Emitters depend on
-`TEventEmitter` and pass a `TEventInput`; consumers implement `IEventConsumer`, receive `TEvent[]`
-(the row minus its lock, attempt, and status columns) and return `TEventConsumerResult` with an
-`EventResultStatus`. Names with "outbox" in them (the DAL, queue, cron jobs, metrics,
-`EventOutboxStatus`, `TOutboxFlushKey`) describe the mechanism and stay inside the module and its
-wiring. A dependency field for the emitter is `eventEmitter`, not `eventOutboxService`.
+`TEventEmitter` and pass a `TEventInput`; consumers implement `IEventConsumer`, receive `TEvent[]` (the
+CloudEvents envelope) and return `TEventConsumerResult` with an `EventResultStatus`. Names with "outbox"
+in them (the DAL, queue, cron jobs, metrics, `EventOutboxStatus`, `TOutboxFlushKey`) describe the
+mechanism and stay inside the module and its wiring. A dependency field for the emitter is
+`eventEmitter`, not `eventOutboxService`.
 
-**Emitting:** `eventEmitter.emit(event, tx)`. Pass the transaction of the write the event describes, so the event is exactly as durable as that write. Omit `tx` only when there is no such write left to be atomic with (for example after it already committed); the insert then runs on its own.
+#### How to implement an event
 
-```ts
-await someDAL.transaction(async (tx) => {
-  const request = await approvalRequestDAL.create({ ... }, tx);
-  await eventEmitter.emit(
-    {
-      eventType: "approval.workflow.request_opened",
-      payload: { orgId, projectId, resourceType: "approval.workflow", resourceId: policyId, targetIds: [request.id] }
-    },
-    tx
-  );
-});
-```
+Events are public API: their names and shapes are a contract we can't take back. Read the
+[Event Standards and Versioning ADR](https://app.notion.com/p/3c2564692229804b93a1d0ff069016d6) and, for
+an event about something being created, updated or deleted, the
+[CRUD Event Design ADR](https://app.notion.com/p/3ff5646922298176bd92f298433f7d60). The steps below
+summarise them.
 
-- Only `subscribesTo(eventType)` runs before the insert, in memory. Whether a customer configured
-  anything for this resource is decided in the worker; a row nobody wanted is marked `Delivered` and
-  pruned within a day. If that ever matters for a hot event type, cache inside the consumer rather than
-  adding a read to the emit path.
-- Nothing is caught. A swallowed insert failure hands the caller a poisoned transaction (`25P02` on its
-  next statement), and a payload that fails the consumer's `payloadSchema` is a bug at the emit site.
-  Both checks run before any DB access.
+1. **Define it with `defineEvent`, in the domain that emits it.** It goes in that domain's `*-events.ts`
+   (eg `secret-folder/secret-folder-events.ts`), never in a consumer (see "The event contract belongs to
+   the domain" below). The name is `com.infisical.<domain>.<entity>.<action>.v<version>`: lower-kebab
+   segments, a singular entity, a past-tense action, and words a customer recognises rather than
+   implementation detail. `defineEvent` throws on boot for a name that breaks this. Start at `v1` and
+   bump only for a breaking change to `data`; adding an optional field is not one.
+2. **Give `data` what a consumer needs to decide whether it cares and to find the thing again, not the
+   thing itself.** That is ids, the owning scope (eg `projectId`) and the location where there is one
+   (eg `environment` and `secretPath`). Consumers read the current state from the source. Never put
+   secret values, credentials or other sensitive content in an event.
+3. **For create, update and delete, use one `modified` event per entity.** Its `data` carries
+   `modificationType` (`created`, `updated` or `deleted`) and, on an update that changed a field the
+   event carries, `previous` with only those fields' earlier values. A change that keeps the entity's id
+   is one `updated` event (eg a folder rename). A change that gives it a new id is `deleted` for the old
+   id and `created` for the new one (eg a secret move). A delete that cascades is one event for the
+   entity deleted, which covers everything beneath it. The secret, folder and secret import events
+   (`secret-v2-bridge/secret-events.ts`, `secret-folder/secret-folder-events.ts`,
+   `secret-import/secret-import-events.ts`) are the reference.
+4. **Emit it in the transaction of the write it describes**, so the event is exactly as durable as that
+   write: `SomeEventV1.emit(eventEmitter, data, tx)`, or `build` several and pass them to
+   `eventEmitter.emit(events, tx)` in one call. Omit `tx` only when there is no such write left to be
+   atomic with (eg after it already committed); the insert then runs on its own. Nothing around the emit
+   is caught: a swallowed insert failure hands the caller a poisoned transaction (`25P02` on its next
+   statement). When several services emit the same event, give it one helper in the domain's events
+   file rather than repeating the call.
+
+   ```ts
+   await folderDAL.transaction(async (tx) => {
+     const folder = await folderDAL.create({ ... }, tx);
+     await FolderModifiedEventV1.emit(
+       eventEmitter,
+       { folderId: folder.id, projectId, environment, secretPath, modificationType: EventModificationType.Created },
+       tx
+     );
+   });
+   ```
+
+5. **Consume it with an `IEventConsumer`** whose `subscribesTo` matches the definition's `type` and
+   whose `dataSchema` is the definition's `data` schema. Nothing is written for an event no consumer
+   subscribes to. Only `subscribesTo` runs before the insert, in memory: whether a customer configured
+   anything for the resource is decided in the worker, and a row nobody wanted is marked `Delivered` and
+   pruned within a day. If that ever matters for a hot event type, cache inside the consumer rather than
+   adding a read to the emit path.
+
+Events named before the ADR (eg `identity.authentication.auth-method-changed`) keep their names until
+they move to it.
 
 **How delivery works:**
 
@@ -813,6 +858,10 @@ await someDAL.transaction(async (tx) => {
   no per-event state for a consumer: what a retry should skip is recorded wherever the consumer already
   keeps delivery records, keyed by `TEvent.id` (stable across attempts). The alert consumer files each
   run under that id in `alert_history.eventId` and the engine skips channels already recorded there.
+  The one piece of retry state a consumer sees is `TEvent.isFinalAttempt`: the row is `failed` after that
+  attempt whatever the consumer returns, so a consumer with state of its own records the terminal outcome
+  then (the delegated approval dispatch closes its request). A give-up from the stale-claim sweep never
+  reaches a consumer.
   Backoff is exponential with jitter from 30s, and `MAX_OUTBOX_ATTEMPTS` puts the last attempt about an
   hour after the first, because a `failed` row is a notification nobody will receive. To replay failed
   rows by hand: `status = 'retry', attempts = 0, nextRetryAt = now()`.
@@ -828,13 +877,17 @@ await someDAL.transaction(async (tx) => {
   the fence protects the bookkeeping but delivery stays at-least-once.
 - **The envelope carries only what the outbox queries on.** `consumer`, `eventType`, and the retry and
   lock columns. Which tenant and resource an event concerns lives in `payload` under a shape the
-  consumer's `payloadSchema` declares, and that schema is where it is validated (the alert consumer
+  consumer's `dataSchema` declares, and that schema is where it is validated (the alert consumer
   requires `orgId` as a UUID). The outbox never groups, filters or indexes on any of it, so don't add a
   tenant or resource column back for a query nothing runs.
 - **Discovery only looks at consumers registered in this process.** A row for any other name has nowhere
   to go here. It waits and shows up on the oldest-pending gauge instead.
 - **Don't let one event's failure escape `handle`.** The outbox retries the whole batch when `handle`
-  throws. Catch per event and report `Retry` for that event alone (see `alert-event-consumer.ts`).
+  throws. Catch per event and report `Retry` for that event alone: `runEventsSerially` and
+  `parseEventPayload` in `event-outbox-fns.ts` are that loop and the payload check, and every consumer
+  uses them rather than its own copy. A consumer that calls a third party per event uses
+  `runEventsConcurrentlyByKey` instead, so one slow tenant cannot hold up the batch while events for one
+  resource still run one at a time (both delegated approval consumers key it on the delegated request).
 - **BullMQ owns latency, not correctness.** `attempts: 1` on the flush job is intentional; retry lives
   on the row. A lost job costs one relay interval.
 - **The relay is a `setInterval`, not a cron job.** It doesn't need exactly-once (`FOR UPDATE SKIP
@@ -849,8 +902,7 @@ await someDAL.transaction(async (tx) => {
   don't add a partition key back until a consumer needs one: no consumer today depends on the order two
   events for one resource arrive in, and each event is idempotent on its own through alert history.
 - **Delivery is at-least-once.** `commitResults` is retried in-process, since by then the consumer has
-  already sent; what's left is narrowed by the consumer's own delivery records and by the emitter's
-  `idempotencyKey`.
+  already sent; what's left is narrowed by the consumer's own delivery records.
 
 **Watch `infisical.event_outbox.oldest_pending_age`.** It catches a dead relay, a wedged consumer and a
 stuck claim alike. `lag` and `exhausted.count` are recorded by the outbox, labelled by consumer, so a
@@ -858,7 +910,7 @@ new consumer gets them for free.
 
 **Adding an event-triggered alert** needs no outbox code: declare the event with
 `triggerType: AlertTriggerType.Event`, implement `findEventTargets`, and emit with
-`payload: { orgId, projectId, resourceType, resourceId, targetIds, ...facts }` where `resourceType` is the
+`data: { orgId, projectId, resourceType, resourceId, targetIds, ...facts }` where `resourceType` is the
 provider's. A
 `resourceType` that doesn't declare the `eventType` fails the row terminally with both named, so a bad
 emit site shows up in the logs on its first event.
@@ -1146,6 +1198,25 @@ the same transaction. Keys are released on CA delete, on project hard delete, an
 fails after its key was made. AWS KMS schedules deletion with a 30-day window; HSM keeps its key. A
 failure is logged, never thrown, so the original outcome stands.
 
+### OIDC issuer (outbound workload identity federation)
+
+`services/oidc-issuer` signs short-lived JWTs that cloud providers exchange for access tokens, so a
+connection needs no stored client secret. Each org is its own issuer at
+`/api/v1/oidc-issuer/organizations/<orgId>`, with public discovery and JWKS routes under `.well-known`.
+The issuer URL and each consumer's `sub` format are one-way doors: customers copy both into their provider.
+
+- **Keys are reserved `sign-verify` `kms_keys` rows named `oidc-issuer-*`, not a new `keyUsage`.** The
+  CMEK router accepts any `KmsKeyUsage`, so a new value would be creatable through the public API.
+  Customers cannot create reserved keys, which is what makes the name prefix safe.
+- **Keys are created on the first sign, never on a JWKS fetch**, so existing orgs need no backfill.
+- **The second newest key signs.** The newest is published a full 24h period before it takes over, and
+  rotation keeps at most three keys. It runs under a Redis lock, so no database connection is held while
+  RSA keys are generated; the lock is renewed while it runs, and nothing is written once it is lost.
+- **The JWKS is cached in Redis for 10 minutes**, because building it decrypts every key on an anonymous
+  route. The 24h lead makes a stale set safe. Empty sets are never cached, in Redis or over HTTP.
+- **Fresh keys are read on the primary.** Signing and the JWKS a rotation caches pass a `tx` to
+  `getPublicKey` and `signWithKmsKey`, because a read replica may not have a key created moments earlier.
+
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:
@@ -1202,6 +1273,40 @@ Two things to get right in a ClickHouse aggregate. `createdAt` is a `DateTime64(
 timezone, so pin day grouping and bound parameters to `'UTC'` or they follow the server's timezone. And
 the table is a `ReplacingMergeTree`: a retried batch inserts the same `id` twice and the copy goes away
 only at some later merge, so read with `FINAL` when an exact count matters.
+
+### Free Text in Audit Events
+
+A name, reason, comment or justification can carry ANSI escapes, bidi overrides or zero-width
+characters. They are valid JSON but rewrite a terminal line, reorder text in a SIEM, or make two values
+look identical. Two layers handle them, both built on `src/lib/validator/log-safe-text.ts`:
+
+- **The route rejects them.** Wrap any free-text field that reaches an audit event in `auditSafeText`
+  (`src/server/lib/schemas.ts`), so the caller gets a 422 naming the problem and can fix the input:
+
+  ```ts
+  name: auditSafeText(z.string().trim().min(1).max(255)),
+  reason: auditSafeText(z.string().trim().max(500), { allowMultiline: true }).optional(),
+  ```
+
+- **The sink strips them.** `audit-log-queue.ts` runs actor and event metadata through
+  `sanitizeLogPayload` and `ipAddress`, `userAgent` and `projectName` through `sanitizeLogText`. They
+  strip control, ANSI, bidi and zero-width characters, turn CR and U+2028/U+2029 into LF, drop lone
+  surrogates (Postgres jsonb rejects them, failing the whole batch), and suffix metadata keys that
+  collide after cleaning (`email~2`) instead of dropping one. This covers what the API cannot reject
+  (IdP claims, user agents, legacy rows), so do not strip values yourself before logging.
+
+Rules for the route check:
+
+- **`allowMultiline: true` for textarea fields** (reasons, comments, justifications). It keeps tab, LF
+  and CR; single-line fields reject them.
+- **Keep the bound inside the wrapper.** `auditSafeText` takes a `ZodString`, so `.max()`, `.trim()` and
+  `.min()` go on the inner schema and `.optional()`, `.nullable()` and `.describe()` go outside.
+- **Only validate a value the caller is setting.** A schema check on an editable field blocks every edit
+  of a row that already holds a legacy value, because clients resend the whole body. For updates, check
+  in the service with `containsLogUnsafeCharacters` and `LOG_UNSAFE_TEXT_MESSAGE`, and only when the
+  value differs from the stored one, as `identity-service.ts` and `project-template-service.ts` do.
+  Write-once fields (approval comments, justifications, break-glass reasons) can use the schema directly.
+- **Never put it on a response schema.** Stored rows predate the check and would fail serialization.
 
 ### Audit Log Event Classes and Settings
 
@@ -1290,7 +1395,7 @@ OpenTelemetry metric setup lives in `src/lib/telemetry/`. Instruments are define
 
 **Recording is fire-and-forget.** Every `.add()` / `.record()` and every `record*Metric` helper is wrapped in `safely()` in `metrics.ts`, so a broken exporter, a bad instrument name, or a config read before `initEnvConfig()` can never throw into the code being measured. A measurement is an observation of the work, never a step in it — so call sites do not need their own try/catch, and must not treat a metric as something that can fail. The swallow is silent because the logger is itself initialised from config.
 
-**A new instrument goes on `InfisicalCore` and carries only bounded attributes.** The per-actor labels on the legacy meters are a deliberate exception, not a precedent: they are allowed only through `highCardinalityMeter`, so that `OTEL_DROP_HIGH_CARDINALITY_METERS` can switch them off. Do not put unbounded attributes on any other meter, and do not acquire a meter outside `src/lib/telemetry/` — ESLint blocks both `@opentelemetry/*` imports and `getMeter` access there, so use `highCardinalityMeter` for per-actor instruments and `resolveCoreMeter` for `InfisicalCore` observable gauges.
+**A new instrument goes on `InfisicalCore` and carries only bounded attributes.** The per-actor labels on the legacy meters are a deliberate exception, not a precedent: they are allowed only through `highCardinalityMeter`, so that `OTEL_DROP_HIGH_CARDINALITY_METERS` can switch them off. Do not put unbounded attributes on any other meter, and do not acquire a meter outside `src/lib/telemetry/` — Oxlint blocks both `@opentelemetry/*` imports and `getMeter` access there, so use `highCardinalityMeter` for per-actor instruments and `resolveCoreMeter` for `InfisicalCore` observable gauges.
 
 The gate has to sit at the call site because **a `DROP` aggregation does not bound memory; only an attributes processor does.** The SDK filters attributes *before* hashing them (so the allowlist View is bounded) but consults the aggregator *after* (so a dropped data point has already been keyed by its full attribute set). Under cumulative temporality — which `OTEL_EXPORT_TYPE=prometheus` mandates — `TemporalMetricProcessor` then retains one entry per distinct attribute set, with no cardinality cap, for the lifetime of the process. A meter whose data points are dropped therefore still leaks heap if anything records to it, which is why the flag stops the recording (`shouldRecordHighCardinalityMetrics` in `metrics.ts`) *and* the View strips attributes. With the flag off — the self-hosted default — that retention is the operator's informed choice; the tradeoff is documented in the monitoring guide.
 
@@ -1368,7 +1473,7 @@ Consequences worth knowing:
 - **A migration must never call `*WithRootEncryptionKey` or `buildSecretBlindIndexFromName`.** Migrations run
   before `kmsService.startService`, so they cannot reach the snapshot and fall back to `process.env`, which on
   a rotated instance is the wrong key: decrypts fail the auth tag, encrypts silently write unreadable rows.
-  ESLint blocks this under `src/db/migrations/`; the pre-existing call sites carry a file-level disable
+  Oxlint blocks this under `src/db/migrations/`; the pre-existing call sites carry a file-level disable
   explaining why they are safe.
 - **Exactly one retained key survives a promotion, enforced at promotion, not by the GC.** A second
   rotation before the first was completed would otherwise leave an older wrapper of the root key that

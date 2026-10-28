@@ -354,7 +354,7 @@ func TestSecretApprovalRequest_Review(t *testing.T) {
 		// Setup
 		p := newProtectedProject(t)
 		held := heldRequest(t, p.proj, createSecret(t, p.committer, p.proj, "API_KEY", "value").Body)
-		require.Equal(t, http.StatusOK, reviewAs(t, p.reviewer, held.ID, api.Rejected).StatusCode())
+		require.Equal(t, http.StatusOK, reviewAs(t, p.reviewer, held.ID, api.ReviewSecretApprovalRequestJSONBodyStatusRejected).StatusCode())
 
 		// Action
 		res := mergeAs(t, p.committer, held.ID)
@@ -374,7 +374,7 @@ func TestSecretApprovalRequest_Review(t *testing.T) {
 		held := heldRequest(t, p.proj, createSecret(t, p.committer, p.proj, "API_KEY", "value").Body)
 
 		// Action
-		res := reviewAs(t, bystander, held.ID, api.Approved)
+		res := reviewAs(t, bystander, held.ID, api.ReviewSecretApprovalRequestJSONBodyStatusApproved)
 
 		// Assert
 		require.Equal(t, http.StatusForbidden, res.StatusCode())
@@ -399,7 +399,7 @@ func TestSecretApprovalRequest_Review(t *testing.T) {
 		held := heldRequest(t, proj, createSecret(t, committer, proj, "API_KEY", "value").Body)
 
 		// Action
-		res := reviewAs(t, committer, held.ID, api.Approved)
+		res := reviewAs(t, committer, held.ID, api.ReviewSecretApprovalRequestJSONBodyStatusApproved)
 
 		// Assert
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
@@ -555,7 +555,7 @@ func TestSecretApprovalRequest_Status(t *testing.T) {
 
 		// Action
 		review, err := p.reviewer.API.ReviewSecretApprovalRequestWithResponse(t.Context(), held.ID,
-			api.ReviewSecretApprovalRequestJSONRequestBody{Status: api.Approved})
+			api.ReviewSecretApprovalRequestJSONRequestBody{Status: api.ReviewSecretApprovalRequestJSONBodyStatusApproved})
 		require.NoError(t, err)
 		mergeClosed, err := p.committer.API.MergeSecretApprovalRequestWithResponse(t.Context(), held.ID,
 			api.MergeSecretApprovalRequestJSONRequestBody{})

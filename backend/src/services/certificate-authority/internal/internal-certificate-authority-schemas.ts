@@ -2,11 +2,11 @@ import { z } from "zod";
 
 import { CertificateAuthorities } from "@app/lib/api-docs/constants";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import {
   PKI_TEXT_COLUMN_MAX_LENGTH,
   subjectAttributeSchema
 } from "@app/services/certificate-common/certificate-constants";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 
 import { CaStatus, CaType, InternalCaType } from "../certificate-authority-enums";

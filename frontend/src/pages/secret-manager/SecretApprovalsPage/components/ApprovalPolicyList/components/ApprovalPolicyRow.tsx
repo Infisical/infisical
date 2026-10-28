@@ -17,6 +17,10 @@ import {
 import { getMemberLabel } from "@app/helpers/members";
 import { policyDetails } from "@app/helpers/policies";
 import { Approver } from "@app/hooks/api/accessApproval/types";
+import {
+  TDelegatedApprovalPolicyInput,
+  useDelegatedApprovalOptions
+} from "@app/hooks/api/delegatedApprovals";
 import { TGroupMembership } from "@app/hooks/api/groups/types";
 import { EnforcementLevel, PolicyType } from "@app/hooks/api/policies/enums";
 import { ProjectEnv } from "@app/hooks/api/types";
@@ -35,6 +39,7 @@ interface IPolicy {
   updatedAt: Date;
   policyType: PolicyType;
   enforcementLevel: EnforcementLevel;
+  delegatedApproval?: TDelegatedApprovalPolicyInput | null;
 }
 
 type Props = {
@@ -79,6 +84,13 @@ export const ApprovalPolicyRow = ({
     });
   }, [policy, members, groups]);
 
+  const { data: delegatedApprovalOptions } = useDelegatedApprovalOptions({
+    enabled: Boolean(policy.delegatedApproval)
+  });
+  const delegatedApprovalName =
+    delegatedApprovalOptions?.find((option) => option.type === policy.delegatedApproval?.type)
+      ?.name ?? "the external approval system";
+
   const { variant, Icon } = policyDetails[policy.policyType];
 
   const environmentNames = policy.environments.map((env) => env.name).join(", ");
@@ -109,7 +121,12 @@ export const ApprovalPolicyRow = ({
             className="max-h-96 thin-scrollbar w-64 overflow-y-auto px-3 py-2.5"
             aria-label={`Approvers for ${policy.name || "unnamed policy"}`}
           >
-            {labels && labels.length > 0 ? (
+            {policy.delegatedApproval && (
+              <span className="text-sm text-muted">
+                Requests are approved in {delegatedApprovalName}.
+              </span>
+            )}
+            {!policy.delegatedApproval && labels && labels.length > 0 && (
               <div className="flex flex-col gap-3">
                 {labels.map((el) => (
                   <div
@@ -181,7 +198,8 @@ export const ApprovalPolicyRow = ({
                   </div>
                 ))}
               </div>
-            ) : (
+            )}
+            {!policy.delegatedApproval && !labels?.length && (
               <span className="text-sm text-muted">No approvers configured.</span>
             )}
           </PopoverContent>

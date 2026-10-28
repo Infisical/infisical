@@ -1,4 +1,9 @@
 import { TProjectPermission } from "@app/lib/types";
+import {
+  DelegatedApprovalPolicyType,
+  DelegatedApprovalRequestStatus
+} from "@app/services/delegated-approval/delegated-approval-enums";
+import { TDelegatedApprovalProviderDetails } from "@app/services/delegated-approval/delegated-approval-types";
 
 export enum ApprovalStatus {
   PENDING = "pending",
@@ -32,6 +37,14 @@ export type TCreateAccessApprovalRequestDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TRevokeAccessRequestDTO = {
+  requestId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TRetryDelegatedApprovalDispatchDTO = {
+  requestId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TCancelAccessRequestDTO = {
   requestId: string;
 } & Omit<TProjectPermission, "projectId">;
 
@@ -118,7 +131,13 @@ export interface TAccessApprovalRequestServiceFactory {
         deletedAt: Date | null | undefined;
         maxTimePeriod?: string | null;
         requestExpirationTime?: string | null;
+        delegatedApproval?: { type: DelegatedApprovalPolicyType } | null;
       };
+      delegatedApproval?: {
+        status: DelegatedApprovalRequestStatus;
+        statusReason: string | null;
+        provider: TDelegatedApprovalProviderDetails | null;
+      } | null;
       projectId: string;
       environment: string;
       environmentName: string;
@@ -211,6 +230,51 @@ export interface TAccessApprovalRequestServiceFactory {
       pendingCount: number;
       finalizedCount: number;
     };
+  }>;
+  retryDelegatedApprovalDispatch: (arg: TRetryDelegatedApprovalDispatchDTO) => Promise<{
+    request: {
+      status: string;
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      policyId: string;
+      isTemporary: boolean;
+      requestedByUserId: string;
+      privilegeId?: string | null | undefined;
+      temporaryRange?: string | null | undefined;
+      permissions?: unknown;
+      note?: string | null | undefined;
+      expiresAt?: Date | null | undefined;
+    };
+    projectId: string;
+    delegatedApprovalType: DelegatedApprovalPolicyType;
+    policyName: string;
+    requesterName: string;
+    requesterEmail: string;
+    environment: string;
+    secretPath: string;
+  }>;
+  cancelAccessRequest: (arg: TCancelAccessRequestDTO) => Promise<{
+    request: {
+      status: string;
+      id: string;
+      createdAt: Date;
+      updatedAt: Date;
+      policyId: string;
+      isTemporary: boolean;
+      requestedByUserId: string;
+      privilegeId?: string | null | undefined;
+      temporaryRange?: string | null | undefined;
+      permissions?: unknown;
+      note?: string | null | undefined;
+      expiresAt?: Date | null | undefined;
+    };
+    projectId: string;
+    policyName: string;
+    requesterName: string;
+    requesterEmail: string;
+    environment: string;
+    secretPath: string;
   }>;
   revokeAccessRequest: (arg: TRevokeAccessRequestDTO) => Promise<{
     request: {

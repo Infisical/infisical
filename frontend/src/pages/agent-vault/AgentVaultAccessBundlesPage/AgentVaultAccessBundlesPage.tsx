@@ -45,6 +45,7 @@ import {
   InputGroupInput,
   PageHeader,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -71,6 +72,7 @@ import {
 import { TAgentVaultAccessBundleListItem } from "@app/hooks/api/agentVault/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { useAgentVaultCreateIntent } from "@app/hooks/useAgentVaultCreateIntent";
 
 import { AgentVaultDocsUrls } from "../agent-vault-docs-urls";
 import { DeleteAccessBundleDialog } from "./components/DeleteAccessBundleDialog";
@@ -96,6 +98,7 @@ export const AgentVaultAccessBundlesPage = () => {
     getUserTablePreference("agentVaultAccessBundlesTable", PreferenceKey.PerPage, 20)
   );
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  useAgentVaultCreateIntent(() => setIsCreateOpen(true), isAdmin);
   const [bundleToEdit, setBundleToEdit] = useState<TAgentVaultAccessBundleListItem | null>(null);
   const [bundleToDelete, setBundleToDelete] = useState<TAgentVaultAccessBundleListItem | null>(
     null
@@ -236,6 +239,12 @@ export const AgentVaultAccessBundlesPage = () => {
                 <EmptyTitle>{emptyTitle}</EmptyTitle>
                 <EmptyDescription>{emptyDescription}</EmptyDescription>
               </EmptyHeader>
+              {!isFiltered && isAdmin && (
+                <Button variant="av" onClick={() => setIsCreateOpen(true)}>
+                  <PlusIcon />
+                  Create Access Bundle
+                </Button>
+              )}
             </Empty>
           </CardContent>
         ) : (
@@ -285,29 +294,26 @@ export const AgentVaultAccessBundlesPage = () => {
                 ))}
               {!isPending &&
                 displayedBundles.map((bundle) => (
-                  <TableRow
-                    key={bundle.id}
-                    onClick={() =>
-                      navigate({
-                        to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
-                        params: { orgId: currentOrg.id, accessBundleId: bundle.id }
-                      })
-                    }
-                  >
+                  <TableRow key={bundle.id} linked>
                     <TableCell isTruncatable className="min-w-64">
-                      <div className="flex items-center gap-2.5">
-                        <span className="truncate" title={bundle.name}>
+                      <RowLink
+                        to="/organizations/$orgId/agent-vault/access-bundles/$accessBundleId"
+                        params={{ orgId: currentOrg.id, accessBundleId: bundle.id }}
+                        className="flex items-center gap-2.5"
+                      >
+                        <span className="truncate" title={bundle.name} data-row-interactive>
                           {bundle.name}
                         </span>
                         {bundle.description && (
                           <span
                             className="min-w-0 flex-1 truncate text-sm text-muted"
                             title={bundle.description}
+                            data-row-interactive
                           >
                             {bundle.description}
                           </span>
                         )}
-                      </div>
+                      </RowLink>
                     </TableCell>
                     <TableCell>
                       <ServiceIconStack hostPatterns={bundle.hostPatterns} />
@@ -347,7 +353,7 @@ export const AgentVaultAccessBundlesPage = () => {
                         {bundle.servicesRequiringSetup.length > 0 && (
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Badge variant="warning">
+                              <Badge variant="warning" data-row-interactive>
                                 <TriangleAlertIcon />
                                 Requires Setup
                               </Badge>
@@ -436,7 +442,16 @@ export const AgentVaultAccessBundlesPage = () => {
         )}
       </Card>
 
-      <AccessBundleFormDialog isOpen={isCreateOpen} onOpenChange={setIsCreateOpen} />
+      <AccessBundleFormDialog
+        isOpen={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        onCreated={(accessBundle) =>
+          navigate({
+            to: "/organizations/$orgId/agent-vault/access-bundles/$accessBundleId",
+            params: { orgId: currentOrg.id, accessBundleId: accessBundle.id }
+          })
+        }
+      />
       <AccessBundleFormDialog
         isOpen={Boolean(bundleToEdit)}
         onOpenChange={(isOpen) => {

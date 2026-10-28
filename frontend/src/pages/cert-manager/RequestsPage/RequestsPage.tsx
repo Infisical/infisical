@@ -25,6 +25,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   PageHeader,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -37,6 +38,7 @@ import {
   TabsTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
+import { getInstancePinningLink } from "@app/helpers/project";
 import { useDebounce } from "@app/hooks";
 import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
 import {
@@ -377,37 +379,34 @@ export const RequestsPage = () => {
                             };
 
                             return (
-                              <TableRow
-                                key={r.id}
-                                className="cursor-pointer [&>td]:py-3"
-                                onClick={() =>
-                                  navigate({
-                                    to: "/organizations/$orgId/cert-manager/approvals/$approvalRequestId",
-                                    params: {
-                                      orgId: orgId ?? "",
-                                      approvalRequestId: r.id
-                                    },
-                                    search: {
-                                      policyType: ApprovalPolicyType.CertRequest,
-                                      from: "root-requests"
-                                    }
-                                  })
-                                }
-                              >
+                              <TableRow key={r.id} className="[&>td]:py-3" linked>
                                 <TableCell isTruncatable className="font-mono">
-                                  {cn}
+                                  <RowLink
+                                    {...getInstancePinningLink(
+                                      currentProject.orgId,
+                                      currentProject,
+                                      `approvals/${r.id}`
+                                    )!}
+                                    search={
+                                      {
+                                        policyType: ApprovalPolicyType.CertRequest,
+                                        from: "root-requests"
+                                      } as never
+                                    }
+                                  >
+                                    {cn}
+                                  </RowLink>
                                 </TableCell>
                                 <TableCell className="font-mono text-xs">{profile}</TableCell>
                                 <TableCell className="font-mono text-xs">
                                   {app ? (
                                     <Link
-                                      to="/organizations/$orgId/cert-manager/applications/$applicationName"
-                                      params={{
-                                        orgId: orgId ?? "",
-                                        applicationName: app.name
-                                      }}
+                                      {...getInstancePinningLink(
+                                        currentProject.orgId,
+                                        currentProject,
+                                        `applications/${app.name}`
+                                      )!}
                                       className="text-foreground hover:text-project"
-                                      onClick={(e) => e.stopPropagation()}
                                     >
                                       {app.name}
                                     </Link>
@@ -525,25 +524,23 @@ export const RequestsPage = () => {
                             };
 
                             return (
-                              <TableRow
-                                key={r.id}
-                                className="cursor-pointer [&>td]:py-3"
-                                onClick={() =>
-                                  navigate({
-                                    to: "/organizations/$orgId/cert-manager/approvals/$approvalRequestId",
-                                    params: {
-                                      orgId: orgId ?? "",
-                                      approvalRequestId: r.id
-                                    },
-                                    search: {
-                                      policyType: ApprovalPolicyType.CertCodeSigning,
-                                      from: "root-requests"
-                                    }
-                                  })
-                                }
-                              >
+                              <TableRow key={r.id} className="[&>td]:py-3" linked>
                                 <TableCell isTruncatable className="font-mono">
-                                  {signerName}
+                                  <RowLink
+                                    {...getInstancePinningLink(
+                                      currentProject.orgId,
+                                      currentProject,
+                                      `approvals/${r.id}`
+                                    )!}
+                                    search={
+                                      {
+                                        policyType: ApprovalPolicyType.CertCodeSigning,
+                                        from: "root-requests"
+                                      } as never
+                                    }
+                                  >
+                                    {signerName}
+                                  </RowLink>
                                 </TableCell>
                                 <TableCell>{r.requesterName || r.requesterEmail || "—"}</TableCell>
                                 <TableCell>
