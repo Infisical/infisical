@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import { type ComponentProps, type ReactNode, useEffect, useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
@@ -19,6 +18,7 @@ import { twMerge } from "tailwind-merge";
 
 import { ProjectLimitUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import { CertManagerNotConfiguredModal } from "@app/components/projects/CertManagerNotConfiguredModal";
@@ -299,7 +299,7 @@ export const ProjectTypePage = () => {
   useEffect(() => {
     if (projectType === ProjectType.AgentVault) {
       navigate({
-        to: "/organizations/$orgId/agent-vault/sessions",
+        to: "/organizations/$orgId/agent-vault",
         params: { orgId }
       });
     }
@@ -377,10 +377,8 @@ const ProjectTypeContent = ({
 
   return (
     <div className="mx-auto flex max-w-8xl flex-col">
-      <Helmet>
-        <title>{typeTitle} Projects</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title={`${typeTitle} Projects`} />
+      <link rel="icon" href="/infisical.ico" />
       <PageHeader
         title={typeTitle}
         scope={projectType}

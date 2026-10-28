@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { PageLoader } from "@app/components/v3/platform/PageLoader";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
@@ -716,5 +717,10 @@ export const OAuthCallbackPage = () => {
     })();
   }, [isReady]);
 
-  return <PageLoader />;
+  return (
+    <>
+      <PageTitle title="Connecting App Connection" />
+      <PageLoader />
+    </>
+  );
 };

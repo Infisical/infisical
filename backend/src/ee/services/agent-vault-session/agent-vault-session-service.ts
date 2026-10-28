@@ -19,7 +19,13 @@ import { generateSessionLogKey, wrapSessionLogKey } from "../agent-vault-session
 import { TAgentVaultSessionAccessBundleDALFactory } from "./agent-vault-session-access-bundle-dal";
 import { TAgentVaultSessionDALFactory, TAgentVaultSessionListRow } from "./agent-vault-session-dal";
 import { deriveSessionStatus, generateSessionToken } from "./agent-vault-session-fns";
-import { TGetSessionByIdDTO, TListSessionsDTO, TMintSessionDTO, TRevokeSessionDTO } from "./agent-vault-session-types";
+import {
+  TGetSessionByIdDTO,
+  TListSessionsDTO,
+  TMintSessionDTO,
+  TRevokeSessionDTO,
+  TUpdateSessionLabelDTO
+} from "./agent-vault-session-types";
 
 // V1 ships one bundle per session; the junction table, `position` and the proxy matcher all handle more.
 export const AGENT_VAULT_MAX_SESSION_BUNDLES = 1;
@@ -60,7 +66,7 @@ export const agentVaultSessionServiceFactory = ({
     status: deriveSessionStatus({ ...session, userId, identityId })
   });
 
-  const mintSession = async ({ projectId, ctx, accessBundles, actorName, actorEmail, ttl }: TMintSessionDTO) => {
+  const mintSession = async ({ projectId, ctx, accessBundles, actorName, actorEmail, ttl, label }: TMintSessionDTO) => {
     const actor = requireSessionActor(ctx);
     const { permission, accessBundleIds: reachable } = await getAgentVaultReachability(
       { permissionService, membershipDAL },
@@ -114,6 +120,7 @@ export const agentVaultSessionServiceFactory = ({
             actor.type === ActorType.IDENTITY ? AgentVaultMemberType.MachineIdentity : AgentVaultMemberType.User,
           actorName,
           actorEmail,
+          label: label || null,
           tokenHash,
           expiresAt,
           encryptedSessionLogKey
@@ -137,6 +144,7 @@ export const agentVaultSessionServiceFactory = ({
     return {
       session: {
         id: session.id,
+        label: session.label ?? null,
         expiresAt: session.expiresAt ?? null,
         createdAt: session.createdAt,
         accessBundles: accessBundles.map((name, position) => ({
@@ -223,18 +231,50 @@ export const agentVaultSessionServiceFactory = ({
       return { session: toSessionView({ ...session, revokedAt: revoked.revokedAt ?? null }), revokedNow: true };
     }
 
-    // A concurrent revoke won. Report its timestamp rather than the one this request read.
-    const current = await agentVaultSessionDAL.findOne({ id: session.id, projectId });
+    // Nothing was written: a concurrent revoke won, or the owner was deleted, which already reads as revoked and is
+    // left untouched. Report the row as it is now, which the read above may not have seen.
+    const current = await agentVaultSessionDAL.findByIdOnPrimary(session.id, projectId);
     return {
-      session: toSessionView({ ...session, revokedAt: current?.revokedAt ?? session.revokedAt }),
+      session: toSessionView(
+        current
+          ? {
+              ...session,
+              revokedAt: current.revokedAt ?? null,
+              userId: current.userId ?? null,
+              identityId: current.identityId ?? null
+            }
+          : session
+      ),
       revokedNow: false
     };
+  };
+
+  const updateSessionLabel = async ({ projectId, ctx, sessionId, label }: TUpdateSessionLabelDTO) => {
+    const { permission, isAdmin } = await getAgentVaultPermission({ permissionService }, { projectId, ctx });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionAgentVaultSessionActions.Edit,
+      ProjectPermissionSub.AgentVaultSessions
+    );
+
+    const session = await findVisibleSession({ projectId, ctx, sessionId, isAdmin });
+    // The visible session can come from a replica that lags, so the owner check and the previous label come from
+    // the write itself.
+    const updated = await agentVaultSessionDAL.updateLabel(session.id, projectId, label);
+    if (!updated) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
+    if (!updated.isUpdated) {
+      throw new BadRequestError({
+        message: "The user or machine identity that owned this session was deleted, so its label can't be changed."
+      });
+    }
+
+    return { session: toSessionView({ ...session, label }), previousLabel: updated.previousLabel };
   };
 
   return {
     mintSession,
     listSessions,
     getSessionById,
-    revokeSession
+    revokeSession,
+    updateSessionLabel
   };
 };

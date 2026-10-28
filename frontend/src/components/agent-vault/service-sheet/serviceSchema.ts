@@ -6,11 +6,17 @@ import { variableReferenceError } from "@app/helpers/agentVaultVariables";
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
+  AgentVaultMcpTransport,
+  AgentVaultOauthStatus,
+  AgentVaultServiceType,
   AgentVaultSubstitutionSurface,
   AgentVaultVariableReferenceField,
   TAgentVaultMemberProvidedField
 } from "@app/hooks/api/agentVault";
-import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
+import {
+  TAgentVaultOauthCredentialSummary,
+  TAgentVaultService
+} from "@app/hooks/api/agentVault/types";
 import { slugSchema } from "@app/lib/schemas";
 
 /**
@@ -42,14 +48,39 @@ export const FORM_FIELD_OF_CREDENTIAL_FIELD: Record<
 export const storedMemberFields = (
   service?: TAgentVaultService | null
 ): TAgentVaultMemberProvidedField[] =>
-  service && service.credential.type !== AgentVaultCredentialType.Passthrough
+  service &&
+  (service.credential.type === AgentVaultCredentialType.Bearer ||
+    service.credential.type === AgentVaultCredentialType.Basic)
     ? service.credential.memberProvidedFields
     : [];
 
 export const CREDENTIAL_LABELS: Record<AgentVaultCredentialType, string> = {
   [AgentVaultCredentialType.Bearer]: "Bearer",
   [AgentVaultCredentialType.Basic]: "Basic Auth",
-  [AgentVaultCredentialType.Passthrough]: "Pass-through"
+  [AgentVaultCredentialType.Passthrough]: "Pass-through",
+  [AgentVaultCredentialType.OAuth]: "OAuth"
+};
+
+export const HTTP_CREDENTIAL_TYPES = [
+  AgentVaultCredentialType.Bearer,
+  AgentVaultCredentialType.Basic,
+  AgentVaultCredentialType.Passthrough
+];
+
+export const OAUTH_STATUS_LABELS: Record<AgentVaultOauthStatus, string> = {
+  [AgentVaultOauthStatus.Connected]: "Authorized",
+  [AgentVaultOauthStatus.NeedsReauthorization]: "Needs Reauthorization",
+  [AgentVaultOauthStatus.NeedsAdditionalScopes]: "Missing Scopes"
+};
+
+export const SERVICE_TYPE_LABELS: Record<AgentVaultServiceType, string> = {
+  [AgentVaultServiceType.Http]: "HTTP API",
+  [AgentVaultServiceType.Mcp]: "MCP Server"
+};
+
+export const TRANSPORT_LABELS: Record<AgentVaultMcpTransport, string> = {
+  [AgentVaultMcpTransport.StreamableHttp]: "Streamable HTTP",
+  [AgentVaultMcpTransport.Sse]: "SSE"
 };
 
 export const HTTP_METHODS = Object.values(AgentVaultHttpMethod);
@@ -68,6 +99,38 @@ export const MAX_PATH_PREFIXES = 20;
 // The column holds every host as one comma-joined string, so this caps the join, not any single host.
 const AGENT_VAULT_MAX_HOST_PATTERN_LENGTH = 1024;
 
+const MAX_SERVER_URL_LENGTH = 2048;
+
+export const serverUrlError = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return "Enter the server URL.";
+  if (trimmed.length > MAX_SERVER_URL_LENGTH) {
+    return `A server URL can be at most ${MAX_SERVER_URL_LENGTH} characters.`;
+  }
+  if (/\s/.test(trimmed)) return "The server URL can't contain spaces.";
+  // On the raw text: the URL parser reads "https:host" as if it were "https://host".
+  if (!/^https:\/\//i.test(trimmed)) {
+    return "The server URL must start with https://, as in https://mcp.example.com/mcp.";
+  }
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return "Enter a full URL, as in https://mcp.example.com/mcp.";
+  }
+  if (url.username || url.password) {
+    return "Remove the credentials from the URL. Add them on the Credential step instead.";
+  }
+  if (trimmed.includes("#")) return "Remove the # fragment from the URL.";
+  if (trimmed.includes("?")) {
+    return "Server URLs can't include a query string, since it is stored and shown in plaintext. Put a token in the Bearer token or a custom header instead.";
+  }
+  // The URL parser percent-encodes the *, so the hostname carries %2A.
+  if (/\*|%2a/i.test(url.hostname))
+    return "The server URL must name a specific host, not a wildcard.";
+  return null;
+};
+
 export const SURFACE_LABELS: Record<AgentVaultSubstitutionSurface, string> = {
   [AgentVaultSubstitutionSurface.Path]: "URL Path",
   [AgentVaultSubstitutionSurface.Query]: "Query String",
@@ -84,6 +147,27 @@ const CONTROL_CHARS_MESSAGE =
   "This can't contain line breaks or other control characters. Check for a stray newline if you pasted it.";
 
 // Double braces wrap a variable reference, and neither a prefix nor a placeholder takes one.
+// The client ID and secret go to the provider as typed, unlike the credential fields that take `{{KEY}}`.
+export const OAUTH_CLIENT_VARIABLES_MESSAGE = "Variables aren't supported here. Paste the value.";
+
+// RFC 6749's VSCHAR, which the API requires, so a pasted smart quote is caught here rather than as a 422.
+const OAUTH_CLIENT_CHARS_RE = /^[\x20-\x7e]*$/;
+const OAUTH_CLIENT_CHARS_MESSAGE = "Use printable ASCII characters without line breaks or accents.";
+
+// Shared with the Authorize card, which checks them before it opens the sign-in window.
+export const oauthClientIdSchema = z
+  .string()
+  .trim()
+  .max(2048, "A client ID can be at most 2048 characters.")
+  .regex(OAUTH_CLIENT_CHARS_RE, OAUTH_CLIENT_CHARS_MESSAGE)
+  .refine((value) => !value.includes("{{"), OAUTH_CLIENT_VARIABLES_MESSAGE);
+
+export const oauthClientSecretSchema = z
+  .string()
+  .max(4096, "A client secret can be at most 4096 characters.")
+  .regex(OAUTH_CLIENT_CHARS_RE, OAUTH_CLIENT_CHARS_MESSAGE)
+  .refine((value) => !value.includes("{{"), OAUTH_CLIENT_VARIABLES_MESSAGE);
+
 const hasDoubleBraces = (text: string) => text.includes("{{") || text.includes("}}");
 
 const PREFIX_BRACES_MESSAGE =
@@ -127,6 +211,67 @@ export const SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
   [ServiceStep.Review]: []
 };
 
+export const MCP_SERVICE_STEP_FIELDS: Record<ServiceStep, string[]> = {
+  [ServiceStep.Template]: [],
+  [ServiceStep.Details]: ["name", "serverUrl", "transport"],
+  [ServiceStep.Credential]: [
+    "credentialType",
+    "headerName",
+    "headerPrefix",
+    "secret",
+    "oauthAuthorizationId",
+    "oauthClientId",
+    "oauthClientSecret",
+    "customHeaders"
+  ],
+  [ServiceStep.Review]: []
+};
+
+// Spelled out rather than picked from TServiceForm, which is inferred from the schema that calls these.
+type TOAuthFormState = {
+  serverUrl: string;
+  oauthAuthorizationId: string;
+  oauthAuthorizedUrl: string;
+};
+
+// Reusing an authorization after the server URL changes could attach its tokens to another host.
+export const newOAuthAuthorizationId = (form: TOAuthFormState) =>
+  form.oauthAuthorizationId && form.oauthAuthorizedUrl === form.serverUrl.trim()
+    ? form.oauthAuthorizationId
+    : undefined;
+
+export const storedOAuthCredential = (
+  service: TAgentVaultService | null | undefined,
+  serverUrl: string
+): TAgentVaultOauthCredentialSummary | null =>
+  service?.type === AgentVaultServiceType.Mcp &&
+  service.credential.type === AgentVaultCredentialType.OAuth &&
+  service.serverUrl === serverUrl.trim()
+    ? service.credential
+    : null;
+
+export const isOAuthAuthorizationMissing = (
+  form: TOAuthFormState & {
+    serviceType: AgentVaultServiceType;
+    credentialType: AgentVaultCredentialType;
+  },
+  service?: TAgentVaultService | null
+) => {
+  if (
+    form.serviceType !== AgentVaultServiceType.Mcp ||
+    form.credentialType !== AgentVaultCredentialType.OAuth
+  ) {
+    return false;
+  }
+  return !newOAuthAuthorizationId(form) && !storedOAuthCredential(service, form.serverUrl);
+};
+
+export const oauthStatusLabel = (form: TOAuthFormState, service?: TAgentVaultService | null) => {
+  const stored = storedOAuthCredential(service, form.serverUrl);
+  if (newOAuthAuthorizationId(form)) return stored ? "Reauthorized" : "Authorized";
+  return stored ? OAUTH_STATUS_LABELS[stored.status] : "Not authorized";
+};
+
 /**
  * Missing keys are read when the form validates rather than when the schema is built, since they arrive as each
  * lookup answers. A key still being checked passes here; the API refuses it on save if it doesn't exist.
@@ -137,25 +282,33 @@ export const buildServiceSchema = (
 ) =>
   z
     .object({
+      serviceType: z.nativeEnum(AgentVaultServiceType),
       name: slugSchema({ max: 64, field: "Name" }),
+      serverUrl: z.string(),
+      transport: z.nativeEnum(AgentVaultMcpTransport),
       hosts: z.array(z.string()),
       // In the form rather than component state so the resolver sees it: trigger() wipes anything set with
       // setError, so a refusal held outside the form would let the step advance.
       hostDraft: z.string(),
       pathDraft: z.string(),
       credentialType: z.nativeEnum(AgentVaultCredentialType),
-      headerName: z
-        .string()
-        .trim()
-        .max(128)
-        .regex(
-          /^[A-Za-z0-9!#$%&'*+.^_`|~-]*$/,
-          "A header name can't contain spaces or colons. Use letters, digits and dashes, as in X-API-Key."
-        )
-        .optional(),
-      headerPrefix: z.string().trim().max(64).optional(),
+      // Checked in superRefine, only while Bearer is selected: switching away hides these fields but keeps them.
+      headerName: z.string().trim().optional(),
+      headerPrefix: z.string().trim().optional(),
       username: z.string().trim().max(256).optional(),
       secret: z.string().max(8192).optional(),
+      oauthAuthorizationId: z.string(),
+      // The server URL the authorization was made for, so editing the URL afterwards asks for a new one.
+      oauthAuthorizedUrl: z.string(),
+      oauthScopes: z.array(z.string()),
+      // Why a new authorization was dropped (expired, or refused on save). While set, the stored login doesn't
+      // count, so the save can't quietly keep the old one.
+      oauthAuthorizationRejection: z.string().optional(),
+      // Checked in the refine below, only while OAuth is selected: switching to Bearer keeps these values.
+      oauthClientId: z.string().optional(),
+      oauthClientSecret: z.string().optional(),
+      // The admin chose automatic setup over the service's own OAuth app. Kept in the form so it survives Back.
+      oauthAutomaticSetup: z.boolean().optional(),
       // Each member sets these for themselves, so the form holds no value for them.
       memberProvidedFields: z.array(
         z.enum([
@@ -189,15 +342,63 @@ export const buildServiceSchema = (
         .max(MAX_SUBSTITUTIONS, `You can add at most ${MAX_SUBSTITUTIONS} substitutions.`)
     })
     .superRefine((data, ctx) => {
-      addHostIssues(data.hosts, ctx, ["hosts"]);
-      const hostDraft = data.hostDraft.trim();
+      const isMcp = data.serviceType === AgentVaultServiceType.Mcp;
+      if (isMcp) {
+        const urlError = serverUrlError(data.serverUrl);
+        if (urlError) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["serverUrl"], message: urlError });
+        }
+        if (
+          data.credentialType !== AgentVaultCredentialType.Bearer &&
+          data.credentialType !== AgentVaultCredentialType.OAuth
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["credentialType"],
+            message: "An MCP server takes OAuth or a bearer token."
+          });
+        }
+        if (data.credentialType === AgentVaultCredentialType.OAuth) {
+          if (data.oauthAuthorizationRejection && !data.oauthAuthorizationId) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["oauthAuthorizationId"],
+              message: data.oauthAuthorizationRejection
+            });
+          } else if (isOAuthAuthorizationMissing(data, service)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["oauthAuthorizationId"],
+              message: "Authorize the server to continue."
+            });
+          }
+          (
+            [
+              ["oauthClientId", oauthClientIdSchema, data.oauthClientId],
+              ["oauthClientSecret", oauthClientSecretSchema, data.oauthClientSecret]
+            ] as const
+          ).forEach(([field, fieldSchema, value]) => {
+            const result = fieldSchema.safeParse(value ?? "");
+            if (!result.success) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: [field],
+                message: result.error.issues[0].message
+              });
+            }
+          });
+        }
+      }
+
+      if (!isMcp) addHostIssues(data.hosts, ctx, ["hosts"]);
+      const hostDraft = isMcp ? "" : data.hostDraft.trim();
       if (hostDraft) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["hosts"],
           message: hostError(hostDraft, data.hosts) ?? `Add "${hostDraft}" or clear it.`
         });
-      } else if (data.hosts.length === 0) {
+      } else if (!isMcp && data.hosts.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["hosts"],
@@ -205,7 +406,7 @@ export const buildServiceSchema = (
         });
       }
 
-      const pathDraft = data.pathDraft.trim();
+      const pathDraft = isMcp ? "" : data.pathDraft.trim();
       if (pathDraft) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -222,7 +423,7 @@ export const buildServiceSchema = (
         });
       }
 
-      if (data.methods.length === 0) {
+      if (!isMcp && data.methods.length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["methods"],
@@ -230,18 +431,48 @@ export const buildServiceSchema = (
         });
       }
 
-      addPathPrefixIssues(data.pathPrefixes, ctx, ["pathPrefixes"]);
+      if (!isMcp) addPathPrefixIssues(data.pathPrefixes, ctx, ["pathPrefixes"]);
+
+      const hasHeaderShape = data.credentialType === AgentVaultCredentialType.Bearer;
 
       let credentialHeader: string | null = null;
-      if (data.credentialType === AgentVaultCredentialType.Bearer) {
+      if (hasHeaderShape) {
         credentialHeader = data.headerName || "Authorization";
-      } else if (data.credentialType === AgentVaultCredentialType.Basic) {
+      } else if (
+        data.credentialType === AgentVaultCredentialType.Basic ||
+        data.credentialType === AgentVaultCredentialType.OAuth
+      ) {
         credentialHeader = "Authorization";
       }
 
-      // Basic always writes Authorization, which is not reserved, so only bearer can name one.
+      if (hasHeaderShape && data.headerName) {
+        if (data.headerName.length > 128) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["headerName"],
+            message: "A header name can be at most 128 characters."
+          });
+        } else if (!/^[A-Za-z0-9!#$%&'*+.^_`|~-]*$/.test(data.headerName)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["headerName"],
+            message:
+              "A header name can't contain spaces or colons. Use letters, digits and dashes, as in X-API-Key."
+          });
+        }
+      }
+
+      if (hasHeaderShape && data.headerPrefix && data.headerPrefix.length > 64) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["headerPrefix"],
+          message: "A prefix can be at most 64 characters."
+        });
+      }
+
+      // Basic and OAuth always write Authorization, which is not reserved, so only bearer can name one.
       if (
-        data.credentialType === AgentVaultCredentialType.Bearer &&
+        hasHeaderShape &&
         data.headerName &&
         RESERVED_HEADER_NAMES.has(data.headerName.toLowerCase())
       ) {
@@ -252,11 +483,7 @@ export const buildServiceSchema = (
         });
       }
 
-      if (
-        data.credentialType === AgentVaultCredentialType.Bearer &&
-        data.headerPrefix &&
-        hasDoubleBraces(data.headerPrefix)
-      ) {
+      if (hasHeaderShape && data.headerPrefix && hasDoubleBraces(data.headerPrefix)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["headerPrefix"],
@@ -348,7 +575,11 @@ export const buildServiceSchema = (
         AgentVaultVariableReferenceField.CredentialUsername
       );
 
-      if (data.credentialType !== AgentVaultCredentialType.Passthrough && !isSecretMemberProvided) {
+      if (
+        data.credentialType !== AgentVaultCredentialType.Passthrough &&
+        data.credentialType !== AgentVaultCredentialType.OAuth &&
+        !isSecretMemberProvided
+      ) {
         addReferenceIssue(data.secret, ["secret"]);
       }
       if (data.credentialType === AgentVaultCredentialType.Basic && !isUsernameMemberProvided) {
@@ -361,7 +592,12 @@ export const buildServiceSchema = (
         addReferenceIssue(substitution.value, ["substitutions", index, "value"])
       );
 
-      if (data.credentialType === AgentVaultCredentialType.Passthrough) return;
+      if (
+        data.credentialType === AgentVaultCredentialType.Passthrough ||
+        data.credentialType === AgentVaultCredentialType.OAuth
+      ) {
+        return;
+      }
 
       const isUnchanged = data.secret === UNCHANGED_SECRET;
 

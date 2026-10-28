@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { faBan, faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
@@ -7,6 +6,7 @@ import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Badge,
   Button,
@@ -460,10 +460,8 @@ const PageContent = () => {
 export const ApprovalRequestDetailPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Approval Request | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Approval Request" />
+      <link rel="icon" href="/infisical.ico" />
       <PageContent />
     </>
   );

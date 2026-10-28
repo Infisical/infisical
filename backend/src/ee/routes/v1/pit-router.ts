@@ -707,6 +707,7 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
           metadata: {
             commitId: result.commitId,
             approvalId: result.approval?.id,
+            approvalSlug: result.approval?.slug,
             projectId: req.body.projectId,
             environment: req.body.environment,
             secretPath: req.body.secretPath,
