@@ -863,6 +863,9 @@ export enum EventType {
   ACCESS_APPROVAL_REQUEST_CREATE = "access-approval-request-create",
   ACCESS_APPROVAL_REQUEST_REVIEW = "access-approval-request-review",
   ACCESS_APPROVAL_REQUEST_REVOKE = "access-approval-request-revoke",
+  ACCESS_APPROVAL_REQUEST_DELEGATED_DISPATCH_RETRY = "access-approval-request-delegated-dispatch-retry",
+  ACCESS_APPROVAL_REQUEST_DELEGATED_DECISION = "access-approval-request-delegated-decision",
+  ACCESS_APPROVAL_REQUEST_CANCEL = "access-approval-request-cancel",
   ACCESS_APPROVAL_REQUEST_UPDATE = "access-approval-request-update",
   VIEW_AUDIT_LOGS = "view-audit-logs",
 
@@ -7339,6 +7342,54 @@ interface AccessApprovalRequestRevokeEvent {
   };
 }
 
+interface AccessApprovalRequestDelegatedDispatchRetryEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_DELEGATED_DISPATCH_RETRY;
+  metadata: {
+    requestId: string;
+    requestedByUserId: string;
+    requestedByUserName: string;
+    requestedByUserEmail: string;
+    policyId: string;
+    policyName: string;
+    environment: string;
+    secretPath: string;
+    delegatedApprovalType: string;
+  };
+}
+
+interface AccessApprovalRequestDelegatedDecisionEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_DELEGATED_DECISION;
+  metadata: {
+    requestId: string;
+    policyId: string;
+    policyName?: string;
+    delegatedApprovalType: string;
+    delegatedProviderRequestId: string;
+    providerRecordNumber?: string;
+    permissions?: string[];
+    outcome: string;
+    decision?: string;
+    decidedBy?: string;
+    decidedAt?: string;
+    decisionNotes?: string;
+    reason?: string;
+  };
+}
+
+interface AccessApprovalRequestCancelEvent {
+  type: EventType.ACCESS_APPROVAL_REQUEST_CANCEL;
+  metadata: {
+    requestId: string;
+    requestedByUserId: string;
+    requestedByUserName: string;
+    requestedByUserEmail: string;
+    policyId: string;
+    policyName: string;
+    environment: string;
+    secretPath: string;
+  };
+}
+
 interface AccessApprovalRequestUpdateEvent {
   type: EventType.ACCESS_APPROVAL_REQUEST_UPDATE;
   metadata: {
@@ -8829,6 +8880,9 @@ export type Event =
   | AccessApprovalRequestCreateEvent
   | AccessApprovalRequestReviewEvent
   | AccessApprovalRequestRevokeEvent
+  | AccessApprovalRequestDelegatedDispatchRetryEvent
+  | AccessApprovalRequestDelegatedDecisionEvent
+  | AccessApprovalRequestCancelEvent
   | AccessApprovalRequestUpdateEvent
   | CreateAcmeAccountEvent
   | RetrieveAcmeAccountEvent

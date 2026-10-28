@@ -32,6 +32,7 @@ import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/addition
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
 import { AuthMethod } from "../auth/auth-type";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
+import { lockMembershipsById } from "../membership/membership-dal";
 import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
@@ -637,13 +638,16 @@ export const membershipUserServiceFactory = ({
           tx
         });
 
-        await additionalPrivilegeDAL.delete(
-          {
-            actorUserId: dto.selector.userId,
-            projectId: dto.scopeData.projectId
-          },
-          tx
-        );
+        const [lockedMembership] = await lockMembershipsById([existingMembership.id], tx);
+        if (lockedMembership) {
+          await additionalPrivilegeDAL.delete(
+            {
+              actorUserId: dto.selector.userId,
+              projectId: dto.scopeData.projectId
+            },
+            tx
+          );
+        }
 
         await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
           {

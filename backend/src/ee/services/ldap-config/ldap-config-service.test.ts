@@ -1,6 +1,5 @@
-import dns from "node:dns/promises";
-
 import { createMongoAbility } from "@casl/ability";
+import dns from "node:dns/promises";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { ActorType } from "@app/services/auth/auth-type";

@@ -9,11 +9,13 @@ import {
   TCreateAccessApprovalPolicy
 } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ConflictError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ApprovalPolicyType, ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
 import { insertApprovalRequestSteps } from "@app/services/approval-policy/approval-request-fns";
 import { ActorType } from "@app/services/auth/auth-type";
+import { assertDelegatedApprovalPolicyConstraints } from "@app/services/delegated-approval/delegated-approval-fns";
+import { TDelegatedApprovalPolicyInput } from "@app/services/delegated-approval/delegated-approval-types";
 
 import {
   buildSecretAccessPolicySteps,
@@ -41,6 +43,15 @@ type TPolicyStep = {
   requiredApprovals: number;
   approvers: { type: ApproverType; id: string }[];
 };
+type TPolicyReviewers = { steps: TPolicyStep[]; bypasserUserIds: string[]; groupBypassers: string[] };
+
+// defined for delegated approvals
+const NO_REVIEWERS: TPolicyReviewers = { steps: [], bypasserUserIds: [], groupBypassers: [] };
+
+const isDelegatedApprovalChanged = (
+  existing: TDelegatedApprovalPolicyInput | null,
+  incoming: TDelegatedApprovalPolicyInput
+) => existing?.type !== incoming.type || existing?.connectionId !== incoming.connectionId;
 
 export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
   projectDAL,
@@ -59,7 +70,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
   approvalRequestStepsDAL,
   approvalRequestStepEligibleApproversDAL,
   approvalRequestGrantsDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  delegatedApprovalService
 }: TSecretAccessApprovalGlobalPolicyBridgeServiceFactoryDep) => {
   const { verifyProjectSubjectsMembership } = approvalPolicyMembershipVerifierFactory({ projectDAL });
 
@@ -76,17 +88,21 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
 
   const $resolveApprovers = async (
     approvers: TApproverInput,
-    { projectId, orgId }: { projectId: string; orgId: string }
+    { projectId, orgId }: { projectId: string; orgId: string },
+    tx?: Knex
   ) => {
     const { groupApprovers, userApprovers, userApproverNames } = $splitApprovers(approvers);
 
     let approverUserIds = userApprovers;
     if (userApproverNames.length) {
-      const approverUsersInDB = await userDAL.find({
-        $in: {
-          username: userApproverNames.map((el) => el.username)
-        }
-      });
+      const approverUsersInDB = await userDAL.find(
+        {
+          $in: {
+            username: userApproverNames.map((el) => el.username)
+          }
+        },
+        { tx }
+      );
       const approverUsersInDBGroupByUsername = groupBy(approverUsersInDB, (i) => i.username);
       const invalidUsernames = userApproverNames.filter((el) => !approverUsersInDBGroupByUsername?.[el.username]?.[0]);
 
@@ -109,7 +125,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
         userIds: approverUserIds.map((au) => au.id),
         groupIds: groupApprovers.map((ga) => ga.id).filter(Boolean),
         orgId,
-        projectId
+        projectId,
+        tx
       });
     }
 
@@ -118,7 +135,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
 
   const $resolveBypassers = async (
     bypassers: TBypasserInput | undefined,
-    { projectId, orgId }: { projectId: string; orgId: string }
+    { projectId, orgId }: { projectId: string; orgId: string },
+    tx?: Knex
   ) => {
     let groupBypassers: string[] = [];
     let bypasserUserIds: string[] = [];
@@ -143,11 +161,14 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
 
       bypasserUserIds = userBypassers;
       if (userBypasserNames.length) {
-        const bypasserUsers = await userDAL.find({
-          $in: {
-            username: userBypasserNames
-          }
-        });
+        const bypasserUsers = await userDAL.find(
+          {
+            $in: {
+              username: userBypasserNames
+            }
+          },
+          { tx }
+        );
 
         const bypasserNamesFromDb = bypasserUsers.map((user) => user.username);
         const invalidUsernames = userBypasserNames.filter((username) => !bypasserNamesFromDb.includes(username));
@@ -163,10 +184,13 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       bypasserUserIds = [...new Set(bypasserUserIds)];
 
       if (groupBypassers.length > 0) {
-        const orgGroups = await groupDAL.find({
-          $in: { id: groupBypassers },
-          orgId
-        });
+        const orgGroups = await groupDAL.find(
+          {
+            $in: { id: groupBypassers },
+            orgId
+          },
+          { tx }
+        );
 
         if (orgGroups.length !== groupBypassers.length) {
           const foundGroupIdsInOrg = new Set(orgGroups.map((group) => group.id));
@@ -182,7 +206,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
           userIds: bypasserUserIds,
           groupIds: [],
           orgId,
-          projectId
+          projectId,
+          tx
         });
       }
     }
@@ -250,6 +275,48 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     }
   };
 
+  // A delegated policy hands review off entirely, so it carries no approver steps or bypassers of its own.
+  const $resolveReviewers = async (
+    {
+      delegatedApproval,
+      enforcementLevel,
+      allowedSelfApprovals,
+      approvers,
+      bypassers,
+      approvalsRequired,
+      approvals
+    }: {
+      delegatedApproval: TDelegatedApprovalPolicyInput | null;
+      enforcementLevel: string;
+      allowedSelfApprovals: boolean;
+      approvers: TApproverInput;
+      bypassers: TBypasserInput | undefined;
+      approvalsRequired?: { numberOfApprovals: number; stepNumber: number }[];
+      approvals?: number;
+    },
+    scope: { projectId: string; orgId: string },
+    tx?: Knex
+  ): Promise<TPolicyReviewers> => {
+    if (delegatedApproval) {
+      assertDelegatedApprovalPolicyConstraints({ enforcementLevel, approvers, bypassers, allowedSelfApprovals });
+      return NO_REVIEWERS;
+    }
+
+    if (!approvers.length) throw new BadRequestError({ message: "At least one approver should be provided" });
+    const { approverUserIds, groupApprovers } = await $resolveApprovers(approvers, scope, tx);
+    const { bypasserUserIds, groupBypassers } = await $resolveBypassers(bypassers, scope, tx);
+    const steps = $buildSteps({ approverUserIds, groupApprovers, approvalsRequired, approvals });
+    return { steps, bypasserUserIds, groupBypassers };
+  };
+
+  const $assertNoPendingRequests = async (policy: { id: string; name: string }, tx: Knex) => {
+    const pendingRequests = await approvalRequestDAL.findPendingByPolicyIdForUpdate(policy.id, tx);
+    if (!pendingRequests.length) return;
+    throw new ConflictError({
+      message: `Policy '${policy.name}' is handled by a delegated approval system and has ${pendingRequests.length} pending request(s). Resolve or cancel them before updating the policy.`
+    });
+  };
+
   const $getProjectPermission = async ({
     actor,
     actorId,
@@ -291,11 +358,14 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     await approvalRequestDAL.update({ $in: { id: requestIds } }, { currentStep: 1 }, tx);
   };
 
-  const $findPolicyById = async (policyId: string, organizationId: string, message: string) => {
-    const [policy] = await secretAccessApprovalGlobalPolicyBridgeDAL.findSecretAccessPolicies({
-      policyId,
-      organizationId
-    });
+  const $findPolicyById = async (policyId: string, organizationId: string, message: string, tx?: Knex) => {
+    const [policy] = await secretAccessApprovalGlobalPolicyBridgeDAL.findSecretAccessPolicies(
+      {
+        policyId,
+        organizationId
+      },
+      tx
+    );
     if (!policy) throw new NotFoundError({ message });
     return policy;
   };
@@ -325,6 +395,51 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     });
   };
 
+  const $replacePolicyScope = async (
+    {
+      policyId,
+      envs,
+      secretPath,
+      steps
+    }: { policyId: string; envs: { id: string; slug: string }[]; secretPath: string; steps: TPolicyStep[] },
+    tx: Knex
+  ) => {
+    await approvalPolicySecretEnvironmentDAL.findByPolicyIdForUpdate(policyId, tx);
+    await $assertNoConflictingPolicy({ envs, secretPath, excludePolicyId: policyId }, tx);
+    await approvalPolicySecretEnvironmentDAL.delete({ policyId }, tx);
+    await approvalPolicySecretEnvironmentDAL.insertMany(
+      envs.map((env) => ({ policyId, envId: env.id, secretPath })),
+      tx
+    );
+    await $resetPendingRequestSteps({ policyId, steps }, tx);
+  };
+
+  const $applyDelegatedApprovalChange = async (
+    {
+      policyId,
+      existing,
+      incoming
+    }: {
+      policyId: string;
+      existing: TDelegatedApprovalPolicyInput | null;
+      incoming: TDelegatedApprovalPolicyInput | null | undefined;
+    },
+    tx: Knex
+  ) => {
+    if (incoming === undefined) return;
+    if (incoming === null) {
+      if (existing) await delegatedApprovalService.deletePolicyByPolicyId(policyId, tx);
+      return;
+    }
+    if (!existing) {
+      await delegatedApprovalService.createPolicy({ policyId, ...incoming }, tx);
+      return;
+    }
+    if (isDelegatedApprovalChanged(existing, incoming)) {
+      await delegatedApprovalService.updatePolicy({ policyId, ...incoming }, tx);
+    }
+  };
+
   const createAccessApprovalPolicy = async ({
     name,
     actor,
@@ -339,10 +454,12 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     environment,
     environments,
     enforcementLevel,
-    allowedSelfApprovals,
+    allowedSelfApprovals: allowedSelfApprovalsInput,
     approvalsRequired,
     maxTimePeriod,
-    requestExpirationTime
+    requestExpirationTime,
+    delegatedApproval,
+    orgActor
   }: TCreateSecretAccessApprovalGlobalPolicyDTO) => {
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
@@ -359,6 +476,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       ProjectPermissionSub.SecretApproval
     );
 
+    const allowedSelfApprovals = allowedSelfApprovalsInput ?? !delegatedApproval;
+
     const mergedEnvs = (environment ? [environment] : environments) || [];
     if (mergedEnvs.length === 0) {
       throw new BadRequestError({ message: "Must provide either environment or environments" });
@@ -369,10 +488,21 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       throw new NotFoundError({ message: `One or more environments not found: ${notFoundEnvs.join(", ")}` });
     }
 
-    const scope = { projectId: project.id, orgId: project.orgId };
-    const { approverUserIds, groupApprovers } = await $resolveApprovers(approvers, scope);
-    const { bypasserUserIds, groupBypassers } = await $resolveBypassers(bypassers, scope);
-    const steps = $buildSteps({ approverUserIds, groupApprovers, approvalsRequired, approvals });
+    const reviewers = await $resolveReviewers(
+      {
+        delegatedApproval: delegatedApproval ?? null,
+        enforcementLevel,
+        allowedSelfApprovals,
+        approvers,
+        bypassers,
+        approvalsRequired,
+        approvals
+      },
+      { projectId: project.id, orgId: project.orgId }
+    );
+    if (delegatedApproval) {
+      await delegatedApprovalService.validateConnection({ ...delegatedApproval, projectId: project.id }, orgActor);
+    }
 
     await $assertNoConflictingPolicy({ envs, secretPath });
 
@@ -405,7 +535,11 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
         tx
       );
 
-      await $insertStepsAndBypassers({ policyId: doc.id, steps, bypasserUserIds, groupBypassers }, tx);
+      if (delegatedApproval) {
+        await delegatedApprovalService.createPolicy({ policyId: doc.id, ...delegatedApproval }, tx);
+      } else {
+        await $insertStepsAndBypassers({ policyId: doc.id, ...reviewers }, tx);
+      }
 
       return doc;
     });
@@ -414,7 +548,7 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       id: policy.id,
       name: policy.name,
       secretPath,
-      approvals: steps[0]?.requiredApprovals ?? 1,
+      approvals: reviewers.steps[0]?.requiredApprovals ?? 1,
       envId: envs[0].id,
       createdAt: policy.createdAt,
       updatedAt: policy.updatedAt,
@@ -426,7 +560,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       requestExpirationTime: requestExpirationTime ?? null,
       environment: envs[0],
       environments: envs,
-      projectId: project.id
+      projectId: project.id,
+      delegatedApproval: delegatedApproval ?? null
     };
   };
 
@@ -442,11 +577,13 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
     actorAuthMethod,
     approvals,
     enforcementLevel,
-    allowedSelfApprovals,
+    allowedSelfApprovals: allowedSelfApprovalsInput,
     approvalsRequired,
     environments,
     maxTimePeriod,
-    requestExpirationTime
+    requestExpirationTime,
+    delegatedApproval,
+    orgActor
   }: TUpdateSecretAccessApprovalGlobalPolicyDTO) => {
     const policy = await $findPolicyById(
       policyId,
@@ -479,17 +616,50 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
       (envs.length !== currentEnvSlugs.size || envs.some((env) => !currentEnvSlugs.has(env.slug)));
     const scopeChanged = nextSecretPath !== policy.secretPath || environmentsChanged;
 
-    const scope = { projectId: policy.projectId, orgId: actorOrgId };
-    const { approverUserIds, groupApprovers } = await $resolveApprovers(approvers, scope);
-    const { bypasserUserIds, groupBypassers } = await $resolveBypassers(bypassers, scope);
-    const steps = $buildSteps({
-      approverUserIds,
-      groupApprovers,
-      approvalsRequired,
-      approvals: approvals ?? policy.approvals
-    });
+    const nextDelegatedApproval = delegatedApproval === undefined ? policy.delegatedApproval : delegatedApproval;
+    if (nextDelegatedApproval) {
+      // we might need to change this in the future to check a specific permission if this is changed on the license server
+      await delegatedApprovalService.assertPlanAllowsPolicyEdit(nextDelegatedApproval.type, actorOrgId);
+      if (isDelegatedApprovalChanged(policy.delegatedApproval, nextDelegatedApproval)) {
+        await delegatedApprovalService.validateConnection(
+          { ...nextDelegatedApproval, projectId: policy.projectId },
+          orgActor
+        );
+      }
+    }
 
     return approvalPolicyDAL.transaction(async (tx) => {
+      const lockedPolicy = await approvalPolicyDAL.findByIdForUpdate(policy.id, tx);
+      if (!lockedPolicy) {
+        throw new NotFoundError({ message: `Access approval policy with ID '${policyId}' not found` });
+      }
+
+      const current = await $findPolicyById(
+        policy.id,
+        actorOrgId,
+        `Access approval policy with ID '${policyId}' not found`,
+        tx
+      );
+      const existingDelegatedApproval = current.delegatedApproval;
+      const delegatedApprovalAfterUpdate =
+        delegatedApproval === undefined ? existingDelegatedApproval : delegatedApproval;
+      const involvesDelegatedApproval = Boolean(existingDelegatedApproval || delegatedApprovalAfterUpdate);
+      const allowedSelfApprovals = allowedSelfApprovalsInput ?? !delegatedApprovalAfterUpdate;
+      const reviewers = await $resolveReviewers(
+        {
+          delegatedApproval: delegatedApprovalAfterUpdate,
+          enforcementLevel: enforcementLevel ?? current.enforcementLevel,
+          allowedSelfApprovals,
+          approvers,
+          bypassers,
+          approvalsRequired,
+          approvals: approvals ?? current.approvals
+        },
+        { projectId: current.projectId, orgId: actorOrgId },
+        tx
+      );
+      if (involvesDelegatedApproval) await $assertNoPendingRequests(current, tx);
+
       await approvalPolicyDAL.updateById(
         policy.id,
         {
@@ -500,8 +670,8 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
             constraints: {
               allowedSelfApprovals,
               requestExpirationTime:
-                requestExpirationTime === undefined ? policy.requestExpirationTime : requestExpirationTime,
-              maxTimePeriod: maxTimePeriod === undefined ? policy.maxTimePeriod : maxTimePeriod
+                requestExpirationTime === undefined ? current.requestExpirationTime : requestExpirationTime,
+              maxTimePeriod: maxTimePeriod === undefined ? current.maxTimePeriod : maxTimePeriod
             }
           }
         },
@@ -510,19 +680,19 @@ export const secretAccessApprovalGlobalPolicyBridgeServiceFactory = ({
 
       await approvalPolicyStepsDAL.delete({ policyId: policy.id }, tx);
       await approvalPolicyBypassersDAL.delete({ policyId: policy.id }, tx);
-      await $insertStepsAndBypassers({ policyId: policy.id, steps, bypasserUserIds, groupBypassers }, tx);
+      if (!delegatedApprovalAfterUpdate) await $insertStepsAndBypassers({ policyId: policy.id, ...reviewers }, tx);
 
       if (scopeChanged) {
-        await approvalPolicySecretEnvironmentDAL.findByPolicyIdForUpdate(policy.id, tx);
-        // make sure that the updated secret path is not conflicting with any other policy
-        await $assertNoConflictingPolicy({ envs, secretPath: nextSecretPath, excludePolicyId: policy.id }, tx);
-        await approvalPolicySecretEnvironmentDAL.delete({ policyId: policy.id }, tx);
-        await approvalPolicySecretEnvironmentDAL.insertMany(
-          envs.map((env) => ({ policyId: policy.id, envId: env.id, secretPath: nextSecretPath })),
+        await $replacePolicyScope(
+          { policyId: policy.id, envs, secretPath: nextSecretPath, steps: reviewers.steps },
           tx
         );
-        await $resetPendingRequestSteps({ policyId: policy.id, steps }, tx);
       }
+
+      await $applyDelegatedApprovalChange(
+        { policyId: policy.id, existing: existingDelegatedApproval, incoming: delegatedApproval },
+        tx
+      );
 
       const [updatedPolicy] = await secretAccessApprovalGlobalPolicyBridgeDAL.findSecretAccessPolicies(
         { policyId: policy.id },

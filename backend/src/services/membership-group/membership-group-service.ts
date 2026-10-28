@@ -34,6 +34,7 @@ import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipie
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
+import { lockMembershipsById } from "../membership/membership-dal";
 import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -595,6 +596,7 @@ export const membershipGroupServiceFactory = ({
         const { groupId } = dto.selector;
 
         const identityMembers = await identityGroupMembershipDAL.find({ groupId }, { tx });
+        let identityIdsToDelete: string[] = [];
         if (identityMembers.length) {
           const identityIds = identityMembers.map(({ identityId }) => identityId);
           const identitiesStillInProject = await identityGroupMembershipDAL.filterProjectsByIdentityMembership(
@@ -603,15 +605,13 @@ export const membershipGroupServiceFactory = ({
             [projectId],
             tx
           );
-          const identityIdsToDelete = identityIds.filter(
+          identityIdsToDelete = identityIds.filter(
             (identityId) => !identitiesStillInProject.get(identityId)?.has(projectId)
           );
-          if (identityIdsToDelete.length) {
-            await additionalPrivilegeDAL.delete({ projectId, $in: { actorIdentityId: identityIdsToDelete } }, tx);
-          }
         }
 
         const userMembers = await userGroupMembershipDAL.find({ groupId }, { tx });
+        let userIdsToDelete: string[] = [];
         if (userMembers.length) {
           const userIds = userMembers.map(({ userId }) => userId);
           const usersStillInProject = await userGroupMembershipDAL.filterProjectsByUserMembership(
@@ -620,7 +620,14 @@ export const membershipGroupServiceFactory = ({
             [projectId],
             tx
           );
-          const userIdsToDelete = userIds.filter((userId) => !usersStillInProject.get(userId)?.has(projectId));
+          userIdsToDelete = userIds.filter((userId) => !usersStillInProject.get(userId)?.has(projectId));
+        }
+
+        const [lockedMembership] = await lockMembershipsById([existingMembership.id], tx);
+        if (lockedMembership) {
+          if (identityIdsToDelete.length) {
+            await additionalPrivilegeDAL.delete({ projectId, $in: { actorIdentityId: identityIdsToDelete } }, tx);
+          }
           if (userIdsToDelete.length) {
             await additionalPrivilegeDAL.delete({ projectId, $in: { actorUserId: userIdsToDelete } }, tx);
           }

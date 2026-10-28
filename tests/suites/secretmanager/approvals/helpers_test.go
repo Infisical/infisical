@@ -1,7 +1,9 @@
 package approvals_test
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"testing"
 
@@ -199,7 +201,7 @@ func newProtectedProject(t *testing.T, configs ...policyConfig) protectedProject
 func approve(t *testing.T, reviewer *harness.Principal, id uuid.UUID) {
 	t.Helper()
 	res, err := reviewer.API.ReviewSecretApprovalRequestWithResponse(t.Context(), id,
-		api.ReviewSecretApprovalRequestJSONRequestBody{Status: api.Approved})
+		api.ReviewSecretApprovalRequestJSONRequestBody{Status: api.ReviewSecretApprovalRequestJSONBodyStatusApproved})
 	require.NoError(t, err)
 	require.Equalf(t, http.StatusOK, res.StatusCode(), "approving %s returned %s", id, apierr.Body(res.Body))
 }
@@ -218,4 +220,25 @@ func createSecret(t *testing.T, actor *harness.Principal, proj *fixture.Project,
 	})
 	require.NoError(t, err)
 	return res
+}
+
+// newDelegatedApprovalSystem connects the tenant to a delegated approval system.
+//
+// The rules these tests pin belong to delegated approval, not to any one system, so
+// this is the only place a system is named. Supporting another one needs no new tests.
+func newDelegatedApprovalSystem(t *testing.T, tn *harness.Tenant) *fixture.AppConnection {
+	t.Helper()
+	return fixture.NewAppConnection(t, tn, fixture.ServiceNowBasicAuthAppConnection)
+}
+
+// delegatedApproval builds the delegatedApproval field that hands a policy to conn.
+func delegatedApproval(conn *fixture.AppConnection) map[string]any {
+	return map[string]any{"type": "servicenow", "connectionId": conn.ID}
+}
+
+func jsonBody(t *testing.T, v any) io.Reader {
+	t.Helper()
+	raw, err := json.Marshal(v)
+	require.NoError(t, err)
+	return bytes.NewReader(raw)
 }
