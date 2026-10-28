@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -135,6 +136,7 @@ export const RailwayConfigurePage = () => {
     targetServices &&
     filteredTargetServices ? (
     <div className="flex h-full w-full items-center justify-center">
+      <PageTitle title="Set Up Railway Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Railway Integration</CardTitle>
@@ -283,6 +285,9 @@ export const RailwayConfigurePage = () => {
       </Card>
     </div>
   ) : (
-    <div />
+    <>
+      <PageTitle title="Set Up Railway Integration" />
+      <div />
+    </>
   );
 };

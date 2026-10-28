@@ -14,6 +14,7 @@ import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
@@ -22,11 +23,13 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { ActorType } from "../auth/auth-type";
+import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { resolveMembershipRoleSlugs } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
+import { emitOrgMembershipRemoved, toOrgMembershipActors } from "../org/org-membership-events";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityDALFactory } from "./identity-dal";
 import { getIdentityActiveLockoutAuthMethods } from "./identity-fns";
@@ -60,6 +63,7 @@ type TIdentityServiceFactoryDep = {
     TIdentityAccessTokenServiceFactory,
     "insertIdentityWideRevocationMarker" | "insertOrgMembershipRevocationMarker" | "bumpIdentityRevocationVersion"
   >;
+  eventEmitter: TEventEmitter;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
@@ -78,7 +82,8 @@ export const identityServiceFactory = ({
   additionalPrivilegeDAL,
   usageMeteringService,
   alertService,
-  identityAccessTokenService
+  identityAccessTokenService,
+  eventEmitter
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({
     name,
@@ -290,6 +295,10 @@ export const identityServiceFactory = ({
       throw new BadRequestError({ message: `Identity is managed by project` });
     }
 
+    if (name && name !== identityDetails.name && containsLogUnsafeCharacters(name)) {
+      throw new BadRequestError({ message: LOG_UNSAFE_TEXT_MESSAGE });
+    }
+
     const identity = await identityDAL.transaction(async (tx) => {
       const newIdentity =
         identityDetails.orgId === actorOrgId && (name || hasDeleteProtection)
@@ -468,6 +477,11 @@ export const identityServiceFactory = ({
       const doc = await membershipIdentityDAL.delete({ actorIdentityId: id, scopeOrgId: actorOrgId }, tx);
 
       await identityAccessTokenService.insertOrgMembershipRevocationMarker({ identityId: id, orgId: actorOrgId, tx });
+      await emitOrgMembershipRemoved(
+        eventEmitter,
+        { orgId: actorOrgId, actors: toOrgMembershipActors({ identityIds: [id] }) },
+        tx
+      );
 
       await alertService.deleteAlertsForResource(
         {

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -39,6 +39,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -83,7 +84,6 @@ type RoleSortState = {
 
 export const ProjectRoleList = () => {
   const scopeVariant = useScopeVariant();
-  const navigate = useNavigate();
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "role",
     "deleteRole",
@@ -342,14 +342,9 @@ export const ProjectRoleList = () => {
                       } as const);
 
                     return (
-                      <TableRow key={`role-list-${id}`} className="relative cursor-pointer">
+                      <TableRow key={`role-list-${id}`} linked>
                         <TableCell isTruncatable>
-                          <Link
-                            {...roleLink}
-                            className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
-                          >
-                            {name}
-                          </Link>
+                          <RowLink {...roleLink}>{name}</RowLink>
                         </TableCell>
                         <TableCell isTruncatable>{slug}</TableCell>
                         <TableCell>
@@ -367,7 +362,7 @@ export const ProjectRoleList = () => {
                             )}
                           </Badge>
                         </TableCell>
-                        <TableCell variant="action" className="relative z-10">
+                        <TableCell variant="action">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <IconButton
@@ -385,15 +380,11 @@ export const ProjectRoleList = () => {
                                 a={ProjectPermissionSub.Role}
                               >
                                 {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      navigate(roleLink);
-                                    }}
-                                    isDisabled={!isAllowed}
-                                  >
-                                    {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
-                                    {`${isNonMutatable ? "View" : "Edit"} Role`}
+                                  <DropdownMenuItem asChild isDisabled={!isAllowed}>
+                                    <Link {...roleLink}>
+                                      {isNonMutatable ? <EyeIcon /> : <PencilIcon />}
+                                      {`${isNonMutatable ? "View" : "Edit"} Role`}
+                                    </Link>
                                   </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>

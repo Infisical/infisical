@@ -15,20 +15,20 @@ Create an [access bundle](/documentation/platform/agent-vault/access-bundles) th
     Select the access bundle you just created, then select **Add Service**.
   </Step>
   <Step>
-    On the **Choose a template** panel, pick the template for the API, such as **Anthropic**, or select **Custom**.
+    On the **Choose a template** panel, pick the template for the API, such as **Anthropic** for Claude Code, or select **Custom HTTP API**.
   </Step>
   <Step>
-    On the **Details** step, check the hosts the service covers, or enter the API's host if you selected **Custom**, then select **Continue**.
+    On the **Details** step, check the hosts the service covers, or enter the API's host if you selected **Custom HTTP API**, then select **Continue**.
   </Step>
   <Step>
-    On the **Credential** step, paste the real API key.
+    On the **Credential** step, paste the real API key, then select **Continue**.
 
     <Note>
-      If the API expects the key somewhere other than a header, such as in the URL, [add a substitution](/documentation/platform/agent-vault/services#add-a-substitution) instead, and have the agent send the placeholder you enter in **Replace**.
+      If the API expects the key somewhere other than a header, such as in the URL, [add a substitution](/documentation/platform/agent-vault/http-apis#add-a-substitution) instead, and have the agent send the placeholder you enter in **Replace**.
     </Note>
   </Step>
   <Step>
-    Select **Add Service**. Repeat from the third step for each remaining API.
+    On the **Review** step, select **Add Service**. Repeat from the third step for each remaining API.
   </Step>
 </Steps>
 
@@ -39,9 +39,11 @@ Create an [access bundle](/documentation/platform/agent-vault/access-bundles) th
     In Agent Vault, go to **Proxies** and select **Create Proxy**.
   </Step>
   <Step>
-    Enter a **Name**, such as `sandboxes`, and expand **Advanced Options**. Under **Traffic Policy**, choose **Access bundle hosts only**, and add any hosts the agent needs without a credential to **Exceptions**, such as `registry.npmjs.org`.
+    Enter a **Name**, such as `sandboxes`, and expand **Advanced Options**. Under **Traffic Policy**, choose **Access bundle hosts only**. Then add any other hosts the agent needs to reach to **Exceptions** (for example, `registry.npmjs.org`).
 
-    The proxy can reach the internet, so with **Any host**, the agent could send requests through the proxy to any host. Learn more about the [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy).
+    <Note>
+    Make sure you select the **Access bundle hosts only** [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy). The proxy can reach the internet, so if you leave the traffic policy set to **Any host**, the agent can send requests through the proxy to any host.
+    </Note>
   </Step>
   <Step>
     Select **Create**, then copy the proxy token from the **Proxy Token** dialog. Infisical shows the token only once.

@@ -94,7 +94,7 @@ export const GroupAccessPopover = ({
           variant="ghost"
           size="sm"
           aria-label="Show groups granting access"
-          className="relative z-10 -mx-2.5"
+          className="-mx-2.5"
           onClick={(e) => e.stopPropagation()}
         >
           <UsersIcon className="text-muted" />

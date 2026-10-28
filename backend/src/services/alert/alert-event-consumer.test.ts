@@ -24,14 +24,15 @@ const makePayload = (overrides?: Record<string, unknown>) => ({
   ...overrides
 });
 
-const makeEvent = (overrides?: Partial<TEvent>): TEvent =>
-  ({
-    id: 1,
-    eventType: EVENT_TYPE,
-    payload: makePayload(),
-    occurredAt: new Date(),
-    ...overrides
-  }) as TEvent;
+const makeEvent = (overrides?: Partial<TEvent>): TEvent => ({
+  specversion: "1.0",
+  id: "event-1",
+  source: "urn:infisical:approval",
+  type: EVENT_TYPE,
+  time: new Date().toISOString(),
+  data: makePayload(),
+  ...overrides
+});
 
 const buildConsumer = (opts?: {
   alerts?: unknown[];
@@ -111,7 +112,7 @@ describe("alert event consumer", () => {
   test("accepts a scope-wide event that carries no resource", async () => {
     const { consumer, runs } = buildConsumer();
 
-    const [result] = await consumer.handle([makeEvent({ payload: makePayload({ resourceId: null }) })]);
+    const [result] = await consumer.handle([makeEvent({ data: makePayload({ resourceId: null }) })]);
 
     expect(result.status).toBe(EventResultStatus.Delivered);
     expect(runs[0].targetIds).toEqual(["req-1"]);
@@ -155,14 +156,14 @@ describe("alert event consumer", () => {
     );
   });
 
-  // The outbox row id is stable across attempts, so it's the only key a retry can use to find what
-  // already went out.
+  // The event id is stable across attempts, so it's the only key a retry can use to find what already
+  // went out.
   test("hands the engine the event id so a retry can skip channels that already delivered", async () => {
     const { consumer, runs } = buildConsumer();
 
-    await consumer.handle([makeEvent({ id: 42 })]);
+    await consumer.handle([makeEvent({ id: "550e8400-e29b-41d4-a716-446655440000" })]);
 
-    expect(runs[0].eventId).toBe("42");
+    expect(runs[0].eventId).toBe("550e8400-e29b-41d4-a716-446655440000");
   });
 
   // The alert was deleted or disabled before the worker ran, so nobody is owed a notification. That's
@@ -189,7 +190,7 @@ describe("alert event consumer", () => {
   test("fails terminally on an unreadable payload", async () => {
     const { consumer } = buildConsumer();
 
-    const [result] = await consumer.handle([makeEvent({ payload: makePayload({ targetIds: [] }) })]);
+    const [result] = await consumer.handle([makeEvent({ data: makePayload({ targetIds: [] }) })]);
 
     expect(result.status).toBe(EventResultStatus.Failed);
     expect(result.error).toContain("Unreadable alert event payload");
@@ -212,7 +213,7 @@ describe("alert event consumer", () => {
   test("fails terminally when no provider declares the event for that resource type", async () => {
     const { consumer, runs, getLookups } = buildConsumer();
 
-    const [result] = await consumer.handle([makeEvent({ payload: makePayload({ resourceType: "pki.certificate" }) })]);
+    const [result] = await consumer.handle([makeEvent({ data: makePayload({ resourceType: "pki.certificate" }) })]);
 
     expect(result.status).toBe(EventResultStatus.Failed);
     expect(result.error).toContain("pki.certificate");
@@ -235,9 +236,9 @@ describe("alert event consumer", () => {
     });
 
     const results = await consumer.handle([
-      makeEvent({ id: 1, eventType: EVENT_TYPE }),
-      makeEvent({ id: 2, eventType: "approval.workflow.request_closed" }),
-      makeEvent({ id: 3, eventType: "approval.workflow.request_reopened" })
+      makeEvent({ id: "event-1", type: EVENT_TYPE }),
+      makeEvent({ id: "event-2", type: "approval.workflow.request_closed" }),
+      makeEvent({ id: "event-3", type: "approval.workflow.request_reopened" })
     ]);
 
     expect(results.map((result) => result.status)).toEqual([
@@ -253,9 +254,9 @@ describe("alert event consumer", () => {
     const { consumer, getLookups } = buildConsumer();
 
     await consumer.handle([
-      makeEvent({ id: 1, payload: makePayload({ targetIds: ["req-1"] }) }),
-      makeEvent({ id: 2, payload: makePayload({ targetIds: ["req-2"] }) }),
-      makeEvent({ id: 3, payload: makePayload({ targetIds: ["req-3"] }) })
+      makeEvent({ id: "event-1", data: makePayload({ targetIds: ["req-1"] }) }),
+      makeEvent({ id: "event-2", data: makePayload({ targetIds: ["req-2"] }) }),
+      makeEvent({ id: "event-3", data: makePayload({ targetIds: ["req-3"] }) })
     ]);
 
     expect(getLookups()).toBe(1);
@@ -267,9 +268,9 @@ describe("alert event consumer", () => {
     const { consumer, getLookups } = buildConsumer();
 
     await consumer.handle([
-      makeEvent({ id: 1, payload: makePayload({ resourceId: "policy-1", targetIds: ["req-1"] }) }),
-      makeEvent({ id: 2, payload: makePayload({ resourceId: "policy-2", targetIds: ["req-2"] }) }),
-      makeEvent({ id: 3, payload: makePayload({ resourceId: "policy-1", targetIds: ["req-3"] }) })
+      makeEvent({ id: "event-1", data: makePayload({ resourceId: "policy-1", targetIds: ["req-1"] }) }),
+      makeEvent({ id: "event-2", data: makePayload({ resourceId: "policy-2", targetIds: ["req-2"] }) }),
+      makeEvent({ id: "event-3", data: makePayload({ resourceId: "policy-1", targetIds: ["req-3"] }) })
     ]);
 
     expect(getLookups()).toBe(2);
@@ -281,11 +282,11 @@ describe("alert event consumer", () => {
     const { consumer, runs } = buildConsumer();
 
     const results = await consumer.handle([
-      makeEvent({ id: 1, payload: makePayload({ targetIds: ["req-1"] }) }),
-      makeEvent({ id: 2, payload: makePayload({ targetIds: ["req-2"] }) })
+      makeEvent({ id: "event-1", data: makePayload({ targetIds: ["req-1"] }) }),
+      makeEvent({ id: "event-2", data: makePayload({ targetIds: ["req-2"] }) })
     ]);
 
-    expect(results.map((result) => result.id)).toEqual(["1", "2"]);
+    expect(results.map((result) => result.id)).toEqual(["event-1", "event-2"]);
     expect(runs.map((run) => run.targetIds)).toEqual([["req-1"], ["req-2"]]);
   });
 });

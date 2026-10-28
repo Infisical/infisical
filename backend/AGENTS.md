@@ -777,34 +777,66 @@ whenever the pod dies or Redis is down in that window. It's not alert-specific:
 at-least-once delivery of a domain event registers next to it.
 
 **Naming:** the outbox is an implementation detail to both sides of it. Emitters depend on
-`TEventEmitter` and pass a `TEventInput`; consumers implement `IEventConsumer`, receive `TEvent[]`
-(the row minus its lock, attempt, and status columns) and return `TEventConsumerResult` with an
-`EventResultStatus`. Names with "outbox" in them (the DAL, queue, cron jobs, metrics,
-`EventOutboxStatus`, `TOutboxFlushKey`) describe the mechanism and stay inside the module and its
-wiring. A dependency field for the emitter is `eventEmitter`, not `eventOutboxService`.
+`TEventEmitter` and pass a `TEventInput`; consumers implement `IEventConsumer`, receive `TEvent[]` (the
+CloudEvents envelope) and return `TEventConsumerResult` with an `EventResultStatus`. Names with "outbox"
+in them (the DAL, queue, cron jobs, metrics, `EventOutboxStatus`, `TOutboxFlushKey`) describe the
+mechanism and stay inside the module and its wiring. A dependency field for the emitter is
+`eventEmitter`, not `eventOutboxService`.
 
-**Emitting:** `eventEmitter.emit(event, tx)`. Pass the transaction of the write the event describes, so the event is exactly as durable as that write. Omit `tx` only when there is no such write left to be atomic with (for example after it already committed); the insert then runs on its own.
+#### How to implement an event
 
-```ts
-await someDAL.transaction(async (tx) => {
-  const request = await approvalRequestDAL.create({ ... }, tx);
-  await eventEmitter.emit(
-    {
-      eventType: "approval.workflow.request_opened",
-      payload: { orgId, projectId, resourceType: "approval.workflow", resourceId: policyId, targetIds: [request.id] }
-    },
-    tx
-  );
-});
-```
+Events are public API: their names and shapes are a contract we can't take back. Read the
+[Event Standards and Versioning ADR](https://app.notion.com/p/3c2564692229804b93a1d0ff069016d6) and, for
+an event about something being created, updated or deleted, the
+[CRUD Event Design ADR](https://app.notion.com/p/3ff5646922298176bd92f298433f7d60). The steps below
+summarise them.
 
-- Only `subscribesTo(eventType)` runs before the insert, in memory. Whether a customer configured
-  anything for this resource is decided in the worker; a row nobody wanted is marked `Delivered` and
-  pruned within a day. If that ever matters for a hot event type, cache inside the consumer rather than
-  adding a read to the emit path.
-- Nothing is caught. A swallowed insert failure hands the caller a poisoned transaction (`25P02` on its
-  next statement), and a payload that fails the consumer's `payloadSchema` is a bug at the emit site.
-  Both checks run before any DB access.
+1. **Define it with `defineEvent`, in the domain that emits it.** It goes in that domain's `*-events.ts`
+   (eg `secret-folder/secret-folder-events.ts`), never in a consumer (see "The event contract belongs to
+   the domain" below). The name is `com.infisical.<domain>.<entity>.<action>.v<version>`: lower-kebab
+   segments, a singular entity, a past-tense action, and words a customer recognises rather than
+   implementation detail. `defineEvent` throws on boot for a name that breaks this. Start at `v1` and
+   bump only for a breaking change to `data`; adding an optional field is not one.
+2. **Give `data` what a consumer needs to decide whether it cares and to find the thing again, not the
+   thing itself.** That is ids, the owning scope (eg `projectId`) and the location where there is one
+   (eg `environment` and `secretPath`). Consumers read the current state from the source. Never put
+   secret values, credentials or other sensitive content in an event.
+3. **For create, update and delete, use one `modified` event per entity.** Its `data` carries
+   `modificationType` (`created`, `updated` or `deleted`) and, on an update that changed a field the
+   event carries, `previous` with only those fields' earlier values. A change that keeps the entity's id
+   is one `updated` event (eg a folder rename). A change that gives it a new id is `deleted` for the old
+   id and `created` for the new one (eg a secret move). A delete that cascades is one event for the
+   entity deleted, which covers everything beneath it. The secret, folder and secret import events
+   (`secret-v2-bridge/secret-events.ts`, `secret-folder/secret-folder-events.ts`,
+   `secret-import/secret-import-events.ts`) are the reference.
+4. **Emit it in the transaction of the write it describes**, so the event is exactly as durable as that
+   write: `SomeEventV1.emit(eventEmitter, data, tx)`, or `build` several and pass them to
+   `eventEmitter.emit(events, tx)` in one call. Omit `tx` only when there is no such write left to be
+   atomic with (eg after it already committed); the insert then runs on its own. Nothing around the emit
+   is caught: a swallowed insert failure hands the caller a poisoned transaction (`25P02` on its next
+   statement). When several services emit the same event, give it one helper in the domain's events
+   file rather than repeating the call.
+
+   ```ts
+   await folderDAL.transaction(async (tx) => {
+     const folder = await folderDAL.create({ ... }, tx);
+     await FolderModifiedEventV1.emit(
+       eventEmitter,
+       { folderId: folder.id, projectId, environment, secretPath, modificationType: EventModificationType.Created },
+       tx
+     );
+   });
+   ```
+
+5. **Consume it with an `IEventConsumer`** whose `subscribesTo` matches the definition's `type` and
+   whose `dataSchema` is the definition's `data` schema. Nothing is written for an event no consumer
+   subscribes to. Only `subscribesTo` runs before the insert, in memory: whether a customer configured
+   anything for the resource is decided in the worker, and a row nobody wanted is marked `Delivered` and
+   pruned within a day. If that ever matters for a hot event type, cache inside the consumer rather than
+   adding a read to the emit path.
+
+Events named before the ADR (eg `identity.authentication.auth-method-changed`) keep their names until
+they move to it.
 
 **How delivery works:**
 
@@ -828,7 +860,7 @@ await someDAL.transaction(async (tx) => {
   the fence protects the bookkeeping but delivery stays at-least-once.
 - **The envelope carries only what the outbox queries on.** `consumer`, `eventType`, and the retry and
   lock columns. Which tenant and resource an event concerns lives in `payload` under a shape the
-  consumer's `payloadSchema` declares, and that schema is where it is validated (the alert consumer
+  consumer's `dataSchema` declares, and that schema is where it is validated (the alert consumer
   requires `orgId` as a UUID). The outbox never groups, filters or indexes on any of it, so don't add a
   tenant or resource column back for a query nothing runs.
 - **Discovery only looks at consumers registered in this process.** A row for any other name has nowhere
@@ -849,8 +881,7 @@ await someDAL.transaction(async (tx) => {
   don't add a partition key back until a consumer needs one: no consumer today depends on the order two
   events for one resource arrive in, and each event is idempotent on its own through alert history.
 - **Delivery is at-least-once.** `commitResults` is retried in-process, since by then the consumer has
-  already sent; what's left is narrowed by the consumer's own delivery records and by the emitter's
-  `idempotencyKey`.
+  already sent; what's left is narrowed by the consumer's own delivery records.
 
 **Watch `infisical.event_outbox.oldest_pending_age`.** It catches a dead relay, a wedged consumer and a
 stuck claim alike. `lag` and `exhausted.count` are recorded by the outbox, labelled by consumer, so a
@@ -858,7 +889,7 @@ new consumer gets them for free.
 
 **Adding an event-triggered alert** needs no outbox code: declare the event with
 `triggerType: AlertTriggerType.Event`, implement `findEventTargets`, and emit with
-`payload: { orgId, projectId, resourceType, resourceId, targetIds, ...facts }` where `resourceType` is the
+`data: { orgId, projectId, resourceType, resourceId, targetIds, ...facts }` where `resourceType` is the
 provider's. A
 `resourceType` that doesn't declare the `eventType` fails the row terminally with both named, so a bad
 emit site shows up in the logs on its first event.
@@ -877,6 +908,105 @@ become a short transaction for this; the cache invalidation that follows it stay
 
 The DAL is covered by `e2e-test/event-outbox.spec.ts` against real Postgres; the unit tests only check
 query shape.
+
+### Org Access Reconcile (second outbox consumer)
+
+Lives in `src/services/org/`: `org-membership-events.ts` (event contract), `org-access-reconcile-consumer.ts`
+and `org-access-sweep-queue.ts`, with queries on `org-dal.ts`. The rule: **an actor keeps project
+memberships in an org only while they have a direct org row there or are in a group that has one.** A user
+can reach a sub-org only through a linked root group, so code removing a group membership can't tell by
+itself whether the actor still reaches the org.
+
+- **Every removal of an org path emits a fact event in the same tx.** Four of them,
+  `com.infisical.organization.<entity>.removed.v1`:
+  - `group-membership`: `groupId`, `orgIds`, the `members` who left. From the removal helpers in
+    `group-fns.ts` (manual route plus SCIM, LDAP, OIDC and SAML sync) and GitHub org sync, which removes team
+    members itself at login and on a manual sync.
+  - `group-link`: `orgId`, `groupId`, the group's `members`. From `membershipGroupService.detachGroupFromOrg`.
+  - `group`: `groupId`, `orgIds`, all `members`. From owned and SCIM group deletes, read with
+    `groupDAL.findGroupActorsAndOrgs` before the cascade.
+  - `membership`: `orgId` + actor. From `deleteOrgMembershipsFn` (users), the org branch of
+    `membershipIdentityService.deleteMembership` and the invited-identity branch of `identityService.deleteIdentity`
+    (identities), and the sweep.
+
+  Group events snapshot orgs and members at removal time, since a later removal can wipe those rows before
+  the consumer runs. The org list always comes from `groupDAL.findGroupOrgIds` (the owning org plus every
+  org the group is linked into), so no emit site builds it by hand. Both lists are paged at 100 (one event
+  per org page x member page) because the outbox rejects payloads over 16 KiB, which rolls back the removal.
+  Any new path removing one of these must emit the matching event.
+- **What leaving an org's projects takes away is defined once**, in
+  `projectAccessRevokeService.revokeActorsInOrgs` (`services/membership/project-access-revoke-service.ts`):
+  project rows, resource rows (PAM, Agent Vault, PKI apps, signers, through
+  `applicationMembershipCleanupService`), project keys, privileges, approver slots, alert recipient slots and
+  live PAM sessions, across every project in the given orgs since those can exist in group-only projects.
+  It runs in the caller's tx and hands back the PAM cancellation sender for after commit. Don't add another
+  copy of that list.
+- **Removing a user from an org tears down synchronously; for an identity it depends on the path.** `deleteOrgMembershipsFn`
+  (org member removal, bulk removal, SCIM deprovision, the instance admin panel) drops the user's org rows in the sub-orgs, their
+  groups there and calls `revokeActorsInOrgs` for the org plus its sub-orgs in the same tx; its event only
+  lets the consumer confirm nothing's left. `membershipIdentityService.deleteMembership` just writes the
+  revocation marker and emits, so the consumer does all the project cleanup there. `identityService.deleteIdentity`
+  (the UI's "Remove From Sub-Organization") deletes the identity's rows in the org itself and emits anyway, like
+  `deleteOrgMembershipsFn`.
+- **The consumer (`org-access-reconcile`) rechecks against current state.** Orgs and actors come from the
+  payload for group events, and from the org plus its sub-orgs for a membership removal. Per org it works in
+  batches of 10 actors, each its own tx with `SET LOCAL statement_timeout` (30s) that locks the actors,
+  rechecks `findActorsWithOrgAccess` and calls `revokeActorsInOrgs` for whoever has no path left, since the
+  rows an actor holds aren't bounded. PAM cancellations, the `revoke-org-project-access` audit log and usage
+  meters fire after each batch commits and only when something was removed, so replays are silent.
+- **The audit event is written for admins.** The actor is the platform; `reason` is an
+  `OrgAccessRemovalCause` mapped from the event type. `revokeActorsInOrgs` returns one entry per (org, actor)
+  and each is logged under that org, so a sub-org admin sees the revoke in their own log when a root
+  removal cascaded into their org. Actors and the group are recorded by id only: a name
+  lookup after the revoke commits could fail, and the retry would find nothing left to log. `projectIds` are
+  project memberships, `resources` the resource grants.
+- **The daily `org-access-reconcile-sweep` cron is a backstop, not a substitute.** It looks for project and
+  resource rows whose actor no longer reaches the org (ghost users skipped) and emits a `membership` event
+  per (actor, org) pair, capped at 5000 per run, in a replica tx with a 3 minute `statement_timeout`.
+  Resource rows count on their own, because a resource grant can exist with no project row behind it (a
+  group-derived PAM admin's personal folder row), and the consumer reaps both.
+- **Not on the enforcement path.** Token validation already rejects actors with no effective org membership
+  (`assertActiveOrgMembership` and its Go port). The lag only shows in member lists, seat counts and SCIM.
+- **`orgDAL.lockActorsForOrgAccess({ orgId, actorIds }, tx)`** serializes everything that grants against the
+  consumer, so access granted between its check and its deletes doesn't get reaped or outlive it. Advisory
+  xact locks at two levels: the root org (resolved from `orgId`) shared plus one key per actor in one sorted
+  statement, or, past `ORG_ACCESS_LOCK_ESCALATION_THRESHOLD` actors, the root org exclusive and no actor
+  keys. The escalation keeps a bulk SCIM sync from filling Postgres's shared lock table, which would fail
+  unrelated transactions instance-wide; the price is that such a sync stalls other grants in its own tenant
+  until it commits. Root org first, then sorted actors, so callers can't deadlock. Two kinds of caller take it:
+  - The add-to-group helpers in `group-fns.ts` (the SSO and SCIM services only pass it through) and GitHub org
+    sync, which adds team members itself. Take it in any new path that grants an org path outside them.
+  - Every path that writes a project or resource membership for a user or identity, through
+    `lockAndAssertActiveOrgAccess` (`services/org/org-access-fns.ts`), which locks and rechecks
+    `findActorsWithActiveOrgAccess` inside the write's own transaction: the generic user and identity
+    `createMembership` at project scope, the deprecated `addUsersToProject`, the org admin console's
+    `grantProjectAdminAccess`, PKI application and signer `addMember` (their `addUserMembers` go through it),
+    PAM's `addProductMember`, `addProductUserMembers` and `addResourceMember`, and Agent Vault's
+    `addProductMembers`. A new add path must call it before its write; the pre-checks outside the transaction
+    stay for their error messages but don't close the race.
+- **Indirect members can be assigned to projects, PAM and Agent Vault included.** Users and identities that
+  reach an org only through a linked group can get a direct project membership; that's the row the consumer
+  revokes once the group path goes away. Two helpers on `org-dal.ts`, and picking the wrong one is the bug:
+  - `findActorsWithActiveOrgAccess` answers "can we grant this actor access now": an active direct org row,
+    or no direct row and an active group holding one (a deactivated direct member stays out, matching
+    `findEffectiveOrgMembership`). Every add path uses it: the project user and identity guards, the
+    `skipUsersWithOrgAccess` step of the project invite routes, PAM's `validateActorExists` /
+    `addProductUserMembers` and Agent Vault's `assertActorsAreAddable`. The candidate lists
+    (`.../memberships/available-users`, `.../available-identities`, Agent Vault's `findAvailableActors`)
+    apply the same rule in SQL.
+  - `findActorsWithOrgAccess` answers "does this actor still reach the org", ignoring deactivation, and is
+    only for the reconcile consumer: deactivating someone must not reap their project rows.
+  - The project invite routes (`POST /v1/projects/:projectId/memberships`, its deprecated v2 twin and the
+    cert manager `/users` route) pass `skipUsersWithOrgAccess` to the org-scope `createMembership`, so a
+    group-only user isn't turned into a direct org member, emailed an org invite, or held to org
+    `Member.Create`. Brand-new emails still go through the full org invite.
+  - The project candidate lists are org member lists, so at project scope they're gated on org
+    `Member.Read` / `Identity.Read` only, plus a 404 when the project isn't in the caller's org. The project
+    and PAM add-member modals read `available-users`; Agent Vault keeps its own `/agent-vault/members/available`.
+
+`e2e-test/routes/v1/org-access-reconcile.spec.ts` covers the sub-org flows end to end against real
+Postgres (group removal, unlink, identities, a second path keeping access, the sweep query); the unit
+tests mock the DALs.
 
 ### Soft-Delete + Async Cleanup
 
@@ -1047,6 +1177,25 @@ the same transaction. Keys are released on CA delete, on project hard delete, an
 fails after its key was made. AWS KMS schedules deletion with a 30-day window; HSM keeps its key. A
 failure is logged, never thrown, so the original outcome stands.
 
+### OIDC issuer (outbound workload identity federation)
+
+`services/oidc-issuer` signs short-lived JWTs that cloud providers exchange for access tokens, so a
+connection needs no stored client secret. Each org is its own issuer at
+`/api/v1/oidc-issuer/organizations/<orgId>`, with public discovery and JWKS routes under `.well-known`.
+The issuer URL and each consumer's `sub` format are one-way doors: customers copy both into their provider.
+
+- **Keys are reserved `sign-verify` `kms_keys` rows named `oidc-issuer-*`, not a new `keyUsage`.** The
+  CMEK router accepts any `KmsKeyUsage`, so a new value would be creatable through the public API.
+  Customers cannot create reserved keys, which is what makes the name prefix safe.
+- **Keys are created on the first sign, never on a JWKS fetch**, so existing orgs need no backfill.
+- **The second newest key signs.** The newest is published a full 24h period before it takes over, and
+  rotation keeps at most three keys. It runs under a Redis lock, so no database connection is held while
+  RSA keys are generated; the lock is renewed while it runs, and nothing is written once it is lost.
+- **The JWKS is cached in Redis for 10 minutes**, because building it decrypts every key on an anonymous
+  route. The 24h lead makes a stale set safe. Empty sets are never cached, in Redis or over HTTP.
+- **Fresh keys are read on the primary.** Signing and the JWKS a rotation caches pass a `tx` to
+  `getPublicKey` and `signWithKmsKey`, because a read replica may not have a key created moments earlier.
+
 ### Enterprise (EE) Features
 
 Enterprise code lives in `src/ee/`:
@@ -1103,6 +1252,40 @@ Two things to get right in a ClickHouse aggregate. `createdAt` is a `DateTime64(
 timezone, so pin day grouping and bound parameters to `'UTC'` or they follow the server's timezone. And
 the table is a `ReplacingMergeTree`: a retried batch inserts the same `id` twice and the copy goes away
 only at some later merge, so read with `FINAL` when an exact count matters.
+
+### Free Text in Audit Events
+
+A name, reason, comment or justification can carry ANSI escapes, bidi overrides or zero-width
+characters. They are valid JSON but rewrite a terminal line, reorder text in a SIEM, or make two values
+look identical. Two layers handle them, both built on `src/lib/validator/log-safe-text.ts`:
+
+- **The route rejects them.** Wrap any free-text field that reaches an audit event in `auditSafeText`
+  (`src/server/lib/schemas.ts`), so the caller gets a 422 naming the problem and can fix the input:
+
+  ```ts
+  name: auditSafeText(z.string().trim().min(1).max(255)),
+  reason: auditSafeText(z.string().trim().max(500), { allowMultiline: true }).optional(),
+  ```
+
+- **The sink strips them.** `audit-log-queue.ts` runs actor and event metadata through
+  `sanitizeLogPayload` and `ipAddress`, `userAgent` and `projectName` through `sanitizeLogText`. They
+  strip control, ANSI, bidi and zero-width characters, turn CR and U+2028/U+2029 into LF, drop lone
+  surrogates (Postgres jsonb rejects them, failing the whole batch), and suffix metadata keys that
+  collide after cleaning (`email~2`) instead of dropping one. This covers what the API cannot reject
+  (IdP claims, user agents, legacy rows), so do not strip values yourself before logging.
+
+Rules for the route check:
+
+- **`allowMultiline: true` for textarea fields** (reasons, comments, justifications). It keeps tab, LF
+  and CR; single-line fields reject them.
+- **Keep the bound inside the wrapper.** `auditSafeText` takes a `ZodString`, so `.max()`, `.trim()` and
+  `.min()` go on the inner schema and `.optional()`, `.nullable()` and `.describe()` go outside.
+- **Only validate a value the caller is setting.** A schema check on an editable field blocks every edit
+  of a row that already holds a legacy value, because clients resend the whole body. For updates, check
+  in the service with `containsLogUnsafeCharacters` and `LOG_UNSAFE_TEXT_MESSAGE`, and only when the
+  value differs from the stored one, as `identity-service.ts` and `project-template-service.ts` do.
+  Write-once fields (approval comments, justifications, break-glass reasons) can use the schema directly.
+- **Never put it on a response schema.** Stored rows predate the check and would fail serialization.
 
 ### Audit Log Event Classes and Settings
 

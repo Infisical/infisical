@@ -1,5 +1,5 @@
 import { Dispatch, SetStateAction, useCallback, useMemo, useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   FilterIcon,
@@ -37,6 +37,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   Pagination,
+  RowLink,
   Select,
   SelectContent,
   SelectItem,
@@ -530,9 +531,10 @@ export const OrgMembersTable = ({
                   return (
                     <TableRow
                       key={membership ? `org-membership-${membership.id}` : `org-user-${u.id}`}
-                      className={twMerge("group relative", membership && "cursor-pointer")}
+                      linked={Boolean(membership)}
+                      className="group"
                     >
-                      <TableCell className="relative z-10">
+                      <TableCell data-row-interactive>
                         {membership ? (
                           <Checkbox
                             id={`select-member-${membership.id}`}
@@ -571,7 +573,7 @@ export const OrgMembersTable = ({
                           </p>
                           {u.superAdmin && (
                             <Tooltip>
-                              <TooltipTrigger asChild className="relative z-10">
+                              <TooltipTrigger asChild data-row-interactive>
                                 <Badge variant="info">
                                   <UserCogIcon />
                                   <span className="hidden 2xl:inline">Server Admin</span>
@@ -582,7 +584,7 @@ export const OrgMembersTable = ({
                           )}
                           {membership?.lastLoginAuthMethod && membership.lastLoginTime && (
                             <Tooltip>
-                              <TooltipTrigger className="relative z-10">
+                              <TooltipTrigger>
                                 <InfoIcon className="size-3.5 text-muted opacity-0 transition-all group-hover:opacity-100" />
                               </TooltipTrigger>
                               <TooltipContent className="max-w-96 min-w-52 px-3">
@@ -597,13 +599,12 @@ export const OrgMembersTable = ({
                       </TableCell>
                       <TableCell isTruncatable className={twMerge(!isActive && "text-muted")}>
                         {membership ? (
-                          <Link
+                          <RowLink
                             to="/organizations/$orgId/members/$membershipId"
                             params={{ membershipId: membership.id, orgId }}
-                            className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                           >
                             {username}
-                          </Link>
+                          </RowLink>
                         ) : (
                           <p className="truncate">{username}</p>
                         )}
@@ -646,7 +647,7 @@ export const OrgMembersTable = ({
                               >
                                 <SelectTrigger
                                   size="sm"
-                                  className="relative z-10 w-full max-w-32 lg:max-w-64"
+                                  className="w-full max-w-32 lg:max-w-64"
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <SelectValue />
@@ -671,7 +672,7 @@ export const OrgMembersTable = ({
                           <span className="text-muted">No direct access</span>
                         )}
                       </TableCell>
-                      <TableCell variant="action" className="relative z-10">
+                      <TableCell variant="action">
                         <div className="flex items-center justify-end gap-6">
                           {membership &&
                             isActive &&

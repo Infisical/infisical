@@ -661,7 +661,7 @@ export const SecretTableRow = ({
                       />
                     </TableHead>
                     <TableHead>Value</TableHead>
-                    <TableHead variant="action" className="w-px">
+                    <TableHead variant="action" className="w-px font-normal">
                       <Button
                         variant="ghost"
                         size="xs"
@@ -677,15 +677,14 @@ export const SecretTableRow = ({
                         {isSecretVisible ? (
                           <>
                             <EyeOffIcon />
-                            Hide
+                            Hide Values
                           </>
                         ) : (
                           <>
                             <EyeIcon />
-                            Reveal
+                            Show Values
                           </>
-                        )}{" "}
-                        Values
+                        )}
                       </Button>
                     </TableHead>
                   </TableRow>

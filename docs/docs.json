@@ -733,7 +733,14 @@
                 "group": "Concepts",
                 "pages": [
                   "documentation/platform/agent-vault/access-bundles",
-                  "documentation/platform/agent-vault/services",
+                  {
+                    "group": "Services",
+                    "root": "documentation/platform/agent-vault/services",
+                    "pages": [
+                      "documentation/platform/agent-vault/http-apis",
+                      "documentation/platform/agent-vault/mcp-servers"
+                    ]
+                  },
                   "documentation/platform/agent-vault/variables",
                   {
                     "group": "Sessions",
@@ -1512,7 +1519,6 @@
                       "api-reference/endpoints/projects/get-project",
                       "api-reference/endpoints/projects/list-projects",
                       "api-reference/endpoints/projects/update-project",
-                      "api-reference/endpoints/projects/secret-snapshots",
                       {
                         "group": "Legacy",
                         "pages": [
@@ -3378,9 +3384,7 @@
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/create",
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/update",
                           "api-reference/endpoints/secret-syncs/azure-entra-id-scim/delete",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/import-secrets",
-                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/remove-secrets"
+                          "api-reference/endpoints/secret-syncs/azure-entra-id-scim/sync-secrets"
                         ]
                       },
                       {
@@ -4577,6 +4581,7 @@
                       "api-reference/endpoints/agent-vault-sessions/list",
                       "api-reference/endpoints/agent-vault-sessions/get",
                       "api-reference/endpoints/agent-vault-sessions/create",
+                      "api-reference/endpoints/agent-vault-sessions/update",
                       "api-reference/endpoints/agent-vault-sessions/revoke",
                       "api-reference/endpoints/agent-vault-session-logs/list",
                       "api-reference/endpoints/agent-vault-session-logs/tail"

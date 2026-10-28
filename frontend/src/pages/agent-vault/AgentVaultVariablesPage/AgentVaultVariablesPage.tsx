@@ -1,8 +1,7 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { BracesIcon } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { PageHeader, Tabs, TabsContent, TabsList, TabsTrigger } from "@app/components/v3";
 import { useOrganization, useProjectPermission } from "@app/context";
 import { AgentVaultVariableScope } from "@app/hooks/api/agentVault";
@@ -14,7 +13,6 @@ import { VariablesCard } from "./components/VariablesCard";
 // Global variables are an admin's alone, so a member sees only their personal ones, without tabs. Nobody can see
 // anyone else's personal variables, admins included.
 export const AgentVaultVariablesPage = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { hasProjectRole } = useProjectPermission();
@@ -39,9 +37,7 @@ export const AgentVaultVariablesPage = () => {
 
   return (
     <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: "Variables" })}</title>
-      </Helmet>
+      <PageTitle title="Variables" />
 
       <PageHeader
         scope={ProjectType.AgentVault}

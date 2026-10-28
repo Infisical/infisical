@@ -1,14 +1,14 @@
 ---
 title: "Run agents in Modal sandboxes with Agent Vault"
 sidebarTitle: "Modal sandboxes"
-description: "Run an Agent Vault proxy in each Modal sandbox so the agent never holds a credential."
+description: "Run an Agent Vault proxy in each Modal sandbox so the agent never sees a credential."
 ---
 
 import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx";
 
-[Modal sandboxes](https://modal.com/docs/guide/sandboxes) are containers you create from code to run an agent on a task, then throw away. The agent in a sandbox runs commands that a prompt can influence, so any API key you give the sandbox can leak through a [prompt injection](/documentation/platform/agent-vault/why-agent-vault).
+[Modal sandboxes](https://modal.com/docs/guide/sandboxes) are containers you create from code to run an agent. The agent in a sandbox runs commands that a prompt can influence, so any API key you give the sandbox can leak through a [prompt injection](/documentation/platform/agent-vault/why-agent-vault).
 
-With Agent Vault, the sandbox holds no API keys. Each sandbox runs an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) in a [sidecar](https://modal.com/docs/guide/sandbox-sidecars), a second container in the same sandbox. The agent's container can't reach the internet, so every request it makes goes through the proxy, and the proxy attaches the real credential to requests for the APIs you allowed.
+With Agent Vault, you don't give the sandbox any API keys. Each sandbox runs an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) in a [sidecar](https://modal.com/docs/guide/sandbox-sidecars), a second container in the same sandbox. The agent's container can't reach the internet directly, so every request it makes goes through the proxy, and the proxy attaches the real credential to requests for the APIs you allowed.
 
 ```mermaid
 flowchart LR
@@ -32,9 +32,9 @@ For each run, your code does the following:
 3. Starts the agent in the sandbox with the session token
 4. Revokes the session and terminates the sandbox when the agent finishes
 
-Every sidecar runs the same proxy from one proxy token, so you set up the proxy once, no matter how many sandboxes you run.
+Every sidecar starts its proxy from the same proxy token, so you create the proxy in Infisical once, no matter how many sandboxes you run.
 
-<Accordion title="Why not run the same proxy for every sandbox?">
+<Accordion title="Why not run one proxy with every sandbox pointing at it?">
   A proxy outside the sandbox doesn't work well on Modal:
 
   - Modal can place sandboxes in the same region on different clouds, and its private network doesn't connect sandboxes across clouds, so a proxy in another sandbox can't reach every agent
@@ -55,7 +55,7 @@ Every sidecar runs the same proxy from one proxy token, so you set up the proxy 
 
 ### Create an access bundle
 
-Create an [access bundle](/documentation/platform/agent-vault/access-bundles) that holds a [service](/documentation/platform/agent-vault/services) for each API the agent calls.
+Create an [access bundle](/documentation/platform/agent-vault/access-bundles) that contains a [service](/documentation/platform/agent-vault/services) for each API the agent calls.
 
 <Steps>
   <Step>
@@ -77,7 +77,7 @@ Create an [access bundle](/documentation/platform/agent-vault/access-bundles) th
     On the **Credential** step, paste the real API key.
 
     <Note>
-      If the API expects the key somewhere other than a header, such as in the URL, [add a substitution](/documentation/platform/agent-vault/services#add-a-substitution) instead, and have the agent send the placeholder you enter in **Replace**.
+      If the API expects the key somewhere other than a header, such as in the URL, [add a substitution](/documentation/platform/agent-vault/http-apis#add-a-substitution) instead, and have the agent send the placeholder you enter in **Replace**.
     </Note>
   </Step>
   <Step>
@@ -113,9 +113,23 @@ The proxy token and the machine identity's credentials stay out of the agent's c
 
 ### Store the proxy token in Modal
 
-In the Modal dashboard, create a [custom secret](https://modal.com/docs/guide/secrets) named `agent-vault-proxy` with the key `INFISICAL_AGENT_VAULT_PROXY_TOKEN` set to the proxy token. If you use EU Cloud or self-host Infisical, also add `INFISICAL_DOMAIN` set to the URL of your instance.
+In the Modal dashboard, create a [custom secret](https://modal.com/docs/guide/secrets) named `agent-vault-proxy` with this key, set to the proxy token:
+
+```text
+INFISICAL_AGENT_VAULT_PROXY_TOKEN
+```
 
 Only the sidecar gets the `agent-vault-proxy` secret. Modal runs each sidecar in its own container with its own kernel, so the agent can't read the sidecar's environment or files.
+
+<Info>
+If you use EU Cloud or self-host Infisical, add this key as well:
+
+```text
+INFISICAL_DOMAIN
+```
+
+Set the key to `https://eu.infisical.com` for EU Cloud, or the URL of your self-hosted instance.
+</Info>
 
 ### Give your code the machine identity's credentials
 
@@ -195,7 +209,7 @@ func buildImage(ctx context.Context, mc *modal.Client) (*modal.App, *modal.Image
 
 ## Step 4: Run an agent in a sandbox
 
-This function runs one prompt in a new sandbox. Replace `<access-bundle-name>` at the top with your access bundle's name. If you use EU Cloud or self-host Infisical, also replace `https://app.infisical.com` with the URL of your instance:
+This function runs one prompt in a new sandbox. Replace `<access-bundle-name>` at the top with your access bundle's name. If you use EU Cloud or self-host Infisical, also replace `https://app.infisical.com` with `https://eu.infisical.com` for EU Cloud or the URL of your self-hosted instance:
 
 <CodeGroup>
 
@@ -693,7 +707,7 @@ Claude Code replies, even though its sandbox has no Anthropic API key and can't 
   Each run now gets its own sandbox, proxy, and session. The only credential in the agent's container is a session token, and your code revokes the session when the run ends.
 </Check>
 
-To check which requests the agent made, [set up session logs](/documentation/platform/agent-vault/session-logs#setting-up-session-logs), then [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) in Agent Vault. Requests that got a credential have the outcome **Brokered**.
+To check which requests the agent made, [set up session logs](/documentation/platform/agent-vault/session-logs), then [view the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) in Agent Vault. Requests that got a credential have the outcome **Brokered**.
 
 ## Security considerations
 
@@ -706,7 +720,7 @@ The agent's container can't connect to the internet directly, but it has two kin
 
 ### Compromised sandboxes
 
-Each sidecar holds a copy of the proxy token. If you think someone took control of a sandbox, [rotate the proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxys-token), then put the new token in the `agent-vault-proxy` secret in Modal.
+Each sidecar has a copy of the proxy token. If you think someone took control of a sandbox, [rotate the proxy's token](/documentation/platform/agent-vault/proxies#rotate-a-proxy’s-token), then put the new token in the `agent-vault-proxy` secret in Modal.
 
 ## Troubleshooting
 

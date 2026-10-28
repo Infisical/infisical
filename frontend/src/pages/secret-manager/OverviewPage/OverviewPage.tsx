@@ -7,7 +7,6 @@ import {
   useRef,
   useState
 } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
 import { DragDropProvider, DragEndEvent, DragOverlay } from "@dnd-kit/react";
@@ -16,6 +15,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { AxiosError } from "axios";
+import { jwtDecode } from "jwt-decode";
 import {
   ArrowDownZAIcon,
   ArrowUpAZIcon,
@@ -25,6 +25,8 @@ import {
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronsDownUpIcon,
+  ChevronsUpDownIcon,
   ClockArrowDownIcon,
   ClockArrowUpIcon,
   CopyIcon,
@@ -62,6 +64,7 @@ import {
   useUpgradeGate
 } from "@app/components/license/UpgradeGate";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   CreateProxiedServiceModal,
@@ -186,7 +189,11 @@ import {
 } from "@app/hooks/api";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { dashboardKeys, useGetProjectSecretsOverview } from "@app/hooks/api/dashboard/queries";
+import {
+  dashboardKeys,
+  fetchDashboardProjectSecretsByKeys,
+  useGetProjectSecretsOverview
+} from "@app/hooks/api/dashboard/queries";
 import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/api/dashboard/types";
 import { TDynamicSecret } from "@app/hooks/api/dynamicSecret/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
@@ -196,6 +203,7 @@ import { useImportDopplerSecrets, useImportVaultSecrets } from "@app/hooks/api/m
 import { ExternalMigrationImportStatus } from "@app/hooks/api/migration/types";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { TDashboardProxiedService } from "@app/hooks/api/proxiedServices/types";
+import { getAuthToken } from "@app/hooks/api/reactQuery";
 import {
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequests
@@ -338,6 +346,33 @@ const DEFAULT_FILTER_STATE = {
 // const DEFAULT_COLLAPSED_HEADER_HEIGHT = 120;
 
 const LEGACY_OVERVIEW_BATCH_MODE_KEY = "overview-batch-mode-enabled";
+const OVERVIEW_REVEAL_ALL_KEY = "overview-reveal-all-values";
+// Keys travel in the query string, so batch them to stay under proxy request-line limits.
+const SECRET_VALUE_PREFETCH_BATCH_SIZE = 50;
+
+// Identifies the signed-in session and organization. Refreshing the access token, here or in
+// another tab, replaces the token but keeps these claims. Signing in again from the same browser
+// reuses the token session, so accessVersion, which logout increments, is what tells them apart.
+const getAuthSessionMarker = () => {
+  try {
+    const { userId, tokenVersionId, accessVersion, organizationId, subOrganizationId } = jwtDecode<{
+      userId?: string;
+      tokenVersionId?: string;
+      accessVersion?: number;
+      organizationId?: string;
+      subOrganizationId?: string;
+    }>(getAuthToken());
+    return JSON.stringify([
+      userId,
+      tokenVersionId,
+      accessVersion,
+      organizationId,
+      subOrganizationId
+    ]);
+  } catch {
+    return null;
+  }
+};
 
 // Every overview row type is rendered into the same TableBody, so their React keys share one
 // namespace. Resource names are arbitrary user input, so a string prefix cannot separate them: a
@@ -520,16 +555,12 @@ const OverviewPageContent = () => {
   // Maps a revealed secret key to the identity of the secrets that were revealed, so the reveal
   // is dropped when the underlying secrets are swapped out. See secretRowIdentities below.
   const [visibleSecretRows, setVisibleSecretRows] = useState<Map<string, string>>(() => new Map());
-
-  const toggleSecretRowExpand = useCallback((key: string) => {
-    setExpandedSecretRows((prev) => {
-      const next = new Set(prev);
-      if (!next.delete(key)) next.add(key);
-      return next;
-    });
-  }, []);
+  // Bumped when Reveal All is toggled or row state is reset, so a bulk reveal that is still
+  // loading its values cannot re-reveal rows that were hidden or navigated away from meanwhile.
+  const revealGenerationRef = useRef(0);
 
   const resetSecretRowStates = useCallback(() => {
+    revealGenerationRef.current += 1;
     setExpandedSecretRows(new Set());
     setVisibleSecretRows(new Map());
   }, []);
@@ -738,6 +769,9 @@ const OverviewPageContent = () => {
       getSecretSortValue(orderBy, orderDirection)
   );
   const ActiveSecretSortIcon = activeSecretSort?.Icon ?? ArrowUpDownIcon;
+  const isNameHeaderSortActive =
+    !sortEnvironment &&
+    !(orderBy === DashboardSecretsOrderBy.Name && orderDirection === OrderByDirection.ASC);
   let activeSecretSortScope = "";
   if (sortEnvironment) {
     activeSecretSortScope = ` in ${
@@ -1272,6 +1306,136 @@ const OverviewPageContent = () => {
       previousTelemetry.current.telemetry.cancelOpenFlows();
     previousTelemetry.current = { telemetry: overviewTelemetry, flows: telemetryFlows };
   }, [overviewTelemetry, telemetryFlows]);
+
+  const [isRevealAll, setIsRevealAll] = useState(
+    () => localStorage.getItem(OVERVIEW_REVEAL_ALL_KEY) === "true"
+  );
+
+  const toggleSecretRowExpand = useCallback(
+    (key: string) => {
+      if (isRevealAll && !expandedSecretRows.has(key)) {
+        const identity = getSecretRowIdentity(key);
+        setVisibleSecretRows((prev) => new Map(prev).set(key, identity));
+      }
+      setExpandedSecretRows((prev) => {
+        const next = new Set(prev);
+        if (!next.delete(key)) next.add(key);
+        return next;
+      });
+    },
+    [isRevealAll, expandedSecretRows, getSecretRowIdentity]
+  );
+
+  // Each visible cell fetches its own value, so revealing a full page at once would send one
+  // request per cell and run into the rate limit. Load the values with one secrets-by-keys
+  // request per environment instead, and seed the cache the cells read before revealing them.
+  const revealSecretRows = async (keys: string[]) => {
+    const generation = revealGenerationRef.current;
+    // The value cache keys carry no user, so a batch that lands after logout must not write a
+    // value that the next person to sign in on this tab would read.
+    const authSession = getAuthSessionMarker();
+    const startedAt = Date.now();
+    const invalidatedAtStart = new Set(
+      queryClient
+        .getQueryCache()
+        .findAll({ queryKey: dashboardKeys.getSecretValuesRoot() })
+        .filter((query) => query.state.isInvalidated)
+        .map((query) => query.queryHash)
+    );
+    const visibleAtStart = visibleSecretRows;
+    const identities = keys.map((key) => [key, getSecretRowIdentity(key)] as const);
+
+    const keySet = new Set(keys);
+    const keysByEnv = new Map<string, string[]>();
+    secrets?.forEach((secret) => {
+      // secrets-by-keys rejects the whole request if any key lacks read-value permission
+      if (!keySet.has(secret.key) || secret.secretValueHidden) return;
+      const envKeys = keysByEnv.get(secret.env);
+      if (envKeys) envKeys.push(secret.key);
+      else keysByEnv.set(secret.env, [secret.key]);
+    });
+
+    const batches = [...keysByEnv].flatMap(([environment, envKeys]) =>
+      Array.from(
+        { length: Math.ceil(envKeys.length / SECRET_VALUE_PREFETCH_BATCH_SIZE) },
+        (_, i) => ({
+          environment,
+          keys: envKeys.slice(
+            i * SECRET_VALUE_PREFETCH_BATCH_SIZE,
+            (i + 1) * SECRET_VALUE_PREFETCH_BATCH_SIZE
+          )
+        })
+      )
+    );
+
+    // A failed batch only loses the head start: its cells fetch their own values once revealed.
+    await Promise.allSettled(
+      batches.map(async ({ environment, keys: batchKeys }) => {
+        const { secrets: fetchedSecrets } = await fetchDashboardProjectSecretsByKeys({
+          projectId,
+          environment,
+          secretPath,
+          keys: batchKeys,
+          viewSecretValue: true
+        });
+        if (!authSession || getAuthSessionMarker() !== authSession) return;
+        fetchedSecrets.forEach(({ secretKey, secretValue, secretValueHidden, type }) => {
+          if (secretValueHidden || secretValue === undefined) return;
+          const isOverride = type === SecretType.Personal;
+          const valueKey = dashboardKeys.getSecretValue({
+            projectId,
+            environment,
+            secretPath,
+            secretKey,
+            // shared value cells omit isOverride, so it must be undefined rather than false
+            // for the keys to match
+            isOverride: isOverride || undefined
+          });
+          // A save during the bulk read invalidates or rewrites this value, and this response
+          // may predate it, so leave the newer cache entry alone.
+          const cached = queryClient.getQueryCache().find({ queryKey: valueKey, exact: true });
+          if (
+            cached &&
+            (cached.state.dataUpdatedAt > startedAt ||
+              (cached.state.isInvalidated && !invalidatedAtStart.has(cached.queryHash)))
+          )
+            return;
+          queryClient.setQueryData(
+            valueKey,
+            isOverride ? { valueOverride: secretValue } : { value: secretValue }
+          );
+        });
+      })
+    );
+
+    if (generation !== revealGenerationRef.current) return;
+    setVisibleSecretRows((prev) => {
+      const visible = new Map(prev);
+      identities.forEach(([key, identity]) => {
+        // Keep the user's choice for a row they revealed or hid while the values were loading.
+        if (prev.get(key) === visibleAtStart.get(key)) visible.set(key, identity);
+      });
+      return visible;
+    });
+  };
+
+  const toggleRevealAll = () => {
+    const next = !isRevealAll;
+    overviewTelemetry.interaction({
+      action: next ? "reveal" : "hide",
+      source: "header",
+      resourceType: "secret"
+    });
+    revealGenerationRef.current += 1;
+    if (next) {
+      localStorage.setItem(OVERVIEW_REVEAL_ALL_KEY, "true");
+      revealSecretRows([...expandedSecretRows]);
+    } else {
+      localStorage.removeItem(OVERVIEW_REVEAL_ALL_KEY);
+      setVisibleSecretRows(new Map());
+    }
+    setIsRevealAll(next);
+  };
   const viewedProjectRef = useRef<string>(undefined);
   const loadedProjectRef = useRef<string>(undefined);
   useEffect(() => {
@@ -1311,6 +1475,7 @@ const OverviewPageContent = () => {
     isSingleEnvView && (pendingChanges.secrets.length > 0 || pendingChanges.folders.length > 0);
 
   const [recentQuickAddKeys, setRecentQuickAddKeys] = useState<string[]>([]);
+  const pendingSecretRowKeys = useRef(new Map<string, string>());
   const hadPendingBatchChangesRef = useRef(hasPendingBatchChanges);
   const isRecentQuickAddClearPendingRef = useRef(false);
   useEffect(() => {
@@ -2204,6 +2369,15 @@ const OverviewPageContent = () => {
         );
         if (!pendingCreate) return;
 
+        if (newSecretName && newSecretName !== key) {
+          pendingSecretRowKeys.current.delete(
+            overviewRowKey("secret", projectId, env, secretPath, key)
+          );
+          pendingSecretRowKeys.current.set(
+            overviewRowKey("secret", projectId, env, secretPath, newSecretName),
+            pendingCreate.id
+          );
+        }
         addPendingChange(
           {
             ...pendingCreate,
@@ -2441,6 +2615,23 @@ const OverviewPageContent = () => {
     ],
     [mergedSecKeys, pendingChanges.secrets]
   );
+
+  const areAllSecretRowsExpanded =
+    mergedSecKeys.length > 0 && mergedSecKeys.every((key) => expandedSecretRows.has(key));
+
+  const toggleExpandAllSecretRows = () => {
+    overviewTelemetry.interaction({
+      action: areAllSecretRowsExpanded ? "collapse-all" : "expand-all",
+      source: "header",
+      resourceType: "secret"
+    });
+    if (areAllSecretRowsExpanded) {
+      setExpandedSecretRows(new Set());
+      return;
+    }
+    setExpandedSecretRows((prev) => new Set([...prev, ...mergedSecKeys]));
+    if (isRevealAll) revealSecretRows(mergedSecKeys);
+  };
 
   const getSecretByKeyWithPending = useCallback(
     (env: string, key: string) => {
@@ -2825,6 +3016,16 @@ const OverviewPageContent = () => {
         "",
         "row"
       );
+      const [createdSecret] = appliedSecrets;
+      if (pendingSecret.type === PendingAction.Create && createdSecret) {
+        pendingSecretRowKeys.current.forEach((rowId, identity) => {
+          if (rowId === pendingSecret.id) pendingSecretRowKeys.current.delete(identity);
+        });
+        pendingSecretRowKeys.current.set(
+          overviewRowKey("secret", projectId, env, secretPath, createdSecret.secretKey),
+          pendingSecret.id
+        );
+      }
       const context = { projectId, environment: env, secretPath };
       const draft = batchStoreApi
         .getState()
@@ -2862,7 +3063,6 @@ const OverviewPageContent = () => {
         return;
       }
 
-      const [createdSecret] = appliedSecrets;
       if (
         pendingSecret.type !== PendingAction.Create ||
         draft?.type !== PendingAction.Create ||
@@ -3458,6 +3658,17 @@ const OverviewPageContent = () => {
     </button>
   );
 
+  const getSecretRowKey = (key: string, rowKey: string) => {
+    if (!singleVisibleEnv) return rowKey;
+
+    const identity = overviewRowKey("secret", projectId, singleVisibleEnv.slug, secretPath, key);
+    const pendingCreate = pendingChanges.secrets.find(
+      (change) => change.type === PendingAction.Create && change.secretKey === key
+    );
+    if (pendingCreate) pendingSecretRowKeys.current.set(identity, pendingCreate.id);
+    return pendingSecretRowKeys.current.get(identity) ?? rowKey;
+  };
+
   const renderSecretRow = (key: string, rowKey: string) => (
     <SecretTableRow
       isSelected={!hasPendingBatchChanges && Boolean(selectedEntries.secret[key])}
@@ -3474,7 +3685,7 @@ const OverviewPageContent = () => {
       onSecretCreate={handleSecretCreate}
       onSecretDelete={handleSecretDelete}
       onSecretUpdate={handleSecretUpdate}
-      key={rowKey}
+      key={getSecretRowKey(key, rowKey)}
       environments={visibleEnvs}
       secretKey={key}
       getSecretByKey={getSecretByKeyWithPending}
@@ -3489,7 +3700,7 @@ const OverviewPageContent = () => {
           intent: SecretAccessInsightsUpgradeIntent
         })
       }
-      activityId={getTableRowActivityId("secret", key)}
+      activityId={getTableRowActivityId("secret", getSecretRowKey(key, rowKey))}
       onActivityChange={handleTableRowActivityChange}
       timestampSortField={isTimestampSort ? orderBy : undefined}
     />
@@ -3556,9 +3767,12 @@ const OverviewPageContent = () => {
 
   if (!isProjectV3)
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-foreground">
-        <SecretV2MigrationSection />
-      </div>
+      <>
+        <PageTitle title={t("dashboard.title")} />
+        <div className="flex h-full w-full flex-col items-center justify-center px-6 text-foreground">
+          <SecretV2MigrationSection />
+        </div>
+      </>
     );
 
   const dynamicSecretLeaseData = popUp.dynamicSecretLeases?.data as
@@ -3686,11 +3900,9 @@ const OverviewPageContent = () => {
   return withOverviewTelemetry(
     overviewTelemetry,
     <div className="mx-auto flex max-w-8xl flex-col">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("dashboard.title") })}</title>
-        <meta property="og:title" content={String(t("dashboard.og-title"))} />
-        <meta name="og:description" content={String(t("dashboard.og-description"))} />
-      </Helmet>
+      <PageTitle title={t("dashboard.title")} />
+      <meta property="og:title" content={String(t("dashboard.og-title"))} />
+      <meta name="og:description" content={String(t("dashboard.og-description"))} />
       <PageHeader
         className="mb-6 md:mb-10"
         scope={ProjectType.SecretManager}
@@ -3873,6 +4085,57 @@ const OverviewPageContent = () => {
             )}
           >
             <FolderBreadcrumb secretPath={secretPath} />
+            {isTableVisible && !isSingleEnvView && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  className="mr-1.5 shrink-0"
+                  disabled={!mergedSecKeys.length}
+                  onClick={toggleExpandAllSecretRows}
+                >
+                  {areAllSecretRowsExpanded ? (
+                    <>
+                      <ChevronsDownUpIcon />
+                      Close All
+                    </>
+                  ) : (
+                    <>
+                      <ChevronsUpDownIcon />
+                      Open All
+                    </>
+                  )}
+                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      className="mr-1.5 shrink-0"
+                      aria-pressed={isRevealAll}
+                      onClick={toggleRevealAll}
+                    >
+                      {isRevealAll ? (
+                        <>
+                          <EyeOffIcon />
+                          Hide Values
+                        </>
+                      ) : (
+                        <>
+                          <EyeIcon />
+                          Show Values
+                        </>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isRevealAll
+                      ? "Values of every secret you open are shown. Select to hide them."
+                      : "Show values of open secrets and any you open later. Remembered in this browser."}
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            )}
             {canManageCurrentFolderAccess && (
               <Button
                 variant="ghost"
@@ -3945,7 +4208,19 @@ const OverviewPageContent = () => {
                               className="flex h-full w-full cursor-pointer items-center justify-between px-3 text-left focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                               aria-label={`Sort secrets. Current order: ${activeSecretSort?.label ?? "Name (A to Z)"}${activeSecretSortScope}`}
                             >
-                              <span className="text-sm font-medium text-muted">Name</span>
+                              <span className="flex min-w-0 items-center gap-x-2 text-sm font-medium text-muted">
+                                <span
+                                  className={twMerge(
+                                    "truncate",
+                                    isNameHeaderSortActive && "text-foreground"
+                                  )}
+                                >
+                                  Name
+                                </span>
+                                {isNameHeaderSortActive && (
+                                  <ActiveSecretSortIcon className="size-3.5 shrink-0 text-foreground" />
+                                )}
+                              </span>
                               <ChevronDownIcon className="size-3.5 shrink-0 text-muted" />
                             </button>
                           </DropdownMenuTrigger>
@@ -4298,9 +4573,10 @@ const OverviewPageContent = () => {
                               saveLabel={quickAddSaveLabel}
                               onCreateSecret={(environment, key, value, comment, isDirectSave) => {
                                 if (isSingleEnvView)
-                                  setRecentQuickAddKeys((prev) =>
-                                    prev.includes(key) ? prev : [...prev, key]
-                                  );
+                                  setRecentQuickAddKeys((prev) => [
+                                    key,
+                                    ...prev.filter((recentKey) => recentKey !== key)
+                                  ]);
                                 return handleSecretCreate(
                                   environment,
                                   key,

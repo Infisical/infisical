@@ -32,6 +32,7 @@ import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
+import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { TAlertServiceFactory } from "@app/services/alert/alert-service";
 import { IDENTITY_AUTHENTICATION_RESOURCE_TYPE } from "@app/services/alert/providers/identity-credential-alert-provider";
 import { AgentVaultIdentities, IdentitiesMeter, PamIdentities, SecretIdentities } from "@app/services/license-client";
@@ -345,6 +346,10 @@ export const identityV2ServiceFactory = ({
       throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
 
     await validateIdentityUpdateForSuperAdminPrivileges(dto.selector.identityId, dto.isActorSuperAdmin);
+
+    if (data.name !== undefined && data.name !== existingIdentity.name && containsLogUnsafeCharacters(data.name)) {
+      throw new BadRequestError({ message: LOG_UNSAFE_TEXT_MESSAGE });
+    }
 
     const identity = await identityDAL.transaction(async (tx) => {
       // Compared against undefined: `hasDeleteProtection: false` is a real update, and a truthiness check

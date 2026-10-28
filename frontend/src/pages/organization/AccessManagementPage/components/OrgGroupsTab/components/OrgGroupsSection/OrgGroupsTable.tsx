@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import {
   ChevronDownIcon,
   CopyIcon,
@@ -32,6 +32,7 @@ import {
   InputGroupInput,
   OrgIcon,
   Pagination,
+  RowLink,
   Select,
   SelectContent,
   SelectItem,
@@ -85,7 +86,6 @@ type Filter = {
 };
 
 export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
-  const navigate = useNavigate();
   const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { mutateAsync: updateMutateAsync } = useUpdateGroup();
@@ -310,15 +310,14 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                   const isLinkedGroup = currentOrg ? groupOrgId !== currentOrg.id : false;
                   const isManagedBySubOrg = currentOrg ? groupOrgId === currentOrg.id : false;
                   return (
-                    <TableRow key={`org-group-${id}`} className="relative cursor-pointer">
+                    <TableRow key={`org-group-${id}`} linked>
                       <TableCell isTruncatable>
-                        <Link
+                        <RowLink
                           to="/organizations/$orgId/groups/$groupId"
                           params={{ orgId, groupId: id }}
-                          className="block truncate outline-0 after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                         >
                           {name}
-                        </Link>
+                        </RowLink>
                       </TableCell>
                       <TableCell isTruncatable>{slug}</TableCell>
                       <TableCell>
@@ -339,7 +338,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                             >
                               <SelectTrigger
                                 size="sm"
-                                className="relative z-10 w-full max-w-32 lg:max-w-64"
+                                className="w-full max-w-32 lg:max-w-64"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <SelectValue />
@@ -372,7 +371,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                           </Badge>
                         </TableCell>
                       )}
-                      <TableCell variant="action" className="relative z-10">
+                      <TableCell variant="action">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <IconButton
@@ -428,20 +427,17 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                                 a={OrgPermissionSubjects.Groups}
                               >
                                 {(isAllowed) => (
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      navigate({
-                                        to: "/organizations/$orgId/groups/$groupId",
-                                        params: {
-                                          orgId,
-                                          groupId: id
-                                        }
-                                      })
-                                    }
-                                    isDisabled={!isAllowed}
-                                  >
-                                    <UsersIcon />
-                                    Manage Members
+                                  <DropdownMenuItem asChild isDisabled={!isAllowed}>
+                                    <Link
+                                      to="/organizations/$orgId/groups/$groupId"
+                                      params={{
+                                        orgId,
+                                        groupId: id
+                                      }}
+                                    >
+                                      <UsersIcon />
+                                      Manage Members
+                                    </Link>
                                   </DropdownMenuItem>
                                 )}
                               </OrgPermissionCan>

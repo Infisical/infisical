@@ -8,6 +8,7 @@ import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-ap
 import { TAgentProxyCaServiceFactory } from "@app/ee/services/agent-proxy-ca/agent-proxy-ca-service";
 import { TAgentVaultAccessBundleServiceFactory } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
 import { TAgentVaultMembershipServiceFactory } from "@app/ee/services/agent-vault-member/agent-vault-membership-service";
+import { TAgentVaultOauthServiceFactory } from "@app/ee/services/agent-vault-oauth/agent-vault-oauth-service";
 import { TAgentVaultPersonalValueServiceFactory } from "@app/ee/services/agent-vault-personal-value/agent-vault-personal-value-service";
 import { TAgentVaultProjectResolverFactory } from "@app/ee/services/agent-vault-project/agent-vault-project-resolver";
 import { TAgentVaultProxyServiceFactory } from "@app/ee/services/agent-vault-proxy/agent-vault-proxy-service";
@@ -152,6 +153,7 @@ import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/mic
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TOauthClientServiceFactory } from "@app/services/oauth-client/oauth-client-service";
 import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { TOrgProductStatsServiceFactory } from "@app/services/org-product-stats/org-product-stats-service";
@@ -311,6 +313,7 @@ declare module "fastify" {
       signup: TAuthSignupFactory;
       authToken: TAuthTokenServiceFactory;
       oauthClient: TOauthClientServiceFactory;
+      oidcIssuer: TOidcIssuerServiceFactory;
       permission: TPermissionServiceFactory;
       org: TOrgServiceFactory;
       oidc: TOidcConfigServiceFactory;
@@ -387,6 +390,7 @@ declare module "fastify" {
       secretScanningV2ProjectResolver: TSecretScanningV2ProjectResolverFactory;
       agentVaultProjectResolver: TAgentVaultProjectResolverFactory;
       agentVaultAccessBundle: TAgentVaultAccessBundleServiceFactory;
+      agentVaultOauth: TAgentVaultOauthServiceFactory;
       agentVaultVariable: TAgentVaultVariableServiceFactory;
       agentVaultPersonalValue: TAgentVaultPersonalValueServiceFactory;
       agentVaultProxy: TAgentVaultProxyServiceFactory;
