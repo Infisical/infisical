@@ -372,6 +372,13 @@ export const projectServiceFactory = ({
 
       const slug = projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`);
 
+      const [slugHolder] = await projectDAL.findIncludingExpired({ orgId: organization.id, slug }, { tx });
+      if (slugHolder?.deleteAfter) {
+        throw new BadRequestError({
+          message: `Project slug '${slug}' is held by a pending-deletion project. Permanently delete that project first, then retry.`
+        });
+      }
+
       let project: TProjects;
       try {
         project = await projectDAL.create(
@@ -1170,6 +1177,15 @@ export const projectServiceFactory = ({
       if (!isWithinPlanAuditLogRetention(update.auditLogsRetentionDays, plan)) {
         throw new BadRequestError({
           message: `Failed to update the audit logs retention period because your current plan allows a maximum of ${plan.auditLogsRetentionDays} days. Upgrade your plan to increase this limit.`
+        });
+      }
+    }
+
+    if (update.slug) {
+      const [slugHolder] = await projectDAL.findIncludingExpired({ orgId: project.orgId, slug: update.slug });
+      if (slugHolder?.deleteAfter) {
+        throw new BadRequestError({
+          message: `Project slug '${update.slug}' is held by a pending-deletion project. Permanently delete that project first, then retry.`
         });
       }
     }
