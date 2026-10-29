@@ -18,7 +18,10 @@ import {
 } from "@app/db/schemas";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
 import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
-import { TDynamicSecretLeaseQueueServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
+import {
+  getRestoredLeaseRevocationJobId,
+  TDynamicSecretLeaseQueueServiceFactory
+} from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
@@ -969,8 +972,7 @@ export const projectServiceFactory = ({
       // Revoking a lease that expired while the project was deleted fails because the project can't be
       // resolved, and its retries may have run out, so queue those revocations again. They're queued
       // before the restore so a queue failure leaves the project deleted and the restore retryable, and
-      // delayed so they run after it commits. Their own job id keeps an older retry, which stops the job
-      // under the lease id when it gives up, from cancelling them.
+      // delayed so they run after it commits.
       const expiredLeases = await dynamicSecretLeaseDAL.findExpiredByProjectId(project.id);
       const revokeAt = new Date(Date.now() + 60_000);
       await Promise.all(
@@ -979,7 +981,7 @@ export const projectServiceFactory = ({
             lease.id,
             lease.dynamicSecretId,
             revokeAt,
-            `${lease.id}-restore`
+            getRestoredLeaseRevocationJobId(lease.id)
           )
         )
       );

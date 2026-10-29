@@ -47,6 +47,10 @@ export type TDynamicSecretLeaseQueueServiceFactory = {
 
 const MAX_REVOCATION_RETRY_COUNT = 3;
 
+// Restoring a project re-queues revocation of its expired leases under this id, so an older retry, which stops the
+// job under the lease id when it gives up, can't cancel it.
+export const getRestoredLeaseRevocationJobId = (leaseId: string) => `${leaseId}-restore`;
+
 export const dynamicSecretLeaseQueueServiceFactory = ({
   queueService,
   dynamicSecretDAL,
@@ -93,6 +97,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
 
   const unsetLeaseRevocation = async (leaseId: string) => {
     await queueService.stopJobById(QueueName.DynamicSecretRevocation, leaseId);
+    await queueService.stopJobById(QueueName.DynamicSecretRevocation, getRestoredLeaseRevocationJobId(leaseId));
   };
 
   const queueFailedRevocation = async (leaseId: string, dynamicSecretId: string) => {
