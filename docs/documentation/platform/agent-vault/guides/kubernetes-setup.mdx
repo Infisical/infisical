@@ -14,6 +14,7 @@ For why each piece runs where it does, and how to choose between the standard ru
 ## Prerequisites
 
 - The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership)
+- If you self-host Infisical, version `v0.167.2` or later
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - A Kubernetes cluster whose network plugin enforces network policies, such as [Cilium](https://cilium.io) or [Calico](https://www.tigera.io/project-calico/)
 - Permission to create namespaces and RBAC roles in the cluster with `kubectl`
@@ -28,7 +29,7 @@ For why each piece runs where it does, and how to choose between the standard ru
 
 ## Step 2: Deploy the proxy
 
-Save this manifest as `agent-vault-proxy.yaml` and apply it to your cluster, such as with `kubectl apply -f agent-vault-proxy.yaml` or through Flux or Argo CD. It creates the `agent-vault` namespace and runs the proxy in it. Replace `<cli-version>` with `<min-cli-version>` or later, and `<your-instance-url>` with `https://app.infisical.com`, `https://eu.infisical.com`, or the URL of your self-hosted instance:
+Save this manifest as `agent-vault-proxy.yaml` and apply it to your cluster, such as with `kubectl apply -f agent-vault-proxy.yaml` or through Flux or Argo CD. It creates the `agent-vault` namespace and runs the proxy in it. Replace `<cli-version>` with `0.44.10` or later, because earlier versions can't start a proxy from a proxy token, and `<your-instance-url>` with `https://app.infisical.com`, `https://eu.infisical.com`, or the URL of your self-hosted instance:
 
 ```yaml expandable
 apiVersion: v1
@@ -206,6 +207,7 @@ The proxy decrypts HTTPS traffic to attach credentials, so agents have to trust 
 
 ```bash
 kubectl -n agent-vault port-forward svc/agent-vault-proxy 17323:17323 &
+sleep 2
 curl -fsS http://localhost:17323/_agent-vault/ca | jq -er .certificate > ca.pem
 kill %1
 ```
@@ -250,7 +252,10 @@ metadata:
   namespace: agents
 rules:
   - apiGroups: [""]
-    resources: [pods, secrets]
+    resources: [pods]
+    verbs: [create, get, list, watch, delete]
+  - apiGroups: [""]
+    resources: [secrets]
     verbs: [create, get, delete]
   - apiGroups: [""]
     resources: [pods/log]
@@ -272,9 +277,9 @@ metadata:
   name: agent-<run-id>
   namespace: agents
 spec:
-  # The name of your cluster's RuntimeClass, such as gvisor or kata-qemu.
-  # Remove this line for the standard runtime.
-  runtimeClassName: gvisor
+  # For gVisor or Kata, uncomment this line and set it to your cluster's
+  # RuntimeClass, such as gvisor or kata-qemu.
+  # runtimeClassName: gvisor
   automountServiceAccountToken: false
   restartPolicy: Never
   activeDeadlineSeconds: 1800
@@ -325,7 +330,7 @@ spec:
         name: agent-vault-ca
 ```
 
-- **`runtimeClassName`:** picks the isolation level for the agent (see [Choose an isolation level](/documentation/platform/agent-vault/guides/kubernetes#choose-an-isolation-level))
+- **`runtimeClassName`:** picks the isolation level for the agent. Without it, the pod uses the standard runtime (see [Choose an isolation level](/documentation/platform/agent-vault/guides/kubernetes#choose-an-isolation-level))
 - **`activeDeadlineSeconds`:** stops the agent after 30 minutes, so a stuck agent doesn't keep its session open
 - **API keys in the agent's configuration:** delete the real keys, and pass a placeholder such as `agent-vault` to SDKs that won't start without one (see [Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent#step-3-replace-the-api-keys-with-placeholders))
 
@@ -334,6 +339,8 @@ spec:
 This script runs one agent. Replace `<access-token>` with the machine identity's access token from [Step 4](#log-in-as-the-machine-identity), and `<access-bundle-name>` with the name of the access bundle. If you use EU Cloud or self-host Infisical, also replace `https://app.infisical.com` with `https://eu.infisical.com` or the URL of your self-hosted instance:
 
 ```bash expandable
+set -euo pipefail
+
 INFISICAL_URL=https://app.infisical.com
 ACCESS_TOKEN=<access-token>
 RUN_ID=$(date +%s)
@@ -351,7 +358,8 @@ PROXY_URL="http://x-agent-vault:$(echo "$SESSION" | jq -r .session.token)@agent-
 cleanup() {
   # Revoke first, so the session ends even if deleting the pod fails.
   curl -fsS -X POST "$INFISICAL_URL/api/v1/agent-vault/sessions/$SESSION_ID/revoke" \
-    -H "Authorization: Bearer $ACCESS_TOKEN" > /dev/null
+    -H "Authorization: Bearer $ACCESS_TOKEN" > /dev/null \
+    || echo "Couldn't revoke session $SESSION_ID. Revoke it in Agent Vault." >&2
   kubectl -n agents delete "pod/agent-$RUN_ID" "secret/agent-$RUN_ID" --ignore-not-found
 }
 trap cleanup EXIT
@@ -361,8 +369,15 @@ printf 'HTTPS_PROXY=%s\nHTTP_PROXY=%s\n' "$PROXY_URL" "$PROXY_URL" \
   | kubectl -n agents create secret generic "agent-$RUN_ID" --from-env-file=/dev/stdin
 
 sed "s/<run-id>/$RUN_ID/g" agent-pod.yaml | kubectl apply -f -
-# Retry until the container starts, then follow its output until the agent exits.
-until kubectl -n agents logs -f "agent-$RUN_ID" 2>/dev/null; do sleep 2; done
+# Wait up to 2 minutes for the container to start, then follow its output until
+# the agent exits.
+for attempt in $(seq 60); do
+  kubectl -n agents logs -f "agent-$RUN_ID" 2>/dev/null && exit 0
+  sleep 2
+done
+echo "The agent's pod didn't start:" >&2
+kubectl -n agents describe pod "agent-$RUN_ID" | tail -n 15 >&2
+exit 1
 ```
 
 The script calls [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) and, when it exits, [the endpoint that revokes a session](/api-reference/endpoints/agent-vault-sessions/revoke). Your orchestrator can make the same calls in any language (see [Create sessions with the API](/documentation/platform/agent-vault/sessions-api)).
@@ -392,6 +407,7 @@ In Agent Vault, go to **Sessions** and select **All Sessions**. Find the session
 
 - **Hosts through the proxy:** agent pods can only connect to the proxy and DNS. With **Access bundle hosts only**, the agent can reach the hosts that services in the session's access bundle cover, and the proxy's exceptions
 - **DNS:** agent pods still need DNS to find the proxy, and DNS lookups can carry data out of the pod, so a network policy doesn't close every channel
+- **APIs that echo requests:** if an endpoint returns the request's headers in its response, such as an echo or debug endpoint, the response exposes the credential that the proxy attached, so limit each service to the [methods and paths](/documentation/platform/agent-vault/http-apis#methods-and-paths) the agent needs
 - **Revoking a session:** the proxy stops attaching credentials for a revoked session within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval)
 - **Several teams:** a proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy) and exceptions apply to every agent that uses it, so give each team or customer its own proxy and agents namespace if they need different access
 - **Unsupported connections:** WebSocket connections and clients that only speak HTTP/2, such as gRPC clients, fail through the proxy (see [Supported connections](/documentation/platform/agent-vault/proxies#supported-connections))
