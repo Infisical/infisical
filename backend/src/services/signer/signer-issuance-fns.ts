@@ -19,6 +19,7 @@ import {
   CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm
 } from "@app/services/certificate/certificate-types";
+import { certKeyAlgorithmToHsmKeyAlgorithm } from "@app/services/hsm-connector/hsm-connector-fns";
 import type { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -211,6 +212,12 @@ export const hsmKeyAlgorithmToCertKeyAlgorithm = (hsmAlg: HsmKeyAlgorithm): Cert
       return CertKeyAlgorithm.ECDSA_P256;
     case HsmKeyAlgorithm.ECC_P384:
       return CertKeyAlgorithm.ECDSA_P384;
+    case HsmKeyAlgorithm.ML_DSA_44:
+      return CertKeyAlgorithm.ML_DSA_44;
+    case HsmKeyAlgorithm.ML_DSA_65:
+      return CertKeyAlgorithm.ML_DSA_65;
+    case HsmKeyAlgorithm.ML_DSA_87:
+      return CertKeyAlgorithm.ML_DSA_87;
     default: {
       const exhaustive: never = hsmAlg;
       throw new BadRequestError({ message: `Unsupported HSM key algorithm: ${exhaustive as string}` });
@@ -219,22 +226,13 @@ export const hsmKeyAlgorithmToCertKeyAlgorithm = (hsmAlg: HsmKeyAlgorithm): Cert
 };
 
 export const mapCertKeyAlgorithmToHsmKeyAlgorithm = (certAlg: string): HsmKeyAlgorithm => {
-  switch (certAlg) {
-    case CertKeyAlgorithm.RSA_2048:
-      return HsmKeyAlgorithm.RSA_2048;
-    case CertKeyAlgorithm.RSA_3072:
-      return HsmKeyAlgorithm.RSA_3072;
-    case CertKeyAlgorithm.RSA_4096:
-      return HsmKeyAlgorithm.RSA_4096;
-    case CertKeyAlgorithm.ECDSA_P256:
-      return HsmKeyAlgorithm.ECC_P256;
-    case CertKeyAlgorithm.ECDSA_P384:
-      return HsmKeyAlgorithm.ECC_P384;
-    default:
-      throw new BadRequestError({
-        message: `Cannot route HSM renewal: cert keyAlgorithm "${certAlg}" is not supported by the HSM Connector.`
-      });
+  const hsmKeyAlgorithm = isPqcAlgorithm(certAlg) ? undefined : certKeyAlgorithmToHsmKeyAlgorithm(certAlg);
+  if (!hsmKeyAlgorithm) {
+    throw new BadRequestError({
+      message: `Cannot route HSM renewal: cert keyAlgorithm "${certAlg}" is not supported by the HSM Connector.`
+    });
   }
+  return hsmKeyAlgorithm;
 };
 
 export const issueHsmBackedSignerCertificate = async (
