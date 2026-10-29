@@ -43,6 +43,7 @@ import { TCertificateRequestDALFactory } from "../certificate-request/certificat
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { TRenewCertificateDTO } from "../certificate-v3/certificate-v3-types";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
@@ -143,7 +144,7 @@ export type TIssueCertificateFromProfileJobData = {
   keyUsages?: string[];
   extendedKeyUsages?: string[];
   isRenewal?: boolean;
-  isReissue?: boolean;
+  externalConfiguration?: TRenewCertificateDTO["externalConfiguration"];
   originalCertificateId?: string;
   certificateRequestId?: string;
   csr?: string;
@@ -393,7 +394,7 @@ export const certificateIssuanceQueueFactory = ({
       keyUsages,
       extendedKeyUsages,
       isRenewal,
-      isReissue,
+      externalConfiguration,
       originalCertificateId,
       certificateRequestId,
       csr,
@@ -870,7 +871,7 @@ export const certificateIssuanceQueueFactory = ({
           const parsedMetadata = DigiCertExternalMetadataSchema.safeParse(originalCert?.externalMetadata);
           if (parsedMetadata.success) {
             renewalOfOrderId = parsedMetadata.data.orderId;
-          } else if (isReissue) {
+          } else if (externalConfiguration?.reissue) {
             throw new BadRequestError({
               message: "This certificate has no DigiCert order to reissue. Place a new order instead."
             });
@@ -896,7 +897,7 @@ export const certificateIssuanceQueueFactory = ({
         };
 
         const digicertResult =
-          isReissue && renewalOfOrderId !== undefined
+          externalConfiguration?.reissue && renewalOfOrderId !== undefined
             ? await digicertFns.reissueCertificate({ ...digicertRequest, orderId: renewalOfOrderId })
             : await digicertFns.orderCertificate({
                 ...digicertRequest,
@@ -910,7 +911,7 @@ export const certificateIssuanceQueueFactory = ({
           logger.info(
             `Cancelled after DigiCert order — order placed at CA but will not be tracked locally [certificateRequestId=${certificateRequestId}]`
           );
-          if (isReissue) logger.error(untrackedReissueMessage);
+          if (externalConfiguration?.reissue) logger.error(untrackedReissueMessage);
           return;
         }
 
@@ -943,7 +944,7 @@ export const certificateIssuanceQueueFactory = ({
           logger.info(
             `Skipping DigiCert validation transition — request is no longer pending [certificateRequestId=${certificateRequestId}]`
           );
-          if (isReissue) logger.error(untrackedReissueMessage);
+          if (externalConfiguration?.reissue) logger.error(untrackedReissueMessage);
           return;
         }
 

@@ -1310,7 +1310,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             applicationId: data.applicationId,
             applicationName: data.applicationName,
             renewalKeySource: req.body?.renewalKeySource ?? CertificateRenewalKeySource.New,
-            reissue: req.body?.externalConfiguration?.reissue ?? false,
+            externalConfiguration: req.body?.externalConfiguration,
             changedAttributes: data.changedAttributes ?? []
           }
         }

@@ -1086,7 +1086,6 @@ export const certificateRenewalServiceFactory = ({
     internal?: boolean;
   }): Promise<TCertificateIssuanceResponse> => {
     const actorCtx: TRenewalActor = { actor, actorId, actorAuthMethod, actorOrgId };
-    const reissue = Boolean(externalConfiguration?.reissue);
     const keySource = resolveRenewalKeySource({ renewalKeySource: requestedKeySource, csr });
     let csrRenewalRequest: TCertificateRequest | null = null;
     if (keySource === CertificateRenewalKeySource.Csr && csr) {
@@ -1134,15 +1133,21 @@ export const certificateRenewalServiceFactory = ({
           tx
         );
 
-        if (reissue && !(caType && caSupportsCapability(caType, CaCapability.REISSUE_CERTIFICATES))) {
+        if (
+          externalConfiguration?.reissue &&
+          !(caType && caSupportsCapability(caType, CaCapability.REISSUE_CERTIFICATES))
+        ) {
           throw new BadRequestError({
             message: "Reissue is only available for DigiCert certificates."
           });
         }
-        if (reissue && attributes?.ttl) {
+        if (externalConfiguration?.reissue && attributes?.ttl) {
           throw new BadRequestError({ message: "Remove the TTL. It can't be set on a reissue." });
         }
-        if (reissue && !DigiCertExternalMetadataSchema.safeParse(originalCert.externalMetadata).success) {
+        if (
+          externalConfiguration?.reissue &&
+          !DigiCertExternalMetadataSchema.safeParse(originalCert.externalMetadata).success
+        ) {
           throw new BadRequestError({
             message: "This certificate has no DigiCert order to reissue. Place a new order instead."
           });
@@ -1482,7 +1487,7 @@ export const certificateRenewalServiceFactory = ({
         state: renewalRequest.state,
         locality: renewalRequest.locality,
         isRenewal: true,
-        ...(reissue && { isReissue: true }),
+        ...(externalConfiguration && { externalConfiguration }),
         originalCertificateId: certificateId,
         certificateRequestId: certificateRequest.id,
         basicConstraints: renewalBasicConstraints,
