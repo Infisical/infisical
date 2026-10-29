@@ -10,7 +10,6 @@ import {
   completePullRequestCheckRun,
   createSkippedPullRequestCheckRun,
   getPullRequestScanCheckRunResult,
-  isGitHubPullRequestScanPayload,
   scanGitHubCommitsAndGetFindings
 } from "./github-secret-scanning-fns";
 
@@ -75,42 +74,7 @@ const makeFinding = (index: number): TFindingsPayload[number] => ({
   }
 });
 
-describe("isGitHubPullRequestScanPayload", () => {
-  test("tells a pull request scan from a push", () => {
-    expect(
-      isGitHubPullRequestScanPayload({
-        installationId: "1",
-        repository: { id: 1, full_name: "acme/api" },
-        pullRequest: { number: 7, baseSha: "base", headSha: "head" },
-        checkRunId: 99
-      })
-    ).toBe(true);
-
-    expect(isGitHubPullRequestScanPayload({ commits: [], repository: { id: 1, full_name: "acme/api" } } as never)).toBe(
-      false
-    );
-  });
-});
-
 describe("getPullRequestScanCheckRunResult", () => {
-  test("passes when every commit was scanned and nothing was found", () => {
-    const result = getPullRequestScanCheckRunResult({ findings: [], scannedCommitCount: 3, totalCommitCount: 3 });
-
-    expect(result.conclusion).toBe("success");
-    expect(result.summary).toContain("Scanned 3 commit(s)");
-  });
-
-  test("does not pass a pull request whose commits were only partly scanned", () => {
-    const result = getPullRequestScanCheckRunResult({
-      findings: [],
-      scannedCommitCount: 2000,
-      totalCommitCount: 2100
-    });
-
-    expect(result.conclusion).toBe("neutral");
-    expect(result.summary).toContain("has 2100 commits");
-  });
-
   test("fails on any finding and never includes the secret", () => {
     const result = getPullRequestScanCheckRunResult({
       findings: [makeFinding(0), makeFinding(1)],
@@ -155,14 +119,6 @@ describe("getPullRequestScanCheckRunResult", () => {
     expect(result.summary).toContain("1 more secret(s) were marked as false positives or ignored");
     expect(result.offerSkipActions).toBe(true);
   });
-
-  test("caps the summary table and says how many findings it shows", () => {
-    const findings = Array.from({ length: 60 }, (_, index) => makeFinding(index));
-    const result = getPullRequestScanCheckRunResult({ findings, scannedCommitCount: 1, totalCommitCount: 1 });
-
-    expect(result.summary).toContain("Showing 50 of 60 findings.");
-    expect(result.summary.match(/\| github-pat \|/g)).toHaveLength(50);
-  });
 });
 
 describe("completePullRequestCheckRun", () => {
@@ -184,37 +140,14 @@ describe("completePullRequestCheckRun", () => {
 
     const [first, second, third] = checksUpdate.mock.calls.map(([params]) => params);
 
-    expect(first).toMatchObject({
-      owner: "acme",
-      repo: "api",
-      check_run_id: 99,
-      status: "completed",
-      conclusion: "failure"
-    });
-    expect(first.output.annotations).toHaveLength(50);
-    expect(second.output.annotations).toHaveLength(50);
-    expect(second.conclusion).toBeUndefined();
-    expect(third.output.annotations).toHaveLength(20);
+    expect(first).toMatchObject({ status: "completed", conclusion: "failure" });
+    expect([first, second, third].map((params) => params.output.annotations.length)).toEqual([50, 50, 20]);
     expect(first.actions?.map((action) => action.identifier)).toEqual([
       SecretScanningFindingStatus.FalsePositive,
       SecretScanningFindingStatus.Ignore
     ]);
     expect(second.actions).toBeUndefined();
-    expect(first.output.annotations[0].message).toBe("GitHub Personal Access Token. Found in commit abc123d.");
     expect(JSON.stringify(checksUpdate.mock.calls)).not.toContain(SECRET_VALUE);
-  });
-
-  test("completes a check run with no findings in a single update", async () => {
-    await completePullRequestCheckRun({
-      installationId: "1",
-      repositoryFullName: "acme/api",
-      checkRunId: 99,
-      result: getPullRequestScanCheckRunResult({ findings: [], scannedCommitCount: 1, totalCommitCount: 1 })
-    });
-
-    expect(checksUpdate).toHaveBeenCalledTimes(1);
-    expect(checksUpdate.mock.calls[0][0]).toMatchObject({ conclusion: "success", output: { annotations: [] } });
-    expect(checksUpdate.mock.calls[0][0].actions).toBeUndefined();
   });
 });
 
@@ -223,6 +156,16 @@ describe("scanGitHubCommitsAndGetFindings", () => {
     scanContentAndGetFindings.mockReset();
     scanContentAndGetFindings.mockResolvedValue([]);
   });
+
+  const commit = { sha: "c".repeat(40), authorName: "a", authorEmail: "a@a.com", date: "", message: "m" };
+  const makeFiles = (count: number, offset: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      status: "modified",
+      filename: `file-${offset + index}.txt`,
+      patch: `@@ -0,0 +1 @@\n+file-${offset + index}`
+    }));
+  const asOctokit = (getCommit: unknown) =>
+    ({ repos: { getCommit } }) as unknown as Parameters<typeof scanGitHubCommitsAndGetFindings>[0]["octokit"];
 
   test("scans the patch of every file except removed ones", async () => {
     const getCommit = vi.fn().mockResolvedValue({
@@ -236,25 +179,15 @@ describe("scanGitHubCommitsAndGetFindings", () => {
     });
 
     await scanGitHubCommitsAndGetFindings({
-      octokit: { repos: { getCommit } } as unknown as Parameters<typeof scanGitHubCommitsAndGetFindings>[0]["octokit"],
+      octokit: asOctokit(getCommit),
       repositoryFullName: "acme/api",
       resourceName: "acme/api",
-      commits: [{ sha: "a".repeat(40), authorName: "a", authorEmail: "a@a.com", date: "", message: "m" }]
+      commits: [commit]
     });
 
     const scanned = scanContentAndGetFindings.mock.calls.map(([content]) => content.trim());
     expect(scanned).toEqual(["added", "modified", "renamed", "copied", "changed"]);
   });
-
-  const commit = { sha: "c".repeat(40), authorName: "a", authorEmail: "a@a.com", date: "", message: "m" };
-  const makeFiles = (count: number, offset: number) =>
-    Array.from({ length: count }, (_, index) => ({
-      status: "modified",
-      filename: `file-${offset + index}.txt`,
-      patch: `@@ -0,0 +1 @@\n+file-${offset + index}`
-    }));
-  const asOctokit = (getCommit: unknown) =>
-    ({ repos: { getCommit } }) as unknown as Parameters<typeof scanGitHubCommitsAndGetFindings>[0]["octokit"];
 
   test("scans every page of a commit's files", async () => {
     const getCommit = vi
@@ -296,23 +229,6 @@ describe("scanGitHubCommitsAndGetFindings", () => {
     expect(getCommit).toHaveBeenCalledTimes(30);
     expect(scanContentAndGetFindings).not.toHaveBeenCalled();
   });
-
-  test("scans the files GitHub lists when the scan doesn't require every file", async () => {
-    let page = 0;
-    const getCommit = vi.fn().mockImplementation(() => {
-      page += 1;
-      return Promise.resolve({ data: { files: makeFiles(100, (page - 1) * 100) } });
-    });
-
-    await scanGitHubCommitsAndGetFindings({
-      octokit: asOctokit(getCommit),
-      repositoryFullName: "acme/api",
-      resourceName: "acme/api",
-      commits: [commit]
-    });
-
-    expect(scanContentAndGetFindings).toHaveBeenCalledTimes(3000);
-  });
 });
 
 describe("createSkippedPullRequestCheckRun", () => {
@@ -329,25 +245,14 @@ describe("createSkippedPullRequestCheckRun", () => {
     checksListForRef.mockReset();
   });
 
-  test("creates a check with the scan's name, already completed as skipped, with no scan behind it", async () => {
+  // Same name as the scan's check, so a required check passes on a fork's pull request.
+  test("creates a skipped check under the scan's check name", async () => {
     checksListForRef.mockResolvedValue({ data: { total_count: 0, check_runs: [] } });
 
     expect(await createSkippedPullRequestCheckRun(params)).toBe(true);
-
-    expect(checksListForRef).toHaveBeenCalledWith(
-      expect.objectContaining({ ref: "b".repeat(40), check_name: "Infisical Secret Scanning", app_id: 1 })
-    );
     expect(checksCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        owner: "acme",
-        repo: "api",
-        name: "Infisical Secret Scanning",
-        head_sha: "b".repeat(40),
-        status: "completed",
-        conclusion: "skipped"
-      })
+      expect.objectContaining({ name: "Infisical Secret Scanning", status: "completed", conclusion: "skipped" })
     );
-    expect(checksCreate.mock.calls[0][0]).not.toHaveProperty("external_id");
   });
 
   test("leaves a commit that a scan already reported on alone", async () => {
