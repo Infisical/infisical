@@ -21,8 +21,7 @@ This guide shows you how to run AI agents in Kubernetes behind Agent Vault. You'
 - A Kubernetes cluster whose network plugin enforces network policies, such as [Cilium](https://cilium.io) or [Calico](https://www.tigera.io/project-calico/)
 - Permission to create namespaces and RBAC roles in the cluster with `kubectl`
 - An image for your agent that runs as a non-root user and includes the [Infisical CLI](/cli/overview) `0.44.10` or later, such as the one in [the Docker guide's `Dockerfile`](/documentation/platform/agent-vault/guides/docker#step-3-write-the-agent’s-dockerfile)
-- An orchestrator to start agent runs, such as a script, a CI or job runner job, or a Kubernetes controller (Step 5 includes a script you can start from)
-- [`curl`](https://curl.se), [`jq`](https://jqlang.org), and [`openssl`](https://openssl-library.org) on the machine that runs your orchestrator, for the example script in Step 5
+- [`curl`](https://curl.se), [`jq`](https://jqlang.org), and [`openssl`](https://openssl-library.org) on the machine where you run the script in Step 5
 - If you want agents to run on gVisor or Kata Containers, a RuntimeClass for that runtime in the cluster (see [Choose an isolation level](/documentation/platform/agent-vault/guides/kubernetes#choose-an-isolation-level))
 
 ## Step 1: Set up Agent Vault
