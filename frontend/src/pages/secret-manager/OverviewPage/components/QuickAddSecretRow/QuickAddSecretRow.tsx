@@ -44,7 +44,7 @@ type Props = {
     isDirectSave?: boolean
   ) => Promise<void>;
   onPasteSecrets: (env: TParsedEnv) => void;
-  onQueuedSecretConflict?: (key: string) => boolean;
+  onQueuedSecretConflict?: (draft: { key: string; value: string; comment: string }) => boolean;
   renderResourceTypeTrigger: (isDisabled: boolean) => ReactNode;
   saveLabel?: string;
   secretPath: string;
@@ -80,8 +80,8 @@ export const QuickAddSecretRow = ({
   const [valueEditorStyle, setValueEditorStyle] = useState<CSSProperties>();
   const isMultiEnvironmentView = environments.length > 1;
   const environmentSlugs = environments.join(",");
-  const latestKeyRef = useRef(key);
-  latestKeyRef.current = key;
+  const latestDraftRef = useRef({ key, value, comment });
+  latestDraftRef.current = { key, value, comment };
   const confirmedFreeKeyRef = useRef<string>(undefined);
 
   useEffect(() => {
@@ -216,7 +216,7 @@ export const QuickAddSecretRow = ({
         })
           .catch(() => [])
           .then((environmentsWithKey) => {
-            if (!environmentsWithKey.length || !onQueuedSecretConflict?.(queuedDraft.key)) return;
+            if (!environmentsWithKey.length || !onQueuedSecretConflict?.(queuedDraft)) return;
             const duplicateKeyError = getDuplicateKeyError(
               environmentsWithKey,
               isMultiEnvironmentView
@@ -225,7 +225,8 @@ export const QuickAddSecretRow = ({
               type: "error",
               text: `${duplicateKeyError}, so '${queuedDraft.key}' was removed from your pending changes`
             });
-            if (latestKeyRef.current) return;
+            const latestDraft = latestDraftRef.current;
+            if (latestDraft.key || latestDraft.value || latestDraft.comment) return;
             setKey(queuedDraft.key);
             setValue(queuedDraft.value);
             setComment(queuedDraft.comment);

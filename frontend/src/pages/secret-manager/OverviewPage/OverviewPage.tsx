@@ -4587,13 +4587,15 @@ const OverviewPageContent = () => {
                                   isDirectSave
                                 );
                               }}
-                              onQueuedSecretConflict={(key) => {
+                              onQueuedSecretConflict={(draft) => {
                                 const pendingCreate = batchStoreApi
                                   .getState()
                                   .pendingChanges.secrets.find(
                                     (change) =>
                                       change.type === PendingAction.Create &&
-                                      change.secretKey === key
+                                      change.secretKey === draft.key &&
+                                      change.secretValue === draft.value &&
+                                      (change.secretComment ?? "") === draft.comment
                                   );
                                 if (!pendingCreate || !singleVisibleEnv) return false;
                                 removePendingChange(pendingCreate.id, "secret", {
