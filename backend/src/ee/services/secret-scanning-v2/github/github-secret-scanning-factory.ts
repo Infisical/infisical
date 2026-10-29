@@ -1,15 +1,20 @@
 import { join } from "path";
 import { ProbotOctokit } from "probot";
 
-import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  SecretScanningDataSource,
+  SecretScanningScanTrigger
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
   assertProviderRepositorySizeWithinLimit,
   cloneRepository
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
   TSecretScanningFactoryGetDiffScanFindingsPayload,
+  TSecretScanningFactoryGetDiffScanReport,
   TSecretScanningFactoryGetDiffScanResourcePayload,
   TSecretScanningFactoryGetFullScanPath,
+  TSecretScanningFactoryGetScanReport,
   TSecretScanningFactoryInitialize,
   TSecretScanningFactoryListRawResources,
   TSecretScanningFactoryPostInitialization,
@@ -23,11 +28,14 @@ import { BasicRepositoryRegex } from "@app/lib/regex";
 import { listGitHubRadarRepositories, TGitHubRadarConnection } from "@app/services/app-connection/github-radar";
 
 import {
+  createPullRequestScanReport,
   getGitHubRadarInstallationOctokit,
+  getPullRequestScanMetadata,
   isGitHubPullRequestScanPayload,
   scanGitHubCommitsAndGetFindings,
   scanGitHubPullRequest
 } from "./github-secret-scanning-fns";
+import { GitHubPullRequestScanMetadataSchema } from "./github-secret-scanning-schemas";
 import {
   TGitHubDataSourceInput,
   TGitHubDataSourceWithConnection,
@@ -151,13 +159,12 @@ export const GitHubSecretScanningFactory = () => {
     TQueueGitHubResourceDiffScan["payload"]
   > = async ({ dataSource, payload, resourceName, configPath }) => {
     if (isGitHubPullRequestScanPayload(payload)) {
-      const { findings } = await scanGitHubPullRequest({ payload, resourceName, configPath });
-      return findings;
+      return scanGitHubPullRequest({ payload, resourceName, configPath });
     }
 
     const { commits, repository } = payload;
 
-    return scanGitHubCommitsAndGetFindings({
+    const findings = await scanGitHubCommitsAndGetFindings({
       octokit: getGitHubRadarInstallationOctokit(dataSource.connection.credentials.installationId),
       repositoryFullName: repository.full_name,
       resourceName,
@@ -170,6 +177,35 @@ export const GitHubSecretScanningFactory = () => {
       })),
       configPath
     });
+
+    return { findings };
+  };
+
+  // Pull request scans report to the check run they were created for; pushes report nowhere.
+  const getDiffScanReport: TSecretScanningFactoryGetDiffScanReport<TQueueGitHubResourceDiffScan["payload"]> = (
+    payload
+  ) => {
+    if (!isGitHubPullRequestScanPayload(payload)) return undefined;
+
+    return createPullRequestScanReport({
+      installationId: payload.installationId,
+      repositoryFullName: payload.repository.full_name,
+      metadata: getPullRequestScanMetadata(payload)
+    });
+  };
+
+  const getScanReport: TSecretScanningFactoryGetScanReport = ({ scan, dataSource, resourceName }) => {
+    if (scan.trigger !== SecretScanningScanTrigger.PullRequest || !dataSource.externalId) return undefined;
+
+    const metadata = GitHubPullRequestScanMetadataSchema.safeParse(scan.metadata);
+    if (!metadata.success) return undefined;
+
+    return createPullRequestScanReport({
+      // A GitHub data source's external ID is its installation ID.
+      installationId: dataSource.externalId,
+      repositoryFullName: resourceName,
+      metadata: metadata.data
+    });
   };
 
   return {
@@ -179,6 +215,8 @@ export const GitHubSecretScanningFactory = () => {
     getFullScanPath,
     getDiffScanResourcePayload,
     getDiffScanFindingsPayload,
+    getDiffScanReport,
+    getScanReport,
     teardown,
     setupWebhook,
     validateConfigUpdate

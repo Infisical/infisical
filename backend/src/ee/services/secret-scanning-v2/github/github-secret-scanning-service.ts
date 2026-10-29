@@ -15,14 +15,15 @@ import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 
 import { GitHubPullRequestEvent } from "./github-secret-scanning-enums";
+import { TQueueGitHubPullRequestEvent } from "./github-secret-scanning-types";
 
 export const githubSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
-  secretScanningV2Queue: Pick<
-    TSecretScanningV2QueueServiceFactory,
-    "handleResourcePushEvent" | "queueGitHubPullRequestEvent"
-  >
+  secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "handleResourcePushEvent" | "queueDataSourceEvent">
 ) => {
+  const queuePullRequestEvent = (event: TQueueGitHubPullRequestEvent, deliveryId: string) =>
+    secretScanningV2Queue.queueDataSourceEvent({ dataSourceType: SecretScanningDataSource.GitHub, event }, deliveryId);
+
   const handleInstallationDeletedEvent = async (installationId: number) => {
     const dataSource = await secretScanningV2DAL.dataSources.findOne({
       externalId: String(installationId),
@@ -74,7 +75,7 @@ export const githubSecretScanningService = (
     });
   };
 
-  // The pull request events below only enqueue; github-secret-scanning-pull-request-events.ts processes them in the
+  // The pull request events below only enqueue; github-secret-scanning-event-processor.ts processes them in the
   // secret scanning worker, so the webhook responds before any GitHub API call or scan is made.
   const handlePullRequestEvent = async (
     payload: PullRequestOpenedEvent | PullRequestSynchronizeEvent | PullRequestReopenedEvent,
@@ -89,7 +90,7 @@ export const githubSecretScanningService = (
       return;
     }
 
-    await secretScanningV2Queue.queueGitHubPullRequestEvent(
+    await queuePullRequestEvent(
       {
         event: GitHubPullRequestEvent.PullRequest,
         installationId: installation.id,
@@ -116,7 +117,7 @@ export const githubSecretScanningService = (
 
     if (String(checkRun.app.id) !== getConfig().INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) return;
 
-    await secretScanningV2Queue.queueGitHubPullRequestEvent(
+    await queuePullRequestEvent(
       {
         event: GitHubPullRequestEvent.CheckRunRerequested,
         installationId: installation.id,
@@ -140,7 +141,7 @@ export const githubSecretScanningService = (
 
     if (String(checkSuite.app.id) !== getConfig().INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) return;
 
-    await secretScanningV2Queue.queueGitHubPullRequestEvent(
+    await queuePullRequestEvent(
       {
         event: GitHubPullRequestEvent.CheckSuiteRerequested,
         installationId: installation.id,
@@ -163,7 +164,7 @@ export const githubSecretScanningService = (
 
     if (String(checkRun.app.id) !== getConfig().INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) return;
 
-    await secretScanningV2Queue.queueGitHubPullRequestEvent(
+    await queuePullRequestEvent(
       {
         event: GitHubPullRequestEvent.CheckRunRequestedAction,
         installationId: installation.id,

@@ -17,8 +17,8 @@ import {
   TSecretRotationRotateSecretsJobPayload,
   TSecretRotationSendNotificationJobPayload
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import { TQueueGitHubPullRequestEvent } from "@app/ee/services/secret-scanning-v2/github/github-secret-scanning-types";
 import {
+  TQueueSecretScanningDataSourceEvent,
   TQueueSecretScanningDataSourceFullScan,
   TQueueSecretScanningResourceDiffScan,
   TQueueSecretScanningResourceDiffScanPayload,
@@ -190,7 +190,7 @@ export enum QueueJobs {
   // name carry it, and the drain branch on QueueName.SecretScanningV2 matches on it.
   SecretScanningV2DiffScan = "secret-scanning-v2-diff-scan",
   SecretScanningV2SendNotification = "secret-scanning-v2-notification",
-  SecretScanningV2GitHubPullRequestEvent = "secret-scanning-v2-github-pull-request-event",
+  SecretScanningV2DataSourceEvent = "secret-scanning-v2-data-source-event",
   CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber",
   CaIssueCertificateFromProfile = "ca-issue-certificate-from-profile",
   PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal",
@@ -499,8 +499,8 @@ export type TQueueJobTypes = {
         payload: TQueueSecretScanningSendNotification;
       }
     | {
-        name: QueueJobs.SecretScanningV2GitHubPullRequestEvent;
-        payload: TQueueGitHubPullRequestEvent;
+        name: QueueJobs.SecretScanningV2DataSourceEvent;
+        payload: TQueueSecretScanningDataSourceEvent;
       };
   [QueueName.SecretScanningV2FullScan]: {
     name: QueueJobs.SecretScanningV2FullScan;

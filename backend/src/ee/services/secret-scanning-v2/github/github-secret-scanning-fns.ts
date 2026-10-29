@@ -12,7 +12,9 @@ import {
 import { GitRepositoryScanFindingDetailsSchema } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-schemas";
 import {
   TFindingsPayload,
-  TQueueSecretScanningResourceDiffScan
+  TQueueSecretScanningResourceDiffScan,
+  TSecretScanningDiffScanFindings,
+  TSecretScanningScanReport
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
@@ -20,7 +22,7 @@ import { getConfig } from "@app/lib/config/env";
 import { chunkArray } from "@app/lib/fn/array";
 import { logger } from "@app/lib/logger";
 
-import { TGitHubPullRequestScanPayload } from "./github-secret-scanning-types";
+import { TGitHubPullRequestScanMetadata, TGitHubPullRequestScanPayload } from "./github-secret-scanning-types";
 
 export const GITHUB_PULL_REQUEST_CHECK_NAME = "Infisical Secret Scanning";
 
@@ -223,7 +225,7 @@ export const scanGitHubPullRequest = async ({
   payload: TGitHubPullRequestScanPayload;
   resourceName: string;
   configPath?: string;
-}) => {
+}): Promise<TSecretScanningDiffScanFindings> => {
   const octokit = getGitHubRadarInstallationOctokit(payload.installationId);
 
   const { commits, totalCommits } = await listPullRequestCommits(octokit, {
@@ -240,7 +242,7 @@ export const scanGitHubPullRequest = async ({
     configPath
   });
 
-  return { findings, scannedCommitCount: commits.length, totalCommitCount: totalCommits };
+  return { findings, details: { scannedCommitCount: commits.length, totalCommitCount: totalCommits } };
 };
 
 export const createPullRequestCheckRun = async ({
@@ -489,4 +491,55 @@ export const tryCompletePullRequestCheckRun = async (
       `secretScanningV2PullRequestScan: GitHub - failed to complete check run [repository=${params.repositoryFullName}] [checkRunId=${params.checkRunId}] [conclusion=${params.result.conclusion}]`
     );
   }
+};
+
+export const getPullRequestScanMetadata = (payload: TGitHubPullRequestScanPayload): TGitHubPullRequestScanMetadata => ({
+  pullRequestNumber: payload.pullRequest.number,
+  baseSha: payload.pullRequest.baseSha,
+  headSha: payload.pullRequest.headSha,
+  checkRunId: payload.checkRunId
+});
+
+// The scan's finding IDs are kept so a skip from the check run can triage exactly the findings it failed on.
+export const createPullRequestScanReport = ({
+  installationId,
+  repositoryFullName,
+  metadata
+}: {
+  installationId: string;
+  repositoryFullName: string;
+  metadata: TGitHubPullRequestScanMetadata;
+}): TSecretScanningScanReport => {
+  const target = { installationId, repositoryFullName, checkRunId: metadata.checkRunId };
+
+  return {
+    start: async () => {
+      try {
+        await startPullRequestCheckRun(target);
+      } catch (error) {
+        logger.warn(
+          error,
+          `secretScanningV2PullRequestScan: GitHub - failed to mark check run in progress [repository=${repositoryFullName}] [checkRunId=${metadata.checkRunId}]`
+        );
+      }
+    },
+    getCompletedScanMetadata: ({ findings }) =>
+      ({ ...metadata, findingIds: findings.map((finding) => finding.id) }) satisfies TGitHubPullRequestScanMetadata,
+    // Judged on every finding in the pull request's commits, including ones an earlier push scan saved first.
+    complete: ({ findings, details }) =>
+      tryCompletePullRequestCheckRun({
+        ...target,
+        result: getPullRequestScanCheckRunResult({
+          findings,
+          scannedCommitCount: details?.scannedCommitCount ?? 0,
+          totalCommitCount: details?.totalCommitCount ?? 0
+        })
+      }),
+    fail: ({ reason, isTimedOut }) =>
+      tryCompletePullRequestCheckRun({
+        ...target,
+        result: getPullRequestScanFailedCheckRunResult(reason, isTimedOut ? "timed_out" : "failure")
+      }),
+    cancel: () => tryCompletePullRequestCheckRun({ ...target, result: PULL_REQUEST_SCAN_CANCELLED_CHECK_RUN_RESULT })
+  };
 };

@@ -47,6 +47,11 @@ export type TQueueGitHubResourceDiffScan = {
   scanId: string;
 };
 
+export type TGitHubDiffScanDetails = {
+  scannedCommitCount: number;
+  totalCommitCount: number;
+};
+
 // Webhook events are reduced to what processing them needs, so the queue never holds GitHub's full payload.
 export type TQueueGitHubPullRequestEvent = {
   installationId: number;
@@ -63,3 +68,8 @@ export type TQueueGitHubPullRequestEvent = {
       sender: { id: number; login: string };
     }
 );
+
+export type TQueueGitHubDataSourceEvent = {
+  dataSourceType: SecretScanningDataSource.GitHub;
+  event: TQueueGitHubPullRequestEvent;
+};

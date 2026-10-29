@@ -318,12 +318,14 @@ export const BitbucketSecretScanningFactory = () => {
       }
     }
 
-    return allFindings.map((finding) => ({
-      details: toFindingDetails(finding),
-      fingerprint: finding.Fingerprint,
-      severity: SecretScanningFindingSeverity.High,
-      rule: finding.RuleID
-    }));
+    return {
+      findings: allFindings.map((finding) => ({
+        details: toFindingDetails(finding),
+        fingerprint: finding.Fingerprint,
+        severity: SecretScanningFindingSeverity.High,
+        rule: finding.RuleID
+      }))
+    };
   };
 
   const setupWebhook: TSecretScanningFactorySetupWebhook<

@@ -86,7 +86,7 @@ export type TSecretScanningV2ServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   secretScanningV2Queue: Pick<
     TSecretScanningV2QueueServiceFactory,
-    "queueDataSourceFullScan" | "queueResourceDiffScan" | "queueGitHubPullRequestEvent" | "handleResourcePushEvent"
+    "queueDataSourceFullScan" | "queueResourceDiffScan" | "queueDataSourceEvent" | "handleResourcePushEvent"
   >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock">;

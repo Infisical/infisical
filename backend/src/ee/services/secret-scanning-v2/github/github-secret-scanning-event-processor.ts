@@ -1,14 +1,13 @@
 import { Repository } from "@octokit/webhooks-types";
 import { z } from "zod";
 
-import { TSecretScanningDataSources, TSecretScanningResources, TSecretScanningResourcesInsert } from "@app/db/schemas";
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
-import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   SecretScanningDataSource,
   SecretScanningFindingStatus,
   SecretScanningScanTrigger
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import { TSecretScanningEventProcessor } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { logger } from "@app/lib/logger";
@@ -18,34 +17,19 @@ import { GitHubPullRequestEvent } from "./github-secret-scanning-enums";
 import {
   createPullRequestCheckRun,
   getLatestPullRequestCheckRunExternalId,
+  getPullRequestScanMetadata,
   isPullRequestCheckSkipStatus
 } from "./github-secret-scanning-fns";
 import { GitHubPullRequestScanMetadataSchema } from "./github-secret-scanning-schemas";
 import { TGitHubPullRequestScanPayload, TQueueGitHubPullRequestEvent } from "./github-secret-scanning-types";
 
-type TGitHubPullRequestEventsFactoryDep = {
-  secretScanningV2DAL: TSecretScanningV2DALFactory;
-  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  discoverResource: (params: {
-    dataSource: Pick<TSecretScanningDataSources, "id" | "isHistoricalScanEnabled">;
-    resourcePayload: Pick<TSecretScanningResourcesInsert, "externalId" | "name">;
-    trigger: SecretScanningScanTrigger.PullRequest;
-  }) => Promise<TSecretScanningResources | undefined>;
-  queuePullRequestScan: (params: {
-    scanId: string;
-    dataSourceId: string;
-    resourceId: string;
-    payload: TGitHubPullRequestScanPayload;
-  }) => Promise<void>;
-};
-
 // Runs in the secret scanning worker, so the webhook only has to enqueue the event.
-export const githubPullRequestEventsFactory = ({
+export const GitHubSecretScanningEventProcessor: TSecretScanningEventProcessor<TQueueGitHubPullRequestEvent> = ({
   secretScanningV2DAL,
   auditLogService,
   discoverResource,
-  queuePullRequestScan
-}: TGitHubPullRequestEventsFactoryDep) => {
+  queueReportedDiffScan
+}) => {
   // Pull requests are checked only while the data source scans new commits. A repository the data source doesn't cover
   // yet is discovered the same way a push discovers it, or skipped when discovery is off. If the check run cannot be
   // created, usually because the installation has not accepted the Checks permission, there is nothing to report to
@@ -133,16 +117,21 @@ export const githubPullRequestEventsFactory = ({
       return;
     }
 
-    await queuePullRequestScan({
+    const payload: TGitHubPullRequestScanPayload = {
+      installationId: String(installationId),
+      repository: { id: repository.id, full_name: repository.full_name },
+      pullRequest,
+      checkRunId
+    };
+
+    await queueReportedDiffScan({
       scanId,
       dataSourceId: dataSource.id,
+      dataSourceType: SecretScanningDataSource.GitHub,
       resourceId: resource.id,
-      payload: {
-        installationId: String(installationId),
-        repository: { id: repository.id, full_name: repository.full_name },
-        pullRequest,
-        checkRunId
-      }
+      trigger: SecretScanningScanTrigger.PullRequest,
+      metadata: getPullRequestScanMetadata(payload),
+      payload
     });
   };
 
@@ -328,7 +317,7 @@ export const githubPullRequestEventsFactory = ({
     });
   };
 
-  const processPullRequestEvent = async (job: TQueueGitHubPullRequestEvent) => {
+  const processEvent = async (job: TQueueGitHubPullRequestEvent) => {
     const { installationId, repository } = job;
 
     switch (job.event) {
@@ -359,5 +348,5 @@ export const githubPullRequestEventsFactory = ({
     }
   };
 
-  return { processPullRequestEvent };
+  return { processEvent };
 };
