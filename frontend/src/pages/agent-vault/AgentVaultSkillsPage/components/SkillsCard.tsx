@@ -245,45 +245,45 @@ export const SkillsCard = () => {
                   </TableCell>
                   <TableCell variant="action">
                     <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <IconButton
-                            variant="ghost"
-                            size="xs"
-                            aria-label="Open skill actions"
-                            onClick={(event) => event.stopPropagation()}
-                          >
-                            <MoreHorizontalIcon />
-                          </IconButton>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          sideOffset={2}
-                          align="end"
+                      <DropdownMenuTrigger asChild>
+                        <IconButton
+                          variant="ghost"
+                          size="xs"
+                          aria-label="Open skill actions"
                           onClick={(event) => event.stopPropagation()}
                         >
-                          {canEdit && (
-                            <DropdownMenuItem onClick={() => openSkill(skill)}>
-                              <PencilIcon />
-                              Edit
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem onClick={() => downloadSkill(skill)}>
-                            <DownloadIcon />
-                            Download
+                          <MoreHorizontalIcon />
+                        </IconButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        sideOffset={2}
+                        align="end"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        {canEdit && (
+                          <DropdownMenuItem onClick={() => openSkill(skill)}>
+                            <PencilIcon />
+                            Edit
                           </DropdownMenuItem>
-                          {canDelete && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                variant="danger"
-                                onClick={() => setSkillToDelete(skill)}
-                              >
-                                <TrashIcon />
-                                Delete
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        )}
+                        <DropdownMenuItem onClick={() => downloadSkill(skill)}>
+                          <DownloadIcon />
+                          Download
+                        </DropdownMenuItem>
+                        {canDelete && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="danger"
+                              onClick={() => setSkillToDelete(skill)}
+                            >
+                              <TrashIcon />
+                              Delete
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}

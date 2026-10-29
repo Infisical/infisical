@@ -26,26 +26,26 @@ export const RollBackSkillAlertDialog = ({ version, onOpenChange, onConfirm }: P
   const shown = shownRef.current;
 
   return (
-  <AlertDialog open={version !== null} onOpenChange={onOpenChange}>
-    <AlertDialogContent>
-      <AlertDialogHeader>
-        <AlertDialogTitle>Roll Back to v{shown}?</AlertDialogTitle>
-        <AlertDialogDescription>
-          This publishes a copy of v{shown} as the new latest version.
-        </AlertDialogDescription>
-      </AlertDialogHeader>
-      <AlertDialogFooter>
-        <AlertDialogCancel>Cancel</AlertDialogCancel>
-        <AlertDialogAction
-          variant="av"
-          onClick={() => {
-            if (version !== null) onConfirm(version);
-          }}
-        >
-          Roll Back
-        </AlertDialogAction>
-      </AlertDialogFooter>
-    </AlertDialogContent>
-  </AlertDialog>
-);
+    <AlertDialog open={version !== null} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Roll Back to v{shown}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This publishes a copy of v{shown} as the new latest version.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="av"
+            onClick={() => {
+              if (version !== null) onConfirm(version);
+            }}
+          >
+            Roll Back
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 };

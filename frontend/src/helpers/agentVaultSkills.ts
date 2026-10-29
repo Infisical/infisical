@@ -113,7 +113,8 @@ const readZipExecutableNames = (data: Uint8Array) => {
     const nameLength = view.getUint16(offset + 28, true);
     const extraLength = view.getUint16(offset + 30, true);
     const commentLength = view.getUint16(offset + 32, true);
-    const unixMode = view.getUint32(offset + 38, true) >>> 16;
+    // The high half of the external attributes holds the Unix mode.
+    const unixMode = view.getUint16(offset + 40, true);
     const nameBytes = data.subarray(offset + 46, offset + 46 + nameLength);
     // eslint-disable-next-line no-bitwise
     const name = (flags & 0x800 ? utf8 : latin1).decode(nameBytes);
@@ -640,8 +641,7 @@ export const getChangedSkillPaths = (original: TSkillDraftFile[], draft: TSkillD
     if (!before || !isSameDraftFile(before, file)) changedPaths.add(file.path);
   });
   const draftPaths = new Set(draft.map((file) => file.path));
-  const hasChanges =
-    changedPaths.size > 0 || original.some((file) => !draftPaths.has(file.path));
+  const hasChanges = changedPaths.size > 0 || original.some((file) => !draftPaths.has(file.path));
   return { changedPaths, hasChanges };
 };
 

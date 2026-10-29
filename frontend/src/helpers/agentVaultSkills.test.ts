@@ -750,17 +750,21 @@ describe("getChangedSkillPaths", () => {
   });
 
   test("reports nothing for an unchanged draft", () => {
-    expect(getChangedSkillPaths(base, base.map((file) => ({ ...file }))).hasChanges).toBe(false);
+    expect(
+      getChangedSkillPaths(
+        base,
+        base.map((file) => ({ ...file }))
+      ).hasChanges
+    ).toBe(false);
   });
 });
 
 describe("large files in the save review", () => {
   test("a modified file over 2,000 lines is not diffed", () => {
     const big = Array.from({ length: 2001 }, (_, i) => `line ${i}`).join("\n");
-    const [change] = getSkillFileChanges(
-      toDraftFiles([toSkillFile("big.txt", big)]),
-      [{ ...toDraftFiles([toSkillFile("big.txt", big)])[0], text: `${big}\nmore` }]
-    );
+    const [change] = getSkillFileChanges(toDraftFiles([toSkillFile("big.txt", big)]), [
+      { ...toDraftFiles([toSkillFile("big.txt", big)])[0], text: `${big}\nmore` }
+    ]);
     expect(change.isTooLarge).toBe(true);
     expect([change.additions, change.deletions]).toEqual([0, 0]);
   });

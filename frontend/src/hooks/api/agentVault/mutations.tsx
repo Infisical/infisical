@@ -655,7 +655,8 @@ export const usePublishAgentVaultSkillVersion = () => {
         throw error;
       }
     },
-    onSuccess: (_, { skillId }) => invalidateSkillVersionChange(queryClient, currentOrg.id, skillId),
+    onSuccess: (_, { skillId }) =>
+      invalidateSkillVersionChange(queryClient, currentOrg.id, skillId),
     onError: (error, { skillId }) => {
       if (error instanceof SkillVersionConflictError) {
         invalidateSkillVersionChange(queryClient, currentOrg.id, skillId).catch(() => undefined);

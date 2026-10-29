@@ -158,8 +158,7 @@ const SkillSheetBody = ({
   if (reviewChanges) lastReviewChangesRef.current = reviewChanges;
 
   const latestKnownVersion = Math.max(skill?.latestVersion ?? 0, conflictVersion ?? 0);
-  const newerVersion =
-    edit && latestKnownVersion > edit.baseVersion ? latestKnownVersion : null;
+  const newerVersion = edit && latestKnownVersion > edit.baseVersion ? latestKnownVersion : null;
 
   // The draft follows the latest version until the first change, then keeps the version it started from.
   useEffect(() => {
@@ -365,50 +364,50 @@ const SkillSheetBody = ({
               </SheetDescription>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" isDisabled={hasChanges}>
-                      Options
-                      <EllipsisIcon />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {isAdmin && (
-                      <DropdownMenuItem onClick={() => setDialog("history")}>
-                        <HistoryIcon />
-                        Version History
-                      </DropdownMenuItem>
-                    )}
-                    {canEdit && (
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setDialog("upload");
-                          refetchSkill();
-                        }}
-                      >
-                        <UploadIcon />
-                        Upload New Version
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem
-                      isDisabled={!versionData}
-                      onClick={() => versionData && downloadSkillVersion(skill.name, versionData)}
-                    >
-                      <DownloadIcon />
-                      Download
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" isDisabled={hasChanges}>
+                    Options
+                    <EllipsisIcon />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => setDialog("history")}>
+                      <HistoryIcon />
+                      Version History
                     </DropdownMenuItem>
-                    {canDelete && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem variant="danger" onClick={() => setDialog("delete")}>
-                          <TrashIcon />
-                          Delete Skill
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                  )}
+                  {canEdit && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setDialog("upload");
+                        refetchSkill();
+                      }}
+                    >
+                      <UploadIcon />
+                      Upload New Version
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem
+                    isDisabled={!versionData}
+                    onClick={() => versionData && downloadSkillVersion(skill.name, versionData)}
+                  >
+                    <DownloadIcon />
+                    Download
+                  </DropdownMenuItem>
+                  {canDelete && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem variant="danger" onClick={() => setDialog("delete")}>
+                        <TrashIcon />
+                        Delete Skill
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </SheetHeader>
 

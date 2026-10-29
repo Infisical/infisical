@@ -261,9 +261,7 @@ export const SkillFilesEditor = ({
   };
 
   const canDiscardFile = (target: TTreeTarget) =>
-    Boolean(
-      onDiscardFile && target?.type === "file" && changedPaths?.has(target.path)
-    );
+    Boolean(onDiscardFile && target?.type === "file" && changedPaths?.has(target.path));
 
   // New items go in the empty space or inside a folder; a file only changes, discards or deletes itself.
   const hasMenuItems = (target: TTreeTarget) =>
@@ -307,9 +305,7 @@ export const SkillFilesEditor = ({
             </DropdownMenuItem>
             {target.type === "file" && (
               <DropdownMenuItem
-                onClick={() =>
-                  updateFile(target.path, { mode: isExecutable ? "0644" : "0755" })
-                }
+                onClick={() => updateFile(target.path, { mode: isExecutable ? "0644" : "0755" })}
               >
                 <SquareTerminalIcon />
                 {isExecutable ? "Make Not Executable" : "Make Executable"}
@@ -324,12 +320,10 @@ export const SkillFilesEditor = ({
           </DropdownMenuItem>
         )}
         {canChange && (
-          <>
-            <DropdownMenuItem variant="danger" onClick={() => deleteEntry(target.path)}>
-              <TrashIcon />
-              {target.type === "folder" ? "Delete Folder" : "Delete File"}
-            </DropdownMenuItem>
-          </>
+          <DropdownMenuItem variant="danger" onClick={() => deleteEntry(target.path)}>
+            <TrashIcon />
+            {target.type === "folder" ? "Delete Folder" : "Delete File"}
+          </DropdownMenuItem>
         )}
       </>
     );
