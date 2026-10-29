@@ -835,7 +835,7 @@ export enum EventType {
   AGENT_VAULT_SKILL_DELETE = "agent-vault-skill-delete",
   AGENT_VAULT_SKILL_BUNDLE_ATTACH = "agent-vault-skill-bundle-attach",
   AGENT_VAULT_SKILL_BUNDLE_DETACH = "agent-vault-skill-bundle-detach",
-  AGENT_VAULT_SKILL_DELIVERED = "agent-vault-skill-delivered",
+  AGENT_VAULT_SKILLS_DELIVERED = "agent-vault-skills-delivered",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
   AGENT_VAULT_MEMBER_REMOVE = "agent-vault-member-remove",
@@ -6805,17 +6805,14 @@ interface AgentVaultSkillBundleDetachEvent {
   };
 }
 
-// Recorded per skill when the CLI fetches a session's skills at agent start, not when the agent reads them.
-interface AgentVaultSkillDeliveredEvent {
-  type: EventType.AGENT_VAULT_SKILL_DELIVERED;
+// Recorded once per fetch when the CLI gets a session's skills at agent start, not when the agent reads them.
+interface AgentVaultSkillsDeliveredEvent {
+  type: EventType.AGENT_VAULT_SKILLS_DELIVERED;
   metadata: {
     sessionId: string;
     accessBundleId: string;
     accessBundleName: string;
-    skillId: string;
-    skillName: string;
-    version: number;
-    sha256: string;
+    skills: { skillId: string; skillName: string; version: number; sha256: string }[];
   };
 }
 
@@ -8922,7 +8919,7 @@ export type Event =
   | AgentVaultSkillDeleteEvent
   | AgentVaultSkillBundleAttachEvent
   | AgentVaultSkillBundleDetachEvent
-  | AgentVaultSkillDeliveredEvent
+  | AgentVaultSkillsDeliveredEvent
   | AgentVaultProductMemberAddEvent
   | AgentVaultProductMemberUpdateEvent
   | AgentVaultProductMemberRemoveEvent

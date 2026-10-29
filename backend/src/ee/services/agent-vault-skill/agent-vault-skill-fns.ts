@@ -18,7 +18,7 @@ export const AGENT_VAULT_SKILL_NAME_MAX_LENGTH = 64;
 export const AGENT_VAULT_SKILL_DESCRIPTION_MAX_LENGTH = 1024;
 export const AGENT_VAULT_SKILL_VERSIONS_KEPT = 20;
 export const AGENT_VAULT_MAX_SKILLS_PER_BUNDLE = 25;
-export const AGENT_VAULT_MAX_SKILLS = 64;
+export const AGENT_VAULT_MAX_SKILLS = 250;
 
 // Files travel as base64, so a proxy in front of Infisical must accept bodies this large (nginx defaults to 1m).
 // The schema caps content only at the body limit, so an oversize file in a request of up to about 1.5 MB of file

@@ -4708,6 +4708,8 @@ export const AGENT_VAULT = {
     versionCreatedAt: "When the version was published.",
     unchanged:
       "True if the files match the latest version, in which case no new version was made and that version is returned.",
+    baseVersion:
+      "The version these files were edited from. If a newer version has been published since, nothing is published and the request fails with 409. Omit it to publish regardless.",
     restoreUnchanged:
       "True if the version being restored has the same files as the latest version, in which case no new version was made and the latest version is returned.",
     attachSkillId: "The ID of the skill to attach to the access bundle.",

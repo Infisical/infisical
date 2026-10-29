@@ -619,19 +619,48 @@ export const useCreateAgentVaultSkill = () => {
   });
 };
 
+/** A save sent with a `baseVersion` that is no longer the latest. The caller shows it, so no toast is raised. */
+export class SkillVersionConflictError extends Error {
+  latestVersion: number;
+
+  constructor(message: string, latestVersion: number) {
+    super(message);
+    this.latestVersion = latestVersion;
+  }
+}
+
+const STALE_BASE_VERSION_RE = /^Version (\d+) was published after you opened this skill\./;
+
 export const usePublishAgentVaultSkillVersion = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ skillId, ...params }: TPublishAgentVaultSkillVersionDTO) => {
-      const { data } = await apiRequest.post<{
-        skill: TAgentVaultSkillSummary;
-        version: TAgentVaultSkillVersion;
-        unchanged: boolean;
-      }>(`/api/v1/agent-vault/skills/${skillId}/versions`, params);
-      return data;
+      try {
+        const { data } = await apiRequest.post<{
+          skill: TAgentVaultSkillSummary;
+          version: TAgentVaultSkillVersion;
+          unchanged: boolean;
+        }>(`/api/v1/agent-vault/skills/${skillId}/versions`, params);
+        return data;
+      } catch (error) {
+        const message: unknown = axios.isAxiosError(error)
+          ? error.response?.data?.message
+          : undefined;
+        const match =
+          axios.isAxiosError(error) && error.response?.status === 409 && typeof message === "string"
+            ? STALE_BASE_VERSION_RE.exec(message)
+            : null;
+        if (match) throw new SkillVersionConflictError(message as string, Number(match[1]));
+        throw error;
+      }
     },
-    onSuccess: (_, { skillId }) => invalidateSkillVersionChange(queryClient, currentOrg.id, skillId)
+    onSuccess: (_, { skillId }) => invalidateSkillVersionChange(queryClient, currentOrg.id, skillId),
+    onError: (error, { skillId }) => {
+      if (error instanceof SkillVersionConflictError) {
+        invalidateSkillVersionChange(queryClient, currentOrg.id, skillId).catch(() => undefined);
+      }
+    }
   });
 };
 

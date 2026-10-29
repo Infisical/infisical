@@ -760,17 +760,19 @@ export const useListAgentVaultSkillVersions = (skillId: string) => {
   });
 };
 
+export const fetchAgentVaultSkillVersion = async (skillId: string, version: number) => {
+  const { data } = await apiRequest.get<{ version: TAgentVaultSkillVersionWithFiles }>(
+    `/api/v1/agent-vault/skills/${skillId}/versions/${version}`
+  );
+  return data.version;
+};
+
 export const useGetAgentVaultSkillVersion = (skillId: string, version?: number) => {
   const { currentOrg } = useOrganization();
 
   return useQuery({
     queryKey: agentVaultKeys.skillVersion(currentOrg.id, skillId, version ?? 0),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ version: TAgentVaultSkillVersionWithFiles }>(
-        `/api/v1/agent-vault/skills/${skillId}/versions/${version}`
-      );
-      return data.version;
-    },
+    queryFn: () => fetchAgentVaultSkillVersion(skillId, version ?? 0),
     enabled: Boolean(skillId) && Boolean(version),
     // A version never changes once published.
     staleTime: Infinity

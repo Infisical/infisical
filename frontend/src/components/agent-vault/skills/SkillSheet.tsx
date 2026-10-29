@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { format } from "date-fns";
-import FileSaver from "file-saver";
 import {
   DownloadIcon,
   EllipsisIcon,
@@ -44,19 +43,18 @@ import {
   useProjectPermission
 } from "@app/context";
 import {
-  buildSkillZip,
-  decodeSkillFile,
   fromDraftFiles,
-  getSkillEntryName,
+  getChangedSkillPaths,
   getSkillFileChanges,
   SKILL_ENTRY_FILE,
-  SKILL_NAME_RE,
   toDraftFiles,
-  TSkillDraftFile
+  TSkillDraftFile,
+  TSkillFileChange
 } from "@app/helpers/agentVaultSkills";
 import { useDiscardChangesGuard } from "@app/hooks";
 import {
   agentVaultKeys,
+  SkillVersionConflictError,
   useGetAgentVaultSkill,
   useGetAgentVaultSkillVersion,
   usePublishAgentVaultSkillVersion,
@@ -66,8 +64,10 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
 import { DeleteSkillDialog } from "./DeleteSkillDialog";
+import { downloadSkillVersion } from "./downloadSkillVersion";
+import { RollBackSkillAlertDialog } from "./RollBackSkillAlertDialog";
 import { SaveSkillVersionSheet } from "./SaveSkillVersionSheet";
-import { keepOpenOnNameInputEscape, SkillFilesEditor } from "./SkillFilesEditor";
+import { handleSkillEditorEscape, SkillFilesEditor } from "./SkillFilesEditor";
 import { SkillUploadDialog } from "./SkillUploadDialog";
 import { SkillVersionHistoryDialog } from "./SkillVersionHistoryDialog";
 
@@ -118,6 +118,9 @@ const SkillSheetBody = ({
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [dialog, setDialog] = useState<TSkillDialog | null>(null);
   const [discardCount, setDiscardCount] = useState(0);
+  const [rollBackVersion, setRollBackVersion] = useState<number | null>(null);
+  // The latest version a refused save reported, shown before the refetched skill arrives.
+  const [conflictVersion, setConflictVersion] = useState<number | null>(null);
 
   const version = viewedVersion ?? skill?.latestVersion;
   const {
@@ -129,21 +132,34 @@ const SkillSheetBody = ({
   const restoreVersion = useRestoreAgentVaultSkillVersion();
 
   const original = useMemo(() => toDraftFiles(versionData?.files ?? []), [versionData]);
+  // From the picked number, not the loaded data, so the latest draft isn't shown as editable while it loads or fails.
   const isViewingOlder = Boolean(
-    skill && versionData && versionData.version !== skill.latestVersion
+    skill && viewedVersion !== null && viewedVersion !== skill.latestVersion
   );
   // Admins edit the latest version in place; older versions and members are read-only.
   const isEditing = edit !== null && canEdit && !isViewingOlder;
   const files = isEditing && edit ? edit.draft : original;
-  const changes = useMemo(
-    () => (edit ? getSkillFileChanges(edit.baseFiles, edit.draft) : []),
+  const { changedPaths, hasChanges } = useMemo(
+    () =>
+      edit
+        ? getChangedSkillPaths(edit.baseFiles, edit.draft)
+        : { changedPaths: new Set<string>(), hasChanges: false },
     [edit]
   );
-  const changedPaths = useMemo(
-    () => new Set(changes.filter((change) => change.status !== "deleted").map((c) => c.path)),
-    [changes]
+
+  // The line diff is only worked out for the save review, since it is too slow to run on every keystroke.
+  const isSaveOpen = dialog === "save";
+  const reviewChanges = useMemo(
+    () => (isSaveOpen && edit ? getSkillFileChanges(edit.baseFiles, edit.draft) : null),
+    [isSaveOpen, edit]
   );
-  const hasChanges = changes.length > 0;
+  // Kept while the review animates closed, so its rows don't empty under it.
+  const lastReviewChangesRef = useRef<TSkillFileChange[]>([]);
+  if (reviewChanges) lastReviewChangesRef.current = reviewChanges;
+
+  const latestKnownVersion = Math.max(skill?.latestVersion ?? 0, conflictVersion ?? 0);
+  const newerVersion =
+    edit && latestKnownVersion > edit.baseVersion ? latestKnownVersion : null;
 
   // The draft follows the latest version until the first change, then keeps the version it started from.
   useEffect(() => {
@@ -151,7 +167,7 @@ const SkillSheetBody = ({
     setEdit((prev) =>
       prev &&
       (prev.baseVersion === versionData.version ||
-        getSkillFileChanges(prev.baseFiles, prev.draft).length > 0)
+        getChangedSkillPaths(prev.baseFiles, prev.draft).hasChanges)
         ? prev
         : { baseVersion: versionData.version, baseFiles: original, draft: original }
     );
@@ -187,6 +203,7 @@ const SkillSheetBody = ({
   };
   registerRequestClose(requestClose);
 
+  // Once the newer version has been shown, saving goes ahead without the version check.
   const handleSave = async () => {
     if (!skill || !edit) return;
     try {
@@ -196,7 +213,8 @@ const SkillSheetBody = ({
         unchanged
       } = await publishVersion.mutateAsync({
         skillId: skill.id,
-        files: fromDraftFiles(edit.draft)
+        files: fromDraftFiles(edit.draft),
+        ...(newerVersion === null && { baseVersion: edit.baseVersion })
       });
       createNotification({
         text: unchanged
@@ -207,23 +225,24 @@ const SkillSheetBody = ({
       setDialog(null);
       setEdit((prev) => prev && { ...prev, baseVersion: published.version, baseFiles: prev.draft });
       setViewedVersion(null);
-    } catch {
-      // The global mutation handler shows the server's message.
+    } catch (error) {
+      if (error instanceof SkillVersionConflictError) setConflictVersion(error.latestVersion);
+      // Any other failure is shown by the global mutation handler.
     }
   };
 
-  const handleRollBack = async () => {
-    if (!skill || !versionData) return;
+  const handleRollBack = async (target: number) => {
+    if (!skill) return;
     try {
       const { version: restored, unchanged } = await restoreVersion.mutateAsync({
         skillId: skill.id,
-        version: versionData.version
+        version: target
       });
       createNotification(
         unchanged
           ? { text: "This version already matches the latest.", type: "info" }
           : {
-              text: `Rolled "${skill.name}" back to version ${versionData.version} as version ${restored.version}`,
+              text: `Rolled "${skill.name}" back to version ${target} as version ${restored.version}`,
               type: "success"
             }
       );
@@ -233,15 +252,18 @@ const SkillSheetBody = ({
     }
   };
 
-  const handleDownload = () => {
-    if (!skill || !versionData) return;
-    const entry = versionData.files.find((file) => file.path === SKILL_ENTRY_FILE);
-    const entryName = getSkillEntryName(entry && decodeSkillFile(entry));
-    const folder = entryName && SKILL_NAME_RE.test(entryName) ? entryName : skill.name;
-    FileSaver.saveAs(
-      new Blob([buildSkillZip(folder, versionData.files)], { type: "application/zip" }),
-      `${skill.name}-v${versionData.version}.zip`
-    );
+  const handleDiscardFile = (path: string) => {
+    setEdit((prev) => {
+      if (!prev) return prev;
+      const saved = prev.baseFiles.find((file) => file.path === path);
+      return {
+        ...prev,
+        draft: saved
+          ? prev.draft.map((file) => (file.path === path ? saved : file))
+          : prev.draft.filter((file) => file.path !== path)
+      };
+    });
+    setDiscardCount((count) => count + 1);
   };
 
   const renderFiles = () => {
@@ -257,14 +279,15 @@ const SkillSheetBody = ({
           }
           changedPaths={changedPaths}
           requiredPaths={[SKILL_ENTRY_FILE]}
-          historyKey={discardCount}
-          className="h-[calc(100dvh-14rem)] min-h-96 shrink-0"
+          historyKey={`${discardCount}:${edit?.baseVersion}`}
+          onDiscardFile={isEditing ? handleDiscardFile : undefined}
+          className="min-h-96 flex-1"
         />
       );
     }
     if (versionError) {
       return (
-        <Empty className="h-[calc(100dvh-14rem)] min-h-96 shrink-0 border">
+        <Empty className="min-h-96 flex-1 border">
           <EmptyHeader>
             <EmptyTitle>Couldn&apos;t load this version</EmptyTitle>
           </EmptyHeader>
@@ -282,7 +305,7 @@ const SkillSheetBody = ({
         </Empty>
       );
     }
-    return <Skeleton className="h-[calc(100dvh-14rem)] min-h-96 w-full shrink-0" />;
+    return <Skeleton className="min-h-96 w-full flex-1" />;
   };
 
   const renderBody = () => {
@@ -341,11 +364,10 @@ const SkillSheetBody = ({
                 {skill.description}
               </SheetDescription>
             </div>
-            {!hasChanges && (
-              <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
+                    <Button variant="outline" isDisabled={hasChanges}>
                       Options
                       <EllipsisIcon />
                     </Button>
@@ -368,7 +390,10 @@ const SkillSheetBody = ({
                         Upload New Version
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem isDisabled={!versionData} onClick={handleDownload}>
+                    <DropdownMenuItem
+                      isDisabled={!versionData}
+                      onClick={() => versionData && downloadSkillVersion(skill.name, versionData)}
+                    >
                       <DownloadIcon />
                       Download
                     </DropdownMenuItem>
@@ -384,18 +409,18 @@ const SkillSheetBody = ({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-            )}
           </div>
         </SheetHeader>
 
         <div className="flex min-h-0 thin-scrollbar flex-1 flex-col gap-4 overflow-y-auto p-4">
-          {isViewingOlder && versionData && (
+          {isViewingOlder && viewedVersion !== null && (
             <Alert variant="info">
               <AlertDescription className="flex flex-wrap items-center gap-2">
                 <span className="flex-1">
-                  You are viewing v{versionData.version}, published{" "}
-                  {format(new Date(versionData.createdAt), "MMM d, yyyy h:mm a")}. Agents get v
-                  {skill.latestVersion}.
+                  You are viewing v{viewedVersion}
+                  {versionData &&
+                    `, published ${format(new Date(versionData.createdAt), "MMM d, yyyy h:mm a")}`}
+                  . Agents get v{skill.latestVersion}.
                 </span>
                 <Button variant="outline" size="xs" onClick={() => setViewedVersion(null)}>
                   View Latest
@@ -405,7 +430,8 @@ const SkillSheetBody = ({
                     variant="av"
                     size="xs"
                     isPending={restoreVersion.isPending}
-                    onClick={handleRollBack}
+                    isDisabled={!versionData}
+                    onClick={() => setRollBackVersion(viewedVersion)}
                   >
                     <HistoryIcon />
                     Roll Back
@@ -418,18 +444,19 @@ const SkillSheetBody = ({
           {renderFiles()}
         </div>
 
-        {isEditing && hasChanges && (
+        {canEdit && !isViewingOlder && (
           <SheetFooter className="items-center justify-end border-t">
-            <span className="mr-auto text-sm text-accent">Unsaved changes</span>
+            {hasChanges && <span className="mr-auto text-sm text-accent">Unsaved changes</span>}
             <Button
               variant="ghost"
               onClick={requestStopEditing}
-              isDisabled={publishVersion.isPending}
+              isDisabled={!hasChanges || publishVersion.isPending}
             >
               Discard
             </Button>
             <Button
               variant="av"
+              isDisabled={!hasChanges}
               onClick={() => {
                 setDialog("save");
                 refetchSkill();
@@ -475,15 +502,22 @@ const SkillSheetBody = ({
             onOpenChange={(open) => setDialog(open ? "save" : null)}
             skillName={skill.name}
             nextVersion={skill.latestVersion + 1}
-            newerVersion={
-              edit && skill.latestVersion > edit.baseVersion ? skill.latestVersion : null
-            }
-            changes={changes}
+            newerVersion={newerVersion}
+            changes={lastReviewChangesRef.current}
             isPending={publishVersion.isPending}
             onSave={handleSave}
           />
         </>
       )}
+
+      <RollBackSkillAlertDialog
+        version={rollBackVersion}
+        onOpenChange={(open) => !open && setRollBackVersion(null)}
+        onConfirm={(target) => {
+          setRollBackVersion(null);
+          handleRollBack(target);
+        }}
+      />
 
       <DeleteSkillDialog
         skill={dialog === "delete" && skill ? skill : null}
@@ -525,7 +559,7 @@ export const SkillSheet = () => {
         className="flex h-full max-h-full w-full flex-col gap-y-0"
         isPending={publishVersion.isPending}
         onOpenAutoFocus={(event) => event.preventDefault()}
-        onEscapeKeyDown={keepOpenOnNameInputEscape}
+        onEscapeKeyDown={handleSkillEditorEscape}
       >
         <SkillSheetBody
           key={shownSkillId}

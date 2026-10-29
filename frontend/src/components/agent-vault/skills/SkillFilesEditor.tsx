@@ -6,7 +6,9 @@ import {
   FolderPlusIcon,
   MoreHorizontalIcon,
   PencilIcon,
-  TrashIcon
+  SquareTerminalIcon,
+  TrashIcon,
+  Undo2Icon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -53,12 +55,20 @@ import {
 type TTreeTarget = { path: string; type: FileTreeItemType } | null;
 
 /**
- * For the sheet around the editor: Escape in a file or folder name box cancels only that box. The sheet listens for
- * Escape on the document before the box sees it, so the box can't stop it from closing the sheet itself.
+ * For the sheet around the editor: Escape in a file or folder name box cancels only that box, and Escape in the code
+ * editor moves the focus out to the sheet, so Tab, which indents inside the editor, can leave it. The sheet listens
+ * for Escape on the document before either sees it, so they can't stop it from closing the sheet themselves.
  */
-export const keepOpenOnNameInputEscape = (event: KeyboardEvent) => {
-  if (event.target instanceof Element && event.target.closest("[data-skill-name-input]"))
+export const handleSkillEditorEscape = (event: KeyboardEvent) => {
+  if (!(event.target instanceof Element)) return;
+  if (event.target.closest("[data-skill-name-input]")) {
     event.preventDefault();
+    return;
+  }
+  if (event.target.closest('.cm-content[contenteditable="true"]')) {
+    event.preventDefault();
+    event.target.closest<HTMLElement>('[role="dialog"]')?.focus({ preventScroll: true });
+  }
 };
 
 type TContextMenu = { x: number; y: number; target: TTreeTarget };
@@ -148,8 +158,10 @@ type Props = {
   requiredPaths?: readonly string[];
   /** Which view Markdown files open in. Code is where an editable file is changed. */
   defaultView?: "preview" | "code";
-  /** Changing it gives every file a fresh undo history, so undo can't bring back text that was discarded. */
-  historyKey?: number;
+  /** Changing it gives every file a fresh undo history, so undo can't bring back text that was discarded or replaced. */
+  historyKey?: string | number;
+  /** Puts back the saved copy of a changed file, offered in that file's menu. */
+  onDiscardFile?: (path: string) => void;
   className?: string;
 };
 
@@ -163,6 +175,7 @@ export const SkillFilesEditor = ({
   requiredPaths = [],
   defaultView = "preview",
   historyKey = 0,
+  onDiscardFile,
   className
 }: Props) => {
   const [view, setView] = useState<"preview" | "code">(defaultView);
@@ -182,6 +195,10 @@ export const SkillFilesEditor = ({
   const canPreview = isMarkdown && selected?.text !== null;
   const showRendered = canPreview && view === "preview";
   const isAtFileLimit = files.length >= SKILL_MAX_FILES;
+  const modes = useMemo(() => new Map(files.map((file) => [file.path, file.mode])), [files]);
+  const hasExecutable = files.some((file) => file.mode === "0755");
+  const hasChangedPaths = Boolean(changedPaths?.size);
+  const newItemParent = selected ? getSkillParentPath(selected.path) : "";
 
   const rendered = useMemo(
     () =>
@@ -243,14 +260,23 @@ export const SkillFilesEditor = ({
     });
   };
 
-  // New items go in the empty space or inside a folder; a file only renames or deletes itself.
+  const canDiscardFile = (target: TTreeTarget) =>
+    Boolean(
+      onDiscardFile && target?.type === "file" && changedPaths?.has(target.path)
+    );
+
+  // New items go in the empty space or inside a folder; a file only changes, discards or deletes itself.
   const hasMenuItems = (target: TTreeTarget) =>
-    !target || target.type === "folder" || !requiredPaths.includes(target.path);
+    !target ||
+    target.type === "folder" ||
+    !requiredPaths.includes(target.path) ||
+    canDiscardFile(target);
 
   const renderMenuItems = (target: TTreeTarget) => {
     const canCreate = !target || target.type === "folder";
     const canChange = target && !requiredPaths.includes(target.path);
     const parentPath = target?.path ?? "";
+    const isExecutable = target ? modes.get(target.path) === "0755" : false;
     return (
       <>
         {canCreate && (
@@ -279,6 +305,26 @@ export const SkillFilesEditor = ({
               <PencilIcon />
               Rename
             </DropdownMenuItem>
+            {target.type === "file" && (
+              <DropdownMenuItem
+                onClick={() =>
+                  updateFile(target.path, { mode: isExecutable ? "0644" : "0755" })
+                }
+              >
+                <SquareTerminalIcon />
+                {isExecutable ? "Make Not Executable" : "Make Executable"}
+              </DropdownMenuItem>
+            )}
+          </>
+        )}
+        {target && canDiscardFile(target) && (
+          <DropdownMenuItem onClick={() => onDiscardFile?.(target.path)}>
+            <Undo2Icon />
+            Discard Changes
+          </DropdownMenuItem>
+        )}
+        {canChange && (
+          <>
             <DropdownMenuItem variant="danger" onClick={() => deleteEntry(target.path)}>
               <TrashIcon />
               {target.type === "folder" ? "Delete Folder" : "Delete File"}
@@ -349,11 +395,33 @@ export const SkillFilesEditor = ({
         selectedPath={selected?.path ?? null}
         onSelect={onSelect}
         renderIndicator={(path) =>
-          changedPaths?.has(path) ? (
-            <span
-              aria-label="Unsaved changes"
-              className="mr-1 size-1.5 shrink-0 rounded-full bg-warning"
-            />
+          hasExecutable || hasChangedPaths ? (
+            <span className="flex shrink-0 items-center gap-1">
+              {hasExecutable && (
+                <span className="flex w-3.5 justify-center">
+                  {modes.get(path) === "0755" && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span role="img" aria-label="Executable" className="flex">
+                          <SquareTerminalIcon className="size-3.5 text-muted" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>Executable</TooltipContent>
+                    </Tooltip>
+                  )}
+                </span>
+              )}
+              {hasChangedPaths && (
+                <span className="mr-1 flex w-1.5 justify-center">
+                  {changedPaths?.has(path) && (
+                    <span
+                      aria-label="Unsaved changes"
+                      className="size-1.5 rounded-full bg-warning"
+                    />
+                  )}
+                </span>
+              )}
+            </span>
           ) : null
         }
         renderActions={isEditing ? renderActions : undefined}
@@ -383,7 +451,7 @@ export const SkillFilesEditor = ({
                   size="xs"
                   className="flex-1 justify-start"
                   isDisabled={isAtFileLimit}
-                  onClick={() => startCreate("file", "")}
+                  onClick={() => startCreate("file", newItemParent)}
                 >
                   <FilePlusIcon />
                   New File
@@ -392,7 +460,7 @@ export const SkillFilesEditor = ({
                   variant="ghost"
                   size="xs"
                   className="flex-1 justify-start"
-                  onClick={() => startCreate("folder", "")}
+                  onClick={() => startCreate("folder", newItemParent)}
                 >
                   <FolderPlusIcon />
                   New Folder

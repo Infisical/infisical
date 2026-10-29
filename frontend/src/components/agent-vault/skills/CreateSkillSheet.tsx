@@ -44,7 +44,7 @@ import { useDiscardChangesGuard } from "@app/hooks";
 import { useCreateAgentVaultSkill } from "@app/hooks/api/agentVault";
 import { TAgentVaultSkillSummary } from "@app/hooks/api/agentVault/types";
 
-import { keepOpenOnNameInputEscape, SkillFilesEditor } from "./SkillFilesEditor";
+import { handleSkillEditorEscape, SkillFilesEditor } from "./SkillFilesEditor";
 import { SkillUploadDialog, TSkillUpload } from "./SkillUploadDialog";
 
 const schema = z.object({
@@ -120,6 +120,7 @@ export const CreateSkillSheet = ({
   const [selectedPath, setSelectedPath] = useState<string>(SKILL_ENTRY_FILE);
   const [bodyError, setBodyError] = useState<string | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [uploadCount, setUploadCount] = useState(0);
 
   const {
     control,
@@ -214,6 +215,7 @@ export const CreateSkillSheet = ({
     setFiles(sortSkillFiles(entryFiles));
     setSelectedPath(SKILL_ENTRY_FILE);
     setBodyError(null);
+    setUploadCount((count) => count + 1);
   };
 
   const onSubmit = async () => {
@@ -273,7 +275,7 @@ export const CreateSkillSheet = ({
           className="flex h-full max-h-full w-full flex-col gap-y-0"
           isPending={isSubmitting}
           onOpenAutoFocus={(event) => event.preventDefault()}
-          onEscapeKeyDown={keepOpenOnNameInputEscape}
+          onEscapeKeyDown={handleSkillEditorEscape}
         >
           <form onSubmit={handleCreate} className="flex min-h-0 flex-1 flex-col">
             <SheetHeader className="pr-12">
@@ -358,6 +360,7 @@ export const CreateSkillSheet = ({
                     onChange={handleFilesChange}
                     changedPaths={changedPaths}
                     requiredPaths={[SKILL_ENTRY_FILE]}
+                    historyKey={uploadCount}
                     className="h-[calc(100dvh-14rem)] min-h-96"
                   />
                 </FieldContent>

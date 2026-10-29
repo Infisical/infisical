@@ -30,6 +30,7 @@ import {
 } from "@app/helpers/agentVaultSkills";
 import { useDiscardChangesGuard } from "@app/hooks";
 import {
+  SkillVersionConflictError,
   useGetAgentVaultSkillVersion,
   usePublishAgentVaultSkillVersion
 } from "@app/hooks/api/agentVault";
@@ -68,6 +69,8 @@ export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad
     skill?.latestVersion
   );
   const [upload, setUpload] = useState<TUploadState>({ status: "empty" });
+  // The latest version a refused save reported; saving again then goes ahead without the version check.
+  const [conflictVersion, setConflictVersion] = useState<number | null>(null);
   // A file on a cloud or network drive can take seconds to read; a read that outlives its upload is dropped.
   const readIdRef = useRef(0);
 
@@ -85,6 +88,7 @@ export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad
   const close = () => {
     readIdRef.current += 1;
     setUpload({ status: "empty" });
+    setConflictVersion(null);
     onOpenChange(false);
   };
 
@@ -93,6 +97,7 @@ export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad
 
   const selectFile = async (file?: File) => {
     readIdRef.current += 1;
+    setConflictVersion(null);
     const readId = readIdRef.current;
     if (!file) {
       setUpload({ status: "empty" });
@@ -136,7 +141,8 @@ export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad
         unchanged
       } = await publishVersion.mutateAsync({
         skillId: skill.id,
-        files: filesToPublish
+        files: filesToPublish,
+        ...(conflictVersion === null && latest.data && { baseVersion: latest.data.version })
       });
       createNotification({
         text: unchanged
@@ -146,8 +152,9 @@ export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad
       });
       onSaved?.();
       close();
-    } catch {
-      // The global mutation handler shows the server's message.
+    } catch (error) {
+      if (error instanceof SkillVersionConflictError) setConflictVersion(error.latestVersion);
+      // Any other failure is shown by the global mutation handler.
     }
   };
 
@@ -216,6 +223,15 @@ export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad
             </Alert>
           )}
 
+          {upload.status === "ready" && conflictVersion !== null && (
+            <Alert variant="warning">
+              <AlertDescription>
+                A newer version (v{conflictVersion}) was published while you were uploading. Saving
+                will make your version the latest.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {upload.status === "ready" && renamedTo && (
             <Alert variant="info">
               <AlertDescription>
@@ -259,7 +275,7 @@ export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad
                 isDisabled={upload.status !== "ready" || isWaitingForLatest}
                 onClick={handleSubmit}
               >
-                Save Version
+                {conflictVersion === null ? "Save Version" : "Save Anyway"}
               </Button>
             )}
           </DialogFooter>

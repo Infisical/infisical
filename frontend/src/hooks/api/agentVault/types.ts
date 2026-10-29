@@ -669,4 +669,6 @@ export type TCreateAgentVaultSkillDTO = {
 
 export type TPublishAgentVaultSkillVersionDTO = TCreateAgentVaultSkillDTO & {
   skillId: string;
+  /** The version the files were edited from. The server refuses the save when a newer one was published since. */
+  baseVersion?: number;
 };

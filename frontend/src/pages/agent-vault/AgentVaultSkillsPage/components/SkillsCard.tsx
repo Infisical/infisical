@@ -1,12 +1,22 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { MoreHorizontalIcon, PencilIcon, PlusIcon, SearchIcon, TrashIcon } from "lucide-react";
+import {
+  DownloadIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlusIcon,
+  SearchIcon,
+  TrashIcon
+} from "lucide-react";
 
 import { CreateSkillSheet } from "@app/components/agent-vault/skills/CreateSkillSheet";
 import { DeleteSkillDialog } from "@app/components/agent-vault/skills/DeleteSkillDialog";
+import { downloadSkillVersion } from "@app/components/agent-vault/skills/downloadSkillVersion";
 import { SkillBundleBadges } from "@app/components/agent-vault/skills/SkillBundleBadges";
 import { SkillDescription } from "@app/components/agent-vault/skills/SkillDescription";
 import { SkillSheet } from "@app/components/agent-vault/skills/SkillSheet";
+import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
@@ -19,6 +29,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Empty,
   EmptyDescription,
@@ -53,7 +64,11 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { useDebounce, useResetPageHelper } from "@app/hooks";
-import { useListAgentVaultSkills } from "@app/hooks/api/agentVault";
+import {
+  agentVaultKeys,
+  fetchAgentVaultSkillVersion,
+  useListAgentVaultSkills
+} from "@app/hooks/api/agentVault";
 import { TAgentVaultSkill } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
 
@@ -62,6 +77,7 @@ import { AgentVaultDocsUrls } from "../../agent-vault-docs-urls";
 export const SkillsCard = () => {
   const { openSheet } = useAgentVaultSheetState("skillId");
   const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
   const { permission } = useProjectPermission();
   const canCreate = permission.can(
     ProjectPermissionAgentVaultSkillActions.Create,
@@ -104,6 +120,19 @@ export const SkillsCard = () => {
   const hasSkills = totalCount > 0 || Boolean(searchTerm);
 
   const openSkill = (skill: Pick<TAgentVaultSkill, "id">) => openSheet(skill.id);
+
+  const downloadSkill = async (skill: TAgentVaultSkill) => {
+    try {
+      const version = await queryClient.fetchQuery({
+        queryKey: agentVaultKeys.skillVersion(currentOrg.id, skill.id, skill.latestVersion),
+        queryFn: () => fetchAgentVaultSkillVersion(skill.id, skill.latestVersion),
+        staleTime: Infinity
+      });
+      downloadSkillVersion(skill.name, version);
+    } catch {
+      createNotification({ text: `Couldn't download "${skill.name}". Try again.`, type: "error" });
+    }
+  };
 
   return (
     <Card>
@@ -215,8 +244,7 @@ export const SkillsCard = () => {
                     </Tooltip>
                   </TableCell>
                   <TableCell variant="action">
-                    {(canEdit || canDelete) && (
-                      <DropdownMenu>
+                    <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <IconButton
                             variant="ghost"
@@ -238,18 +266,24 @@ export const SkillsCard = () => {
                               Edit
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem onClick={() => downloadSkill(skill)}>
+                            <DownloadIcon />
+                            Download
+                          </DropdownMenuItem>
                           {canDelete && (
-                            <DropdownMenuItem
-                              variant="danger"
-                              onClick={() => setSkillToDelete(skill)}
-                            >
-                              <TrashIcon />
-                              Delete
-                            </DropdownMenuItem>
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                variant="danger"
+                                onClick={() => setSkillToDelete(skill)}
+                              >
+                                <TrashIcon />
+                                Delete
+                              </DropdownMenuItem>
+                            </>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    )}
                   </TableCell>
                 </TableRow>
               ))}

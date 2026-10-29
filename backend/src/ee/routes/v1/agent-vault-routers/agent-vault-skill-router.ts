@@ -19,6 +19,7 @@ import {
   agentVaultListQuery,
   AgentVaultSkillDetailSchema,
   AgentVaultSkillSchema,
+  AgentVaultSkillPublishSchema,
   AgentVaultSkillUploadSchema,
   AgentVaultSkillVersionParamSchema,
   AgentVaultSkillVersionSchema,
@@ -190,7 +191,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
         "Publish a new version of a skill. If the `name` in SKILL.md differs from the skill's name, the skill is renamed, unless another skill already has that name. If the files match the latest version, nothing is published and that version is returned.",
       tags: [ApiDocsTags.AgentVaultSkills],
       params: SkillIdParamsSchema,
-      body: AgentVaultSkillUploadSchema,
+      body: AgentVaultSkillPublishSchema,
       response: {
         200: z.object({
           skill: AgentVaultSkillSchema,
@@ -205,7 +206,8 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         skillId: req.params.skillId,
-        files: req.body.files
+        files: req.body.files,
+        baseVersion: req.body.baseVersion
       });
 
       if (!unchanged) {

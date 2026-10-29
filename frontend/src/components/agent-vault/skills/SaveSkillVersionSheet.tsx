@@ -30,12 +30,22 @@ const STATUS_BADGE = {
 
 const ChangeBody = ({ change }: { change: TSkillFileChange }) => {
   const isContentChanged = change.oldText !== change.newText;
+  const isModeChanged =
+    change.status === "modified" && change.oldMode !== undefined && change.newMode !== undefined;
   return (
     <div className="flex flex-col border-t border-border">
+      {isModeChanged && (
+        <p className="px-3 py-2 font-mono text-xs text-label">
+          {change.oldMode} → {change.newMode}
+        </p>
+      )}
       {change.isBinary && (
         <p className="px-3 py-2 text-xs text-muted">Binary file. Its contents are not shown.</p>
       )}
-      {!change.isBinary && isContentChanged && (
+      {!change.isBinary && isContentChanged && change.isTooLarge && (
+        <p className="px-3 py-2 text-xs text-muted">Too large to show a diff</p>
+      )}
+      {!change.isBinary && isContentChanged && !change.isTooLarge && (
         <SkillFileDiff oldText={change.oldText ?? ""} newText={change.newText ?? ""} />
       )}
     </div>
@@ -109,13 +119,15 @@ export const SaveSkillVersionSheet = ({
                   <span className="min-w-0 flex-1 truncate text-left text-sm" title={change.path}>
                     {change.path}
                   </span>
+                  {!(change.status === "modified" && change.isTooLarge) && (
+                    <span className="shrink-0 text-xs tabular-nums">
+                      <span className="text-success">+{change.additions}</span>{" "}
+                      <span className="text-danger">-{change.deletions}</span>
+                    </span>
+                  )}
                   <Badge variant={STATUS_BADGE[change.status].variant}>
                     {STATUS_BADGE[change.status].label}
                   </Badge>
-                  <span className="w-20 shrink-0 text-right text-xs tabular-nums">
-                    <span className="text-success">+{change.additions}</span>{" "}
-                    <span className="text-danger">-{change.deletions}</span>
-                  </span>
                 </AccordionTrigger>
                 <AccordionContent>
                   <ChangeBody change={change} />
@@ -130,7 +142,7 @@ export const SaveSkillVersionSheet = ({
             Back to Editing
           </Button>
           <Button variant="av" isPending={isPending} onClick={onSave}>
-            Save Version
+            {newerVersion ? "Save Anyway" : "Save Version"}
           </Button>
         </SheetFooter>
       </SheetContent>

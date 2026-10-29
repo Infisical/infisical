@@ -10,6 +10,7 @@ import {
   decodeSkillFile,
   formatSkillHeaderValue,
   fromDraftFiles,
+  getChangedSkillPaths,
   getReservedSkillNameMessage,
   getSkillBaseName,
   getSkillEntryNameError,
@@ -693,5 +694,82 @@ describe("splitFrontmatter", () => {
     expect(setSkillHeaderValue("--- \nname: a\n---\nBody", "name", "b")).toBe(
       "--- \nname: b\n---\nBody"
     );
+  });
+});
+
+describe("executable files in an uploaded zip", () => {
+  test("keeps 0755 for an entry whose Unix mode has an execute bit", async () => {
+    const archive = buildSkillZip("review", [
+      toSkillFile("SKILL.md", "# Review"),
+      { ...toSkillFile("scripts/check.sh", "echo ok"), mode: "0755" }
+    ]);
+    const files = await readSkillUpload(new File([archive], "review.zip"));
+    expect(Object.fromEntries(files.map((file) => [file.path, file.mode]))).toEqual({
+      "SKILL.md": "0644",
+      "scripts/check.sh": "0755"
+    });
+  });
+
+  test("reads 0644 when the archive carries no Unix modes", async () => {
+    const files = await readSkillUpload(
+      zipFile({ "SKILL.md": strToU8("# Review"), "scripts/check.sh": strToU8("echo ok") })
+    );
+    expect(files.map((file) => file.mode)).toEqual(["0644", "0644"]);
+  });
+
+  test("an executable entry stays executable when carrying the previous modes", () => {
+    const previous = [toSkillFile("scripts/check.sh", "echo")];
+    const uploaded = [{ ...toSkillFile("scripts/check.sh", "echo 2"), mode: "0755" as const }];
+    expect(carrySkillFileModes(uploaded, previous)[0].mode).toBe("0755");
+  });
+});
+
+describe("getChangedSkillPaths", () => {
+  const base = toDraftFiles([
+    toSkillFile("SKILL.md", "a"),
+    toSkillFile("scripts/run.sh", "echo"),
+    toSkillFile("docs/a.md", "a")
+  ]);
+
+  test("finds edited, added and mode-changed files without diffing", () => {
+    const draft = [
+      { ...base[0], text: "b" },
+      { ...base[1] },
+      { ...base[2], mode: "0755" as const },
+      newDraftFile("new.md", "x")
+    ];
+    const { changedPaths, hasChanges } = getChangedSkillPaths(base, draft);
+    expect([...changedPaths].sort()).toEqual(["SKILL.md", "new.md", "scripts/run.sh"]);
+    expect(hasChanges).toBe(true);
+  });
+
+  test("counts a deleted file as a change", () => {
+    const { changedPaths, hasChanges } = getChangedSkillPaths(base, base.slice(0, 2));
+    expect(changedPaths.size).toBe(0);
+    expect(hasChanges).toBe(true);
+  });
+
+  test("reports nothing for an unchanged draft", () => {
+    expect(getChangedSkillPaths(base, base.map((file) => ({ ...file }))).hasChanges).toBe(false);
+  });
+});
+
+describe("large files in the save review", () => {
+  test("a modified file over 2,000 lines is not diffed", () => {
+    const big = Array.from({ length: 2001 }, (_, i) => `line ${i}`).join("\n");
+    const [change] = getSkillFileChanges(
+      toDraftFiles([toSkillFile("big.txt", big)]),
+      [{ ...toDraftFiles([toSkillFile("big.txt", big)])[0], text: `${big}\nmore` }]
+    );
+    expect(change.isTooLarge).toBe(true);
+    expect([change.additions, change.deletions]).toEqual([0, 0]);
+  });
+
+  test("a small modified file is diffed", () => {
+    const [change] = getSkillFileChanges(toDraftFiles([toSkillFile("a.txt", "a\n")]), [
+      { ...toDraftFiles([toSkillFile("a.txt", "a\n")])[0], text: "b\n" }
+    ]);
+    expect(change.isTooLarge).toBe(false);
+    expect([change.additions, change.deletions]).toEqual([1, 1]);
   });
 });

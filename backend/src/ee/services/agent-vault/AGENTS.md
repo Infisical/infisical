@@ -357,7 +357,10 @@ an installed copy.
   mismatch, so the serialization is a contract with the CLI.
 - Files are one sealed blob per version (project `SecretManager` key), encrypted before the transaction. Publish
   and restore lock the skill row, so version numbers are unique, the unchanged check is authoritative, and a
-  publish racing a delete gets a 404. The newest 20 versions are kept. A publish or a restore whose files match the
+  publish racing a delete gets a 404. A publish may send `baseVersion`, the version its edits started from; if the
+  latest version under the lock is a different one, it is a 409 so a stale editor can't silently overwrite a newer
+  version (an unchanged publish still answers `unchanged: true`). Restore takes no base. The newest 20 versions
+  are kept. A publish or a restore whose files match the
   latest version writes nothing and answers `unchanged: true` with that version, and records no audit or PostHog event.
 - Reading one version's files (`GET /skills/:skillId/versions/:version`) writes an `agent-vault-skill-version-view`
   audit event (data-access class); the list routes write none.
@@ -366,16 +369,17 @@ an installed copy.
   with `Authorization: Bearer agv_...` and no other credential, so `inject-identity` skips the path and the route
   parses the header itself. Any refusal is a 401, an unknown token included. It shares the owner checks of resolve
   and credential refresh (`$authorizeSessionOwner`), with the org taken from the session's project instead of a
-  proxy. Each call writes one `agent-vault-skill-delivered` audit event per skill (data-access class) with the
-  session's owner as the actor (a user named as they are now, or from the session's snapshot if they are gone),
-  credited to the first session bundle that carries it, and, when there is at least one skill, one anonymous
-  `Agent Vault Skills Delivered` PostHog event with the count. Nothing caches; the route uses `readLimit`.
+  proxy. A call that returns at least one skill writes one `agent-vault-skills-delivered` audit event
+  (data-access class) listing every skill delivered (id, name, version, sha256), with the session's owner as the
+  actor (a user named as they are now, or from the session's snapshot if they are gone) and the session's access
+  bundle (sessions carry one today), plus one anonymous `Agent Vault Skills Delivered` PostHog event with the
+  count. A call with no skills records neither. Nothing caches; the route uses `readLimit`.
 - Skills use the `agent-vault-skills` CASL subject. Members keep CASL `Read`, narrowed by reachability
   (`getAgentVaultReachability`): they see only skills attached to a bundle they can reach, each with only those
   bundles, and only the latest version's files. Anything else, an unreachable bundle's skill list included, is a 404.
   Listing versions checks `Edit`, so it is admin only. Creating, publishing, restoring and deleting are admin only. Attaching or detaching needs `Edit` on access bundles and `Read` on skills, and a
   bundle holds at most 25 skills (`AGENT_VAULT_MAX_SKILLS_PER_BUNDLE`, checked under the bundle lock). Agent Vault
-  holds at most 64 skills (`AGENT_VAULT_MAX_SKILLS`, checked under a per-project advisory lock on create).
+  holds at most 250 skills (`AGENT_VAULT_MAX_SKILLS`, checked under a per-project advisory lock on create).
 
 ## Credentials at rest
 

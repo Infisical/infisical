@@ -22,13 +22,18 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
 };
 
-const runCommand = (token: string) =>
+const runCommand = (token: string, siteUrl: string) =>
   `infisical agent-vault run \\
   --session-token ${token} \\
   --proxy <proxy-host>:17323 \\
+  --domain ${siteUrl} \\
   -- <agent-command>`;
 
-export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
+export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => {
+  const { protocol, hostname, port } = window.location;
+  const siteUrl = `${protocol}//${hostname}${port && port !== "80" ? `:${port}` : ""}`;
+
+  return (
   <Dialog open={Boolean(session)} onOpenChange={onOpenChange}>
     <DialogContent className="max-w-2xl" onInteractOutside={(event) => event.preventDefault()}>
       <DialogHeader>
@@ -49,7 +54,7 @@ export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
         </Alert>
 
         <div className="flex flex-col gap-2">
-          <CodeBlock label="Run an agent with it" value={runCommand(session?.token ?? "")} />
+          <CodeBlock label="Run an agent with it" value={runCommand(session?.token ?? "", siteUrl)} />
           <p className="text-xs text-accent">
             Replace <span className="font-mono">&lt;proxy-host&gt;</span> with the host your proxy
             runs on and <span className="font-mono">&lt;agent-command&gt;</span> with the agent to
@@ -84,3 +89,4 @@ export const SessionCreatedDialog = ({ session, onOpenChange }: Props) => (
     </DialogContent>
   </Dialog>
 );
+};

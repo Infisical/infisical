@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { history } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import {
@@ -13,14 +13,14 @@ import {
   EditorView,
   highlightActiveLine,
   highlightActiveLineGutter,
-  keymap,
   lineNumbers as lineNumbersGutter,
   placeholder as placeholderText
 } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
 
 import { cn } from "../../utils";
-import { getChangedRange, toEditorText } from "./getChangedRange";
+import { codeEditorEditing, lineEndingsFor } from "./codeEditorExtensions";
+import { getValueSync } from "./getChangedRange";
 
 type CodeEditorLanguage = "markdown" | "plain";
 
@@ -157,14 +157,15 @@ const CodeEditor = ({
       doc,
       extensions: [
         history(),
-        keymap.of([...historyKeymap, ...defaultKeymap]),
+        codeEditorEditing,
+        lineEndingsFor(doc),
         editorTheme,
         syntaxHighlighting(highlightStyle),
         compartmentRef.current.of(configurableExtensions(options)),
         EditorView.updateListener.of((update) => {
           if (!update.docChanged) return;
           if (update.transactions.some((tr) => tr.annotation(externalSync))) return;
-          onChangeRef.current?.(update.state.doc.toString());
+          onChangeRef.current?.(update.state.sliceDoc());
         })
       ]
     });
@@ -199,9 +200,7 @@ const CodeEditor = ({
     }
     stateKeyRef.current = stateKey;
     const saved = stateKey === undefined ? undefined : savedStatesRef.current.get(stateKey);
-    view.setState(
-      saved && saved.doc.toString() === toEditorText(value) ? saved : createState(value)
-    );
+    view.setState(saved && getValueSync(saved, value) === null ? saved : createState(value));
     // A saved state still holds the options it was put aside with.
     view.dispatch({
       effects: compartmentRef.current.reconfigure(configurableExtensions(options))
@@ -212,13 +211,20 @@ const CodeEditor = ({
 
   useEffect(() => {
     const view = viewRef.current;
-    const text = toEditorText(value);
-    if (!view || view.state.doc.toString() === text) return;
+    if (!view) return;
+    const sync = getValueSync(view.state, value);
+    if (!sync) return;
+    if (sync === "replace") {
+      view.setState(createState(value));
+      view.contentDOM.setAttribute("aria-label", ariaLabel ?? "");
+      return;
+    }
     // Only the changed range is replaced, so undo history for the rest of the text still maps to the right places.
     view.dispatch({
-      changes: getChangedRange(view.state.doc.toString(), text),
+      changes: sync,
       annotations: [externalSync.of(true), Transaction.addToHistory.of(false)]
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   useEffect(() => {

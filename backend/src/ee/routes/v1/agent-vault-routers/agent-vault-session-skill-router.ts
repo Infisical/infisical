@@ -76,30 +76,30 @@ export const registerAgentVaultSessionSkillRouter = async (server: FastifyZodPro
       });
 
       const actor = sessionOwnerActor(session, ownerUser);
-      await Promise.all(
-        skills.map((skill) =>
-          server.services.auditLog.createAuditLog({
-            ...req.auditLogInfo,
-            actor,
-            orgId,
-            projectId: session.projectId,
-            event: {
-              type: EventType.AGENT_VAULT_SKILL_DELIVERED,
-              metadata: {
-                sessionId: session.id,
+      if (skills.length > 0) {
+        // A session carries one access bundle today, so every skill is credited to the same one.
+        const [{ accessBundleId, accessBundleName }] = skills;
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          actor,
+          orgId,
+          projectId: session.projectId,
+          event: {
+            type: EventType.AGENT_VAULT_SKILLS_DELIVERED,
+            metadata: {
+              sessionId: session.id,
+              accessBundleId,
+              accessBundleName,
+              skills: skills.map((skill) => ({
                 skillId: skill.id,
                 skillName: skill.name,
                 version: skill.version,
-                sha256: skill.sha256,
-                accessBundleId: skill.accessBundleId,
-                accessBundleName: skill.accessBundleName
-              }
+                sha256: skill.sha256
+              }))
             }
-          })
-        )
-      );
+          }
+        });
 
-      if (skills.length > 0) {
         void server.services.telemetry
           .sendPostHogEvents({
             event: PostHogEventTypes.AgentVaultSkillsDelivered,

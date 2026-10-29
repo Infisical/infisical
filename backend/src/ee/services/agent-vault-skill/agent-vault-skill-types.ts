@@ -20,7 +20,7 @@ export type TListSkillsDTO = TAgentVaultSkillScoped & {
 
 export type TSkillByIdDTO = TAgentVaultSkillScoped & { skillId: string };
 
-export type TPublishSkillVersionDTO = TSkillByIdDTO & { files: TAgentVaultSkillFile[] };
+export type TPublishSkillVersionDTO = TSkillByIdDTO & { files: TAgentVaultSkillFile[]; baseVersion?: number };
 
 export type TSkillVersionDTO = TSkillByIdDTO & { version: number };
 

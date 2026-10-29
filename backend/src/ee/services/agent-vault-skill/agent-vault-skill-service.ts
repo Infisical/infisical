@@ -200,11 +200,13 @@ export const agentVaultSkillServiceFactory = ({
     skillId,
     projectId,
     allowRename,
+    baseVersion,
     content
   }: {
     skillId: string;
     projectId: string;
     allowRename: boolean;
+    baseVersion?: number;
     content: Pick<TAgentVaultSkillVersions, "encryptedFiles" | "sha256" | "sizeBytes" | "fileCount"> & {
       name: string;
       description: string;
@@ -221,6 +223,13 @@ export const agentVaultSkillServiceFactory = ({
           return { skill: skill!, version: latest, unchanged: true, previousName: undefined };
         }
 
+        const latestVersion = latest?.version ?? 0;
+        if (baseVersion !== undefined && latestVersion !== baseVersion) {
+          throw new ConflictError({
+            message: `Version ${latestVersion} was published after you opened this skill. Review it, then save again.`
+          });
+        }
+
         const renamed = current.name !== content.name;
         if (renamed && !allowRename) {
           throw new ConflictError({
@@ -232,7 +241,7 @@ export const agentVaultSkillServiceFactory = ({
           if (taken) throw new ConflictError({ message: duplicateNameMessage(content.name) });
         }
 
-        const next = (latest?.version ?? 0) + 1;
+        const next = latestVersion + 1;
         const version = await agentVaultSkillVersionDAL.create(
           {
             skillId,
@@ -265,7 +274,7 @@ export const agentVaultSkillServiceFactory = ({
     }
   };
 
-  const publishVersion = async ({ skillId, files, ...scoped }: TPublishSkillVersionDTO) => {
+  const publishVersion = async ({ skillId, files, baseVersion, ...scoped }: TPublishSkillVersionDTO) => {
     await $authorize(scoped, ProjectPermissionAgentVaultSkillActions.Edit);
 
     const skill = await $findSkill({ skillId, projectId: scoped.projectId });
@@ -284,6 +293,7 @@ export const agentVaultSkillServiceFactory = ({
       skillId: skill.id,
       projectId: scoped.projectId,
       allowRename: true,
+      baseVersion,
       content: {
         encryptedFiles,
         sha256: validated.sha256,

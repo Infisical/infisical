@@ -5491,11 +5491,17 @@ describe("Agent Vault V1 Router", async () => {
       const session = await mintFor([bundle]);
       const asSession = () => fetchSessionSkills(`Bearer ${session.token}`);
 
-      const empty = await asSession();
-      expect(empty.statusCode).toBe(200);
-      expect(JSON.parse(empty.payload)).toEqual({ skills: [] });
+      const emptyAuditLogs = recordAuditLogs();
+      try {
+        const empty = await asSession();
+        expect(empty.statusCode).toBe(200);
+        expect(JSON.parse(empty.payload)).toEqual({ skills: [] });
+        expect(emptyAuditLogs).not.toHaveBeenCalled();
+      } finally {
+        emptyAuditLogs.mockRestore();
+      }
 
-      const { skill: zeta } = await createSkill("zeta-skill");
+      const { skill: zeta, version: zetaV1 } = await createSkill("zeta-skill");
       const { skill: alpha } = await createSkill("alpha-skill");
       const { skill: foreign } = await createSkill("foreign-skill");
       expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: zeta.id })).statusCode).toBe(200);
@@ -5513,7 +5519,7 @@ describe("Agent Vault V1 Router", async () => {
       let delivered: Awaited<ReturnType<typeof asSession>>;
       try {
         delivered = await asSession();
-        expect(auditLogs).toHaveBeenCalledTimes(2);
+        expect(auditLogs).toHaveBeenCalledTimes(1);
         expect(auditLogs).toHaveBeenCalledWith(
           expect.objectContaining({
             orgId: seedData1.organization.id,
@@ -5522,15 +5528,15 @@ describe("Agent Vault V1 Router", async () => {
               metadata: expect.objectContaining({ userId: seedData1.id })
             }),
             event: {
-              type: "agent-vault-skill-delivered",
+              type: "agent-vault-skills-delivered",
               metadata: {
                 sessionId: session.id,
-                skillId: alpha.id,
-                skillName: "alpha-skill",
-                version: 2,
-                sha256: alphaV2.sha256,
                 accessBundleId: bundle.id,
-                accessBundleName: bundle.name
+                accessBundleName: bundle.name,
+                skills: [
+                  { skillId: alpha.id, skillName: "alpha-skill", version: 2, sha256: alphaV2.sha256 },
+                  { skillId: zeta.id, skillName: "zeta-skill", version: 1, sha256: zetaV1.sha256 }
+                ]
               }
             }
           })
@@ -5642,13 +5648,13 @@ describe("Agent Vault V1 Router", async () => {
         await member.cleanup();
       }
     });
-    test("Agent Vault holds at most 64 skills", async () => {
+    test("Agent Vault holds at most 250 skills", async () => {
       const projectId = await getProjectId();
-      // Seeded directly: 64 creates through the API would be slow, and the cap counts skill rows only.
+      // Seeded directly: 250 creates through the API would be slow, and the cap counts skill rows only.
       await testDb("agent_vault_skills").insert(
         Array.from({ length: AGENT_VAULT_MAX_SKILLS }, (_, i) => ({
           projectId,
-          name: `seeded-skill-${String(i).padStart(2, "0")}`,
+          name: `seeded-skill-${String(i).padStart(3, "0")}`,
           description: "Seeded."
         }))
       );
@@ -5656,11 +5662,11 @@ describe("Agent Vault V1 Router", async () => {
         const over = await inject("POST", skillsUrl, { files: skillFiles("over-cap-skill") });
         expect(over.statusCode).toBe(400);
         expect(JSON.parse(over.payload).message).toBe(
-          "This organization already has 64 skills, the most allowed. Delete an unused one first."
+          "This organization already has 250 skills, the most allowed. Delete an unused one first."
         );
         expect(await testDb("agent_vault_skills").where({ projectId, name: "over-cap-skill" })).toHaveLength(0);
 
-        await testDb("agent_vault_skills").where({ projectId, name: "seeded-skill-00" }).del();
+        await testDb("agent_vault_skills").where({ projectId, name: "seeded-skill-000" }).del();
         await createSkill("over-cap-skill");
       } finally {
         await testDb("agent_vault_skills").where({ projectId }).del();
@@ -5685,6 +5691,33 @@ describe("Agent Vault V1 Router", async () => {
         skill: { id: skill.id, name: "summary-renamed", description: "Do the thing.", latestVersion: 3 },
         version: { version: 3 }
       });
+    });
+
+    test("a publish with a stale baseVersion is refused, and one with the latest or none goes through", async () => {
+      const { skill } = await createSkill("base-version-skill");
+      const versionsUrl = `${skillsUrl}/${skill.id}/versions`;
+      expect((await publish(skill.id, skillFiles("base-version-skill", "Second."))).statusCode).toBe(200);
+
+      const stale = await inject("POST", versionsUrl, {
+        files: skillFiles("base-version-skill", "Stale."),
+        baseVersion: 1
+      });
+      expect(stale.statusCode).toBe(409);
+      expect(JSON.parse(stale.payload).message).toBe(
+        "Version 2 was published after you opened this skill. Review it, then save again."
+      );
+      expect(await testDb("agent_vault_skill_versions").where({ skillId: skill.id })).toHaveLength(2);
+
+      const current = await inject("POST", versionsUrl, {
+        files: skillFiles("base-version-skill", "Third."),
+        baseVersion: 2
+      });
+      expect(current.statusCode).toBe(200);
+      expect(JSON.parse(current.payload)).toMatchObject({ unchanged: false, version: { version: 3 } });
+
+      const omitted = await publish(skill.id, skillFiles("base-version-skill", "Fourth."));
+      expect(omitted.statusCode).toBe(200);
+      expect(JSON.parse(omitted.payload)).toMatchObject({ unchanged: false, version: { version: 4 } });
     });
 
     test("the Skills Delivered event is sent only when a session gets at least one skill", async () => {

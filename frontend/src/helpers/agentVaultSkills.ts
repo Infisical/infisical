@@ -88,6 +88,42 @@ const decodeZipName = (name: string) => {
   }
 };
 
+const ZIP_END_OF_DIRECTORY = 0x06054b50;
+const ZIP_DIRECTORY_ENTRY = 0x02014b50;
+const ZIP_HOST_UNIX = 3;
+
+// fflate doesn't expose an entry's external attributes, so the central directory is read here for the Unix mode bits.
+// Names are decoded as fflate decodes them, so they match the names its filter sees.
+const readZipExecutableNames = (data: Uint8Array) => {
+  const executable = new Set<string>();
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  let end = data.length - 22;
+  const stop = Math.max(0, end - 0xffff);
+  while (end >= stop && view.getUint32(end, true) !== ZIP_END_OF_DIRECTORY) end -= 1;
+  if (end < stop) return executable;
+
+  const count = view.getUint16(end + 10, true);
+  let offset = view.getUint32(end + 16, true);
+  const latin1 = new TextDecoder("latin1");
+  const utf8 = new TextDecoder();
+  for (let i = 0; i < count; i += 1) {
+    if (offset + 46 > data.length || view.getUint32(offset, true) !== ZIP_DIRECTORY_ENTRY) break;
+    const host = view.getUint8(offset + 5);
+    const flags = view.getUint16(offset + 8, true);
+    const nameLength = view.getUint16(offset + 28, true);
+    const extraLength = view.getUint16(offset + 30, true);
+    const commentLength = view.getUint16(offset + 32, true);
+    const unixMode = view.getUint32(offset + 38, true) >>> 16;
+    const nameBytes = data.subarray(offset + 46, offset + 46 + nameLength);
+    // eslint-disable-next-line no-bitwise
+    const name = (flags & 0x800 ? utf8 : latin1).decode(nameBytes);
+    // eslint-disable-next-line no-bitwise
+    if (host === ZIP_HOST_UNIX && unixMode & 0o111) executable.add(name);
+    offset += 46 + nameLength + extraLength + commentLength;
+  }
+  return executable;
+};
+
 const readZip = (data: Uint8Array): TAgentVaultSkillFile[] => {
   let count = 0;
   let total = 0;
@@ -125,9 +161,11 @@ const readZip = (data: Uint8Array): TAgentVaultSkillFile[] => {
   if (names.length === 0) throw new SkillPackageError("This archive holds no files.");
   const paths = stripSharedFolder(names.map((name) => normalizeSkillPath(decodeZipName(name))));
 
+  const executable = readZipExecutableNames(data);
+
   return names.map((name, index) => ({
     path: paths[index],
-    mode: "0644" as const,
+    mode: executable.has(name) ? ("0755" as const) : ("0644" as const),
     contentBase64: bytesToBase64(entries[name])
   }));
 };
@@ -578,11 +616,42 @@ export type TSkillFileChange = {
   oldText: string | null;
   newText: string | null;
   isBinary: boolean;
+  /** Too large to diff in the browser; its line counts are not known when it was modified. */
+  isTooLarge: boolean;
   additions: number;
   deletions: number;
   oldMode?: TAgentVaultSkillFileMode;
   newMode?: TAgentVaultSkillFileMode;
 };
+
+const isSameDraftFile = (before: TSkillDraftFile, file: TSkillDraftFile) =>
+  before.mode === file.mode &&
+  (file.text === null ? before.contentBase64 === file.contentBase64 : before.text === file.text);
+
+/**
+ * The paths a draft adds or changes, and whether it changes anything at all, without diffing any text. Cheap enough
+ * to run on every keystroke.
+ */
+export const getChangedSkillPaths = (original: TSkillDraftFile[], draft: TSkillDraftFile[]) => {
+  const originalByPath = new Map(original.map((file) => [file.path, file]));
+  const changedPaths = new Set<string>();
+  draft.forEach((file) => {
+    const before = originalByPath.get(file.path);
+    if (!before || !isSameDraftFile(before, file)) changedPaths.add(file.path);
+  });
+  const draftPaths = new Set(draft.map((file) => file.path));
+  const hasChanges =
+    changedPaths.size > 0 || original.some((file) => !draftPaths.has(file.path));
+  return { changedPaths, hasChanges };
+};
+
+const DIFF_MAX_LINES = 2000;
+const DIFF_MAX_CHARS = 200 * 1024;
+
+const isTooLargeToDiff = (...texts: (string | null)[]) =>
+  texts.some(
+    (text) => text !== null && (text.length > DIFF_MAX_CHARS || countLines(text) > DIFF_MAX_LINES)
+  );
 
 /** What a draft changes against the files it started from, in the draft's order with deleted files last. */
 export const getSkillFileChanges = (
@@ -603,6 +672,7 @@ export const getSkillFileChanges = (
         oldText: null,
         newText: file.text,
         isBinary,
+        isTooLarge: isTooLargeToDiff(file.text),
         additions: countLines(file.text ?? ""),
         deletions: 0,
         newMode: file.mode
@@ -613,13 +683,15 @@ export const getSkillFileChanges = (
       ? before.contentBase64 !== file.contentBase64
       : before.text !== file.text;
     if (!isContentChanged && before.mode === file.mode) return;
+    const isTooLarge = isTooLargeToDiff(before.text, file.text);
     changes.push({
       path: file.path,
       status: "modified",
       oldText: before.text,
       newText: file.text,
       isBinary,
-      ...(isBinary || !isContentChanged
+      isTooLarge,
+      ...(isBinary || !isContentChanged || isTooLarge
         ? { additions: 0, deletions: 0 }
         : countLineChanges(before.text ?? "", file.text ?? "")),
       ...(before.mode !== file.mode && { oldMode: before.mode, newMode: file.mode })
@@ -634,6 +706,7 @@ export const getSkillFileChanges = (
       oldText: file.text,
       newText: null,
       isBinary: file.text === null,
+      isTooLarge: isTooLargeToDiff(file.text),
       additions: 0,
       deletions: countLines(file.text ?? ""),
       oldMode: file.mode
@@ -713,13 +786,18 @@ export const buildDiffRows = (oldText: string, newText: string, context = 3): TD
   return rows;
 };
 
-/** Gives each uploaded file the mode the same path had before, since an archive's file modes can't be read here. */
+/**
+ * Keeps a file the archive marks executable as such, and gives every other file the mode the same path had before,
+ * since archives made on Windows carry no modes at all.
+ */
 export const carrySkillFileModes = (
   files: TAgentVaultSkillFile[],
   previous: TAgentVaultSkillFile[]
 ): TAgentVaultSkillFile[] => {
   const modes = new Map(previous.map((file) => [file.path, file.mode]));
-  return files.map((file) => ({ ...file, mode: modes.get(file.path) ?? file.mode }));
+  return files.map((file) =>
+    file.mode === "0755" ? file : { ...file, mode: modes.get(file.path) ?? file.mode }
+  );
 };
 
 /** Swaps in a new SKILL.md and keeps every other file of the previous version as it was. */

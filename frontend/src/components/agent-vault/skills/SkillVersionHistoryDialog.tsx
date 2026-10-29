@@ -26,6 +26,8 @@ import {
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultSkill } from "@app/hooks/api/agentVault/types";
 
+import { RollBackSkillAlertDialog } from "./RollBackSkillAlertDialog";
+
 type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -48,6 +50,7 @@ export const SkillVersionHistoryDialog = ({
   const { data: versions = [], isPending } = useListAgentVaultSkillVersions(isOpen ? skill.id : "");
   const restoreVersion = useRestoreAgentVaultSkillVersion();
   const [rollingBack, setRollingBack] = useState<number | null>(null);
+  const [confirmVersion, setConfirmVersion] = useState<number | null>(null);
 
   const handleRollBack = async (version: number) => {
     setRollingBack(version);
@@ -112,13 +115,23 @@ export const SkillVersionHistoryDialog = ({
               {!isPending &&
                 versions.map((version) => {
                   const isLatest = version.version === skill.latestVersion;
+                  const view = () => {
+                    onView(version.version);
+                    onOpenChange(false);
+                  };
                   return (
                     <TableRow
                       key={version.id}
                       data-state={version.version === viewedVersion ? "selected" : undefined}
-                      onClick={() => {
-                        onView(version.version);
-                        onOpenChange(false);
+                      role="button"
+                      tabIndex={0}
+                      onClick={view}
+                      onKeyDown={(event) => {
+                        if (event.target !== event.currentTarget) return;
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          view();
+                        }
                       }}
                     >
                       <TableCell>
@@ -141,7 +154,7 @@ export const SkillVersionHistoryDialog = ({
                             isDisabled={rollingBack !== null}
                             onClick={(event) => {
                               event.stopPropagation();
-                              handleRollBack(version.version);
+                              setConfirmVersion(version.version);
                             }}
                           >
                             <HistoryIcon />
@@ -155,6 +168,15 @@ export const SkillVersionHistoryDialog = ({
             </TableBody>
           </Table>
         </div>
+
+        <RollBackSkillAlertDialog
+          version={confirmVersion}
+          onOpenChange={(open) => !open && setConfirmVersion(null)}
+          onConfirm={(version) => {
+            setConfirmVersion(null);
+            handleRollBack(version);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
