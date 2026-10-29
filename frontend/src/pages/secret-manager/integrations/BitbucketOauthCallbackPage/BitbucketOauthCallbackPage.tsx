@@ -1,14 +1,19 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { PageTitle } from "@app/components/PageTitle";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useAuthorizeIntegration } from "@app/hooks/api";
 
+import {
+  IntegrationOauthCallbackStatus,
+  INVALID_OAUTH_STATE_MESSAGE
+} from "../components/IntegrationOauthCallbackStatus";
+
 export const BitbucketOauthCallbackPage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useAuthorizeIntegration();
+  const [error, setError] = useState<string | null>(null);
   const { currentOrg } = useOrganization();
   const { code, state } = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.BitbucketOauthCallbackPage.id
@@ -19,7 +24,10 @@ export const BitbucketOauthCallbackPage = () => {
     (async () => {
       try {
         // validate state
-        if (state !== localStorage.getItem("latestCSRFToken")) return;
+        if (state !== localStorage.getItem("latestCSRFToken")) {
+          setError(INVALID_OAUTH_STATE_MESSAGE);
+          return;
+        }
         localStorage.removeItem("latestCSRFToken");
 
         const integrationAuth = await mutateAsync({
@@ -40,14 +48,10 @@ export const BitbucketOauthCallbackPage = () => {
         });
       } catch (err) {
         console.error(err);
+        setError("Infisical couldn't finish authorizing with Bitbucket.");
       }
     })();
   }, []);
 
-  return (
-    <>
-      <PageTitle title="Connecting Bitbucket Integration" />
-      <div />
-    </>
-  );
+  return <IntegrationOauthCallbackStatus integrationName="Bitbucket" error={error} />;
 };

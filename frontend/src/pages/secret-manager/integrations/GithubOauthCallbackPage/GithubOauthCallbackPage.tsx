@@ -1,14 +1,19 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
-import { PageTitle } from "@app/components/PageTitle";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useAuthorizeIntegration } from "@app/hooks/api";
 
+import {
+  IntegrationOauthCallbackStatus,
+  INVALID_OAUTH_STATE_MESSAGE
+} from "../components/IntegrationOauthCallbackStatus";
+
 export const GithubOauthCallbackPage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useAuthorizeIntegration();
+  const [error, setError] = useState<string | null>(null);
   const { currentOrg } = useOrganization();
   const {
     code,
@@ -24,6 +29,7 @@ export const GithubOauthCallbackPage = () => {
       try {
         // validate state
         if (state !== localStorage.getItem("latestCSRFToken")) {
+          setError(INVALID_OAUTH_STATE_MESSAGE);
           return;
         }
 
@@ -48,14 +54,10 @@ export const GithubOauthCallbackPage = () => {
         });
       } catch (err) {
         console.error(err);
+        setError("Infisical couldn't finish authorizing with GitHub.");
       }
     })();
   }, []);
 
-  return (
-    <>
-      <PageTitle title="Connecting GitHub Integration" />
-      <div />
-    </>
-  );
+  return <IntegrationOauthCallbackStatus integrationName="GitHub" error={error} />;
 };
