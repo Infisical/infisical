@@ -853,10 +853,8 @@ export const useRotatePamAccount = () => {
       const { data } = await apiRequest.post(`/api/v1/pam/accounts/${accountId}/rotation/rotate`);
       return data;
     },
-    onSettled: (_, __, { accountId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.accountRotation(accountId) });
-      queryClient.invalidateQueries({ queryKey: pamKeys.getAccount(accountId) });
-      queryClient.invalidateQueries({ queryKey: pamKeys.accountDependencies(accountId) });
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.account() });
     }
   });
 };

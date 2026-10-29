@@ -49,14 +49,13 @@ export default defineConfig({
     },
     fileParallelism: false,
 
-    // AWS Parameter Store, the AWS IAM user secret rotation provider and the AWS app connection
-    // are replaced by fakes for the whole e2e run, so the secret sync and secret rotation specs
-    // can assert what Infisical hands a destination or a rotation provider without reaching AWS.
-    // Nothing under src/ knows the fakes exist (see e2e-test/fakes/).
+    // The AWS IAM user secret rotation provider and the AWS app connection are replaced by fakes
+    // for the whole e2e run, so the secret rotation spec can assert what Infisical hands a
+    // rotation provider without reaching AWS. Nothing under src/ knows the fakes exist (see
+    // e2e-test/fakes/).
     //
     // Entries match the *import specifier*, which is what keeps this surgical rather than
-    // sweeping: "./aws-parameter-store-sync-fns" is imported only by its own barrel,
-    // "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns" only by
+    // sweeping: "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns" is imported only by
     // secret-rotation-v2-service.ts, and "./aws-connection-fns" only by aws/index.ts. The
     // full-path entry covers the twelve modules that import the connection functions directly,
     // of which secret-sync-maps.ts matters here: it calls getAwsAccountId on every sync
@@ -68,10 +67,6 @@ export default defineConfig({
       {
         find: "./license-fns",
         replacement: path.resolve(__dirname, "./src/ee/services/license/__mocks__/license-fns")
-      },
-      {
-        find: "./aws-parameter-store-sync-fns",
-        replacement: path.resolve(__dirname, "./e2e-test/fakes/aws-parameter-store-sync-fns")
       },
       {
         find: "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns",
