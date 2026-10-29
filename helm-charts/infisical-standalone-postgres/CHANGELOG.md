@@ -1,3 +1,9 @@
+## 1.12.0 (Unreleased)
+Changes:
+* Added `infisical.rolloutOnEveryRender` (default `true`) to control the `updatedAt` annotation on the Infisical Deployment and pod template. The annotation is set to the render time, so every `helm upgrade`, and every Argo CD or Flux sync, rolls all pods even when nothing changed, and GitOps tools show the release as permanently out of sync. Set it to `false` to keep the pod spec stable between renders. After changing the `infisical.kubeSecretRef` secret, restart the pods with `kubectl rollout restart`.
+* Fixed the `updatedAt` date format, which printed the month in place of the day of the month.
+* Backwards compatible. The default keeps the current behavior. Setting the flag to `false` triggers a one-time pod rollout.
+
 ## 1.11.1 (Unreleased)
 Changes:
 * Updated the default `infisical.image.tag` value from `v0.158.0` to `v0.167.0`.
