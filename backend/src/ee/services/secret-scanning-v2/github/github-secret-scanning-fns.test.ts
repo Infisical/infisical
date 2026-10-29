@@ -16,9 +16,10 @@ import {
 
 const checksUpdate = vi.fn();
 const checksCreate = vi.fn();
+const checksListForRef = vi.fn();
 
 vi.mock("probot", () => ({
-  ProbotOctokit: vi.fn(() => ({ checks: { update: checksUpdate, create: checksCreate } }))
+  ProbotOctokit: vi.fn(() => ({ checks: { update: checksUpdate, create: checksCreate, listForRef: checksListForRef } }))
 }));
 
 vi.mock("@app/lib/config/env", async (importOriginal) => ({
@@ -239,26 +240,44 @@ describe("scanGitHubCommitsAndGetFindings", () => {
 });
 
 describe("createSkippedPullRequestCheckRun", () => {
-  test("creates a check that is already completed as skipped, with no scan behind it", async () => {
+  const params = {
+    installationId: "1",
+    repositoryFullName: "acme/api",
+    headSha: "b".repeat(40),
+    title: "Fork not scanned",
+    summary: "summary"
+  };
+
+  beforeEach(() => {
     checksCreate.mockReset();
+    checksListForRef.mockReset();
+  });
 
-    await createSkippedPullRequestCheckRun({
-      installationId: "1",
-      repositoryFullName: "acme/api",
-      headSha: "b".repeat(40),
-      title: "Fork not scanned",
-      summary: "summary"
-    });
+  test("creates a check with the scan's name, already completed as skipped, with no scan behind it", async () => {
+    checksListForRef.mockResolvedValue({ data: { total_count: 0, check_runs: [] } });
 
+    expect(await createSkippedPullRequestCheckRun(params)).toBe(true);
+
+    expect(checksListForRef).toHaveBeenCalledWith(
+      expect.objectContaining({ ref: "b".repeat(40), check_name: "Infisical Secret Scanning", app_id: 1 })
+    );
     expect(checksCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         owner: "acme",
         repo: "api",
+        name: "Infisical Secret Scanning",
         head_sha: "b".repeat(40),
         status: "completed",
         conclusion: "skipped"
       })
     );
     expect(checksCreate.mock.calls[0][0]).not.toHaveProperty("external_id");
+  });
+
+  test("leaves a commit that a scan already reported on alone", async () => {
+    checksListForRef.mockResolvedValue({ data: { total_count: 1, check_runs: [{ id: 7 }] } });
+
+    expect(await createSkippedPullRequestCheckRun(params)).toBe(false);
+    expect(checksCreate).not.toHaveBeenCalled();
   });
 });

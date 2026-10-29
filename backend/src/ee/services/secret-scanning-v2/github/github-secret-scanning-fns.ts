@@ -290,7 +290,10 @@ export const createPullRequestCheckRun = async ({
   return data.id;
 };
 
-// Completed on creation, so a required check doesn't block the pull request. `skipped` passes branch protection.
+// Completed on creation and named like the scan's check, so a required check doesn't block the pull request: `skipped`
+// passes branch protection. Checks belong to the commit, not the pull request, and the newest run with our name is the
+// one GitHub counts, so a commit a scan already reported on keeps that result. Otherwise pushing a scanned head to a fork
+// and opening a pull request from it would turn a failed check into a skipped one. Returns whether it was created.
 export const createSkippedPullRequestCheckRun = async ({
   installationId,
   repositoryFullName,
@@ -307,16 +310,29 @@ export const createSkippedPullRequestCheckRun = async ({
   const octokit = getGitHubRadarInstallationOctokit(installationId);
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
+  const { data: existing } = await octokit.checks.listForRef({
+    owner,
+    repo,
+    ref: headSha,
+    check_name: GITHUB_PULL_REQUEST_CHECK_NAME,
+    app_id: Number(getConfig().INF_APP_CONNECTION_GITHUB_RADAR_APP_ID),
+    per_page: 1
+  });
+
+  if (existing.total_count > 0) return false;
+
   await octokit.checks.create({
     owner,
     repo,
-    name: `${GITHUB_PULL_REQUEST_CHECK_NAME} (fork skipped)`,
+    name: GITHUB_PULL_REQUEST_CHECK_NAME,
     head_sha: headSha,
     status: "completed",
     conclusion: "skipped",
     completed_at: new Date().toISOString(),
     output: { title, summary }
   });
+
+  return true;
 };
 
 // A suite holds one App's check runs for one commit; `latest` returns only the newest run with our check's name.
@@ -649,7 +665,7 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
     // scanned once merged, by the push scan. Nothing is discovered either.
     if (isFromFork) {
       try {
-        await createSkippedPullRequestCheckRun({
+        const created = await createSkippedPullRequestCheckRun({
           installationId: String(installationId),
           repositoryFullName: repository.full_name,
           headSha: pullRequest.headSha,
@@ -657,6 +673,12 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
           summary:
             "Infisical doesn't scan pull requests from forks. Their commits are scanned after they are merged into this repository."
         });
+
+        if (!created) {
+          logger.info(
+            `secretScanningV2PullRequestEvent: GitHub - fork pull request head already has a check run, leaving it ${logDetails}`
+          );
+        }
       } catch (error) {
         logger.warn(
           error,
