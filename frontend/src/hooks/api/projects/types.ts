@@ -122,6 +122,8 @@ export type DeleteWorkspaceDTO = { projectID: string; hardDelete?: boolean };
 
 export type RestoreProjectDTO = { projectId: string };
 
+export type PermanentlyDeleteProjectDTO = { projectId: string };
+
 export type DeletedProject = {
   id: string;
   name: string;

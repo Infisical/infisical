@@ -1073,6 +1073,9 @@ export const PROJECTS = {
   RESTORE: {
     projectId: "The ID of the soft-deleted project to restore."
   },
+  PERMANENTLY_DELETE: {
+    projectId: "The ID of the soft-deleted project to permanently delete."
+  },
   GET: {
     projectId: "The ID of the project."
   },

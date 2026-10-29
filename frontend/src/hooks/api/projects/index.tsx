@@ -34,6 +34,7 @@ export {
   useListWorkspacePkiAlerts,
   useListWorkspacePkiCollections,
   useListWorkspacePkiSubscribers,
+  usePermanentlyDeleteProject,
   useRestoreEnvironment,
   useRestoreProject,
   useSearchProjects,

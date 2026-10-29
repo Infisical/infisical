@@ -121,6 +121,7 @@ import {
   TListProjectPkiSubscribersDTO,
   TListProjectsDTO,
   TLoadProjectKmsBackupDTO,
+  TPermanentlyDeleteProjectDTO,
   TProjectAccessRequestDTO,
   TRestoreProjectDTO,
   TSearchProjectsDTO,
@@ -1010,6 +1011,55 @@ export const projectServiceFactory = ({
         )
       );
       return restoredProject;
+    } finally {
+      await lock.release();
+    }
+  };
+
+  const permanentlyDeleteProject = async ({
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod,
+    projectId
+  }: TPermanentlyDeleteProjectDTO) => {
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionAdminConsoleAction.AccessAllProjects,
+      OrgPermissionSubjects.AdminConsole
+    );
+
+    const project = await projectDAL.findByIdIncludingExpired(projectId);
+    if (!project || project.orgId !== actorOrgId || !project.deleteAfter) {
+      throw new NotFoundError({ message: `Deleted project with ID '${projectId}' not found` });
+    }
+
+    let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
+    try {
+      lock = await keyStore.acquireLock([KeyStorePrefixes.ProjectDeleteLock(project.id)], 30_000, {
+        retryCount: 0
+      });
+    } catch {
+      throw new BadRequestError({
+        message: "Project is already being deleted."
+      });
+    }
+
+    try {
+      // Ends the grace period so the hard-delete worker picks it up, and frees the slug right away.
+      const expiredProject = await projectDAL.expireSoftDeletedById(project.id, `del-${alphaNumericNanoId(20)}`);
+      if (!expiredProject) {
+        throw new NotFoundError({ message: `Deleted project with ID '${projectId}' not found` });
+      }
+
+      return { ...expiredProject, slug: project.slug };
     } finally {
       await lock.release();
     }
@@ -2514,6 +2564,7 @@ export const projectServiceFactory = ({
     deleteProject,
     listDeletedProjects,
     restoreProject,
+    permanentlyDeleteProject,
     getProjects,
     getAccessibleProjectsWithSubOrgs,
     updateProject,

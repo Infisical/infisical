@@ -131,6 +131,19 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
+  const expireSoftDeletedById = async (id: string, slug: string, tx?: Knex) => {
+    try {
+      const [doc] = await (tx || db)(TableName.Project)
+        .where({ id })
+        .whereNotNull("deleteAfter")
+        .update({ deleteAfter: new Date(), slug })
+        .returning("*");
+      return doc as TProjects | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Expire soft-deleted project" });
+    }
+  };
+
   const restoreById = async (id: string, tx?: Knex) => {
     try {
       const [doc] = await (tx || db)(TableName.Project)
@@ -1159,6 +1172,7 @@ export const projectDALFactory = (db: TDbClient) => {
     findByIdIncludingExpired,
     findIncludingExpired,
     softDeleteById,
+    expireSoftDeletedById,
     restoreById,
     findExpiredForHardDelete,
     hardDeleteProjectSecretVersionsInBatches,

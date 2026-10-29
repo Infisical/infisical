@@ -113,6 +113,8 @@ export type TDeleteProjectDTO = {
 
 export type TRestoreProjectDTO = TProjectPermission;
 
+export type TPermanentlyDeleteProjectDTO = TProjectPermission;
+
 export type TListDeletedProjectsDTO = {
   type?: ProjectType;
 } & Omit<TProjectPermission, "projectId">;

@@ -44,6 +44,16 @@ const restoreProject = async (projectId: string) => {
   });
 };
 
+const permanentlyDeleteProject = async (projectId: string) => {
+  return testServer.inject({
+    method: "DELETE",
+    url: `/api/v1/projects/deleted/${projectId}`,
+    headers: {
+      authorization: `Bearer ${jwtAuthToken}`
+    }
+  });
+};
+
 const listDeletedProjects = async (): Promise<{ id: string; deleteAfter: string }[]> => {
   const res = await testServer.inject({
     method: "GET",
@@ -117,6 +127,31 @@ describe("Project deletion (soft-delete + async cleanup)", async () => {
     const second = await createProject("e2e-slug-reuse-2", slug);
     expect(second.slug).toBe(slug);
     expect(second.id).not.toBe(first.id);
+
+    await deleteProject(second.id, true);
+  });
+
+  test("keeps the slug reserved until the deleted project is permanently deleted", async () => {
+    const slug = "e2e-slug-reserved-test";
+    const first = await createProject("e2e-slug-reserved-1", slug);
+    expect((await deleteProject(first.id)).statusCode).toBe(200);
+
+    const blockedRes = await testServer.inject({
+      method: "POST",
+      url: "/api/v1/projects",
+      headers: {
+        authorization: `Bearer ${jwtAuthToken}`
+      },
+      body: { projectName: "e2e-slug-reserved-2", slug }
+    });
+    expect(blockedRes.statusCode).toBe(400);
+    expect(JSON.parse(blockedRes.payload).message).toContain("pending-deletion");
+
+    expect((await permanentlyDeleteProject(first.id)).statusCode).toBe(200);
+    expect((await listDeletedProjects()).some((p) => p.id === first.id)).toBe(false);
+
+    const second = await createProject("e2e-slug-reserved-2", slug);
+    expect(second.slug).toBe(slug);
 
     await deleteProject(second.id, true);
   });

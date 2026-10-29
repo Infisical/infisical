@@ -30,6 +30,7 @@ import {
   DeletedProject,
   DeleteEnvironmentDTO,
   DeleteWorkspaceDTO,
+  PermanentlyDeleteProjectDTO,
   Project,
   ProjectEnv,
   ProjectType,
@@ -335,6 +336,20 @@ export const useGetDeletedProjects = (type?: ProjectType, options?: { enabled?: 
     },
     ...options
   });
+
+export const usePermanentlyDeleteProject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Project, object, PermanentlyDeleteProjectDTO>({
+    mutationFn: async ({ projectId }) => {
+      const { data } = await apiRequest.delete(`/api/v1/projects/deleted/${projectId}`);
+      return data.project;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.getAllUserProjects() });
+    }
+  });
+};
 
 export const useRestoreProject = () => {
   const queryClient = useQueryClient();

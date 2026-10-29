@@ -553,6 +553,60 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "DELETE",
+    url: "/deleted/:projectId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      operationId: "permanentlyDeleteProject",
+      tags: [ApiDocsTags.Projects],
+      description: "Permanently delete a soft-deleted project without waiting for its grace period to end",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECTS.PERMANENTLY_DELETE.projectId)
+      }),
+      response: {
+        200: z.object({
+          project: SanitizedProjectSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const project = await server.services.project.permanentlyDeleteProject({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        projectId: req.params.projectId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: project.id,
+        event: {
+          type: EventType.DELETE_PROJECT,
+          metadata: {
+            id: project.id,
+            name: project.name,
+            softDelete: true,
+            deleteAfter: project.deleteAfter
+          }
+        }
+      });
+
+      return { project };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/:projectId/restore",
     config: {

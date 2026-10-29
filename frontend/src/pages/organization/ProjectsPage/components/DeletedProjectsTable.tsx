@@ -1,10 +1,14 @@
 import { format } from "date-fns";
-import { Ellipsis, HourglassIcon, RotateCcwIcon } from "lucide-react";
+import { Ellipsis, HourglassIcon, RotateCcwIcon, Trash2Icon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Alert,
+  AlertDescription,
   AlertDialog,
+  AlertDialogAction,
   AlertDialogCancel,
+  AlertDialogConfirmationField,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -38,12 +42,18 @@ import {
 import { OrgPermissionSubjects, useOrgPermission } from "@app/context";
 import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
 import { usePopUp } from "@app/hooks";
-import { useGetDeletedProjects, useRestoreProject } from "@app/hooks/api";
+import {
+  useGetDeletedProjects,
+  usePermanentlyDeleteProject,
+  useRestoreProject
+} from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import {
   formatRemainingDuration,
   getActorLabel
 } from "@app/pages/secret-manager/SettingsPage/components/EnvironmentSection/EnvironmentTable";
+
+const CONFIRM_KEYWORD = "confirm";
 
 export const DeletedProjectsTable = ({ projectType }: { projectType: ProjectType }) => {
   const { permission } = useOrgPermission();
@@ -60,12 +70,19 @@ export const DeletedProjectsTable = ({ projectType }: { projectType: ProjectType
     enabled: canAccessAllProjects
   });
   const restoreProject = useRestoreProject();
+  const permanentlyDeleteProject = usePermanentlyDeleteProject();
+  const isMutationPending = restoreProject.isPending || permanentlyDeleteProject.isPending;
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "restoreProject"
+    "restoreProject",
+    "permanentlyDeleteProject"
   ] as const);
 
   const restoreProjectData = popUp?.restoreProject?.data as
+    | { id: string; name: string }
+    | undefined;
+
+  const permanentlyDeleteProjectData = popUp?.permanentlyDeleteProject?.data as
     | { id: string; name: string }
     | undefined;
 
@@ -80,6 +97,19 @@ export const DeletedProjectsTable = ({ projectType }: { projectType: ProjectType
     });
 
     handlePopUpClose("restoreProject");
+  };
+
+  const onProjectPermanentlyDeleteSubmit = async () => {
+    if (!permanentlyDeleteProjectData?.id || permanentlyDeleteProject.isPending) return;
+
+    await permanentlyDeleteProject.mutateAsync({ projectId: permanentlyDeleteProjectData.id });
+
+    createNotification({
+      text: "Successfully deleted project",
+      type: "success"
+    });
+
+    handlePopUpClose("permanentlyDeleteProject");
   };
 
   if (!canAccessAllProjects || (!isError && !deletedProjects.length)) return null;
@@ -146,11 +176,11 @@ export const DeletedProjectsTable = ({ projectType }: { projectType: ProjectType
                           </TooltipContent>
                         </Tooltip>
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild disabled={restoreProject.isPending}>
+                          <DropdownMenuTrigger asChild disabled={isMutationPending}>
                             <IconButton
                               aria-label="Project options"
                               variant="ghost-muted"
-                              isDisabled={restoreProject.isPending}
+                              isDisabled={isMutationPending}
                             >
                               <Ellipsis />
                             </IconButton>
@@ -161,6 +191,15 @@ export const DeletedProjectsTable = ({ projectType }: { projectType: ProjectType
                             >
                               <RotateCcwIcon />
                               Restore Project
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              variant="danger"
+                              onClick={() =>
+                                handlePopUpOpen("permanentlyDeleteProject", { id, name })
+                              }
+                            >
+                              <Trash2Icon />
+                              Delete Now
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -198,6 +237,45 @@ export const DeletedProjectsTable = ({ projectType }: { projectType: ProjectType
             >
               Restore Project
             </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        isPending={permanentlyDeleteProject.isPending}
+        open={popUp.permanentlyDeleteProject.isOpen}
+        confirmationValue={CONFIRM_KEYWORD}
+        onOpenChange={(isOpen) => handlePopUpToggle("permanentlyDeleteProject", isOpen)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Permanently Delete {permanentlyDeleteProjectData?.name ?? "project"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <Alert variant="danger" appearance="borderless">
+                <AlertDescription>
+                  Skip the rest of the grace period and permanently delete{" "}
+                  {permanentlyDeleteProjectData?.name} and all of its data. This action is not
+                  reversible.
+                </AlertDescription>
+              </Alert>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogConfirmationField
+            inputProps={{ placeholder: `Type ${CONFIRM_KEYWORD} here` }}
+            onConfirm={() => onProjectPermanentlyDeleteSubmit().catch(() => undefined)}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              onClick={(event) => {
+                event.preventDefault();
+                onProjectPermanentlyDeleteSubmit().catch(() => undefined);
+              }}
+            >
+              Delete Now
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
