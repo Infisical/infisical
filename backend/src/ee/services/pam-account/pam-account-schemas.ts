@@ -9,6 +9,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { netbiosFromDomainFqdn } from "@app/lib/ldap/ldap-search-fns";
 
 import {
+  PamAccountSettingsOverridesSchema,
+  PamTemplateSettingsSchema
+} from "../pam-account-template/pam-account-template-schemas";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import {
   GcpServiceAccountAuthMethod,
   PamAccountType,
   PamPostgresAuthMethod,
@@ -16,11 +21,6 @@ import {
   PamSshAuthMethod
 } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
-import {
-  PamAccountSettingsOverridesSchema,
-  PamTemplateSettingsSchema
-} from "../pam-account-template/pam-account-template-schemas";
-import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 
 const resolveSrv = promisify(dns.resolveSrv);
 
@@ -1285,8 +1285,8 @@ export const getAccountAccessibilityIssues = (account: {
 
     const hasRecordingConfig = Boolean(
       parsedTemplateSettings?.recordingStorageBackend === PamRecordingStorageBackend.AwsS3 &&
-        (account.recordingConnectionId || account.templateRecordingConnectionId) &&
-        (parsedOverrides?.recordingS3Config || parsedTemplateSettings?.recordingS3Config)
+      (account.recordingConnectionId || account.templateRecordingConnectionId) &&
+      (parsedOverrides?.recordingS3Config || parsedTemplateSettings?.recordingS3Config)
     );
     if (!hasRecordingConfig) issues.push(PamAccountAccessibilityIssue.NoRecordingConfig);
   }

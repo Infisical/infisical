@@ -29,9 +29,10 @@ import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage
 import { lockAndAssertActiveOrgAccess } from "@app/services/org/org-access-fns";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
-import { AuthMethod } from "../auth/auth-type";
 import { TAuthTokenServiceFactory } from "../auth-token/auth-token-service";
+import { AuthMethod } from "../auth/auth-type";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
+import { lockMembershipsById } from "../membership/membership-dal";
 import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
@@ -45,9 +46,9 @@ import { TRoleDALFactory } from "../role/role-dal";
 import { TSmtpService } from "../smtp/smtp-service";
 import { getServerCfg } from "../super-admin/super-admin-service";
 import { LoginMethod } from "../super-admin/super-admin-types";
-import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { resolveUsersBySsoExternalId } from "../user-alias/user-alias-fns";
+import { TUserDALFactory } from "../user/user-dal";
 import { TMembershipUserDALFactory } from "./membership-user-dal";
 import { assertWillRetainOrgAdmin } from "./membership-user-fns";
 import {
@@ -637,13 +638,16 @@ export const membershipUserServiceFactory = ({
           tx
         });
 
-        await additionalPrivilegeDAL.delete(
-          {
-            actorUserId: dto.selector.userId,
-            projectId: dto.scopeData.projectId
-          },
-          tx
-        );
+        const [lockedMembership] = await lockMembershipsById([existingMembership.id], tx);
+        if (lockedMembership) {
+          await additionalPrivilegeDAL.delete(
+            {
+              actorUserId: dto.selector.userId,
+              projectId: dto.scopeData.projectId
+            },
+            tx
+          );
+        }
 
         await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
           {

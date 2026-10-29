@@ -335,6 +335,8 @@ export enum TableName {
   ApprovalRequestApprovals = "approval_request_approvals",
   ApprovalRequestGrants = "approval_request_grants",
   SecretChangeRequests = "secret_change_requests",
+  DelegatedApprovalPolicies = "delegated_approval_policies",
+  DelegatedApprovalRequests = "delegated_approval_requests",
 
   // Code Signing
   PkiSigners = "pki_signers",

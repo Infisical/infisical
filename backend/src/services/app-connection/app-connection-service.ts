@@ -122,9 +122,9 @@ import { flyioConnectionService } from "./flyio/flyio-connection-service";
 import { ValidateGcpConnectionCredentialsSchema } from "./gcp";
 import { gcpConnectionService } from "./gcp/gcp-connection-service";
 import { GitHubConnectionMethod, ValidateGitHubConnectionCredentialsSchema } from "./github";
-import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitHubRadarConnectionCredentialsSchema } from "./github-radar";
 import { githubRadarConnectionService } from "./github-radar/github-radar-connection-service";
+import { githubConnectionService } from "./github/github-connection-service";
 import { ValidateGitLabConnectionCredentialsSchema } from "./gitlab";
 import { gitlabConnectionService } from "./gitlab/gitlab-connection-service";
 import { ValidateGoDaddyConnectionCredentialsSchema } from "./godaddy/godaddy-connection-schemas";
@@ -192,6 +192,7 @@ import { rundeckConnectionService } from "./rundeck/rundeck-connection-service";
 import { ValidateS3CompatibleConnectionCredentialsSchema } from "./s3-compatible";
 import { ValidateSalesforceConnectionCredentialsSchema } from "./salesforce";
 import { salesforceConnectionService } from "./salesforce/salesforce-connection-service";
+import { ValidateServiceNowConnectionCredentialsSchema } from "./servicenow";
 import { ValidateSmbConnectionCredentialsSchema } from "./smb";
 import { ValidateSnowflakeConnectionCredentialsSchema } from "./snowflake";
 import { snowflakeConnectionService } from "./snowflake/snowflake-connection-service";
@@ -211,9 +212,9 @@ import { ValidateTriggerDevConnectionCredentialsSchema } from "./trigger-dev";
 import { triggerDevConnectionService } from "./trigger-dev/trigger-dev-connection-service";
 import { ValidateUltraDNSConnectionCredentialsSchema } from "./ultradns/ultradns-connection-schema";
 import { ultraDNSConnectionService } from "./ultradns/ultradns-connection-service";
+import { ValidateVenafiTppConnectionCredentialsSchema } from "./venafi-tpp/venafi-tpp-connection-schemas";
 import { ValidateVenafiConnectionCredentialsSchema } from "./venafi/venafi-connection-schema";
 import { venafiConnectionService } from "./venafi/venafi-connection-service";
-import { ValidateVenafiTppConnectionCredentialsSchema } from "./venafi-tpp/venafi-tpp-connection-schemas";
 import { ValidateVercelConnectionCredentialsSchema } from "./vercel";
 import { vercelConnectionService } from "./vercel/vercel-connection-service";
 import { ValidateWindmillConnectionCredentialsSchema } from "./windmill";
@@ -338,6 +339,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Stripe]: ValidateStripeConnectionCredentialsSchema,
   [AppConnection.Keeper]: ValidateKeeperConnectionCredentialsSchema,
   [AppConnection.HpeIloRedFish]: ValidateHpeIloConnectionCredentialsSchema,
+  [AppConnection.ServiceNow]: ValidateServiceNowConnectionCredentialsSchema,
   [AppConnection.S3Compatible]: ValidateS3CompatibleConnectionCredentialsSchema,
   [AppConnection.Jira]: ValidateJiraConnectionCredentialsSchema
 };

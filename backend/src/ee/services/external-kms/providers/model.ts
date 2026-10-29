@@ -124,6 +124,6 @@ export type TExternalKmsInputUpdateSchema = z.infer<typeof ExternalKmsInputUpdat
 export type TExternalKmsProviderFns = {
   validateConnection: () => Promise<boolean>;
   encrypt: (data: Buffer) => Promise<{ encryptedBlob: Buffer }>;
-  decrypt: (encryptedBlob: Buffer) => Promise<{ data: Buffer }>;
+  decrypt: (encryptedBlob: Buffer) => Promise<{ data: Buffer<ArrayBuffer> }>;
   cleanup: () => Promise<void>;
 };

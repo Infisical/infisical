@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { TemporaryPermissionMode } from "@app/db/schemas";
 import { ms } from "@app/lib/ms";
+import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 
 interface SlugSchemaInputs {
@@ -41,6 +42,13 @@ export const GenericResourceNameSchema = z
       ])(val),
     "Name can only contain alphanumeric characters, dashes, underscores, and spaces"
   );
+
+// For free text that lands in audit events (names, reasons). An allowlist would break existing values,
+// so this only blocks non-printing chars. The audit sink strips the same set.
+export const auditSafeText = (schema: z.ZodString, { allowMultiline = false } = {}) =>
+  schema.refine((val) => !containsLogUnsafeCharacters(val, { allowMultiline }), {
+    message: LOG_UNSAFE_TEXT_MESSAGE
+  });
 
 export const BaseSecretNameSchema = z.string().trim().min(1);
 

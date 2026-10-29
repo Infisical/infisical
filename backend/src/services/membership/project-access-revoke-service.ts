@@ -8,8 +8,8 @@ import { groupBy } from "@app/lib/fn";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
-import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
+import { TProjectDALFactory } from "../project/project-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "./application-membership-cleanup-service";
 import { TMembershipDALFactory } from "./membership-dal";
 

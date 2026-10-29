@@ -34,12 +34,14 @@ output-options:
     - verifyEmailSignupV3
     - completeAccountSignupV3
     - inviteProjectMembers
+    - removeProjectMembers
     - createMachineIdentity
     - createProjectMachineIdentity
     - createProjectIdentityMembership
     - createProjectRole
     - listProjectMachineIdentities
     - createGitHubAppConnection
+    - createServiceNowAppConnection
     - createGitHubSecretSync
     - getGitHubSecretSync
     - deleteGitHubSecretSync
@@ -81,6 +83,13 @@ output-options:
     - reviewSecretApprovalRequest
     - updateSecretApprovalRequestStatus
     - mergeSecretApprovalRequest
+    - createAccessApprovalPolicy
+    - listAccessApprovalPolicies
+    - updateAccessApprovalPolicy
+    - getAccessApprovalPolicy
+    - createAccessApprovalRequest
+    - listAccessApprovalRequests
+    - handleDelegatedApprovalCallback
     - createGroup
     - addUserToGroup
     - removeUserFromGroup
@@ -119,8 +128,6 @@ output-options:
     - checkPostgreSQLCredentialsRotationCredentials
     - compareFolderCommit
     - createAWSIAMUserSecretRotation
-    - createAccessApprovalPolicy
-    - createAccessApprovalRequest
     - createAwsAppConnection
     - createAwsParameterStoreSecretSync
     - createAwsSecretsManagerSecretSync
@@ -194,7 +201,6 @@ output-options:
     - getAWSIAMUserSecretRotation
     - getAWSIAMUserSecretRotationByName
     - getAWSIAMUserSecretRotationGeneratedCredentials
-    - getAccessApprovalPolicy
     - getAccessApprovalPolicyCount
     - getAccessApprovalRequestCount
     - getAccessibleSecretMetadata
@@ -286,8 +292,6 @@ output-options:
     - importGitHubSecretSyncSecrets
     - leaveProject
     - listAWSIAMUserSecretRotations
-    - listAccessApprovalPolicies
-    - listAccessApprovalRequests
     - listAccessibleOrganizationsWithSubOrgs
     - listAccessibleProjectsWithSubOrgs
     - listAvailableOrganizationGroups
@@ -364,7 +368,6 @@ output-options:
     - removeGroupFromProject
     - removeMachineIdentityFromGroup
     - removeProjectGroupMembership
-    - removeProjectMembers
     - renewDynamicSecretLease
     - requestProjectAccess
     - resetHoneyToken
@@ -391,7 +394,6 @@ output-options:
     - testWebhook
     - triggerAwsHoneyToken
     - updateAWSIAMUserSecretRotation
-    - updateAccessApprovalPolicy
     - updateAccessApprovalRequest
     - updateAwsAppConnection
     - updateAwsParameterStoreSecretSync
@@ -436,6 +438,7 @@ output-options:
     - upgradeProject
     - uploadProjectKey
     - upsertAwsHoneyTokenConfig
+    - deleteUser
     - createScimToken
     - listScimTokens
     - deleteScimToken
