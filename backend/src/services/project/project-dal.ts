@@ -131,7 +131,7 @@ export const projectDALFactory = (db: TDbClient) => {
     }
   };
 
-  const restoreById = async (id: string, slug: string, tx?: Knex) => {
+  const restoreById = async (id: string, tx?: Knex) => {
     try {
       const [doc] = await (tx || db)(TableName.Project)
         .where({ id })
@@ -141,8 +141,7 @@ export const projectDALFactory = (db: TDbClient) => {
           deleteAfter: null,
           softDeletedAt: null,
           deletedByActorType: null,
-          deletedByActorId: null,
-          slug
+          deletedByActorId: null
         })
         .returning("*");
       return doc as TProjects | undefined;

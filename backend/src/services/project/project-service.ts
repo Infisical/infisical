@@ -874,7 +874,8 @@ export const projectServiceFactory = ({
       // This returns immediately (one UPDATE) and the project disappears from every read, but the
       // expensive cascade runs asynchronously in the hard-delete worker once deleteAfter passes. Only
       // secret manager projects get a restore grace period; the rest (and hard deletes) are eligible on
-      // the next worker tick. The slug is freed so a same-named project can be recreated right away.
+      // the next worker tick. Like an environment, a restorable project keeps its slug so it comes back
+      // unchanged; otherwise the slug is freed so a same-named project can be recreated right away.
       const now = new Date();
       const hasGracePeriod = !hardDelete && project.type === ProjectType.SecretManager;
       const softDeletedProject = await projectDAL.softDeleteById(project.id, {
@@ -882,7 +883,7 @@ export const projectServiceFactory = ({
         softDeletedAt: now,
         deletedByActorType: actor,
         deletedByActorId: actorId,
-        slug: `del-${alphaNumericNanoId(20)}`
+        slug: hasGracePeriod ? project.slug : `del-${alphaNumericNanoId(20)}`
       });
 
       if (!softDeletedProject) {
@@ -979,10 +980,7 @@ export const projectServiceFactory = ({
           }
         }
 
-        // The original slug was freed on delete and may have been reused since. Slugifying the name can
-        // lengthen it, so it is cut after slugifying to stay within the 64-character slug limit.
-        const slug = slugify(`${slugify(project.name).slice(0, 59)}-${alphaNumericNanoId(4)}`);
-        return projectDAL.restoreById(project.id, slug, tx);
+        return projectDAL.restoreById(project.id, tx);
       });
 
       if (!restoredProject) {

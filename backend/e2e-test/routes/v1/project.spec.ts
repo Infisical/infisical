@@ -106,19 +106,19 @@ describe("Project deletion (soft-delete + async cleanup)", async () => {
     expect((await listProjects()).some((p) => p.id === project.id)).toBe(false);
   });
 
-  test("frees the slug so a same-slug project can be recreated immediately", async () => {
+  test("hardDelete frees the slug so a same-slug project can be recreated immediately", async () => {
     const slug = "e2e-slug-reuse-test";
     const first = await createProject("e2e-slug-reuse-1", slug);
     expect(first.slug).toBe(slug);
 
-    expect((await deleteProject(first.id)).statusCode).toBe(200);
+    expect((await deleteProject(first.id, true)).statusCode).toBe(200);
 
     // recreating with the same slug must succeed (slug was tombstoned on delete)
     const second = await createProject("e2e-slug-reuse-2", slug);
     expect(second.slug).toBe(slug);
     expect(second.id).not.toBe(first.id);
 
-    await deleteProject(second.id);
+    await deleteProject(second.id, true);
   });
 
   test("cannot delete an already-deleted project", async () => {
@@ -144,7 +144,9 @@ describe("Project deletion (soft-delete + async cleanup)", async () => {
     const deleted = (await listDeletedProjects()).find((p) => p.id === project.id);
     expect(new Date(deleted?.deleteAfter ?? 0).getTime()).toBeGreaterThan(Date.now() + 13 * 24 * 60 * 60 * 1000);
 
-    expect((await restoreProject(project.id)).statusCode).toBe(200);
+    const restoreRes = await restoreProject(project.id);
+    expect(restoreRes.statusCode).toBe(200);
+    expect(JSON.parse(restoreRes.payload).project.slug).toBe(project.slug);
     expect((await getProject(project.id)).statusCode).toBe(200);
     expect((await listDeletedProjects()).some((p) => p.id === project.id)).toBe(false);
     const secret = await getSecretByNameV2({

@@ -185,7 +185,7 @@ export const DeletedProjectsTable = ({ projectType }: { projectType: ProjectType
             <AlertDialogTitle>Restore {restoreProjectData?.name ?? "project"}?</AlertDialogTitle>
             <AlertDialogDescription>
               The project will become accessible again with its secrets, environments, and history
-              preserved. Its slug was released on deletion, so it gets a new one.
+              preserved.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
