@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import {
@@ -106,7 +107,16 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId, isScanRu
                       {installation.primaryCertName ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="block truncate">{installation.primaryCertName}</span>
+                            <Link
+                              {...getInstancePinningLink(
+                                currentProject.orgId,
+                                currentProject,
+                                `discovery/installations/${installation.id}`
+                              )!}
+                              className="block truncate"
+                            >
+                              {installation.primaryCertName}
+                            </Link>
                           </TooltipTrigger>
                           <TooltipContent>{installation.primaryCertName}</TooltipContent>
                         </Tooltip>

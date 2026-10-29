@@ -30,8 +30,8 @@ import { LINUX_SERVER_SCAN } from "./pki-discovery-host-scan-fns";
 import { TPkiDiscoveryScanHistoryDALFactory } from "./pki-discovery-scan-history-dal";
 import {
   formatTargetConfigIssue,
-  importsNothingFromWindowsStores,
-  NetworkTargetConfigSchema
+  NetworkTargetConfigSchema,
+  selectsCaStoresWithoutImport
 } from "./pki-discovery-schemas";
 import {
   PkiDiscoveryScanStatus,
@@ -153,11 +153,11 @@ export const pkiDiscoveryServiceFactory = ({
     );
     if (
       discoveryType === PkiDiscoveryType.WindowsServer &&
-      importsNothingFromWindowsStores(config as TWindowsServerTargetConfig)
+      selectsCaStoresWithoutImport(config as TWindowsServerTargetConfig)
     ) {
       throw new BadRequestError({
         message:
-          "The Intermediate and Trusted Root stores only hold CA certificates. Turn on importStandaloneCaCertificates or select another store."
+          "The Intermediate and Trusted Root stores only hold CA certificates. Turn on importStandaloneCaCertificates or remove them from certificateStores."
       });
     }
     const connectionWithoutGateway = connections.find(

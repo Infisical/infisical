@@ -43,6 +43,8 @@ const MAX_WINDOWS_SCAN_RESPONSE_BYTES = 24 * 1024 * 1024;
 const DEFAULT_WINRM_HTTP_PORT = 5985;
 const DEFAULT_WINRM_HTTPS_PORT = 5986;
 const MAX_WINDOWS_SCAN_CERTIFICATES = 5000;
+// Matches the gateway's Windows scan slots, so one job never queues past them and reads as busy.
+const WINDOWS_HOST_CONCURRENCY = 4;
 
 const WindowsStoreCertificateSchema = z.object({
   store: z.string().max(64),
@@ -367,5 +369,6 @@ const scanWindowsConnection = async (
 export const WINDOWS_SERVER_SCAN: THostScanDefinition<TWindowsServerTargetConfig> = {
   ...WINDOWS_SERVER_SCAN_TYPE,
   schema: WindowsServerTargetConfigSchema,
+  hostConcurrency: WINDOWS_HOST_CONCURRENCY,
   scanConnection: scanWindowsConnection
 };

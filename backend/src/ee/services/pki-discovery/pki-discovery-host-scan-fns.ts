@@ -628,6 +628,7 @@ type THostScanTargetConfig = { connectionIds: string[]; importStandaloneCaCertif
 
 export type THostScanDefinition<TConfig extends THostScanTargetConfig = THostScanTargetConfig> = THostScanType & {
   schema: z.ZodTypeAny;
+  hostConcurrency?: number;
   scanConnection: (
     connection: TAppConnectionRow | undefined,
     label: string,
@@ -708,7 +709,7 @@ export const executeHostScan = async <TConfig extends THostScanTargetConfig>(
 
     scanHistoryId = await startScanRun(discoveryId, startedAt, deps);
 
-    const hostLimit = pLimit(HOST_CONCURRENCY);
+    const hostLimit = pLimit(definition.hostConcurrency ?? HOST_CONCURRENCY);
     const run: THostScanRun<TConfig> = {
       discoveryId,
       projectId: discoveryConfig.projectId,

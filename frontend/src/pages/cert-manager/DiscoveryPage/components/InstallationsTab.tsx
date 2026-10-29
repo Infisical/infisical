@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon, SearchIcon } from "lucide-react";
 
@@ -209,7 +210,16 @@ export const InstallationsTab = ({ projectId }: Props) => {
                       {installation.primaryCertName ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="block truncate">{installation.primaryCertName}</span>
+                            <Link
+                              {...getInstancePinningLink(
+                                currentProject.orgId,
+                                currentProject,
+                                `discovery/installations/${installation.id}`
+                              )!}
+                              className="block truncate"
+                            >
+                              {installation.primaryCertName}
+                            </Link>
                           </TooltipTrigger>
                           <TooltipContent>{installation.primaryCertName}</TooltipContent>
                         </Tooltip>

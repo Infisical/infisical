@@ -1,6 +1,6 @@
 import { computeLocationFingerprint } from "./pki-discovery-fns";
 import { normalizeHostIdentifier } from "./pki-discovery-host-fns";
-import { importsNothingFromWindowsStores, WindowsServerTargetConfigSchema } from "./pki-discovery-schemas";
+import { selectsCaStoresWithoutImport, WindowsServerTargetConfigSchema } from "./pki-discovery-schemas";
 import {
   HostCertificateChainKind,
   HostCertificateFileStatus,
@@ -41,24 +41,22 @@ describe("WindowsServerTargetConfigSchema", () => {
   });
 });
 
-describe("importsNothingFromWindowsStores", () => {
-  test("flags CA-only store selections without CA import", () => {
-    const caOnly = [
-      WindowsCertificateStore.IntermediateCertificationAuthorities,
-      WindowsCertificateStore.TrustedRootCertificationAuthorities
-    ];
-    expect(importsNothingFromWindowsStores({ certificateStores: caOnly, importStandaloneCaCertificates: false })).toBe(
+describe("selectsCaStoresWithoutImport", () => {
+  test("flags any CA store selected without CA import", () => {
+    const personal = WindowsCertificateStore.Personal;
+    const root = WindowsCertificateStore.TrustedRootCertificationAuthorities;
+    expect(selectsCaStoresWithoutImport({ certificateStores: [root], importStandaloneCaCertificates: false })).toBe(
       true
     );
-    expect(importsNothingFromWindowsStores({ certificateStores: caOnly, importStandaloneCaCertificates: true })).toBe(
+    expect(
+      selectsCaStoresWithoutImport({ certificateStores: [personal, root], importStandaloneCaCertificates: false })
+    ).toBe(true);
+    expect(
+      selectsCaStoresWithoutImport({ certificateStores: [personal, root], importStandaloneCaCertificates: true })
+    ).toBe(false);
+    expect(selectsCaStoresWithoutImport({ certificateStores: [personal], importStandaloneCaCertificates: false })).toBe(
       false
     );
-    expect(
-      importsNothingFromWindowsStores({
-        certificateStores: [WindowsCertificateStore.Personal, ...caOnly],
-        importStandaloneCaCertificates: false
-      })
-    ).toBe(false);
   });
 });
 

@@ -90,7 +90,9 @@ export const WindowsServerTargetConfigSchema = z
       .min(1, "Select at least one certificate store")
       .refine((stores) => new Set(stores).size === stores.length, "Each certificate store can be listed once")
       .default(DEFAULT_WINDOWS_CERTIFICATE_STORES)
-      .describe("LocalMachine certificate stores to read."),
+      .describe(
+        "LocalMachine certificate stores to read. CA and Root can be selected only when importStandaloneCaCertificates is true."
+      ),
     importStandaloneCaCertificates: z
       .boolean()
       .default(false)
@@ -103,12 +105,12 @@ export const CA_ONLY_WINDOWS_STORES: readonly WindowsCertificateStore[] = [
   WindowsCertificateStore.TrustedRootCertificationAuthorities
 ];
 
-export const importsNothingFromWindowsStores = (config: {
+export const selectsCaStoresWithoutImport = (config: {
   certificateStores: WindowsCertificateStore[];
   importStandaloneCaCertificates: boolean;
 }) =>
   !config.importStandaloneCaCertificates &&
-  config.certificateStores.every((store) => CA_ONLY_WINDOWS_STORES.includes(store));
+  config.certificateStores.some((store) => CA_ONLY_WINDOWS_STORES.includes(store));
 
 // The type-specific schema re-validates on the service; this only keeps the router's shared fields neutral.
 export const DiscoveryTargetConfigInputSchema = NetworkTargetConfigSchema.partial()

@@ -25,7 +25,7 @@ You choose which stores to scan:
 | Intermediate Certification Authorities | No | Intermediate CA certificates |
 | Trusted Root Certification Authorities | No | Root CAs the server trusts, including the public ones built into Windows |
 
-A leaf certificate is imported with its chain, built from the intermediate and root certificates on the server. CA certificates found on their own, such as the certificates in the two certification authority stores, are skipped unless you turn on **Include CA Certificates**.
+A leaf certificate is imported with its chain, built from the intermediate and root certificates on the server. CA certificates found on their own are skipped unless you turn on **Include CA Certificates**. The two certification authority stores hold only CA certificates, so you can select them only when that setting is on.
 
 If the connection's account can't open a store, the scan completes and the job lists the stores it couldn't open.
 
@@ -41,7 +41,7 @@ If the connection's account can't open a store, the scan completes and the job l
         In **Windows (WinRM) Connections**, select the connection for each server to scan.
       </Step>
       <Step>
-        Under **Server Certificate Stores** and **CA Certificate Stores**, select the stores to scan. To also import CA certificates found on their own, turn on **Include CA Certificates**.
+        Under **Server Certificate Stores**, select the stores to scan. To also import CA certificates found on their own, turn on **Include CA Certificates** under **CA Certificate Stores**, then select the CA stores to scan.
       </Step>
       <Step>
         Enter a **Name** and an optional **Description**. To run the job on a schedule, turn on **Scan on a Schedule** and pick a **Scan Interval**.
