@@ -684,10 +684,18 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
                                 : option.description}
                             </p>
                           </div>
+                          {option.isDisabled && (
+                            <span id={`key-source-${option.value}-reason`} className="sr-only">
+                              {option.disabledReason}
+                            </span>
+                          )}
                           <RadioGroupItem
                             id={`key-source-${option.value}`}
                             value={option.value}
                             disabled={option.isDisabled}
+                            aria-describedby={
+                              option.isDisabled ? `key-source-${option.value}-reason` : undefined
+                            }
                             className="sr-only"
                           />
                         </Field>
@@ -696,7 +704,13 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
                     if (!option.isDisabled) return card;
                     return (
                       <Tooltip key={option.value}>
-                        <TooltipTrigger asChild>{card}</TooltipTrigger>
+                        <TooltipTrigger asChild>
+                          {/* The disabled radio drops pointer events and focus, so the wrapper carries the hover and focus. */}
+                          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+                          <span tabIndex={0} className="block">
+                            {card}
+                          </span>
+                        </TooltipTrigger>
                         <TooltipContent side="bottom" className="max-w-80">
                           {option.disabledReason}
                         </TooltipContent>
