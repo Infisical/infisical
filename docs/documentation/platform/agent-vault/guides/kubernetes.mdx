@@ -70,7 +70,7 @@ For each agent run, your orchestrator does the following:
 
 ## Choose an isolation level
 
-A standard container shares the node's Linux kernel, so code in an agent's container that exploits a kernel bug can reach the node and every pod on it. To give agent pods a stronger boundary, run them with a different container runtime by setting `runtimeClassName` in the pod spec. Everything else on this page stays the same at every isolation level.
+A standard container shares the node's Linux kernel. If an agent ran code that exploited a bug in that kernel, the code could reach the node and every pod on it. To give agent pods a stronger boundary, run them with a different container runtime by setting `runtimeClassName` in the pod spec. Everything else on this page stays the same at every isolation level.
 
 | | Standard runtime | gVisor | Kata Containers |
 |---|---|---|---|
