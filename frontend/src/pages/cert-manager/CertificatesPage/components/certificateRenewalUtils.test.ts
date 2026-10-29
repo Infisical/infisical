@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import { CertificateRenewalKeySource } from "@app/hooks/api/certificates/enums";
 import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificatePoliciesTab/shared/certificate-constants";
 
-import { buildRenewalFormDefaults } from "./certificateRenewalUtils";
+import { buildRenewalFormDefaults, buildRenewalRequestAttributes } from "./certificateRenewalUtils";
 
 const certificate = {
   id: "cert-1",
@@ -66,5 +67,28 @@ describe("buildRenewalFormDefaults", () => {
     );
     expect(defaults.subjectAltNames?.map((san) => san.value)).toEqual(["ca-added.example.com"]);
     expect(defaults.signatureAlgorithm).toBe("RSA-SHA384");
+  });
+});
+
+describe("buildRenewalRequestAttributes", () => {
+  it("submits policy-required usages even when their checkboxes were never toggled", () => {
+    const formData = {
+      ...buildRenewalFormDefaults(certificate, constraints),
+      keySource: CertificateRenewalKeySource.New,
+      keyUsages: { key_agreement: true, key_encipherment: false },
+      extendedKeyUsages: {}
+    };
+
+    const attributes = buildRenewalRequestAttributes({
+      formData,
+      constraints: {
+        ...(constraints as object),
+        requiredKeyUsages: ["digital_signature"],
+        requiredExtendedKeyUsages: ["client_auth"]
+      } as never
+    });
+
+    expect(attributes.keyUsages).toEqual(["key_agreement", "digital_signature"]);
+    expect(attributes.extendedKeyUsages).toEqual(["client_auth"]);
   });
 });
