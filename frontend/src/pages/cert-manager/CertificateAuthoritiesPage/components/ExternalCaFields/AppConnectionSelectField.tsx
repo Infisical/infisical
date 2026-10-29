@@ -3,6 +3,7 @@ import { Control, FieldPath, useController } from "react-hook-form";
 import { Info } from "lucide-react";
 
 import { AppConnectionOptionContent } from "@app/components/app-connections";
+import { useConnectionCreation } from "@app/components/app-connections/useConnectionCreation";
 import {
   Combobox,
   Field,
@@ -15,7 +16,6 @@ import {
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
-import { useConnectionCreation } from "../CaInstallCertModal/useConnectionCreation";
 import { FormData } from "./schema";
 
 type AppConnectionValue = { id: string; name: string };

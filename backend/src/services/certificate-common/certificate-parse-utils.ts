@@ -1,6 +1,8 @@
 import * as x509 from "@peculiar/x509";
 
+import { asNonSharedBuffer } from "@app/lib/fn";
+
 export type TCertificateSource = Buffer | x509.X509Certificate;
 
 export const toX509Certificate = (source: TCertificateSource): x509.X509Certificate =>
-  source instanceof x509.X509Certificate ? source : new x509.X509Certificate(source);
+  source instanceof x509.X509Certificate ? source : new x509.X509Certificate(asNonSharedBuffer(source));

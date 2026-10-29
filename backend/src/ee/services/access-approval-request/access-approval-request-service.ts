@@ -25,8 +25,8 @@ import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretAccessApprovalGlobalRequestBridgeServiceFactory } from "@app/services/secret-access-approval-global-request-bridge/secret-access-approval-global-request-bridge-service";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
@@ -85,6 +85,8 @@ type TSecretApprovalRequestServiceFactoryDep = {
     | "isGlobalAccessApprovalRequest"
     | "reviewAccessApprovalRequest"
     | "revokeAccessApprovalRequest"
+    | "retryDelegatedApprovalDispatch"
+    | "cancelAccessApprovalRequest"
   >;
   accessApprovalRequestReviewerDAL: Pick<
     TAccessApprovalRequestReviewerDALFactory,
@@ -1165,6 +1167,45 @@ export const accessApprovalRequestServiceFactory = ({
     };
   };
 
+  const retryDelegatedApprovalDispatch: TAccessApprovalRequestServiceFactory["retryDelegatedApprovalDispatch"] =
+    async ({ requestId, actor, actorId, actorOrgId, actorAuthMethod }) => {
+      if (await secretAccessApprovalGlobalRequestBridge.isGlobalAccessApprovalRequest(requestId)) {
+        return secretAccessApprovalGlobalRequestBridge.retryDelegatedApprovalDispatch({
+          requestId,
+          actor,
+          actorId,
+          actorOrgId,
+          actorAuthMethod
+        });
+      }
+
+      throw new BadRequestError({
+        message: `Access request with ID '${requestId}' is not reviewed in an external approval system`
+      });
+    };
+
+  const cancelAccessRequest: TAccessApprovalRequestServiceFactory["cancelAccessRequest"] = async ({
+    requestId,
+    actor,
+    actorId,
+    actorOrgId,
+    actorAuthMethod
+  }) => {
+    if (await secretAccessApprovalGlobalRequestBridge.isGlobalAccessApprovalRequest(requestId)) {
+      return secretAccessApprovalGlobalRequestBridge.cancelAccessApprovalRequest({
+        requestId,
+        actor,
+        actorId,
+        actorOrgId,
+        actorAuthMethod
+      });
+    }
+
+    throw new BadRequestError({
+      message: `Access request with ID '${requestId}' is not reviewed in an external approval system. Reject it instead.`
+    });
+  };
+
   const revokeAccessRequest: TAccessApprovalRequestServiceFactory["revokeAccessRequest"] = async ({
     requestId,
     actor,
@@ -1329,6 +1370,8 @@ export const accessApprovalRequestServiceFactory = ({
     listApprovalRequests,
     reviewAccessRequest,
     revokeAccessRequest,
+    retryDelegatedApprovalDispatch,
+    cancelAccessRequest,
     getCount
   };
 };
