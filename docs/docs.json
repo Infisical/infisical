@@ -2670,6 +2670,16 @@
                     ]
                   },
                   {
+                    "group": "Alerts",
+                    "pages": [
+                      "api-reference/endpoints/alerts/list",
+                      "api-reference/endpoints/alerts/create",
+                      "api-reference/endpoints/alerts/get-by-id",
+                      "api-reference/endpoints/alerts/update",
+                      "api-reference/endpoints/alerts/delete"
+                    ]
+                  },
+                  {
                     "group": "Events",
                     "pages": [
                       "api-reference/endpoints/events/project-events"
