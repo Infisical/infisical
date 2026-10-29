@@ -371,7 +371,7 @@ The script calls [the endpoint that creates a session](/api-reference/endpoints/
 
 ## Step 6: Verify it works
 
-While an agent pod runs, check that its requests go through the proxy and that no other traffic leaves the pod. These commands need `curl` in the agent's image, and `kubectl exec` needs the `create` permission on `pods/exec`, which the role in Step 4 doesn't grant, so run them as a cluster admin. Replace `<run-id>` with the run ID that the script printed, and `<api-host>` with a host that a service in the access bundle covers:
+While an agent runs, check its traffic as a cluster admin. The agent's image needs `curl`. Replace `<run-id>` with the run ID the script printed, and `<api-host>` with a host in your access bundle:
 
 ```bash
 # Through the proxy: returns the API's own status code, such as 200 or 401
