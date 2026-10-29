@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { certificateProfileKeys } from "../certificateProfiles/queries";
+import { pkiInstallationKeys } from "../pkiDiscovery/queries";
 import { pkiSubscriberKeys } from "../pkiSubscriber/queries";
 import { projectKeys } from "../projects";
 import { certKeys } from "./queries";
@@ -339,6 +340,9 @@ export const useAssignCertificateToApplication = () => {
       });
       queryClient.invalidateQueries({
         queryKey: projectKeys.allProjectCertificates()
+      });
+      queryClient.invalidateQueries({
+        queryKey: pkiInstallationKeys.all
       });
     }
   });

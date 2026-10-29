@@ -239,6 +239,8 @@ export const pkiCertificateInstallationDALFactory = (db: TDbClient) => {
           `${TableName.Certificate}.status`,
           `${TableName.Certificate}.friendlyName`,
           `${TableName.Certificate}.fingerprintSha256`,
+          `${TableName.Certificate}.altNames`,
+          `${TableName.Certificate}.applicationId`,
           `${TableName.Certificate}.subjectOrganization`,
           `${TableName.Certificate}.subjectOrganizationalUnit`,
           `${TableName.Certificate}.subjectCountry`,
