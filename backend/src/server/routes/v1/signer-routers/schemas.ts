@@ -1,8 +1,8 @@
 import RE2 from "re2";
 import { z } from "zod";
 
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { HsmKeyLabelSchema } from "@app/services/hsm-connector/hsm-connector-fns";
 import { CertKeySource } from "@app/services/signer/signer-enums";
 

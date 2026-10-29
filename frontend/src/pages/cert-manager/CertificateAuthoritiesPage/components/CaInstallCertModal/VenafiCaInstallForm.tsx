@@ -2,6 +2,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+import { useConnectionCreation } from "@app/components/app-connections/useConnectionCreation";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
@@ -35,8 +36,6 @@ import {
   useVenafiConnectionListIssuingTemplates
 } from "@app/hooks/api/appConnections/venafi";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-
-import { useConnectionCreation } from "./useConnectionCreation";
 
 const schema = z.object({
   appConnectionId: z.string().min(1, "App connection is required"),

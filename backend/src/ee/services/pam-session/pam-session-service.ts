@@ -19,6 +19,22 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
+import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import {
+  buildSessionGatewayConnectionDetails,
+  extractGatewayTarget,
+  getAccountAccessibilityIssues,
+  PamAccountAccessibilityIssue,
+  parseInternalMetadata,
+  qualifyUsernameWithDomain,
+  resolveGatewayAccountType,
+  resolveSelectedHost
+} from "../pam-account/pam-account-schemas";
+import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import {
   accountTypeSupportsSessionLogMasking,
   PamAccessMethod,
@@ -44,22 +60,6 @@ import {
   resolvePolicy,
   splitPatternString
 } from "../pam/pam-policies";
-import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
-import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import {
-  buildSessionGatewayConnectionDetails,
-  extractGatewayTarget,
-  getAccountAccessibilityIssues,
-  PamAccountAccessibilityIssue,
-  parseInternalMetadata,
-  qualifyUsernameWithDomain,
-  resolveGatewayAccountType,
-  resolveSelectedHost
-} from "../pam-account/pam-account-schemas";
-import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
-import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
-import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
-import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import {
   AWS_STS_MIN_DURATION_SECONDS,

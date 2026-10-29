@@ -97,13 +97,14 @@ func TestAssumePrivilege_Session(t *testing.T) {
 		require.Equal(t, "value", secretmanager.GetSecret(t, other, "dev", "NEW").Value)
 	})
 
-	t.Run("should clear the session cookie and restore the admin's own access when the session ends", func(t *testing.T) {
+	t.Run("should clear the session cookie, restore the admin's own access and record the session when it ends", func(t *testing.T) {
 		t.Parallel()
 
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		session := startSession(t, tn.Admin, proj, proj.NewMachineIdentity(t, fixture.WithRoles("viewer")))
+		viewer := proj.NewMachineIdentity(t, fixture.WithRoles("viewer"))
+		session := startSession(t, tn.Admin, proj, viewer)
 
 		// Action
 		ended, err := tn.Admin.API.DeleteAssumedProjectPrivilegesWithResponse(t.Context(), proj.ID, withCookie(session))
@@ -120,6 +121,13 @@ func TestAssumePrivilege_Session(t *testing.T) {
 		require.NoError(t, err)
 		requireStatus(t, http.StatusOK, perms.StatusCode(), perms.Body)
 		require.Nil(t, perms.JSON200.Data.AssumedPrivilegeDetails)
+		forTarget := func(m map[string]any) bool { return m["targetActorId"] == viewer.ID.String() }
+		started := auditEvent(t, tn, "project-assume-privileges-session-start", forTarget)
+		require.Equal(t, proj.ID, started["projectId"])
+		require.Equal(t, tn.Admin.ID.String(), started["requesterId"])
+		finished := auditEvent(t, tn, "project-assume-privileges-session-end", forTarget)
+		require.Equal(t, proj.ID, finished["projectId"])
+		require.Equal(t, tn.Admin.ID.String(), finished["requesterId"])
 	})
 
 	t.Run("should refuse assuming an identity that is not a member of the project", func(t *testing.T) {
@@ -152,28 +160,5 @@ func TestAssumePrivilege_Session(t *testing.T) {
 		// Assert
 		require.Equal(t, http.StatusForbidden, res.StatusCode())
 		require.Nil(t, sessionCookie(res.HTTPResponse))
-	})
-
-	t.Run("should record the session start and end in the audit log", func(t *testing.T) {
-		t.Parallel()
-
-		// Setup
-		tn := h.NewTenant(t)
-		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		viewer := proj.NewMachineIdentity(t, fixture.WithRoles("viewer"))
-		session := startSession(t, tn.Admin, proj, viewer)
-
-		// Action
-		ended, err := tn.Admin.API.DeleteAssumedProjectPrivilegesWithResponse(t.Context(), proj.ID, withCookie(session))
-
-		// Assert
-		require.NoError(t, err)
-		requireStatus(t, http.StatusOK, ended.StatusCode(), ended.Body)
-		forTarget := func(m map[string]any) bool { return m["targetActorId"] == viewer.ID.String() }
-		started := auditEvent(t, tn, "project-assume-privileges-session-start", forTarget)
-		require.Equal(t, proj.ID, started["projectId"])
-		require.Equal(t, tn.Admin.ID.String(), started["requesterId"])
-		finished := auditEvent(t, tn, "project-assume-privileges-session-end", forTarget)
-		require.Equal(t, proj.ID, finished["projectId"])
 	})
 }

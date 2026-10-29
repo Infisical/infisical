@@ -722,8 +722,8 @@ export const kmsServiceFactory = ({
     return doc;
   };
 
-  const getPublicKey = async ({ kmsId }: TGetPublicKeyDTO) => {
-    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+  const getPublicKey = async ({ kmsId }: TGetPublicKeyDTO, tx?: Knex) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId, tx);
     if (!kmsDoc) {
       throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
     }
@@ -740,8 +740,8 @@ export const kmsServiceFactory = ({
     return signingService(encryptionAlgorithm).getPublicKeyFromPrivateKey(kmsKey);
   };
 
-  const signWithKmsKey = async ({ kmsId }: Pick<TSignWithKmsDTO, "kmsId">) => {
-    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+  const signWithKmsKey = async ({ kmsId }: Pick<TSignWithKmsDTO, "kmsId">, tx?: Knex) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId, tx);
     if (!kmsDoc) {
       throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
     }

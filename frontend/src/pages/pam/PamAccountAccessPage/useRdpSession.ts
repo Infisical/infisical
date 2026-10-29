@@ -5,6 +5,7 @@ import axios from "axios";
 
 import { createNotification } from "@app/components/notifications";
 import { apiRequest } from "@app/config/request";
+import { getAccessErrorMessage } from "@app/pages/pam/access-error";
 
 import "@devolutions/iron-remote-desktop";
 
@@ -203,8 +204,7 @@ export const useRdpSession = ({
   const handleConnectError = useCallback((err: unknown) => {
     let message = "Failed to start RDP session";
     if (axios.isAxiosError(err)) {
-      const apiMessage = (err.response?.data as { message?: string } | undefined)?.message;
-      if (apiMessage) message = apiMessage;
+      message = getAccessErrorMessage(err, message);
     } else if (err instanceof Error && err.message) {
       message = err.message;
     }

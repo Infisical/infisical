@@ -11,22 +11,22 @@ import {
 } from "bullmq";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
-import { TAuditLogCollapsedFlushJobData } from "@app/ee/services/audit-log/audit-log-types";
 import { TAuditLogStreamFlushJobData } from "@app/ee/services/audit-log-stream-outbox/audit-log-stream-outbox-types";
+import { TAuditLogCollapsedFlushJobData } from "@app/ee/services/audit-log/audit-log-types";
 import {
   TSecretRotationRotateSecretsJobPayload,
   TSecretRotationSendNotificationJobPayload
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
-import {
-  TScanFullRepoEventPayload,
-  TScanPushEventPayload
-} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import {
   TQueueSecretScanningDataSourceFullScan,
   TQueueSecretScanningResourceDiffScan,
   TQueueSecretScanningResourceDiffScanPayload,
   TQueueSecretScanningSendNotification
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import {
+  TScanFullRepoEventPayload,
+  TScanPushEventPayload
+} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { getConfig } from "@app/lib/config/env";
 import { buildRedisFromConfig, createThrottledRedisErrorLogger, TRedisConfigKeys } from "@app/lib/config/redis";
 import { crypto } from "@app/lib/crypto";
@@ -60,16 +60,16 @@ import {
   TQueuePkiSyncSyncCertificatesByIdDTO
 } from "@app/services/pki-sync/pki-sync-types";
 import {
-  TFailedIntegrationSyncEmailsPayload,
-  TIntegrationSyncPayload,
-  TSyncSecretsDTO
-} from "@app/services/secret/secret-types";
-import {
   TQueueSecretSyncImportSecretsByIdDTO,
   TQueueSecretSyncRemoveSecretsByIdDTO,
   TQueueSecretSyncSyncSecretsByIdDTO,
   TQueueSendSecretSyncActionFailedNotificationsDTO
 } from "@app/services/secret-sync/secret-sync-types";
+import {
+  TFailedIntegrationSyncEmailsPayload,
+  TIntegrationSyncPayload,
+  TSyncSecretsDTO
+} from "@app/services/secret/secret-types";
 import { CacheType } from "@app/services/super-admin/super-admin-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 
