@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { MoreHorizontalIcon, SearchIcon } from "lucide-react";
 
@@ -29,7 +30,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import {
   ProjectPermissionPkiCertificateInstallationActions,
@@ -42,15 +46,14 @@ import {
   useDeletePkiInstallation,
   useListPkiInstallations
 } from "@app/hooks/api";
-import { PkiDiscoveryType } from "@app/hooks/api/pkiDiscovery/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { usePopUp } from "@app/hooks/usePopUp";
 import {
   canSetKeystorePassword,
   getEndpoint,
   getGatewayLabel,
+  getInstallationDiscoveryType,
   getKeystoreStatusBadge,
-  isHostFileInstallation,
   useCanRescanPkiInstallations
 } from "@app/pages/cert-manager/pki-discovery-utils";
 
@@ -132,8 +135,8 @@ export const InstallationsTab = ({ projectId }: Props) => {
       <CardHeader>
         <CardTitle>Installations</CardTitle>
         <CardDescription>
-          Every place a certificate was found during a scan, identified by its host and port or its
-          host and file path.
+          Every place a certificate was found during a scan, identified by its host and its port,
+          file path or certificate store.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -183,14 +186,10 @@ export const InstallationsTab = ({ projectId }: Props) => {
               <TableBody>
                 {installations.map((installation) => (
                   <TableRow key={installation.id} linked>
-                    <TableCell>
+                    <TableCell className="max-w-96">
                       <div className="flex items-center gap-2">
                         <DiscoveryTypeIcon
-                          type={
-                            isHostFileInstallation(installation)
-                              ? PkiDiscoveryType.LinuxServer
-                              : PkiDiscoveryType.Network
-                          }
+                          type={getInstallationDiscoveryType(installation)}
                           className="size-4 shrink-0"
                         />
                         <RowLink
@@ -199,14 +198,34 @@ export const InstallationsTab = ({ projectId }: Props) => {
                             currentProject,
                             `discovery/installations/${installation.id}`
                           )!}
+                          className="min-w-0"
+                          title={installation.name || getEndpoint(installation)}
                         >
                           {installation.name || getEndpoint(installation)}
                         </RowLink>
                         {getKeystoreStatusBadge(installation)}
                       </div>
                     </TableCell>
-                    <TableCell>
-                      {installation.primaryCertName || <span className="text-accent">—</span>}
+                    <TableCell className="max-w-56">
+                      {installation.primaryCertName ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Link
+                              {...getInstancePinningLink(
+                                currentProject.orgId,
+                                currentProject,
+                                `discovery/installations/${installation.id}`
+                              )!}
+                              className="block truncate"
+                            >
+                              {installation.primaryCertName}
+                            </Link>
+                          </TooltipTrigger>
+                          <TooltipContent>{installation.primaryCertName}</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <span className="text-accent">—</span>
+                      )}
                     </TableCell>
                     <TableCell>{getGatewayLabel(installation) || "N/A"}</TableCell>
                     <TableCell>

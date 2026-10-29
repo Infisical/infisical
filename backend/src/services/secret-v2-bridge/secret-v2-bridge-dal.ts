@@ -1113,6 +1113,25 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     }
   };
 
+  const findSecretReferencesByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretReferenceV2)
+        .whereNull(`${TableName.SecretReferenceV2}.targetProjectSlug`)
+        .join(TableName.SecretV2, `${TableName.SecretV2}.id`, `${TableName.SecretReferenceV2}.secretId`)
+        .join(TableName.SecretFolder, `${TableName.SecretV2}.folderId`, `${TableName.SecretFolder}.id`)
+        .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
+        .where("projectId", projectId)
+        .whereNull(`${TableName.Environment}.deleteAfter`)
+        .select(selectAllTableCols(TableName.SecretReferenceV2))
+        .select("folderId")
+        .select(db.ref("userId").withSchema(TableName.SecretV2));
+
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindSecretReferencesByProjectId" });
+    }
+  };
+
   const findReferencedSecretReferencesBySecretKey = async (
     projectId: string,
     envSlug: string,
@@ -1829,6 +1848,7 @@ export const secretV2BridgeDALFactory = ({ db, keyStore }: TSecretV2DalArg) => {
     findBySecretKeys,
     upsertSecretReferences,
     findReferencedSecretReferences,
+    findSecretReferencesByProjectId,
     findAllProjectSecretValues,
     findSecretsInFolderAfter,
     batchSetBlindIndexes,

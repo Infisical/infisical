@@ -626,6 +626,9 @@ import {
   TSecretImports,
   TSecretImportsInsert,
   TSecretImportsUpdate,
+  TSecretReadActivity,
+  TSecretReadActivityInsert,
+  TSecretReadActivityUpdate,
   TSecretReferences,
   TSecretReferencesInsert,
   TSecretReferencesUpdate,
@@ -1443,6 +1446,11 @@ declare module "knex/types/tables" {
       TSecretReferencesV2,
       TSecretReferencesV2Insert,
       TSecretReferencesV2Update
+    >;
+    [TableName.SecretReadActivity]: KnexOriginal.CompositeTableType<
+      TSecretReadActivity,
+      TSecretReadActivityInsert,
+      TSecretReadActivityUpdate
     >;
     // Junction tables
     [TableName.SecretV2JnTag]: KnexOriginal.CompositeTableType<

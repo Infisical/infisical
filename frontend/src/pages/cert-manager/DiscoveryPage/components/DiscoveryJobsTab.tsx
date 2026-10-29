@@ -54,6 +54,7 @@ import {
   useListPkiDiscoveries,
   useTriggerPkiDiscoveryScan
 } from "@app/hooks/api";
+import { WindowsCertificateStoreLabels } from "@app/hooks/api/pkiDiscovery/types";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { usePopUp } from "@app/hooks/usePopUp";
 import {
@@ -73,6 +74,11 @@ type Props = {
 const PAGE_SIZE = 25;
 
 const getScopeItems = (discovery: TPkiDiscovery) => {
+  if (discovery.discoveryType === PkiDiscoveryType.WindowsServer) {
+    return (discovery.targetConfig.certificateStores ?? []).map(
+      (store) => WindowsCertificateStoreLabels[store] ?? store
+    );
+  }
   if (discovery.discoveryType === PkiDiscoveryType.LinuxServer) {
     return discovery.targetConfig.searchFolderPaths ?? [];
   }
@@ -81,7 +87,10 @@ const getScopeItems = (discovery: TPkiDiscovery) => {
 };
 
 const getTargetItems = (discovery: TPkiDiscovery) => {
-  if (discovery.discoveryType === PkiDiscoveryType.LinuxServer) {
+  if (
+    discovery.discoveryType === PkiDiscoveryType.LinuxServer ||
+    discovery.discoveryType === PkiDiscoveryType.WindowsServer
+  ) {
     return (discovery.connections ?? []).map((connection) => connection.name);
   }
   return [...(discovery.targetConfig.domains ?? []), ...(discovery.targetConfig.ipRanges ?? [])];
@@ -149,8 +158,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
       <CardHeader>
         <CardTitle>Discovery Jobs</CardTitle>
         <CardDescription>
-          Configure scans to find certificates served on your network or stored in files on your
-          servers.
+          Configure scans to find certificates served on your network or stored on your servers.
         </CardDescription>
         <CardAction>
           <ProjectPermissionCan
@@ -205,7 +213,7 @@ export const DiscoveryJobsTab = ({ projectId }: Props) => {
                   <TableHead>Name</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Target</TableHead>
-                  <TableHead>Ports / Folders</TableHead>
+                  <TableHead>Scope</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Scan</TableHead>
                   <TableHead className="w-5" />

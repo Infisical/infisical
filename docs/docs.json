@@ -529,7 +529,8 @@
                     "root": "documentation/platform/pki/discovery/overview",
                     "pages": [
                       "documentation/platform/pki/discovery/network",
-                      "documentation/platform/pki/discovery/linux-server"
+                      "documentation/platform/pki/discovery/linux-server",
+                      "documentation/platform/pki/discovery/windows-server"
                     ]
                   },
                   {
@@ -2673,6 +2674,16 @@
                       "api-reference/endpoints/audit-logs/update-organization-audit-log-settings",
                       "api-reference/endpoints/audit-logs/get-project-audit-log-settings",
                       "api-reference/endpoints/audit-logs/update-project-audit-log-settings"
+                    ]
+                  },
+                  {
+                    "group": "Alerts",
+                    "pages": [
+                      "api-reference/endpoints/alerts/list",
+                      "api-reference/endpoints/alerts/create",
+                      "api-reference/endpoints/alerts/get-by-id",
+                      "api-reference/endpoints/alerts/update",
+                      "api-reference/endpoints/alerts/delete"
                     ]
                   },
                   {

@@ -247,6 +247,12 @@ export const KeyStorePrefixes = {
     `telemetry-agg-stream:${event}:${bucketId}` as const,
 
   AuditLogStreamFlushDebounce: (streamId: string) => `audit-log-stream:${streamId}:flush-debounce` as const,
+  SecretReadActivityGate: (day: string, actorId: string, scope: string) =>
+    `secret-read-activity:${day}:${actorId}:${scope}` as const,
+  SecretReadActivityStream: "secret-read-activity-stream" as const,
+  SecretReadActivityConsumerLock: "secret-read-activity:consumer-lock" as const,
+  SecretReadActivityUnusedAccessLock: (projectId: string) =>
+    `secret-read-activity:unused-access-lock:${projectId}` as const,
   AuditLogIngestConsumerLock: "audit-log-ingest:consumer-lock" as const,
 
   // period is a YYYY-MM stamp so the monthly notice can only go out once per org per month
@@ -291,6 +297,7 @@ export const KeyStoreTtls = {
   InsightsDuplicationCacheInSeconds: 300, // 5 minutes
   InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
   InsightsOrgCacheInSeconds: 900, // 15 minutes
+  InsightsUnusedAccessCacheInSeconds: 86400, // 24 hours
   AdminConfigInSeconds: 60,
   UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job

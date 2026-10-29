@@ -75,7 +75,7 @@ To list the names of the keys in `~/.hermes/.env` without printing their values,
 grep -o '^[A-Za-z_][A-Za-z0-9_]*=' ~/.hermes/.env | tr -d '='
 ```
 
-Take note of each key that holds a credential for an API. In [Step 2](#step-2-set-up-agent-vault), you'll make sure your access bundle has a [service](/documentation/platform/agent-vault/services) for each of these keys.
+Take note of each key whose value is a credential for an API. In [Step 2](#step-2-set-up-agent-vault), you'll make sure your access bundle has a [service](/documentation/platform/agent-vault/services) for each of these keys.
 
 <Accordion title="How do I know which keys to use?">
 Most Hermes setups have three kinds of API keys:
