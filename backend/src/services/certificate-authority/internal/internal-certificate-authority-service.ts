@@ -936,7 +936,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           extensions: [
             new x509.BasicConstraintsExtension(
               true,
-              ca.internalCa.maxPathLength === -1 || !ca.internalCa.maxPathLength
+              ca.internalCa.maxPathLength === -1 || ca.internalCa.maxPathLength == null
                 ? undefined
                 : ca.internalCa.maxPathLength,
               true
@@ -1052,7 +1052,7 @@ export const internalCertificateAuthorityServiceFactory = ({
             new x509.KeyUsagesExtension(INTERMEDIATE_CA_KEY_USAGES, true),
             new x509.BasicConstraintsExtension(
               true,
-              ca.internalCa.maxPathLength === -1 || !ca.internalCa.maxPathLength
+              ca.internalCa.maxPathLength === -1 || ca.internalCa.maxPathLength == null
                 ? undefined
                 : ca.internalCa.maxPathLength,
               true
