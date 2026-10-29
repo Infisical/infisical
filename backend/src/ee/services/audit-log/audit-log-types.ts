@@ -833,8 +833,8 @@ export enum EventType {
   AGENT_VAULT_SKILL_VERSION_RESTORE = "agent-vault-skill-version-restore",
   AGENT_VAULT_SKILL_VERSION_VIEW = "agent-vault-skill-version-view",
   AGENT_VAULT_SKILL_DELETE = "agent-vault-skill-delete",
-  AGENT_VAULT_SKILL_BUNDLE_ATTACH = "agent-vault-skill-bundle-attach",
-  AGENT_VAULT_SKILL_BUNDLE_DETACH = "agent-vault-skill-bundle-detach",
+  AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD = "agent-vault-access-bundle-skill-add",
+  AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE = "agent-vault-access-bundle-skill-remove",
   AGENT_VAULT_SKILLS_DELIVERED = "agent-vault-skills-delivered",
   AGENT_VAULT_MEMBER_ADD = "agent-vault-member-add",
   AGENT_VAULT_MEMBER_UPDATE = "agent-vault-member-update",
@@ -6780,13 +6780,13 @@ interface AgentVaultSkillDeleteEvent {
   metadata: {
     skillId: string;
     skillName: string;
-    // The access bundles the skill was attached to when it was deleted.
-    detachedFromBundles: { id: string; name: string }[];
+    // The access bundles the skill was in when it was deleted.
+    removedFromBundles: { id: string; name: string }[];
   };
 }
 
-interface AgentVaultSkillBundleAttachEvent {
-  type: EventType.AGENT_VAULT_SKILL_BUNDLE_ATTACH;
+interface AgentVaultAccessBundleSkillAddEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD;
   metadata: {
     skillId: string;
     skillName: string;
@@ -6795,8 +6795,8 @@ interface AgentVaultSkillBundleAttachEvent {
   };
 }
 
-interface AgentVaultSkillBundleDetachEvent {
-  type: EventType.AGENT_VAULT_SKILL_BUNDLE_DETACH;
+interface AgentVaultAccessBundleSkillRemoveEvent {
+  type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE;
   metadata: {
     skillId: string;
     skillName: string;
@@ -8917,8 +8917,8 @@ export type Event =
   | AgentVaultSkillVersionViewEvent
   | AgentVaultSkillRenameEvent
   | AgentVaultSkillDeleteEvent
-  | AgentVaultSkillBundleAttachEvent
-  | AgentVaultSkillBundleDetachEvent
+  | AgentVaultAccessBundleSkillAddEvent
+  | AgentVaultAccessBundleSkillRemoveEvent
   | AgentVaultSkillsDeliveredEvent
   | AgentVaultProductMemberAddEvent
   | AgentVaultProductMemberUpdateEvent

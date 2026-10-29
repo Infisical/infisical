@@ -90,7 +90,7 @@ export const agentVaultSkillServiceFactory = ({
     return accessBundleIds;
   };
 
-  // Attaching changes what a bundle hands out, so it is a bundle edit, and the skill has to be one the caller can see.
+  // Adding a skill changes what a bundle hands out, so it is a bundle edit, and the skill has to be one the caller can see.
   const $authorizeBundleLink = async (scoped: TAgentVaultSkillScoped) => {
     const permission = await $getPermission(scoped);
     ForbiddenError.from(permission).throwUnlessCan(
@@ -477,7 +477,7 @@ export const agentVaultSkillServiceFactory = ({
       const accessBundles = await agentVaultSkillBundleDAL.findBundlesForSkill(locked.id, null, tx);
       await agentVaultSkillDAL.deleteById(locked.id, tx);
 
-      return { skill: projectSkill(skill!), detachedFromBundles: accessBundles };
+      return { skill: projectSkill(skill!), removedFromBundles: accessBundles };
     });
   };
 
@@ -509,10 +509,10 @@ export const agentVaultSkillServiceFactory = ({
 
   // The bundle is locked first, as every other bundle write does, then the skill, so a skill delete can't run
   // between the check and the insert.
-  const attachToBundle = async ({ accessBundleId, skillId, ...scoped }: TBundleSkillDTO) => {
+  const addToBundle = async ({ accessBundleId, skillId, ...scoped }: TBundleSkillDTO) => {
     await $authorizeBundleLink(scoped);
 
-    const attach = () =>
+    const add = () =>
       agentVaultSkillDAL.transaction(async (tx) => {
         const bundle = await agentVaultAccessBundleDAL.lockByIdInProject(
           { id: accessBundleId, projectId: scoped.projectId },
@@ -526,12 +526,12 @@ export const agentVaultSkillServiceFactory = ({
         const existing = await agentVaultSkillBundleDAL.findOne({ accessBundleId: bundle.id, skillId: skill.id }, tx);
         if (existing) {
           throw new ConflictError({
-            message: `The skill '${skill.name}' is already attached to the access bundle '${bundle.name}'.`
+            message: `The skill '${skill.name}' is already in the access bundle '${bundle.name}'.`
           });
         }
 
-        const attachedCount = await agentVaultSkillBundleDAL.countForBundle(bundle.id, tx);
-        if (attachedCount >= AGENT_VAULT_MAX_SKILLS_PER_BUNDLE) {
+        const bundleSkillCount = await agentVaultSkillBundleDAL.countForBundle(bundle.id, tx);
+        if (bundleSkillCount >= AGENT_VAULT_MAX_SKILLS_PER_BUNDLE) {
           throw new BadRequestError({
             message: `This access bundle already has ${AGENT_VAULT_MAX_SKILLS_PER_BUNDLE} skills, the maximum. Remove one to add another.`
           });
@@ -543,16 +543,16 @@ export const agentVaultSkillServiceFactory = ({
       });
 
     try {
-      return await attach();
+      return await add();
     } catch (err) {
       if (isUniqueViolation(err)) {
-        throw new ConflictError({ message: "This skill is already attached to this access bundle." });
+        throw new ConflictError({ message: "This skill is already in this access bundle." });
       }
       throw err;
     }
   };
 
-  const detachFromBundle = async ({ accessBundleId, skillId, ...scoped }: TBundleSkillDTO) => {
+  const removeFromBundle = async ({ accessBundleId, skillId, ...scoped }: TBundleSkillDTO) => {
     await $authorizeBundleLink(scoped);
 
     return agentVaultSkillDAL.transaction(async (tx) => {
@@ -568,7 +568,7 @@ export const agentVaultSkillServiceFactory = ({
       const [removed] = await agentVaultSkillBundleDAL.delete({ accessBundleId: bundle.id, skillId: skill.id }, tx);
       if (!removed) {
         throw new NotFoundError({
-          message: `The skill '${skill.name}' is not attached to the access bundle '${bundle.name}'.`
+          message: `The skill '${skill.name}' isn't in the access bundle '${bundle.name}'.`
         });
       }
 
@@ -587,7 +587,7 @@ export const agentVaultSkillServiceFactory = ({
     getVersionFiles,
     deleteSkill,
     listBundleSkills,
-    attachToBundle,
-    detachFromBundle
+    addToBundle,
+    removeFromBundle
   };
 };

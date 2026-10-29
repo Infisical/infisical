@@ -40,9 +40,9 @@ import {
   useProjectPermission
 } from "@app/context";
 import {
-  useAttachAgentVaultAccessBundleSkill,
-  useDetachAgentVaultAccessBundleSkill,
-  useListAgentVaultAccessBundleSkills
+  useAddAgentVaultAccessBundleSkill,
+  useListAgentVaultAccessBundleSkills,
+  useRemoveAgentVaultAccessBundleSkill
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultBundleSkill, TAgentVaultSkillSummary } from "@app/hooks/api/agentVault/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
@@ -66,21 +66,21 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
   );
   const { data: bundleSkills = [], isPending } =
     useListAgentVaultAccessBundleSkills(accessBundleId);
-  const attachSkill = useAttachAgentVaultAccessBundleSkill();
-  const detachSkill = useDetachAgentVaultAccessBundleSkill();
+  const addSkill = useAddAgentVaultAccessBundleSkill();
+  const removeSkill = useRemoveAgentVaultAccessBundleSkill();
   const [skillToRemove, setSkillToRemove] = useState<TAgentVaultBundleSkill | null>(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [createName, setCreateName] = useState<string | null>(null);
 
-  const attachCreated = async (skill: TAgentVaultSkillSummary) => {
+  const addCreated = async (skill: TAgentVaultSkillSummary) => {
     try {
-      await attachSkill.mutateAsync({ accessBundleId, skillId: skill.id });
+      await addSkill.mutateAsync({ accessBundleId, skillId: skill.id });
       createNotification({
         text: `Skill "${skill.name}" created and added to this access bundle`,
         type: "success"
       });
     } catch {
-      // The attach error is already a toast; this one says the skill itself exists now
+      // The add error is already a toast; this one says the skill itself exists now
       createNotification({ text: `Skill "${skill.name}" created`, type: "info" });
     }
   };
@@ -88,7 +88,7 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
   const handleRemove = async () => {
     if (!skillToRemove) return;
     try {
-      await detachSkill.mutateAsync({ accessBundleId, skillId: skillToRemove.id });
+      await removeSkill.mutateAsync({ accessBundleId, skillId: skillToRemove.id });
     } catch {
       return;
     }
@@ -210,7 +210,7 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
 
       <AddBundleSkillDialog
         accessBundleId={accessBundleId}
-        attachedSkillIds={bundleSkills.map((skill) => skill.id)}
+        bundleSkillIds={bundleSkills.map((skill) => skill.id)}
         isOpen={isAddOpen}
         onOpenChange={setIsAddOpen}
         canCreateSkills={canCreateSkills}
@@ -224,7 +224,7 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
         }}
         initialName={createName ?? ""}
         description="The new skill is added to this access bundle once it is created."
-        onCreated={attachCreated}
+        onCreated={addCreated}
         shouldNotify={false}
       />
 
@@ -237,7 +237,7 @@ export const SkillsCard = ({ accessBundleId, accessBundleName, canManage }: Prop
         description="The skill itself is not deleted."
         confirmKey={skillToRemove?.name ?? ""}
         confirmLabel="Remove"
-        isPending={detachSkill.isPending}
+        isPending={removeSkill.isPending}
         onConfirm={handleRemove}
       />
 

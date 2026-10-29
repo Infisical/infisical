@@ -4565,8 +4565,8 @@
                       "api-reference/endpoints/agent-vault-skills/publish-version",
                       "api-reference/endpoints/agent-vault-skills/restore-version",
                       "api-reference/endpoints/agent-vault-skills/list-bundle-skills",
-                      "api-reference/endpoints/agent-vault-skills/attach",
-                      "api-reference/endpoints/agent-vault-skills/detach"
+                      "api-reference/endpoints/agent-vault-skills/add",
+                      "api-reference/endpoints/agent-vault-skills/remove"
                     ]
                   },
                   {

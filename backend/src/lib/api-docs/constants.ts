@@ -4689,8 +4689,8 @@ export const AGENT_VAULT = {
     description: "What the skill is for, taken from the `description` in the SKILL.md of its latest version.",
     latestVersion: "The number of the skill's newest version.",
     accessBundles:
-      "The access bundles the skill is attached to, ordered by name. A member sees only the bundles they have been granted.",
-    accessBundleId: "The ID of an access bundle the skill is attached to.",
+      "The access bundles the skill is in, ordered by name. A member sees only the bundles they have been granted.",
+    accessBundleId: "The ID of an access bundle the skill is in.",
     accessBundleName: "The name of the access bundle.",
     createdAt: "When the skill was added.",
     updatedAt: "When the skill was last changed.",
@@ -4712,7 +4712,7 @@ export const AGENT_VAULT = {
       "The version these files were edited from. If a newer version has been published since, nothing is published and the request fails with 409. Omit it to publish regardless.",
     restoreUnchanged:
       "True if the version being restored has the same files as the latest version, in which case no new version was made and the latest version is returned.",
-    attachSkillId: "The ID of the skill to attach to the access bundle.",
+    addSkillId: "The ID of the skill to add to the access bundle.",
     search: "Match skills whose name or description contains this text.",
     nameFilter: "Return only the skill with exactly this name.",
     limit: "The maximum number of skills to return. Defaults to 20.",

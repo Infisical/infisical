@@ -34,7 +34,7 @@ export const agentVaultSkillDALFactory = (db: TDbClient) => {
   });
 
   // Reads the primary even without a tx, so a skill created or published a moment ago is listed as it now is.
-  // accessBundleIds null lists every skill; otherwise only skills attached to one of those bundles.
+  // accessBundleIds null lists every skill; otherwise only skills in one of those bundles.
   const findForList = async (
     {
       projectId,
@@ -133,7 +133,7 @@ export const agentVaultSkillDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Taken by a delete, by a publish or restore, and by an attach so a skill being deleted can't gain a bundle on
+  // Taken by a delete, by a publish or restore, and by an add so a skill being deleted can't gain a bundle on
   // its way out.
   const lockByIdInProject = async (
     { id, projectId }: { id: string; projectId: string },

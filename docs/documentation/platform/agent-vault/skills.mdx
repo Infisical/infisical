@@ -5,15 +5,15 @@ description: "Instructions you keep in Agent Vault and install for agents you st
 
 A skill is a folder of instructions that an AI agent loads when a task needs it, such as how your team reviews pull requests or how to cut a release. Skills follow the [Agent Skills](https://agentskills.io) format, so the same folder works in Claude Code, Codex, and other agents that support it.
 
-An [access bundle](/documentation/platform/agent-vault/access-bundles) defines the services, such as external APIs or MCP servers, that an agent can access during a session. If you attach a skill to an access bundle, the CLI installs the skill for each agent that you start with that access bundle through `infisical agent-vault run`. Agents that use the proxy without `infisical agent-vault run`, such as the [Hermes gateway](/documentation/platform/agent-vault/guides/hermes-gateway) and [OpenClaw gateway](/documentation/platform/agent-vault/guides/openclaw-gateway) setups, don't get skills.
+An [access bundle](/documentation/platform/agent-vault/access-bundles) defines the services, such as external APIs or MCP servers, that an agent can access during a session. If you add a skill to an access bundle, the CLI installs the skill for each agent that you start with that access bundle through `infisical agent-vault run`. Agents that use the proxy without `infisical agent-vault run`, such as the [Hermes gateway](/documentation/platform/agent-vault/guides/hermes-gateway) and [OpenClaw gateway](/documentation/platform/agent-vault/guides/openclaw-gateway) setups, don't get skills.
 
 <Info>
-  [Agent Vault members](/documentation/platform/agent-vault/access-control#product-membership) can view the latest version of each skill attached to the access bundles granted to them.
+  [Agent Vault members](/documentation/platform/agent-vault/access-control#product-membership) can view the latest version of each skill in the access bundles granted to them.
 </Info>
 
 ## Prerequisites
 
-- The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership), to add, change, attach, and delete skills
+- The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership), to add, change, and delete skills, and to add them to access bundles
 - The [Infisical CLI](/cli/install) on each host where you start agents
 
 ## Skill format
@@ -96,9 +96,9 @@ You can push a skill folder with the CLI, or create the skill in Infisical.
   </Tab>
 </Tabs>
 
-## Attach a skill to an access bundle
+## Add a skill to an access bundle
 
-To install skills for agents, attach them to an access bundle:
+To install skills for agents, add them to an access bundle:
 
 <Steps>
   <Step>
@@ -108,17 +108,17 @@ To install skills for agents, attach them to an access bundle:
     In the **Skills** section, select **Add Skills**.
   </Step>
   <Step>
-    Pick one or more skills from the list, then select the **Add** button. You can also create a skill from here with **Create New Skill** at the end of the list, and it's attached to the access bundle.
+    Pick one or more skills from the list, then select the **Add** button. You can also create a skill from here with **Create New Skill** at the end of the list, and it's added to the access bundle.
   </Step>
 </Steps>
 
 An access bundle can have up to 25 skills.
 
-To detach a skill, open its actions menu in the **Skills** section and select **Remove From Bundle**, then type the skill's name and select **Remove**. The CLI doesn't delete copies of the skill that it already installed, so to stop agents from using the skill, [delete the installed copies](#remove-installed-skills).
+To remove a skill from an access bundle, open its actions menu in the **Skills** section and select **Remove From Bundle**, then type the skill's name and select **Remove**. The CLI doesn't delete copies of the skill that it already installed, so to stop agents from using the skill, [delete the installed copies](#remove-installed-skills).
 
 ## How agents get skills
 
-When you start an agent with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI downloads the latest version of each skill attached to the session's access bundle, and installs the skills before the agent starts. The agent keeps the skills it started with, so if you publish a new version or attach a skill, restart the agent to pick up the change.
+When you start an agent with [`infisical agent-vault run`](/cli/reference#agent-vault-run), the CLI downloads the latest version of each skill in the session's access bundle, and installs the skills before the agent starts. The agent keeps the skills it started with, so if you publish a new version or add a skill to the access bundle, restart the agent to pick up the change.
 
 ### Reaching Infisical from the agent's host
 
@@ -160,12 +160,12 @@ skills:
 The CLI doesn't delete the skills it installs when the agent exits, so later runs of any agent on the host can still use them.
 
 <Note>
-  The CLI only replaces skill folders it installed. If a folder with the same name as an attached skill already exists and the CLI didn't install it, the CLI leaves it alone and warns you.
+  The CLI only replaces skill folders it installed. If a folder with the same name as a skill in the access bundle already exists and the CLI didn't install it, the CLI leaves it alone and warns you.
 </Note>
 
 ### Remove installed skills
 
-If you detach a skill, delete it, or rename it, the CLI doesn't delete the copies it already installed. On each host that ran an agent with the skill, delete the skill's folder from `~/.agents/skills`, or from the folder you passed to `--skills-dir`. Also delete the skill's link or copy from the Claude Code and Hermes `skills` folders, if the CLI created one there.
+If you remove a skill from an access bundle, delete it, or rename it, the CLI doesn't delete the copies it already installed. On each host that ran an agent with the skill, delete the skill's folder from `~/.agents/skills`, or from the folder you passed to `--skills-dir`. Also delete the skill's link or copy from the Claude Code and Hermes `skills` folders, if the CLI created one there.
 
 If you renamed the skill, the installed folder has the skill's old name.
 
@@ -269,17 +269,17 @@ To delete a skill and every version of it:
     In Agent Vault, go to **Skills** and select the skill.
   </Step>
   <Step>
-    Select **Options**, then select **Delete Skill**. The dialog lists the access bundles the skill is attached to.
+    Select **Options**, then select **Delete Skill**. The dialog lists the access bundles the skill is in.
   </Step>
   <Step>
     Type the skill's name and select **Delete**.
   </Step>
 </Steps>
 
-Infisical detaches the skill from every access bundle. The CLI doesn't delete copies of the skill that it already installed, so to stop agents from using the skill, [delete the installed copies](#remove-installed-skills).
+Infisical removes the skill from every access bundle. The CLI doesn't delete copies of the skill that it already installed, so to stop agents from using the skill, [delete the installed copies](#remove-installed-skills).
 
 ## Audit trail
 
-Infisical writes an audit event when someone creates, edits, renames, rolls back, or deletes a skill, attaches a skill to an access bundle or detaches it, or opens a version of a skill. When the CLI downloads a session's skills, Infisical also writes one event for the session that lists each skill's version and the version's SHA-256 checksum, so you can see which version each agent got.
+Infisical writes an audit event when someone creates, edits, renames, rolls back, or deletes a skill, adds a skill to an access bundle or removes it, or opens a version of a skill. When the CLI downloads a session's skills, Infisical also writes one event for the session that lists each skill's version and the version's SHA-256 checksum, so you can see which version each agent got.
 
 To review these events, open **Audit Logs** in Agent Vault, or scope an [audit log stream](/documentation/platform/audit-log-streams/audit-log-streams) to the Agent Vault product.

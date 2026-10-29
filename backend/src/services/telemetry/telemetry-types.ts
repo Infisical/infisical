@@ -332,8 +332,8 @@ export enum PostHogEventTypes {
   AgentVaultSkillCreated = "Agent Vault Skill Created",
   AgentVaultSkillVersionPublished = "Agent Vault Skill Version Published",
   AgentVaultSkillDeleted = "Agent Vault Skill Deleted",
-  AgentVaultSkillAttachedToBundle = "Agent Vault Skill Attached To Bundle",
-  AgentVaultSkillDetachedFromBundle = "Agent Vault Skill Detached From Bundle",
+  AgentVaultAccessBundleSkillAdded = "Agent Vault Access Bundle Skill Added",
+  AgentVaultAccessBundleSkillRemoved = "Agent Vault Access Bundle Skill Removed",
   AgentVaultSkillsDelivered = "Agent Vault Skills Delivered",
   AgentVaultAccessBundleMemberAdded = "Agent Vault Access Bundle Member Added",
   AgentVaultAccessBundleMemberRemoved = "Agent Vault Access Bundle Member Removed",
@@ -2544,16 +2544,16 @@ export type TAgentVaultSkillVersionPublishedEvent = {
 
 export type TAgentVaultSkillDeletedEvent = {
   event: PostHogEventTypes.AgentVaultSkillDeleted;
-  properties: TAgentVaultEventBase & { skillId: string; detachedBundleCount: number };
+  properties: TAgentVaultEventBase & { skillId: string; removedBundleCount: number };
 };
 
-export type TAgentVaultSkillAttachedToBundleEvent = {
-  event: PostHogEventTypes.AgentVaultSkillAttachedToBundle;
+export type TAgentVaultAccessBundleSkillAddedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleSkillAdded;
   properties: TAgentVaultEventBase & { skillId: string; accessBundleId: string };
 };
 
-export type TAgentVaultSkillDetachedFromBundleEvent = {
-  event: PostHogEventTypes.AgentVaultSkillDetachedFromBundle;
+export type TAgentVaultAccessBundleSkillRemovedEvent = {
+  event: PostHogEventTypes.AgentVaultAccessBundleSkillRemoved;
   properties: TAgentVaultEventBase & { skillId: string; accessBundleId: string };
 };
 
@@ -2674,8 +2674,8 @@ export type TAgentVaultPostHogEvent =
   | TAgentVaultSkillCreatedEvent
   | TAgentVaultSkillVersionPublishedEvent
   | TAgentVaultSkillDeletedEvent
-  | TAgentVaultSkillAttachedToBundleEvent
-  | TAgentVaultSkillDetachedFromBundleEvent
+  | TAgentVaultAccessBundleSkillAddedEvent
+  | TAgentVaultAccessBundleSkillRemovedEvent
   | TAgentVaultSkillsDeliveredEvent
   | TAgentVaultAccessBundleMemberAddedEvent
   | TAgentVaultAccessBundleMemberRemovedEvent

@@ -330,7 +330,7 @@ reference.
 
 ## Skills
 
-A skill is an Agent Skills folder (`SKILL.md` plus files) kept per project and attached to bundles. When an agent
+A skill is an Agent Skills folder (`SKILL.md` plus files) kept per project and added to bundles. When an agent
 starts, the CLI fetches the session's skills from Infisical once, with the session token, and installs them in the user's home
 (`~/.agents/skills/<name>`, linked for Claude Code and Hermes, or `--skills-dir`), where they stay after the run.
 There are no live updates: a running agent keeps what it got until it restarts, and nothing on the server removes
@@ -375,9 +375,9 @@ an installed copy.
   bundle (sessions carry one today), plus one anonymous `Agent Vault Skills Delivered` PostHog event with the
   count. A call with no skills records neither. Nothing caches; the route uses `readLimit`.
 - Skills use the `agent-vault-skills` CASL subject. Members keep CASL `Read`, narrowed by reachability
-  (`getAgentVaultReachability`): they see only skills attached to a bundle they can reach, each with only those
+  (`getAgentVaultReachability`): they see only skills in a bundle they can reach, each with only those
   bundles, and only the latest version's files. Anything else, an unreachable bundle's skill list included, is a 404.
-  Listing versions checks `Edit`, so it is admin only. Creating, publishing, restoring and deleting are admin only. Attaching or detaching needs `Edit` on access bundles and `Read` on skills, and a
+  Listing versions checks `Edit`, so it is admin only. Creating, publishing, restoring and deleting are admin only. Adding a skill to a bundle or removing it needs `Edit` on access bundles and `Read` on skills, and a
   bundle holds at most 25 skills (`AGENT_VAULT_MAX_SKILLS_PER_BUNDLE`, checked under the bundle lock). Agent Vault
   holds at most 250 skills (`AGENT_VAULT_MAX_SKILLS`, checked under a per-project advisory lock on create).
 

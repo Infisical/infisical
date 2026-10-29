@@ -19,7 +19,7 @@ import {
 import { AGENT_VAULT_MAX_SKILLS_PER_BUNDLE } from "@app/helpers/agentVaultSkills";
 import { useDebounce } from "@app/hooks";
 import {
-  useAttachAgentVaultAccessBundleSkill,
+  useAddAgentVaultAccessBundleSkill,
   useListAgentVaultSkills
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultSkill } from "@app/hooks/api/agentVault/types";
@@ -29,7 +29,7 @@ const PICKER_LIMIT = 100;
 
 type Props = {
   accessBundleId: string;
-  attachedSkillIds: string[];
+  bundleSkillIds: string[];
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   canCreateSkills: boolean;
@@ -38,13 +38,13 @@ type Props = {
 
 export const AddBundleSkillDialog = ({
   accessBundleId,
-  attachedSkillIds,
+  bundleSkillIds,
   isOpen,
   onOpenChange,
   canCreateSkills,
   onCreateNew
 }: Props) => {
-  const attachSkill = useAttachAgentVaultAccessBundleSkill();
+  const addSkill = useAddAgentVaultAccessBundleSkill();
   const [skills, setSkills] = useState<TAgentVaultSkill[]>([]);
   const [search, setSearch] = useState("");
   const [debouncedSearch] = useDebounce(search);
@@ -56,12 +56,12 @@ export const AddBundleSkillDialog = ({
   );
 
   const options = useMemo(() => {
-    const attached = new Set(attachedSkillIds);
-    return (data?.skills ?? []).filter((option) => !attached.has(option.id));
-  }, [data, attachedSkillIds]);
+    const inBundle = new Set(bundleSkillIds);
+    return (data?.skills ?? []).filter((option) => !inBundle.has(option.id));
+  }, [data, bundleSkillIds]);
 
   const isListTruncated = (data?.totalCount ?? 0) > (data?.skills.length ?? 0);
-  const roomLeft = Math.max(0, AGENT_VAULT_MAX_SKILLS_PER_BUNDLE - attachedSkillIds.length);
+  const roomLeft = Math.max(0, AGENT_VAULT_MAX_SKILLS_PER_BUNDLE - bundleSkillIds.length);
   const isOverLimit = skills.length > roomLeft;
 
   const handleClose = () => {
@@ -79,7 +79,7 @@ export const AddBundleSkillDialog = ({
       // eslint-disable-next-line no-restricted-syntax
       for (const skill of skills) {
         // eslint-disable-next-line no-await-in-loop
-        await attachSkill.mutateAsync({ accessBundleId, skillId: skill.id });
+        await addSkill.mutateAsync({ accessBundleId, skillId: skill.id });
         added.push(skill);
       }
     } catch {

@@ -12,7 +12,7 @@ export type TAgentVaultSkillBundleDALFactory = ReturnType<typeof agentVaultSkill
 export const agentVaultSkillBundleDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultAccessBundleSkill);
 
-  // Reads the primary even without a tx, so a skill attached a moment ago is listed.
+  // Reads the primary even without a tx, so a skill added a moment ago is listed.
   const findSkillsForBundle = async (accessBundleId: string, tx?: Knex): Promise<TAgentVaultBundleSkill[]> => {
     try {
       const rows = (await (tx || db)(TableName.AgentVaultAccessBundleSkill)
@@ -41,7 +41,7 @@ export const agentVaultSkillBundleDALFactory = (db: TDbClient) => {
     }
   };
 
-  // accessBundleIds null returns every bundle; otherwise only those of them the skill is attached to.
+  // accessBundleIds null returns every bundle; otherwise only those of them the skill is in.
   const findBundlesForSkill = async (
     skillId: string,
     accessBundleIds: string[] | null,
@@ -69,7 +69,7 @@ export const agentVaultSkillBundleDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Reads the primary even without a tx, so a bundle attached a moment ago is listed. accessBundleIds null returns
+  // Reads the primary even without a tx, so a bundle added a moment ago is listed. accessBundleIds null returns
   // every bundle; otherwise only those of them.
   const findBundlesForSkills = async (
     skillIds: string[],

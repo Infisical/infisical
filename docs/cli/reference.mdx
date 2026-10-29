@@ -261,7 +261,7 @@ The command also needs the proxy's address. You can provide it either by passing
 
 The command starts the agent with `HTTP_PROXY` and `HTTPS_PROXY` set to the proxy's address, and sets the [variables that make the agent's HTTP clients trust the proxy's certificate](/documentation/platform/agent-vault/proxies#certificate-trust). The agent inherits the rest of your environment, and the command exits with the agent's exit code.
 
-Before the agent starts, the command installs the [skills](/documentation/platform/agent-vault/skills) attached to the session's access bundle in `~/.agents/skills`, and links them for Claude Code and Hermes. To install the skills in another folder, pass `--skills-dir`, and to start the agent without them, pass `--no-skills`. The installed skills stay after the agent exits. To pick up skills that changed while the agent runs, restart the agent. For which folders the command links and replaces, see [How agents get skills](/documentation/platform/agent-vault/skills#how-agents-get-skills).
+Before the agent starts, the command installs the [skills](/documentation/platform/agent-vault/skills) in the session's access bundle in `~/.agents/skills`, and links them for Claude Code and Hermes. To install the skills in another folder, pass `--skills-dir`, and to start the agent without them, pass `--no-skills`. The installed skills stay after the agent exits. To pick up skills that changed while the agent runs, restart the agent. For which folders the command links and replaces, see [How agents get skills](/documentation/platform/agent-vault/skills#how-agents-get-skills).
 
 </CLICommand>
 

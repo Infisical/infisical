@@ -718,7 +718,7 @@ const invalidateBundleSkillChange = (
     queryClient.invalidateQueries({ queryKey: agentVaultKeys.skillLists(orgId) })
   ]);
 
-export const useAttachAgentVaultAccessBundleSkill = () => {
+export const useAddAgentVaultAccessBundleSkill = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
@@ -739,7 +739,7 @@ export const useAttachAgentVaultAccessBundleSkill = () => {
   });
 };
 
-export const useDetachAgentVaultAccessBundleSkill = () => {
+export const useRemoveAgentVaultAccessBundleSkill = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({

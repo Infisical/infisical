@@ -644,7 +644,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     schema: {
       hide: false,
       operationId: "listAgentVaultAccessBundleSkills",
-      description: "List the skills attached to an Agent Vault access bundle, ordered by name",
+      description: "List the skills in an Agent Vault access bundle, ordered by name",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
@@ -666,21 +666,21 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,
-      operationId: "attachAgentVaultAccessBundleSkill",
+      operationId: "addAgentVaultAccessBundleSkill",
       description:
-        "Attach a skill to an Agent Vault access bundle. Agents get the skill when they start with the bundle, so agents already running get it after a restart.",
+        "Add a skill to an Agent Vault access bundle. Agents get the skill when they start with the bundle, so agents already running get it after a restart.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
       }),
       body: z.object({
-        skillId: z.string().uuid().describe(AGENT_VAULT.SKILL.attachSkillId)
+        skillId: z.string().uuid().describe(AGENT_VAULT.SKILL.addSkillId)
       }),
       response: { 200: z.object({ skill: AgentVaultBundleSkillSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { skill, accessBundle } = await server.services.agentVaultSkill.attachToBundle({
+      const { skill, accessBundle } = await server.services.agentVaultSkill.addToBundle({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -692,7 +692,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
         event: {
-          type: EventType.AGENT_VAULT_SKILL_BUNDLE_ATTACH,
+          type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_ADD,
           metadata: {
             skillId: skill.id,
             skillName: skill.name,
@@ -703,7 +703,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       });
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
-        event: PostHogEventTypes.AgentVaultSkillAttachedToBundle,
+        event: PostHogEventTypes.AgentVaultAccessBundleSkillAdded,
         properties: { skillId: skill.id, accessBundleId: accessBundle.id }
       });
 
@@ -717,8 +717,8 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,
-      operationId: "detachAgentVaultAccessBundleSkill",
-      description: "Detach a skill from an Agent Vault access bundle.",
+      operationId: "removeAgentVaultAccessBundleSkill",
+      description: "Remove a skill from an Agent Vault access bundle.",
       tags: [ApiDocsTags.AgentVaultAccessBundles],
       params: z.object({
         accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
@@ -728,7 +728,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { skill, accessBundle } = await server.services.agentVaultSkill.detachFromBundle({
+      const { skill, accessBundle } = await server.services.agentVaultSkill.removeFromBundle({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         accessBundleId: req.params.accessBundleId,
@@ -740,7 +740,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
         event: {
-          type: EventType.AGENT_VAULT_SKILL_BUNDLE_DETACH,
+          type: EventType.AGENT_VAULT_ACCESS_BUNDLE_SKILL_REMOVE,
           metadata: {
             skillId: skill.id,
             skillName: skill.name,
@@ -751,7 +751,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
       });
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
-        event: PostHogEventTypes.AgentVaultSkillDetachedFromBundle,
+        event: PostHogEventTypes.AgentVaultAccessBundleSkillRemoved,
         properties: { skillId: skill.id, accessBundleId: accessBundle.id }
       });
 

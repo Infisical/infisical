@@ -143,7 +143,7 @@ export const SkillsCard = () => {
         </CardTitle>
         <CardDescription>
           A skill is a folder of instructions agents load when a task calls for it, delivered
-          through the access bundles you attach it to.
+          through the access bundles you add it to.
         </CardDescription>
         {canCreate && (
           <CardAction>

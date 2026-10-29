@@ -5065,16 +5065,16 @@ describe("Agent Vault V1 Router", async () => {
       const { skill } = await createSkill("member-reader");
       expect((await publish(skill.id, skillFiles("member-reader", "Second."))).statusCode).toBe(200);
       const { skill: hidden } = await createSkill("member-hidden");
-      await createSkill("member-unattached");
+      await createSkill("member-no-bundle");
       const granted = await createAccessBundle("skills-member-granted");
       const other = await createAccessBundle("skills-member-other");
-      for (const [bundle, attached] of [
+      for (const [bundle, bundleSkill] of [
         [granted, skill],
         [other, skill],
         [other, hidden]
       ] as const) {
         // eslint-disable-next-line no-await-in-loop
-        expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: attached.id })).statusCode).toBe(200);
+        expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: bundleSkill.id })).statusCode).toBe(200);
       }
       const member = await createMemberIdentity("skills-member");
       try {
@@ -5100,8 +5100,8 @@ describe("Agent Vault V1 Router", async () => {
           ["delete", "DELETE", `${skillsUrl}/${skill.id}`, 403],
           ["publish", "POST", `${skillsUrl}/${skill.id}/versions`, 403, { files: skillFiles("member-reader", "x") }],
           ["restore", "POST", `${skillsUrl}/${skill.id}/versions/1/restore`, 403],
-          ["attach", "POST", bundleSkillsUrl(granted.id), 403, { skillId: skill.id }],
-          ["detach", "DELETE", `${bundleSkillsUrl(granted.id)}/${skill.id}`, 403]
+          ["add", "POST", bundleSkillsUrl(granted.id), 403, { skillId: skill.id }],
+          ["remove", "DELETE", `${bundleSkillsUrl(granted.id)}/${skill.id}`, 403]
         ];
         const statuses = await Promise.all(
           calls.map(async ([label, method, url, , body]) => [label, (await member.as(method, url, body)).statusCode])
@@ -5439,25 +5439,33 @@ describe("Agent Vault V1 Router", async () => {
       expect((await inject("GET", `${skillsUrl}/${skill.id}/versions/1`)).statusCode).toBe(404);
     });
 
-    test("attach and detach, and a second attach is a 409", async () => {
-      const { skill } = await createSkill("attach-skill");
-      const bundle = await createAccessBundle("skills-attach-bundle");
+    test("add and remove, and a second add is a 409", async () => {
+      const { skill } = await createSkill("add-skill");
+      const bundle = await createAccessBundle("skills-add-bundle");
 
-      const attached = await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id });
-      expect(attached.statusCode).toBe(200);
-      expect(JSON.parse(attached.payload).skill).toMatchObject({
+      const added = await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id });
+      expect(added.statusCode).toBe(200);
+      expect(JSON.parse(added.payload).skill).toMatchObject({
         id: skill.id,
-        name: "attach-skill",
+        name: "add-skill",
         latestVersion: 1
       });
 
-      expect((await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id })).statusCode).toBe(409);
+      const again = await inject("POST", bundleSkillsUrl(bundle.id), { skillId: skill.id });
+      expect(again.statusCode).toBe(409);
+      expect(JSON.parse(again.payload).message).toBe(
+        "The skill 'add-skill' is already in the access bundle 'skills-add-bundle'."
+      );
 
       const listed = await inject("GET", bundleSkillsUrl(bundle.id));
       expect((JSON.parse(listed.payload) as { skills: TSkill[] }).skills.map((row) => row.id)).toEqual([skill.id]);
 
       expect((await inject("DELETE", `${bundleSkillsUrl(bundle.id)}/${skill.id}`)).statusCode).toBe(200);
-      expect((await inject("DELETE", `${bundleSkillsUrl(bundle.id)}/${skill.id}`)).statusCode).toBe(404);
+      const missing = await inject("DELETE", `${bundleSkillsUrl(bundle.id)}/${skill.id}`);
+      expect(missing.statusCode).toBe(404);
+      expect(JSON.parse(missing.payload).message).toBe(
+        "The skill 'add-skill' isn't in the access bundle 'skills-add-bundle'."
+      );
     });
 
     test("an access bundle holds at most 25 skills", async () => {
@@ -5563,8 +5571,8 @@ describe("Agent Vault V1 Router", async () => {
       expect(skills.some((row) => row.id === foreign.id)).toBe(false);
 
       expect((await inject("DELETE", `${bundleSkillsUrl(bundle.id)}/${alpha.id}`)).statusCode).toBe(200);
-      const afterDetach = JSON.parse((await asSession()).payload) as { skills: { id: string }[] };
-      expect(afterDetach.skills.map((row) => row.id)).toEqual([zeta.id]);
+      const afterRemove = JSON.parse((await asSession()).payload) as { skills: { id: string }[] };
+      expect(afterRemove.skills.map((row) => row.id)).toEqual([zeta.id]);
 
       const revoked = await inject("POST", `/api/v1/agent-vault/sessions/${session.id}/revoke`);
       expect(revoked.statusCode).toBe(200);

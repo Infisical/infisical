@@ -86,7 +86,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       hide: false,
       operationId: "listAgentVaultSkills",
       description:
-        "List the skills in Agent Vault and the access bundles each is attached to, ordered by name. A member sees only the skills on access bundles they have been granted.",
+        "List the skills in Agent Vault and the access bundles each is in, ordered by name. A member sees only the skills on access bundles they have been granted.",
       tags: [ApiDocsTags.AgentVaultSkills],
       querystring: z.object({
         name: z
@@ -122,7 +122,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       hide: false,
       operationId: "getAgentVaultSkill",
       description:
-        "Get a skill in Agent Vault and the access bundles it is attached to. A member can get only a skill on an access bundle they have been granted.",
+        "Get a skill in Agent Vault and the access bundles it is in. A member can get only a skill on an access bundle they have been granted.",
       tags: [ApiDocsTags.AgentVaultSkills],
       params: SkillIdParamsSchema,
       response: { 200: z.object({ skill: AgentVaultSkillDetailSchema }) }
@@ -143,14 +143,14 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       operationId: "deleteAgentVaultSkill",
-      description: "Delete a skill from Agent Vault. It is detached from every access bundle.",
+      description: "Delete a skill from Agent Vault. It is removed from every access bundle.",
       tags: [ApiDocsTags.AgentVaultSkills],
       params: SkillIdParamsSchema,
       response: { 200: z.object({ skill: AgentVaultSkillSchema }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { skill, detachedFromBundles } = await server.services.agentVaultSkill.deleteSkill({
+      const { skill, removedFromBundles } = await server.services.agentVaultSkill.deleteSkill({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         skillId: req.params.skillId
@@ -165,14 +165,14 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
           metadata: {
             skillId: skill.id,
             skillName: skill.name,
-            detachedFromBundles: detachedFromBundles.map((bundle) => ({ id: bundle.id, name: bundle.name }))
+            removedFromBundles: removedFromBundles.map((bundle) => ({ id: bundle.id, name: bundle.name }))
           }
         }
       });
 
       emitAgentVaultTelemetry(server.services.telemetry, req, {
         event: PostHogEventTypes.AgentVaultSkillDeleted,
-        properties: { skillId: skill.id, detachedBundleCount: detachedFromBundles.length }
+        properties: { skillId: skill.id, removedBundleCount: removedFromBundles.length }
       });
 
       return { skill };
