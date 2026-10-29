@@ -44,21 +44,21 @@ jobs:
         run: |
           set -euo pipefail
           ls charts/*.tgz >/dev/null 2>&1 || helm dependency build .
-          render() { helm template infisical . -s templates/infisical.yaml "$@"; }
+          render() { helm template infisical . -s templates/infisical.yaml "${@:2}" | yq ea "[select(.kind == \"Deployment\")] | .[0] | ($1)"; }
+          check() { [ "$(render "$@")" = "true" ]; }
+          both_stamped='.metadata.annotations.updatedAt != null and .spec.template.metadata.annotations.updatedAt != null'
 
-          [ "$(render | grep -c 'updatedAt:')" -eq 2 ]
-          [ "$(render --set infisical.rolloutOnEveryRender=null | grep -c 'updatedAt:')" -eq 2 ]
+          check "$both_stamped"
+          check "$both_stamped" --set infisical.rolloutOnEveryRender=null
 
-          render --set infisical.rolloutOnEveryRender=false > "$RUNNER_TEMP/first.yaml"
+          check '(.metadata | has("annotations") | not) and (.spec.template.metadata | has("annotations") | not)' --set infisical.rolloutOnEveryRender=false
+          check '(.metadata.annotations | keys | join(",")) == "deploy" and (.spec.template.metadata.annotations | keys | join(",")) == "pod"' \
+            --set infisical.rolloutOnEveryRender=false --set infisical.podAnnotations.pod=a --set infisical.deploymentAnnotations.deploy=b
+
+          render . --set infisical.rolloutOnEveryRender=false > "$RUNNER_TEMP/first.yaml"
           sleep 2
-          render --set infisical.rolloutOnEveryRender=false > "$RUNNER_TEMP/second.yaml"
+          render . --set infisical.rolloutOnEveryRender=false > "$RUNNER_TEMP/second.yaml"
           diff "$RUNNER_TEMP/first.yaml" "$RUNNER_TEMP/second.yaml"
-          [ "$(grep -cE 'updatedAt:|annotations:' "$RUNNER_TEMP/first.yaml" || true)" -eq 0 ]
-
-          custom=$(render --set infisical.rolloutOnEveryRender=false --set infisical.podAnnotations.pod=a --set infisical.deploymentAnnotations.deploy=b)
-          [ "$(grep -c 'updatedAt:' <<<"$custom" || true)" -eq 0 ]
-          grep -q 'pod: a' <<<"$custom"
-          grep -q 'deploy: b' <<<"$custom"
 
       - name: Create kind cluster
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
