@@ -108,6 +108,12 @@
     },
     "google-auth-library": {
       "uuid": "^11.1.1"
+    },
+    "jsforce": {
+      "csv-parse": "^7.0.2"
+    },
+    "@azure/identity": {
+      "@azure/msal-node": "^7.1.0"
     }
   },
   "devDependencies": {
@@ -210,7 +216,7 @@
     "@peculiar/x509": "^1.12.1",
     "@platformatic/kafka": "^2.12.1",
     "@react-email/components": "^1.0.1",
-    "@simplewebauthn/server": "^13.2.2",
+    "@simplewebauthn/server": "^13.3.3",
     "@sindresorhus/slugify": "1.1.0",
     "@slack/oauth": "^3.0.2",
     "@slack/web-api": "^7.8.0",
@@ -232,7 +238,7 @@
     "dns-packet": "^5.6.1",
     "dotenv": "^16.4.1",
     "fast-xml-parser": "^5.7.0",
-    "fastify": "^5.8.3",
+    "fastify": "^5.12.7",
     "fastify-plugin": "^5.0.1",
     "file-type": "^22.0.0",
     "google-auth-library": "^9.9.0",
@@ -257,7 +263,7 @@
     "nanoid": "^3.3.18",
     "netmask": "^2.0.2",
     "node-forge": "^1.4.0",
-    "nodemailer": "^10.0.16",
+    "nodemailer": "^10.1.7",
     "oauth4webapi": "3.8.8",
     "oci-common": "^2.142.2",
     "oci-identity": "^2.142.2",
