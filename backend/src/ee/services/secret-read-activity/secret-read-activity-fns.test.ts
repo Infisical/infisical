@@ -8,6 +8,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { ActorType } from "@app/services/auth/auth-type";
+import { LEVEL_BREAK } from "@app/services/secret-import/secret-import-fns";
 import { MAX_SECRET_REFERENCE_DEPTH } from "@app/services/secret-v2-bridge/secret-reference-fns";
 
 import {
@@ -108,6 +109,15 @@ describe("computeSecretReach", () => {
     });
     expect(reach.secretIds.has(chain[MAX_SECRET_REFERENCE_DEPTH + 1].id)).toBe(true);
     expect(reach.secretIds.has(chain[MAX_SECRET_REFERENCE_DEPTH + 2].id)).toBe(false);
+  });
+
+  test("stops at the depth a read follows imports to", () => {
+    const reach = computeSecretReach(dbPass, {
+      getReferencers: () => [],
+      getImporterFolderIds: (folderId) => [`${folderId}-importer`]
+    });
+    expect(reach.folderIds.has(`shared${"-importer".repeat(LEVEL_BREAK + 1)}`)).toBe(true);
+    expect(reach.folderIds.has(`shared${"-importer".repeat(LEVEL_BREAK + 2)}`)).toBe(false);
   });
 });
 

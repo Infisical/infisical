@@ -176,6 +176,9 @@ export const UnusedAccessActorSheet = ({ actor, onClose }: Props) => {
     { enabled: Boolean(actor) }
   );
 
+  // The fetched counts are newer than the card row, which can come from an older cached result.
+  const header = data?.actor ?? actor;
+
   const renderBody = () => {
     if (!actor) return null;
     if (isPending) return <Skeleton className="h-48 w-full" />;
@@ -204,15 +207,15 @@ export const UnusedAccessActorSheet = ({ actor, onClose }: Props) => {
       }}
     >
       <SheetContent size="form" side="right" onOpenAutoFocus={(event) => event.preventDefault()}>
-        {actor && (
+        {header && (
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
-              <span className="truncate">{actor.name}</span>
-              <Badge variant="neutral">{ACTOR_TYPE_CONFIG[actor.actorType].label}</Badge>
+              <span className="truncate">{header.name}</span>
+              <Badge variant="neutral">{ACTOR_TYPE_CONFIG[header.actorType].label}</Badge>
             </SheetTitle>
             <SheetDescription>
-              Has not read {actor.unusedSecretCount} of the {actor.accessibleSecretCount}{" "}
-              {actor.accessibleSecretCount === 1 ? "secret" : "secrets"} it can access in the last
+              Has not read {header.unusedSecretCount} of the {header.accessibleSecretCount}{" "}
+              {header.accessibleSecretCount === 1 ? "secret" : "secrets"} it can access in the last
               30 days.
             </SheetDescription>
           </SheetHeader>

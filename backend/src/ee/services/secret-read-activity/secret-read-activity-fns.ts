@@ -7,6 +7,7 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { buildFolderIdMap, buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
+import { LEVEL_BREAK } from "@app/services/secret-import/secret-import-fns";
 import { MAX_SECRET_REFERENCE_DEPTH } from "@app/services/secret-v2-bridge/secret-reference-fns";
 
 import {
@@ -108,9 +109,12 @@ export const computeSecretReach = (secret: TReachSecret, graph: TSecretReachGrap
     }
   }
 
-  const pendingFolderIds = [...folderIds];
-  while (pendingFolderIds.length) {
-    for (const importerFolderId of graph.getImporterFolderIds(pendingFolderIds.pop() as string)) {
+  // Likewise, a read follows imports at most LEVEL_BREAK + 1 levels down.
+  let pendingFolderIds = [...folderIds];
+  for (let depth = 0; depth <= LEVEL_BREAK && pendingFolderIds.length; depth += 1) {
+    const importerFolderIds = pendingFolderIds.flatMap((folderId) => graph.getImporterFolderIds(folderId));
+    pendingFolderIds = [];
+    for (const importerFolderId of importerFolderIds) {
       if (!folderIds.has(importerFolderId)) {
         folderIds.add(importerFolderId);
         pendingFolderIds.push(importerFolderId);
