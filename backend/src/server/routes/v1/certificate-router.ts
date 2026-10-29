@@ -1257,7 +1257,14 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             .optional()
             .describe(CERTIFICATES.RENEW.renewalKeySource),
           csr: csrSchema.optional().describe(CERTIFICATES.RENEW.csr),
-          attributes: certificateAttributesSchema.optional().describe(CERTIFICATES.RENEW.attributes)
+          attributes: certificateAttributesSchema.optional().describe(CERTIFICATES.RENEW.attributes),
+          externalConfiguration: z
+            .object({
+              reissue: booleanSchema.optional().describe(CERTIFICATES.RENEW.reissue)
+            })
+            .strict()
+            .optional()
+            .describe(CERTIFICATES.RENEW.externalConfiguration)
         })
         .nullish(),
       response: {
@@ -1284,7 +1291,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         removeRootsFromChain: req.body?.removeRootsFromChain,
         renewalKeySource: req.body?.renewalKeySource,
         csr: req.body?.csr,
-        attributes: req.body?.attributes
+        attributes: req.body?.attributes,
+        externalConfiguration: req.body?.externalConfiguration
       });
 
       await server.services.auditLog.createAuditLog({
@@ -1302,6 +1310,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
             applicationId: data.applicationId,
             applicationName: data.applicationName,
             renewalKeySource: req.body?.renewalKeySource ?? CertificateRenewalKeySource.New,
+            externalConfiguration: req.body?.externalConfiguration,
             changedAttributes: data.changedAttributes ?? []
           }
         }

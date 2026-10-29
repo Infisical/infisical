@@ -67,7 +67,8 @@ import {
 } from "../certificate-common/certificate-issuance-utils";
 import {
   assertCanEditCertificate,
-  assertCanEditCertificateResult
+  assertCanEditCertificateResult,
+  assertCanRevokeCertificate
 } from "../certificate-common/certificate-permission-fns";
 import { TCertificateQuotaDeps } from "../certificate-common/certificate-quota-fns";
 import { buildCertificateQuotaKey } from "../certificate-common/certificate-quota-key";
@@ -79,6 +80,7 @@ import {
   validateCertificateRequestLicense,
   validatePqcLicense
 } from "../certificate-common/certificate-utils";
+import { DigiCertExternalMetadataSchema } from "../certificate-common/external-metadata-schemas";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import {
@@ -1079,7 +1081,8 @@ export const certificateRenewalServiceFactory = ({
     removeRootsFromChain,
     renewalKeySource: requestedKeySource,
     csr,
-    attributes
+    attributes,
+    externalConfiguration
   }: Omit<TRenewCertificateDTO, "certificateRequestId"> & {
     internal?: boolean;
   }): Promise<TCertificateIssuanceResponse> => {
@@ -1131,6 +1134,26 @@ export const certificateRenewalServiceFactory = ({
           tx
         );
 
+        if (
+          externalConfiguration?.reissue &&
+          !(caType && caSupportsCapability(caType, CaCapability.REISSUE_CERTIFICATES))
+        ) {
+          throw new BadRequestError({
+            message: "Reissue is only available for DigiCert certificates."
+          });
+        }
+        if (externalConfiguration?.reissue && attributes?.ttl) {
+          throw new BadRequestError({ message: "Remove the TTL. It can't be set on a reissue." });
+        }
+        if (
+          externalConfiguration?.reissue &&
+          !DigiCertExternalMetadataSchema.safeParse(originalCert.externalMetadata).success
+        ) {
+          throw new BadRequestError({
+            message: "This certificate has no DigiCert order to reissue. Place a new order instead."
+          });
+        }
+
         const { certificateRequest, replayedRequest, ttl, resolvedCustomExtensions } = $buildValidatedRenewalRequest({
           originalCert,
           policy,
@@ -1144,6 +1167,29 @@ export const certificateRenewalServiceFactory = ({
         });
 
         changedAttributes = buildRenewalAuditChanges(replayedRequest, { ...certificateRequest, validity: { ttl } });
+
+        if (externalConfiguration?.reissue && !internal) {
+          const requestedNames = new Set(
+            [
+              certificateRequest.commonName,
+              ...(certificateRequest.subjectAlternativeNames ?? []).map((san) => san.value)
+            ]
+              .filter(Boolean)
+              .map((name) => (name as string).trim().toLowerCase())
+          );
+          const isRemovingName = [originalCert.commonName, ...(originalCert.altNames?.split(",") ?? [])]
+            .filter(Boolean)
+            .some((name) => !requestedNames.has((name as string).trim().toLowerCase()));
+          if (isRemovingName) {
+            await assertCanRevokeCertificate({
+              certificate: originalCert,
+              ...actorCtx,
+              permissionService,
+              resourceMetadataDAL,
+              tx
+            });
+          }
+        }
 
         if (renewalAuth?.projectPermission) {
           assertCanEditCertificateResult({
@@ -1465,6 +1511,7 @@ export const certificateRenewalServiceFactory = ({
         state: renewalRequest.state,
         locality: renewalRequest.locality,
         isRenewal: true,
+        ...(externalConfiguration && { externalConfiguration }),
         originalCertificateId: certificateId,
         certificateRequestId: certificateRequest.id,
         basicConstraints: renewalBasicConstraints,

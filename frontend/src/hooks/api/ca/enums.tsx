@@ -45,6 +45,7 @@ export enum CaCapability {
   ISSUE_CERTIFICATES = "issue-certificates",
   REVOKE_CERTIFICATES = "revoke-certificates",
   RENEW_CERTIFICATES = "renew-certificates",
+  REISSUE_CERTIFICATES = "reissue-certificates",
   CUSTOM_EXTENSIONS = "custom-extensions"
 }
 

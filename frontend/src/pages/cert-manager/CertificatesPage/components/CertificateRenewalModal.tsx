@@ -73,6 +73,7 @@ import { ValidityField } from "./ValidityField";
 const formSchema = z
   .object({
     keySource: z.nativeEnum(CertificateRenewalKeySource),
+    reissue: z.boolean().default(false),
     csr: z.string().trim().optional(),
     ttl: z.string().trim().min(1, "TTL is required"),
     subjectAttributes: z
@@ -207,6 +208,77 @@ const EXTERNAL_TEMPLATE_OPTIONS_STEP: WizardStep = {
     "The issuing certificate authority takes validity, key usages, extended key usages and basic constraints from its own certificate template, so they cannot be set here."
 };
 
+const REISSUE_STEP_COPY: Partial<Record<RenewalStepKey, Partial<WizardStep>>> = {
+  setup: {
+    shortDescription: "Order and key pair",
+    subtitle: "Choose the DigiCert order and the key pair.",
+    rightDescription: "Reissuing puts the new certificate on the same DigiCert order."
+  },
+  csr: {
+    shortDescription: "CSR",
+    subtitle: "Provide the CSR for this reissue.",
+    rightDescription:
+      "The subject and key are taken from the CSR you provide, so there are no separate subject or key usage fields."
+  },
+  options: {
+    shortDescription: "Algorithms and key usage",
+    subtitle: "Set algorithms and key usages within the profile's policy."
+  }
+};
+
+type TChoiceOption<T extends string> = {
+  value: T;
+  label: string;
+  description: string;
+  isDisabled?: boolean;
+  disabledReason?: string;
+};
+
+const ChoiceCards = <T extends string>({
+  label,
+  idPrefix,
+  value,
+  onChange,
+  options
+}: {
+  label: string;
+  idPrefix: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: TChoiceOption<T>[];
+}) => (
+  <Field>
+    <FieldLabel>{label}</FieldLabel>
+    <FieldContent>
+      <RadioGroup value={value} onValueChange={(next) => onChange(next as T)} className="gap-2">
+        {options.map((option) => (
+          <FieldLabel key={option.value} htmlFor={`${idPrefix}-${option.value}`} variant="project">
+            <Field orientation="horizontal" className="items-center gap-3">
+              <div className="min-w-0 flex-1 text-left">
+                <p className="text-sm font-medium text-foreground">{option.label}</p>
+                <p className="text-xs text-muted">
+                  {option.isDisabled ? option.disabledReason : option.description}
+                </p>
+              </div>
+              <RadioGroupItem
+                id={`${idPrefix}-${option.value}`}
+                value={option.value}
+                disabled={option.isDisabled}
+                className="sr-only"
+              />
+            </Field>
+          </FieldLabel>
+        ))}
+      </RadioGroup>
+    </FieldContent>
+  </Field>
+);
+
+enum DigiCertOrderChoice {
+  NewOrder = "new-order",
+  Reissue = "reissue"
+}
+
 const STEP_FIELDS: Record<RenewalStepKey, string[]> = {
   setup: ["keySource"],
   csr: ["csr", "ttl"],
@@ -299,6 +371,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     handleSubmit,
     reset,
     watch,
+    getValues,
     setValue,
     trigger,
     clearErrors,
@@ -313,6 +386,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       ),
     defaultValues: {
       keySource: CertificateRenewalKeySource.New,
+      reissue: false,
       ttl: "",
       subjectAttributes: [],
       subjectAltNames: [],
@@ -324,6 +398,13 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
   });
 
   const keySource = watch("keySource");
+  const isReissueAvailable =
+    certificate?.externalMetadata?.type === CaType.DIGICERT &&
+    caSupportsCapability(
+      (profile?.certificateAuthority?.externalType as CaType | undefined) ?? CaType.INTERNAL,
+      CaCapability.REISSUE_CERTIFICATES
+    );
+  const isReissuing = isReissueAvailable && watch("reissue");
   const watchedIsCA = watch("basicConstraints.isCA") || false;
   const sanTypesInForm = (watch("subjectAltNames") ?? []).map((san) => san.type).join(",");
   const watchedKeyUsages = Object.keys(watch("keyUsages") ?? {})
@@ -456,7 +537,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     isSubjectSectionShown: constraints.shouldShowSubjectSection,
     isSanSectionShown: constraints.shouldShowSanSection,
     isSubjectEvaluated: keySource !== CertificateRenewalKeySource.Csr,
-    isValidityEvaluated: !isExternalTemplateProfile,
+    isValidityEvaluated: !isExternalTemplateProfile && !isReissuing,
     resetKey: certificate?.id
   });
 
@@ -479,9 +560,15 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
           key === "options" && isExternalTemplateProfile
             ? EXTERNAL_TEMPLATE_OPTIONS_STEP
             : STEP_META[key];
-        return hasOriginatingRequest ? { ...meta, ...(REPLAYED_STEP_COPY[key] ?? {}) } : meta;
+        const replayedMeta = hasOriginatingRequest
+          ? { ...meta, ...(REPLAYED_STEP_COPY[key] ?? {}) }
+          : meta;
+        const showsReissueCopy = key === "setup" ? isReissueAvailable : isReissuing;
+        return showsReissueCopy
+          ? { ...replayedMeta, ...(REISSUE_STEP_COPY[key] ?? {}) }
+          : replayedMeta;
       }),
-    [stepKeys, isExternalTemplateProfile, hasOriginatingRequest]
+    [stepKeys, isExternalTemplateProfile, hasOriginatingRequest, isReissueAvailable, isReissuing]
   );
 
   const subjectIssuerChanges = useMemo(
@@ -531,6 +618,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     );
     reset({
       ...renewalDefaults,
+      reissue: getValues("reissue"),
       subjectAttributes: seeded.subjectAttributes,
       subjectAltNames: seeded.subjectAltNames
     });
@@ -544,7 +632,8 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
     renewalPreview,
     constraints,
     policyData,
-    reset
+    reset,
+    getValues
   ]);
 
   const closeWizard = () => {
@@ -570,23 +659,26 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       return;
     }
 
+    const attributes = buildRenewalRequestAttributes({
+      formData,
+      constraints,
+      isExternalTemplateProfile
+    });
     const result = await renewCertificate({
       certificateId,
       renewalKeySource: formData.keySource,
       ...(formData.keySource === CertificateRenewalKeySource.Csr && { csr: formData.csr }),
-      attributes: buildRenewalRequestAttributes({
-        formData,
-        constraints,
-        isExternalTemplateProfile
-      })
+      ...(isReissuing && { externalConfiguration: { reissue: true } }),
+      attributes: isReissuing ? { ...attributes, ttl: undefined } : attributes
     });
 
-    createNotification({
-      text: result.certificate
-        ? "Certificate renewed successfully"
-        : `Certificate renewal submitted. This may take a few minutes to process. Certificate Request ID: ${result.certificateRequestId}`,
-      type: "success"
-    });
+    let notificationText = `Certificate renewal submitted. This may take a few minutes to process. Certificate Request ID: ${result.certificateRequestId}`;
+    if (isReissuing) {
+      notificationText = `Certificate reissue submitted. This may take a few minutes to process. Certificate Request ID: ${result.certificateRequestId}`;
+    } else if (result.certificate) {
+      notificationText = "Certificate renewed successfully";
+    }
+    createNotification({ text: notificationText, type: "success" });
 
     closeWizard();
 
@@ -635,13 +727,13 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       isOpen={isOpen}
       onOpenChange={(open) => (open ? handlePopUpToggle("renewCertificate", true) : closeWizard())}
       icon={<RefreshCw className="h-5 w-5" />}
-      title="Renew certificate"
+      title={isReissuing ? "Reissue Certificate" : "Renew Certificate"}
       description={certificate?.commonName || certificate?.friendlyName || "Certificate"}
       steps={steps}
       activeStep={step}
       onStepChange={setStep}
       docsHref={PkiDocsUrls.applications.certificateRenewal}
-      submitLabel="Renew certificate"
+      submitLabel={isReissuing ? "Reissue Certificate" : "Renew Certificate"}
       onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
       onBack={goBack}
       onContinue={goNext}
@@ -650,41 +742,48 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       isContinueDisabled={!certificate || !isSeeded}
     >
       {currentStepKey === "setup" && (
-        <Controller
-          control={control}
-          name="keySource"
-          render={({ field: { onChange, value } }) => (
-            <Field>
-              <FieldLabel>Key pair</FieldLabel>
-              <FieldContent>
-                <RadioGroup value={value} onValueChange={onChange} className="gap-2">
-                  {keySourceOptions.map((option) => (
-                    <FieldLabel
-                      key={option.value}
-                      htmlFor={`key-source-${option.value}`}
-                      variant="project"
-                    >
-                      <Field orientation="horizontal" className="items-center gap-3">
-                        <div className="min-w-0 flex-1 text-left">
-                          <p className="text-sm font-medium text-foreground">{option.label}</p>
-                          <p className="text-xs text-muted">
-                            {option.isDisabled ? option.disabledReason : option.description}
-                          </p>
-                        </div>
-                        <RadioGroupItem
-                          id={`key-source-${option.value}`}
-                          value={option.value}
-                          disabled={option.isDisabled}
-                          className="sr-only"
-                        />
-                      </Field>
-                    </FieldLabel>
-                  ))}
-                </RadioGroup>
-              </FieldContent>
-            </Field>
+        <div className="space-y-6">
+          {isReissueAvailable && (
+            <Controller
+              control={control}
+              name="reissue"
+              render={({ field: { onChange, value } }) => (
+                <ChoiceCards
+                  label="DigiCert order"
+                  idPrefix="digicert-order"
+                  value={value ? DigiCertOrderChoice.Reissue : DigiCertOrderChoice.NewOrder}
+                  onChange={(choice) => onChange(choice === DigiCertOrderChoice.Reissue)}
+                  options={[
+                    {
+                      value: DigiCertOrderChoice.NewOrder,
+                      label: "Place a new order",
+                      description: "Issues the certificate on a new DigiCert order."
+                    },
+                    {
+                      value: DigiCertOrderChoice.Reissue,
+                      label: "Reissue the existing order",
+                      description:
+                        "Issues the certificate on the same DigiCert order. Removing or changing a name revokes the current certificate within 72 hours."
+                    }
+                  ]}
+                />
+              )}
+            />
           )}
-        />
+          <Controller
+            control={control}
+            name="keySource"
+            render={({ field: { onChange, value } }) => (
+              <ChoiceCards
+                label="Key pair"
+                idPrefix="key-source"
+                value={value}
+                onChange={onChange}
+                options={keySourceOptions}
+              />
+            )}
+          />
+        </div>
       )}
 
       {currentStepKey === "csr" && (
@@ -713,13 +812,15 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
               </Field>
             )}
           />
-          <ValidityField
-            control={control}
-            label="Validity (TTL)"
-            hint={policy.ttlHint}
-            policyError={policy.ttlError}
-            revealPolicyError={policy.isRevealed("ttl")}
-          />
+          {!isReissuing && (
+            <ValidityField
+              control={control}
+              label="Validity (TTL)"
+              hint={policy.ttlHint}
+              policyError={policy.ttlError}
+              revealPolicyError={policy.isRevealed("ttl")}
+            />
+          )}
         </div>
       )}
 
@@ -776,7 +877,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
 
       {currentStepKey === "options" && (
         <div className="space-y-4">
-          {!isExternalTemplateProfile && (
+          {!isExternalTemplateProfile && !isReissuing && (
             <ValidityField
               control={control}
               className="mb-4"

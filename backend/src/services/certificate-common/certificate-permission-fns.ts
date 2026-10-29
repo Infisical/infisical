@@ -91,6 +91,62 @@ export const assertCanEditCertificate = async ({
   return { certMetadata, projectPermission: permission };
 };
 
+type TAssertCanRevokeCertificateDTO = Omit<TAssertCanEditCertificateDTO, "certificate"> & {
+  certificate: TCertificateSubjectFields & { friendlyName?: string | null; status?: string | null };
+};
+
+export const assertCanRevokeCertificate = async ({
+  certificate,
+  actor,
+  actorId,
+  actorAuthMethod,
+  actorOrgId,
+  permissionService,
+  resourceMetadataDAL,
+  tx
+}: TAssertCanRevokeCertificateDTO) => {
+  if (certificate.applicationId) {
+    const { permission } = await permissionService.getResourcePermission({
+      actor,
+      actorId,
+      projectId: certificate.projectId,
+      resourceType: ResourceType.CertificateApplication,
+      resourceId: certificate.applicationId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ResourcePermissionCertificateActions.Delete,
+      ResourcePermissionSub.Certificates
+    );
+    return;
+  }
+
+  const metadataRows = await resourceMetadataDAL.find({ certificateId: certificate.id }, { tx });
+  const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
+
+  const { permission } = await permissionService.getProjectPermission({
+    actor,
+    actorId,
+    projectId: certificate.projectId,
+    actorAuthMethod,
+    actorOrgId,
+    actionProjectType: ActionProjectType.CertificateManager
+  });
+
+  ForbiddenError.from(permission).throwUnlessCan(
+    ProjectPermissionCertificateActions.Delete,
+    subject(ProjectPermissionSub.Certificates, {
+      commonName: certificate.commonName ?? undefined,
+      altNames: certificate.altNames?.split(",").map((s) => s.trim()),
+      serialNumber: certificate.serialNumber ?? undefined,
+      friendlyName: certificate.friendlyName ?? undefined,
+      status: certificate.status ?? undefined,
+      metadata: certMetadata
+    })
+  );
+};
+
 export const assertCanEditCertificateResult = ({
   projectPermission,
   commonName,

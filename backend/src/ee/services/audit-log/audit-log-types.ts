@@ -43,7 +43,11 @@ import { CaStatus } from "@app/services/certificate-authority/certificate-author
 import { CertificateIssuanceOperation } from "@app/services/certificate-common/certificate-constants";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
-import { CertificateRenewalKeySource, TRenewalAuditChange } from "@app/services/certificate-v3/certificate-v3-types";
+import {
+  CertificateRenewalKeySource,
+  TRenewalAuditChange,
+  TRenewCertificateDTO
+} from "@app/services/certificate-v3/certificate-v3-types";
 import {
   CertExtendedKeyUsage,
   CertificateDeletionEligibility,
@@ -4286,6 +4290,7 @@ interface RenewCertificate {
     applicationName?: string | null;
     serialNumber?: string;
     renewalKeySource: CertificateRenewalKeySource;
+    externalConfiguration?: TRenewCertificateDTO["externalConfiguration"];
     changedAttributes: TRenewalAuditChange[];
   };
 }

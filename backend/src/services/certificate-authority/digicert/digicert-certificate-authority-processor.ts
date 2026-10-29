@@ -56,6 +56,7 @@ export type TDigiCertOrderMetadata = {
     lastCheckStatus?: string;
     isRenewal?: boolean;
     originalCertificateId?: string;
+    previousCertificateId?: number;
   };
 };
 
@@ -144,7 +145,10 @@ export const processDigiCertPendingValidationRequest = async (
       status: CertificateRequestStatus.FAILED,
       operation: parsed.digicert.isRenewal ? CertificateIssuanceOperation.RENEW : CertificateIssuanceOperation.ORDER,
       originalCertificateId: parsed.digicert.originalCertificateId,
-      errorMessage: "Validation timed out after 24h"
+      errorMessage:
+        parsed.digicert.previousCertificateId !== undefined
+          ? `DigiCert didn't finish the reissue on order ${parsed.digicert.orderId} within 24 hours. Finish or cancel it in DigiCert CertCentral.`
+          : "Validation timed out after 24h"
     });
     logger.info(`DigiCert validation timed out [certificateRequestId=${request.id}]`);
     return { status: CertificateRequestStatus.FAILED, orderStatus: "timeout", reason: "timeout" };
@@ -157,15 +161,16 @@ export const processDigiCertPendingValidationRequest = async (
   let newCertificateId = orderInfo.certificate?.id ?? parsed.digicert.certificateId;
   let lastCheckStatus: string | undefined;
 
-  if (orderStatus === DigiCertOrderStatus.Pending) {
+  if (orderStatus === DigiCertOrderStatus.Pending || orderStatus === DigiCertOrderStatus.ReissuePending) {
     const checkResult = await client.checkValidation(parsed.digicert.orderId);
     orderStatus = checkResult.order_status?.toLowerCase() ?? orderStatus;
     newCertificateId = checkResult.certificate_id ?? newCertificateId;
     lastCheckStatus = checkResult.dcv_status ?? orderStatus;
   }
 
+  const isAwaitingReissue = newCertificateId === parsed.digicert.previousCertificateId;
   const isFinalisable = DIGICERT_FINAL_ISSUED_STATUSES.some((status) => status === orderStatus);
-  if (isFinalisable && newCertificateId) {
+  if (isFinalisable && newCertificateId && !isAwaitingReissue) {
     const { certificateId } = await deps.digicertFns.fetchAndAttachIssuedCertificate({
       caId: request.caId,
       certificateRequest: {

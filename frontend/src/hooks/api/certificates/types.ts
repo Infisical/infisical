@@ -109,7 +109,7 @@ export type TImportPkcs12EntriesResult = {
 };
 
 export type TCertificateExternalMetadata =
-  | { type: CaType.DIGICERT; orderId: number }
+  | { type: CaType.DIGICERT; orderId: number; certificateId?: number }
   | { type: CaType.GODADDY; certificateId: string }
   | { type: CaType.AWS_ACM_PUBLIC_CA; arn: string; region: string; validationMethod: string };
 
@@ -166,6 +166,9 @@ export type TRenewCertificateDTO = {
   renewalKeySource?: CertificateRenewalKeySource;
   csr?: string;
   attributes?: TRenewCertificateAttributes;
+  externalConfiguration?: {
+    reissue?: boolean;
+  };
 };
 
 export type TRenewCertificateResponse = {

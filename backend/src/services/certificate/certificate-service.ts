@@ -37,6 +37,7 @@ import {
 import {
   CA_TYPE_LABEL,
   CertificateImportLinkageMap,
+  TDigiCertExternalMetadata,
   TImportExternalMetadata
 } from "@app/services/certificate-common/external-metadata-schemas";
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
@@ -85,6 +86,7 @@ import {
   detectSanType,
   resolveEffectiveApiConfig
 } from "../certificate-common/certificate-issuance-utils";
+import { assertCanRevokeCertificate } from "../certificate-common/certificate-permission-fns";
 import { validatePqcLicense } from "../certificate-common/certificate-utils";
 import { certificateSpanToTtl } from "../certificate-v3/certificate-renewal-fns";
 import { parseExtendedKeyUsages, parseKeyUsages } from "../certificate-v3/certificate-v3-fns";
@@ -672,45 +674,15 @@ export const certificateServiceFactory = ({
       });
     }
 
-    const metadataRows = await resourceMetadataDAL.find({ certificateId: cert.id });
-    const certMetadata = metadataRows.map(({ key, value }) => ({ key, value: value || "" }));
-
-    if (cert.applicationId) {
-      const { permission } = await permissionService.getResourcePermission({
-        actor,
-        actorId,
-        projectId: ca.projectId,
-        resourceType: ResourceType.CertificateApplication,
-        resourceId: cert.applicationId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      ForbiddenError.from(permission).throwUnlessCan(
-        ResourcePermissionCertificateActions.Delete,
-        ResourcePermissionSub.Certificates
-      );
-    } else {
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId: ca.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Delete,
-        subject(ProjectPermissionSub.Certificates, {
-          commonName: cert.commonName,
-          altNames: cert.altNames?.split(",").map((s) => s.trim()),
-          serialNumber: cert.serialNumber,
-          friendlyName: cert.friendlyName,
-          status: cert.status,
-          metadata: certMetadata
-        })
-      );
-    }
+    await assertCanRevokeCertificate({
+      certificate: { ...cert, projectId: ca.projectId },
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      permissionService,
+      resourceMetadataDAL
+    });
 
     if (cert.status === CertStatus.REVOKED) throw new Error("Certificate already revoked");
 
@@ -952,12 +924,10 @@ export const certificateServiceFactory = ({
     }: {
       policyId: string;
       profileName: string;
-      verifyWithProvider?: (serialNumber: string) => Promise<void>;
+      verifyWithProvider?: (serialNumber: string) => Promise<Pick<TDigiCertExternalMetadata, "certificateId">>;
     }) =>
     async (cert: TImportedCertificateFacts) => {
-      if (verifyWithProvider) {
-        await verifyWithProvider(cert.serialNumber);
-      }
+      const providerMetadata = verifyWithProvider ? await verifyWithProvider(cert.serialNumber) : {};
 
       const validation = await certificatePolicyService.validateCertificateRequest(policyId, {
         commonName: cert.commonName || undefined,
@@ -984,6 +954,8 @@ export const certificateServiceFactory = ({
           message: `This certificate does not satisfy the policy of certificate profile '${profileName}':\n${violations}\nAttach a profile whose policy allows this certificate, or import it without one to track it for visibility and expiry alerts only.`
         });
       }
+
+      return providerMetadata;
     };
 
   const $resolveImportLinkage = async ({
@@ -1339,7 +1311,7 @@ export const certificateServiceFactory = ({
     const certificateAlgorithms = extractCertificateAlgorithms(certificateBuffer);
     const importedCustomExtensions = parseImportedCustomExtensions(certificateBuffer);
 
-    await linkage?.verifyCertificate({
+    const providerMetadata = await linkage?.verifyCertificate({
       serialNumber,
       commonName,
       altNames,
@@ -1410,7 +1382,7 @@ export const certificateServiceFactory = ({
             applicationId: applicationId ?? null,
             profileId: profileId ?? null,
             caId: linkage?.caId ?? null,
-            externalMetadata: linkage?.externalMetadata ?? null,
+            externalMetadata: linkage?.externalMetadata ? { ...linkage.externalMetadata, ...providerMetadata } : null,
             source: CertificateSource.Imported,
             renewBeforeDays,
             keyUsages,

@@ -15,8 +15,11 @@ export type TAwsAcmPublicCaExternalMetadata = z.infer<typeof AwsAcmPublicCaExter
 
 export const DigiCertExternalMetadataSchema = z.object({
   type: z.literal(CaType.DIGICERT),
-  orderId: z.number().int().positive().safe()
+  orderId: z.number().int().positive().safe(),
+  certificateId: z.number().int().positive().safe().optional()
 });
+
+const DigiCertImportExternalMetadataSchema = DigiCertExternalMetadataSchema.omit({ certificateId: true });
 
 export type TDigiCertExternalMetadata = z.infer<typeof DigiCertExternalMetadataSchema>;
 
@@ -35,13 +38,17 @@ export const ExternalMetadataSchema = z.discriminatedUnion("type", [
 
 export type TExternalMetadata = z.infer<typeof ExternalMetadataSchema>;
 
-export const ImportExternalMetadataSchema = z.discriminatedUnion("type", [DigiCertExternalMetadataSchema]);
+export const ImportExternalMetadataSchema = z.discriminatedUnion("type", [DigiCertImportExternalMetadataSchema]);
 
 export type TImportExternalMetadata = z.infer<typeof ImportExternalMetadataSchema>;
 
 type TCertificateImportVerifierDeps = {
   digicertFns: {
-    assertOrderMatchesCertificate: (args: { caId: string; orderId: number; serialNumber: string }) => Promise<void>;
+    assertOrderMatchesCertificate: (args: {
+      caId: string;
+      orderId: number;
+      serialNumber: string;
+    }) => Promise<Pick<TDigiCertExternalMetadata, "certificateId">>;
   };
 };
 
@@ -51,13 +58,13 @@ type TCertificateImportLinkage = {
   verifyCertificate?: (
     args: { caId: string; externalMetadata: TImportExternalMetadata; serialNumber: string },
     deps: TCertificateImportVerifierDeps
-  ) => Promise<void>;
+  ) => Promise<Pick<TDigiCertExternalMetadata, "certificateId">>;
 };
 
 export const CertificateImportLinkageMap: Partial<Record<CaType, TCertificateImportLinkage>> = {
   [CaType.INTERNAL]: { externalMetadataSchema: null },
   [CaType.DIGICERT]: {
-    externalMetadataSchema: DigiCertExternalMetadataSchema,
+    externalMetadataSchema: DigiCertImportExternalMetadataSchema,
     referenceLabel: "DigiCert order ID",
     verifyCertificate: ({ caId, externalMetadata, serialNumber }, { digicertFns }) =>
       digicertFns.assertOrderMatchesCertificate({ caId, orderId: externalMetadata.orderId, serialNumber })

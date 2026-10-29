@@ -139,6 +139,7 @@ export const buildRenewalFormDefaults = (
   renewalPreview?: TCertificateRenewalPreview
 ): RenewalFormData => ({
   keySource: CertificateRenewalKeySource.New,
+  reissue: false,
   csr: "",
   ttl: deriveTtlFromCertificate(cert),
   subjectAttributes: renewalPreview?.hasOriginatingRequest
