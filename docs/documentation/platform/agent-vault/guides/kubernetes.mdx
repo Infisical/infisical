@@ -54,10 +54,10 @@ For each agent run, your orchestrator does the following:
     A network policy applies to a whole pod. A proxy in the agent's pod would need a route to the internet that the agent could also use, and its proxy token would sit beside the agent.
   </Accordion>
   <Accordion title="Why can agent pods only reach the proxy?">
-    Code in the agent's container can ignore `HTTPS_PROXY` and connect to an API directly. A network policy that allows only the proxy makes every request go through Agent Vault, and also blocks your cloud's metadata service and the Kubernetes API.
+    Code in the agent's container can ignore `HTTPS_PROXY` and connect to an API directly. With a network policy that only allows the proxy, every request must go through Agent Vault. This also blocks your cloud's metadata service and the Kubernetes API.
   </Accordion>
   <Accordion title="Why does the machine identity stay out of agent pods?">
-    The machine identity can create sessions for any access bundle it has access to. gVisor and Kata isolate a pod from the node, not one container from another, so even a separate container in the agent's pod could expose it. An agent pod gets only a session token, which you can revoke and which expires.
+    The machine identity can create sessions for any access bundle it has access to, so an agent that reads its credentials could create sessions with more access than its own. Putting the credentials in a separate container in the agent's pod doesn't protect them, because gVisor and Kata isolate a pod from the node, not one container from another. An agent pod gets only a session token, which you can revoke and which expires.
   </Accordion>
   <Accordion title="Can I use Agent Sandbox instead of writing pod manifests?">
     Yes. [Agent Sandbox](https://github.com/kubernetes-sigs/agent-sandbox) is an official Kubernetes project with custom resources for agent sandboxes, such as `SandboxTemplate`, `SandboxClaim`, and `SandboxWarmPool`. Its sandboxes are pods, so the proxy and the agents namespace work the same way, with these differences:
