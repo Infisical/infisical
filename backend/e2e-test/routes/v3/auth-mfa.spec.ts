@@ -2,12 +2,13 @@ import crypto from "node:crypto";
 
 import { decode } from "jsonwebtoken";
 
-import { AccessScope, OrgMembershipRole, OrgMembershipStatus, TableName } from "@app/db/schemas";
+import { OrgMembershipRole, TableName } from "@app/db/schemas";
 import { seedData1 } from "@app/db/seed-data";
 import { MfaMethod } from "@app/services/auth/auth-type";
 
 import { TTestSmtpService } from "../../mocks/smtp";
 import { loginUser, selectOrg } from "../../testUtils/auth";
+import { addUserMembership } from "../../testUtils/users";
 
 describe("Auth MFA V3", () => {
   const smtp = () => (globalThis as unknown as { testSmtp: TTestSmtpService }).testSmtp;
@@ -120,16 +121,7 @@ describe("Auth MFA V3", () => {
         })
         .returning("*");
       createdOrgIds.push(org.id);
-      const [membership] = await db()(TableName.Membership)
-        .insert({
-          scope: AccessScope.Organization,
-          scopeOrgId: org.id,
-          actorUserId: seedData1.id,
-          status: OrgMembershipStatus.Accepted,
-          isActive: true
-        })
-        .returning("*");
-      await db()(TableName.MembershipRole).insert({ membershipId: membership.id, role: OrgMembershipRole.Member });
+      await addUserMembership({ userId: seedData1.id, orgId: org.id, role: OrgMembershipRole.Member });
       return org.id as string;
     };
 
