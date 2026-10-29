@@ -156,7 +156,7 @@ spec:
 
 ### Store the proxy token
 
-Store the proxy token in a Secret named `agent-vault-proxy` in the `agent-vault` namespace, under the key `INFISICAL_AGENT_VAULT_PROXY_TOKEN`. Create it with the tool you already use to manage Kubernetes secrets, such as the [Infisical Kubernetes Operator](/integrations/platforms/kubernetes/overview). The proxy's pods start once the Secret exists.
+Store the proxy token in a Secret named `agent-vault-proxy` in the `agent-vault` namespace, under the key `INFISICAL_AGENT_VAULT_PROXY_TOKEN`. The proxy's pods start once the Secret exists.
 
 On the **Proxies** page in Agent Vault, the proxy's status changes to **Healthy** once it connects. The two replicas share the same token and certificate authority, and the Service spreads agent connections across them (see [High availability](/documentation/platform/agent-vault/proxies#high-availability)).
 
