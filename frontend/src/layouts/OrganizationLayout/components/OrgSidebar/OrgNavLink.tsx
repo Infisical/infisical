@@ -47,11 +47,8 @@ export const OrgNavLink = ({
     <SidebarMenuItem>
       <SidebarMenuButton asChild closeOnMobile isActive={isActive} size="lg" tooltip={item.label}>
         <Link
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           to={`/organizations/$orgId/${item.pathSuffix}` as any}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           params={{ orgId } as any}
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           search={item.search as any}
         >
           <item.icon className="size-4" />

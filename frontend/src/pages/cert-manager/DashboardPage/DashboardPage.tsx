@@ -48,7 +48,6 @@ export const DashboardPage = () => {
       navigate({
         to: "/organizations/$orgId/cert-manager/inventory",
         params: { orgId: currentProject?.orgId || "" },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         search: filters as any
       }),
     [navigate, currentProject?.orgId]

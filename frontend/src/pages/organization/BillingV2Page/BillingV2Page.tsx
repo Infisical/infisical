@@ -181,7 +181,6 @@ export const BillingV2Page = () => {
       createNotification({ type: "info", text: "Checkout was canceled." });
     }
     window.history.replaceState({}, "", window.location.pathname);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // An instance admin can point the page at an organization they are not a member of, which the

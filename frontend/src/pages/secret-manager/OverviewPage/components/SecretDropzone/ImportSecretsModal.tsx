@@ -405,7 +405,6 @@ const ImportSecretsContent = ({
               slugToTagId.set(result.value.slug, result.value.id);
             } else {
               skippedTagsCount += 1;
-              // eslint-disable-next-line no-console
               console.error(`Failed to create tag ${missingSlugs[idx]}`, result.reason);
             }
           });

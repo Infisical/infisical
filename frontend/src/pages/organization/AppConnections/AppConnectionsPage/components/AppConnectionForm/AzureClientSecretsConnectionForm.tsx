@@ -1,4 +1,3 @@
-/* eslint-disable no-case-declarations */
 import crypto from "crypto";
 import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";

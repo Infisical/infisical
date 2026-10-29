@@ -74,7 +74,6 @@ export const AgentVaultOAuthCallbackPage = () => {
       })
       .catch((err: unknown) => setOutcome({ status: "failed", message: failureMessage(err) }));
     // Runs once: completing twice would exchange the same code twice.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

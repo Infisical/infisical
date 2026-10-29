@@ -711,7 +711,6 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         resetToggles();
       }
       setStep(0);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isEdit, policy, reset]);
 
     const watchedAttributes = watch("attributes") || [];

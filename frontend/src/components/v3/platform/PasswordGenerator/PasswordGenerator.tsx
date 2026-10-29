@@ -276,7 +276,6 @@ export const PasswordGenerator = ({
     }
 
     return newPassword;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [passwordOptions, refresh, selectedRule, valueConstraints]);
 
   const copyToClipboard = () => {

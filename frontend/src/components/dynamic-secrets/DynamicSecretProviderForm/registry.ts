@@ -7,9 +7,7 @@ export type TRegisteredDynamicSecretProviderDefinition = TDynamicSecretProviderD
   DynamicSecretProviders,
   // Provider value types remain available from each concrete definition. The
   // composition root intentionally erases them for heterogeneous lookup.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   any
 >;
 

@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck -- vendored Dice UI component, large file with complex generic types pending cleanup
-/* eslint-disable no-restricted-syntax, no-nested-ternary, no-continue, no-param-reassign, @typescript-eslint/no-shadow, jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/role-supports-aria-props */
+/* eslint-disable no-nested-ternary, no-continue, no-param-reassign, @typescript-eslint/no-shadow, jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/role-supports-aria-props */
 
 import * as React from "react";
 import { Check, Upload, X } from "lucide-react";
@@ -171,7 +171,6 @@ export function ShortTextCell<TData>({
       }
     }
     // Only run on edit start — not on every value change (which moves cursor to end)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing]);
 
   const isNull = value === null || value === undefined;
@@ -694,7 +693,6 @@ export function UrlCell<TData>({
       }
     }
     // Only run on edit start — not on every value change (which moves cursor to end)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing]);
 
   const displayValue = !isEditing ? (value ?? "") : "";
