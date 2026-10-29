@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Info } from "lucide-react";
 
 import { AppConnectionOptionContent } from "@app/components/app-connections";
+import { useConnectionCreation } from "@app/components/app-connections/useConnectionCreation";
 import {
   Combobox,
   Field,
@@ -22,7 +23,6 @@ import {
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { GatewayCapability } from "@app/hooks/api/gateways-v2/types";
-import { useConnectionCreation } from "@app/pages/cert-manager/CertificateAuthoritiesPage/components/CaInstallCertModal/useConnectionCreation";
 
 import { THostDiscoveryJobForm } from "./discovery-job-form-schema";
 
