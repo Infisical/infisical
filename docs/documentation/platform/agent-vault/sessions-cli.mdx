@@ -55,7 +55,7 @@ infisical agent-vault run --access-bundle <access-bundle-name> --ttl 2h -- <agen
 Set `--ttl` a little longer than the longest run you expect:
 
 - If a run takes longer than the `--ttl`, the agent loses access to the APIs partway through the run
-- If the CLI can't revoke the session, such as when the machine shuts down mid-run, the session keeps working until the `--ttl` runs out (seven days if you leave out `--ttl`)
+- If the CLI can't revoke the session, such as when the machine shuts down mid-run, the session keeps working until the `--ttl` runs out (defaults to `never` if you leave out `--ttl`, as sessions are normally revoked on agent exit)
 
 ### Pin the proxy's certificate
 
