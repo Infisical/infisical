@@ -2456,6 +2456,26 @@ export const registerRoutes = async (
     secretValueTrackingQueue
   });
 
+  const dynamicSecretProviders = buildDynamicSecretProviders({
+    gatewayV2Service,
+    gatewayPoolService,
+    projectDAL
+  });
+
+  const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
+    queueService,
+    dynamicSecretLeaseDAL,
+    dynamicSecretProviders,
+    dynamicSecretDAL,
+    folderDAL,
+    kmsService,
+    smtpService,
+    userDAL,
+    identityDAL,
+    projectMembershipDAL,
+    projectDAL
+  });
+
   const projectService = projectServiceFactory({
     permissionService,
     projectDAL,
@@ -2490,7 +2510,9 @@ export const registerRoutes = async (
     roleDAL,
     groupDAL,
     projectAccessRequestDAL,
-    usageMeteringService
+    usageMeteringService,
+    dynamicSecretLeaseDAL,
+    dynamicSecretQueueService
   });
 
   const projectEnvQueue = projectEnvQueueFactory({
@@ -3099,25 +3121,6 @@ export const registerRoutes = async (
     telemetryService
   });
 
-  const dynamicSecretProviders = buildDynamicSecretProviders({
-    gatewayV2Service,
-    gatewayPoolService,
-    projectDAL
-  });
-
-  const dynamicSecretQueueService = dynamicSecretLeaseQueueServiceFactory({
-    queueService,
-    dynamicSecretLeaseDAL,
-    dynamicSecretProviders,
-    dynamicSecretDAL,
-    folderDAL,
-    kmsService,
-    smtpService,
-    userDAL,
-    identityDAL,
-    projectMembershipDAL,
-    projectDAL
-  });
   const dynamicSecretService = dynamicSecretServiceFactory({
     orgDAL,
     projectDAL,

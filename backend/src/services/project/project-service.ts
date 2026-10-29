@@ -17,6 +17,8 @@ import {
   TProjects
 } from "@app/db/schemas";
 import { isWithinPlanAuditLogRetention } from "@app/ee/services/audit-log/audit-log-retention-fns";
+import { TDynamicSecretLeaseDALFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-dal";
+import { TDynamicSecretLeaseQueueServiceFactory } from "@app/ee/services/dynamic-secret-lease/dynamic-secret-lease-queue";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
   OrgPermissionActions,
@@ -205,6 +207,8 @@ type TProjectServiceFactoryDep = {
     "upsertPendingRequest" | "findPendingForRequesterInOrg"
   >;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
+  dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "findExpiredByProjectId">;
+  dynamicSecretQueueService: Pick<TDynamicSecretLeaseQueueServiceFactory, "setLeaseRevocation">;
 };
 
 export type TProjectServiceFactory = ReturnType<typeof projectServiceFactory>;
@@ -255,7 +259,9 @@ export const projectServiceFactory = ({
   roleDAL,
   groupDAL,
   projectAccessRequestDAL,
-  usageMeteringService
+  usageMeteringService,
+  dynamicSecretLeaseDAL,
+  dynamicSecretQueueService
 }: TProjectServiceFactoryDep) => {
   /*
    * Create workspace. Make user the admin
@@ -989,6 +995,15 @@ export const projectServiceFactory = ({
       usageMeteringService.emit(project.orgId, SecretIdentities.key);
       usageMeteringService.emit(project.orgId, PamIdentities.key);
       usageMeteringService.emit(project.orgId, AgentVaultIdentities.key);
+
+      // Revoking a lease that expired while the project was deleted fails because the project can't be
+      // resolved, and its retries may have run out, so queue those revocations again.
+      const expiredLeases = await dynamicSecretLeaseDAL.findExpiredByProjectId(project.id);
+      await Promise.all(
+        expiredLeases.map((lease) =>
+          dynamicSecretQueueService.setLeaseRevocation(lease.id, lease.dynamicSecretId, lease.expireAt)
+        )
+      );
       return restoredProject;
     } finally {
       await lock.release();
