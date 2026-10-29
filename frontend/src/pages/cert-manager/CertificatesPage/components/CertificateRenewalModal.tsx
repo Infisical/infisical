@@ -516,6 +516,7 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
   );
 
   const [isSeeded, setIsSeeded] = useState(false);
+  const [openReasonFor, setOpenReasonFor] = useState<CertificateRenewalKeySource | null>(null);
   const seededCertificateIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!isOpen) {
@@ -703,8 +704,21 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
                     );
                     if (!option.isDisabled) return card;
                     return (
-                      <Tooltip key={option.value}>
-                        <TooltipTrigger asChild>
+                      <Tooltip
+                        key={option.value}
+                        open={openReasonFor === option.value}
+                        onOpenChange={(isReasonOpen) =>
+                          setOpenReasonFor(isReasonOpen ? option.value : null)
+                        }
+                      >
+                        <TooltipTrigger
+                          asChild
+                          onClick={(event) => {
+                            // Radix closes a tooltip on click and never opens one on tap.
+                            event.preventDefault();
+                            setOpenReasonFor(option.value);
+                          }}
+                        >
                           {/* The disabled radio drops pointer events and focus, so the wrapper carries the hover and focus. */}
                           {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
                           <span tabIndex={0} className="block">
