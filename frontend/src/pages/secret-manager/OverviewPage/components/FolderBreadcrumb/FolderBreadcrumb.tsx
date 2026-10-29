@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ChevronDownIcon, CopyIcon, FolderIcon, SlashIcon } from "lucide-react";
+import { ChevronDownIcon, CopyIcon, FolderIcon, HomeIcon, SlashIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -18,8 +18,9 @@ import {
   IconButton
 } from "@app/components/v3";
 
+import { useOverviewTelemetry } from "../../OverviewTelemetry";
+
 type Props = {
-  projectName: string;
   secretPath?: string;
 };
 
@@ -34,7 +35,8 @@ type Measurements = {
 const breadcrumbLinkClassName =
   "-my-1 inline-flex min-h-7 items-center rounded px-1.5 hover:bg-foreground/10 hover:no-underline";
 
-export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
+export function FolderBreadcrumb({ secretPath = "" }: Props) {
+  const telemetry = useOverviewTelemetry();
   const containerRef = useRef<HTMLDivElement>(null);
   const measureContainerRef = useRef<HTMLDivElement>(null);
 
@@ -97,21 +99,27 @@ export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
   // Initial measurement and re-measure on path change
   useEffect(() => {
     measureElements();
-  }, [measureElements, folderPaths, projectName]);
+    document.fonts.ready.then(measureElements).catch(() => {});
+  }, [measureElements, folderPaths]);
 
   // Track container width with ResizeObserver
   useEffect(() => {
     const element = containerRef.current;
     if (!element) return () => {};
 
-    const observer = new ResizeObserver(() => {
-      measureElements();
+    // The observer entry carries the new width; re-measuring here would force a layout of the
+    // whole page on every resize frame
+    const observer = new ResizeObserver(([entry]) => {
+      const containerWidth = entry.borderBoxSize[0].inlineSize;
+      setMeasurements((prev) =>
+        prev.containerWidth === containerWidth ? prev : { ...prev, containerWidth }
+      );
     });
     observer.observe(element);
     return () => {
       observer.disconnect();
     };
-  }, [measureElements]);
+  }, []);
 
   // Calculate visible segments based on actual measurements
   const { startCount, endCount, needsEllipsis } = useMemo(() => {
@@ -127,12 +135,10 @@ export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
     // We use 12px as a safe default since we can't easily detect breakpoint
     const GAP = 12;
 
-    // Calculate total width of all segments (including separators and gaps)
-    // Each segment has: gap + separator + gap + segment text
-    const totalSegmentWidth = segmentWidths.reduce(
-      (sum, w) => sum + w + separatorWidth + GAP * 2,
-      0
-    );
+    const itemSpacing = separatorWidth + GAP * 2;
+    const totalSegmentWidth =
+      segmentWidths.reduce((sum, width) => sum + width, 0) +
+      Math.max(segmentWidths.length - 1, 0) * itemSpacing;
     const availableWidth = containerWidth - rootWidth - GAP;
 
     // If everything fits, show all
@@ -141,12 +147,11 @@ export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
     }
 
     // Need to collapse - prioritize showing the last segment
-    const ellipsisFullWidth = ellipsisWidth + separatorWidth + GAP * 2;
-    const lastSegmentFullWidth = segmentWidths[segmentWidths.length - 1] + separatorWidth + GAP * 2;
-    const firstSegmentFullWidth = segmentWidths[0] + separatorWidth + GAP * 2;
+    const lastSegmentFullWidth = segmentWidths[segmentWidths.length - 1] + itemSpacing;
+    const firstSegmentFullWidth = segmentWidths[0] + itemSpacing;
 
     // Minimum: just ellipsis + last segment
-    const minWidth = ellipsisFullWidth + lastSegmentFullWidth;
+    const minWidth = ellipsisWidth + lastSegmentFullWidth;
 
     // If we can't even fit ellipsis + last, just show what we can
     if (minWidth > availableWidth) {
@@ -204,13 +209,22 @@ export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
   const fullPath = `/${folderPaths.join("/")}`;
 
   const handleCopyPath = useCallback(async () => {
+    const flow = {
+      action: "copy" as const,
+      resourceType: "folder" as const,
+      source: "breadcrumb" as const,
+      destination: "clipboard" as const
+    };
+    const attempt = telemetry.startFlow(flow);
     try {
       await navigator.clipboard.writeText(fullPath);
+      attempt.flow({ ...flow, phase: "clipboard-written" });
       createNotification({ type: "success", text: "Folder path copied to clipboard" });
     } catch {
+      attempt.flow({ ...flow, phase: "failed" });
       createNotification({ type: "error", text: "Failed to copy folder path to clipboard" });
     }
-  }, [fullPath]);
+  }, [fullPath, telemetry]);
 
   const renderCurrentFolder = (path: string) => (
     <DropdownMenu>
@@ -247,12 +261,13 @@ export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
         className="pointer-events-none invisible absolute flex items-center gap-1.5 whitespace-nowrap sm:gap-3"
         aria-hidden="true"
       >
-        <span
-          data-measure="root"
-          className="inline-flex max-w-48 items-center gap-4 pr-1.5 pl-3 text-sm"
-        >
-          <FolderIcon className="size-4" />
-          <span className="truncate">{projectName}</span>
+        <span data-measure="root" className="inline-flex items-center gap-1.5 text-sm">
+          <span className="inline-flex min-h-7 max-w-48 items-center pr-1.5 pl-3">
+            <HomeIcon className="size-4" />
+          </span>
+          <span className="inline-flex items-center text-muted [&>svg]:size-3">
+            <SlashIcon className="size-3 -rotate-12" />
+          </span>
         </span>
         <span data-measure="separator" className="inline-flex items-center">
           <SlashIcon className="size-3 -rotate-12" />
@@ -280,27 +295,38 @@ export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
           <BreadcrumbItem>
             <BreadcrumbLink
               asChild
-              className="inline-flex min-h-7 max-w-48 items-center gap-4 pr-1.5 pl-3 hover:no-underline"
+              className="inline-flex min-h-7 max-w-48 items-center pr-1.5 pl-3 hover:no-underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
             >
               <Link
+                onClick={() =>
+                  telemetry.interaction({
+                    action: "folder-navigation",
+                    source: "breadcrumb",
+                    resourceType: "folder"
+                  })
+                }
                 from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                 to="."
                 search={(prev) => ({ ...prev, secretPath: getCrumbPath(0) })}
-                aria-label={`${projectName} root folder`}
-                title={projectName}
+                aria-label="Root folder"
+                title="/"
               >
-                <FolderIcon className="size-4 shrink-0 text-folder" />
-                <span className="truncate">{projectName}</span>
+                <HomeIcon className="size-4 shrink-0 text-accent" aria-hidden="true" />
               </Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
+          <BreadcrumbSeparator>
+            <SlashIcon className="size-3 -rotate-12" />
+          </BreadcrumbSeparator>
 
           {/* Start segments */}
           {startSegments.map((path, index) => (
             <React.Fragment key={`start-${path}-${index + 1}`}>
-              <BreadcrumbSeparator>
-                <SlashIcon className="size-3 -rotate-12" />
-              </BreadcrumbSeparator>
+              {index > 0 && (
+                <BreadcrumbSeparator>
+                  <SlashIcon className="size-3 -rotate-12" />
+                </BreadcrumbSeparator>
+              )}
               {!needsEllipsis && index === startSegments.length - 1 ? (
                 <BreadcrumbItem className="min-w-0">{renderCurrentFolder(path)}</BreadcrumbItem>
               ) : (
@@ -311,6 +337,13 @@ export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
                     className={`${breadcrumbLinkClassName} truncate`}
                   >
                     <Link
+                      onClick={() =>
+                        telemetry.interaction({
+                          action: "folder-navigation",
+                          source: "breadcrumb",
+                          resourceType: "folder"
+                        })
+                      }
                       from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                       to="."
                       search={(prev) => ({ ...prev, secretPath: getCrumbPath(index + 1) })}
@@ -326,9 +359,11 @@ export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
           {/* Ellipsis dropdown for hidden segments */}
           {needsEllipsis && hiddenSegments.length > 0 && (
             <>
-              <BreadcrumbSeparator>
-                <SlashIcon className="size-3 -rotate-12" />
-              </BreadcrumbSeparator>
+              {startSegments.length > 0 && (
+                <BreadcrumbSeparator>
+                  <SlashIcon className="size-3 -rotate-12" />
+                </BreadcrumbSeparator>
+              )}
               <BreadcrumbItem>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -348,6 +383,13 @@ export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
                           title={segment}
                         >
                           <Link
+                            onClick={() =>
+                              telemetry.interaction({
+                                action: "folder-navigation",
+                                source: "breadcrumb",
+                                resourceType: "folder"
+                              })
+                            }
                             from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                             to="."
                             search={(prev) => ({
@@ -375,9 +417,11 @@ export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
             const isLast = index === endSegments.length - 1;
             return (
               <React.Fragment key={`end-${originalIndex}`}>
-                <BreadcrumbSeparator>
-                  <SlashIcon className="size-3 -rotate-12" />
-                </BreadcrumbSeparator>
+                {(index > 0 || startSegments.length > 0 || hiddenSegments.length > 0) && (
+                  <BreadcrumbSeparator>
+                    <SlashIcon className="size-3 -rotate-12" />
+                  </BreadcrumbSeparator>
+                )}
                 {isLast ? (
                   <BreadcrumbItem className="min-w-0">{renderCurrentFolder(path)}</BreadcrumbItem>
                 ) : (
@@ -388,6 +432,13 @@ export function FolderBreadcrumb({ projectName, secretPath = "" }: Props) {
                       className={`${breadcrumbLinkClassName} truncate`}
                     >
                       <Link
+                        onClick={() =>
+                          telemetry.interaction({
+                            action: "folder-navigation",
+                            source: "breadcrumb",
+                            resourceType: "folder"
+                          })
+                        }
                         from="/organizations/$orgId/projects/secret-management/$projectId/overview"
                         to="."
                         search={(prev) => ({

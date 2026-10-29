@@ -19,6 +19,10 @@ import {
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 
+import { overviewCountBucket, useOverviewTelemetry } from "../../OverviewTelemetry";
+import { TABLE_ROW_ACTIVE_FILTER_CLASS_NAME } from "../tableRowActionStyles";
+import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
+
 type TParsedEnv = Record<string, { value: string; comments: string[] }>;
 
 type Props = {
@@ -29,12 +33,15 @@ type Props = {
     environment: string,
     key: string,
     value: string,
-    comment?: string
+    comment?: string,
+    isDirectSave?: boolean
   ) => Promise<void>;
   onPasteSecrets: (env: TParsedEnv) => void;
   renderResourceTypeTrigger: (isDisabled: boolean) => ReactNode;
   saveLabel?: string;
   secretPath: string;
+  activityId: TableRowActivityId;
+  onActivityChange: TableRowActivityChangeHandler;
 };
 
 export const QuickAddSecretRow = ({
@@ -45,8 +52,11 @@ export const QuickAddSecretRow = ({
   onPasteSecrets,
   renderResourceTypeTrigger,
   saveLabel,
-  secretPath
+  secretPath,
+  activityId,
+  onActivityChange
 }: Props) => {
+  const telemetry = useOverviewTelemetry();
   const { currentProject } = useProject();
   const rowRef = useRef<HTMLTableRowElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -56,6 +66,7 @@ export const QuickAddSecretRow = ({
   const [value, setValue] = useState("");
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string>();
+  const [isActive, setIsActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [valueEditorStyle, setValueEditorStyle] = useState<CSSProperties>();
   const isMultiEnvironmentView = environments.length > 1;
@@ -77,7 +88,7 @@ export const QuickAddSecretRow = ({
 
       setValueEditorStyle({
         left,
-        width: Math.max(tableContainer.clientWidth - left, 0)
+        width: Math.max(tableContainer.clientWidth - left, 240)
       });
     };
 
@@ -90,7 +101,21 @@ export const QuickAddSecretRow = ({
     return () => resizeObserver.disconnect();
   }, [isMultiEnvironmentView]);
 
-  const submitDraft = async ({ refocus = true }: { refocus?: boolean } = {}) => {
+  useEffect(() => {
+    onActivityChange(activityId, isActive);
+  }, [activityId, isActive, onActivityChange]);
+
+  useEffect(
+    () => () => {
+      onActivityChange(activityId, false);
+    },
+    [activityId, onActivityChange]
+  );
+
+  const submitDraft = async ({
+    refocus = true,
+    isDirectSave = true
+  }: { refocus?: boolean; isDirectSave?: boolean } = {}) => {
     const normalizedKey = key.trim();
 
     if (!normalizedKey) {
@@ -111,17 +136,20 @@ export const QuickAddSecretRow = ({
     try {
       await Promise.all(
         environments.map((environment) =>
-          onCreateSecret(environment, normalizedKey, value, comment)
+          onCreateSecret(environment, normalizedKey, value, comment, isDirectSave)
         )
       );
       setKey("");
       setValue("");
       setComment("");
+      const { activeElement } = document;
+      if (activeElement instanceof HTMLElement && rowRef.current?.contains(activeElement)) {
+        activeElement.blur();
+      }
+      setIsActive(false);
     } finally {
       setIsSubmitting(false);
     }
-
-    if (refocus) setTimeout(() => keyInputRef.current?.focus(), 0);
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -147,6 +175,14 @@ export const QuickAddSecretRow = ({
     const parsedEnv = parsePastedEnv(event.clipboardData.getData("text"));
     const parsedEntries = Object.entries(parsedEnv);
     if (!parsedEntries.length) return;
+    if (parsedEntries.length === 1)
+      telemetry.flow({
+        action: "create",
+        resourceType: "secret",
+        source: "paste",
+        phase: "input-received",
+        countBucket: overviewCountBucket(parsedEntries.length)
+      });
 
     event.preventDefault();
 
@@ -174,8 +210,17 @@ export const QuickAddSecretRow = ({
   return (
     <TableRow
       ref={rowRef}
-      className="group"
+      className={isActive ? `group ${TABLE_ROW_ACTIVE_FILTER_CLASS_NAME}` : "group"}
+      onFocusCapture={() => setIsActive(true)}
+      onMouseDown={(event) => {
+        if (!(event.target as HTMLElement).closest("input, textarea, button, a, [tabindex]"))
+          event.preventDefault();
+      }}
       onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setIsActive(false);
+        }
+
         if (
           !autoQueueOnBlur ||
           !isDraftActive ||
@@ -186,7 +231,7 @@ export const QuickAddSecretRow = ({
           return;
         }
 
-        submitDraft({ refocus: false }).catch(() => undefined);
+        submitDraft({ refocus: false, isDirectSave: false }).catch(() => undefined);
       }}
     >
       <TableCell
@@ -213,10 +258,10 @@ export const QuickAddSecretRow = ({
             aria-describedby={error ? "quick-add-secret-error" : undefined}
             aria-label="New secret name"
             autoComplete="off"
-            className="h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 font-medium shadow-none placeholder:font-normal focus-visible:border-transparent focus-visible:ring-0"
+            className="h-auto w-full rounded-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:border-transparent focus-visible:ring-0"
             disabled={isSubmitting}
             isError={Boolean(error)}
-            placeholder="Add a secret name"
+            placeholder="Add a secret name or paste a .env"
             spellCheck={false}
             value={key}
             onPaste={handlePaste}

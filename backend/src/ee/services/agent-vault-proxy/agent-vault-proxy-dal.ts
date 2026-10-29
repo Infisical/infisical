@@ -98,5 +98,45 @@ export const agentVaultProxyDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findByIdWithOrg, findByIdInProject, findForList, recordHeartbeat };
+  // Only fills an empty CA, and only at the token version the caller was checked against, so neither a racing
+  // start nor a rotation that landed in between can be overwritten.
+  const storeRootCaIfMissing = async (
+    id: string,
+    tokenVersion: number,
+    ca: Pick<
+      TAgentVaultProxies,
+      "rootCaCertificate" | "encryptedRootCaPrivateKey" | "rootCaFingerprint" | "rootCaExpiresAt"
+    >,
+    tx?: Knex
+  ): Promise<TAgentVaultProxies | undefined> => {
+    try {
+      const [updated] = (await (tx || db)(TableName.AgentVaultProxy)
+        .where({ id, tokenVersion })
+        .whereNull("rootCaCertificate")
+        .update(ca)
+        .returning("*")) as TAgentVaultProxies[];
+      return updated;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Store agent vault proxy root CA" });
+    }
+  };
+
+  const countByProjectId = async (projectId: string, tx?: Knex) => {
+    try {
+      const result = await (tx || db.replicaNode())(TableName.AgentVaultProxy).where({ projectId }).count("id").first();
+      return parseInt(String(result?.count || "0"), 10);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Count agent vault proxies" });
+    }
+  };
+
+  return {
+    ...orm,
+    findByIdWithOrg,
+    findByIdInProject,
+    findForList,
+    recordHeartbeat,
+    storeRootCaIfMissing,
+    countByProjectId
+  };
 };

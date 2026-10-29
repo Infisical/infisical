@@ -6,6 +6,7 @@ import {
   Alert,
   AlertDescription,
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -14,15 +15,18 @@ import {
   DialogTitle,
   Field,
   FieldContent,
-  FieldLabel,
-  FilterableSelect
+  FieldDescription,
+  FieldLabel
 } from "@app/components/v3";
 import { useOrganization } from "@app/context";
-import { useGetOrgUsers } from "@app/hooks/api";
-import { useAddAgentVaultMembers, useListAgentVaultMembers } from "@app/hooks/api/agentVault";
+import { useDebounce } from "@app/hooks";
+import {
+  useAddAgentVaultMembers,
+  useListAgentVaultMembers,
+  useListAvailableAgentVaultMembers
+} from "@app/hooks/api/agentVault";
 import { AgentVaultMemberType } from "@app/hooks/api/agentVault/enums";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
-import { getRequesterStatus } from "@app/lib/fn/requesterStatus";
 
 import { ProductRoleField } from "./ProductRoleField";
 
@@ -33,9 +37,10 @@ type Props = {
   onOpenChange: (isOpen: boolean) => void;
 };
 
+// The ?requesterEmail= link resolves against the candidate list (group-only members included); existing
+// members are caught by requesterMatch. Both fetch a page since the search is a substring match.
 export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   const { currentOrg } = useOrganization();
-  const { data: orgUsers = [] } = useGetOrgUsers(currentOrg.id);
   const addMembers = useAddAgentVaultMembers();
   const navigate = useNavigate({ from: "" });
   const requesterEmail = useSearch({
@@ -52,29 +57,48 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
 
   const [selected, setSelected] = useState<TCandidate[]>([]);
   const [role, setRole] = useState<string>(ProjectMembershipRole.Member);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebounce(search);
 
-  const candidates = useMemo(() => {
-    return orgUsers.map((orgUser) => {
-      const name = `${orgUser.user.firstName ?? ""} ${orgUser.user.lastName ?? ""}`.trim();
-      const email = orgUser.user.email || orgUser.user.username || "";
-      return { value: orgUser.user.id, label: name || email, email };
+  const { data: availableData, isFetching: isCandidatesFetching } =
+    useListAvailableAgentVaultMembers(
+      { actorType: AgentVaultMemberType.User, search: debouncedSearch.trim() || undefined },
+      isOpen
+    );
+  const { data: requesterCandidates } = useListAvailableAgentVaultMembers(
+    { actorType: AgentVaultMemberType.User, search: requesterEmail, limit: 20 },
+    Boolean(requesterEmail)
+  );
+
+  const candidates = useMemo<TCandidate[]>(() => {
+    return (availableData?.actors ?? []).map((actor) => {
+      const name = `${actor.firstName ?? ""} ${actor.lastName ?? ""}`.trim();
+      const email = actor.email || actor.username || "";
+      return { value: actor.id, label: name || email, email };
     });
-  }, [orgUsers]);
+  }, [availableData]);
+
+  const isCandidateListTruncated = (availableData?.totalCount ?? 0) > candidates.length;
 
   const memberUsernames = useMemo(
-    () => new Set((requesterMatch?.members ?? []).map((member) => member.actor.username)),
+    () => new Set((requesterMatch?.members ?? []).map((member) => member.username)),
     [requesterMatch]
   );
 
-  const requesterStatus = useMemo(
-    () => getRequesterStatus(requesterEmail, orgUsers, memberUsernames),
-    [requesterEmail, orgUsers, memberUsernames]
-  );
-  // getRequesterStatus returns the org membership id; this select is keyed by user id.
-  const requesterUserId = useMemo(
-    () => orgUsers.find((orgUser) => orgUser.id === requesterStatus.userId)?.user.id,
-    [orgUsers, requesterStatus.userId]
-  );
+  const requesterStatus = useMemo(() => {
+    const requester = requesterEmail
+      ? requesterCandidates?.actors.find(
+          (actor) => actor.username === requesterEmail || actor.email === requesterEmail
+        )
+      : undefined;
+    const name = `${requester?.firstName ?? ""} ${requester?.lastName ?? ""}`.trim();
+    return {
+      isProjectUser: Boolean(requesterEmail) && memberUsernames.has(requesterEmail as string),
+      userLabel: name || requester?.email || requester?.username || "",
+      userId: requester?.id
+    };
+  }, [requesterEmail, requesterCandidates, memberUsernames]);
+  const requesterUserId = requesterStatus.userId;
 
   // Deps stay primitive on purpose: keying off the candidate list would re-run on any refetch and
   // re-select a requester the admin had just removed.
@@ -100,6 +124,7 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
   const handleClose = () => {
     setSelected([]);
     setRole(ProjectMembershipRole.Member);
+    setSearch("");
     clearRequesterEmail();
     onOpenChange(false);
   };
@@ -143,17 +168,34 @@ export const InviteMembersDialog = ({ isOpen, onOpenChange }: Props) => {
         </DialogHeader>
 
         <Field>
-          <FieldLabel>Users</FieldLabel>
+          <FieldLabel htmlFor="agent-vault-invite-users">Users</FieldLabel>
           <FieldContent>
-            <FilterableSelect
-              isMulti
-              value={selected}
-              onChange={(value) => setSelected((value ?? []) as TCandidate[])}
+            <Combobox
+              id="agent-vault-invite-users"
+              multiple
               options={candidates}
-              placeholder="Search by name or email..."
-              getOptionLabel={(option) => option.label}
+              value={selected}
+              isLoading={isCandidatesFetching}
+              onSearchChange={setSearch}
               getOptionValue={(option) => option.value}
+              getOptionLabel={(option) => option.label}
+              placeholder="Pick users"
+              searchPlaceholder="Search by name or email..."
+              searchAriaLabel="Search users"
+              emptyMessage={(inputValue) =>
+                inputValue
+                  ? "No one matches who is not already a member"
+                  : "Everyone in the organization is already a member"
+              }
+              clearAriaLabel="Clear all users"
+              modal
+              onValueChange={(next) => setSelected([...next])}
             />
+            {isCandidateListTruncated && (
+              <FieldDescription>
+                Search by name or email to find users that are not listed.
+              </FieldDescription>
+            )}
           </FieldContent>
         </Field>
 

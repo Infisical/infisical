@@ -20,10 +20,12 @@ import {
 } from "@app/ee/services/permission/resource-permission";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 
+import { TAlertServiceFactory } from "../alert/alert-service";
 import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
 import { ApprovalPolicyScope } from "../approval-policy/approval-policy-enums";
 import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
 import { ActorType } from "../auth/auth-type";
+import { CERT_MANAGER_APPLICATION_RESOURCE_TYPE } from "../certificate/certificate-alert-events";
 import { TMembershipDALFactory } from "../membership/membership-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
@@ -64,6 +66,7 @@ type TPkiApplicationServiceFactoryDep = {
   approvalRequestDAL: Pick<TApprovalRequestDALFactory, "delete">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
+  alertService: Pick<TAlertServiceFactory, "deleteAlertsForDeletedResource">;
 };
 
 export type TPkiApplicationServiceFactory = ReturnType<typeof pkiApplicationServiceFactory>;
@@ -76,7 +79,8 @@ export const pkiApplicationServiceFactory = ({
   approvalPolicyDAL,
   approvalRequestDAL,
   pkiSyncDAL,
-  permissionService
+  permissionService,
+  alertService
 }: TPkiApplicationServiceFactoryDep) => {
   const $loadProjectPermission = (
     projectId: string,
@@ -135,14 +139,14 @@ export const pkiApplicationServiceFactory = ({
 
     const existing = await pkiApplicationDAL.findByNameAndProjectId(name, projectId);
     if (existing) {
-      throw new BadRequestError({ message: `An application with name '${name}' already exists in this project.` });
+      throw new BadRequestError({ message: `An application with name '${name}' already exists in this organization.` });
     }
 
     if (profileIds && profileIds.length > 0) {
       const profilesInProject = await pkiApplicationProfileDAL.findProfilesInProject(profileIds, projectId);
       if (profilesInProject.length !== profileIds.length) {
         throw new BadRequestError({
-          message: "One or more profileIds do not belong to this project."
+          message: "One or more profileIds do not belong to this organization."
         });
       }
 
@@ -187,7 +191,9 @@ export const pkiApplicationServiceFactory = ({
       });
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code?: string })?.code === "23505") {
-        throw new BadRequestError({ message: `An application with name '${name}' already exists in this project.` });
+        throw new BadRequestError({
+          message: `An application with name '${name}' already exists in this organization.`
+        });
       }
       throw err;
     }
@@ -231,7 +237,7 @@ export const pkiApplicationServiceFactory = ({
   }: TGetPkiApplicationByNameDTO) => {
     const application = await pkiApplicationDAL.findByNameAndProjectId(name, projectId);
     if (!application) {
-      throw new NotFoundError({ message: `Application with name '${name}' not found in this project.` });
+      throw new NotFoundError({ message: `Application with name '${name}' not found in this organization.` });
     }
 
     const { permission } = await $loadResourcePermission(application.id, projectId, {
@@ -339,7 +345,9 @@ export const pkiApplicationServiceFactory = ({
     if (name && name !== application.name) {
       const collision = await pkiApplicationDAL.findByNameAndProjectId(name, projectId);
       if (collision) {
-        throw new BadRequestError({ message: `An application with name '${name}' already exists in this project.` });
+        throw new BadRequestError({
+          message: `An application with name '${name}' already exists in this organization.`
+        });
       }
     }
 
@@ -350,7 +358,9 @@ export const pkiApplicationServiceFactory = ({
       });
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code?: string })?.code === "23505") {
-        throw new BadRequestError({ message: `An application with name '${name}' already exists in this project.` });
+        throw new BadRequestError({
+          message: `An application with name '${name}' already exists in this organization.`
+        });
       }
       throw err;
     }
@@ -397,6 +407,10 @@ export const pkiApplicationServiceFactory = ({
       }
       await approvalRequestDAL.delete({ scopeType: ApprovalPolicyScope.PkiApplication, scopeId: applicationId }, tx);
       await approvalPolicyDAL.delete({ scopeType: ApprovalPolicyScope.PkiApplication, scopeId: applicationId }, tx);
+      await alertService.deleteAlertsForDeletedResource(
+        { resourceType: CERT_MANAGER_APPLICATION_RESOURCE_TYPE, resourceId: applicationId },
+        tx
+      );
       await pkiApplicationDAL.deleteById(applicationId, tx);
     });
 
@@ -460,7 +474,7 @@ export const pkiApplicationServiceFactory = ({
 
     const profilesInProject = await pkiApplicationProfileDAL.findProfilesInProject(profileIds, projectId);
     if (profilesInProject.length !== profileIds.length) {
-      throw new BadRequestError({ message: "One or more profileIds do not belong to this project." });
+      throw new BadRequestError({ message: "One or more profileIds do not belong to this organization." });
     }
 
     const { permission: projectPermission } = await $loadProjectPermission(projectId, {
@@ -529,7 +543,7 @@ export const pkiApplicationServiceFactory = ({
 
     const [profile] = await pkiApplicationProfileDAL.findProfilesInProject([profileId], projectId);
     if (!profile) {
-      throw new NotFoundError({ message: `Profile '${profileId}' not found in project.` });
+      throw new NotFoundError({ message: `Profile '${profileId}' not found in this organization.` });
     }
 
     const { permission: projectPermission } = await $loadProjectPermission(projectId, {

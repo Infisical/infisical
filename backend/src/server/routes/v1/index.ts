@@ -31,6 +31,8 @@ import { registerCertificateInventoryViewRouter } from "./certificate-inventory-
 import { registerCertificatePolicyRouter } from "./certificate-policy-router";
 import { registerCertificateProfilesRouter } from "./certificate-profiles-router";
 import { registerCertificateRouter } from "./certificate-router";
+import { registerDelegatedApprovalCallbackRouter } from "./delegated-approval-callback-router";
+import { registerDelegatedApprovalRouter } from "./delegated-approval-router";
 import { DEPRECATED_CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./deprecated-certificate-authority-routers";
 import { registerDeprecatedCertRouter } from "./deprecated-certificate-router";
 import { registerDeprecatedCertificateTemplateRouter } from "./deprecated-certificate-template-router";
@@ -71,6 +73,7 @@ import { registerInviteOrgRouter } from "./invite-org-router";
 import { registerMicrosoftTeamsRouter } from "./microsoft-teams-router";
 import { registerNotificationRouter } from "./notification-router";
 import { registerOAuthRouter } from "./oauth-router";
+import { registerOidcIssuerRouter } from "./oidc-issuer-router";
 import { registerOrgAdminRouter } from "./org-admin-router";
 import { registerOrgIdentityRouter } from "./org-identity-router";
 import { registerOrganizationMembershipsRouter } from "./organization-memberships-router";
@@ -128,6 +131,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerPasswordRouter, { prefix: "/password" });
   await server.register(registerAccountRecoveryRouter, { prefix: "/account-recovery" });
   await server.register(registerOAuthRouter, { prefix: "/oauth" });
+  await server.register(registerOidcIssuerRouter, { prefix: "/oidc-issuer" });
   await server.register(
     async (orgRouter) => {
       await orgRouter.register(registerOrgRouter);
@@ -375,6 +379,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   );
 
   await server.register(registerEventRouter, { prefix: "/events" });
+  await server.register(registerDelegatedApprovalRouter, { prefix: "/delegated-approvals" });
+  await server.register(registerDelegatedApprovalCallbackRouter, { prefix: "/delegated-approvals" });
   await server.register(
     async (approvalPolicyRouter) => {
       // Register policy type-specific endpoints

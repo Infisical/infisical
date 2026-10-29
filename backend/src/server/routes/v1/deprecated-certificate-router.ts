@@ -3,19 +3,21 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { CertificateSource } from "@app/ee/services/pki-discovery/pki-discovery-types";
 import { ApiDocsTags, CERTIFICATE_AUTHORITIES, CERTIFICATES } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
+import { Pkcs12PasswordSchema } from "@app/lib/validator/password-policy";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
-import { CertExtendedKeyUsage, CertKeyUsage, CrlReason } from "@app/services/certificate/certificate-types";
 import {
   validateAltNamesField,
   validateCaDateField
 } from "@app/services/certificate-authority/certificate-authority-validators";
+import { SanitizedCertificateSchema } from "@app/services/certificate/certificate-schemas";
+import { CertExtendedKeyUsage, CertKeyUsage, CrlReason } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) => {
@@ -539,7 +541,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
-      description: "Delete certificate",
+      description: "Delete certificate. Only expired, discovered, or imported certificates can be deleted.",
       params: z.object({
         serialNumber: z.string().trim().describe(CERTIFICATES.DELETE.serialNumber)
       }),
@@ -550,7 +552,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
       }
     },
     handler: async (req) => {
-      const { deletedCert, applicationName } = await server.services.certificate.deleteCert({
+      const { deletedCert, applicationName, deletionEligibility } = await server.services.certificate.deleteCert({
         serialNumber: req.params.serialNumber,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -567,7 +569,11 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
           metadata: {
             certId: deletedCert.id,
             cn: deletedCert.commonName,
+            friendlyName: deletedCert.friendlyName,
             serialNumber: deletedCert.serialNumber,
+            notAfter: deletedCert.notAfter.toISOString(),
+            source: (deletedCert.source as CertificateSource | null) ?? CertificateSource.Issued,
+            deletionAllowedReason: deletionEligibility,
             applicationId: deletedCert.applicationId,
             applicationName
           }
@@ -650,10 +656,7 @@ export const registerDeprecatedCertRouter = async (server: FastifyZodProvider) =
         serialNumber: z.string().trim().describe(CERTIFICATES.GET.serialNumber)
       }),
       body: z.object({
-        password: z
-          .string()
-          .min(6, "Password must be at least 6 characters long")
-          .describe("Password for the keystore (minimum 6 characters)"),
+        password: Pkcs12PasswordSchema.describe(CERTIFICATES.EXPORT_PKCS12.password),
         alias: z.string().min(1, "Alias is required").describe("Alias for the certificate in the keystore")
       }),
       response: {

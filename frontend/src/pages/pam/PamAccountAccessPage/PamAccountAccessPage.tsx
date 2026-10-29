@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useParams, useSearch } from "@tanstack/react-router";
 import { TriangleAlert } from "lucide-react";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { PamAccountType, TPamAccount, useGetPamAccountById } from "@app/hooks/api/pam";
 import { PamDataExplorerPage } from "@app/pages/pam/PamDataExplorerPage/PamDataExplorerPage";
 
@@ -133,7 +133,8 @@ const PageContent = () => {
         if (
           account.accountType === PamAccountType.Postgres ||
           account.accountType === PamAccountType.MySQL ||
-          account.accountType === PamAccountType.Snowflake
+          account.accountType === PamAccountType.Snowflake ||
+          account.accountType === PamAccountType.ClickHouse
         ) {
           return <PamDataExplorerPage reason={reason} mfaSessionId={mfaSessionId} />;
         }
@@ -159,10 +160,8 @@ const PageContent = () => {
 export const PamAccountAccessPage = () => {
   return (
     <>
-      <Helmet>
-        <title>Web Access | Infisical</title>
-        <link rel="icon" href="/infisical.ico" />
-      </Helmet>
+      <PageTitle title="Web Access" />
+      <link rel="icon" href="/infisical.ico" />
       <PageContent />
     </>
   );

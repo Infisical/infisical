@@ -8,8 +8,8 @@ import {
   applyProcessedPermissionRulesToQuery,
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
-import { CertStatus } from "@app/services/certificate/certificate-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 
 import {
   EnrollmentType,
@@ -364,6 +364,17 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       return certificateProfile;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate profile by slug and project id" });
+    }
+  };
+
+  const findByCaId = async (caId: string, tx?: Knex): Promise<Pick<TCertificateProfile, "id" | "slug">[]> => {
+    try {
+      const certificateProfiles = (await (tx || db)(TableName.PkiCertificateProfile)
+        .where({ caId })
+        .select("id", "slug")) as Pick<TCertificateProfile, "id" | "slug">[];
+      return certificateProfiles;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificate profiles by ca id" });
     }
   };
 
@@ -766,6 +777,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     findByIdWithOwnerOrgId,
     findByIdWithConfigs,
     findBySlugAndProjectId,
+    findByCaId,
     findByProjectId,
     countByProjectId,
     findByNameAndProjectId,

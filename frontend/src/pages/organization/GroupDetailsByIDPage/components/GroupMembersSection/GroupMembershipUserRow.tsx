@@ -2,7 +2,6 @@ import { format } from "date-fns";
 import { MoreHorizontalIcon, UserIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Tooltip } from "@app/components/v2";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +9,10 @@ import {
   DropdownMenuTrigger,
   IconButton,
   TableCell,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useOidcManageGroupMembershipsEnabled } from "@app/hooks/api";
@@ -69,25 +71,29 @@ export const GroupMembershipUserRow = ({
               <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
                 {(isAllowed) => (
                   <Tooltip
-                    content={
-                      isOidcManageGroupMembershipsEnabled
-                        ? "OIDC Group Membership Mapping Enabled. Remove user from this group in your OIDC provider."
-                        : undefined
-                    }
-                    position="left"
+                    hoverable
+                    delayDuration={50}
+                    open={isOidcManageGroupMembershipsEnabled ? undefined : false}
                   >
-                    <DropdownMenuItem
-                      variant="danger"
-                      onClick={() =>
-                        handlePopUpOpen("removeMemberFromGroup", {
-                          memberType: GroupMemberType.USER,
-                          username
-                        })
-                      }
-                      isDisabled={!isAllowed || isOidcManageGroupMembershipsEnabled}
-                    >
-                      Remove User From Group
-                    </DropdownMenuItem>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuItem
+                        variant="danger"
+                        onClick={() =>
+                          handlePopUpOpen("removeMemberFromGroup", {
+                            memberType: GroupMemberType.USER,
+                            username
+                          })
+                        }
+                        isDisabled={!isAllowed || isOidcManageGroupMembershipsEnabled}
+                        isDisabledFocusable={isOidcManageGroupMembershipsEnabled}
+                      >
+                        Remove User From Group
+                      </DropdownMenuItem>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">
+                      OIDC Group Membership Mapping Enabled. Remove user from this group in your
+                      OIDC provider.
+                    </TooltipContent>
                   </Tooltip>
                 )}
               </OrgPermissionCan>

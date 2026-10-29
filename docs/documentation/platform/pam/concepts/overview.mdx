@@ -1,0 +1,42 @@
+---
+title: "Privileged access management"
+sidebarTitle: "Concepts"
+description: "Learn how Infisical PAM controls access to your infrastructure."
+---
+
+## What is privileged access management?
+
+_Privileged access management_ (PAM) controls who can connect to sensitive infrastructure, such as production databases and servers, and records what they do there.
+
+Without PAM, everyone who needs a database or server gets its password or key. Each copy of the credential can leak, and when someone leaves, you have to rotate the credential and update everyone who still needs it. With Infisical PAM, people and AI agents connect through Infisical, which supplies the credential on their behalf, so the credential never reaches them.
+
+## Accounts
+
+An [account](/documentation/platform/pam/accounts/overview) is a privileged identity on one database, server, cluster, or cloud provider, such as the `app_readonly` user on your orders database. The account stores the connection details and the credential that Infisical uses to connect.
+
+## Folders
+
+A [folder](/documentation/platform/pam/folders/overview) holds accounts. Put accounts in the same folder if the same people need them, because you grant access on the folder and the access applies to every account in it.
+
+You can organize folders by team (`backend-team`), application (`checkout-service`), or environment (`prod`), depending on how access works in your organization.
+
+## Account templates
+
+An [account template](/documentation/platform/pam/templates/overview) sets the rules for connecting to the accounts that use it, such as the maximum session length, whether a reason or MFA is required, and whether access needs [approval](/documentation/platform/pam/access-requests/overview). Every account uses a template of the same account type.
+
+Folders and templates are independent:
+
+- Accounts in the same folder can use different templates, so the same team gets different rules for staging and production
+- Accounts in different folders can use the same template, so different teams get the same rules
+
+## Memberships
+
+A membership gives a user, group, or [machine identity](/documentation/platform/identities/machine-identities) a role on a folder or an account. A role on a folder applies to every account in the folder. To grant access to one account only, add the membership on the account instead.
+
+Before anyone can hold a membership, they must be a member of PAM itself. To learn about both levels and the roles each one offers, see [Access control](/documentation/platform/pam/concepts/access-control).
+
+## Sessions
+
+A session starts when a person or [AI agent](/documentation/platform/pam/ai-agents/overview) connects to an account, and ends when they disconnect. Before the session starts, Infisical checks the person's role and the template's rules. The connection then runs through a [gateway](/documentation/platform/gateways/overview), which adds the account's credential, and Infisical records everything the person runs.
+
+To learn about each stage of a session, see [Session lifecycle](/documentation/platform/pam/concepts/session-lifecycle).

@@ -1,3 +1,4 @@
+import { AuditLogEventClass } from "../auditLogSettings/types";
 import { CaStatus } from "../ca";
 import { CrlReason } from "../certificates/enums";
 import { IdentityTrustedIp } from "../identities/types";
@@ -14,6 +15,7 @@ export type AuditLogPostgresStorageStatus = {
 
 export type TGetAuditLogsFilter = {
   eventType?: EventType[];
+  eventClass?: AuditLogEventClass[];
   userAgentType?: UserAgentType;
   eventMetadata?: Record<string, string>;
   actorType?: ActorType;
@@ -696,7 +698,13 @@ interface DeleteCert {
   metadata: {
     certId: string;
     cn: string;
+    friendlyName?: string | null;
     serialNumber: string;
+    notAfter: string;
+    source: string;
+    deletionAllowedReason: string;
+    applicationId?: string | null;
+    applicationName?: string | null;
   };
 }
 
@@ -970,6 +978,26 @@ interface PamAccessPolicyBypassedEvent {
   };
 }
 
+interface PamAccessRequestAutoApprovedEvent {
+  type: EventType.PAM_ACCESS_REQUEST_AUTO_APPROVED;
+  metadata: {
+    approvalRequestId: string;
+    grantId?: string;
+    accountId?: string;
+    accountName?: string;
+    folderId?: string;
+    folderName?: string;
+    requesterName?: string;
+    requesterEmail?: string;
+    duration?: string;
+    accessType: string;
+    ruleId: string | null;
+    ruleName?: string;
+    linkedRecords: { label: string; value: string }[];
+    conditions: string[];
+  };
+}
+
 interface CreateProjectFolderGrantEvent {
   type: EventType.CREATE_PROJECT_FOLDER_GRANT;
   metadata: {
@@ -1110,6 +1138,7 @@ export type Event =
   | IntegrationSyncedEvent
   | ClearIdentityLdapAuthLockoutsEvent
   | PamAccessPolicyBypassedEvent
+  | PamAccessRequestAutoApprovedEvent
   | CreateProjectFolderGrantEvent
   | DeleteProjectFolderGrantEvent
   | CreateSecretFolderAccessEvent
@@ -1122,7 +1151,7 @@ export type AuditLog = {
   organization: string;
   workspace: string;
   ipAddress: string;
-  event: Event;
+  event: Event & { class: AuditLogEventClass };
   userAgent: string;
   userAgentType: UserAgentType;
   createdAt: string;

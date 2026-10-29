@@ -1,1 +1,0 @@
-export { SecretTableResourceCount } from "./SecretTableResourceCount";

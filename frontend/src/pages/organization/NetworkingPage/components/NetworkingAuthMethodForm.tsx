@@ -6,11 +6,12 @@ import { z } from "zod";
 
 import {
   Button,
+  Combobox,
   Field,
   FieldContent,
+  FieldDescription,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Input,
   TextArea,
   Toggle,
@@ -20,13 +21,18 @@ import {
 } from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker/GatewayPicker";
 import { useOrganization } from "@app/context";
+import { useScopeVariant } from "@app/hooks";
 
 import {
   NETWORKING_AUTH_METHOD_OPTIONS,
   NetworkingAuthMethod,
-  NetworkingAuthMethodOption,
-  NetworkingAuthMethodSingleValue
+  NetworkingAuthMethodLabel
 } from "./NetworkingAuthMethodLabel";
+
+const GCP_AUTH_TYPE_OPTIONS = [
+  { value: "gce" as const, label: "GCP ID Token Auth (Recommended)" },
+  { value: "iam" as const, label: "GCP IAM Auth" }
+];
 
 const REVIEW_MODE_OPTIONS = [
   { value: "gateway" as const, label: "Gateway as Reviewer" },
@@ -35,10 +41,13 @@ const REVIEW_MODE_OPTIONS = [
 
 const schema = z
   .object({
-    method: z.enum(["aws", "kubernetes", "token"]),
-    stsEndpoint: z.string(),
+    method: z.enum(["aws", "gcp", "kubernetes", "token"]),
     allowedPrincipalArns: z.string(),
     allowedAccountIds: z.string(),
+    gcpAuthType: z.enum(["gce", "iam"]),
+    allowedServiceAccounts: z.string(),
+    allowedProjects: z.string(),
+    allowedZones: z.string(),
     kubernetesHost: z.string(),
     caCertificate: z.string(),
     tokenReviewerJwt: z.string(),
@@ -73,6 +82,28 @@ const schema = z
         path: ["allowedAccountIds"],
         message
       });
+    }
+
+    if (data.method === "gcp") {
+      // Projects are not offered on the iam type, so only the service account can satisfy it there.
+      const isIam = data.gcpAuthType === "iam";
+      if (!data.allowedServiceAccounts.trim() && (isIam || !data.allowedProjects.trim())) {
+        const message = isIam
+          ? "Allowed service account emails must be set"
+          : "At least one of allowed service account emails or allowed projects must be set";
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["allowedServiceAccounts"],
+          message
+        });
+        if (!isIam) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["allowedProjects"],
+            message
+          });
+        }
+      }
     }
 
     if (data.method === "kubernetes") {
@@ -121,9 +152,20 @@ export const toNetworkingAuthMethodInput = (form: FormData) => {
   if (form.method === "aws") {
     return {
       method: "aws" as const,
-      stsEndpoint: form.stsEndpoint,
       allowedPrincipalArns: form.allowedPrincipalArns,
       allowedAccountIds: form.allowedAccountIds
+    };
+  }
+
+  if (form.method === "gcp") {
+    // Hidden on the iam type, so a leftover gce value must not be submitted.
+    const isIam = form.gcpAuthType === "iam";
+    return {
+      method: "gcp" as const,
+      type: form.gcpAuthType,
+      allowedServiceAccounts: form.allowedServiceAccounts,
+      allowedProjects: isIam ? "" : form.allowedProjects,
+      allowedZones: isIam ? "" : form.allowedZones
     };
   }
 
@@ -153,9 +195,17 @@ type AuthMethod =
   | {
       method: "aws";
       config: {
-        stsEndpoint: string;
         allowedPrincipalArns: string;
         allowedAccountIds: string;
+      };
+    }
+  | {
+      method: "gcp";
+      config: {
+        type: "gce" | "iam";
+        allowedServiceAccounts: string;
+        allowedProjects: string;
+        allowedZones: string;
       };
     }
   | {
@@ -197,9 +247,11 @@ export const NetworkingAuthMethodForm = ({
   currentGatewayId,
   onUpdate
 }: Props) => {
-  const { isSubOrganization } = useOrganization();
+  const scopeVariant = useScopeVariant();
+  const { isSubOrganization, currentOrg } = useOrganization();
   const initialMethod: NetworkingAuthMethod = currentMethod.method;
   const initialAws = currentMethod.method === "aws" ? currentMethod.config : undefined;
+  const initialGcp = currentMethod.method === "gcp" ? currentMethod.config : undefined;
   const initialKubernetes =
     currentMethod.method === "kubernetes" ? currentMethod.config : undefined;
   const methodOptions = NETWORKING_AUTH_METHOD_OPTIONS.filter(({ value }) =>
@@ -207,9 +259,12 @@ export const NetworkingAuthMethodForm = ({
   );
   const defaultValues: FormData = {
     method: initialMethod,
-    stsEndpoint: initialAws?.stsEndpoint ?? "https://sts.amazonaws.com/",
     allowedPrincipalArns: initialAws?.allowedPrincipalArns ?? "",
     allowedAccountIds: initialAws?.allowedAccountIds ?? "",
+    gcpAuthType: initialGcp?.type ?? "gce",
+    allowedServiceAccounts: initialGcp?.allowedServiceAccounts ?? "",
+    allowedProjects: initialGcp?.allowedProjects ?? "",
+    allowedZones: initialGcp?.allowedZones ?? "",
     kubernetesHost: initialKubernetes?.kubernetesHost ?? "",
     caCertificate: initialKubernetes?.caCertificate ?? "",
     tokenReviewerJwt: "",
@@ -229,7 +284,8 @@ export const NetworkingAuthMethodForm = ({
     watch,
     reset,
     setValue,
-    formState: { isSubmitting, isDirty }
+    trigger,
+    formState: { isSubmitting, isDirty, isSubmitted }
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues
@@ -241,9 +297,12 @@ export const NetworkingAuthMethodForm = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentMethod.method,
-    initialAws?.stsEndpoint,
     initialAws?.allowedPrincipalArns,
     initialAws?.allowedAccountIds,
+    initialGcp?.type,
+    initialGcp?.allowedServiceAccounts,
+    initialGcp?.allowedProjects,
+    initialGcp?.allowedZones,
     initialKubernetes?.kubernetesHost,
     initialKubernetes?.allowedNamespaces,
     initialKubernetes?.allowedNames,
@@ -259,11 +318,23 @@ export const NetworkingAuthMethodForm = ({
   const method = watch("method");
   const isSaving = isSubmitting || isPending;
   const verifyTlsCertificate = watch("verifyTlsCertificate");
+  const gcpAuthType = watch("gcpAuthType");
   const tokenReviewMode = watch("tokenReviewMode");
   const gatewayId = watch("gatewayId");
   const gatewayPoolId = watch("gatewayPoolId");
   const isProxied = Boolean(gatewayId || gatewayPoolId);
   const isGatewayReviewer = tokenReviewMode === "gateway";
+  // Under the org's pool requirement the backend only accepts a new individual gateway as the
+  // reviewer, since a pool can't perform the review. A gateway the config already had in API mode is
+  // kept as-is; one saved as the reviewer was only allowed for that mode, so it stays in it.
+  const isPoolRequired = Boolean(currentOrg?.requireGatewayPools);
+  const isKeptApiGateway =
+    gatewayId === initialKubernetes?.gatewayId && initialKubernetes?.tokenReviewMode !== "gateway";
+  const mustUseGatewayReviewer = isPoolRequired && Boolean(gatewayId) && !isKeptApiGateway;
+  const reviewModeOptions = REVIEW_MODE_OPTIONS.map((option) => ({
+    ...option,
+    isDisabled: option.value === "api" && mustUseGatewayReviewer
+  }));
   const isTokenReviewerJwtConfigured =
     Boolean(initialKubernetes?.hasTokenReviewerJwt) && !watch("resetTokenReviewerJwt");
 
@@ -285,22 +356,21 @@ export const NetworkingAuthMethodForm = ({
             methodOptions.find((option) => option.value === field.value) ?? methodOptions[0];
 
           return (
-            <FilterableSelect
+            <Combobox
+              aria-label="Authentication method"
               value={selected}
-              onChange={(option) => {
-                const next = option as { value: NetworkingAuthMethod } | null;
-                if (next) field.onChange(next.value);
-              }}
+              onValueChange={(option) => field.onChange(option.value)}
               options={methodOptions}
-              isSearchable={false}
               isClearable={false}
               isDisabled={isDisabled || isSaving}
               getOptionLabel={(option) => option.label}
               getOptionValue={(option) => option.value}
-              components={{
-                Option: NetworkingAuthMethodOption,
-                SingleValue: NetworkingAuthMethodSingleValue
-              }}
+              renderOption={(option) => (
+                <NetworkingAuthMethodLabel method={option.value} label={option.label} />
+              )}
+              renderValue={(option) => (
+                <NetworkingAuthMethodLabel method={option.value} label={option.label} />
+              )}
             />
           );
         }}
@@ -344,24 +414,146 @@ export const NetworkingAuthMethodForm = ({
               </Field>
             )}
           />
+        </>
+      )}
+
+      {method === "gcp" && (
+        <>
           <Controller
             control={control}
-            name="stsEndpoint"
+            name="gcpAuthType"
+            render={({ field }) => (
+              <Field>
+                <FieldLabel
+                  htmlFor="networking-gcp-auth-type"
+                  className="inline-flex items-center gap-1.5"
+                >
+                  Type
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="size-3.5 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-md">
+                      GCP ID Token Auth reads an identity token from the instance metadata server,
+                      which covers Compute Engine VMs and GKE workload identity. GCP IAM Auth signs
+                      a token through the IAM Credentials API, for hosts outside Compute Engine.
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
+                <FieldContent>
+                  <Combobox
+                    id="networking-gcp-auth-type"
+                    value={
+                      GCP_AUTH_TYPE_OPTIONS.find((option) => option.value === field.value) ?? null
+                    }
+                    onValueChange={(option) => field.onChange(option.value)}
+                    options={GCP_AUTH_TYPE_OPTIONS}
+                    isDisabled={isDisabled || isSaving}
+                    isClearable={false}
+                    getOptionLabel={(option) => option.label}
+                    getOptionValue={(option) => option.value}
+                  />
+                </FieldContent>
+              </Field>
+            )}
+          />
+          <Controller
+            control={control}
+            name="allowedServiceAccounts"
             render={({ field, fieldState: { error } }) => (
               <Field>
-                <FieldLabel>STS Endpoint</FieldLabel>
+                <FieldLabel className="inline-flex items-center gap-1.5">
+                  Allowed Service Account Emails (optional)
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="size-3.5 text-muted" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-md">
+                      A comma-separated list of service account emails. A login is accepted when the
+                      service account in the token matches one of them.
+                    </TooltipContent>
+                  </Tooltip>
+                </FieldLabel>
                 <FieldContent>
                   <Input
                     {...field}
                     disabled={isDisabled || isSaving}
                     isError={Boolean(error)}
-                    placeholder="https://sts.amazonaws.com/"
+                    placeholder="test@project.iam.gserviceaccount.com, 12345-compute@developer.gserviceaccount.com"
                   />
                   <FieldError errors={[error]} />
                 </FieldContent>
               </Field>
             )}
           />
+          {gcpAuthType === "gce" && (
+            <>
+              <Controller
+                control={control}
+                name="allowedProjects"
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel className="inline-flex items-center gap-1.5">
+                      Allowed Projects (optional)
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="size-3.5 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">
+                          A comma-separated list of GCP project IDs whose Compute Engine instances
+                          may authenticate as this gateway. Every instance in the project is
+                          trusted, so prefer a service account where you can.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <FieldContent>
+                      <Input
+                        {...field}
+                        disabled={isDisabled || isSaving}
+                        isError={Boolean(error)}
+                        placeholder="my-gcp-project, ..."
+                      />
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+              <Controller
+                control={control}
+                name="allowedZones"
+                render={({ field, fieldState: { error } }) => (
+                  <Field>
+                    <FieldLabel className="inline-flex items-center gap-1.5">
+                      Allowed Zones (optional)
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoIcon className="size-3.5 text-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md">
+                          A comma-separated list of GCP zones whose Compute Engine instances may
+                          authenticate as this gateway.
+                        </TooltipContent>
+                      </Tooltip>
+                    </FieldLabel>
+                    <FieldContent>
+                      <Input
+                        {...field}
+                        disabled={isDisabled || isSaving}
+                        isError={Boolean(error)}
+                        placeholder="us-west2-a, us-central1-a, ..."
+                      />
+                      <FieldError errors={[error]} />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+            </>
+          )}
+          <p className="text-xs text-muted">
+            {gcpAuthType === "gce"
+              ? "At least one of allowed service account emails or allowed projects must be set."
+              : "Allowed service account emails must be set."}
+          </p>
         </>
       )}
 
@@ -395,11 +587,32 @@ export const NetworkingAuthMethodForm = ({
                       if (!next.gatewayId && !next.gatewayPoolId) {
                         setValue("tokenReviewMode", "api", { shouldDirty: true });
                       }
+                      if (
+                        isPoolRequired &&
+                        next.gatewayId &&
+                        next.gatewayId !== initialKubernetes?.gatewayId
+                      ) {
+                        setValue("tokenReviewMode", "gateway", { shouldDirty: true });
+                      }
+                      // A pool can't perform the review, so Gateway as Reviewer never applies to one.
+                      if (next.gatewayPoolId) {
+                        setValue("tokenReviewMode", "api", { shouldDirty: true });
+                      }
+                      // Clears a stale review-mode error from an earlier submit.
+                      if (isSubmitted) trigger("gatewayId");
                     }}
                     isDisabled={isDisabled || isSaving}
                     isError={Boolean(error)}
                     excludeGatewayId={currentGatewayId}
+                    allowIndividualGateways
                   />
+                  {isPoolRequired && (
+                    <FieldDescription>
+                      Your organization requires gateway pools. You can still select an individual
+                      gateway here, but only with Gateway as Reviewer, because a pool can&apos;t
+                      perform the review.
+                    </FieldDescription>
+                  )}
                   <FieldError errors={[error]} />
                 </FieldContent>
               </Field>
@@ -411,7 +624,10 @@ export const NetworkingAuthMethodForm = ({
               name="tokenReviewMode"
               render={({ field, fieldState: { error } }) => (
                 <Field>
-                  <FieldLabel className="inline-flex items-center gap-1.5">
+                  <FieldLabel
+                    htmlFor="networking-token-review-mode"
+                    className="inline-flex items-center gap-1.5"
+                  >
                     Review Mode
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -426,15 +642,15 @@ export const NetworkingAuthMethodForm = ({
                     </Tooltip>
                   </FieldLabel>
                   <FieldContent>
-                    <FilterableSelect
-                      value={REVIEW_MODE_OPTIONS.find((option) => option.value === field.value)}
-                      onChange={(option) => {
-                        const next = option as { value: "api" | "gateway" } | null;
-                        if (next) field.onChange(next.value);
-                      }}
-                      options={REVIEW_MODE_OPTIONS}
+                    <Combobox
+                      id="networking-token-review-mode"
+                      value={
+                        reviewModeOptions.find((option) => option.value === field.value) ?? null
+                      }
+                      onValueChange={(option) => field.onChange(option.value)}
+                      options={reviewModeOptions}
+                      isOptionDisabled={(option) => option.isDisabled}
                       isDisabled={isDisabled || isSaving}
-                      isSearchable={false}
                       isClearable={false}
                       getOptionLabel={(option) => option.label}
                       getOptionValue={(option) => option.value}
@@ -627,7 +843,7 @@ export const NetworkingAuthMethodForm = ({
                     <div className="flex items-center gap-2">
                       <Toggle
                         id="gateway-k8s-verify-tls"
-                        variant="org"
+                        variant={scopeVariant}
                         checked={field.value}
                         onCheckedChange={field.onChange}
                         disabled={isDisabled || isSaving}

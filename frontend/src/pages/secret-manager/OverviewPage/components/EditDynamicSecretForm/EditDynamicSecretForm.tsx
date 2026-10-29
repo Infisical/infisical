@@ -82,7 +82,7 @@ export const EditDynamicSecretForm = ({
   return (
     <>
       <Sheet open={isOpen} onOpenChange={(open) => !open && requestDiscard()}>
-        <SheetContent className="w-full sm:max-w-3xl">
+        <SheetContent size="form">
           <SheetHeader>
             <SheetTitle>Edit Dynamic Secret</SheetTitle>
             <SheetDescription>Update dynamic secret parameters.</SheetDescription>

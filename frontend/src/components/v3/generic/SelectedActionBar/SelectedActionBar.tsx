@@ -35,7 +35,7 @@ function SelectedActionBar({
   children,
   selectionLabel,
   clearLabel = "Unselect All",
-  iconOnlyClear = false,
+  iconOnlyClear = true,
   portalContainer,
   positionerClassName,
   className,
@@ -90,9 +90,7 @@ function SelectedActionBar({
         positionerClassName
       )}
       aria-hidden={!isVisible}
-      // React 18 does not type the inert attribute yet.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {...(!isVisible ? { inert: "" as any } : {})}
+      inert={!isVisible}
     >
       <div
         {...props}

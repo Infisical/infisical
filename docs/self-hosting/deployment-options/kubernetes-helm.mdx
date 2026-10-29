@@ -1,5 +1,5 @@
 ---
-title: "Infisical"
+title: "Deploy Infisical with Helm"
 sidebarTitle: "Deploy with Helm"
 description: "Learn how to deploy Infisical on Kubernetes using our official Helm chart."
 ---
@@ -110,7 +110,7 @@ For production deployments with many users or secrets, increase these values acc
     infisical:
       image:
         repository: infisical/infisical
-        tag: "v0.161.11"  # Check https://hub.docker.com/r/infisical/infisical/tags for latest
+        tag: "v0.167.0"  # Check https://hub.docker.com/r/infisical/infisical/tags for latest
         pullPolicy: IfNotPresent
       replicaCount: 2
 
@@ -205,7 +205,7 @@ infisical:
 
     image:
       # -- Infisical Infisical CLI image tag version
-      tag: "0.41.86"
+      tag: "0.44.6"
 
     # -- Template for the data/stringData section of the Kubernetes secret. Available functions: encodeBase64
     secretTemplate: '{"data":{"token":"{{.Identity.Credentials.Token}}"}}'
@@ -254,7 +254,7 @@ infisical:
     # -- Image repository for the Infisical service
     repository: infisical/infisical
     # -- Specific version tag of the Infisical image. View the latest version here https://hub.docker.com/r/infisical/infisical
-    tag: "v0.158.0"
+    tag: "v0.167.0"
     # -- Pulls image only if not already present on the node
     pullPolicy: IfNotPresent
     # -- Secret references for pulling the image, if needed

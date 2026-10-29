@@ -19,6 +19,7 @@ type Props = {
   children: ReactNode;
   contentClassName?: string;
   headerAction?: ReactNode;
+  onDocumentationClick?: () => void;
   showFooter?: boolean;
   variant?: "focused" | "split";
 };
@@ -30,6 +31,7 @@ export const AuthPageLayout = ({
   children,
   contentClassName,
   headerAction,
+  onDocumentationClick,
   showFooter = true,
   variant = "split"
 }: Props) => {
@@ -82,7 +84,12 @@ export const AuthPageLayout = ({
           <AuthPageBackground />
           <div className="relative z-10 flex h-16 items-center justify-end px-8 xl:px-12">
             <Button asChild variant="outline" size="sm">
-              <a href="https://infisical.com/docs" target="_blank" rel="noopener noreferrer">
+              <a
+                href="https://infisical.com/docs"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={onDocumentationClick}
+              >
                 <BookOpen />
                 Documentation
               </a>
@@ -91,7 +98,7 @@ export const AuthPageLayout = ({
 
           <div className="relative z-10 flex flex-1 items-center justify-center px-10 pb-16 xl:px-20">
             <div className="max-w-xl">
-              <p className="mb-4 font-jetbrains-mono text-xs tracking-[0.02em] text-project uppercase">
+              <p className="mb-4 font-mono text-xs tracking-[0.02em] text-project uppercase">
                 {aside?.eyebrow ?? "Trusted by 400,000+ developers"}
               </p>
               <h2 className="font-alliance text-3xl leading-tight font-normal text-foreground xl:text-4xl">
@@ -100,7 +107,7 @@ export const AuthPageLayout = ({
                 </span>
                 <span className="block">for developers and agents</span>
               </h2>
-              <p className="mt-4 max-w-lg font-alliance text-sm leading-relaxed text-label xl:text-base">
+              <p className="mt-4 max-w-lg font-sans text-sm leading-relaxed text-label xl:text-base">
                 {aside?.description ??
                   "One place to audit every credential your apps and agents use."}
               </p>

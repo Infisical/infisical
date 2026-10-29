@@ -1,5 +1,4 @@
 import fastifyMultipart from "@fastify/multipart";
-// @ts-expect-error this is due to esm compatibility issue
 import { fileTypeFromBuffer } from "file-type";
 import { z } from "zod";
 
@@ -447,6 +446,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: publicEndpointLimit
     },
     schema: {
+      operationId: "getPublicSharedSecretBrandingAsset",
       params: z.object({
         id: z.string(),
         assetType: z.enum(["brand-logo", "brand-favicon"])
@@ -484,6 +484,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "uploadSecretSharingBrandingAsset",
       params: z.object({
         assetType: z.enum(["brand-logo", "brand-favicon"])
       }),
@@ -546,6 +547,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "deleteSecretSharingBrandingAsset",
       params: z.object({
         assetType: z.enum(["brand-logo", "brand-favicon"])
       }),
@@ -575,6 +577,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: publicEndpointLimit
     },
     schema: {
+      operationId: "getSecretSharingBranding",
       querystring: z.object({
         sharedSecretId: z.string().optional()
       }),
@@ -624,6 +627,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
       rateLimit: readLimit
     },
     schema: {
+      operationId: "getSecretSharingBrandingAsset",
       params: z.object({
         assetType: z.enum(["brand-logo", "brand-favicon"])
       })

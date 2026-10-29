@@ -10,7 +10,8 @@ import { decryptChannelConfig, getAlertChannelCipher } from "./alert-channel-cry
 import { TAlertChannelDALFactory } from "./alert-channel-dal";
 import { TAlertChannelRecipientDALFactory } from "./alert-channel-recipient-dal";
 import { AlertChannelType, TAlertChannelDeps, TAlertRecipient, TChannelTargetResult } from "./alert-channel-types";
-import { TAlertHistoryDALFactory } from "./alert-history-dal";
+import { getDedupCutoff, TAlertHistoryDALFactory } from "./alert-history-dal";
+import { getRecipientScope } from "./alert-principal-scope-fns";
 import { TAlertProviderRegistry } from "./alert-provider-registry";
 import { TAlertRecipientResolver } from "./alert-recipient-resolver";
 import { AlertRunStatus, DEFAULT_DEDUP_WINDOW_HOURS, IResourceAlertProvider, TAlertContext } from "./alert-types";
@@ -102,7 +103,7 @@ export const alertEngineFactory = ({
       });
       recipientsByChannel = await alertRecipientResolver.resolveMany(rowsByChannel, {
         orgId: alert.orgId,
-        projectId: alert.projectId
+        projectId: getRecipientScope(provider, alert.projectId).projectId
       });
     }
 
@@ -245,7 +246,7 @@ export const alertEngineFactory = ({
       })
       .filter((work) => work.due.length > 0);
 
-  const $getProvider = (alert: TAlerts, discovery: "findDueTargets" | "findTargetsByIds") => {
+  const $getProvider = (alert: TAlerts, discovery: "findScheduledTargets" | "findEventTargets") => {
     const provider = alertProviderRegistry.get(alert.resourceType);
     if (!provider) {
       logger.warn(`No alert provider registered for resource type '${alert.resourceType}' [alertId=${alert.id}]`);
@@ -261,25 +262,30 @@ export const alertEngineFactory = ({
   };
 
   const runAlert = async (alert: TAlerts, opts?: { asOf?: Date }): Promise<AlertDispatchOutcome> => {
-    const provider = $getProvider(alert, "findDueTargets");
-    if (!provider?.findDueTargets) return AlertDispatchOutcome.NoProvider;
+    const provider = $getProvider(alert, "findScheduledTargets");
+    if (!provider?.findScheduledTargets) return AlertDispatchOutcome.NoProvider;
 
     const channels = await alertChannelDAL.findByAlertId(alert.id, { enabled: true });
     if (channels.length === 0) return AlertDispatchOutcome.NoChannels;
 
-    const dueTargets = await provider.findDueTargets({
+    const window = provider.dedupWindowHours?.(alert.condition) ?? DEFAULT_DEDUP_WINDOW_HOURS;
+    const dueTargets = await provider.findScheduledTargets({
       orgId: alert.orgId,
       projectId: alert.projectId,
       resourceId: alert.resourceId,
       eventType: alert.eventType,
       condition: alert.condition,
-      asOf: opts?.asOf ?? new Date()
+      asOf: opts?.asOf ?? new Date(),
+      alreadyAlerted: {
+        alertId: alert.id,
+        channelIds: channels.map((channel) => channel.id),
+        since: getDedupCutoff(window)
+      }
     });
     if (dueTargets.length === 0) return AlertDispatchOutcome.NoDueTargets;
 
     const targets = dueTargets.map((target) => ({ target, id: provider.targetId(target) }));
 
-    const window = provider.dedupWindowHours?.(alert.condition) ?? DEFAULT_DEDUP_WINDOW_HOURS;
     const recentlyAlerted = await alertHistoryDAL.findRecentlyAlertedTargets(
       alert.id,
       targets.map((target) => target.id),
@@ -295,20 +301,28 @@ export const alertEngineFactory = ({
 
   const runAlertForEvent = async (
     alert: TAlerts,
-    input: { eventId: string; eventType: string; targetIds: string[]; payload: Record<string, unknown> }
+    input: {
+      eventId: string;
+      eventType: string;
+      occurredAt: Date;
+      targetIds: string[];
+      payload: Record<string, unknown>;
+    }
   ): Promise<AlertDispatchOutcome> => {
-    const provider = $getProvider(alert, "findTargetsByIds");
-    if (!provider?.findTargetsByIds) return AlertDispatchOutcome.NoProvider;
+    const provider = $getProvider(alert, "findEventTargets");
+    if (!provider?.findEventTargets) return AlertDispatchOutcome.NoProvider;
 
     const [enabledChannels, alreadyDelivered] = await Promise.all([
       alertChannelDAL.findByAlertId(alert.id, { enabled: true, readFromPrimary: true }),
       alertHistoryDAL.findDeliveredChannelIdsForEvent(alert.id, input.eventId)
     ]);
     const skip = new Set(alreadyDelivered);
-    const channels = enabledChannels.filter((channel) => !skip.has(channel.id));
+    const channels = enabledChannels.filter(
+      (channel) => !skip.has(channel.id) && new Date(channel.createdAt) <= new Date(input.occurredAt)
+    );
     if (channels.length === 0) return AlertDispatchOutcome.NoChannels;
 
-    const resolved = await provider.findTargetsByIds({
+    const resolved = await provider.findEventTargets({
       orgId: alert.orgId,
       projectId: alert.projectId,
       resourceId: alert.resourceId,

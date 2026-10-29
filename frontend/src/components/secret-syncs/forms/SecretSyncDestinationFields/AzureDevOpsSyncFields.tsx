@@ -69,8 +69,8 @@ export const AzureDevOpsSyncFields = () => {
                 isDisabled={!connectionId}
                 value={projects?.find((v) => v.appId === value) ?? null}
                 onValueChange={(option) => {
-                  onChange(option.appId ?? null);
-                  setValue("destinationConfig.devopsProjectName", option.name ?? "");
+                  onChange(option?.appId ?? null);
+                  setValue("destinationConfig.devopsProjectName", option?.name ?? "");
                 }}
                 options={projects}
                 placeholder="Select a project..."

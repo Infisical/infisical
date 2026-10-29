@@ -5,6 +5,23 @@ import staticServe from "@fastify/static";
 import RE2 from "re2";
 
 import { getConfig, IS_PACKAGED } from "@app/lib/config/env";
+import { logger } from "@app/lib/logger";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
+
+const CONNECT_SRC_DIRECTIVE = new RE2("(connect-src\\s+[^;]+)(;)");
+
+// browsers download session recordings straight from storage hosts a server admin allowed
+const withAllowedStorageHostnames = async (indexHtml: string) => {
+  try {
+    const { allowedStorageHostnames } = await getServerCfg();
+    if (!allowedStorageHostnames?.length) return indexHtml;
+    const hosts = allowedStorageHostnames.map((hostname) => `https://${hostname}`).join(" ");
+    return indexHtml.replace(CONNECT_SRC_DIRECTIVE, `$1 ${hosts}$2`);
+  } catch (err) {
+    logger.warn(err, "serve-ui: could not load allowed storage hostnames");
+    return indexHtml;
+  }
+};
 
 // to enabled this u need to set standalone mode to true
 export const registerServeUI = async (
@@ -138,7 +155,7 @@ export const registerServeUI = async (
       schema: {
         hide: true
       },
-      handler: (request, reply) => {
+      handler: async (request, reply) => {
         if (request.url.startsWith("/api")) {
           reply.callNotFound();
           return;
@@ -149,7 +166,7 @@ export const registerServeUI = async (
           .header("Cache-Control", "no-cache, no-store, must-revalidate")
           .header("Pragma", "no-cache")
           .header("Expires", "0")
-          .send(indexHtml);
+          .send(await withAllowedStorageHostnames(indexHtml));
       }
     });
   }

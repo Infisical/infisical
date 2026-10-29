@@ -20,6 +20,12 @@ export enum CertStatus {
   RENEWED = "renewed"
 }
 
+export enum CertificateDeletionEligibility {
+  Expired = "expired",
+  Discovered = "discovered",
+  Imported = "imported"
+}
+
 export enum CertKeyAlgorithm {
   RSA_2048 = "RSA_2048",
   RSA_3072 = "RSA_3072",

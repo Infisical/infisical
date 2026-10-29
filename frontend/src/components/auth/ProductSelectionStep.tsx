@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type JSX, useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -187,7 +187,7 @@ export default function ProductSelectionStep({
                   )}
                 >
                   <Icon className={cn("size-4 shrink-0", product.iconClassName)} />
-                  <span className="font-alliance text-sm font-normal text-foreground">
+                  <span className="font-sans text-sm font-normal text-foreground">
                     {product.name}
                   </span>
                   <Checkbox

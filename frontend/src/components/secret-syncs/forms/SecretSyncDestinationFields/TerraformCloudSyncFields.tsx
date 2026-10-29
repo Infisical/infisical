@@ -80,7 +80,7 @@ export const TerraformCloudSyncFields = () => {
                   organizations ? (organizations.find((org) => org.id === value) ?? null) : null
                 }
                 onValueChange={(option) => {
-                  onChange(option.id ?? null);
+                  onChange(option?.id ?? null);
                   setValue("destinationConfig.variableSetId", "");
                   setValue("destinationConfig.workspaceId", "");
                   setValue("destinationConfig.variableSetName", "");

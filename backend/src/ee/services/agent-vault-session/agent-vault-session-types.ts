@@ -1,20 +1,26 @@
-import { TAgentVaultActorContext } from "../agent-vault/agent-vault-actor-types";
-import { AgentVaultSessionScope, AgentVaultSessionStatus } from "../agent-vault/agent-vault-enums";
+import { TGenericPermission } from "@app/lib/types";
+
+import {
+  AgentVaultMemberType,
+  AgentVaultSessionScope,
+  AgentVaultSessionStatus
+} from "../agent-vault/agent-vault-enums";
 
 export type TMintSessionDTO = {
   projectId: string;
-  ctx: TAgentVaultActorContext;
+  ctx: TGenericPermission;
   accessBundles: string[];
   actorName: string;
   actorEmail: string | null;
   ttl: string;
+  label: string | null;
 };
 
 export type TListSessionsDTO = {
   projectId: string;
-  ctx: TAgentVaultActorContext;
+  ctx: TGenericPermission;
   scope: AgentVaultSessionScope;
-  status?: AgentVaultSessionStatus;
+  statuses?: AgentVaultSessionStatus[];
   limit: number;
   offset: number;
   search?: string;
@@ -22,6 +28,23 @@ export type TListSessionsDTO = {
 
 export type TRevokeSessionDTO = {
   projectId: string;
-  ctx: TAgentVaultActorContext;
+  ctx: TGenericPermission;
   sessionId: string;
 };
+
+export type TGetSessionByIdDTO = TRevokeSessionDTO;
+
+export type TUpdateSessionLabelDTO = TRevokeSessionDTO & {
+  label: string | null;
+};
+
+export type TAgentVaultSessionActor =
+  | {
+      type: AgentVaultMemberType.User;
+      id: string | null;
+      username: string;
+      email: string | null;
+      firstName: string | null;
+      lastName: string | null;
+    }
+  | { type: AgentVaultMemberType.MachineIdentity; id: string | null; name: string };

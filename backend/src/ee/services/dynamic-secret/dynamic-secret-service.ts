@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -14,6 +15,7 @@ import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { OrderByDirection } from "@app/lib/types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
@@ -28,11 +30,12 @@ import { DynamicSecretStatus, TDynamicSecretServiceFactory } from "./dynamic-sec
 import { AzureEntraIDProvider } from "./providers/azure-entra-id";
 import { GcpIamServiceAccountSuffixError } from "./providers/gcp-iam";
 import { IbmApiConnectProvider } from "./providers/ibm-api-connect";
-import { DynamicSecretProviders, redactStoredInputs, SshStoredSchema, TDynamicProviderFns } from "./providers/models";
+import { DynamicSecretProviders, SshStoredSchema, TDynamicProviderFns } from "./providers/models";
+import { redactStoredInputs, restoreOmittedSecretFields } from "./providers/redact";
 
 type TDynamicSecretServiceFactoryDep = {
   dynamicSecretDAL: TDynamicSecretDALFactory;
-  dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "find">;
+  dynamicSecretLeaseDAL: Pick<TDynamicSecretLeaseDALFactory, "find" | "countLeasesForDynamicSecret">;
   dynamicSecretProviders: Record<DynamicSecretProviders, TDynamicProviderFns>;
   dynamicSecretQueueService: Pick<
     TDynamicSecretLeaseQueueServiceFactory,
@@ -48,6 +51,7 @@ type TDynamicSecretServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findOne" | "find">;
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "resolveAttachableGatewayFromPool">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
 };
 
@@ -91,6 +95,7 @@ export const dynamicSecretServiceFactory = ({
   kmsService,
   gatewayV2DAL,
   gatewayPoolService,
+  orgDAL,
   resourceMetadataDAL
 }: TDynamicSecretServiceFactoryDep): TDynamicSecretServiceFactory => {
   const create: TDynamicSecretServiceFactory["create"] = async ({
@@ -149,7 +154,11 @@ export const dynamicSecretServiceFactory = ({
       throw new BadRequestError({ message: "Provided dynamic secret already exists under the folder" });
 
     const selectedProvider = dynamicSecretProviders[provider.type];
-    const inputs = await selectedProvider.validateProviderInputs(provider.inputs, { projectId });
+    const inputs = await selectedProvider.validateProviderInputs(provider.inputs, {
+      projectId,
+      defaultTTL,
+      maxTTL
+    });
 
     if (
       inputs &&
@@ -195,10 +204,12 @@ export const dynamicSecretServiceFactory = ({
         OrgPermissionSubjects.Gateway
       );
 
+      await assertIndividualGatewayAllowed({ orgDAL, orgId: actorOrgId, gatewayId: gatewayv2.id });
+
       selectedGatewayId = gatewayv2.id;
     }
 
-    const isConnected = await selectedProvider.validateConnection(provider.inputs, { projectId });
+    const isConnected = await selectedProvider.validateConnection(provider.inputs, { projectId, defaultTTL, maxTTL });
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
 
     const { encryptor: secretManagerEncryptor } = await kmsService.createCipherPairWithDataKey({
@@ -240,7 +251,7 @@ export const dynamicSecretServiceFactory = ({
 
     return {
       ...dynamicSecretCfg,
-      inputs,
+      inputs: redactStoredInputs(provider.type, inputs),
       projectId: project.id,
       environment: environmentSlug,
       secretPath: path
@@ -330,7 +341,10 @@ export const dynamicSecretServiceFactory = ({
     const decryptedStoredInput = JSON.parse(
       secretManagerDecryptor({ cipherTextBlob: dynamicSecretCfg.encryptedInput }).toString()
     ) as object;
-    const newInput = { ...decryptedStoredInput, ...(inputs || {}) };
+    const newInput = restoreOmittedSecretFields(dynamicSecretCfg.type as DynamicSecretProviders, decryptedStoredInput, {
+      ...decryptedStoredInput,
+      ...(inputs || {})
+    });
     // Mutual exclusion: reject if both gateway fields are set
     if (
       inputs &&
@@ -358,7 +372,14 @@ export const dynamicSecretServiceFactory = ({
         throw error;
       }
     }
-    const updatedInput = await selectedProvider.validateProviderInputs(newInput, { projectId });
+    const activeLeaseCount = await dynamicSecretLeaseDAL.countLeasesForDynamicSecret(dynamicSecretCfg.id);
+    const updatedInput = await selectedProvider.validateProviderInputs(newInput, {
+      projectId,
+      previousInputs: decryptedStoredInput,
+      defaultTTL,
+      maxTTL,
+      hasActiveLeases: activeLeaseCount > 0
+    });
 
     const updatedFields = getUpdatedFieldPaths(
       {
@@ -424,10 +445,21 @@ export const dynamicSecretServiceFactory = ({
         OrgPermissionSubjects.Gateway
       );
 
+      await assertIndividualGatewayAllowed({
+        orgDAL,
+        orgId: actorOrgId,
+        gatewayId: gatewayv2.id,
+        previousGatewayId: dynamicSecretCfg.gatewayV2Id
+      });
+
       selectedGatewayId = gatewayv2.id;
     }
 
-    const isConnected = await selectedProvider.validateConnection(newInput, { projectId });
+    const isConnected = await selectedProvider.validateConnection(newInput, {
+      projectId,
+      defaultTTL: defaultTTL ?? dynamicSecretCfg.defaultTTL,
+      maxTTL: maxTTL === undefined ? dynamicSecretCfg.maxTTL : maxTTL
+    });
     if (!isConnected) throw new BadRequestError({ message: "Provider connection failed" });
 
     const updatedDynamicCfg = await dynamicSecretDAL.transaction(async (tx) => {
@@ -486,7 +518,12 @@ export const dynamicSecretServiceFactory = ({
     );
 
     return {
-      dynamicSecret: { ...updatedDynamicCfg, inputs: canReadRootCredential ? updatedInput : null },
+      dynamicSecret: {
+        ...updatedDynamicCfg,
+        inputs: canReadRootCredential
+          ? redactStoredInputs(dynamicSecretCfg.type as DynamicSecretProviders, updatedInput)
+          : null
+      },
       updatedFields,
       projectId: project.id,
       environment: environmentSlug,

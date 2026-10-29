@@ -4,6 +4,7 @@ import {
   FolderIcon,
   FolderInputIcon,
   InfoIcon,
+  SaveIcon,
   TrashIcon,
   Undo2Icon,
   UsersIcon
@@ -25,7 +26,8 @@ import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActio
 import { ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
-  TABLE_ROW_ACTION_BUTTON_CLASS_NAME
+  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+  TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
 } from "../tableRowActionStyles";
 
 type Props = {
@@ -45,6 +47,7 @@ type Props = {
   canDeleteFolder: boolean;
   pendingAction?: PendingAction;
   onBatchRevert?: (folderName: string) => void;
+  onPendingSave?: (folderName: string) => Promise<void>;
   isSelectionDisabled?: boolean;
 };
 
@@ -65,9 +68,11 @@ export const FolderTableRow = ({
   onClick,
   pendingAction,
   onBatchRevert,
+  onPendingSave,
   isSelectionDisabled
 }: Props) => {
   const [isClicking, setIsClicking] = useState(false);
+  const [isSavingPendingChange, setIsSavingPendingChange] = useState(false);
   const handleClick = () => {
     if (isClicking) return;
 
@@ -80,7 +85,11 @@ export const FolderTableRow = ({
 
   return (
     <TableRow
-      className={twMerge("group hover:z-10", pendingActionRowClass(pendingAction))}
+      className={twMerge(
+        "group hover:z-10",
+        isSelected && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
+        pendingActionRowClass(pendingAction)
+      )}
       onClick={handleClick}
     >
       <TableCell
@@ -155,7 +164,7 @@ export const FolderTableRow = ({
           )}
         >
           {pendingAction !== PendingAction.Delete && (
-            <Tooltip disableHoverableContent>
+            <Tooltip>
               <TooltipTrigger>
                 <IconButton
                   aria-label="Move folder"
@@ -175,7 +184,7 @@ export const FolderTableRow = ({
             </Tooltip>
           )}
           {pendingAction !== PendingAction.Delete && (
-            <Tooltip disableHoverableContent>
+            <Tooltip>
               <TooltipTrigger>
                 <IconButton
                   aria-label="Edit folder"
@@ -197,7 +206,7 @@ export const FolderTableRow = ({
           {onToggleFolderAccess &&
             canManageFolderAccess &&
             pendingAction !== PendingAction.Delete && (
-              <Tooltip disableHoverableContent>
+              <Tooltip>
                 <TooltipTrigger>
                   <IconButton
                     aria-label="Manage folder access"
@@ -215,8 +224,37 @@ export const FolderTableRow = ({
                 <TooltipContent>Manage Access</TooltipContent>
               </Tooltip>
             )}
+          {pendingAction && onPendingSave && (
+            <Tooltip>
+              <TooltipTrigger>
+                <IconButton
+                  aria-label="Save pending folder changes"
+                  variant="ghost"
+                  className={twMerge(TABLE_ROW_ACTION_BUTTON_CLASS_NAME, "hover:text-success")}
+                  size="xs"
+                  isDisabled={
+                    isSavingPendingChange ||
+                    (pendingAction === PendingAction.Delete && !canDeleteFolder) ||
+                    (pendingAction === PendingAction.Update && !canEditFolder)
+                  }
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    setIsSavingPendingChange(true);
+                    try {
+                      await onPendingSave(folderName);
+                    } finally {
+                      setIsSavingPendingChange(false);
+                    }
+                  }}
+                >
+                  <SaveIcon />
+                </IconButton>
+              </TooltipTrigger>
+              <TooltipContent>Save pending changes</TooltipContent>
+            </Tooltip>
+          )}
           {pendingAction ? (
-            <Tooltip disableHoverableContent>
+            <Tooltip>
               <TooltipTrigger>
                 <IconButton
                   aria-label="Discard pending folder changes"
@@ -234,7 +272,7 @@ export const FolderTableRow = ({
               <TooltipContent>Discard pending changes</TooltipContent>
             </Tooltip>
           ) : (
-            <Tooltip disableHoverableContent>
+            <Tooltip>
               <TooltipTrigger>
                 <IconButton
                   aria-label="Delete folder"

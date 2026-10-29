@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import {
   AlertTriangleIcon,
@@ -18,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,7 +49,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization } from "@app/context";
 import {
   SignerPermissionActions,
   SignerPermissionSub,
@@ -81,9 +80,7 @@ import { SigningOperationsTable } from "./components/SigningOperationsTable";
 type Tab = "activity" | "approvals" | "members";
 
 export const SignerDetailPage = () => {
-  const { t } = useTranslation();
   const { currentOrg } = useOrganization();
-  const { currentProject } = useProject();
   const navigate = useNavigate();
 
   const { signerId } = useParams({
@@ -112,14 +109,23 @@ export const SignerDetailPage = () => {
   const reissueSigner = useReissueSignerCertificate();
   const checkSignerIssuance = useCheckSignerIssuance();
 
-  if (isLoading) return <PageLoader />;
+  if (isLoading)
+    return (
+      <>
+        <PageTitle title="Signer" />
+        <PageLoader />
+      </>
+    );
   if (!signer)
     return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>Signer not found</EmptyTitle>
-        </EmptyHeader>
-      </Empty>
+      <>
+        <PageTitle title="Signer" />
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>Signer not found</EmptyTitle>
+          </EmptyHeader>
+        </Empty>
+      </>
     );
 
   const onCopyId = async () => {
@@ -138,17 +144,15 @@ export const SignerDetailPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{t("common.head-title", { title: `Signer: ${signer.name}` })}</title>
-      </Helmet>
+      <PageTitle title={signer.name ? `Signer: ${signer.name}` : "Signer"} />
       <div className="h-full bg-page">
         <div className="mx-auto flex flex-col text-foreground-inverse">
-          <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+          <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
             <PageHeader
               backLink={
                 <Link
                   to={ROUTE_PATHS.CertManager.CodeSigningPage.path}
-                  params={{ orgId: currentOrg.id, projectId: currentProject.id }}
+                  params={{ orgId: currentOrg.id }}
                 >
                   <ChevronLeftIcon size={16} />
                   Back to Signers
@@ -265,51 +269,52 @@ export const SignerDetailPage = () => {
               </DropdownMenu>
             </PageHeader>
 
-            {!signer.caId && (
-              <div className="mb-4 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
-                This signer has no Certificate Authority attached, so its certificate cannot be
-                auto-renewed. Once it expires, signing will stop until you create a new signer.
-              </div>
-            )}
+            <div className="flex flex-col gap-8">
+              {!signer.caId && (
+                <div className="mb-4 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
+                  This signer has no Certificate Authority attached, so its certificate cannot be
+                  auto-renewed. Once it expires, signing will stop until you create a new signer.
+                </div>
+              )}
 
-            <Tabs
-              value={activeTab}
-              onValueChange={(v) =>
-                navigate({
-                  to: ROUTE_PATHS.CertManager.SignerDetailByIDPage.path,
-                  params: { orgId: currentOrg.id, projectId: currentProject.id, signerId },
-                  search: { selectedTab: v as Tab }
-                })
-              }
-            >
-              <TabsList variant="project" aria-label="Signer sections">
-                <TabsTrigger value="activity">Activity</TabsTrigger>
-                <TabsTrigger value="approvals">Approvals</TabsTrigger>
-                <TabsTrigger value="members">Members</TabsTrigger>
-              </TabsList>
+              <Tabs
+                value={activeTab}
+                onValueChange={(v) =>
+                  navigate({
+                    to: ROUTE_PATHS.CertManager.SignerDetailByIDPage.path,
+                    params: { orgId: currentOrg.id, signerId },
+                    search: { selectedTab: v as Tab }
+                  })
+                }
+              >
+                <TabsList variant="project" aria-label="Signer sections">
+                  <TabsTrigger value="activity">Activity</TabsTrigger>
+                  <TabsTrigger value="approvals">Approvals</TabsTrigger>
+                  <TabsTrigger value="members">Members</TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="activity" className="pt-2">
-                <SigningOperationsTable
-                  signer={signer}
-                  signerId={signerId}
-                  projectId={currentProject.id}
-                />
-              </TabsContent>
-              <TabsContent value="approvals" className="pt-2">
-                <SignerApprovalsSection
-                  signerId={signerId}
-                  canPreApprove={Boolean(
-                    permission.can(SignerPermissionActions.PreApprove, SignerPermissionSub.Signer)
-                  )}
-                  canRequestSign={Boolean(
-                    permission.can(SignerPermissionActions.RequestSign, SignerPermissionSub.Signer)
-                  )}
-                />
-              </TabsContent>
-              <TabsContent value="members" className="pt-2">
-                <SignerMembersTab signerId={signerId} />
-              </TabsContent>
-            </Tabs>
+                <TabsContent value="activity" className="pt-2">
+                  <SigningOperationsTable signer={signer} signerId={signerId} />
+                </TabsContent>
+                <TabsContent value="approvals" className="pt-2">
+                  <SignerApprovalsSection
+                    signerId={signerId}
+                    canPreApprove={Boolean(
+                      permission.can(SignerPermissionActions.PreApprove, SignerPermissionSub.Signer)
+                    )}
+                    canRequestSign={Boolean(
+                      permission.can(
+                        SignerPermissionActions.RequestSign,
+                        SignerPermissionSub.Signer
+                      )
+                    )}
+                  />
+                </TabsContent>
+                <TabsContent value="members" className="pt-2">
+                  <SignerMembersTab signerId={signerId} />
+                </TabsContent>
+              </Tabs>
+            </div>
           </div>
         </div>
       </div>
@@ -351,7 +356,7 @@ export const SignerDetailPage = () => {
                 });
                 navigate({
                   to: ROUTE_PATHS.CertManager.CodeSigningPage.path,
-                  params: { orgId: currentOrg.id, projectId: currentProject.id }
+                  params: { orgId: currentOrg.id }
                 });
               }}
             >

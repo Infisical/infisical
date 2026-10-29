@@ -13,14 +13,21 @@ import {
 } from "@app/components/v3";
 import {
   BillingV2CatalogProduct,
+  BillingV2ErrorCode,
   BillingV2Plan,
   usePreviewBillingV2Change,
   useUpgradeBillingV2Product
 } from "@app/hooks/api";
 
-import { fmtMoney } from "../billing-v2-format";
+import { billingV2ErrorCode, fmtMoney } from "../billing-v2-format";
 import { ChargeBreakdown } from "./ChargeBreakdown";
-import { CostSummary, CostSummaryRow, ProductIcon } from "./shared";
+import {
+  CostSummary,
+  CostSummaryRow,
+  PaymentActionRequiredNotice,
+  PaymentApprovalNotice,
+  ProductIcon
+} from "./shared";
 
 // The server rejects a proration date older than 15 minutes. Re-price before that so a sheet left
 // open fails by refreshing the number rather than by throwing at the customer.
@@ -54,6 +61,8 @@ export const UpgradeView = ({
   const preview = usePreviewBillingV2Change();
   const upgrade = useUpgradeBillingV2Product();
   const [pricedAt, setPricedAt] = useState(0);
+  const [paymentActionRequired, setPaymentActionRequired] = useState(false);
+  const [approvalUrl, setApprovalUrl] = useState<string | null>(null);
 
   const { mutate: runPreview } = preview;
   useEffect(() => {
@@ -84,6 +93,8 @@ export const UpgradeView = ({
     });
 
   const handleUpgrade = async () => {
+    setPaymentActionRequired(false);
+    setApprovalUrl(null);
     let priced = preview.data;
     if (Date.now() - pricedAt > PREVIEW_MAX_AGE_MS) {
       const fresh = await rePreview();
@@ -113,20 +124,27 @@ export const UpgradeView = ({
     }
 
     try {
-      await upgrade.mutateAsync({
+      const result = await upgrade.mutateAsync({
         orgId,
         productId: prod.id,
         plan: plan.tier,
         expectedPlanVersionId: priced.toPlanVersionId,
         prorationDate: priced.prorationDate ?? undefined
       });
+      if (result.outcome === "payment_action_required" && result.paymentUrl) {
+        setApprovalUrl(result.paymentUrl);
+        return;
+      }
       createNotification({
         type: "success",
         text: `You're on ${plan.name}. It may take a moment to update here.`
       });
       onDone();
-    } catch {
+    } catch (error) {
       // The backend's message is surfaced by the global mutation error handler (reactQuery.tsx).
+      if (billingV2ErrorCode(error) === BillingV2ErrorCode.PaymentActionRequired) {
+        setPaymentActionRequired(true);
+      }
       await rePreview();
     }
   };
@@ -200,6 +218,9 @@ export const UpgradeView = ({
             totalDueNow={preview.data?.totalDueNow ?? 0}
           />
         )}
+
+        {paymentActionRequired && <PaymentActionRequiredNotice orgId={orgId} />}
+        {approvalUrl && <PaymentApprovalNotice paymentUrl={approvalUrl} />}
       </div>
 
       <SheetFooter className="flex-row justify-between border-t">

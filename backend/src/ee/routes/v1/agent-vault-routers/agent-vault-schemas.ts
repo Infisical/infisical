@@ -1,19 +1,29 @@
 import { z } from "zod";
 
 import { ProjectMembershipRole } from "@app/db/schemas";
+import { AGENT_VAULT_MAX_GRANTEES } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
 import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
 import {
+  AGENT_VAULT_MEMBER_PROVIDED_FIELDS,
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
+  AgentVaultMcpTransport,
   AgentVaultMemberType,
-  AgentVaultSubstitutionSurface
+  AgentVaultOauthStatus,
+  AgentVaultServiceType,
+  AgentVaultSubstitutionSurface,
+  AgentVaultVariableReferenceField,
+  AgentVaultVariableScope,
+  TAgentVaultMemberProvidedField
 } from "@app/ee/services/agent-vault/agent-vault-enums";
-import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern";
-import { agentVaultPathPrefixListSchema } from "@app/ee/services/agent-vault/agent-vault-path-prefix";
+import { hostPatternSchema } from "@app/ee/services/agent-vault/agent-vault-host-pattern-fns";
+import { agentVaultPathPrefixListSchema } from "@app/ee/services/agent-vault/agent-vault-path-prefix-schemas";
+import { agentVaultMcpServerUrlSchema } from "@app/ee/services/agent-vault/agent-vault-service-type-fns";
 import {
+  acceptsVariableReferences,
   addDuplicateCustomHeaderNameIssues,
   addDuplicatePlaceholderIssues,
   AGENT_VAULT_MAX_CUSTOM_HEADERS,
@@ -21,136 +31,247 @@ import {
   AgentVaultCustomHeaderInputSchema,
   AgentVaultCustomHeaderUpdateSchema,
   agentVaultHeaderNameSchema,
+  agentVaultHeaderPrefixSchema,
   AgentVaultSubstitutionInputSchema,
   AgentVaultSubstitutionUpdateSchema
 } from "@app/ee/services/agent-vault/agent-vault-transformation-schemas";
-import { AGENT_VAULT_MAX_GRANTEES } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
+import {
+  AGENT_VAULT_VARIABLE_KEY_MAX_LENGTH,
+  AGENT_VAULT_VARIABLE_KEY_MESSAGE,
+  AGENT_VAULT_VARIABLE_KEY_RE,
+  AGENT_VAULT_VARIABLE_VALUE_MAX_LENGTH
+} from "@app/ee/services/agent-vault/agent-vault-variable-fns";
 import { AGENT_VAULT } from "@app/lib/api-docs";
-import { slugSchema } from "@app/server/lib/schemas";
+import { openApiHidden, slugSchema } from "@app/server/lib/schemas";
 
 export const AgentVaultNameSchema = slugSchema({ max: 64, field: "Name" });
 
 export const AgentVaultHostPatternSchema = hostPatternSchema.describe(AGENT_VAULT.SERVICE.hostPattern);
 
-const basicHalvesAreNotBothEmpty = (
-  data: { type: AgentVaultCredentialType; username?: string; password?: string },
-  ctx: z.RefinementCtx
-) => {
-  // Either half may be blank, but not both. The check cannot be an object-level refine, because
-  // discriminatedUnion options must be plain objects.
-  if (data.type !== AgentVaultCredentialType.Basic) return;
-  if (data.username === undefined || data.password === undefined) return;
-  if (data.username.length > 0 || data.password.length > 0) return;
+const bearerMemberProvidedFieldsSchema = z
+  .enum([AgentVaultVariableReferenceField.CredentialValue])
+  .array()
+  .max(1)
+  .describe(AGENT_VAULT.SERVICE.bearerMemberProvidedFields);
 
-  ctx.addIssue({
-    code: z.ZodIssueCode.custom,
-    path: ["username"],
-    message: "A basic credential needs a username, a password, or both"
-  });
+const basicMemberProvidedFieldsSchema = z
+  .enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS)
+  .array()
+  .max(2)
+  .describe(AGENT_VAULT.SERVICE.basicMemberProvidedFields);
+
+type TCredentialShape = {
+  type: AgentVaultCredentialType;
+  value?: string;
+  username?: string;
+  password?: string;
+  memberProvidedFields?: TAgentVaultMemberProvidedField[];
 };
 
-export const AgentVaultCredentialInputSchema = z
-  .discriminatedUnion("type", [
-    z
-      .object({
-        type: z.literal(AgentVaultCredentialType.Bearer),
-        headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
-        headerPrefix: z
-          .string()
-          .trim()
-          .max(64)
-          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-          .optional()
-          .describe(AGENT_VAULT.SERVICE.headerPrefix),
-        value: z
-          .string()
-          .min(1)
-          .max(8192)
-          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-          .describe(AGENT_VAULT.SERVICE.value)
-      })
-      .describe(JSON.stringify({ title: "Bearer" })),
-    z
-      .object({
-        type: z.literal(AgentVaultCredentialType.Basic),
-        username: z
-          .string()
-          .trim()
-          .max(256)
-          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-          .describe(AGENT_VAULT.SERVICE.username),
-        password: z
-          .string()
-          .max(8192)
-          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-          .describe(AGENT_VAULT.SERVICE.password)
-      })
-      .describe(JSON.stringify({ title: "Basic Auth" })),
-    z
-      .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
-      .describe(JSON.stringify({ title: "Pass-through" }))
-  ])
-  .superRefine(basicHalvesAreNotBothEmpty);
+// The member-provided field each admin credential field stands in for.
+const MEMBER_FIELD_OF_INPUT: Record<"value" | "username" | "password", TAgentVaultMemberProvidedField> = {
+  value: AgentVaultVariableReferenceField.CredentialValue,
+  username: AgentVaultVariableReferenceField.CredentialUsername,
+  password: AgentVaultVariableReferenceField.CredentialValue
+};
+
+// Discriminated union options must be plain objects, so the checks that read two fields run on the union.
+const checkCredentialFields =
+  ({ requireValues, mcp }: { requireValues: boolean; mcp: boolean }) =>
+  (data: TCredentialShape, ctx: z.RefinementCtx) => {
+    const memberProvided = new Set(data.memberProvidedFields ?? []);
+
+    if (mcp && memberProvided.size) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["memberProvidedFields"],
+        message: "MCP services don't support member-provided credentials yet. Leave memberProvidedFields out."
+      });
+    }
+
+    // A member-provided field has no admin value: each member sends their own.
+    (["value", "username", "password"] as const).forEach((field) => {
+      if (data[field] !== undefined && memberProvided.has(MEMBER_FIELD_OF_INPUT[field])) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [field],
+          message: `Leave '${field}' out: memberProvidedFields lists '${MEMBER_FIELD_OF_INPUT[field]}', so each member sets it.`
+        });
+      }
+    });
+
+    if (!requireValues) return;
+
+    if (
+      data.type === AgentVaultCredentialType.Bearer &&
+      data.value === undefined &&
+      !memberProvided.has(AgentVaultVariableReferenceField.CredentialValue)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["value"],
+        message: "A bearer credential needs a token. Set one, or leave the token to each member."
+      });
+    }
+
+    // Either half may be blank, but not both, unless a member sets one of them.
+    if (data.type === AgentVaultCredentialType.Basic && !memberProvided.size && !data.username && !data.password) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["username"],
+        message: "A basic credential needs a username, a password, or both"
+      });
+    }
+  };
+
+// Value fields are optional in the shape so a member-provided one can be left out; the refine requires the rest.
+const bearerCredentialInput = z.object({
+  type: z.literal(AgentVaultCredentialType.Bearer),
+  headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
+  headerPrefix: agentVaultHeaderPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.headerPrefix),
+  value: acceptsVariableReferences(
+    z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+  )
+    .optional()
+    .describe(AGENT_VAULT.SERVICE.value),
+  memberProvidedFields: bearerMemberProvidedFieldsSchema.optional()
+});
+const basicCredentialInput = z.object({
+  type: z.literal(AgentVaultCredentialType.Basic),
+  username: acceptsVariableReferences(
+    z.string().trim().max(256).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+  )
+    .optional()
+    .describe(AGENT_VAULT.SERVICE.username),
+  password: acceptsVariableReferences(
+    z.string().max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+  )
+    .optional()
+    .describe(AGENT_VAULT.SERVICE.password),
+  memberProvidedFields: basicMemberProvidedFieldsSchema.optional()
+});
+const passthroughCredentialInput = z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) });
+const oauthCredentialInput = z.object({
+  type: z.literal(AgentVaultCredentialType.OAuth),
+  authorizationId: z.string().uuid().describe(AGENT_VAULT.SERVICE.authorizationId)
+});
+
+const docsTitle = (title: string, hidden = false) => JSON.stringify({ title, ...(hidden ? { "x-hidden": true } : {}) });
+
+// Only a user in the UI can complete an authorization, so the API docs never offer OAuth. The MCP schema also
+// hides the types an MCP service can't use, but still accepts them so the service refuses them by name.
+const credentialInputSchema = ({ mcp }: { mcp: boolean }) =>
+  z
+    .discriminatedUnion("type", [
+      bearerCredentialInput.describe(docsTitle("Bearer")),
+      basicCredentialInput.describe(docsTitle("Basic Auth", mcp)),
+      passthroughCredentialInput.describe(docsTitle("Pass-through", mcp)),
+      oauthCredentialInput.describe(docsTitle("OAuth", true))
+    ])
+    .superRefine(checkCredentialFields({ requireValues: true, mcp }));
+
+export const AgentVaultCredentialInputSchema = credentialInputSchema({ mcp: false });
+export const AgentVaultMcpCredentialInputSchema = credentialInputSchema({ mcp: true });
 
 // Not derived from the create schema: its `.default()`s would turn an omitted field into a reset on a PATCH.
-export const AgentVaultCredentialUpdateSchema = z
-  .discriminatedUnion("type", [
-    z
-      .object({
-        type: z.literal(AgentVaultCredentialType.Bearer),
-        headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
-        headerPrefix: z
-          .string()
-          .trim()
-          .max(64)
-          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-          .optional()
-          .describe(AGENT_VAULT.SERVICE.headerPrefix),
-        value: z
-          .string()
-          .min(1)
-          .max(8192)
-          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-          .optional()
-          .describe(AGENT_VAULT.SERVICE.updateValue)
-      })
-      .describe(JSON.stringify({ title: "Bearer" })),
-    z
-      .object({
-        type: z.literal(AgentVaultCredentialType.Basic),
-        username: z
-          .string()
-          .trim()
-          .max(256)
-          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-          .optional()
-          .describe(AGENT_VAULT.SERVICE.updateUsername),
-        password: z
-          .string()
-          .max(8192)
-          .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
-          .optional()
-          .describe(AGENT_VAULT.SERVICE.updatePassword)
-      })
-      .describe(JSON.stringify({ title: "Basic Auth" })),
-    z
-      .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
-      .describe(JSON.stringify({ title: "Pass-through" }))
-  ])
-  .superRefine(basicHalvesAreNotBothEmpty);
+const credentialUpdateSchema = ({ mcp }: { mcp: boolean }) =>
+  z
+    .discriminatedUnion("type", [
+      z
+        .object({
+          type: z.literal(AgentVaultCredentialType.Bearer),
+          headerName: agentVaultHeaderNameSchema.optional().describe(AGENT_VAULT.SERVICE.headerName),
+          headerPrefix: agentVaultHeaderPrefixSchema.optional().describe(AGENT_VAULT.SERVICE.headerPrefix),
+          value: acceptsVariableReferences(
+            z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+          )
+            .optional()
+            .describe(AGENT_VAULT.SERVICE.updateValue),
+          memberProvidedFields: bearerMemberProvidedFieldsSchema.optional()
+        })
+        .describe(docsTitle("Bearer")),
+      z
+        .object({
+          type: z.literal(AgentVaultCredentialType.Basic),
+          username: acceptsVariableReferences(
+            z.string().trim().max(256).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+          )
+            .optional()
+            .describe(AGENT_VAULT.SERVICE.updateUsername),
+          password: acceptsVariableReferences(
+            z.string().max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+          )
+            .optional()
+            .describe(AGENT_VAULT.SERVICE.updatePassword),
+          memberProvidedFields: basicMemberProvidedFieldsSchema.optional()
+        })
+        .describe(docsTitle("Basic Auth", mcp)),
+      z.object({ type: z.literal(AgentVaultCredentialType.Passthrough) }).describe(docsTitle("Pass-through", mcp)),
+      z
+        .object({
+          type: z.literal(AgentVaultCredentialType.OAuth),
+          authorizationId: z.string().uuid().describe(AGENT_VAULT.SERVICE.updateAuthorizationId)
+        })
+        .describe(docsTitle("OAuth", true))
+    ])
+    .superRefine((data, ctx) => {
+      checkCredentialFields({ requireValues: false, mcp })(data, ctx);
+      // A full basic update must still leave a half to send. A partial one is checked against what is stored.
+      if (
+        data.type === AgentVaultCredentialType.Basic &&
+        data.username !== undefined &&
+        data.password !== undefined &&
+        !data.memberProvidedFields?.length &&
+        !data.username &&
+        !data.password
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["username"],
+          message: "A basic credential needs a username, a password, or both"
+        });
+      }
+    });
+
+export const AgentVaultCredentialUpdateSchema = credentialUpdateSchema({ mcp: false });
+export const AgentVaultMcpCredentialUpdateSchema = credentialUpdateSchema({ mcp: true });
 
 export const AgentVaultCredentialSummarySchema = z.discriminatedUnion("type", [
   z
     .object({
       type: z.literal(AgentVaultCredentialType.Bearer),
       headerName: z.string().describe(AGENT_VAULT.SERVICE.headerName),
-      headerPrefix: z.string().describe(AGENT_VAULT.SERVICE.headerPrefix)
+      headerPrefix: z.string().describe(AGENT_VAULT.SERVICE.headerPrefix),
+      memberProvidedFields: z
+        .enum([AgentVaultVariableReferenceField.CredentialValue])
+        .array()
+        .describe(AGENT_VAULT.SERVICE.memberProvidedFields)
     })
     .describe(JSON.stringify({ title: "Bearer" })),
-  z.object({ type: z.literal(AgentVaultCredentialType.Basic) }).describe(JSON.stringify({ title: "Basic Auth" })),
+  z
+    .object({
+      type: z.literal(AgentVaultCredentialType.Basic),
+      memberProvidedFields: z
+        .enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS)
+        .array()
+        .describe(AGENT_VAULT.SERVICE.memberProvidedFields)
+    })
+    .describe(JSON.stringify({ title: "Basic Auth" })),
   z
     .object({ type: z.literal(AgentVaultCredentialType.Passthrough) })
-    .describe(JSON.stringify({ title: "Pass-through" }))
+    .describe(JSON.stringify({ title: "Pass-through" })),
+  z
+    .object({
+      type: z.literal(AgentVaultCredentialType.OAuth),
+      status: z.nativeEnum(AgentVaultOauthStatus).describe(AGENT_VAULT.SERVICE.oauthStatus),
+      issuer: z.string().describe(AGENT_VAULT.SERVICE.oauthIssuer),
+      grantedScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthGrantedScopes),
+      requiredScopes: z.string().array().describe(AGENT_VAULT.SERVICE.oauthRequiredScopes),
+      expiresAt: z.string().nullable().optional().describe(AGENT_VAULT.SERVICE.oauthExpiresAt),
+      authorizedAt: z.string().nullable().optional().describe(AGENT_VAULT.SERVICE.oauthAuthorizedAt),
+      lastError: z.string().nullable().optional().describe(AGENT_VAULT.SERVICE.oauthLastError)
+    })
+    .describe(JSON.stringify({ title: "OAuth" }))
 ]);
 
 export const AgentVaultAllowedMethodsSchema = z
@@ -170,6 +291,10 @@ export const AgentVaultCustomHeadersInputSchema = AgentVaultCustomHeaderInputSch
   .superRefine(addDuplicateCustomHeaderNameIssues)
   .describe(AGENT_VAULT.SERVICE.customHeaders);
 
+export const AgentVaultServerUrlSchema = agentVaultMcpServerUrlSchema.describe(AGENT_VAULT.SERVICE.serverUrl);
+
+const AgentVaultMcpTransportSchema = z.nativeEnum(AgentVaultMcpTransport).describe(AGENT_VAULT.SERVICE.transport);
+
 export const AgentVaultCustomHeadersUpdateSchema = AgentVaultCustomHeaderUpdateSchema.array()
   .max(AGENT_VAULT_MAX_CUSTOM_HEADERS)
   .superRefine(addDuplicateCustomHeaderNameIssues)
@@ -185,6 +310,106 @@ export const AgentVaultSubstitutionsUpdateSchema = AgentVaultSubstitutionUpdateS
   .superRefine(addDuplicatePlaceholderIssues)
   .describe(AGENT_VAULT.SERVICE.substitutions);
 
+// Each option also takes the other type's fields, hidden from the docs, so the service can refuse them with a
+// message naming the field rather than zod dropping them silently.
+export const AgentVaultCreateServiceBodySchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal(AgentVaultServiceType.Http).describe(AGENT_VAULT.SERVICE.type),
+      name: AgentVaultNameSchema.describe(AGENT_VAULT.SERVICE.name),
+      hostPattern: AgentVaultHostPatternSchema,
+      allowedMethods: AgentVaultAllowedMethodsSchema.optional(),
+      allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional(),
+      credential: AgentVaultCredentialInputSchema,
+      customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
+      substitutions: AgentVaultSubstitutionsInputSchema.optional(),
+      serverUrl: AgentVaultServerUrlSchema.optional().describe(openApiHidden()),
+      transport: AgentVaultMcpTransportSchema.optional().describe(openApiHidden())
+    })
+    .describe(JSON.stringify({ title: "HTTP service" })),
+  z
+    .object({
+      type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.type),
+      name: AgentVaultNameSchema.describe(AGENT_VAULT.SERVICE.name),
+      serverUrl: AgentVaultServerUrlSchema,
+      transport: AgentVaultMcpTransportSchema,
+      credential: AgentVaultMcpCredentialInputSchema.describe(AGENT_VAULT.SERVICE.mcpCredential),
+      customHeaders: AgentVaultCustomHeadersInputSchema.optional(),
+      hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
+      allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
+      allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional().describe(openApiHidden()),
+      substitutions: AgentVaultSubstitutionsInputSchema.optional().describe(openApiHidden())
+    })
+    .describe(JSON.stringify({ title: "MCP service" }))
+]);
+
+// Every field but `type` is optional, and `type` must match the stored one. Each option also takes the fields
+// GET returns for the other type (null, empty, or an MCP service's derived host pattern), so a client can send back
+// what it read; anything else in them is refused by name, as on create.
+export const AgentVaultUpdateServiceBodySchema = z
+  .discriminatedUnion("type", [
+    z
+      .object({
+        type: z.literal(AgentVaultServiceType.Http).describe(AGENT_VAULT.SERVICE.updateType),
+        name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.SERVICE.name),
+        hostPattern: AgentVaultHostPatternSchema.optional(),
+        allowedMethods: AgentVaultAllowedMethodsSchema.optional(),
+        allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional(),
+        credential: AgentVaultCredentialUpdateSchema.optional(),
+        customHeaders: AgentVaultCustomHeadersUpdateSchema.optional(),
+        substitutions: AgentVaultSubstitutionsUpdateSchema.optional(),
+        serverUrl: AgentVaultServerUrlSchema.nullable().optional().describe(openApiHidden()),
+        transport: AgentVaultMcpTransportSchema.nullable().optional().describe(openApiHidden())
+      })
+      .describe(JSON.stringify({ title: "HTTP service" })),
+    z
+      .object({
+        type: z.literal(AgentVaultServiceType.Mcp).describe(AGENT_VAULT.SERVICE.updateType),
+        name: AgentVaultNameSchema.optional().describe(AGENT_VAULT.SERVICE.name),
+        serverUrl: AgentVaultServerUrlSchema.optional(),
+        transport: AgentVaultMcpTransportSchema.optional(),
+        credential: AgentVaultMcpCredentialUpdateSchema.optional().describe(AGENT_VAULT.SERVICE.mcpCredential),
+        customHeaders: AgentVaultCustomHeadersUpdateSchema.optional(),
+        hostPattern: AgentVaultHostPatternSchema.optional().describe(openApiHidden()),
+        allowedMethods: AgentVaultAllowedMethodsSchema.optional().describe(openApiHidden()),
+        allowedPathPrefixes: AgentVaultAllowedPathPrefixesSchema.optional().describe(openApiHidden()),
+        substitutions: AgentVaultSubstitutionsUpdateSchema.optional().describe(openApiHidden())
+      })
+      .describe(JSON.stringify({ title: "MCP service" }))
+  ])
+  .refine(
+    ({ type, ...fields }) => Object.values(fields).some((value) => value !== undefined),
+    "Provide at least one field besides 'type' to update"
+  );
+
+const variableReferenceBase = {
+  variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
+  key: z.string().describe(AGENT_VAULT.VARIABLE.key)
+};
+
+export const AgentVaultVariableReferenceSchema = z.discriminatedUnion("field", [
+  z
+    .object({
+      ...variableReferenceBase,
+      field: z.enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS).describe(AGENT_VAULT.SERVICE.referenceField)
+    })
+    .describe(JSON.stringify({ title: "Credential" })),
+  z
+    .object({
+      ...variableReferenceBase,
+      field: z.literal(AgentVaultVariableReferenceField.CustomHeader).describe(AGENT_VAULT.SERVICE.referenceField),
+      customHeaderId: z.string().uuid().describe(AGENT_VAULT.SERVICE.referenceCustomHeaderId)
+    })
+    .describe(JSON.stringify({ title: "Custom Header" })),
+  z
+    .object({
+      ...variableReferenceBase,
+      field: z.literal(AgentVaultVariableReferenceField.Substitution).describe(AGENT_VAULT.SERVICE.referenceField),
+      substitutionId: z.string().uuid().describe(AGENT_VAULT.SERVICE.referenceSubstitutionId)
+    })
+    .describe(JSON.stringify({ title: "Substitution" }))
+]);
+
 // The sealed value is never in here. This schema is the last thing between the encrypted column and the
 // wire on every service route: the serializer emits `result.data`, so anything absent here is dropped,
 // and anything required here but missing from a projection is a 500 rather than a leak.
@@ -192,6 +417,9 @@ export const AgentVaultServiceSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.SERVICE.serviceId),
   accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
   name: z.string().describe(AGENT_VAULT.SERVICE.name),
+  type: z.nativeEnum(AgentVaultServiceType).describe(AGENT_VAULT.SERVICE.type),
+  serverUrl: z.string().nullable().describe(AGENT_VAULT.SERVICE.serverUrlRead),
+  transport: z.nativeEnum(AgentVaultMcpTransport).nullable().describe(AGENT_VAULT.SERVICE.transportRead),
   hostPattern: z.string().describe(AGENT_VAULT.SERVICE.hostPattern),
   allowedMethods: z.nativeEnum(AgentVaultHttpMethod).array().nullable().describe(AGENT_VAULT.SERVICE.allowedMethods),
   allowedPathPrefixes: z.string().array().nullable().describe(AGENT_VAULT.SERVICE.allowedPathPrefixes),
@@ -212,9 +440,90 @@ export const AgentVaultServiceSchema = z.object({
     })
     .array()
     .describe(AGENT_VAULT.SERVICE.substitutions),
+  variableReferences: AgentVaultVariableReferenceSchema.array().describe(AGENT_VAULT.SERVICE.variableReferences),
   createdAt: z.date().describe(AGENT_VAULT.SERVICE.createdAt),
   updatedAt: z.date().describe(AGENT_VAULT.SERVICE.updatedAt)
 });
+
+export const AgentVaultVariableKeySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(AGENT_VAULT_VARIABLE_KEY_MAX_LENGTH)
+  .regex(AGENT_VAULT_VARIABLE_KEY_RE, AGENT_VAULT_VARIABLE_KEY_MESSAGE);
+
+// Braces are allowed and sent as they are. A value is never expanded again, which is also how a service can
+// send a literal {{ it could not take directly. Never trimmed, since a password can start or end with a space,
+// but one that is only spaces is refused: listed or revealed, it can't be told from an empty value.
+export const AgentVaultVariableValueSchema = z
+  .string()
+  .min(1)
+  .max(AGENT_VAULT_VARIABLE_VALUE_MAX_LENGTH)
+  .regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+  .refine((value) => value.trim().length > 0, "A value can't be only spaces.");
+
+export const AgentVaultVariableSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
+  key: z.string().describe(AGENT_VAULT.VARIABLE.key),
+  scope: z.nativeEnum(AgentVaultVariableScope).describe(AGENT_VAULT.VARIABLE.scope),
+  usedByServices: z
+    .object({
+      id: z.string().uuid().describe(AGENT_VAULT.VARIABLE.usedByServiceId),
+      name: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceName),
+      hostPattern: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceHostPattern),
+      accessBundleId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.usedByServiceAccessBundleId),
+      accessBundleName: z.string().describe(AGENT_VAULT.VARIABLE.usedByServiceAccessBundleName)
+    })
+    .array()
+    .describe(AGENT_VAULT.VARIABLE.usedByServices),
+  createdAt: z.date().describe(AGENT_VAULT.VARIABLE.createdAt),
+  updatedAt: z.date().describe(AGENT_VAULT.VARIABLE.updatedAt)
+});
+
+const personalValueFieldSchema = z.enum(AGENT_VAULT_MEMBER_PROVIDED_FIELDS).describe(AGENT_VAULT.PERSONAL_VALUE.field);
+
+// The caller's own values for one service. Fields are listed as descriptors, so a custom header or substitution left
+// to members can join them with its id and no change to this shape.
+export const AgentVaultPersonalValuesSchema = z
+  .object({
+    isConfigured: z.boolean().describe(AGENT_VAULT.PERSONAL_VALUE.isConfigured),
+    fields: z
+      .object({
+        field: personalValueFieldSchema,
+        isSet: z.boolean().describe(AGENT_VAULT.PERSONAL_VALUE.isSet),
+        updatedAt: z.date().nullable().describe(AGENT_VAULT.PERSONAL_VALUE.updatedAt),
+        variableReferences: z
+          .object({
+            variableId: z.string().uuid().describe(AGENT_VAULT.VARIABLE.variableId),
+            key: z.string().describe(AGENT_VAULT.VARIABLE.key)
+          })
+          .array()
+          .describe(AGENT_VAULT.PERSONAL_VALUE.variableReferences)
+      })
+      .array()
+      .describe(AGENT_VAULT.PERSONAL_VALUE.fields)
+  })
+  .describe(AGENT_VAULT.PERSONAL_VALUE.personalValues);
+
+// A username follows the admin's rule for one, a token or password the admin's rule for those.
+export const AgentVaultPersonalValueInputSchema = z.discriminatedUnion("field", [
+  z
+    .object({
+      field: z.literal(AgentVaultVariableReferenceField.CredentialUsername).describe(AGENT_VAULT.PERSONAL_VALUE.field),
+      value: acceptsVariableReferences(
+        z.string().trim().min(1).max(256).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+      ).describe(AGENT_VAULT.PERSONAL_VALUE.value)
+    })
+    .describe(JSON.stringify({ title: "Username" })),
+  z
+    .object({
+      field: z.literal(AgentVaultVariableReferenceField.CredentialValue).describe(AGENT_VAULT.PERSONAL_VALUE.field),
+      value: acceptsVariableReferences(
+        z.string().min(1).max(8192).regex(AGENT_VAULT_NO_CONTROL_CHARS_RE, AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE)
+      ).describe(AGENT_VAULT.PERSONAL_VALUE.value)
+    })
+    .describe(JSON.stringify({ title: "Token or Password" }))
+]);
 
 const memberIdsShape = (docs: { userIds: string; machineIdentityIds: string; groupIds: string }) => ({
   userIds: z.string().uuid().array().default([]).describe(docs.userIds),
@@ -225,9 +534,11 @@ const memberIdsShape = (docs: { userIds: string; machineIdentityIds: string; gro
 const namedCount = (body: { userIds: string[]; machineIdentityIds: string[]; groupIds: string[]; emails?: string[] }) =>
   body.userIds.length + body.machineIdentityIds.length + body.groupIds.length + (body.emails?.length ?? 0);
 
+// x-default only shapes the docs: Mintlify pre-fills its request example from a default, and a required
+// enum without one is left out, so the copied example fails with a 422. Validation still requires role.
 export const AgentVaultProductRoleSchema = z
   .enum([ProjectMembershipRole.Admin, ProjectMembershipRole.Member])
-  .describe(AGENT_VAULT.MEMBERSHIP.role);
+  .describe(JSON.stringify({ description: AGENT_VAULT.MEMBERSHIP.role, "x-default": ProjectMembershipRole.Member }));
 
 const atLeastOne = "Name at least one user, machine identity, or group";
 
@@ -274,7 +585,19 @@ export const AgentVaultProductMemberAddSchema = z
       .default([])
       .refine((val) => val.every((el) => el === el.toLowerCase()), "Email must be lowercase")
       .describe(AGENT_VAULT.MEMBERSHIP.emails),
-    role: z.enum([ProjectMembershipRole.Admin, ProjectMembershipRole.Member]).describe(AGENT_VAULT.MEMBERSHIP.role)
+    role: AgentVaultProductRoleSchema
+  })
+  .refine((body) => namedCount(body) > 0, atLeastOne)
+  .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Act on"));
+
+export const AgentVaultProductMemberRoleUpdateSchema = z
+  .object({
+    ...memberIdsShape({
+      userIds: AGENT_VAULT.MEMBERSHIP.userIds,
+      machineIdentityIds: AGENT_VAULT.MEMBERSHIP.machineIdentityIds,
+      groupIds: AGENT_VAULT.MEMBERSHIP.groupIds
+    }),
+    role: AgentVaultProductRoleSchema
   })
   .refine((body) => namedCount(body) > 0, atLeastOne)
   .refine((body) => namedCount(body) <= AGENT_VAULT_MAX_GRANTEES, atMost("Act on"));
@@ -295,43 +618,62 @@ const actorTypeSchema = <T extends AgentVaultMemberType>(type: T) =>
 
 const actorIdSchema = z.string().uuid().describe(AGENT_VAULT.MEMBER.actorId);
 
-export const AgentVaultActorRefSchema = z.discriminatedUnion("type", [
-  z
+const actorRefSchemas = {
+  user: z
     .object({ type: actorTypeSchema(AgentVaultMemberType.User), id: actorIdSchema })
     .describe(JSON.stringify({ title: "User" })),
-  z
+  machineIdentity: z
     .object({ type: actorTypeSchema(AgentVaultMemberType.MachineIdentity), id: actorIdSchema })
     .describe(JSON.stringify({ title: "Machine identity" })),
-  z
+  group: z
     .object({ type: actorTypeSchema(AgentVaultMemberType.Group), id: actorIdSchema })
     .describe(JSON.stringify({ title: "Group" }))
+};
+
+export const AgentVaultActorRefSchema = z.discriminatedUnion("type", [
+  actorRefSchemas.user,
+  actorRefSchemas.machineIdentity,
+  actorRefSchemas.group
 ]);
 
-export const AgentVaultActorSchema = z.discriminatedUnion("type", [
-  z
+const actorSchemas = <Id extends z.ZodTypeAny>(
+  id: Id,
+  docs: Record<"actorType" | "actorId" | "username" | "email" | "firstName" | "lastName" | "identityName", string>
+) => ({
+  user: z
     .object({
-      type: actorTypeSchema(AgentVaultMemberType.User),
-      id: actorIdSchema,
-      username: z.string().describe(AGENT_VAULT.MEMBER.username),
-      email: z.string().nullable().describe(AGENT_VAULT.MEMBER.email),
-      firstName: z.string().nullable().describe(AGENT_VAULT.MEMBER.firstName),
-      lastName: z.string().nullable().describe(AGENT_VAULT.MEMBER.lastName)
+      type: z.literal(AgentVaultMemberType.User).describe(docs.actorType),
+      id: id.describe(docs.actorId),
+      username: z.string().describe(docs.username),
+      email: z.string().nullable().describe(docs.email),
+      firstName: z.string().nullable().describe(docs.firstName),
+      lastName: z.string().nullable().describe(docs.lastName)
     })
     .describe(JSON.stringify({ title: "User" })),
-  z
+  machineIdentity: z
     .object({
-      type: actorTypeSchema(AgentVaultMemberType.MachineIdentity),
-      id: actorIdSchema,
-      name: z.string().describe(AGENT_VAULT.MEMBER.identityName)
+      type: z.literal(AgentVaultMemberType.MachineIdentity).describe(docs.actorType),
+      id: id.describe(docs.actorId),
+      name: z.string().describe(docs.identityName)
     })
-    .describe(JSON.stringify({ title: "Machine identity" })),
-  z
-    .object({
-      type: actorTypeSchema(AgentVaultMemberType.Group),
-      id: actorIdSchema,
-      name: z.string().describe(AGENT_VAULT.MEMBER.groupName)
-    })
-    .describe(JSON.stringify({ title: "Group" }))
+    .describe(JSON.stringify({ title: "Machine identity" }))
+});
+
+const memberActorSchemas = actorSchemas(z.string().uuid(), AGENT_VAULT.MEMBER);
+
+const groupActorSchema = z
+  .object({
+    type: actorTypeSchema(AgentVaultMemberType.Group),
+    id: actorIdSchema,
+    name: z.string().describe(AGENT_VAULT.MEMBER.groupName)
+  })
+  .describe(JSON.stringify({ title: "Group" }));
+
+const sessionActorSchemas = actorSchemas(z.string().uuid().nullable(), AGENT_VAULT.SESSION);
+
+export const AgentVaultSessionActorSchema = z.discriminatedUnion("type", [
+  sessionActorSchemas.user,
+  sessionActorSchemas.machineIdentity
 ]);
 
 // No .default().optional(): the optional wraps the default and the default never applies.
@@ -347,8 +689,8 @@ export const agentVaultListQuery = (docs: { search: string; limit: string; offse
   offset: z.coerce.number().int().min(0).max(10000).default(0).describe(docs.offset)
 });
 
-export const AgentVaultProductActorSchema = z.discriminatedUnion("type", [
-  z
+const productActorSchemas = {
+  user: z
     .object({
       type: actorTypeSchema(AgentVaultMemberType.User),
       id: actorIdSchema,
@@ -359,7 +701,7 @@ export const AgentVaultProductActorSchema = z.discriminatedUnion("type", [
       isOrgMembershipPending: z.boolean().describe(AGENT_VAULT.MEMBER.isOrgMembershipPending)
     })
     .describe(JSON.stringify({ title: "User" })),
-  z
+  machineIdentity: z
     .object({
       type: actorTypeSchema(AgentVaultMemberType.MachineIdentity),
       id: actorIdSchema,
@@ -367,32 +709,42 @@ export const AgentVaultProductActorSchema = z.discriminatedUnion("type", [
       isManagedByAgentVault: z.boolean().describe(AGENT_VAULT.MEMBER.isManagedByAgentVault),
       orgId: z.string().uuid().nullable().describe(AGENT_VAULT.MEMBER.machineIdentityOrgId)
     })
-    .describe(JSON.stringify({ title: "Machine identity" })),
-  z
-    .object({
-      type: actorTypeSchema(AgentVaultMemberType.Group),
-      id: actorIdSchema,
-      name: z.string().describe(AGENT_VAULT.MEMBER.groupName)
-    })
-    .describe(JSON.stringify({ title: "Group" }))
+    .describe(JSON.stringify({ title: "Machine identity" }))
+};
+
+export const AgentVaultProductActorSchema = z.discriminatedUnion("type", [
+  productActorSchemas.user,
+  productActorSchemas.machineIdentity,
+  groupActorSchema
 ]);
 
-export const AgentVaultProductMemberSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
-  // Not the two-value input enum: the generic project membership routes reach these same rows, so one can
-  // carry any role slug, and narrowing this would fail the whole list rather than render it.
-  role: z.string().describe(AGENT_VAULT.MEMBERSHIP.role),
-  isActive: z.boolean().describe(AGENT_VAULT.MEMBERSHIP.isActive),
-  createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),
-  actor: AgentVaultProductActorSchema
-});
+// Not the two-value input enum: the generic project membership routes reach these same rows, so one can
+// carry any role slug, and narrowing this would fail the whole list rather than render it.
+const productRoleSchema = z.string().describe(AGENT_VAULT.MEMBERSHIP.role);
 
-export const AgentVaultProductMemberRefSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
-  role: z.string().describe(AGENT_VAULT.MEMBERSHIP.role),
-  createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),
-  actor: AgentVaultActorRefSchema
-});
+const addedAtSchema = z.date().describe(AGENT_VAULT.MEMBERSHIP.addedAt);
+
+const productMemberFields = {
+  role: productRoleSchema,
+  isActive: z.boolean().describe(AGENT_VAULT.MEMBERSHIP.isActive),
+  addedAt: addedAtSchema
+};
+
+// Members are flat and keyed by their actor, with no membership id: every write names a member by its
+// actor, so the id a client reads here is the one it sends back.
+export const AgentVaultProductMemberSchema = z.discriminatedUnion("type", [
+  productActorSchemas.user.extend(productMemberFields),
+  productActorSchemas.machineIdentity.extend(productMemberFields),
+  groupActorSchema.extend(productMemberFields)
+]);
+
+const productMemberRefFields = { role: productRoleSchema, addedAt: addedAtSchema };
+
+export const AgentVaultProductMemberRefSchema = z.discriminatedUnion("type", [
+  actorRefSchemas.user.extend(productMemberRefFields),
+  actorRefSchemas.machineIdentity.extend(productMemberRefFields),
+  actorRefSchemas.group.extend(productMemberRefFields)
+]);
 
 export const AgentVaultSkippedActorSchema = z.discriminatedUnion("type", [
   z
@@ -418,22 +770,16 @@ export const AgentVaultSkippedActorSchema = z.discriminatedUnion("type", [
     .describe(JSON.stringify({ title: "Group" }))
 ]);
 
-export const AgentVaultRemovedMemberSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
-  accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
-  createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),
-  actor: AgentVaultActorRefSchema
-});
+const grantedAtSchema = z.date().describe(AGENT_VAULT.MEMBER.grantedAt);
 
-export const AgentVaultMemberSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
-  createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),
-  actor: AgentVaultActorSchema
-});
+export const AgentVaultMemberSchema = z.discriminatedUnion("type", [
+  memberActorSchemas.user.extend({ grantedAt: grantedAtSchema }),
+  memberActorSchemas.machineIdentity.extend({ grantedAt: grantedAtSchema }),
+  groupActorSchema.extend({ grantedAt: grantedAtSchema })
+]);
 
-export const AgentVaultCreatedMemberSchema = z.object({
-  id: z.string().uuid().describe(AGENT_VAULT.MEMBER.memberId),
-  accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId),
-  createdAt: z.date().describe(AGENT_VAULT.MEMBER.createdAt),
-  actor: AgentVaultActorRefSchema
-});
+export const AgentVaultCreatedMemberSchema = z.discriminatedUnion("type", [
+  actorRefSchemas.user.extend({ grantedAt: grantedAtSchema }),
+  actorRefSchemas.machineIdentity.extend({ grantedAt: grantedAtSchema }),
+  actorRefSchemas.group.extend({ grantedAt: grantedAtSchema })
+]);

@@ -7,6 +7,7 @@ export enum PamAccountType {
   MongoDB = "mongodb",
   Redis = "redis",
   Snowflake = "snowflake",
+  ClickHouse = "clickhouse",
   Kubernetes = "kubernetes",
   AwsIam = "aws-iam",
   GcpServiceAccount = "gcp-service-account",
@@ -18,7 +19,8 @@ export enum PamAccountType {
 export enum PamDiscoveryType {
   ActiveDirectory = "active-directory",
   Unix = "unix",
-  Postgres = "postgres"
+  Postgres = "postgres",
+  MsSQL = "mssql"
 }
 
 export enum PamDiscoverySchedule {
@@ -38,6 +40,25 @@ export const ROTATABLE_PAM_ACCOUNT_TYPES = [
 
 export const isRotatablePamAccountType = (type: PamAccountType | string) =>
   (ROTATABLE_PAM_ACCOUNT_TYPES as string[]).includes(type);
+
+// Informational conditions on an account. Unlike PamAccountAccessibilityIssue these gate nothing:
+// the account launches, records and rotates as normal. Mirrors PamAccountWarning in
+// backend/src/ee/services/pam/pam-enums.ts.
+export enum PamAccountWarning {
+  SessionLogMaskingDegraded = "session-log-masking-degraded"
+}
+
+// Windows is brokered over RDP, whose recordings the gateway never masks; AWS IAM is gateway-less
+// and produces no session log. Mirrors accountTypeSupportsSessionLogMasking in
+// backend/src/ee/services/pam/pam-enums.ts.
+export const UNMASKABLE_PAM_ACCOUNT_TYPES = [
+  PamAccountType.Windows,
+  PamAccountType.WindowsAd,
+  PamAccountType.AwsIam
+];
+
+export const pamAccountTypeSupportsSessionLogMasking = (type: PamAccountType | string) =>
+  !(UNMASKABLE_PAM_ACCOUNT_TYPES as string[]).includes(type);
 
 // Mirrors ORACLE_MAX_PASSWORD_LENGTH in backend/src/ee/services/pam-account/pam-account-schemas.ts, which is
 // what actually rejects a longer one. Change both together.
@@ -80,6 +101,7 @@ export const formatRotationInterval = (seconds: number | null | undefined): stri
 
 export enum PamPolicyType {
   RequiresApproval = "requires-approval",
+  AllowAutoApproval = "allow-auto-approval",
   AllowBreakGlass = "allow-break-glass",
   RequireMfa = "require-mfa",
   RequireReason = "require-reason",
@@ -176,4 +198,10 @@ export enum PamNotificationEvent {
   AccessRequestApproved = "access-request-approved",
   AccessRequestDenied = "access-request-denied",
   AccessRequestBypassed = "access-request-bypassed"
+}
+
+export enum PamFolderCallerAccess {
+  Admin = "admin",
+  Member = "member",
+  None = "none"
 }

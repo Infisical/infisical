@@ -37,6 +37,8 @@ import {
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
   TABLE_ROW_EXPAND_ICON_CLASS_NAME,
   TABLE_ROW_EXPANDED_ICON_CLASS_NAME,
+  TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
+  TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME,
   TABLE_ROW_RESOURCE_ICON_CLASS_NAME
 } from "../tableRowActionStyles";
 
@@ -54,7 +56,6 @@ type Props = {
   environments: { name: string; slug: string }[];
   isProxiedServiceInEnv: (name: string, env: string) => boolean;
   getProxiedServiceByName: (slug: string, name: string) => TDashboardProxiedService | undefined;
-  tableWidth: number;
   onEdit: (proxiedService: TDashboardProxiedService) => void;
   onDelete: (proxiedService: TDashboardProxiedService) => void;
 };
@@ -64,7 +65,6 @@ export const ProxiedServiceTableRow = ({
   environments = [],
   isProxiedServiceInEnv,
   getProxiedServiceByName,
-  tableWidth,
   onEdit,
   onDelete
 }: Props) => {
@@ -142,13 +142,13 @@ export const ProxiedServiceTableRow = ({
     </div>
   );
 
-  const renderInlineDetails = (proxiedService: TDashboardProxiedService) => {
+  const renderInlineDetails = (proxiedService: TDashboardProxiedService, isExpandedRow = false) => {
     const lastUsedLabel = formatLastUsed(proxiedService.lastUsedAt);
 
     return (
       <>
         <span
-          className="ml-2 max-w-[240px] truncate text-xs text-muted"
+          className={twMerge("max-w-[240px] truncate text-xs text-muted", !isExpandedRow && "ml-2")}
           title={proxiedService.hostPattern}
         >
           {proxiedService.hostPattern}
@@ -257,16 +257,23 @@ export const ProxiedServiceTableRow = ({
       {!isSingleEnvView && isExpanded && (
         <TableRow className="border-0 hover:bg-transparent">
           <TableCell colSpan={totalCols} className="border-0 p-0">
-            <div
-              style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 border-y border-border"
-            >
-              <Table containerClassName="rounded-none border-0">
+            <div className="sticky left-0 max-w-(--overview-table-width) min-w-(--overview-table-width) border-y border-border">
+              <Table
+                className="w-full min-w-[calc(var(--name-column-width,180px)+24rem)] table-fixed"
+                containerClassName="rounded-none border-0"
+              >
+                <colgroup>
+                  <col className="w-10" />
+                  <col className="w-[var(--name-column-width,180px)]" />
+                  <col />
+                </colgroup>
                 <TableHeader className="bg-container-hover">
                   <TableRow>
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                    <TableHead className="w-full">Environment</TableHead>
-                    <TableHead variant="action" className="w-px" />
+                    <TableHead className={TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME}>
+                      Environment
+                    </TableHead>
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -278,10 +285,12 @@ export const ProxiedServiceTableRow = ({
                       return (
                         <TableRow key={slug} className="group relative hover:z-10">
                           <TableCell aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
-                          <TableCell colSpan={2}>
+                          <TableCell className={TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME}>
+                            {envName}
+                          </TableCell>
+                          <TableCell>
                             <div className="relative flex w-full items-center">
-                              <span>{envName}</span>
-                              {renderInlineDetails(proxiedService)}
+                              {renderInlineDetails(proxiedService, true)}
                               <div className="absolute top-1/2 -right-1.5 z-20 -translate-y-1/2">
                                 {renderActionButtons(proxiedService)}
                               </div>

@@ -16,7 +16,7 @@ import { THsmStatus } from "@app/ee/services/hsm/hsm-types";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import { getOriginalConfig, TEnvConfig } from "@app/lib/config/env";
-import { generateSecretValueBlindIndexFromKmsKey } from "@app/lib/crypto/blind-index";
+import { createSecretValueBlindIndexer } from "@app/lib/crypto/blind-index";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
 import { deriveCookieSigningKey } from "@app/lib/crypto/cookie-signing-key";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -31,13 +31,16 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { requestMemoKeys } from "@app/lib/request-context/memo-keys";
 import { requestMemoize } from "@app/lib/request-context/request-memoizer";
 import {
+  buildWrappedKeyPayload,
   getByteLengthForSymmetricEncryptionAlgorithm,
   getKekLabel,
   KMS_LEGACY_ENCRYPTION_KEY_UUID,
   KMS_ROOT_CONFIG_UUID,
   MAX_HMAC_IMPORT_KEY_BYTE_LENGTH,
   MIN_HMAC_IMPORT_KEY_BYTE_LENGTH,
+  openWrappedKey,
   resolveInstanceEncryptionKeyBuffer,
+  validateClassicalKeyMaterial,
   verifyKeyTypeAndAlgorithm
 } from "@app/services/kms/kms-fns";
 
@@ -672,27 +675,7 @@ export const kmsServiceFactory = ({
           });
         }
       } else {
-        const keyObj = crypto.nativeCrypto.createPrivateKey({
-          key,
-          format: "pem",
-          type: "pkcs8"
-        });
-        const keyType = keyObj.asymmetricKeyType;
-        const keyDetails = keyObj.asymmetricKeyDetails;
-
-        if (algorithm === AsymmetricKeyAlgorithm.RSA_4096) {
-          if (keyType !== "rsa" || keyDetails?.modulusLength !== 4096) {
-            throw new BadRequestError({
-              message: `Key material does not match the declared algorithm. Expected an RSA 4096-bit key.`
-            });
-          }
-        } else if (algorithm === AsymmetricKeyAlgorithm.ECC_NIST_P256) {
-          if (keyType !== "ec" || keyDetails?.namedCurve !== "prime256v1") {
-            throw new BadRequestError({
-              message: `Key material does not match the declared algorithm. Expected an EC P-256 key.`
-            });
-          }
-        }
+        validateClassicalKeyMaterial(key, algorithm as AsymmetricKeyAlgorithm);
       }
     }
 
@@ -739,8 +722,8 @@ export const kmsServiceFactory = ({
     return doc;
   };
 
-  const getPublicKey = async ({ kmsId }: TGetPublicKeyDTO) => {
-    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+  const getPublicKey = async ({ kmsId }: TGetPublicKeyDTO, tx?: Knex) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId, tx);
     if (!kmsDoc) {
       throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
     }
@@ -757,8 +740,8 @@ export const kmsServiceFactory = ({
     return signingService(encryptionAlgorithm).getPublicKeyFromPrivateKey(kmsKey);
   };
 
-  const signWithKmsKey = async ({ kmsId }: Pick<TSignWithKmsDTO, "kmsId">) => {
-    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId);
+  const signWithKmsKey = async ({ kmsId }: Pick<TSignWithKmsDTO, "kmsId">, tx?: Knex) => {
+    const kmsDoc = await kmsDAL.findByIdWithAssociatedKms(kmsId, tx);
     if (!kmsDoc) {
       throw new NotFoundError({ message: `KMS with ID '${kmsId}' not found` });
     }
@@ -1289,6 +1272,7 @@ export const kmsServiceFactory = ({
     const dataKey = await $getDataKey(encryptionContext, trx);
 
     const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
+    const generateSecretBlindIndex = createSecretValueBlindIndexer(dataKey);
 
     return {
       encryptor: ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
@@ -1304,8 +1288,30 @@ export const kmsServiceFactory = ({
         const decryptedBlob = cipher.decrypt(cipherTextBlob, dataKey);
         return decryptedBlob;
       },
-      generateSecretBlindIndex: (secretValue: Buffer) => generateSecretValueBlindIndexFromKmsKey(secretValue, dataKey)
+      generateSecretBlindIndex
     };
+  };
+
+  // Wraps a key with the project's SecretManager data key, bound to a label (see buildWrappedKeyPayload).
+  const wrapKey = async ({ projectId, label, key }: { projectId: string; label: string; key: Buffer }) => {
+    const { encryptor } = await createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    return encryptor({ plainText: buildWrappedKeyPayload(label, key) }).cipherTextBlob;
+  };
+
+  // Null when the key wasn't wrapped for this label. Throws when the ciphertext doesn't decrypt.
+  const unwrapKey = async ({
+    projectId,
+    label,
+    wrappedKey,
+    keyBytes
+  }: {
+    projectId: string;
+    label: string;
+    wrappedKey: Buffer;
+    keyBytes: number;
+  }) => {
+    const { decryptor } = await createCipherPairWithDataKey({ type: KmsDataKey.SecretManager, projectId });
+    return openWrappedKey({ label, payload: decryptor({ cipherTextBlob: wrappedKey }), keyBytes });
   };
 
   const updateProjectSecretManagerKmsKey = async ({ projectId, kms }: TUpdateProjectSecretManagerKmsKeyDTO) => {
@@ -1923,6 +1929,8 @@ export const kmsServiceFactory = ({
     loadProjectKeyBackup,
     getKmsById,
     createCipherPairWithDataKey,
+    wrapKey,
+    unwrapKey,
     getKeyMaterial,
     getBulkKeyMaterial,
     importKeyMaterial,

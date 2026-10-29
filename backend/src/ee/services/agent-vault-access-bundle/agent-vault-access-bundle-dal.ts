@@ -37,18 +37,14 @@ export type TAgentVaultAccessBundleActor =
   | { type: AgentVaultMemberType.MachineIdentity; id: string; name: string }
   | { type: AgentVaultMemberType.Group; id: string; name: string };
 
-export type TAgentVaultAccessBundleMemberDetail = {
-  id: string;
-  accessBundleId: string;
-  createdAt: Date;
-  actor: TAgentVaultAccessBundleActor;
-};
+export type TAgentVaultAccessBundleMemberDetail = TAgentVaultAccessBundleActor & { grantedAt: Date };
 
 export type TAgentVaultAccessBundleOrderBy = "name" | "serviceCount" | "createdAt";
 
 type TFindAccessBundlesDTO = {
   projectId: string;
   accessBundleIds: string[] | null;
+  excludeAccessBundleIds?: string[];
   search?: string;
   orderBy: TAgentVaultAccessBundleOrderBy;
   orderDirection: "asc" | "desc";
@@ -67,7 +63,16 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultAccessBundle);
 
   const findForList = async (
-    { projectId, accessBundleIds, search, orderBy, orderDirection, limit, offset }: TFindAccessBundlesDTO,
+    {
+      projectId,
+      accessBundleIds,
+      excludeAccessBundleIds,
+      search,
+      orderBy,
+      orderDirection,
+      limit,
+      offset
+    }: TFindAccessBundlesDTO,
     tx?: Knex
   ): Promise<{ accessBundles: TAgentVaultAccessBundleListRow[]; totalCount: number }> => {
     if (accessBundleIds?.length === 0) return { accessBundles: [], totalCount: 0 };
@@ -80,6 +85,9 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query.where(`${TableName.AgentVaultAccessBundle}.projectId`, projectId);
         if (accessBundleIds) void query.whereIn(`${TableName.AgentVaultAccessBundle}.id`, accessBundleIds);
+        if (excludeAccessBundleIds?.length) {
+          void query.whereNotIn(`${TableName.AgentVaultAccessBundle}.id`, excludeAccessBundleIds);
+        }
         if (search) {
           const term = `%${sanitizeSqlLikeString(search)}%`;
           void query.where((qb) => {
@@ -259,8 +267,6 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
 
       const rows = (await applyFilters(conn(TableName.Membership))
         .select(
-          db.ref("id").withSchema(TableName.Membership),
-          db.ref("scopeResourceId").withSchema(TableName.Membership).as("accessBundleId"),
           db.ref("actorUserId").withSchema(TableName.Membership).as("userId"),
           db.ref("actorIdentityId").withSchema(TableName.Membership).as("identityId"),
           db.ref("actorGroupId").withSchema(TableName.Membership).as("groupId"),
@@ -278,8 +284,6 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
         .orderBy(`${TableName.Membership}.id`, "asc")
         .limit(limit)
         .offset(offset)) as {
-        id: string;
-        accessBundleId: string;
         userId: string | null;
         identityId: string | null;
         groupId: string | null;
@@ -310,12 +314,7 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
       };
 
       return {
-        members: rows.map((row) => ({
-          id: row.id,
-          accessBundleId: row.accessBundleId,
-          createdAt: row.createdAt,
-          actor: actorOf(row)
-        })),
+        members: rows.map((row) => ({ ...actorOf(row), grantedAt: row.createdAt })),
         totalCount
       };
     } catch (error) {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { AuditLogsUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import {
   Alert,
   AlertDescription,
@@ -104,6 +104,7 @@ const LogsSectionComponent = ({
   // An org-scoped product has its own colour, and "primary" would paint its chrome the secrets yellow.
   let dateRangeAccent: DateRangeFilterAccent = project ? "primary" : "secondary";
   if (project?.type === ProjectType.AgentVault) dateRangeAccent = "av";
+  if (project?.type === ProjectType.SecretScanning) dateRangeAccent = "ss";
 
   useEffect(() => {
     if (subscription && !subscription.auditLogs) {
@@ -202,7 +203,11 @@ const LogsSectionComponent = ({
               actorType: searchDerived.actorType || presets?.actorType,
               eventType:
                 searchDerived.eventType.length > 0 ? searchDerived.eventType : logFilter?.eventType,
-              userAgentType: searchDerived.userAgentType || logFilter?.userAgentType,
+              eventClass:
+                searchDerived.eventClass.length > 0
+                  ? searchDerived.eventClass
+                  : logFilter?.eventClass,
+              userAgentType: searchDerived.userAgentType || logFilter?.userAgentType || undefined,
               environment: searchDerived.environment || logFilter?.environment?.slug,
               secretPath: searchDerived.secretPath,
               secretKey: searchDerived.secretKey,
@@ -213,19 +218,22 @@ const LogsSectionComponent = ({
             timezone={timezone}
           />
         </CardContent>
-        <UpgradePlanModal
+        <UpgradeGate
           paywallKey="organization.logs"
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => {
             handlePopUpToggle("upgradePlan", isOpen);
           }}
-          text="Your current plan does not include access to audit logs. To unlock this feature, please upgrade to Infisical Pro plan."
+          intent={{
+            ...AuditLogsUpgradeIntent,
+            isEnterpriseFeature: false
+          }}
         />
       </Card>
     );
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       {showClickHouseWarning && (
         <Alert variant="warning">
           <AlertDescription>
@@ -254,8 +262,8 @@ const LogsSectionComponent = ({
           </AlertDescription>
         </Alert>
       )}
-      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-        {showFilters && (
+      {showFilters && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <ButtonGroup>
             <DateRangeQuickPresets
               value={activePreset}
@@ -275,11 +283,11 @@ const LogsSectionComponent = ({
               accent={dateRangeAccent}
             />
           </ButtonGroup>
-        )}
-        {showFilters && (
-          <LogsFilter presets={presets} setFilter={setLogFilter} filter={logFilter} />
-        )}
-      </div>
+          <div className="ml-auto">
+            <LogsFilter presets={presets} setFilter={setLogFilter} filter={logFilter} />
+          </div>
+        </div>
+      )}
       <LogsTable
         refetchInterval={refetchInterval}
         filter={{
@@ -290,7 +298,8 @@ const LogsSectionComponent = ({
           actorType: presets?.actorType,
           limit: 15,
           eventType: logFilter?.eventType,
-          userAgentType: logFilter?.userAgentType,
+          eventClass: logFilter?.eventClass,
+          userAgentType: logFilter?.userAgentType ?? undefined,
           startDate: dateRange.startDate,
           endDate: dateRange.endDate,
           environment: logFilter?.environment?.slug,
@@ -298,13 +307,16 @@ const LogsSectionComponent = ({
         }}
         timezone={timezone}
       />
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="organization.logs"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => {
           handlePopUpToggle("upgradePlan", isOpen);
         }}
-        text="Your current plan does not include access to audit logs. To unlock this feature, please upgrade to Infisical Pro plan."
+        intent={{
+          ...AuditLogsUpgradeIntent,
+          isEnterpriseFeature: false
+        }}
       />
     </div>
   );

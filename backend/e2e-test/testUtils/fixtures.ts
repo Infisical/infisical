@@ -1,6 +1,23 @@
 import { randomUUID } from "node:crypto";
 
+import { OrgMembershipRole, TableName } from "@app/db/schemas";
+import { seedData1 } from "@app/db/seed-data";
+
 import { selectOrg } from "./auth";
+import { addUserMembership } from "./users";
+
+// Creates a project in whichever org `authToken` is scoped to, and returns its id. Cleanup comes
+// with the org: deleting it cascades to every project underneath.
+export const createProject = async (authToken: string, projectName: string) => {
+  const res = await testServer.inject({
+    method: "POST",
+    url: "/api/v1/projects",
+    headers: { authorization: `Bearer ${authToken}` },
+    body: { projectName }
+  });
+  expect(res.statusCode).toBe(200);
+  return res.json().project.id as string;
+};
 
 // Full isolation per test: a fresh org and project rather than a fresh project inside the shared
 // seeded org. Org-scoped state (roles, membership) can't leak between tests either this way, not
@@ -26,24 +43,40 @@ export const createIsolatedOrgAndProject = async (namePrefix: string) => {
   expect(selectOrgRes.statusCode).toBe(200);
   const authToken = selectOrgRes.payload.token as string;
 
-  const projectRes = await testServer.inject({
-    method: "POST",
-    url: "/api/v1/projects",
-    headers: { authorization: `Bearer ${authToken}` },
-    body: { projectName: name }
-  });
-  expect(projectRes.statusCode).toBe(200);
-  const projectId = projectRes.json().project.id as string;
+  const projectId = await createProject(authToken, name);
 
   // Hard-deletes the org row; every project/environment/secret/webhook underneath it is reaped by
   // FK cascade (org-service.ts:deleteOrganizationById), so there's nothing else to tear down.
+  // Asserted so a silent cleanup failure surfaces here rather than as leaked org-scoped state in a
+  // later suite.
   const cleanup = async () => {
-    await testServer.inject({
+    const deleteRes = await testServer.inject({
       method: "DELETE",
       url: `/api/v2/organizations/${orgId}`,
       headers: { authorization: `Bearer ${authToken}` }
     });
+    expect(deleteRes.statusCode).toBe(200);
   };
 
   return { orgId, projectId, authToken, cleanup };
+};
+
+// Nothing in the test plan creates sub-orgs, so the row is written directly and the seed user made its
+// admin to get a scoped token. Deleting the root org cascades to it (parentOrgId), so no cleanup needed.
+export const createSubOrgAndProject = async (dto: { rootOrgId: string; namePrefix: string }) => {
+  const slug = `${dto.namePrefix}-${randomUUID().slice(0, 8)}`;
+  const [subOrg] = await testDb(TableName.Organization)
+    .insert({ name: slug, slug, parentOrgId: dto.rootOrgId, rootOrgId: dto.rootOrgId })
+    .returning("id");
+  const subOrgId = (subOrg as { id: string }).id;
+
+  await addUserMembership({ userId: seedData1.id, orgId: subOrgId, role: OrgMembershipRole.Admin });
+
+  const selectOrgRes = await selectOrg(jwtAuthToken, subOrgId);
+  expect(selectOrgRes.statusCode).toBe(200);
+  const authToken = selectOrgRes.payload.token as string;
+
+  const projectId = await createProject(authToken, slug);
+
+  return { subOrgId, projectId, authToken };
 };

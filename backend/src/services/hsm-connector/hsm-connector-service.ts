@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TGatewayPoolDALFactory } from "@app/ee/services/gateway-pool/gateway-pool-dal";
+import { assertIndividualGatewayAllowed } from "@app/ee/services/gateway-pool/gateway-pool-policy-fns";
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
@@ -14,7 +15,9 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { isPkcs11Error, Pkcs11ErrorCode } from "@app/lib/gateway-v2/pkcs11-rpc";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { HsmKeyAlgorithm } from "@app/services/signer/signer-enums";
 
 import type { THsmConnectorDALFactory } from "./hsm-connector-dal";
@@ -30,6 +33,7 @@ import type {
   TDeleteHsmConnectorDTO,
   TGetHsmConnectorByIdDTO,
   THsmConnectorCredentials,
+  THsmConnectorKey,
   THsmConnectorSanitized,
   THsmConnectorServiceActor,
   TListHsmConnectorsDTO,
@@ -45,10 +49,14 @@ export type THsmConnectorServiceFactoryDep = {
   gatewayPoolService: Pick<TGatewayPoolServiceFactory, "listHealthyGateways" | "selectGatewayFromPool">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "findById">;
   gatewayPoolDAL: Pick<TGatewayPoolDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
 };
 
 export type THsmConnectorServiceFactory = ReturnType<typeof hsmConnectorServiceFactory>;
+
+const OLD_GATEWAY_BAD_REQUEST_MESSAGE = "Invalid request";
+const GATEWAY_MAX_SIGN_DATA_BYTES = 64 * 1024;
 
 export const hsmConnectorServiceFactory = ({
   hsmConnectorDAL,
@@ -58,6 +66,7 @@ export const hsmConnectorServiceFactory = ({
   gatewayPoolService,
   gatewayV2DAL,
   gatewayPoolDAL,
+  orgDAL,
   licenseService
 }: THsmConnectorServiceFactoryDep) => {
   const routing = hsmConnectorRoutingFactory({ gatewayV2Service, gatewayPoolService });
@@ -65,13 +74,15 @@ export const hsmConnectorServiceFactory = ({
   const assertGatewayBelongsToOrg = async (
     actorOrgId: string,
     gatewayId: string | null | undefined,
-    gatewayPoolId: string | null | undefined
+    gatewayPoolId: string | null | undefined,
+    previousGatewayId?: string | null
   ) => {
     if (gatewayId) {
       const gw = await gatewayV2DAL.findById(gatewayId);
       if (!gw || gw.orgId !== actorOrgId) {
         throw new NotFoundError({ message: `Gateway ${gatewayId} not found.` });
       }
+      await assertIndividualGatewayAllowed({ orgDAL, orgId: actorOrgId, gatewayId, previousGatewayId });
     }
     if (gatewayPoolId) {
       const pool = await gatewayPoolDAL.findById(gatewayPoolId);
@@ -246,7 +257,7 @@ export const hsmConnectorServiceFactory = ({
     }
 
     if (routingChanged) {
-      await assertGatewayBelongsToOrg(actor.orgId, nextGatewayId, nextGatewayPoolId);
+      await assertGatewayBelongsToOrg(actor.orgId, nextGatewayId, nextGatewayPoolId, row.gatewayId);
     }
 
     const effectiveRoutingChanged =
@@ -405,17 +416,44 @@ export const hsmConnectorServiceFactory = ({
     return { projectId: row.projectId, name: row.name, result };
   };
 
+  const $decryptCredentials = (row: { projectId: string; encryptedCredentials: Buffer }) =>
+    decryptHsmConnectorCredentials({
+      projectId: row.projectId,
+      encryptedCredentials: row.encryptedCredentials,
+      kmsService
+    });
+
   const $loadConnector = async (connectorId: string, expectedProjectId: string) => {
     const row = await hsmConnectorDAL.findById(connectorId);
     if (!row || row.projectId !== expectedProjectId) {
       throw new NotFoundError({ message: `HSM Connector ${connectorId} not found.` });
     }
-    const credentials = await decryptHsmConnectorCredentials({
-      projectId: row.projectId,
-      encryptedCredentials: row.encryptedCredentials,
-      kmsService
-    });
-    return { row, credentials };
+    return { row, credentials: await $decryptCredentials(row) };
+  };
+
+  const $rethrowKeyError = (err: unknown, keyLabel: string, keyId?: string | null): never => {
+    if (
+      keyId &&
+      err instanceof BadRequestError &&
+      err.message.endsWith(`(${Pkcs11ErrorCode.BadRequest}): ${OLD_GATEWAY_BAD_REQUEST_MESSAGE}`)
+    ) {
+      throw new BadRequestError({
+        message: `More than one key in the HSM Connector's slot has the label '${keyLabel}', and the gateway is too old to select a key by key ID. Update the gateway to the latest version.`
+      });
+    }
+    if (isPkcs11Error(err, Pkcs11ErrorCode.SignatureMismatch)) {
+      throw new BadRequestError({
+        message: `The HSM key labeled '${keyLabel}' produced a signature that doesn't verify with the certificate's public key. Check that the label points to the certificate's private key.`
+      });
+    }
+    if (isPkcs11Error(err, Pkcs11ErrorCode.KeyAmbiguous)) {
+      throw new BadRequestError({
+        message: keyId
+          ? `More than one key in the HSM Connector's slot has the label '${keyLabel}' and key ID '${keyId}'. Give the keys unique labels or key IDs.`
+          : `More than one key in the HSM Connector's slot has the label '${keyLabel}'. Set the key ID to choose one, or give the keys unique labels.`
+      });
+    }
+    throw err;
   };
 
   const generateKeyPair = async (args: {
@@ -423,51 +461,115 @@ export const hsmConnectorServiceFactory = ({
     projectId: string;
     keyLabel: string;
     keyAlgorithm: HsmKeyAlgorithm;
-  }): Promise<{ publicKeySpkiDer: Buffer; keyLabel: string }> => {
+  }): Promise<{ publicKeySpkiDer: Buffer; keyLabel: string; keyId: string | null }> => {
     const { row, credentials } = await $loadConnector(args.connectorId, args.projectId);
     const prefix = credentials.keyNamePrefix ?? "";
     const fullLabel = `${prefix}${args.keyLabel}`;
-    const result = await routing.dispatchPkcs11<{ publicKey: string }>({
+    const result = await routing.dispatchPkcs11<{ publicKey: string; keyId?: string }>({
       connector: { gatewayId: row.gatewayId, gatewayPoolId: row.gatewayPoolId },
       credentials,
       endpoint: "/v1/generate-key-pair",
       params: { keyLabel: fullLabel, keyAlgorithm: args.keyAlgorithm }
     });
-    return { publicKeySpkiDer: Buffer.from(result.publicKey, "base64"), keyLabel: fullLabel };
+    return {
+      publicKeySpkiDer: Buffer.from(result.publicKey, "base64"),
+      keyLabel: fullLabel,
+      keyId: result.keyId || null
+    };
   };
 
-  const sign = async (args: {
+  const signWithKeyId = async (args: {
     connectorId: string;
     projectId: string;
     keyLabel: string;
+    keyId?: string | null;
+    publicKeySpki: Buffer | null;
     mechanism: string;
     data: Buffer;
     isDigest: boolean;
-  }): Promise<Buffer> => {
+  }): Promise<{ signature: Buffer; keyId: string | null }> => {
+    if (args.data.length > GATEWAY_MAX_SIGN_DATA_BYTES) {
+      throw new BadRequestError({
+        message: `The data to sign is ${args.data.length} bytes, more than the ${GATEWAY_MAX_SIGN_DATA_BYTES} bytes the HSM Connector's gateway accepts.`
+      });
+    }
     const { row, credentials } = await $loadConnector(args.connectorId, args.projectId);
-    const result = await routing.dispatchPkcs11<{ signature: string }>({
-      connector: { gatewayId: row.gatewayId, gatewayPoolId: row.gatewayPoolId },
-      credentials,
-      endpoint: "/v1/sign",
-      params: {
-        keyLabel: args.keyLabel,
-        mechanism: args.mechanism,
-        data: args.data.toString("base64"),
-        isDigest: args.isDigest
-      }
-    });
-    return Buffer.from(result.signature, "base64");
+    const result = await routing
+      .dispatchPkcs11<{ signature: string; keyId?: string }>({
+        connector: { gatewayId: row.gatewayId, gatewayPoolId: row.gatewayPoolId },
+        credentials,
+        endpoint: "/v1/sign",
+        params: {
+          keyLabel: args.keyLabel,
+          keyId: args.keyId ?? "",
+          publicKey: args.publicKeySpki?.toString("base64") ?? "",
+          mechanism: args.mechanism,
+          data: args.data.toString("base64"),
+          isDigest: args.isDigest
+        }
+      })
+      .catch((err: unknown) => {
+        if (isPkcs11Error(err, Pkcs11ErrorCode.KeyNotFound)) {
+          throw new BadRequestError({
+            message: args.keyId
+              ? `No private key with the label '${args.keyLabel}' and key ID '${args.keyId}' was found in the HSM Connector's slot.`
+              : `No private key labeled '${args.keyLabel}' was found in the HSM Connector's slot.`
+          });
+        }
+        return $rethrowKeyError(err, args.keyLabel, args.keyId);
+      });
+    return { signature: Buffer.from(result.signature, "base64"), keyId: result.keyId || null };
   };
 
-  const getPublicKey = async (args: { connectorId: string; projectId: string; keyLabel: string }): Promise<Buffer> => {
+  const sign = async (args: Parameters<typeof signWithKeyId>[0]): Promise<Buffer> =>
+    (await signWithKeyId(args)).signature;
+
+  const getPublicKey = async (args: {
+    connectorId: string;
+    projectId: string;
+    keyLabel: string;
+    keyId?: string | null;
+  }): Promise<Buffer> => {
     const { row, credentials } = await $loadConnector(args.connectorId, args.projectId);
-    const result = await routing.dispatchPkcs11<{ publicKey: string }>({
-      connector: { gatewayId: row.gatewayId, gatewayPoolId: row.gatewayPoolId },
-      credentials,
-      endpoint: "/v1/get-public-key",
-      params: { keyLabel: args.keyLabel }
-    });
+    const result = await routing
+      .dispatchPkcs11<{ publicKey: string }>({
+        connector: { gatewayId: row.gatewayId, gatewayPoolId: row.gatewayPoolId },
+        credentials,
+        endpoint: "/v1/get-public-key",
+        params: { keyLabel: args.keyLabel, keyId: args.keyId ?? "" }
+      })
+      .catch((err: unknown) => $rethrowKeyError(err, args.keyLabel, args.keyId));
     return Buffer.from(result.publicKey, "base64");
+  };
+
+  const listHsmConnectorKeys = async (
+    dto: { connectorId: string; projectId: string; keyLabel: string },
+    actor: THsmConnectorServiceActor
+  ) => {
+    await assertProjectPermission(actor, dto.projectId, ProjectPermissionHsmConnectorActions.Attach);
+    const { row, credentials } = await $loadConnector(dto.connectorId, dto.projectId);
+
+    const result = await routing
+      .dispatchPkcs11<{ keys: THsmConnectorKey[] }>({
+        connector: { gatewayId: row.gatewayId, gatewayPoolId: row.gatewayPoolId },
+        credentials,
+        endpoint: "/v1/find-keys",
+        params: { keyLabel: dto.keyLabel }
+      })
+      .catch((err: unknown) => {
+        if (isPkcs11Error(err, Pkcs11ErrorCode.UnsupportedGatewayVersion)) {
+          throw new BadRequestError({
+            message: "The HSM Connector's gateway is too old to look up keys. Update the gateway to the latest version."
+          });
+        }
+        if (isPkcs11Error(err, Pkcs11ErrorCode.BadRequest)) {
+          throw new BadRequestError({
+            message: `Too many private keys in the HSM Connector's slot have the label '${dto.keyLabel}'. Give the keys unique labels.`
+          });
+        }
+        throw err;
+      });
+    return { keys: result.keys };
   };
 
   const assertAttachPermission = async (
@@ -498,6 +600,8 @@ export const hsmConnectorServiceFactory = ({
     assertAttachPermission,
     generateKeyPair,
     sign,
-    getPublicKey
+    signWithKeyId,
+    getPublicKey,
+    listHsmConnectorKeys
   };
 };

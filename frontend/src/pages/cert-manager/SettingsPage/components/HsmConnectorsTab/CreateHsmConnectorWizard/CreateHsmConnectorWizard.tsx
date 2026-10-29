@@ -1,27 +1,27 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useQuery } from "@tanstack/react-query";
-import { ShieldCheckIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  DiscardChangesAlertDialog,
   Sheet,
   SheetContent,
+  SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Stepper,
   StepperList,
   StepperStep
 } from "@app/components/v3";
-import { useListGatewayPools } from "@app/hooks/api/gateway-pools";
-import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
-import { useCreateHsmConnector } from "@app/hooks/api/hsmConnectors";
+import { THsmConnector, useCreateHsmConnector } from "@app/hooks/api/hsmConnectors";
+import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
 import { AccessStep } from "./AccessStep";
 import { BasicsStep } from "./BasicsStep";
-import { HostStep, ReachedFromOption } from "./HostStep";
+import { HostStep } from "./HostStep";
 import {
   AccessForm,
   accessSchema,
@@ -35,28 +35,15 @@ import { INITIAL_WIZARD_STATE, STEPS, WizardState } from "./types";
 type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  onCreated?: (connector: THsmConnector) => void;
 };
 
-export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
+export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange, onCreated }: Props) => {
   const [step, setStep] = useState(0);
   const [state, setState] = useState<WizardState>(INITIAL_WIZARD_STATE);
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: gateways = [], isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
-  const { data: pools = [], isPending: isPoolsLoading } = useListGatewayPools();
   const createMutation = useCreateHsmConnector();
-
-  const reachedFromOptions: ReachedFromOption[] = useMemo(() => {
-    const gatewayOptions: ReachedFromOption[] = gateways
-      .filter((g) => g.capabilities?.pkcs11 === true)
-      .map((g) => ({ value: `gateway:${g.id}`, label: g.name, group: "gateway" as const }));
-    const poolOptions: ReachedFromOption[] = pools.map((p) => ({
-      value: `pool:${p.id}`,
-      label: p.name,
-      group: "pool" as const
-    }));
-    return [...gatewayOptions, ...poolOptions];
-  }, [gateways, pools]);
 
   const basicsForm = useForm<BasicsForm>({
     resolver: zodResolver(basicsSchema),
@@ -83,17 +70,32 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
     accessForm.reset({ slotLabel: "", pin: "", keyNamePrefix: "infisical-" });
   };
 
+  const dirty =
+    step > 0 ||
+    basicsForm.formState.isDirty ||
+    hostForm.formState.isDirty ||
+    accessForm.formState.isDirty ||
+    JSON.stringify(state) !== JSON.stringify(INITIAL_WIZARD_STATE);
+  const { isDiscardDialogOpen, setIsDiscardDialogOpen, requestDiscard, confirmDiscard } =
+    useDiscardChangesGuard({
+      isDirty: dirty,
+      onDiscard: () => {
+        reset();
+        onOpenChange(false);
+      }
+    });
   const handleClose = (open: boolean) => {
-    if (!open && submitting) return;
-    if (!open) reset();
-    onOpenChange(open);
+    if (submitting) return;
+    if (open) onOpenChange(true);
+    else requestDiscard();
   };
 
   const onCreate = async (finalState: WizardState) => {
+    if (submitting) return;
     setSubmitting(true);
     try {
       const [kind, id] = finalState.reachedFrom.split(":");
-      await createMutation.mutateAsync({
+      const connector = await createMutation.mutateAsync({
         name: finalState.name,
         description: finalState.description.trim() || undefined,
         gatewayId: kind === "gateway" ? id : undefined,
@@ -108,18 +110,18 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
         type: "success",
         text: `HSM Connector "${finalState.name}" created and verified.`
       });
-      handleClose(false);
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to create HSM Connector"
-      });
+      reset();
+      onOpenChange(false);
+      onCreated?.(connector);
+      // eslint-disable-next-line no-empty
+    } catch {
     } finally {
       setSubmitting(false);
     }
   };
 
   const goNext = async () => {
+    if (submitting) return;
     if (step === 0) {
       const ok = await basicsForm.trigger();
       if (!ok) return;
@@ -156,117 +158,117 @@ export const CreateHsmConnectorWizard = ({ isOpen, onOpenChange }: Props) => {
   };
 
   const goBack = () => {
-    if (step > 0) setStep((s) => s - 1);
+    if (step > 0 && !submitting) setStep((s) => s - 1);
   };
 
-  const dirty = step > 0 || state.name !== "";
   const currentStep = STEPS[step];
   const isLast = step === STEPS.length - 1;
   const ctaLabel = isLast ? "Add HSM Connector" : "Continue";
 
   return (
-    <Sheet open={isOpen} onOpenChange={handleClose}>
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-[1500px]">
-        <SheetHeader className="border-b">
-          <SheetTitle>
-            <div className="flex w-full items-start gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-md bg-project/10 text-project">
-                <ShieldCheckIcon className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-x-2 text-label">Add HSM Connector</div>
-                <p className="text-sm leading-4 text-muted">
-                  Register a hardware security module so Infisical can route key operations through
-                  it.
-                </p>
-              </div>
-            </div>
-          </SheetTitle>
-        </SheetHeader>
+    <>
+      <Sheet open={isOpen} onOpenChange={handleClose}>
+        <SheetContent size="workspace" isPending={submitting}>
+          <SheetHeader>
+            <SheetTitle>Add HSM Connector</SheetTitle>
+            <SheetDescription>
+              Register a hardware security module so Infisical can route key operations through it.
+            </SheetDescription>
+          </SheetHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex min-h-0 flex-1 overflow-hidden">
-            <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
-              <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
-                Setup steps
-              </p>
-              <Stepper
-                activeStep={step}
-                orientation="vertical"
-                onStepChange={(i) => {
-                  if (i < step) setStep(i);
-                }}
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-1 overflow-hidden">
+              <aside className="flex w-60 shrink-0 flex-col border-r border-border px-5 py-6">
+                <p className="mb-5 text-[11px] font-medium tracking-wider text-muted uppercase">
+                  Setup steps
+                </p>
+                <Stepper
+                  activeStep={step}
+                  orientation="vertical"
+                  onStepChange={(i) => {
+                    if (i < step && !submitting) setStep(i);
+                  }}
+                >
+                  <StepperList>
+                    {STEPS.map((s, i) => (
+                      <StepperStep
+                        key={s.name}
+                        index={i}
+                        title={s.name}
+                        description={s.shortDescription}
+                      />
+                    ))}
+                  </StepperList>
+                </Stepper>
+              </aside>
+
+              <fieldset
+                disabled={submitting}
+                className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6"
               >
-                <StepperList>
-                  {STEPS.map((s, i) => (
-                    <StepperStep
-                      key={s.name}
-                      index={i}
-                      title={s.name}
-                      description={s.shortDescription}
-                    />
-                  ))}
-                </StepperList>
-              </Stepper>
-            </aside>
+                <div className="mb-6">
+                  <h2 className="text-lg font-normal text-foreground">{currentStep.title}</h2>
+                  <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
+                </div>
 
-            <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
-                <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
-              </div>
+                {step === 0 && <BasicsStep form={basicsForm} />}
+                {step === 1 && <HostStep form={hostForm} />}
+                {step === 2 && <AccessStep form={accessForm} />}
+              </fieldset>
 
-              {step === 0 && <BasicsStep form={basicsForm} />}
-              {step === 1 && (
-                <HostStep
-                  form={hostForm}
-                  options={reachedFromOptions}
-                  isLoading={isGatewaysLoading || isPoolsLoading}
-                />
-              )}
-              {step === 2 && <AccessStep form={accessForm} />}
+              <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
+                <div>
+                  <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
+                    Step {step + 1} · {currentStep.rightLabel}
+                  </p>
+                  <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">
+                    {currentStep.rightDescription}
+                  </p>
+                </div>
+
+                <div className="mt-auto space-y-3">
+                  {isLast && (
+                    <p className="text-xs leading-relaxed text-muted">
+                      Infisical runs a Verify against your HSM before saving. A wrong PIN, slot, or
+                      unreachable Gateway will surface here.
+                    </p>
+                  )}
+                </div>
+              </aside>
             </div>
 
-            <aside className="hidden w-80 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border px-6 py-6 lg:flex">
-              <div>
-                <p className="text-[11px] font-medium tracking-wider text-muted uppercase">
-                  Step {step + 1} · {currentStep.rightLabel}
-                </p>
-                <p className="mt-4 text-sm font-semibold text-foreground">What this step does</p>
-                <p className="mt-2 text-sm leading-relaxed text-muted">
-                  {currentStep.rightDescription}
-                </p>
-              </div>
-
-              <div className="mt-auto space-y-3">
-                {isLast && (
-                  <p className="text-xs leading-relaxed text-muted">
-                    Infisical runs a Verify against your HSM before saving. A wrong PIN, slot, or
-                    unreachable Gateway will surface here.
-                  </p>
-                )}
-              </div>
-            </aside>
-          </div>
-
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
-            <span className="text-xs text-muted">{dirty ? "Unsaved changes" : ""}</span>
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted">
-                Step {step + 1} of {STEPS.length}
-              </span>
+            <SheetFooter className="items-center justify-end border-t">
               {step > 0 && (
-                <Button variant="outline" onClick={goBack}>
+                <Button
+                  variant="outline"
+                  className="mr-auto"
+                  onClick={goBack}
+                  isDisabled={submitting}
+                >
                   Back
                 </Button>
               )}
+              <span className="text-xs text-muted">
+                Step {step + 1} of {STEPS.length}
+              </span>
+              <Button variant="ghost" onClick={() => handleClose(false)} isDisabled={submitting}>
+                Cancel
+              </Button>
               <Button variant="project" onClick={goNext} isPending={submitting}>
                 {ctaLabel}
               </Button>
-            </div>
+            </SheetFooter>
           </div>
-        </div>
-      </SheetContent>
-    </Sheet>
+        </SheetContent>
+      </Sheet>
+      <DiscardChangesAlertDialog
+        open={isDiscardDialogOpen}
+        onOpenChange={setIsDiscardDialogOpen}
+        onDiscard={confirmDiscard}
+        title="Discard Changes?"
+        description="Your HSM connector setup changes will be lost."
+      />
+    </>
   );
 };

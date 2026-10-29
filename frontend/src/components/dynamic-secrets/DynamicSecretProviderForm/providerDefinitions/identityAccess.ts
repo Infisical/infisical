@@ -8,6 +8,7 @@ import { gcpIamDynamicSecretProvider } from "./gcpIam";
 import { githubDynamicSecretProvider } from "./github";
 import { IDENTITY_ACCESS_DYNAMIC_SECRET_PROVIDERS } from "./identityAccessContract";
 import { ldapDynamicSecretProvider } from "./ldap";
+import { oauth2DynamicSecretProvider } from "./oauth2";
 import { sshDynamicSecretProvider } from "./ssh";
 import { tailscaleDynamicSecretProvider } from "./tailscale";
 
@@ -17,6 +18,7 @@ const definitionsByProvider = {
   [DynamicSecretProviders.AzureEntraId]: azureEntraIdDynamicSecretProvider,
   [DynamicSecretProviders.Github]: githubDynamicSecretProvider,
   [DynamicSecretProviders.Tailscale]: tailscaleDynamicSecretProvider,
+  [DynamicSecretProviders.OAuth2]: oauth2DynamicSecretProvider,
   [DynamicSecretProviders.Ssh]: sshDynamicSecretProvider,
   [DynamicSecretProviders.Ldap]: ldapDynamicSecretProvider
 } satisfies Record<

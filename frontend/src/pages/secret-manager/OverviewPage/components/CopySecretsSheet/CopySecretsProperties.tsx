@@ -51,7 +51,7 @@ export const CopySecretsProperties = ({
         aria-labelledby="copy-properties-heading"
       >
         <div className="flex flex-col gap-1">
-          <h3 id="copy-properties-heading" className="text-sm font-medium">
+          <h3 id="copy-properties-heading" className="text-sm font-normal">
             Include Properties
           </h3>
           <p className="text-xs text-muted">

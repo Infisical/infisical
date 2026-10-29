@@ -34,6 +34,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Combobox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -43,7 +44,6 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  FilterableSelect,
   IconButton,
   Input,
   Select,
@@ -116,7 +116,9 @@ const ProviderMultiSelect = <T extends string>({
 }) => {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-muted">{label}</label>
+      <label htmlFor="secret-validation-rule-providers" className="text-xs font-medium text-muted">
+        {label}
+      </label>
       <Controller
         control={control}
         name="enforcement.providers"
@@ -125,17 +127,16 @@ const ProviderMultiSelect = <T extends string>({
             (field.value as T[] | undefined)?.includes(opt.value)
           );
           return (
-            <FilterableSelect
-              isMulti
+            <Combobox
+              id="secret-validation-rule-providers"
+              multiple
               placeholder="Select provider(s)..."
               value={selected}
-              onChange={(next) => {
-                const arr = (next as TProviderOption<T>[] | null) ?? [];
-                field.onChange(arr.map((o) => o.value));
-              }}
+              onValueChange={(next) => field.onChange(next.map((o) => o.value))}
               options={options}
-              getOptionValue={(o) => (o as TProviderOption<T>).value}
-              getOptionLabel={(o) => (o as TProviderOption<T>).label}
+              getOptionValue={(o) => o.value}
+              getOptionKeywords={(o) => [o.value]}
+              getOptionLabel={(o) => o.label}
               isError={Boolean(error)}
             />
           );
@@ -348,7 +349,7 @@ const RuleFormContent = ({
 
           {/* Scope */}
           <div>
-            <h4 className="mb-3 text-sm font-medium text-foreground">Scope</h4>
+            <h4 className="mb-3 text-sm font-normal text-foreground">Scope</h4>
             <div className="space-y-4">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-muted">Environment</label>
@@ -437,7 +438,7 @@ const RuleFormContent = ({
           {/* Constraints */}
           <div>
             <div className="mb-3 flex items-center justify-between">
-              <h4 className="text-sm font-medium text-foreground">Validation Constraints</h4>
+              <h4 className="text-sm font-normal text-foreground">Validation Constraints</h4>
               {availableConstraintOptions.length > 0 && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -519,12 +520,12 @@ const RuleFormContent = ({
         </div>
 
         {/* Footer */}
-        <SheetFooter className="border-t">
-          <Button variant="project" type="submit">
-            {isEditing ? "Save Changes" : "Create Rule"}
-          </Button>
+        <SheetFooter className="justify-end border-t">
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
+          </Button>
+          <Button variant="project" type="submit">
+            {isEditing ? "Save Changes" : "Create Rule"}
           </Button>
         </SheetFooter>
       </form>

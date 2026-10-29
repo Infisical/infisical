@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 import {
@@ -12,10 +11,11 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import {
   AccessRestrictedDialog,
   Button,
-  DeleteConfirmDialog,
+  ConfirmationAlertDialog,
   DocumentationLinkBadge,
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +32,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
+import { useProject } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
   PkiApplicationResourceActions,
@@ -82,10 +83,11 @@ const PermissionedTab = ({ value, label, isBlocked, blockedReason }: Permissione
 export const ApplicationDetailsByIDPage = () => {
   const params = useParams({ strict: false }) as {
     applicationName?: string;
-    projectId?: string;
     orgId?: string;
   };
-  const { applicationName, projectId, orgId } = params;
+  const { applicationName, orgId } = params;
+  const { currentProject } = useProject();
+  const projectId = currentProject.id;
   const search = useSearch({ strict: false }) as { selectedTab?: string; search?: string };
   const navigate = useNavigate();
 
@@ -152,8 +154,8 @@ export const ApplicationDetailsByIDPage = () => {
       createNotification({ type: "success", text: `Deleted ${application.name}` });
       setIsDeleteOpen(false);
       navigate({
-        to: "/organizations/$orgId/projects/cert-manager/$projectId/applications",
-        params: { orgId: orgId ?? "", projectId: projectId ?? "" }
+        to: "/organizations/$orgId/cert-manager/applications",
+        params: { orgId: orgId ?? "" }
       });
     } catch (err) {
       const detail = err instanceof Error ? err.message : "Failed to delete application.";
@@ -162,7 +164,12 @@ export const ApplicationDetailsByIDPage = () => {
   };
 
   if (isPending) {
-    return <PageLoader />;
+    return (
+      <>
+        <PageTitle title="Application" />
+        <PageLoader />
+      </>
+    );
   }
 
   const isAccessForbidden =
@@ -173,31 +180,42 @@ export const ApplicationDetailsByIDPage = () => {
 
   if (isAccessForbidden) {
     return (
-      <AccessRestrictedDialog description="You don't have access to this application. An administrator can grant it." />
+      <>
+        <PageTitle title="Application" />
+        <AccessRestrictedDialog description="You don't have access to this application. An administrator can grant it." />
+      </>
     );
   }
 
   if (!application) {
-    return <div className="p-12 text-muted">Application not found.</div>;
+    return (
+      <>
+        <PageTitle title="Application" />
+        <div className="p-12 text-muted">Application not found.</div>
+      </>
+    );
   }
 
   if (isPermissionsPending) {
-    return <PageLoader />;
+    return (
+      <>
+        <PageTitle title="Application" />
+        <PageLoader />
+      </>
+    );
   }
 
   return (
     <>
-      <Helmet>
-        <title>{application.name}</title>
-      </Helmet>
+      <PageTitle title={application.name || "Application"} />
       <div className="h-full bg-page">
         <div className="mx-auto flex flex-col text-foreground-inverse">
-          <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col gap-8">
+          <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
             <PageHeader
               backLink={
                 <Link
-                  to="/organizations/$orgId/projects/cert-manager/$projectId/applications"
-                  params={{ orgId: orgId ?? "", projectId: projectId ?? "" }}
+                  to="/organizations/$orgId/cert-manager/applications"
+                  params={{ orgId: orgId ?? "" }}
                 >
                   <ChevronLeftIcon size={16} />
                   Back to Applications
@@ -252,10 +270,9 @@ export const ApplicationDetailsByIDPage = () => {
               value={selectedTab}
               onValueChange={(v) =>
                 navigate({
-                  to: "/organizations/$orgId/projects/cert-manager/$projectId/applications/$applicationName",
+                  to: "/organizations/$orgId/cert-manager/applications/$applicationName",
                   params: {
                     orgId: orgId ?? "",
-                    projectId: projectId ?? "",
                     applicationName: application.name
                   },
                   search: {
@@ -314,7 +331,7 @@ export const ApplicationDetailsByIDPage = () => {
                   <ApplicationSyncsTab
                     applicationId={application.id}
                     applicationName={application.name}
-                    projectId={projectId ?? ""}
+                    projectId={projectId}
                   />
                 </TabsContent>
               )}
@@ -329,7 +346,7 @@ export const ApplicationDetailsByIDPage = () => {
         </div>
       </div>
 
-      <DeleteConfirmDialog
+      <ConfirmationAlertDialog
         isOpen={isDeleteOpen}
         onOpenChange={setIsDeleteOpen}
         title={`Delete ${application.name}?`}

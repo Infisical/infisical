@@ -50,12 +50,17 @@ import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { ProjectEnv } from "@app/hooks/api/types";
 
+import { useOverviewTelemetry } from "../../OverviewTelemetry";
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
 import {
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
-  TABLE_ROW_ACTION_BUTTON_CLASS_NAME
+  TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
+  TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
+  TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
+  TABLE_ROW_NAME_COLUMN_CLASS_NAME
 } from "../tableRowActionStyles";
+import type { TableRowActivityChangeHandler, TableRowActivityId } from "../tableRowActivity";
 import { SecretEditTableRow } from "./SecretEditTableRow";
 import { SecretOverrideRow } from "./SecretOverrideRow";
 import SecretRenameForm from "./SecretRenameForm";
@@ -66,6 +71,10 @@ type Props = {
   environments: { name: string; slug: string }[];
   isSelected: boolean;
   onToggleSecretSelect: (key: string, isShiftKey: boolean) => void;
+  isExpanded: boolean;
+  onToggleExpand: (key: string) => void;
+  isSecretVisible: boolean;
+  onToggleSecretVisible: (key: string) => void;
   getSecretByKey: (slug: string, key: string) => SecretV3RawSanitized | undefined;
   onSecretCreate: (env: string, key: string, value: string, type?: SecretType) => Promise<void>;
   onSecretUpdate: (params: {
@@ -95,7 +104,6 @@ type Props = {
         environmentInfo?: ProjectEnv;
       }
     | undefined;
-  tableWidth: number;
   importedBy?: {
     environment: { name: string; slug: string };
     folders: {
@@ -105,13 +113,17 @@ type Props = {
     }[];
   }[];
   isSingleEnvSecretsVisible?: boolean;
-  isBatchMode?: boolean;
   onBatchRevert?: (env: string, key: string) => void;
+  onPendingSave?: (env: string, key: string, pendingChangeId?: string) => Promise<void>;
   isSelectionDisabled?: boolean;
   onCopySecret?: (request: {
     source: { id: string; name: string; path: string; isValueHidden: boolean };
     environmentSlug: string;
   }) => void;
+  onAccessInsightsUpgrade: (onGranted: () => void) => void;
+  timestampSortField?: "createdAt" | "updatedAt";
+  activityId: TableRowActivityId;
+  onActivityChange: TableRowActivityChangeHandler;
 };
 
 type ExpandedTableSortColumn = "environment";
@@ -131,27 +143,49 @@ export const SecretTableRow = ({
   onSecretDelete,
   isImportedSecretPresentInEnv,
   getImportedSecretByKey,
-  tableWidth,
   onToggleSecretSelect,
+  isExpanded,
+  onToggleExpand,
+  isSecretVisible,
+  onToggleSecretVisible,
   isSelected,
   importedBy,
   isSingleEnvSecretsVisible,
-  isBatchMode,
   onBatchRevert,
+  onPendingSave,
   isSelectionDisabled,
-  onCopySecret
+  onCopySecret,
+  onAccessInsightsUpgrade,
+  timestampSortField,
+  activityId,
+  onActivityChange
 }: Props) => {
-  const [isFormExpanded, setIsFormExpanded] = useToggle();
+  const telemetry = useOverviewTelemetry();
   const totalCols = environments.length + 2; // secret key row + icon
-  const [isSecretVisible, setIsSecretVisible] = useToggle();
   const [isEditSecretNameOpen, setIsEditSecretNameOpen] = useState(false);
+  const [isSingleEnvBaseActive, setIsSingleEnvBaseActive] = useState(false);
+  const [isSingleEnvOverrideActive, setIsSingleEnvOverrideActive] = useState(false);
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
   const [creatingOverrideEnvs, setCreatingOverrideEnvs] = useState<Set<string>>(new Set());
   const [expandedTableSort, setExpandedTableSort] = useState<ExpandedTableSort | null>(null);
 
   const isSingleEnvView = environments.length === 1;
+  const isRowActive = isSingleEnvView
+    ? isSingleEnvBaseActive || isSingleEnvOverrideActive
+    : isExpanded;
   const { projectId } = useProject();
   const { mutateAsync: updateSecretV3ForRename } = useUpdateSecretV3();
+
+  useEffect(() => {
+    onActivityChange(activityId, isRowActive);
+  }, [activityId, isRowActive, onActivityChange]);
+
+  useEffect(
+    () => () => {
+      onActivityChange(activityId, false);
+    },
+    [activityId, onActivityChange]
+  );
 
   // Pre-compute single-env data
   const singleEnvSlug = isSingleEnvView ? environments[0].slug : "";
@@ -271,80 +305,75 @@ export const SecretTableRow = ({
   return (
     <>
       <TableRow
-        onClick={isSingleEnvView ? undefined : () => setIsFormExpanded.toggle()}
-        className={twMerge("group hover:z-10", pendingActionRowClass(singleEnvPendingAction))}
+        onClick={isSingleEnvView ? undefined : () => onToggleExpand(secretKey)}
+        className={twMerge(
+          "group hover:z-10",
+          (isSingleEnvView ? isSingleEnvBaseActive || isSelected : isRowActive || isSelected) &&
+            TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
+          pendingActionRowClass(singleEnvPendingAction)
+        )}
       >
-        <TableCell
-          className={twMerge(
-            "w-10 max-w-10 min-w-10 p-0",
-            !isSingleEnvView && "sticky left-0 z-10",
-            !singleEnvPendingAction &&
-              "bg-container transition-colors duration-75 group-hover:bg-container-hover",
-            !isSingleEnvView && isFormExpanded && "border-b-0 bg-container-hover",
-            isSingleEnvView && singleEnvShowOverride && "border-b-border/50",
-            isSingleEnvView && "relative",
-            pendingActionBorderClass(singleEnvPendingAction)
-          )}
-        >
-          <div className="flex h-full items-center justify-center [&>svg]:size-4">
-            <Checkbox
-              variant="project"
-              id={`checkbox-${secretKey}`}
-              isChecked={isSelected}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleSecretSelect(secretKey, e.shiftKey);
-              }}
-              className={twMerge(
-                "hidden",
-                !isSelectionDisabled && "group-hover:flex",
-                isSelected && "flex"
-              )}
-            />
-            {!isSingleEnvView && isFormExpanded ? (
-              <ChevronDownIcon
+        {(isSingleEnvView || !isExpanded) && (
+          <TableCell
+            className={twMerge(
+              "w-10 max-w-10 min-w-10 p-0",
+              !isSingleEnvView && "sticky left-0 z-10",
+              !singleEnvPendingAction &&
+                "bg-container transition-colors duration-75 group-hover:bg-container-hover",
+              isSingleEnvView && singleEnvShowOverride && "border-b-border/50",
+              isSingleEnvView && "relative",
+              pendingActionBorderClass(singleEnvPendingAction)
+            )}
+          >
+            <div className="flex h-full items-center justify-center [&>svg]:size-4">
+              <Checkbox
+                variant="project"
+                id={`checkbox-${secretKey}`}
+                isChecked={isSelected}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleSecretSelect(secretKey, e.shiftKey);
+                }}
                 className={twMerge(
-                  "block",
+                  "hidden",
+                  !isSelectionDisabled && "group-hover:flex",
+                  isSelected && "flex"
+                )}
+              />
+              <KeyIcon
+                className={twMerge(
+                  "block text-secret",
                   !isSelectionDisabled && "group-hover:!hidden",
                   isSelected && "!hidden"
                 )}
               />
-            ) : (
-              <>
-                <KeyIcon
+              {singleEnvSecret?.isRotatedSecret && isSingleEnvView && (
+                <RefreshCwIcon
                   className={twMerge(
-                    "block text-secret",
+                    "absolute right-2 bottom-2 !size-2.5 text-secret-rotation",
                     !isSelectionDisabled && "group-hover:!hidden",
                     isSelected && "!hidden"
                   )}
                 />
-                {singleEnvSecret?.isRotatedSecret && isSingleEnvView && (
-                  <RefreshCwIcon
-                    className={twMerge(
-                      "absolute right-2 bottom-2 !size-2.5 text-secret-rotation",
-                      !isSelectionDisabled && "group-hover:!hidden",
-                      isSelected && "!hidden"
-                    )}
-                  />
-                )}
-                {singleEnvSecret?.isHoneyTokenSecret && isSingleEnvView && (
-                  <HexagonIcon
-                    className={twMerge(
-                      "absolute right-2 bottom-2 !size-2.5 text-warning",
-                      !isSelectionDisabled && "group-hover:!hidden",
-                      isSelected && "!hidden"
-                    )}
-                  />
-                )}
-              </>
-            )}
-          </div>
-        </TableCell>
+              )}
+              {singleEnvSecret?.isHoneyTokenSecret && isSingleEnvView && (
+                <HexagonIcon
+                  className={twMerge(
+                    "absolute right-2 bottom-2 !size-2.5 text-warning",
+                    !isSelectionDisabled && "group-hover:!hidden",
+                    isSelected && "!hidden"
+                  )}
+                />
+              )}
+            </div>
+          </TableCell>
+        )}
         {isSingleEnvView ? (
           <SecretEditTableRow
             isSingleEnvView
-            isBatchMode={isBatchMode}
+            isBatchMode
             onBatchRevert={onBatchRevert}
+            onPendingSave={onPendingSave}
             isPendingCreate={singleEnvPendingAction === PendingAction.Create}
             isPendingDelete={singleEnvPendingAction === PendingAction.Delete}
             hasPendingChange={Boolean(singleEnvSecret?.isPending)}
@@ -400,85 +429,114 @@ export const SecretTableRow = ({
                     })
                 : undefined
             }
+            onAccessInsightsUpgrade={onAccessInsightsUpgrade}
+            onExpandedChange={setIsSingleEnvBaseActive}
+            lastEdited={timestampSortField ? singleEnvSecret : undefined}
+            timestampField={timestampSortField}
           />
         ) : (
           <TableCell
-            isTruncatable
+            isTruncatable={!isExpanded}
+            colSpan={isExpanded ? totalCols : undefined}
             className={twMerge(
-              "sticky left-10 z-10 border-r bg-container transition-all duration-75 group-hover:bg-container-hover",
-              isFormExpanded && "border-r-0 border-b-0 bg-container-hover"
+              "sticky left-10 z-10 border-r bg-container transition-colors duration-75 group-hover:bg-container-hover",
+              isExpanded && "relative left-auto border-r-0 border-b-0 bg-container-hover !p-0"
             )}
           >
-            <div className="flex min-w-0 items-center gap-2">
-              <span
-                title={secretKey}
-                className={twMerge(
-                  "min-w-0 truncate",
-                  singleEnvPendingAction === PendingAction.Delete && "text-danger/75 line-through"
-                )}
-              >
-                {secretKey}
-              </span>
-              {!isFormExpanded &&
-                environments.some(
-                  ({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectFolderGrant
-                ) && (
-                  <Badge variant="danger">
-                    <BanIcon className="size-3.5" />
-                    Secret share revoked
-                  </Badge>
-                )}
-            </div>
             <div
               className={twMerge(
-                "absolute z-20",
-                "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
-                TABLE_ROW_ACTION_BAR_CLASS_NAME,
-                "top-1/2 right-[3px] -translate-y-1/2"
+                isExpanded &&
+                  "sticky left-0 flex min-h-10 max-w-(--overview-table-width) min-w-(--overview-table-width) items-center bg-container-hover"
               )}
             >
-              <Tooltip disableHoverableContent>
-                <TooltipTrigger>
-                  <IconButton
-                    aria-label="Copy secret name"
-                    variant="ghost"
-                    size="xs"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      copyTokenToClipboard();
-                    }}
-                    className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                  >
-                    {isSecNameCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
-                  </IconButton>
-                </TooltipTrigger>
-                <TooltipContent>Copy Secret Name</TooltipContent>
-              </Tooltip>
-              <Tooltip disableHoverableContent>
-                <TooltipTrigger>
-                  <IconButton
-                    aria-label="Edit secret name"
-                    variant="ghost"
-                    size="xs"
-                    onClick={(e) => {
-                      setIsEditSecretNameOpen(true);
-                      e.stopPropagation();
-                    }}
-                    className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                </TooltipTrigger>
-                <TooltipContent>Edit Secret Name</TooltipContent>
-              </Tooltip>
+              {isExpanded && (
+                <div className="flex w-10 shrink-0 cursor-pointer items-center justify-center [&>svg]:size-4">
+                  <ChevronDownIcon />
+                </div>
+              )}
+              <div
+                className={twMerge(
+                  isExpanded && "relative flex min-h-10 min-w-0 flex-1 items-center px-1 py-1.5"
+                )}
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <Tooltip delayDuration={1000} skipDelayDuration={0}>
+                    <TooltipTrigger asChild>
+                      <span
+                        className={twMerge(
+                          isExpanded ? "break-all whitespace-normal" : "min-w-0 truncate",
+                          singleEnvPendingAction === PendingAction.Delete &&
+                            "text-danger/75 line-through"
+                        )}
+                      >
+                        {secretKey}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-(--radix-tooltip-content-available-width) break-all whitespace-normal">
+                      {secretKey}
+                    </TooltipContent>
+                  </Tooltip>
+                  {!isExpanded &&
+                    environments.some(
+                      ({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectFolderGrant
+                    ) && (
+                      <Badge variant="danger">
+                        <BanIcon className="size-3.5" />
+                        Secret share revoked
+                      </Badge>
+                    )}
+                </div>
+                <div
+                  className={twMerge(
+                    "absolute z-20",
+                    "flex items-center rounded-md border border-border bg-container-hover px-0.5 py-0.5 shadow-md",
+                    TABLE_ROW_ACTION_BAR_CLASS_NAME,
+                    "top-1/2 right-[3px] -translate-y-1/2"
+                  )}
+                >
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <IconButton
+                        aria-label="Copy secret name"
+                        variant="ghost"
+                        size="xs"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          copyTokenToClipboard();
+                        }}
+                        className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
+                      >
+                        {isSecNameCopied ? <ClipboardCheckIcon /> : <CopyIcon />}
+                      </IconButton>
+                    </TooltipTrigger>
+                    <TooltipContent>Copy Secret Name</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <IconButton
+                        aria-label="Edit secret name"
+                        variant="ghost"
+                        size="xs"
+                        onClick={(e) => {
+                          setIsEditSecretNameOpen(true);
+                          e.stopPropagation();
+                        }}
+                        className={TABLE_ROW_ACTION_BUTTON_CLASS_NAME}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </TooltipTrigger>
+                    <TooltipContent>Edit Secret Name</TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
             </div>
           </TableCell>
         )}
         {environments.length > 1 &&
+          !isExpanded &&
           environments.map(({ slug }, i) => {
-            if (isFormExpanded) return <TableCell className="border-b-0 bg-container-hover" />;
-
             const secret = getSecretByKey(slug, secretKey);
 
             const isSecretImported = isImportedSecretPresentInEnv(slug, secretKey);
@@ -508,19 +566,24 @@ export const SecretTableRow = ({
           })}
       </TableRow>
       {isSingleEnvView && singleEnvShowOverride && (
-        <TableRow className="group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]">
+        <TableRow
+          className={twMerge(
+            "group bg-gradient-to-r from-override/[0.03] from-[1%] via-override/[0.075] to-override/[0.03] to-[99%]",
+            (isSingleEnvOverrideActive || isSelected) && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
+          )}
+        >
           <TableCell>
-            <GitBranchIcon className="text-override" />
+            <GitBranchIcon className="text-override-foreground" />
           </TableCell>
           <TableCell
             className={twMerge(
-              "border-r text-override",
+              "border-r text-override-foreground",
               singleEnvHasOverride && "border-l border-l-override"
             )}
           >
-            {secretKey}
+            <span>{secretKey}</span>
           </TableCell>
-          <TableCell>
+          <TableCell className="max-w-0">
             <SecretOverrideRow
               isSingleEnvView
               secretName={secretKey}
@@ -545,6 +608,7 @@ export const SecretTableRow = ({
               onSecretCreate={onSecretCreate}
               onSecretUpdate={onSecretUpdate}
               onSecretDelete={onSecretDelete}
+              onActiveChange={setIsSingleEnvOverrideActive}
             />
           </TableCell>
         </TableRow>
@@ -564,20 +628,28 @@ export const SecretTableRow = ({
           </DialogContent>
         </Dialog>
       )}
-      {!isSingleEnvView && isFormExpanded && (
-        <TableRow className="border-0 hover:bg-transparent">
+      {!isSingleEnvView && isExpanded && (
+        <TableRow
+          className={twMerge("border-0 hover:bg-transparent", TABLE_ROW_ACTIVE_FILTER_CLASS_NAME)}
+        >
           <TableCell colSpan={totalCols} className="border-0 p-0">
-            <div
-              style={{ minWidth: tableWidth, maxWidth: tableWidth }}
-              className="sticky left-0 border-y border-border"
-            >
-              <Table containerClassName="rounded-none border-0">
+            <div className="@container sticky left-0 max-w-(--overview-table-width) min-w-(--overview-table-width) border-y border-border bg-container">
+              <Table
+                className="w-full min-w-[600px] table-fixed"
+                containerClassName="rounded-none border-0 @min-[600px]:overflow-hidden"
+              >
+                <colgroup>
+                  <col className="w-10" />
+                  <col className="w-60" />
+                  <col />
+                  <col className="w-32" />
+                </colgroup>
                 <TableHeader className="bg-container-hover">
                   <TableRow>
                     <TableHead aria-hidden="true" className="w-10 max-w-10 min-w-10 p-0" />
                     <TableHead
                       isTruncatable
-                      className="w-px min-w-40 lg:min-w-64 xl:min-w-80"
+                      className={TABLE_ROW_NAME_COLUMN_CLASS_NAME}
                       sortDirection={getExpandedTableSortDirection("environment")}
                       onSortChange={(direction) =>
                         handleExpandedTableSortChange("environment", direction)
@@ -588,21 +660,31 @@ export const SecretTableRow = ({
                         className={getExpandedTableSortIconClassName("environment")}
                       />
                     </TableHead>
-                    <TableHead className="w-full">Value</TableHead>
-                    <TableHead variant="action" className="w-px">
-                      <Button variant="ghost" size="xs" onClick={() => setIsSecretVisible.toggle()}>
+                    <TableHead>Value</TableHead>
+                    <TableHead variant="action" className="w-px font-normal">
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => {
+                          telemetry.interaction({
+                            action: isSecretVisible ? "hide" : "reveal",
+                            source: "row",
+                            resourceType: "secret"
+                          });
+                          onToggleSecretVisible(secretKey);
+                        }}
+                      >
                         {isSecretVisible ? (
                           <>
                             <EyeOffIcon />
-                            Hide
+                            Hide Values
                           </>
                         ) : (
                           <>
                             <EyeIcon />
-                            Reveal
+                            Show Values
                           </>
-                        )}{" "}
-                        Values
+                        )}
                       </Button>
                     </TableHead>
                   </TableRow>
@@ -631,14 +713,13 @@ export const SecretTableRow = ({
                           />
                           <TableCell
                             isTruncatable
-                            className={
-                              hasOverride
-                                ? "border-l border-b-border/50 border-l-override"
-                                : undefined
-                            }
+                            className={twMerge(
+                              TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME,
+                              hasOverride && "border-l border-b-border/50 border-l-override"
+                            )}
                           >
                             <div className="flex h-8 items-center space-x-2">
-                              <Tooltip disableHoverableContent>
+                              <Tooltip>
                                 <TooltipTrigger asChild>
                                   <span className="truncate">{name}</span>
                                 </TooltipTrigger>
@@ -677,7 +758,7 @@ export const SecretTableRow = ({
                           </TableCell>
                           <TableCell
                             colSpan={2}
-                            className={hasOverride ? "border-b-border/50" : undefined}
+                            className={twMerge("max-w-0", hasOverride && "border-b-border/50")}
                           >
                             <SecretEditTableRow
                               secretPath={secretPath}
@@ -723,6 +804,7 @@ export const SecretTableRow = ({
                                       })
                                   : undefined
                               }
+                              onAccessInsightsUpgrade={onAccessInsightsUpgrade}
                             />
                           </TableCell>
                         </TableRow>
@@ -735,7 +817,7 @@ export const SecretTableRow = ({
                             <TableCell
                               className={hasOverride ? "border-l border-l-override" : undefined}
                             />
-                            <TableCell colSpan={2}>
+                            <TableCell colSpan={2} className="max-w-0">
                               <SecretOverrideRow
                                 secretName={secretKey}
                                 environment={slug}

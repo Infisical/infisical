@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, linkOptions, useParams } from "@tanstack/react-router";
 import { Check, Plus, Star } from "lucide-react";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { ProjectLimitUpgradeIntent, UpgradeGate } from "@app/components/license/UpgradeGate";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import {
@@ -12,6 +12,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandItemLink,
   CommandList,
   IconButton,
   ProjectIcon
@@ -31,27 +32,11 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { useUpdateUserProjectFavorites } from "@app/hooks/api/users/mutation";
 import { useGetUserProjectFavorites } from "@app/hooks/api/users/queries";
 import {
+  NavbarBlock,
   NavbarSwitcher,
   NavbarSwitcherContent,
   NavbarSwitcherTrigger
 } from "@app/layouts/NavbarSwitcher";
-
-// Modified and middle clicks belong to the browser: it opens the row's href in a new tab
-// or window, so we neither preventDefault nor navigate programmatically on those paths.
-const isBrowserHandledClick = (event: React.MouseEvent) =>
-  event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0;
-
-// The row's anchor exists for its href (new-tab, copy link, status bar preview) while cmdk
-// owns activation via onSelect. A plain primary click therefore suppresses the anchor's own
-// navigation and bubbles up to cmdk; a browser-handled click is kept away from cmdk instead,
-// so the current tab stays put while the new one opens.
-const handleRowAnchorClick = (event: React.MouseEvent) => {
-  if (isBrowserHandledClick(event)) {
-    event.stopPropagation();
-    return;
-  }
-  event.preventDefault();
-};
 
 const ProjectSelectInner = () => {
   const [open, setOpen] = useState(false);
@@ -126,13 +111,14 @@ const ProjectSelectInner = () => {
 
   if (
     currentWorkspace.type === ProjectType.CertificateManager ||
+    currentWorkspace.type === ProjectType.SecretScanning ||
     isOrgScopedProduct(currentWorkspace.type)
   ) {
     return null;
   }
 
   return (
-    <div className="mr-2 flex min-w-16 items-center gap-1 pr-1 pl-1">
+    <NavbarBlock className="min-w-16">
       <NavbarSwitcher
         open={open}
         onOpenChange={(nextOpen) => {
@@ -184,18 +170,16 @@ const ProjectSelectInner = () => {
                           row it has marked aria-selected, never against the focused element, so
                           without this onFocus a tabbed-to row would activate whichever row the
                           arrow keys last selected and switch the user to the wrong project. */}
-                      <Link
+                      <CommandItemLink
                         to={getProjectHomePage(workspace.type, workspace.environments)}
                         params={{
                           projectId: workspace.id,
                           orgId: workspace.orgId
                         }}
-                        className="truncate rounded-sm text-sm outline-0 after:absolute after:inset-0 after:rounded-sm after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                         onFocus={() => setSelectedValue(workspace.id)}
-                        onClick={handleRowAnchorClick}
                       >
                         {workspace.name}
-                      </Link>
+                      </CommandItemLink>
                       <span className="truncate text-[11px] text-muted">
                         {workspace.description || "No description"}
                       </span>
@@ -226,7 +210,7 @@ const ProjectSelectInner = () => {
                 ))}
               </CommandGroup>
             </CommandList>
-            <div className="border-t border-border p-1">
+            <div className="border-t border-border-soft p-1">
               <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Workspace}>
                 {(isOldProjectPermissionAllowed) => (
                   <OrgPermissionCan
@@ -254,18 +238,18 @@ const ProjectSelectInner = () => {
           </Command>
         </NavbarSwitcherContent>
       </NavbarSwitcher>
-      <UpgradePlanModal
+      <UpgradeGate
         paywallKey="project.limit"
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You've reached the maximum number of projects available on the Free plan. Upgrade to the Infisical Pro plan to create more projects."
+        intent={ProjectLimitUpgradeIntent}
       />
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addNewWs", isOpen)}
         projectType={currentWorkspace.type}
       />
-    </div>
+    </NavbarBlock>
   );
 };
 

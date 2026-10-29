@@ -1,11 +1,11 @@
-import { LookupAddress } from "node:dns";
-import dns from "node:dns/promises";
+import { lookup as dnsLookup, LookupAddress } from "node:dns";
 import http from "node:http";
 import https from "node:https";
 import { LookupFunction } from "node:net";
 
 import { AxiosRequestConfig } from "axios";
 import { isIP } from "net";
+import dns from "node:dns/promises";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { getConfig } from "@app/lib/config/env";
@@ -13,10 +13,14 @@ import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { sanitizeUrlForLog } from "@app/lib/logger/sanitize-url";
 import { recordSafeRequestAgentEvictionMetric } from "@app/lib/telemetry/metrics";
+import { getTlsServerNameOptions } from "@app/lib/tls";
 
 import { BadRequestError } from "../errors";
 import { isPrivateIp } from "../ip/ipRange";
 import { AGENT_CACHE_MAX, agentCache } from "./agent-pool";
+
+// Exported so a caller can tell this refusal, which retrying never fixes, from a failure that might pass.
+export const PRIVATE_ADDRESS_REFUSED_MESSAGE = "Local IPs not allowed as URL";
 
 const formatEntries = (entries: LookupAddress[]) => entries.map((e) => `${e.family}:${e.address}`).join(",");
 
@@ -63,9 +67,9 @@ export const validateAndPinUrl = async (
   if (isIP(rawHost)) {
     entries = [{ address: rawHost, family: isIP(rawHost) }];
   } else {
-    if (rawHost === "localhost" || rawHost === "host.docker.internal") {
+    if (!appCfg.ALLOW_INTERNAL_IP_CONNECTIONS && (rawHost === "localhost" || rawHost === "host.docker.internal")) {
       logger.warn(`safeRequest: rejecting literal local hostname [hostname=${rawHost}]`);
-      throw new BadRequestError({ message: "Local IPs not allowed as URL" });
+      throw new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE });
     }
     const lookups = await dns.lookup(rawHost, { all: true });
 
@@ -79,7 +83,7 @@ export const validateAndPinUrl = async (
   const isInternalIp = entries.some((e) => isPrivateIp(e.address));
   if (isInternalIp && !appCfg.ALLOW_INTERNAL_IP_CONNECTIONS) {
     logger.warn(`safeRequest: rejecting private/internal IP [hostname=${rawHost}] [entries=${formatEntries(entries)}]`);
-    throw new BadRequestError({ message: "Local IPs not allowed as URL" });
+    throw new BadRequestError({ message: PRIVATE_ADDRESS_REFUSED_MESSAGE });
   }
 
   // Block Infisical's own infrastructure (DB, Redis, etc.).
@@ -117,8 +121,12 @@ const pickPreferredEntry = (entries: LookupAddress[]): LookupAddress =>
 // dns.lookup-shaped function that always returns the pre-validated IPs.
 // Installed on an http(s).Agent so connect-time DNS cannot land on a different
 // IP than the one validation approved.
-const makePinnedLookup = (entries: LookupAddress[]): LookupFunction =>
+const makePinnedLookup = ({ hostname: validatedHostname, entries }: TValidatedHost): LookupFunction =>
   ((hostname: string, optionsOrCb: unknown, maybeCb?: unknown) => {
+    if ((hostname.endsWith(".") ? hostname.slice(0, -1) : hostname) !== validatedHostname) {
+      (dnsLookup as (...args: unknown[]) => void)(hostname, optionsOrCb, maybeCb);
+      return;
+    }
     if (typeof optionsOrCb === "function") {
       const first = pickPreferredEntry(entries);
       (optionsOrCb as TLookupOneCallback)(null, first.address, first.family);
@@ -240,7 +248,7 @@ const constructAgent = (
   opts: TBuildAgentOptions
 ): http.Agent | https.Agent => {
   const isHttps = protocol === "https:";
-  const lookup = validated ? makePinnedLookup(validated.entries) : undefined;
+  const lookup = validated ? makePinnedLookup(validated) : undefined;
   // Default keepAlive: true so cached agents reuse connections.
   const baseOpts: http.AgentOptions = {
     keepAlive: opts.keepAlive ?? true,
@@ -260,7 +268,7 @@ const constructAgent = (
       ...baseOpts,
       ...(opts.ca !== undefined && { ca: opts.ca }),
       ...(opts.rejectUnauthorized !== undefined && { rejectUnauthorized: opts.rejectUnauthorized }),
-      ...(opts.servername !== undefined && { servername: opts.servername }),
+      ...(opts.servername !== undefined && getTlsServerNameOptions(opts.servername)),
       ...(opts.checkServerIdentity !== undefined && { checkServerIdentity: opts.checkServerIdentity })
     };
     return new https.Agent(httpsOpts);

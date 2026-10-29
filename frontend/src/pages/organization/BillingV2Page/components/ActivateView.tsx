@@ -8,15 +8,23 @@ import {
   BillingV2Cadence,
   BillingV2CatalogProduct,
   BillingV2Dim,
+  BillingV2ErrorCode,
   BillingV2Plan,
   useBuyBillingV2Product,
   usePreviewBillingV2Change
 } from "@app/hooks/api";
 
-import { fmtMoney } from "../billing-v2-format";
+import { billingV2ErrorCode, fmtMoney } from "../billing-v2-format";
 import { ChargeBreakdown } from "./ChargeBreakdown";
 import { CommitmentTerms } from "./CommitmentTerms";
-import { CostSummary, CostSummaryRow, ProductIcon, Stepper } from "./shared";
+import {
+  CostSummary,
+  CostSummaryRow,
+  PaymentActionRequiredNotice,
+  PaymentApprovalNotice,
+  ProductIcon,
+  Stepper
+} from "./shared";
 
 type Props = {
   orgId: string;
@@ -123,6 +131,15 @@ export const ActivateView = ({
   const quantitiesForCadence = cadence === "annual" ? commitments : undefined;
   const quantitiesKey = JSON.stringify(quantitiesForCadence ?? {});
 
+  // Keyed to the selection that was declined, so changing cadence or quantities clears the notice.
+  const selectionKey = `${cadence}:${quantitiesKey}`;
+  const [declinedSelectionKey, setDeclinedSelectionKey] = useState<string | null>(null);
+  const showPaymentActionRequired = declinedSelectionKey === selectionKey;
+  const [approval, setApproval] = useState<{ selectionKey: string; paymentUrl: string } | null>(
+    null
+  );
+  const approvalUrl = approval?.selectionKey === selectionKey ? approval.paymentUrl : null;
+
   // The plan's headline price for the chosen cadence, shown on the static product row.
   const localRecurring = cadence === "annual" ? annualHeadline(plan) : monthlyHeadline(plan);
 
@@ -203,6 +220,8 @@ export const ActivateView = ({
   }, [plan]);
 
   const handleActivate = async () => {
+    setDeclinedSelectionKey(null);
+    setApproval(null);
     try {
       const result = await buyProduct.mutateAsync({
         orgId,
@@ -212,6 +231,10 @@ export const ActivateView = ({
         quantities: quantitiesForCadence,
         returnPath
       });
+      if (result.outcome === "payment_action_required" && result.paymentUrl) {
+        setApproval({ selectionKey, paymentUrl: result.paymentUrl });
+        return;
+      }
       if (result.outcome === "subscription_updated") {
         createNotification({
           type: "success",
@@ -225,8 +248,11 @@ export const ActivateView = ({
         return;
       }
       createNotification({ type: "error", text: "Failed to start checkout." });
-    } catch {
+    } catch (error) {
       // The backend's message is surfaced by the global mutation error handler (reactQuery.tsx).
+      if (billingV2ErrorCode(error) === BillingV2ErrorCode.PaymentActionRequired) {
+        setDeclinedSelectionKey(selectionKey);
+      }
     }
   };
 
@@ -353,6 +379,9 @@ export const ActivateView = ({
         {needsCommitmentAck && (
           <CommitmentTerms acknowledged={acknowledged} onAcknowledgedChange={setAcknowledged} />
         )}
+
+        {showPaymentActionRequired && <PaymentActionRequiredNotice orgId={orgId} />}
+        {approvalUrl && <PaymentApprovalNotice paymentUrl={approvalUrl} />}
       </div>
 
       <SheetFooter className="flex-row justify-between border-t">

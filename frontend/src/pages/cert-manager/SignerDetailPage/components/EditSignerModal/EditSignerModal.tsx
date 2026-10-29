@@ -3,12 +3,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PenTool } from "lucide-react";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Button,
   DocumentationLinkBadge,
   Sheet,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Stepper,
@@ -24,15 +24,27 @@ import {
   CertKeySource,
   SignerKeyAlgorithm,
   TSigner,
+  useImportSignerCertificate,
   useReissueSignerCertificate,
   useUpdateSigner
 } from "@app/hooks/api/signers";
 
+import {
+  ExternalOrderMode,
+  isUsingExistingCertificate
+} from "../../../components/DigiCertExistingOrderField";
 import { SignerKeyStep } from "../../../components/SignerKeyStep";
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 import { BasicsStep } from "./BasicsStep";
 import { CertificateStep } from "./CertificateStep";
-import { BasicsForm, basicsSchema, CertificateForm, certificateSchema } from "./schemas";
+import {
+  BasicsForm,
+  basicsSchema,
+  CertificateForm,
+  createCertificateSchema,
+  isSameKeyLocation,
+  TCurrentSignerKey
+} from "./schemas";
 import { CaOption, STEPS } from "./types";
 
 type Props = {
@@ -48,6 +60,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
   const cas = useListCasByProjectId();
   const updateSigner = useUpdateSigner();
   const reissueCertificate = useReissueSignerCertificate();
+  const importCertificate = useImportSignerCertificate();
   const { subscription } = useSubscription();
   const { data: hsmConnectors = [], isPending: isHsmConnectorsLoading } = useListHsmConnectors({
     enabled: Boolean(subscription?.hsm)
@@ -106,17 +119,30 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
     values: { name: signer.name, description: signer.description ?? "" }
   });
 
+  const currentKey: TCurrentSignerKey = {
+    keyAlgorithm: currentKeyAlgorithm,
+    keySource: currentKeySource,
+    hsmConnectorId: currentHsmConnectorId,
+    caId: signer.caId ?? ""
+  };
+
   const certificateForm = useForm<CertificateForm>({
-    resolver: zodResolver(certificateSchema),
+    resolver: zodResolver(createCertificateSchema(currentKey)),
     values: {
       caId: signer.caId ?? "",
       certificateRenewBeforeDays: signer.certificateRenewBeforeDays ?? null,
       commonName: signer.commonName ?? "",
       certificateTtlDays: signer.certificateTtlDays ?? 365,
+      currentCertificateTtlDays: signer.certificateTtlDays ?? null,
       keySource: currentKeySource,
       keyAlgorithm: currentKeyAlgorithm,
       hsmConnectorId: currentHsmConnectorId,
-      reissueFromExternalOrderId: null,
+      externalOrderId: null,
+      externalOrderMode: ExternalOrderMode.Reissue,
+      hsmKeyLabel: "",
+      hsmKeyId: "",
+      hsmKeyIdRequired: false,
+      hsmKeyUnresolved: false,
       adcsTemplate: signerAdcsTemplate
     }
   });
@@ -137,7 +163,8 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
   const watchedKeySource = certificateForm.watch("keySource");
   const watchedHsmConnectorId = certificateForm.watch("hsmConnectorId");
   const watchedKeyAlgorithm = certificateForm.watch("keyAlgorithm");
-  const watchedReissueOrderId = certificateForm.watch("reissueFromExternalOrderId");
+  const watchedExternalOrderId = certificateForm.watch("externalOrderId");
+  const watchedExternalOrderMode = certificateForm.watch("externalOrderMode");
   const watchedAdcsTemplate = certificateForm.watch("adcsTemplate");
 
   const selectedCa = caOptions.find((o) => o.id === watchedCaId) ?? null;
@@ -159,14 +186,18 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
     (watchedKeySource === CertKeySource.Hsm &&
       (watchedHsmConnectorId ?? null) !== currentHsmConnectorId);
   const keyAlgorithmChanged = watchedKeyAlgorithm !== currentKeyAlgorithm;
-  const isReissueFromOrder = Boolean(watchedReissueOrderId);
+  const isFromExternalOrder = Boolean(watchedExternalOrderId);
+  const usingExistingCertificate = isUsingExistingCertificate({
+    externalOrderId: watchedExternalOrderId,
+    externalOrderMode: watchedExternalOrderMode
+  });
   const adcsTemplateChanged = isAdcs && (watchedAdcsTemplate?.trim() ?? "") !== signerAdcsTemplate;
   const shouldReissue =
     caSwap ||
     subjectChanged ||
     keySourceChanged ||
     keyAlgorithmChanged ||
-    isReissueFromOrder ||
+    isFromExternalOrder ||
     adcsTemplateChanged;
 
   const handleOpenChange = (open: boolean) => {
@@ -178,10 +209,16 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
         certificateRenewBeforeDays: signer.certificateRenewBeforeDays ?? null,
         commonName: signer.commonName ?? "",
         certificateTtlDays: signer.certificateTtlDays ?? 365,
+        currentCertificateTtlDays: signer.certificateTtlDays ?? null,
         keySource: currentKeySource,
         keyAlgorithm: currentKeyAlgorithm,
         hsmConnectorId: currentHsmConnectorId,
-        reissueFromExternalOrderId: null,
+        externalOrderId: null,
+        externalOrderMode: ExternalOrderMode.Reissue,
+        hsmKeyLabel: "",
+        hsmKeyId: "",
+        hsmKeyIdRequired: false,
+        hsmKeyUnresolved: false,
         adcsTemplate: signerAdcsTemplate
       });
     }
@@ -206,13 +243,25 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
       const nextRenew = cert.certificateRenewBeforeDays ?? null;
       const renewChanged = nextRenew !== currentRenew;
 
-      if (shouldReissue) {
+      if (usingExistingCertificate) {
+        await importCertificate.mutateAsync({
+          signerId: signer.id,
+          caId: cert.caId,
+          externalOrderId: cert.externalOrderId ?? "",
+          certificate: {
+            hsmConnectorId: cert.hsmConnectorId ?? "",
+            hsmKeyLabel: cert.hsmKeyLabel,
+            hsmKeyId: cert.hsmKeyId || undefined
+          },
+          certificateRenewBeforeDays: renewChanged ? nextRenew : undefined
+        });
+      } else if (shouldReissue) {
         await reissueCertificate.mutateAsync({
           signerId: signer.id,
           caId: cert.caId,
-          commonName: !isReissueFromOrder && subjectChanged ? cert.commonName : undefined,
+          commonName: !isFromExternalOrder && subjectChanged ? cert.commonName : undefined,
           certificateTtlDays:
-            !isReissueFromOrder && subjectChanged ? cert.certificateTtlDays : undefined,
+            !isFromExternalOrder && subjectChanged ? cert.certificateTtlDays : undefined,
           keyAlgorithm: keySourceChanged || keyAlgorithmChanged ? cert.keyAlgorithm : undefined,
           certificate:
             keySourceChanged || keyAlgorithmChanged
@@ -225,38 +274,30 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
                 }
               : undefined,
           externalConfiguration: (() => {
-            if (cert.reissueFromExternalOrderId) {
-              return {
-                caType: CaType.DIGICERT as const,
-                reissueFromExternalOrderId: cert.reissueFromExternalOrderId
-              };
+            if (cert.externalOrderId) {
+              return { reissueFromExternalOrderId: cert.externalOrderId };
             }
             if (isAdcs) {
-              return {
-                caType: CaType.ADCS as const,
-                template: cert.adcsTemplate?.trim() || undefined
-              };
+              return { template: cert.adcsTemplate?.trim() || undefined };
             }
             return undefined;
           })()
         });
       }
 
-      if (nameChanged || descChanged || renewChanged) {
+      const renewSavedByImport = usingExistingCertificate && renewChanged;
+      if (nameChanged || descChanged || (renewChanged && !renewSavedByImport)) {
         await updateSigner.mutateAsync({
           signerId: signer.id,
           name: nameChanged ? basics.name : undefined,
           description: descChanged ? basics.description || null : undefined,
-          certificateRenewBeforeDays: renewChanged ? nextRenew : undefined
+          certificateRenewBeforeDays: renewChanged && !renewSavedByImport ? nextRenew : undefined
         });
       }
 
       handleOpenChange(false);
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to update signer"
-      });
+      // eslint-disable-next-line no-empty
+    } catch {
     } finally {
       setSubmitting(false);
     }
@@ -281,7 +322,13 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
       return;
     }
     if (step === 2) {
-      const ok = await certificateForm.trigger(["keySource", "keyAlgorithm", "hsmConnectorId"]);
+      const ok = await certificateForm.trigger([
+        "keySource",
+        "keyAlgorithm",
+        "hsmConnectorId",
+        "hsmKeyLabel",
+        "hsmKeyId"
+      ]);
       if (!ok) return;
       await onSave();
     }
@@ -294,11 +341,15 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
   const currentStep = STEPS[step];
   const isLast = step === STEPS.length - 1;
   // eslint-disable-next-line no-nested-ternary
-  const ctaLabel = isLast ? (shouldReissue ? "Save and reissue" : "Save") : "Continue";
+  const ctaLabel = isLast
+    ? shouldReissue && !usingExistingCertificate
+      ? "Save and reissue"
+      : "Save"
+    : "Continue";
 
   return (
     <Sheet open={isOpen} onOpenChange={handleOpenChange}>
-      <SheetContent className="flex h-full max-h-full flex-col gap-y-0 sm:max-w-[1100px]">
+      <SheetContent size="wide" className="flex h-full max-h-full flex-col gap-y-0">
         <SheetHeader className="border-b">
           <SheetTitle>
             <div className="flex w-full items-start gap-2">
@@ -346,7 +397,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
 
             <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
               <div className="mb-6">
-                <h2 className="text-lg font-semibold text-foreground">{currentStep.title}</h2>
+                <h2 className="text-lg font-normal text-foreground">{currentStep.title}</h2>
                 <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
               </div>
 
@@ -365,6 +416,18 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
                   minRsaKeyBits={minRsaKeyBits}
                   hsmConnectorOptions={hsmConnectorOptions}
                   isHsmConnectorsLoading={isHsmConnectorsLoading}
+                  currentKeyAlgorithm={
+                    isSameKeyLocation(
+                      {
+                        keySource: watchedKeySource,
+                        hsmConnectorId: watchedHsmConnectorId,
+                        caId: watchedCaId
+                      },
+                      currentKey
+                    )
+                      ? currentKeyAlgorithm
+                      : undefined
+                  }
                 />
               )}
             </div>
@@ -385,11 +448,14 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
             </aside>
           </div>
 
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+          <SheetFooter className="shrink-0 items-center justify-between border-t">
             <span className="text-xs text-warning">
-              {shouldReissue
-                ? "Saving reissues the certificate immediately. The signer switches to the new certificate."
-                : ""}
+              {/* eslint-disable-next-line no-nested-ternary */}
+              {usingExistingCertificate
+                ? "Saving switches the signer to the certificate already issued in this order."
+                : shouldReissue
+                  ? "Saving reissues the certificate immediately. The signer switches to the new certificate."
+                  : ""}
             </span>
             <div className="flex items-center gap-3">
               <span className="text-xs text-muted">
@@ -404,7 +470,7 @@ export const EditSignerModal = ({ isOpen, onOpenChange, signer }: Props) => {
                 {ctaLabel}
               </Button>
             </div>
-          </div>
+          </SheetFooter>
         </div>
       </SheetContent>
     </Sheet>

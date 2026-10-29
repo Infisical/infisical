@@ -43,6 +43,7 @@ import {
   TBuyBillingV2ProductDTO,
   TCancelBillingV2TrialDTO,
   TChangeBillingV2CommitmentDTO,
+  TConfirmBillingV2TrialPaymentDTO,
   TCreateBillingV2PortalSessionDTO,
   TGetBillingV2CatalogDTO,
   TGetBillingV2OverviewDTO,
@@ -89,6 +90,7 @@ type TLicenseV2ServiceFactoryDep = {
     | "changeCommitments"
     | "startTrial"
     | "cancelTrial"
+    | "confirmTrialPayment"
     | "getTrials"
     | "cancelSubscription"
     | "resumeSubscription"
@@ -124,6 +126,27 @@ const formatDate = (unixSeconds: number | null | undefined): string | null => {
     month: "long",
     day: "numeric"
   });
+};
+
+// Payment URLs from the license server are handed to the browser as links, so anything but a
+// well-formed https URL is dropped rather than shown.
+const toHttpsUrl = (value: string | null | undefined): string | null => {
+  if (!value) {
+    return null;
+  }
+  try {
+    return new URL(value).protocol === "https:" ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+const toPaymentAlert = (payment: TSubscriptionResponse["payment"]): BillingV2Overview["paymentAlert"] => {
+  if (!payment || (payment.state !== "needs_action" && payment.state !== "failed")) {
+    return null;
+  }
+  const actionUrl = toHttpsUrl(payment.actionUrl);
+  return actionUrl ? { state: payment.state, actionUrl } : null;
 };
 
 // Entitlement product dates (trial_ends_at, current_period_end) are ISO strings, not unix seconds.
@@ -660,9 +683,11 @@ export const licenseV2ServiceFactory = ({
                 trialPlanName:
                   catalogProduct?.plans.find((candidate) => candidate.tier === item.trialPlan)?.name ?? item.trialPlan,
                 trialPlanEndsAt: formatDate(item.trialPlanEndsAt),
-                trialPlanDaysLeft: daysUntil(item.trialPlanEndsAt)
+                trialPlanDaysLeft: item.trialPlanPaymentDueAt ? null : daysUntil(item.trialPlanEndsAt),
+                trialPlanPaymentDueAt: formatDate(item.trialPlanPaymentDueAt)
               }
             : {}),
+          trialPaymentDueAt: formatDate(item.trialPaymentDueAt),
           renewsOn,
           ...(deprecation ? { deprecation } : {}),
           used,
@@ -799,6 +824,7 @@ export const licenseV2ServiceFactory = ({
           planTier: trial.plan_key ?? null,
           basePlanTier: trial.base_plan_key ?? null,
           outcome: trial.outcome,
+          endedReason: trial.ended_reason ?? null,
           endedDetail: trial.ended_detail ?? null,
           endedAt: formatDate(trial.ended_at),
           endedDaysAgo: daysSince(trial.ended_at)
@@ -837,6 +863,20 @@ export const licenseV2ServiceFactory = ({
       nextCharge
     };
 
+    const itemsAwaitingPayment = (subscription?.items ?? []).flatMap((item) => {
+      const dueAt = item.trialPaymentDueAt ?? item.trialPlanPaymentDueAt;
+      return dueAt ? [{ productId: item.productId, dueAt }] : [];
+    });
+    const trialPaymentDue =
+      itemsAwaitingPayment.length > 0
+        ? {
+            dueAt: formatDate(Math.min(...itemsAwaitingPayment.map((item) => item.dueAt))) ?? "",
+            productKeys: [...new Set(itemsAwaitingPayment.map((item) => item.productId))]
+          }
+        : null;
+
+    const paymentAlert = toPaymentAlert(subscription?.payment);
+
     const overview: BillingV2Overview = {
       // Self-hosted is a read-only, managed view: the UI hides payment/invoices/details and shows the
       // "managed by your account team" banner off these two fields.
@@ -852,6 +892,8 @@ export const licenseV2ServiceFactory = ({
       trialedProductKeys: [...new Set(trialHistory.map((trial) => trial.productKey))],
       trials: trialHistory,
       onDemandAmount,
+      trialPaymentDue,
+      paymentAlert,
       checkoutFrozen: subscription?.capabilities?.checkoutFrozen ?? false,
       // false for an enterprise-managed org (self-serve mutations 403); default true keeps paygo and
       // older servers unchanged.
@@ -1112,13 +1154,35 @@ export const licenseV2ServiceFactory = ({
     return { products };
   };
 
+  // The bank wants the customer to approve the charge on the Stripe invoice; the change settles by webhook
+  // once they do. Without a usable link there is nothing to send them to, so it degrades to the same
+  // coded error as a declined charge, which points them at the billing portal.
+  const paymentActionRequired = async (orgId: string, paymentUrl: string | undefined) => {
+    const url = toHttpsUrl(paymentUrl);
+    if (!url) {
+      logger.error(`billing-v2: payment_action_required without a usable paymentUrl [orgId=${orgId}]`);
+      throw new BadRequestError({
+        message:
+          "Your bank needs you to approve this payment, but we couldn't get the approval link. Open the billing portal to complete it.",
+        details: { code: "payment_action_required" }
+      });
+    }
+    await licenseClient.markEntitlementsStale(orgId, { checkout: true });
+    return { outcome: "payment_action_required" as const, paymentUrl: url };
+  };
+
   const buildReturnUrl = (orgId: string, returnPath?: string): string => {
     if (!envConfig.SITE_URL) {
       throw new InternalServerError({ message: "Failed to build a billing return URL" });
     }
     const path = returnPath && returnPath.startsWith("/") ? returnPath : `/organizations/${orgId}/billing`;
     try {
-      return new URL(path, envConfig.SITE_URL).toString();
+      const siteUrl = new URL(envConfig.SITE_URL);
+      const returnUrl = new URL(path, siteUrl);
+      if (returnUrl.origin !== siteUrl.origin) {
+        throw new Error("Return URL must use the application origin");
+      }
+      return returnUrl.toString();
     } catch {
       throw new InternalServerError({ message: "Failed to build a billing return URL" });
     }
@@ -1171,6 +1235,14 @@ export const licenseV2ServiceFactory = ({
       email,
       returnUrl: buildReturnUrl(orgId, returnPath)
     });
+
+    if (result.outcome === "payment_action_required") {
+      return {
+        ...(await paymentActionRequired(orgId, result.paymentUrl)),
+        plan: resolved.planTier,
+        cadence: normalizedCadence
+      };
+    }
 
     if (result.outcome === "subscription_updated") {
       await licenseClient.markEntitlementsStale(orgId);
@@ -1312,6 +1384,9 @@ export const licenseV2ServiceFactory = ({
       expectedPlanVersionId,
       prorationDate
     });
+    if (result.outcome === "payment_action_required") {
+      return paymentActionRequired(orgId, result.paymentUrl);
+    }
     await licenseClient.markEntitlementsStale(orgId);
     return {
       outcome: result.outcome,
@@ -1330,6 +1405,9 @@ export const licenseV2ServiceFactory = ({
       productId,
       dimensions: changes.map((change) => ({ dimensionKey: change.dimensionKey, quantity: change.quantity }))
     });
+    if (result.outcome === "payment_action_required") {
+      return paymentActionRequired(orgId, result.paymentUrl);
+    }
     if (result.outcome === "checkout_created") {
       if (!result.checkoutUrl) {
         throw new InternalServerError({ message: "Checkout session did not return a URL" });
@@ -1342,9 +1420,9 @@ export const licenseV2ServiceFactory = ({
     return { outcome: "subscription_updated" as const, subscriptionId: result.subscriptionId };
   };
 
-  // Start a plan-scoped self-serve trial. The trial is granted immediately (no upfront charge);
-  // cardSetupUrl, when present, is a best-effort card-setup checkout the client redirects to.
-  const startTrial = async ({ orgId, actor, productId, plan, email }: TStartBillingV2TrialDTO) => {
+  // Start a plan-scoped self-serve trial. Existing-card customers are granted immediately; others
+  // must complete the returned card-setup checkout before the license server grants the trial.
+  const startTrial = async ({ orgId, actor, productId, plan, email, returnPath }: TStartBillingV2TrialDTO) => {
     await ensureManageBilling(orgId, actor);
     // The trial has no Stripe customer yet, so the server creates one from the org's own name + the
     // authenticated user's email; neither is client-supplied.
@@ -1364,7 +1442,7 @@ export const licenseV2ServiceFactory = ({
       name: organization?.name,
       declaredUsage: resolved?.declaredUsage,
       // The trial's card-setup checkout redirects here; built server-side from SITE_URL like checkout.
-      returnUrl: buildReturnUrl(orgId)
+      returnUrl: buildReturnUrl(orgId, returnPath)
     });
     // awaiting_card redirects to a Stripe card-setup checkout; the trial is granted by webhook only
     // after it's completed, so hold the revalidation window open longer than an immediate trial_started.
@@ -1379,6 +1457,29 @@ export const licenseV2ServiceFactory = ({
     const result = await licenseClient.cancelTrial(orgId, { productKey: productId });
     await licenseClient.markEntitlementsStale(orgId);
     return { outcome: result.outcome };
+  };
+
+  // The trial converts via webhook once the customer approves, so the revalidation window is held open
+  // like checkout.
+  const confirmTrialPayment = async ({ orgId, actor, returnPath }: TConfirmBillingV2TrialPaymentDTO) => {
+    await ensureManageBilling(orgId, actor);
+    const result = await licenseClient.confirmTrialPayment(orgId, { returnUrl: buildReturnUrl(orgId, returnPath) });
+    if (result.outcome === "payment_action_required") {
+      const { paymentUrl } = await paymentActionRequired(orgId, result.paymentUrl);
+      return { outcome: result.outcome, redirectUrl: paymentUrl };
+    }
+    if (result.outcome === "upgraded") {
+      await licenseClient.markEntitlementsStale(orgId);
+      return { outcome: result.outcome };
+    }
+    const checkoutUrl = toHttpsUrl(result.checkoutUrl);
+    if (!checkoutUrl) {
+      throw new BadRequestError({
+        message: "We couldn't get a secure checkout link. Please try again or contact support."
+      });
+    }
+    await licenseClient.markEntitlementsStale(orgId, { checkout: true });
+    return { outcome: result.outcome, redirectUrl: checkoutUrl };
   };
 
   // Remove a single product from a multi-product subscription, the operation the Stripe Customer
@@ -1419,6 +1520,7 @@ export const licenseV2ServiceFactory = ({
     changeCommitments,
     startTrial,
     cancelTrial,
+    confirmTrialPayment,
     cancelSubscription,
     resumeSubscription
   };

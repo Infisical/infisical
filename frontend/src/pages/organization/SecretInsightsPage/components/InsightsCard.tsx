@@ -1,12 +1,10 @@
 import { ReactNode, useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import {
   CheckIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   ChevronUpIcon,
   FolderIcon,
-  LockIcon,
   SearchIcon,
   SearchXIcon
 } from "lucide-react";
@@ -29,6 +27,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
+  RowLink,
   Table,
   TableBody,
   TableCell,
@@ -93,18 +92,13 @@ export const InsightsCard = ({
   data,
   hasMore,
   onLoadMore,
-  isLoadingMore,
-  isPlanRestricted = false
+  isLoadingMore
 }: {
   data: TOrgProjectsInsights;
   hasMore: boolean;
   onLoadMore: () => void;
   isLoadingMore: boolean;
-  // Without the insights entitlement the row set is empty because nothing was fetched, so the card
-  // must not report the org as healthy
-  isPlanRestricted?: boolean;
 }) => {
-  const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const [search, setSearch] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -142,7 +136,6 @@ export const InsightsCard = ({
   const visible = showAll || isSearching ? filtered : filtered.slice(0, COLLAPSED_ROW_COUNT);
 
   const getDescription = () => {
-    if (isPlanRestricted) return "Upgrade your plan to see project-level issues.";
     if (isHealthy) return "No projects have outstanding issues right now.";
     return `${data.projectsWithIssues} of ${data.totalProjects} projects have outstanding issues, ordered by severity.`;
   };
@@ -153,15 +146,6 @@ export const InsightsCard = ({
         icon: <SearchXIcon />,
         title: "No projects match your search",
         description: `No project name or slug matches "${search.trim()}".`
-      };
-    }
-
-    if (isPlanRestricted) {
-      return {
-        icon: <LockIcon />,
-        title: "Project insights are not on your current plan",
-        description:
-          "Upgrade to see failed rotations, failed syncs, stale secrets, and duplicated secrets for every project."
       };
     }
 
@@ -236,16 +220,15 @@ export const InsightsCard = ({
             </TableHeader>
             <TableBody>
               {visible.map((project) => (
-                <TableRow
-                  key={project.projectId}
-                  onClick={() =>
-                    navigate({
-                      to: projectInsightsRoute,
-                      params: { orgId: currentOrg.id, projectId: project.projectId }
-                    })
-                  }
-                >
-                  <TableCell className="font-medium">{project.projectName}</TableCell>
+                <TableRow key={project.projectId} linked>
+                  <TableCell className="font-medium">
+                    <RowLink
+                      to={projectInsightsRoute}
+                      params={{ orgId: currentOrg.id, projectId: project.projectId }}
+                    >
+                      {project.projectName}
+                    </RowLink>
+                  </TableCell>
                   <TableCell>
                     <WarningBadges warnings={project.warnings} />
                   </TableCell>
@@ -259,7 +242,7 @@ export const InsightsCard = ({
                   <TableCell className="text-right">
                     {project.totalSecrets.toLocaleString()}
                   </TableCell>
-                  <TableCell variant="action">
+                  <TableCell className="min-w-12 pr-1.5 text-end">
                     <ChevronRightIcon className="size-3.5 text-muted" />
                   </TableCell>
                 </TableRow>

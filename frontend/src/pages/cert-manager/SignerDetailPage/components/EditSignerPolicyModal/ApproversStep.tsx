@@ -2,12 +2,12 @@ import { ArrowDownIcon, InfoIcon, PlusIcon, ShieldIcon, XIcon } from "lucide-rea
 
 import {
   Button,
+  Combobox,
   Field,
   FieldContent,
   FieldDescription,
   FieldGroup,
   FieldLabel,
-  FilterableSelect,
   IconButton,
   Input
 } from "@app/components/v3";
@@ -30,7 +30,7 @@ export const ApproversStep = ({
   onUpdateStep
 }: Props) => (
   <>
-    <h2 className="text-xl font-semibold text-foreground">Approval policy</h2>
+    <h2 className="text-xl font-normal text-foreground">Approval policy</h2>
     <p className="mt-1 mb-4 text-sm text-label">
       Add approvers if signing should require approval. Otherwise members can sign directly.
     </p>
@@ -89,29 +89,22 @@ export const ApproversStep = ({
               <FieldGroup className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div className="md:col-span-2">
                   <Field>
-                    <FieldLabel>Approvers</FieldLabel>
+                    <FieldLabel htmlFor={`edit-signer-approvers-${s.key}`}>Approvers</FieldLabel>
                     <FieldContent>
-                      <FilterableSelect
-                        isMulti
+                      <Combobox
+                        id={`edit-signer-approvers-${s.key}`}
+                        multiple
                         options={approverOptions}
-                        groupBy="kind"
-                        getGroupHeaderLabel={(g) => (g === "group" ? "Groups" : "Users")}
-                        getOptionValue={(o) =>
-                          approverKey((o as ApproverOption).kind, (o as ApproverOption).value)
-                        }
-                        isOptionSelected={(o) => {
-                          const opt = o as ApproverOption;
-                          return s.approvers.some(
-                            (a) => a.kind === opt.kind && a.value === opt.value
-                          );
-                        }}
+                        getOptionGroup={(option) => (option.kind === "group" ? "Groups" : "Users")}
+                        getOptionValue={(option) => approverKey(option.kind, option.value)}
+                        getOptionLabel={(option) => option.label}
+                        includeMissingSelectedOptions={false}
                         value={s.approvers}
-                        onChange={(selected) => {
-                          const opts = (selected ?? []) as ApproverOption[];
-                          onUpdateStep(s.key, { approvers: opts });
+                        onValueChange={(approvers) => {
+                          onUpdateStep(s.key, { approvers });
                         }}
                         placeholder="Pick approvers from members..."
-                        noOptionsMessage={() => "No eligible members"}
+                        emptyMessage="No eligible members"
                       />
                       <FieldDescription>Approvers must already be members.</FieldDescription>
                     </FieldContent>

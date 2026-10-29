@@ -16,7 +16,8 @@ export const Route = createFileRoute(
     ]
   }),
   beforeLoad: ({ params }) => {
-    if (!urlSlugToProjectType(params.type)) {
+    const projectType = urlSlugToProjectType(params.type);
+    if (!projectType) {
       throw redirect({
         to: "/organizations/$orgId/projects",
         params: { orgId: params.orgId }

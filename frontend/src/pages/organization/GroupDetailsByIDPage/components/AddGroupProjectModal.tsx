@@ -1,25 +1,29 @@
 import { useState } from "react";
-import { faFolder, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { SearchIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
-  EmptyState,
-  Input,
-  Modal,
-  ModalContent,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
   Pagination,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   Table,
-  TableContainer,
-  TableSkeleton,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tr
-} from "@app/components/v2";
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableSkeletonRows
+} from "@app/components/v3";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
 import { getProjectTitle } from "@app/helpers/project";
 import { useDebounce, useResetPageHelper } from "@app/hooks";
@@ -93,93 +97,96 @@ export const AddGroupProjectModal = ({ popUp, handlePopUpToggle }: Props) => {
   };
 
   return (
-    <Modal
-      isOpen={popUp?.addGroupProjects?.isOpen}
+    <Sheet
+      open={popUp?.addGroupProjects?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("addGroupProjects", isOpen);
       }}
     >
-      <ModalContent title="Add Projects">
-        <Input
-          value={searchProjectFilter}
-          onChange={(e) => setSearchProjectFilter(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search projects..."
-        />
-        <TableContainer className="mt-4">
-          <Table>
-            <THead>
-              <Tr>
-                <Th>Project</Th>
-                <Th>Type</Th>
-                <Th />
-              </Tr>
-            </THead>
-            <TBody>
-              {isPending && <TableSkeleton columns={3} innerKey="group-projects" />}
-              {!isPending &&
-                data?.projects?.map((project) => {
-                  return (
-                    <Tr className="items-center" key={`group-project-${project.id}`}>
-                      <Td className="w-1/3">
-                        <p>{project.name}</p>
-                        {project.description && (
-                          <p className="text-sm text-muted">{project.description}</p>
-                        )}
-                      </Td>
-                      <Td>
-                        <p>{getProjectTitle(project.type as ProjectType)}</p>
-                      </Td>
-                      <Td>
-                        <OrgPermissionCan
-                          I={OrgPermissionGroupActions.Edit}
-                          a={OrgPermissionSubjects.Groups}
-                        >
-                          {(isAllowed) => {
-                            return (
+      <SheetContent size="form" isPending={isAdding}>
+        <SheetHeader>
+          <SheetTitle>Add Projects</SheetTitle>
+        </SheetHeader>
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+          <InputGroup>
+            <InputGroupAddon>
+              <SearchIcon />
+            </InputGroupAddon>
+            <InputGroupInput
+              value={searchProjectFilter}
+              onChange={(e) => setSearchProjectFilter(e.target.value)}
+              placeholder="Search projects..."
+            />
+          </InputGroup>
+          {!isPending && !data?.projects?.length ? (
+            <Empty className="border">
+              <EmptyHeader>
+                <EmptyTitle>
+                  {debouncedSearch
+                    ? "No projects match search"
+                    : "This group is already a part of all projects"}
+                </EmptyTitle>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Project</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead variant="action" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isPending && <TableSkeletonRows columns={3} />}
+                  {!isPending &&
+                    data?.projects?.map((project) => (
+                      <TableRow key={`group-project-${project.id}`}>
+                        <TableCell isWrappable>
+                          <p>{project.name}</p>
+                          {project.description && (
+                            <p className="text-xs text-muted">{project.description}</p>
+                          )}
+                        </TableCell>
+                        <TableCell>{getProjectTitle(project.type as ProjectType)}</TableCell>
+                        <TableCell variant="action">
+                          <OrgPermissionCan
+                            I={OrgPermissionGroupActions.Edit}
+                            a={OrgPermissionSubjects.Groups}
+                          >
+                            {(isAllowed) => (
                               <Button
-                                className="self-center"
-                                isLoading={isAdding}
+                                variant="outline"
+                                size="xs"
+                                isPending={isAdding}
                                 isDisabled={!isAllowed}
-                                colorSchema="primary"
-                                variant="outline_bg"
-                                type="submit"
                                 onClick={() =>
                                   handleAddProject(project.id, project.name, project.type)
                                 }
                               >
                                 Assign
                               </Button>
-                            );
-                          }}
-                        </OrgPermissionCan>
-                      </Td>
-                    </Tr>
-                  );
-                })}
-            </TBody>
-          </Table>
-          {!isPending && totalCount > 0 && (
-            <Pagination
-              count={totalCount}
-              page={page}
-              perPage={perPage}
-              onChangePage={(newPage) => setPage(newPage)}
-              onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
-            />
+                            )}
+                          </OrgPermissionCan>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+              {!isPending && totalCount > 0 && (
+                <Pagination
+                  count={totalCount}
+                  page={page}
+                  perPage={perPage}
+                  onChangePage={(newPage) => setPage(newPage)}
+                  onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
+                />
+              )}
+            </div>
           )}
-          {!isPending && !data?.projects?.length && (
-            <EmptyState
-              title={
-                debouncedSearch
-                  ? "No projects match search"
-                  : "This group is already a part of all projects"
-              }
-              icon={faFolder}
-            />
-          )}
-        </TableContainer>
-      </ModalContent>
-    </Modal>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 };

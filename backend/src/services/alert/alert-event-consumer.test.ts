@@ -12,7 +12,8 @@ vi.mock("@app/lib/logger", () => ({
 const ORG_ID = "11111111-1111-1111-1111-111111111111";
 const EVENT_TYPE = "approval.workflow.request_opened";
 
-const makeAlert = (id: string) => ({ id, resourceType: "approval.workflow", orgId: ORG_ID }) as never;
+const makeAlert = (id: string) =>
+  ({ id, resourceType: "approval.workflow", orgId: ORG_ID, eventType: EVENT_TYPE }) as never;
 
 const makePayload = (overrides?: Record<string, unknown>) => ({
   orgId: ORG_ID,
@@ -23,24 +24,28 @@ const makePayload = (overrides?: Record<string, unknown>) => ({
   ...overrides
 });
 
-const makeEvent = (overrides?: Partial<TEvent>): TEvent =>
-  ({
-    id: 1,
-    eventType: EVENT_TYPE,
-    payload: makePayload(),
-    occurredAt: new Date(),
-    ...overrides
-  }) as TEvent;
+const makeEvent = (overrides?: Partial<TEvent>): TEvent => ({
+  specversion: "1.0",
+  id: "event-1",
+  source: "urn:infisical:approval",
+  type: EVENT_TYPE,
+  time: new Date().toISOString(),
+  data: makePayload(),
+  isFinalAttempt: false,
+  ...overrides
+});
 
 const buildConsumer = (opts?: {
   alerts?: unknown[];
   results?: AlertDispatchOutcome[];
   eventKeys?: string[];
-  findAlerts?: () => Promise<unknown[]>;
+  findAlerts?: (filter: { resourceType: string; resourceId?: string | null; eventType: string }) => Promise<unknown[]>;
+  sourcedEvents?: { resourceType: string; eventKey: string }[];
 }) => {
   const runs: {
     alertId: string;
     eventId: string;
+    eventType: string;
     targetIds: string[];
     payload?: Record<string, unknown>;
   }[] = [];
@@ -50,18 +55,24 @@ const buildConsumer = (opts?: {
   const eventKeys = opts?.eventKeys ?? [EVENT_TYPE];
   const consumer = alertEventConsumerFactory({
     alertDAL: {
-      findEnabledForEvent: async () => {
+      findEnabledForEvent: async (filter) => {
         lookups += 1;
-        if (opts?.findAlerts) return (await opts.findAlerts()) as never;
+        if (opts?.findAlerts) return (await opts.findAlerts(filter)) as never;
         return (opts?.alerts ?? [makeAlert("alert-1")]) as never;
       }
     },
     alertEngine: {
       runAlertForEvent: async (
         alert: { id: string },
-        input: { eventId: string; targetIds: string[]; payload: Record<string, unknown> }
+        input: { eventId: string; eventType: string; targetIds: string[]; payload: Record<string, unknown> }
       ) => {
-        runs.push({ alertId: alert.id, eventId: input.eventId, targetIds: input.targetIds, payload: input.payload });
+        runs.push({
+          alertId: alert.id,
+          eventId: input.eventId,
+          eventType: input.eventType,
+          targetIds: input.targetIds,
+          payload: input.payload
+        });
         const result = results[Math.min(runIdx, results.length - 1)];
         runIdx += 1;
         return result;
@@ -69,6 +80,7 @@ const buildConsumer = (opts?: {
     } as never,
     alertProviderRegistry: {
       eventTriggeredKeys: () => new Set(eventKeys),
+      findEventsBySource: () => opts?.sourcedEvents ?? [],
       get: (resourceType: string) =>
         resourceType === "approval.workflow"
           ? ({ events: eventKeys.map((key) => ({ key, triggerType: AlertTriggerType.Event })) } as never)
@@ -98,14 +110,61 @@ describe("alert event consumer", () => {
     expect(runs[0].payload).toEqual(makePayload());
   });
 
-  // The outbox row id is stable across attempts, so it's the only key a retry can use to find what
-  // already went out.
+  test("accepts a scope-wide event that carries no resource", async () => {
+    const { consumer, runs } = buildConsumer();
+
+    const [result] = await consumer.handle([makeEvent({ data: makePayload({ resourceId: null }) })]);
+
+    expect(result.status).toBe(EventResultStatus.Delivered);
+    expect(runs[0].targetIds).toEqual(["req-1"]);
+  });
+
+  test("also runs the resource-less alerts of every event sourced from this event, each under its own event", async () => {
+    const lookupsSeen: { resourceType: string; resourceId?: string | null; eventType: string }[] = [];
+    const { consumer, runs } = buildConsumer({
+      sourcedEvents: [{ resourceType: "approval.org", eventKey: "approval.org.request_opened" }],
+      findAlerts: async (filter) => {
+        lookupsSeen.push(filter);
+        return [
+          {
+            id: filter.resourceType === "approval.org" ? "sourced-alert" : "bound-alert",
+            resourceType: filter.resourceType,
+            orgId: ORG_ID,
+            eventType: filter.eventType
+          }
+        ];
+      }
+    });
+
+    const [result] = await consumer.handle([makeEvent()]);
+
+    expect(result.status).toBe(EventResultStatus.Delivered);
+    expect(lookupsSeen).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ resourceType: "approval.workflow", resourceId: "policy-1", eventType: EVENT_TYPE }),
+        expect.objectContaining({
+          resourceType: "approval.org",
+          resourceId: null,
+          eventType: "approval.org.request_opened"
+        })
+      ])
+    );
+    expect(runs.map((run) => [run.alertId, run.eventType])).toEqual(
+      expect.arrayContaining([
+        ["bound-alert", EVENT_TYPE],
+        ["sourced-alert", "approval.org.request_opened"]
+      ])
+    );
+  });
+
+  // The event id is stable across attempts, so it's the only key a retry can use to find what already
+  // went out.
   test("hands the engine the event id so a retry can skip channels that already delivered", async () => {
     const { consumer, runs } = buildConsumer();
 
-    await consumer.handle([makeEvent({ id: 42 })]);
+    await consumer.handle([makeEvent({ id: "550e8400-e29b-41d4-a716-446655440000" })]);
 
-    expect(runs[0].eventId).toBe("42");
+    expect(runs[0].eventId).toBe("550e8400-e29b-41d4-a716-446655440000");
   });
 
   // The alert was deleted or disabled before the worker ran, so nobody is owed a notification. That's
@@ -132,7 +191,7 @@ describe("alert event consumer", () => {
   test("fails terminally on an unreadable payload", async () => {
     const { consumer } = buildConsumer();
 
-    const [result] = await consumer.handle([makeEvent({ payload: makePayload({ targetIds: [] }) })]);
+    const [result] = await consumer.handle([makeEvent({ data: makePayload({ targetIds: [] }) })]);
 
     expect(result.status).toBe(EventResultStatus.Failed);
     expect(result.error).toContain("Unreadable alert event payload");
@@ -155,7 +214,7 @@ describe("alert event consumer", () => {
   test("fails terminally when no provider declares the event for that resource type", async () => {
     const { consumer, runs, getLookups } = buildConsumer();
 
-    const [result] = await consumer.handle([makeEvent({ payload: makePayload({ resourceType: "pki.certificate" }) })]);
+    const [result] = await consumer.handle([makeEvent({ data: makePayload({ resourceType: "pki.certificate" }) })]);
 
     expect(result.status).toBe(EventResultStatus.Failed);
     expect(result.error).toContain("pki.certificate");
@@ -178,9 +237,9 @@ describe("alert event consumer", () => {
     });
 
     const results = await consumer.handle([
-      makeEvent({ id: 1, eventType: EVENT_TYPE }),
-      makeEvent({ id: 2, eventType: "approval.workflow.request_closed" }),
-      makeEvent({ id: 3, eventType: "approval.workflow.request_reopened" })
+      makeEvent({ id: "event-1", type: EVENT_TYPE }),
+      makeEvent({ id: "event-2", type: "approval.workflow.request_closed" }),
+      makeEvent({ id: "event-3", type: "approval.workflow.request_reopened" })
     ]);
 
     expect(results.map((result) => result.status)).toEqual([
@@ -196,9 +255,9 @@ describe("alert event consumer", () => {
     const { consumer, getLookups } = buildConsumer();
 
     await consumer.handle([
-      makeEvent({ id: 1, payload: makePayload({ targetIds: ["req-1"] }) }),
-      makeEvent({ id: 2, payload: makePayload({ targetIds: ["req-2"] }) }),
-      makeEvent({ id: 3, payload: makePayload({ targetIds: ["req-3"] }) })
+      makeEvent({ id: "event-1", data: makePayload({ targetIds: ["req-1"] }) }),
+      makeEvent({ id: "event-2", data: makePayload({ targetIds: ["req-2"] }) }),
+      makeEvent({ id: "event-3", data: makePayload({ targetIds: ["req-3"] }) })
     ]);
 
     expect(getLookups()).toBe(1);
@@ -210,9 +269,9 @@ describe("alert event consumer", () => {
     const { consumer, getLookups } = buildConsumer();
 
     await consumer.handle([
-      makeEvent({ id: 1, payload: makePayload({ resourceId: "policy-1", targetIds: ["req-1"] }) }),
-      makeEvent({ id: 2, payload: makePayload({ resourceId: "policy-2", targetIds: ["req-2"] }) }),
-      makeEvent({ id: 3, payload: makePayload({ resourceId: "policy-1", targetIds: ["req-3"] }) })
+      makeEvent({ id: "event-1", data: makePayload({ resourceId: "policy-1", targetIds: ["req-1"] }) }),
+      makeEvent({ id: "event-2", data: makePayload({ resourceId: "policy-2", targetIds: ["req-2"] }) }),
+      makeEvent({ id: "event-3", data: makePayload({ resourceId: "policy-1", targetIds: ["req-3"] }) })
     ]);
 
     expect(getLookups()).toBe(2);
@@ -224,11 +283,11 @@ describe("alert event consumer", () => {
     const { consumer, runs } = buildConsumer();
 
     const results = await consumer.handle([
-      makeEvent({ id: 1, payload: makePayload({ targetIds: ["req-1"] }) }),
-      makeEvent({ id: 2, payload: makePayload({ targetIds: ["req-2"] }) })
+      makeEvent({ id: "event-1", data: makePayload({ targetIds: ["req-1"] }) }),
+      makeEvent({ id: "event-2", data: makePayload({ targetIds: ["req-2"] }) })
     ]);
 
-    expect(results.map((result) => result.id)).toEqual(["1", "2"]);
+    expect(results.map((result) => result.id)).toEqual(["event-1", "event-2"]);
     expect(runs.map((run) => run.targetIds)).toEqual([["req-1"], ["req-2"]]);
   });
 });

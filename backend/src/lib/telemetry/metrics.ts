@@ -309,6 +309,54 @@ export const queueStalledCounter = infisicalCoreMeter.createCounter("infisical.q
   unit: "{job}"
 });
 
+// In-process refresh metrics. Wired in lib/cron/local-refresh.ts around every run. Each pod runs its own
+// copy, so a failure here means that pod is serving stale in-memory state, not that a fleet job was lost.
+export enum LocalRefreshOutcome {
+  COMPLETED = "completed",
+  FAILED = "failed",
+  SKIPPED = "skipped"
+}
+
+export const localRefreshRunCounter = infisicalCoreMeter.createCounter("infisical.local_refresh.run.count", {
+  description:
+    "In-process refresh runs by job and outcome. skipped means the previous run was still in progress when the next tick fired.",
+  unit: "{run}"
+});
+
+export const localRefreshRunDurationHistogram = infisicalCoreMeter.createHistogram(
+  "infisical.local_refresh.run.duration",
+  {
+    description: "In-process refresh run duration by job and outcome. Not recorded for skipped runs.",
+    unit: "s"
+  }
+);
+
+// Read by the infisical.local_refresh.consecutive_failures gauge in registerInfrastructureMetrics().
+const localRefreshConsecutiveFailures = new Map<string, number>();
+
+export const recordLocalRefreshRunMetric = (params: {
+  name: string;
+  outcome: LocalRefreshOutcome;
+  durationMs?: number;
+  error?: unknown;
+  consecutiveFailures?: number;
+}) => {
+  safely(() => {
+    if (params.consecutiveFailures !== undefined) {
+      localRefreshConsecutiveFailures.set(params.name, params.consecutiveFailures);
+    }
+    if (!isTelemetryEnabled()) return;
+    const attributes: Record<string, string> = { "job.name": params.name, outcome: params.outcome };
+    if (params.durationMs !== undefined) {
+      localRefreshRunDurationHistogram.record(params.durationMs / 1000, attributes);
+    }
+    if (params.outcome === LocalRefreshOutcome.FAILED) {
+      attributes["error.type"] = classifyError(params.error);
+    }
+    localRefreshRunCounter.add(1, attributes);
+  });
+};
+
 // Audit log lifecycle metrics. Wired in audit-log-queue.ts: enqueued when an event is appended to
 // the Redis ingest stream, dropped when the request-path push fails, persist duration around the
 // batch insert in the unified consumer.
@@ -637,7 +685,7 @@ export const secretWriteCounter = infisicalCoreMeter.createCounter("infisical.se
 
 export const recordSecretOperationDuration = (params: {
   startTime: number;
-  operation: "read" | "write" | "delete";
+  operation: "read" | "write";
   outcome: "success" | "failure";
 }) => {
   if (!isTelemetryEnabled()) return;
@@ -657,7 +705,7 @@ export const recordSecretWriteMetric = (params: { operation: "create" | "update"
 // -- Secret sync outcome (InfisicalCore meter) ----------------------------------------------------
 export const secretSyncOutcomeCounter = infisicalCoreMeter.createCounter("infisical.secret_sync.outcome.count", {
   description:
-    "Secret sync attempts by destination, operation, and outcome. Alert on failure ratio > 50% over 15m with >= 10 attempts, grouped by destination.",
+    "Secret sync attempts by destination, operation, and outcome. A failure with attempts.exhausted=false is an intermediate retry; a finished sync is a success or a failure with attempts.exhausted=true.",
   unit: "{attempt}"
 });
 
@@ -676,21 +724,63 @@ export const recordSecretSyncOutcomeMetric = (params: {
   });
 };
 
+export const secretSyncStatusChangeCounter = infisicalCoreMeter.createCounter(
+  "infisical.secret_sync.status_change.count",
+  {
+    description:
+      "Secret syncs whose finished result flipped between healthy and failed, by destination. Counts distinct configs breaking without a per-config label.",
+    unit: "{change}"
+  }
+);
+
+export const recordSecretSyncStatusChangeMetric = (params: {
+  destination: string;
+  newStatus: "failed" | "healthy";
+}) => {
+  if (!isTelemetryEnabled()) return;
+  secretSyncStatusChangeCounter.add(1, {
+    destination: params.destination,
+    new_status: params.newStatus
+  });
+};
+
 // -- Secret rotation outcome (InfisicalCore meter) --------------------------------------------------
 export const secretRotationOutcomeCounter = infisicalCoreMeter.createCounter(
   "infisical.secret_rotation.outcome.count",
   {
     description:
-      "Secret rotation attempts by type and outcome. Alert on failure ratio > 50% per type with >= 5 total rotations.",
+      "Secret rotation attempts by type and outcome. A failure with attempts.exhausted=false is an intermediate retry; a finished rotation is a success or a failure with attempts.exhausted=true.",
     unit: "{attempt}"
   }
 );
 
-export const recordSecretRotationOutcomeMetric = (params: { type: string; outcome: "success" | "failure" }) => {
+export const recordSecretRotationOutcomeMetric = (params: {
+  type: string;
+  outcome: "success" | "failure";
+  attemptsExhausted: boolean;
+}) => {
   if (!isTelemetryEnabled()) return;
   secretRotationOutcomeCounter.add(1, {
     type: params.type,
-    outcome: params.outcome
+    outcome: params.outcome,
+    "attempts.exhausted": String(params.attemptsExhausted)
+  });
+};
+
+export const secretRotationStatusChangeCounter = infisicalCoreMeter.createCounter(
+  "infisical.secret_rotation.status_change.count",
+  {
+    description:
+      "Secret rotations whose finished result flipped between healthy and failed, by type. Counts distinct configs breaking without a per-config label.",
+    unit: "{change}"
+  }
+);
+
+export const recordSecretRotationStatusChangeMetric = (params: { type: string; newStatus: "failed" | "healthy" }) => {
+  if (!isTelemetryEnabled()) return;
+  secretRotationStatusChangeCounter.add(1, {
+    type: params.type,
+    new_status: params.newStatus
   });
 };
 
@@ -698,14 +788,75 @@ export const recordSecretRotationOutcomeMetric = (params: { type: string; outcom
 export const dynamicSecretOrphanedLeaseCounter = infisicalCoreMeter.createCounter(
   "infisical.dynamic_secret.orphaned_lease.count",
   {
-    description: "Dynamic secret lease revocation failures by provider. Alert on any value > 0 sustained 60m.",
+    description:
+      "Dynamic secret leases left unrevoked after every automatic revocation attempt failed, by provider. Each is a live credential that needs manual cleanup.",
     unit: "{failure}"
   }
 );
 
-export const recordDynamicSecretOrphanedLeaseMetric = (params: { provider: string }) => {
+export const recordDynamicSecretOrphanedLeaseMetric = (params: { provider: string; count?: number }) => {
   if (!isTelemetryEnabled()) return;
-  dynamicSecretOrphanedLeaseCounter.add(1, {
+  dynamicSecretOrphanedLeaseCounter.add(params.count ?? 1, {
+    provider: params.provider
+  });
+};
+
+export const dynamicSecretRevocationOutcomeCounter = infisicalCoreMeter.createCounter(
+  "infisical.dynamic_secret.revocation.outcome.count",
+  {
+    description:
+      "Dynamic secret lease revocations by provider, trigger, and outcome. A scheduled revocation (lease expiry) records exactly one outcome per lease; retry records every attempt, with attempts.exhausted=true on the last.",
+    unit: "{revocation}"
+  }
+);
+
+export const recordDynamicSecretRevocationOutcomeMetric = (params: {
+  provider: string;
+  trigger: "scheduled" | "retry" | "manual" | "pruning";
+  outcome: "success" | "failure";
+  attemptsExhausted: boolean;
+}) => {
+  if (!isTelemetryEnabled()) return;
+  dynamicSecretRevocationOutcomeCounter.add(1, {
+    provider: params.provider,
+    trigger: params.trigger,
+    outcome: params.outcome,
+    "attempts.exhausted": String(params.attemptsExhausted)
+  });
+};
+
+export const dynamicSecretStatusChangeCounter = infisicalCoreMeter.createCounter(
+  "infisical.dynamic_secret.status_change.count",
+  {
+    description:
+      "Dynamic secret configs whose lease revocations flipped between working and failing, by provider: failed when a scheduled revocation fails for good, healthy when any revocation succeeds again. Counts distinct configs breaking without a per-config label.",
+    unit: "{change}"
+  }
+);
+
+export const recordDynamicSecretStatusChangeMetric = (params: {
+  provider: string;
+  newStatus: "failed" | "healthy";
+}) => {
+  if (!isTelemetryEnabled()) return;
+  dynamicSecretStatusChangeCounter.add(1, {
+    provider: params.provider,
+    new_status: params.newStatus
+  });
+};
+
+export const dynamicSecretUnrecordedCredentialCounter = infisicalCoreMeter.createCounter(
+  "infisical.dynamic_secret.unrecorded_credential.count",
+  {
+    description:
+      "Dynamic secret credentials created upstream whose lease failed to persist and whose cleanup revocation also failed, by provider. Each is a live credential with no lease to revoke it.",
+    unit: "{credential}"
+  }
+);
+
+export const recordDynamicSecretUnrecordedCredentialMetric = (params: { provider: string }) => {
+  if (!isTelemetryEnabled()) return;
+  dynamicSecretUnrecordedCredentialCounter.add(1, {
     provider: params.provider
   });
 };
@@ -752,6 +903,41 @@ export const recordAlertDispatchOutcomeMetric = (params: { resourceType: string;
   });
 };
 
+// -- Object storage (InfisicalCore meter) -------------------------------------------------------------
+// Upload links the shared object storage layer gave out, or refused at the daily cap. Instance totals only: a per-org
+// split would need org ids as labels.
+
+export enum ObjectStorageUploadOutcome {
+  Admitted = "admitted",
+  Capped = "capped"
+}
+
+export const objectStorageUploadCounter = infisicalCoreMeter.createCounter("infisical.object_storage.upload.count", {
+  description:
+    "Upload links the object storage layer gave out or refused at the daily cap, by storage type and outcome.",
+  unit: "{upload}"
+});
+
+export const objectStorageUploadBytesCounter = infisicalCoreMeter.createCounter(
+  "infisical.object_storage.upload.bytes",
+  {
+    description: "Bytes the object storage layer's upload links allow, by storage type and outcome.",
+    unit: "By"
+  }
+);
+
+export const recordObjectStorageUploadMetric = (params: {
+  storageType: string;
+  outcome: ObjectStorageUploadOutcome;
+  bytes: number;
+}) =>
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    const attributes = { type: params.storageType, outcome: params.outcome };
+    objectStorageUploadCounter.add(1, attributes);
+    objectStorageUploadBytesCounter.add(params.bytes, attributes);
+  });
+
 // -- Event outbox (InfisicalCore meter) --------------------------------------------------------------
 // Outbox health, not what consumers do with events. The main canary is the oldest-pending-age gauge
 // in event-outbox-queue.ts, fed by the relay tick.
@@ -781,6 +967,32 @@ export const recordEventOutboxExhaustedMetric = (params: { consumer: string; cou
   safely(() => {
     if (!isTelemetryEnabled()) return;
     eventOutboxExhaustedCounter.add(params.count, { "event_outbox.consumer": params.consumer });
+  });
+
+export enum EventOutboxRejectReason {
+  InvalidEvent = "invalid_event",
+  DataTooLarge = "data_too_large",
+  DataRejected = "data_rejected"
+}
+
+export const eventOutboxRejectedCounter = infisicalCoreMeter.createCounter("infisical.event_outbox.rejected.count", {
+  description:
+    "Events the outbox refused because the emit site built a bad one, by event type and reason. The emit throws, so the business write the event belongs to fails with it. Alarm on any occurrence: it is a bug at the emit site.",
+  unit: "{event}"
+});
+
+export const recordEventOutboxRejectedMetric = (params: {
+  eventType: string;
+  reason: EventOutboxRejectReason;
+  consumer?: string;
+}) =>
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    eventOutboxRejectedCounter.add(1, {
+      "event_outbox.event_type": params.eventType,
+      "event_outbox.reject_reason": params.reason,
+      ...(params.consumer ? { "event_outbox.consumer": params.consumer } : {})
+    });
   });
 
 export enum ProductAnalyticsDropReason {
@@ -899,6 +1111,20 @@ export const registerInfrastructureMetrics = (db: Knex) => {
     const { size, max } = getAgentPoolStats();
     result.observe(size, { "pool.max": String(max) });
   });
+
+  // Resets to 0 on the next successful run, so a sustained non-zero value means the refresh is stuck
+  // failing rather than flaking. Alert on this instead of on the failure rate.
+  const localRefreshFailuresGauge = meter.createObservableGauge("infisical.local_refresh.consecutive_failures", {
+    description: "Consecutive failed runs of each in-process refresh on this pod. Resets to 0 on success.",
+    unit: "{run}"
+  });
+
+  localRefreshFailuresGauge.addCallback((result) => {
+    if (!isTelemetryEnabled()) return;
+    localRefreshConsecutiveFailures.forEach((count, name) => {
+      result.observe(count, { "job.name": name });
+    });
+  });
 };
 
 // -- Legacy root-key usage (InfisicalCore meter) -----------------------------------------------------
@@ -927,5 +1153,42 @@ export const recordLegacyRootKeyUsageMetric = (params: {
       "legacy_key.operation": params.operation,
       "legacy_key.surface": params.surface
     });
+  });
+};
+
+export type TOcspStatusLabel = "successful" | "malformed_request" | "internal_error" | "try_later" | "unauthorized";
+
+export type TOcspCertStatusLabel = "good" | "revoked" | "unknown" | "none";
+
+export const ocspResponseCounter = infisicalCoreMeter.createCounter("infisical.ocsp.response.count", {
+  description:
+    "OCSP responses by response status, certificate status and cache outcome. cert_status is 'none' when the response carries no certificate status, which is every status other than successful. A rising try_later means the signing budget is saturated.",
+  unit: "{response}"
+});
+
+export const ocspSigningDurationHistogram = infisicalCoreMeter.createHistogram("infisical.ocsp.signing.duration", {
+  description: "Time spent resolving status and signing a fresh OCSP response, excluding cache hits.",
+  unit: "ms"
+});
+
+export const recordOcspResponseMetric = (params: {
+  status: TOcspStatusLabel;
+  certStatus: TOcspCertStatusLabel;
+  cache: "hit" | "miss" | "skipped" | "coalesced";
+}) => {
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    ocspResponseCounter.add(1, {
+      "ocsp.status": params.status,
+      "ocsp.cert_status": params.certStatus,
+      "ocsp.cache": params.cache
+    });
+  });
+};
+
+export const recordOcspSigningDurationMetric = (params: { durationMs: number }) => {
+  safely(() => {
+    if (!isTelemetryEnabled()) return;
+    ocspSigningDurationHistogram.record(params.durationMs);
   });
 };

@@ -7,6 +7,7 @@ export type TChefSync = TRootSecretSync & {
   destinationConfig: {
     dataBagName: string;
     dataBagItemName: string;
+    shouldEncryptSecrets?: boolean;
   };
   connection: {
     app: AppConnection.Chef;

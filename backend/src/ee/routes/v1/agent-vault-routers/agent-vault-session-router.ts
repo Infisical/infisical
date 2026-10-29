@@ -1,16 +1,21 @@
 import { z } from "zod";
 
 import {
-  AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
-  AGENT_VAULT_NO_CONTROL_CHARS_RE
-} from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
-import { AgentVaultSessionScope, AgentVaultSessionStatus } from "@app/ee/services/agent-vault/agent-vault-enums";
+  agentVaultSessionLabelSchema,
+  agentVaultSessionLabelUpdateSchema,
+  describeSessionForAudit
+} from "@app/ee/services/agent-vault-session/agent-vault-session-fns";
 import {
   AGENT_VAULT_MAX_SESSION_BUNDLES,
   AGENT_VAULT_SESSION_DEFAULT_TTL,
   AGENT_VAULT_SESSION_MAX_TTL_MS,
   AGENT_VAULT_SESSION_TTL_NEVER
 } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import {
+  AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
+  AGENT_VAULT_NO_CONTROL_CHARS_RE
+} from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
+import { AgentVaultSessionScope, AgentVaultSessionStatus } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";
@@ -23,6 +28,9 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
+import { actorContext } from "./agent-vault-router-fns";
+import { AgentVaultSessionActorSchema } from "./agent-vault-schemas";
+
 const SessionAccessBundleSchema = z.object({
   id: z.string().uuid().nullable(),
   name: z.string(),
@@ -31,14 +39,16 @@ const SessionAccessBundleSchema = z.object({
 
 const SessionSchema = z.object({
   id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
-  userId: z.string().uuid().nullable(),
-  identityId: z.string().uuid().nullable(),
-  actorName: z.string(),
-  actorEmail: z.string().nullable(),
+  label: z.string().nullable().describe(AGENT_VAULT.SESSION.label),
+  actor: AgentVaultSessionActorSchema,
   status: z.nativeEnum(AgentVaultSessionStatus),
   expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
   revokedAt: z.date().nullable(),
   createdAt: z.date()
+});
+
+const SessionWithAccessBundlesSchema = SessionSchema.extend({
+  accessBundles: SessionAccessBundleSchema.array()
 });
 
 export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider) => {
@@ -56,7 +66,14 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           .nativeEnum(AgentVaultSessionScope)
           .default(AgentVaultSessionScope.Mine)
           .describe(AGENT_VAULT.SESSION.scope),
-        status: z.nativeEnum(AgentVaultSessionStatus).optional().describe(AGENT_VAULT.SESSION.status),
+        status: z
+          .string()
+          .trim()
+          .max(64)
+          .optional()
+          .transform((val) => (val ? [...new Set(val.split(",").map((status) => status.trim()))] : undefined))
+          .pipe(z.nativeEnum(AgentVaultSessionStatus).array().optional())
+          .describe(AGENT_VAULT.SESSION.status),
         search: z
           .string()
           .trim()
@@ -65,26 +82,47 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           .optional()
           .describe(AGENT_VAULT.SESSION.search),
         limit: z.coerce.number().int().min(1).max(100).default(20).describe(AGENT_VAULT.SESSION.limit),
-        offset: z.coerce.number().int().min(0).max(10000).default(0).describe(AGENT_VAULT.SESSION.offset)
+        offset: z.coerce.number().int().min(0).default(0).describe(AGENT_VAULT.SESSION.offset)
       }),
       response: {
         200: z.object({
-          sessions: SessionSchema.extend({ accessBundles: SessionAccessBundleSchema.array() }).array(),
+          sessions: SessionWithAccessBundlesSchema.array(),
           totalCount: z.number()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) =>
-      server.services.agentVaultSession.listSessions({
+    handler: async (req) => {
+      const { status, ...query } = req.query;
+      return server.services.agentVaultSession.listSessions({
         projectId: req.internalAgentVaultProjectId,
-        ctx: {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        },
-        ...req.query
+        ctx: actorContext(req),
+        statuses: status,
+        ...query
+      });
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:sessionId",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "getAgentVaultSession",
+      description: "Gets an Agent Vault session.",
+      tags: [ApiDocsTags.AgentVaultSessions],
+      params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
+      response: {
+        200: z.object({ session: SessionWithAccessBundlesSchema })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.agentVaultSession.getSessionById({
+        projectId: req.internalAgentVaultProjectId,
+        sessionId: req.params.sessionId,
+        ctx: actorContext(req)
       })
   });
 
@@ -129,12 +167,14 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
               });
             }
           })
-          .describe(AGENT_VAULT.SESSION.ttl)
+          .describe(AGENT_VAULT.SESSION.ttl),
+        label: agentVaultSessionLabelSchema.describe(AGENT_VAULT.SESSION.label)
       }),
       response: {
         200: z.object({
           session: z.object({
             id: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId),
+            label: z.string().nullable().describe(AGENT_VAULT.SESSION.label),
             token: z.string().describe(AGENT_VAULT.SESSION.token),
             expiresAt: z.date().nullable().describe(AGENT_VAULT.SESSION.expiresAt),
             createdAt: z.date(),
@@ -160,12 +200,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
         actorName,
         actorEmail,
         projectId: req.internalAgentVaultProjectId,
-        ctx: {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        },
+        ctx: actorContext(req),
         ...req.body
       });
 
@@ -177,6 +212,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           type: EventType.AGENT_VAULT_SESSION_MINT,
           metadata: {
             sessionId: session.id,
+            label: session.label,
             accessBundleId: session.accessBundles[0].id,
             accessBundleName: session.accessBundles[0].name,
             expiresAt: session.expiresAt?.toISOString() ?? null
@@ -198,6 +234,51 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
   });
 
   server.route({
+    method: "PATCH",
+    url: "/:sessionId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "updateAgentVaultSession",
+      description: "Update the label of an Agent Vault session",
+      tags: [ApiDocsTags.AgentVaultSessions],
+      params: z.object({ sessionId: z.string().uuid().describe(AGENT_VAULT.SESSION.sessionId) }),
+      body: z.object({
+        label: agentVaultSessionLabelUpdateSchema.describe(AGENT_VAULT.SESSION.updateLabel)
+      }),
+      response: { 200: z.object({ session: SessionWithAccessBundlesSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { session, previousLabel } = await server.services.agentVaultSession.updateSessionLabel({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        sessionId: req.params.sessionId,
+        label: req.body.label
+      });
+
+      if (previousLabel !== session.label) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId: req.internalAgentVaultProjectId,
+          event: {
+            type: EventType.AGENT_VAULT_SESSION_UPDATE,
+            metadata: {
+              sessionId: session.id,
+              label: session.label,
+              previousLabel,
+              ...describeSessionForAudit(session)
+            }
+          }
+        });
+      }
+
+      return { session };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/:sessionId/revoke",
     config: { rateLimit: writeLimit },
@@ -213,12 +294,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
     handler: async (req) => {
       const { session, revokedNow } = await server.services.agentVaultSession.revokeSession({
         projectId: req.internalAgentVaultProjectId,
-        ctx: {
-          actorId: req.permission.id,
-          actor: req.permission.type,
-          actorOrgId: req.permission.orgId,
-          actorAuthMethod: req.permission.authMethod
-        },
+        ctx: actorContext(req),
         sessionId: req.params.sessionId
       });
 
@@ -230,7 +306,7 @@ export const registerAgentVaultSessionRouter = async (server: FastifyZodProvider
           projectId: req.internalAgentVaultProjectId,
           event: {
             type: EventType.AGENT_VAULT_SESSION_REVOKE,
-            metadata: { sessionId: session.id }
+            metadata: { sessionId: session.id, label: session.label, ...describeSessionForAudit(session) }
           }
         });
 

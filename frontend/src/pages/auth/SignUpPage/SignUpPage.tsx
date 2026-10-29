@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { LoaderCircle } from "lucide-react";
 
+import {
+  isSignupFlowExperimentEnabled,
+  SignupFlowVariant,
+  useSignupFlowVariant
+} from "@app/components/analytics/experiments/signupFlow/signupExperiment";
 import { AuthPageLayout } from "@app/components/auth/AuthPageLayout";
 import { AuthTermsNotice } from "@app/components/auth/AuthTermsNotice";
 import CodeInputStep from "@app/components/auth/CodeInputStep";
@@ -12,15 +17,24 @@ import { OnboardingStepTransition } from "@app/components/auth/OnboardingStepTra
 import ProductSelectionStep from "@app/components/auth/ProductSelectionStep";
 import SignupCompleteStep from "@app/components/auth/SignupCompleteStep";
 import { getSignupProduct, SignupProductType } from "@app/components/auth/signupProducts";
+import {
+  bindSignupTrialIntent,
+  captureSignupTrialIntent,
+  clearSignupTrialIntent,
+  getSignupTrialProjectType
+} from "@app/components/auth/signupTrialIntent";
 import TeamInviteStep from "@app/components/auth/TeamInviteStep";
 import UserInfoStep from "@app/components/auth/UserInfoStep";
 import { createNotification } from "@app/components/notifications";
+import { PageTitle } from "@app/components/PageTitle";
 import { envConfig } from "@app/config/env";
 import { useServerConfig } from "@app/context";
 import { useSelectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizations } from "@app/hooks/api/organization/queries";
 import { Project, ProjectType } from "@app/hooks/api/projects/types";
 import { useFetchServerStatus } from "@app/hooks/api/serverDetails";
+
+import { SignupPreviewLayout } from "./components/SignupPreviewLayout";
 
 enum SignupSection {
   Email = "email",
@@ -45,6 +59,7 @@ export interface SignUpPageProps {
 
 export const SignUpPage = ({ invite }: SignUpPageProps) => {
   const isInvite = Boolean(invite);
+  const signupFlowVariant = useSignupFlowVariant(!isInvite && isSignupFlowExperimentEnabled());
   const [email, setEmail] = useState(invite?.email ?? "");
   const [pendingEmailVerification, setPendingEmailVerification] =
     useState<PendingEmailVerification | null>(null);
@@ -52,14 +67,17 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
     isInvite ? SignupSection.UserInfo : SignupSection.Email
   );
   const [orgId, setOrgId] = useState("");
-  const [inviteEmails, setInviteEmails] = useState("");
+  const [inviteEmails, setInviteEmails] = useState<string[]>([]);
   const projectCache = useRef<Partial<Record<SignupProductType, Project>>>({});
   // An empty selection means "just exploring".
-  const [selectedProducts, setSelectedProducts] = useState<SignupProductType[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<SignupProductType[]>(() =>
+    isInvite ? [] : getSignupTrialProjectType(captureSignupTrialIntent(window.location.search))
+  );
   const [createdProjects, setCreatedProjects] = useState<
     Partial<Record<SignupProductType, Project>>
   >({});
   const navigate = useNavigate();
+  const { callback_port: callbackPort } = useSearch({ from: "/_restrict-login-signup" });
   const { data: serverDetails } = useFetchServerStatus();
   const { t } = useTranslation();
   const { config } = useServerConfig();
@@ -110,7 +128,9 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
   };
 
   const handleUserInfoComplete = async (newOrgId?: string) => {
+    if (newOrgId) bindSignupTrialIntent(newOrgId);
     if (isInvite) {
+      clearSignupTrialIntent();
       const userOrgs = await fetchOrganizations();
       const inviteOrgId = userOrgs[0]?.id;
 
@@ -131,6 +151,18 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
         });
       } else {
         navigate({ to: "/login" });
+      }
+      return;
+    }
+
+    if (callbackPort) {
+      if (newOrgId) {
+        navigate({
+          to: "/login/select-organization",
+          search: { org_id: newOrgId, callback_port: callbackPort }
+        });
+      } else {
+        navigate({ to: "/organizations/onboarding", search: { callback_port: callbackPort } });
       }
       return;
     }
@@ -165,6 +197,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
             incrementStep={handleEmailComplete}
             pendingVerificationEmail={pendingEmailVerification?.email}
             onResumeVerification={handleResumeEmailVerification}
+            callbackPort={callbackPort}
           />
         );
       case SignupSection.VerifyCode:
@@ -237,6 +270,7 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
           <span className="text-label">Already have an account?</span>
           <Link
             to="/login"
+            search={{ callback_port: callbackPort }}
             className="text-foreground/95 underline decoration-project/60 underline-offset-2 transition-colors duration-200 hover:decoration-project"
           >
             Log in
@@ -264,21 +298,13 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
       />
     ) : undefined;
 
-  return (
-    <AuthPageLayout
-      showFooter={false}
-      bottomContent={renderBottomContent()}
-      headerAction={stepIndicator}
-      variant={isWorkspaceSetup ? "focused" : "split"}
-      contentClassName={isWorkspaceSetup ? "max-w-3xl" : undefined}
-    >
-      <Helmet>
-        <title>{t("common.head-title", { title: t("signup.title") })}</title>
-        <link rel="icon" href="/infisical.ico" />
-        <meta property="og:image" content="/images/message.png" />
-        <meta property="og:title" content={t("signup.og-title") as string} />
-        <meta name="og:description" content={t("signup.og-description") as string} />
-      </Helmet>
+  const pageContent = (
+    <>
+      <PageTitle title={t("signup.title")} />
+      <link rel="icon" href="/infisical.ico" />
+      <meta property="og:image" content="/images/message.png" />
+      <meta property="og:title" content={t("signup.og-title") as string} />
+      <meta name="og:description" content={t("signup.og-description") as string} />
       <OnboardingStepTransition step={section}>
         {section === SignupSection.VerifyCode ||
         section === SignupSection.UserInfo ||
@@ -291,6 +317,44 @@ export const SignUpPage = ({ invite }: SignUpPageProps) => {
           </form>
         )}
       </OnboardingStepTransition>
+    </>
+  );
+
+  if (!signupFlowVariant) {
+    return (
+      <>
+        <PageTitle title={t("signup.title")} />
+        <div className="flex min-h-screen items-center justify-center bg-page" role="status">
+          <div className="flex flex-col items-center gap-3 text-sm text-label">
+            <LoaderCircle className="size-5 animate-spin text-project motion-reduce:animate-none" />
+            <span>Preparing sign up</span>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (
+    !isInvite &&
+    section === SignupSection.Email &&
+    signupFlowVariant === SignupFlowVariant.DashboardPreview
+  ) {
+    return (
+      <SignupPreviewLayout bottomContent={renderBottomContent()} headerAction={stepIndicator}>
+        {pageContent}
+      </SignupPreviewLayout>
+    );
+  }
+
+  return (
+    <AuthPageLayout
+      showFooter={false}
+      bottomContent={renderBottomContent()}
+      headerAction={stepIndicator}
+      variant={isWorkspaceSetup ? "focused" : "split"}
+      contentClassName={isWorkspaceSetup ? "max-w-3xl" : undefined}
+    >
+      {pageContent}
     </AuthPageLayout>
   );
 };

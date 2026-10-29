@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { subject } from "@casl/ability";
-import { useParams } from "@tanstack/react-router";
 import { format } from "date-fns";
 import { BanIcon, CopyIcon, EllipsisIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 
@@ -40,7 +39,7 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionSub
 } from "@app/context";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useRouteProjectId } from "@app/hooks";
 import { useRevokeIdentityTokenAuthToken } from "@app/hooks/api";
 import { IdentityAccessToken } from "@app/hooks/api/identities/types";
 import { IdentityTokenModal } from "@app/pages/organization/IdentityDetailsByIDPage/components";
@@ -56,9 +55,7 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
     "revokeToken"
   ] as const);
 
-  const { projectId } = useParams({
-    strict: false
-  });
+  const projectId = useRouteProjectId();
 
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(5);

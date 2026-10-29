@@ -4,6 +4,7 @@ import {
   AnalyticsEvent,
   OrganizationAnalyticsEvent,
   OrganizationAnalyticsEventMap,
+  SignupFlowCompletedProperties,
   ThemePreferenceChangedProperties
 } from "./events";
 
@@ -11,6 +12,14 @@ export const analytics = {
   captureThemePreferenceChanged(properties: ThemePreferenceChangedProperties) {
     const telemetry = new Telemetry().getInstance();
     telemetry.capture(AnalyticsEvent.ThemePreferenceChanged, properties);
+  },
+  captureSignupFlowCompleted(properties: SignupFlowCompletedProperties) {
+    const telemetry = new Telemetry().getInstance();
+    telemetry.capture(AnalyticsEvent.SignupFlowCompleted, properties);
+  },
+  captureOnboardingDocumentationClicked() {
+    const telemetry = new Telemetry().getInstance();
+    telemetry.capture(AnalyticsEvent.OnboardingDocumentationClicked);
   },
   captureForOrganization<Event extends OrganizationAnalyticsEvent>(
     event: Event,
@@ -27,4 +36,11 @@ export const analytics = {
 };
 
 export { AnalyticsEvent };
-export type { FolderAccessGrantSheetSource } from "./events";
+export type {
+  BillingCancellationAction,
+  FolderAccessGrantSheetSource,
+  OnboardingResource,
+  SecretsAddResourceAction,
+  SecretsAddResourceMenuLevel,
+  SecretsAddResourceMenuSource
+} from "./events";

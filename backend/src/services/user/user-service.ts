@@ -4,6 +4,9 @@ import { Knex } from "knex";
 import { AccessScope, OrganizationActionScope, TUsers } from "@app/db/schemas";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { OrgPermissionMemberActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
@@ -91,6 +94,8 @@ type TUserServiceFactoryDep = {
   mfaRecoveryCodeService: Pick<TMfaRecoveryCodeServiceFactory, "rotateRecoveryCodes" | "deleteRecoveryCodes">;
   usageMeteringService: Pick<TUsageMeteringServiceFactory, "emit">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "deleteByPrincipals">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "find">;
 };
 
@@ -110,7 +115,9 @@ export const userServiceFactory = ({
   mfaRecoveryCodeService,
   usageMeteringService,
   alertChannelRecipientDAL,
-  emailDomainDAL
+  emailDomainDAL,
+  pamSessionDAL,
+  gatewayV2Service
 }: TUserServiceFactoryDep) => {
   const sendEmailVerificationCode = async (token: string) => {
     const config = getConfig();
@@ -659,10 +666,13 @@ export const userServiceFactory = ({
   // substitute.
   const getStepUpMfaMethod = async (
     userId: string,
-    orgId: string,
+    orgId: string | undefined,
     excludeMethod?: MfaMethod
   ): Promise<{ challenge: MfaMethod; accepted: MfaMethod[] }> => {
-    const [user, sessionOrg] = await Promise.all([userDAL.findById(userId), orgDAL.findById(orgId)]);
+    const [user, sessionOrg] = await Promise.all([
+      userDAL.findById(userId),
+      orgId ? orgDAL.findById(orgId) : undefined
+    ]);
     const org =
       sessionOrg?.rootOrgId && sessionOrg.rootOrgId !== sessionOrg.id
         ? await orgDAL.findById(sessionOrg.rootOrgId)
@@ -680,6 +690,41 @@ export const userServiceFactory = ({
     const replacement = await findReplacementMfaMethod(user, excludeMethod);
     if (!replacement) return asRequired;
     return { challenge: replacement, accepted: [requiredMfaMethod, replacement] };
+  };
+
+  // Adding a factor must be proven with one the account already has, or a password-only
+  // session could plant its own. A new factor of a kind the user already has passes every
+  // login that asks for that kind, so only that kind can prove it; otherwise a weaker factor
+  // could open an org that enforces the stronger one. Mirrors removal (getStepUpMfaMethod).
+  // The first factor of a kind takes any of the user's factors, and an account with none
+  // gets null so enforced-MFA onboarding at login still works.
+  const getFactorEnrollmentStepUpMfaMethods = async (
+    userId: string,
+    enrollingMethod: MfaMethod
+  ): Promise<{ challenge: MfaMethod; accepted: MfaMethod[] } | null> => {
+    const user = await userDAL.findById(userId);
+    if (!user) throw new NotFoundError({ message: "User not found" });
+
+    const [hasPasskey, hasTotp, enforcingOrgs] = await Promise.all([
+      isMfaMethodConfigured(user, MfaMethod.WEBAUTHN),
+      isMfaMethodConfigured(user, MfaMethod.TOTP),
+      findMfaEnforcingOrgs(userId)
+    ]);
+    const isEmailRequiredAtLogin =
+      (user.isMfaEnabled && (user.selectedMfaMethod ?? MfaMethod.EMAIL) === MfaMethod.EMAIL) ||
+      enforcingOrgs.some((org) => (org.selectedMfaMethod ?? MfaMethod.EMAIL) === MfaMethod.EMAIL);
+    const hasEmail = isEmailRequiredAtLogin && (await isMfaMethodConfigured(user, MfaMethod.EMAIL));
+
+    const userFactors = [
+      ...(hasPasskey ? [MfaMethod.WEBAUTHN] : []),
+      ...(hasTotp ? [MfaMethod.TOTP] : []),
+      ...(hasEmail ? [MfaMethod.EMAIL] : [])
+    ];
+    if (!userFactors.length) return null;
+    if (userFactors.includes(enrollingMethod)) return { challenge: enrollingMethod, accepted: [enrollingMethod] };
+
+    const preferred = userFactors.find((method) => method === user.selectedMfaMethod);
+    return { challenge: preferred ?? userFactors[0], accepted: userFactors };
   };
 
   const deleteUser = async (userId: string) => {
@@ -707,7 +752,17 @@ export const userServiceFactory = ({
       actorUserId: userId
     });
 
+    let sendPamCancellations = () => {};
+
     const user = await userDAL.transaction(async (tx) => {
+      sendPamCancellations = await terminatePamSessionsForUsers({
+        orgIds: orgMemberships.map((m) => m.scopeOrgId),
+        userIds: [userId],
+        pamSessionDAL,
+        gatewayV2Service,
+        tx
+      });
+
       const deletedUser = await userDAL.deleteById(userId, tx);
 
       await alertChannelRecipientDAL.deleteByPrincipals(
@@ -720,6 +775,8 @@ export const userServiceFactory = ({
 
       return deletedUser;
     });
+
+    sendPamCancellations();
 
     // Deleting the user cascades its org, project, and group memberships, so every identity meter changes.
     const orgIds = [...new Set(orgMemberships.map((m) => m.scopeOrgId).filter((id): id is string => Boolean(id)))];
@@ -875,6 +932,7 @@ export const userServiceFactory = ({
     deleteUser,
     getMe,
     getStepUpMfaMethod,
+    getFactorEnrollmentStepUpMfaMethods,
     isStepUpMfaRequired,
     resolveMfaMethodAfterRemoval,
     assertMfaFactorRemovable,

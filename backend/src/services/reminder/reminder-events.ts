@@ -1,0 +1,54 @@
+import crypto from "node:crypto";
+
+import { Knex } from "knex";
+import RE2 from "re2";
+import { z } from "zod";
+
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+
+export const SECRET_REMINDER_RESOURCE_TYPE = "secret.reminder";
+export const SECRET_REMINDER_DUE_EVENT = "secret.reminder.due";
+
+export const SecretReminderDuePayloadSchema = z.object({
+  note: z.string().max(1024).nullish(),
+  repeatDays: z.number().int().min(1).nullish(),
+  // UTC calendar date (yyyy-mm-dd) the reminder was due on, which a catch-up run can send late.
+  occurrenceDate: z.string().regex(new RE2("^\\d{4}-\\d{2}-\\d{2}$"))
+});
+
+export type TSecretReminderDueInput = {
+  orgId: string;
+  projectId: string;
+  secretId: string;
+  note?: string | null;
+  repeatDays?: number | null;
+  occurrenceDate: string;
+};
+
+export const emitSecretReminderDue = (
+  eventEmitter: TEventEmitter,
+  { orgId, projectId, secretId, note, repeatDays, occurrenceDate }: TSecretReminderDueInput,
+  tx: Knex
+): Promise<void> =>
+  eventEmitter.emit(
+    [
+      {
+        // Random on purpose. The dispatch transaction already stops an occurrence firing twice, and an id
+        // derived from reminder + date would make the outbox drop a reminder moved back onto a date it
+        // already fired on.
+        id: crypto.randomUUID(),
+        type: SECRET_REMINDER_DUE_EVENT,
+        data: {
+          orgId,
+          projectId,
+          resourceType: SECRET_REMINDER_RESOURCE_TYPE,
+          resourceId: secretId,
+          targetIds: [secretId],
+          note: note ?? null,
+          repeatDays: repeatDays ?? null,
+          occurrenceDate
+        }
+      }
+    ],
+    tx
+  );

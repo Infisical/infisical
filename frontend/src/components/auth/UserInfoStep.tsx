@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { type JSX, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check, Eye, EyeOff, X } from "lucide-react";
 import { z } from "zod";
 
+import { captureSignupCompleted } from "@app/components/analytics/experiments/signupFlow/signupExperiment";
 import { PasswordField } from "@app/components/auth/PasswordField";
 import { createPasswordSchema } from "@app/components/utilities/checks/password/passwordPolicy";
 import { usePasswordBreachCheck } from "@app/components/utilities/checks/password/usePasswordBreachCheck";
@@ -150,6 +151,7 @@ export default function UserInfoStep({
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({ event: "signup_completed" });
     }
+    if (!isInvite) captureSignupCompleted("email");
 
     const userOrgs = await fetchOrganizations();
     const orgId = userOrgs[0]?.id;
@@ -193,7 +195,7 @@ export default function UserInfoStep({
             )}
           </CardTitle>
           {isInvite ? (
-            <CardDescription className="ml-0.5 font-alliance text-base break-words text-accent">
+            <CardDescription className="ml-0.5 font-sans text-base break-words text-accent">
               Set up your Infisical account
             </CardDescription>
           ) : null}

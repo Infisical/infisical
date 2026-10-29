@@ -1,9 +1,17 @@
-import { useNavigate } from "@tanstack/react-router";
+import type { MouseEvent } from "react";
 import { ChevronRightIcon, FolderIcon } from "lucide-react";
 
-import { TableCell, TableRow, Tooltip, TooltipContent, TooltipTrigger } from "@app/components/v3";
+import {
+  RowLink,
+  TableCell,
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
+} from "@app/components/v3";
 import { TSecretFolder } from "@app/hooks/api/secretFolders/types";
 
+import { isPlainClick, QUICK_SEARCH_ROUTE } from "./quickSearchLink";
 import { QuickSearchSelection } from "./quickSearchTypes";
 
 type Props = {
@@ -14,32 +22,34 @@ type Props = {
 };
 
 export const QuickSearchFolderItem = ({ folder, envSlug, onClose, onSelectResult }: Props) => {
-  const navigate = useNavigate({
-    from: "/organizations/$orgId/projects/secret-management/$projectId/overview"
-  });
-
-  const handleNavigate = () => {
+  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!isPlainClick(event)) return;
     onSelectResult({ search: "" });
-    navigate({
-      search: (prev) => ({
-        ...prev,
-        search: undefined,
-        tags: undefined,
-        filterBy: undefined,
-        secretPath: folder.path,
-        environments: [envSlug]
-      })
-    });
     onClose(false);
   };
 
   return (
-    <TableRow className="group cursor-pointer" onClick={handleNavigate}>
+    <TableRow linked>
       <TableCell>
         <FolderIcon className="text-folder" />
       </TableCell>
       <TableCell isTruncatable>
-        <span className="truncate font-medium">{folder.name}</span>
+        <RowLink
+          from={QUICK_SEARCH_ROUTE}
+          to="."
+          search={(prev) => ({
+            ...prev,
+            search: undefined,
+            tags: undefined,
+            filterBy: undefined,
+            secretPath: folder.path,
+            environments: [envSlug],
+            clearSearch: true
+          })}
+          onClick={handleClick}
+        >
+          <span className="font-medium">{folder.name}</span>
+        </RowLink>
       </TableCell>
       <TableCell isTruncatable>
         <Tooltip delayDuration={1000}>
@@ -49,6 +59,7 @@ export const QuickSearchFolderItem = ({ folder, envSlug, onClose, onSelectResult
           <TooltipContent className="max-w-lg">{folder.path}</TooltipContent>
         </Tooltip>
       </TableCell>
+      <TableCell className="text-muted">—</TableCell>
       <TableCell className="text-right">
         <ChevronRightIcon className="ml-auto size-4 text-muted" />
       </TableCell>

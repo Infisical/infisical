@@ -37,9 +37,29 @@ const readAltNames = (cert: x509.X509Certificate) => {
   }
 };
 
+const normalizePemText = (pemText: string) => {
+  const cleaned = pemText
+    .replace(/\\r\\n|\\n|\\r/g, "\n")
+    .replace(/[\u2010-\u2015\u2212]/g, "-")
+    .replace(/[\u00a0\u2007\u202f]/g, " ")
+    .replace(/[\u200b-\u200d\u2060\ufeff]/g, "");
+
+  const blocks = Array.from(
+    cleaned.matchAll(/-----BEGIN ([A-Z0-9 ]+)-----([A-Za-z0-9+/=\s]*)-----END ([A-Z0-9 ]+)-----/g)
+  )
+    .filter(([, beginLabel, , endLabel]) => beginLabel === endLabel)
+    .map(([, label, body]) => {
+      const lines = body.replace(/\s/g, "").match(/.{1,64}/g) ?? [];
+      return [`-----BEGIN ${label}-----`, ...lines, `-----END ${label}-----`].join("\n");
+    });
+
+  const beginMarkerCount = (cleaned.match(/-----BEGIN /g) ?? []).length;
+  return blocks.length && blocks.length === beginMarkerCount ? blocks.join("\n") : pemText.trim();
+};
+
 export const summarizeCertificatePem = (pem: string): TCertificatePemSummary | null => {
   try {
-    const cert = new x509.X509Certificate(pem.trim());
+    const cert = new x509.X509Certificate(normalizePemText(pem));
     return {
       subject: cert.subject.slice(0, MAX_SUBJECT_LENGTH),
       commonName: cert.subjectName.getField("CN")[0]?.slice(0, MAX_SUBJECT_LENGTH) ?? null,

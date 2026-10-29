@@ -61,6 +61,24 @@ CP3TUvonGhGkLZsMUGaQaWu9N0oaLbdhttDycyaG3lfba3xdfL/vouoC0CTwlMAZ
 8Gn5fDcpjA==
 -----END CERTIFICATE REQUEST-----`;
 
+const FULL_SUBJECT_CSR = `-----BEGIN CERTIFICATE REQUEST-----
+MIICwTCCAakCAQAwfDEZMBcGA1UEAwwQZnVsbC5leGFtcGxlLmNvbTESMBAGA1UE
+CgwJRnVsbCBDb3JwMREwDwYDVQQLDAhQbGF0Zm9ybTELMAkGA1UEBhMCVVMxEzAR
+BgNVBAgMCkNhbGlmb3JuaWExFjAUBgNVBAcMDVNhbiBGcmFuY2lzY28wggEiMA0G
+CSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQC9BgEbpkoYkvBmRy+xyW19HtTWrbST
+5Ol2LC4HF35nBr3pFhwr9+Xd7UeGJQpRr4b3hc/VpLfPq5V4gciz9lvP+O02Fljn
+oAQgAyZaqoygADP/qwyGRzNsPW/sG2Mf1GWsRs4dGW8Yl7LTJ9Hs20RnCx/LWrLE
+SzuOfi3UiIg+HbgASi+7T8DBp7y0Qy8cPqQbBHi4qTbQpwLonPHOA3OK+O7l/vp6
+mFNvFLqVjSRKZY6E5A1laRLIhRMwFeJEjvmWmTgObJj++1pBoE8VJSQCUu5ujcme
+wO68a1ljm0Wvw0zGPKsXB9a8oU2kVvaCeCVSJf7DlCZorl8NKJN674aPAgMBAAGg
+ADANBgkqhkiG9w0BAQsFAAOCAQEAKhdZAPm5CwpCy3Jh7ASOcTKc+ukvtvR5/VIr
+xG9VFGUMIq8PdWgfFAo/K8sONfzOcVFZnal26yE3im+wXuymMwCChgUkSXcx25ns
+bzZxTO/O/4XbVNSQSagv+NOc8qYlTv0jbUtCCdbYTMCYoELYnTpInFW29eTkrR1i
+cjSLzQcD1OyZ4yowgnnQYx0KZm8CKxmDCsu/+vY6AmfuLJluuXBvXzZuax/RNe6/
+Pzl7ofVUGbGcn5nvIBcCtbf/0ZGXsPKxDsuBlzs76gZBc4VYc3l7qhDmz3k74T07
+oNhXP6h9e3jYLWU+USpa+j8DgWDbwI7OK9CNYYHB4XLuoR2rNg==
+-----END CERTIFICATE REQUEST-----`;
+
 const TLS_DEFAULTS: TCertificateProfileDefaults = {
   keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.KEY_ENCIPHERMENT],
   extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH]
@@ -115,6 +133,45 @@ describe("applyProfileDefaults", () => {
     });
 
     expect(request.commonName).toBe("fallback.local");
+  });
+
+  it("carries every subject attribute the CSR names through to the persisted request", () => {
+    expect(forCsr(FULL_SUBJECT_CSR, null)).toMatchObject({
+      commonName: "full.example.com",
+      organization: "Full Corp",
+      organizationalUnit: "Platform",
+      country: "US",
+      state: "California",
+      locality: "San Francisco"
+    });
+  });
+
+  it("lets a profile default fill a subject attribute the CSR leaves out", () => {
+    const request = forCsr(EMPTY_SUBJECT_CSR, {
+      ...TLS_DEFAULTS,
+      organization: "Default Org",
+      country: "US"
+    });
+
+    expect(request.organization).toBe("Default Org");
+    expect(request.country).toBe("US");
+  });
+
+  it("never lets a profile default overwrite a subject attribute the CSR carries", () => {
+    const fromCsr = forCsr(FULL_SUBJECT_CSR, null);
+    const withDefaults = forCsr(FULL_SUBJECT_CSR, {
+      ...TLS_DEFAULTS,
+      commonName: "default.example.com",
+      organization: "Default Org",
+      organizationalUnit: "Default OU",
+      country: "ZZ",
+      state: "Default State",
+      locality: "Default City"
+    });
+
+    for (const field of ["commonName", "organization", "organizationalUnit", "country", "state", "locality"] as const) {
+      if (fromCsr[field] !== undefined) expect(withDefaults[field]).toBe(fromCsr[field]);
+    }
   });
 
   it("fills usages while leaving CSR-derived algorithms untouched", () => {

@@ -1,7 +1,6 @@
 /* eslint-disable no-nested-ternary */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { subject } from "@casl/ability";
-import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
 import {
   ArrowDownIcon,
@@ -44,6 +43,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  RowLink,
   Skeleton,
   Table,
   TableBody,
@@ -60,7 +60,6 @@ import {
   ProjectPermissionCertificateActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionSub,
-  useOrganization,
   useProject,
   useProjectPermission,
   useUser
@@ -92,9 +91,11 @@ import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
+import { getCertManagerLink } from "../../cert-manager-link";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { AssignCertificateToApplicationModal } from "./AssignCertificateToApplicationModal";
 import {
+  getCertificateDeletionBlockReason,
   getCertificateDisplayStatus,
   getCertSourceLabel,
   getCertValidUntilBadgeDetails,
@@ -270,8 +271,6 @@ export const CertificatesTable = ({
     return () => clearTimeout(timeoutId);
   }, [search]);
 
-  const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission, hasProjectRole } = useProjectPermission();
 
@@ -305,10 +304,11 @@ export const CertificatesTable = ({
 
   const [applicationFilterSearch, setApplicationFilterSearch] = useState("");
   const [debouncedApplicationFilterSearch] = useDebounce(applicationFilterSearch);
-  const { data: applicationOptionsResponse } = useListPkiApplications(
-    { search: debouncedApplicationFilterSearch || undefined, limit: 20 },
-    { enabled: !applicationId }
-  );
+  const { data: applicationOptionsResponse, isFetching: isFetchingApplicationOptions } =
+    useListPkiApplications(
+      { search: debouncedApplicationFilterSearch || undefined, limit: 20 },
+      { enabled: !applicationId }
+    );
 
   const selectedApplicationIds = useMemo(() => {
     const ids = new Set<string>();
@@ -423,7 +423,7 @@ export const CertificatesTable = ({
   const handleDisableAutoRenewal = async (certificateId: string, commonName: string) => {
     if (!currentProject?.slug) {
       createNotification({
-        text: "Unable to disable auto-renewal: Project not found.",
+        text: "Unable to disable auto-renewal: Certificate Manager could not be loaded. Please refresh and try again.",
         type: "error"
       });
       return;
@@ -784,6 +784,11 @@ export const CertificatesTable = ({
               onSaveView={canCreateViews ? () => setIsSaveViewOpen(true) : undefined}
               dynamicFieldOptions={dynamicFieldOptions}
               onDynamicFieldSearch={{ applicationId: setApplicationFilterSearch }}
+              dynamicFieldLoading={{
+                applicationId:
+                  applicationFilterSearch !== debouncedApplicationFilterSearch ||
+                  isFetchingApplicationOptions
+              }}
               hiddenFieldKeys={applicationId ? ["applicationId"] : undefined}
             />
           </PopoverContent>
@@ -917,6 +922,11 @@ export const CertificatesTable = ({
                   const canDeleteCertificate =
                     permission.can(ProjectPermissionCertificateActions.Delete, certSubject) ||
                     canDeleteAtApplication;
+                  const certificateCaType = caCapabilityMap[certificate.caId];
+                  const canRevokeCertificate =
+                    Boolean(certificate.caId) &&
+                    (!certificateCaType ||
+                      caSupportsCapability(certificateCaType, CaCapability.REVOKE_CERTIFICATES));
                   const canEditPkiSyncs =
                     permission.can(
                       ProjectPermissionPkiSyncActions.Edit,
@@ -931,35 +941,32 @@ export const CertificatesTable = ({
                       !isExpired &&
                       !isExpiringWithinDay
                   );
-                  const { originalDisplayName } = getCertificateDisplayName(
+                  const { originalDisplayName, isTruncated } = getCertificateDisplayName(
                     certificate,
                     64,
                     certificate.id
                   );
 
+                  const detailLink = getCertManagerLink(
+                    currentProject,
+                    `certificates/${certificate.id}`,
+                    applicationName ? { fromApplication: applicationName } : undefined
+                  );
+
                   return (
-                    <TableRow
-                      className="group"
-                      key={`certificate-${certificate.id}`}
-                      onClick={() => {
-                        navigate({
-                          to: "/organizations/$orgId/projects/cert-manager/$projectId/certificates/$certificateId",
-                          params: {
-                            orgId: currentOrg.id,
-                            projectId: currentProject.id,
-                            certificateId: certificate.id
-                          },
-                          search: applicationName ? { fromApplication: applicationName } : undefined
-                        });
-                      }}
-                    >
+                    <TableRow key={`certificate-${certificate.id}`} linked>
                       {visibleColumns.has("sanCn") && (
                         <TableCell isTruncatable>
-                          <CertificateDisplayName
-                            cert={certificate}
-                            maxLength={64}
-                            fallback={certificate.id}
-                          />
+                          <RowLink
+                            {...detailLink}
+                            title={isTruncated ? undefined : originalDisplayName}
+                          >
+                            <CertificateDisplayName
+                              cert={certificate}
+                              maxLength={64}
+                              fallback={certificate.id}
+                            />
+                          </RowLink>
                         </TableCell>
                       )}
                       {visibleColumns.has("serialNumber") && (
@@ -1032,6 +1039,9 @@ export const CertificatesTable = ({
                         </TableCell>
                       )}
                       <TableCell>
+                        {!visibleColumns.has("sanCn") && (
+                          <RowLink {...detailLink} aria-label={`View ${originalDisplayName}`} />
+                        )}
                         <div className="flex items-center justify-end gap-2">
                           <div
                             className={`transition-opacity ${(() => {
@@ -1281,27 +1291,20 @@ export const CertificatesTable = ({
                                     Manage PKI Syncs
                                   </DropdownMenuItem>
                                 )}
-                              {hasProjectRole("admin") &&
-                                !certificate.applicationId &&
-                                certificate.source !== CertSource.Discovered && (
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setAssignTargetId(certificate.id);
-                                    }}
-                                  >
-                                    <BoxIcon />
-                                    Assign to Application
-                                  </DropdownMenuItem>
-                                )}
+                              {hasProjectRole("admin") && !certificate.applicationId && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAssignTargetId(certificate.id);
+                                  }}
+                                >
+                                  <BoxIcon />
+                                  Assign to Application
+                                </DropdownMenuItem>
+                              )}
                               {(() => {
-                                const caType = caCapabilityMap[certificate.caId];
-                                const supportsRevocation =
-                                  !caType ||
-                                  caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES);
-
                                 if (
-                                  !supportsRevocation ||
+                                  !canRevokeCertificate ||
                                   isRevoked ||
                                   certificate.source === CertSource.Discovered ||
                                   (isInventoryView && certificate.applicationId)
@@ -1325,22 +1328,49 @@ export const CertificatesTable = ({
                                   </DropdownMenuItem>
                                 );
                               })()}
-                              {!(isInventoryView && certificate.applicationId) && (
-                                <DropdownMenuItem
-                                  variant="danger"
-                                  isDisabled={!canDeleteCertificate}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePopUpOpen("deleteCertificate", {
-                                      certificateId: certificate.id,
-                                      commonName: certificate.commonName
-                                    });
-                                  }}
-                                >
-                                  <Trash2Icon />
-                                  Delete Certificate
-                                </DropdownMenuItem>
-                              )}
+                              {!(isInventoryView && certificate.applicationId) &&
+                                (() => {
+                                  const deletionBlockReason = getCertificateDeletionBlockReason(
+                                    certificate,
+                                    canRevokeCertificate
+                                  );
+
+                                  const item = (
+                                    <DropdownMenuItem
+                                      variant="danger"
+                                      isDisabled={
+                                        !canDeleteCertificate || Boolean(deletionBlockReason)
+                                      }
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePopUpOpen("deleteCertificate", {
+                                          certificateId: certificate.id,
+                                          commonName: certificate.commonName
+                                        });
+                                      }}
+                                    >
+                                      <Trash2Icon />
+                                      Delete Certificate
+                                    </DropdownMenuItem>
+                                  );
+
+                                  if (!deletionBlockReason) return item;
+
+                                  return (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div>{item}</div>
+                                      </TooltipTrigger>
+                                      <TooltipContent
+                                        side="left"
+                                        sideOffset={20}
+                                        className="max-w-72"
+                                      >
+                                        {deletionBlockReason}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  );
+                                })()}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>

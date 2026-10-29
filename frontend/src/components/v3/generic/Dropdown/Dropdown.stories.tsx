@@ -17,6 +17,7 @@ import {
 
 import { Button } from "../Button";
 import { IconButton } from "../IconButton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -149,6 +150,36 @@ export const WithDescriptions: Story = {
             <DropdownMenuItem>SCEP</DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+};
+
+export const DisabledItems: Story = {
+  name: "Example: Disabled Items",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use `isDisabled` for unavailable actions. Add `isDisabledFocusable` when keyboard and pointer users need to reach a tooltip explaining why the action is unavailable."
+      }
+    }
+  },
+  render: () => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline">Open menu</Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem isDisabled>Unavailable action</DropdownMenuItem>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuItem isDisabled isDisabledFocusable>
+              Restricted action
+            </DropdownMenuItem>
+          </TooltipTrigger>
+          <TooltipContent side="left">Access restricted</TooltipContent>
+        </Tooltip>
       </DropdownMenuContent>
     </DropdownMenu>
   )

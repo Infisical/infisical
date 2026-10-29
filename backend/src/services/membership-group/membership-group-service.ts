@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import {
   AccessScope,
   ProjectMembershipRole,
+  RESOURCE_SCOPE,
   TableName,
   TemporaryPermissionMode,
   TMembershipRolesInsert
@@ -10,6 +11,7 @@ import {
 import { TAccessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
 import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
+import { reapOrphanedFolderGrants } from "@app/ee/services/group/group-folder-grant-fns";
 import { TIdentityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -20,12 +22,19 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
+import { ApprovalPolicyScope, ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
+import { TIdentityAccessTokenServiceFactory } from "@app/services/identity-access-token/identity-access-token-service";
 import { AgentVaultIdentities, PamIdentities, SecretIdentities } from "@app/services/license-client";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
+import { emitGroupLinkRemoved, toOrgMembershipActors } from "@app/services/org/org-membership-events";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipient-dal";
+import { TApprovalPolicyDALFactory } from "../approval-policy/approval-policy-dal";
+import { TApprovalRequestDALFactory } from "../approval-policy/approval-request-dal";
 import { TApplicationMembershipCleanupServiceFactory } from "../membership/application-membership-cleanup-service";
+import { lockMembershipsById } from "../membership/membership-dal";
 import { assertProductWillRetainAdmin, assertSecretsTemporaryAccessAllowed } from "../membership/membership-fns";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -50,6 +59,11 @@ type TMembershipGroupServiceFactoryDep = {
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "find">;
   secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
+  approvalPolicyDAL: Pick<
+    TApprovalPolicyDALFactory,
+    "findPoliciesWhereSubjectIsApprover" | "deleteStepApproversBySubject" | "deleteBypassersBySubject"
+  >;
+  approvalRequestDAL: Pick<TApprovalRequestDALFactory, "findOpenSecretChangeRequestsWhereSubjectIsApprover">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
   orgDAL: TOrgDALFactory;
@@ -65,6 +79,8 @@ type TMembershipGroupServiceFactoryDep = {
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "filterProjectsByIdentityMembership">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find" | "filterProjectsByUserMembership">;
+  identityAccessTokenService: Pick<TIdentityAccessTokenServiceFactory, "bumpIdentityRevocationVersion">;
+  eventEmitter: TEventEmitter;
 };
 
 export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupServiceFactory>;
@@ -76,6 +92,8 @@ export const membershipGroupServiceFactory = ({
   accessApprovalPolicyApproverDAL,
   secretApprovalPolicyDAL,
   secretApprovalPolicyApproverDAL,
+  approvalPolicyDAL,
+  approvalRequestDAL,
   membershipRoleDAL,
   orgDAL,
   permissionService,
@@ -87,7 +105,9 @@ export const membershipGroupServiceFactory = ({
   alertChannelRecipientDAL,
   additionalPrivilegeDAL,
   identityGroupMembershipDAL,
-  userGroupMembershipDAL
+  userGroupMembershipDAL,
+  identityAccessTokenService,
+  eventEmitter
 }: TMembershipGroupServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipGroupFactory({
@@ -302,9 +322,9 @@ export const membershipGroupServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membershipDoc = await membershipGroupDAL.transaction(async (tx) => {
-      const newRolesHavePermanentAdmin = data.roles.some(
-        (r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary
-      );
+      const newIsActive = data.isActive ?? existingMembership.isActive;
+      const newRolesHavePermanentAdmin =
+        newIsActive && data.roles.some((r) => r.role === ProjectMembershipRole.Admin && !r.isTemporary);
       if (!newRolesHavePermanentAdmin && scopeData.scope === AccessScope.Project) {
         await assertProductWillRetainAdmin({
           project: await projectDAL.findById(scopeData.projectId, tx),
@@ -366,6 +386,89 @@ export const membershipGroupServiceFactory = ({
     return { membership: membershipDoc, group };
   };
 
+  // Unlinks a group from an org plus its project and resource rows there (or they'd keep granting access: resource
+  // reads match group rows without checking the group still reaches the org) and folder grants members only had
+  // through it. Members' own project rows are left to the reconcile consumer.
+  const detachGroupFromOrg = async (
+    { groupId, orgId, orgMembershipId }: { groupId: string; orgId: string; orgMembershipId?: string },
+    tx: Knex
+  ) => {
+    const groupUsers = await userGroupMembershipDAL.find({ groupId }, { tx });
+    const groupIdentities = await identityGroupMembershipDAL.find({ groupId }, { tx });
+    const groupProjectMemberships = await membershipGroupDAL.find(
+      { actorGroupId: groupId, scopeOrgId: orgId, scope: AccessScope.Project },
+      { tx }
+    );
+    const groupResourceMemberships = await membershipGroupDAL.find(
+      { actorGroupId: groupId, scopeOrgId: orgId, scope: RESOURCE_SCOPE },
+      { tx }
+    );
+
+    const userIds = groupUsers.map((membership) => membership.userId);
+    const identityIds = groupIdentities.map((membership) => membership.identityId);
+    const groupProjectIds = Array.from(
+      new Set(groupProjectMemberships.map((membership) => membership.scopeProjectId).filter(Boolean) as string[])
+    );
+    const groupResourceProjectIds = Array.from(
+      new Set(
+        [...groupProjectMemberships, ...groupResourceMemberships]
+          .map((membership) => membership.scopeProjectId)
+          .filter(Boolean) as string[]
+      )
+    );
+
+    const membershipIds = [...groupProjectMemberships.map((membership) => membership.id)];
+    if (orgMembershipId) membershipIds.push(orgMembershipId);
+    if (membershipIds.length) {
+      await membershipRoleDAL.delete({ $in: { membershipId: membershipIds } }, tx);
+      await membershipGroupDAL.delete({ $in: { id: membershipIds } }, tx);
+    }
+
+    for await (const projectId of groupResourceProjectIds) {
+      await applicationMembershipCleanupService.cleanupActorApplicationMemberships(
+        { projectId, actorKind: ApplicationMemberKind.Group, actorId: groupId },
+        tx
+      );
+      await approvalPolicyDAL.deleteStepApproversBySubject(
+        { projectId, scopeType: ApprovalPolicyScope.PamFolder, groupId },
+        tx
+      );
+      await approvalPolicyDAL.deleteBypassersBySubject(
+        { projectId, scopeType: ApprovalPolicyScope.PamFolder, groupId },
+        tx
+      );
+    }
+
+    await reapOrphanedFolderGrants(
+      { userGroupMembershipDAL, identityGroupMembershipDAL, additionalPrivilegeDAL },
+      {
+        groupId,
+        projectIdsByUserId: new Map(userIds.map((userId) => [userId, [...groupProjectIds]])),
+        projectIdsByIdentityId: new Map(identityIds.map((identityId) => [identityId, [...groupProjectIds]]))
+      },
+      tx
+    );
+
+    await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ groupIds: [groupId] }, tx);
+
+    await emitGroupLinkRemoved(
+      eventEmitter,
+      { orgId, groupId, members: toOrgMembershipActors({ userIds, identityIds }) },
+      tx
+    );
+
+    const stillReaching = identityIds.length
+      ? await orgDAL.findActorsWithOrgAccess({ orgId, userIds: [], identityIds }, tx)
+      : null;
+    return { identityIdsLosingOrgAccess: identityIds.filter((id) => !stillReaching?.identityIds.has(id)) };
+  };
+
+  const bumpIdentityRevocationVersions = async (identityIds: string[]) => {
+    for await (const identityId of identityIds) {
+      await identityAccessTokenService.bumpIdentityRevocationVersion({ identityId });
+    }
+  };
+
   const deleteMembership = async (dto: TDeleteMembershipGroupDTO, externalTx?: Knex) => {
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
@@ -411,6 +514,20 @@ export const membershipGroupServiceFactory = ({
       }
     }
 
+    const secretAccessPolicies = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
+      ...(existingMembership.scopeProjectId
+        ? { projectId: existingMembership.scopeProjectId }
+        : { organizationId: existingMembership.scopeOrgId }),
+      type: ApprovalPolicyType.SecretAccess,
+      groupId: dto.selector.groupId
+    });
+    if (secretAccessPolicies.length > 0) {
+      const policyNames = secretAccessPolicies.map((p) => p.name).join(", ");
+      throw new BadRequestError({
+        message: `Cannot remove group from ${existingMembership.scopeProjectId ? "project" : "organization"}: group is an approver in access approval ${secretAccessPolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
+      });
+    }
+
     // check if group is assigned to any secret approval policy
     const secretApprovalPolicyApprovers = await secretApprovalPolicyApproverDAL.find({
       approverGroupId: dto.selector.groupId
@@ -432,6 +549,32 @@ export const membershipGroupServiceFactory = ({
       }
     }
 
+    if (existingMembership.scopeProjectId) {
+      const secretChangePolicies = await approvalPolicyDAL.findPoliciesWhereSubjectIsApprover({
+        projectId: existingMembership.scopeProjectId,
+        type: ApprovalPolicyType.SecretChange,
+        groupId: dto.selector.groupId
+      });
+      if (secretChangePolicies.length > 0) {
+        const policyNames = secretChangePolicies.map((p) => p.name).join(", ");
+        throw new BadRequestError({
+          message: `Cannot remove group from project: group is an approver in secret approval ${secretChangePolicies.length > 1 ? "policies" : "policy"}: ${policyNames}`
+        });
+      }
+
+      const openSecretChangeRequests = await approvalRequestDAL.findOpenSecretChangeRequestsWhereSubjectIsApprover({
+        projectId: existingMembership.scopeProjectId,
+        groupId: dto.selector.groupId
+      });
+      if (openSecretChangeRequests.length > 0) {
+        const requestSlugs = openSecretChangeRequests.map((request) => request.slug).join(", ");
+        throw new BadRequestError({
+          message: `Cannot remove group from project: group is an approver on open secret approval ${openSecretChangeRequests.length > 1 ? "requests" : "request"}: ${requestSlugs}`
+        });
+      }
+    }
+
+    let identityIdsLosingOrgAccess: string[] = [];
     const performDelete = async (tx: Knex) => {
       if (scopeData.scope === AccessScope.Project && existingMembership.scopeProjectId) {
         await assertProductWillRetainAdmin({
@@ -453,6 +596,7 @@ export const membershipGroupServiceFactory = ({
         const { groupId } = dto.selector;
 
         const identityMembers = await identityGroupMembershipDAL.find({ groupId }, { tx });
+        let identityIdsToDelete: string[] = [];
         if (identityMembers.length) {
           const identityIds = identityMembers.map(({ identityId }) => identityId);
           const identitiesStillInProject = await identityGroupMembershipDAL.filterProjectsByIdentityMembership(
@@ -461,15 +605,13 @@ export const membershipGroupServiceFactory = ({
             [projectId],
             tx
           );
-          const identityIdsToDelete = identityIds.filter(
+          identityIdsToDelete = identityIds.filter(
             (identityId) => !identitiesStillInProject.get(identityId)?.has(projectId)
           );
-          if (identityIdsToDelete.length) {
-            await additionalPrivilegeDAL.delete({ projectId, $in: { actorIdentityId: identityIdsToDelete } }, tx);
-          }
         }
 
         const userMembers = await userGroupMembershipDAL.find({ groupId }, { tx });
+        let userIdsToDelete: string[] = [];
         if (userMembers.length) {
           const userIds = userMembers.map(({ userId }) => userId);
           const usersStillInProject = await userGroupMembershipDAL.filterProjectsByUserMembership(
@@ -478,11 +620,30 @@ export const membershipGroupServiceFactory = ({
             [projectId],
             tx
           );
-          const userIdsToDelete = userIds.filter((userId) => !usersStillInProject.get(userId)?.has(projectId));
+          userIdsToDelete = userIds.filter((userId) => !usersStillInProject.get(userId)?.has(projectId));
+        }
+
+        const [lockedMembership] = await lockMembershipsById([existingMembership.id], tx);
+        if (lockedMembership) {
+          if (identityIdsToDelete.length) {
+            await additionalPrivilegeDAL.delete({ projectId, $in: { actorIdentityId: identityIdsToDelete } }, tx);
+          }
           if (userIdsToDelete.length) {
             await additionalPrivilegeDAL.delete({ projectId, $in: { actorUserId: userIdsToDelete } }, tx);
           }
         }
+      }
+
+      if (scopeData.scope === AccessScope.Organization) {
+        ({ identityIdsLosingOrgAccess } = await detachGroupFromOrg(
+          {
+            groupId: dto.selector.groupId,
+            orgId: existingMembership.scopeOrgId,
+            orgMembershipId: existingMembership.id
+          },
+          tx
+        ));
+        return existingMembership;
       }
 
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);
@@ -496,6 +657,7 @@ export const membershipGroupServiceFactory = ({
     const membershipDoc = externalTx
       ? await performDelete(externalTx)
       : await membershipGroupDAL.transaction(performDelete);
+    await bumpIdentityRevocationVersions(identityIdsLosingOrgAccess);
 
     // Removing a group from a project drops its users + identities from it, changing the meters.
     if (scopeData.scope === AccessScope.Project) {
@@ -551,6 +713,8 @@ export const membershipGroupServiceFactory = ({
     createMembership,
     updateMembership,
     deleteMembership,
+    detachGroupFromOrg,
+    bumpIdentityRevocationVersions,
     listMemberships,
     getMembershipByGroupId
   };

@@ -1,22 +1,14 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { format, formatDistance } from "date-fns";
 import { ClockAlertIcon, ClockIcon, EllipsisIcon, PencilIcon } from "lucide-react";
 import picomatch from "picomatch";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageLoader } from "@app/components/v3";
+import { ConfirmationAlertDialog, PageLoader } from "@app/components/v3";
 import {
   Alert,
   AlertDescription,
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   Badge,
   Button,
   Card,
@@ -39,10 +31,8 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  Field,
-  FieldLabel,
   IconButton,
-  Input,
+  RowLink,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -61,13 +51,14 @@ import {
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission,
   useUser
 } from "@app/context";
-import { getProjectBaseURL } from "@app/helpers/project";
+import { getInstancePinningLink, getProjectBaseURL, hidesProjects } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
-import { usePopUp } from "@app/hooks";
+import { usePopUp, useScopeVariant } from "@app/hooks";
 import { useUpdateUserWorkspaceRole } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
@@ -88,12 +79,12 @@ export const MemberRoleDetailsSection = ({
   isMembershipDetailsLoading,
   onOpenUpgradeModal
 }: Props) => {
+  const scopeVariant = useScopeVariant();
   const { user } = useUser();
   const userId = user?.id;
+  const { currentOrg } = useOrganization();
   const { projectId, currentProject } = useProject();
   const { permission } = useProjectPermission();
-  const navigate = useNavigate();
-  const [deleteRoleConfirmation, setDeleteRoleConfirmation] = useState("");
 
   const assignRoleConditions = useMemo(
     () => getMemberAssignRoleConditions(permission),
@@ -155,7 +146,6 @@ export const MemberRoleDetailsSection = ({
       membershipId: isCertManager ? membershipDetails.user.id : membershipDetails.id
     });
     createNotification({ type: "success", text: "Successfully removed role" });
-    setDeleteRoleConfirmation("");
     handlePopUpClose("deleteRole");
   };
 
@@ -165,7 +155,7 @@ export const MemberRoleDetailsSection = ({
     <>
       <Card>
         <CardHeader>
-          <CardTitle>{isCertManager ? "Roles" : "Project Roles"}</CardTitle>
+          <CardTitle>{hidesProjects(currentProject?.type) ? "Roles" : "Project Roles"}</CardTitle>
           <CardDescription>Manage roles assigned to this user</CardDescription>
           {!isOwnProjectMembershipDetails && hasRoles && (
             <CardAction>
@@ -228,18 +218,6 @@ export const MemberRoleDetailsSection = ({
                       roleDetails.isTemporary &&
                       new Date() > new Date(roleDetails.temporaryAccessEndTime || "");
 
-                    const navigateToRole = () =>
-                      navigate({
-                        to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
-                        params: {
-                          projectId: currentProject.id,
-                          roleSlug:
-                            roleDetails.role === "custom"
-                              ? roleDetails.customRoleSlug
-                              : roleDetails.role
-                        }
-                      });
-
                     let text = "Permanent";
                     let toolTipText = "Non-Expiring Access";
                     if (roleDetails.isTemporary) {
@@ -258,21 +236,31 @@ export const MemberRoleDetailsSection = ({
                       }
                     }
 
+                    const roleSlug =
+                      roleDetails.role === "custom" ? roleDetails.customRoleSlug : roleDetails.role;
+                    const roleLink =
+                      getInstancePinningLink(currentOrg.id, currentProject, `roles/${roleSlug}`) ??
+                      ({
+                        to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug`,
+                        params: {
+                          orgId: currentOrg.id,
+                          projectId: currentProject.id,
+                          roleSlug
+                        }
+                      } as const);
+
                     return (
                       <TableRow
-                        className={`group h-10 ${isCertManager ? "" : "cursor-pointer"}`}
+                        className="group h-10"
                         key={`user-project-identity-${roleDetails?.id}`}
-                        role={isCertManager ? undefined : "link"}
-                        tabIndex={isCertManager ? undefined : 0}
-                        onKeyDown={(event) => {
-                          if (!isCertManager && event.key === "Enter") navigateToRole();
-                        }}
-                        onClick={isCertManager ? undefined : navigateToRole}
+                        linked={!isCertManager}
                       >
                         <TableCell className="max-w-0 truncate">
-                          {roleDetails.role === "custom"
-                            ? roleDetails.customRoleName
-                            : formatProjectRoleName(roleDetails.role)}
+                          <RowLink {...roleLink} disabled={isCertManager}>
+                            {roleDetails.role === "custom"
+                              ? roleDetails.customRoleName
+                              : formatProjectRoleName(roleDetails.role)}
+                          </RowLink>
                         </TableCell>
                         <TableCell>
                           {isTemporary ? (
@@ -281,6 +269,7 @@ export const MemberRoleDetailsSection = ({
                                 <Badge
                                   className="capitalize"
                                   variant={isExpired ? "danger" : "warning"}
+                                  data-row-interactive
                                 >
                                   {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
                                   {text}
@@ -368,7 +357,7 @@ export const MemberRoleDetailsSection = ({
                         !isAllowed || isOwnProjectMembershipDetails || !canModifyMemberRoles;
                       const button = (
                         <Button
-                          variant="project"
+                          variant={scopeVariant}
                           size="xs"
                           onClick={() => {
                             handlePopUpOpen("modifyManyRoles");
@@ -400,55 +389,20 @@ export const MemberRoleDetailsSection = ({
         </CardContent>
       </Card>
 
-      <AlertDialog
-        open={popUp.deleteRole.isOpen}
-        onOpenChange={(isOpen) => {
-          if (updateUserWorkspaceRole.isPending) return;
-          if (!isOpen) setDeleteRoleConfirmation("");
-          handlePopUpToggle("deleteRole", isOpen);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Remove role &quot;{(popUp?.deleteRole?.data as TProjectRole)?.slug}&quot;?
-            </AlertDialogTitle>
-            <Alert variant="danger" appearance="borderless">
-              <AlertDescription>
-                This role will no longer grant access to this user.
-              </AlertDescription>
-            </Alert>
-          </AlertDialogHeader>
-          <Field>
-            <FieldLabel htmlFor="remove-member-role-confirmation">
-              Type &quot;remove&quot; to confirm
-            </FieldLabel>
-            <Input
-              id="remove-member-role-confirmation"
-              value={deleteRoleConfirmation}
-              onChange={(event) => setDeleteRoleConfirmation(event.target.value)}
-              autoComplete="off"
-              disabled={updateUserWorkspaceRole.isPending}
-            />
-          </Field>
-          <AlertDialogFooter>
-            <AlertDialogCancel isDisabled={updateUserWorkspaceRole.isPending}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              variant="danger"
-              isPending={updateUserWorkspaceRole.isPending}
-              isDisabled={deleteRoleConfirmation !== "remove"}
-              onClick={(event) => {
-                event.preventDefault();
-                handleRoleDelete().catch(() => undefined);
-              }}
-            >
-              Remove Role
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmationAlertDialog
+        isOpen={popUp.deleteRole.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("deleteRole", isOpen)}
+        title={`Remove role "${(popUp?.deleteRole?.data as TProjectRole)?.slug}"?`}
+        description={
+          <Alert variant="danger" appearance="borderless">
+            <AlertDescription>This role will no longer grant access to this user.</AlertDescription>
+          </Alert>
+        }
+        confirmKey="remove"
+        confirmLabel="Remove Role"
+        isPending={updateUserWorkspaceRole.isPending}
+        onConfirm={handleRoleDelete}
+      />
       <Sheet
         open={popUp.modifyManyRoles.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("modifyManyRoles", isOpen)}
@@ -457,8 +411,9 @@ export const MemberRoleDetailsSection = ({
           <SheetHeader className="border-b">
             <SheetTitle>Roles</SheetTitle>
             <SheetDescription>
-              Select one or more of the pre-defined or custom roles to configure project
-              permissions.
+              {isCertManager
+                ? "Select one or more of the pre-defined or custom roles to configure Certificate Manager permissions."
+                : "Select one or more of the pre-defined or custom roles to configure project permissions."}
             </SheetDescription>
           </SheetHeader>
           <MemberMultiRoleModify

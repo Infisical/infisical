@@ -1,5 +1,3 @@
-import { CronJob } from "cron";
-
 import {
   AccessScope,
   IdentityAuthMethod,
@@ -9,10 +7,15 @@ import {
   TSuperAdminUpdate,
   TUsers
 } from "@app/db/schemas";
+import { TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
 import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { getEnforcedIdentityLimit } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { terminatePamSessionsForUsers } from "@app/ee/services/pam-session/pam-session-access-fns";
+import { TPamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
 import { KeyStorePrefixes, KeyStoreTtls, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { withCache } from "@app/lib/cache/with-cache";
 import {
@@ -22,6 +25,7 @@ import {
   overwriteSchema,
   validateOverrides
 } from "@app/lib/config/env";
+import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TIp } from "@app/lib/ip";
@@ -47,21 +51,24 @@ import { TAlertChannelRecipientDALFactory } from "../alert/alert-channel-recipie
 import { AlertPrincipalType } from "../alert/alert-types";
 import { TAuthLoginFactory } from "../auth/auth-login-service";
 import { ActorType, AuthMethod } from "../auth/auth-type";
+import { TEventEmitter } from "../event-outbox/event-outbox-types";
 import { TIdentityAccessTokenServiceFactory } from "../identity-access-token/identity-access-token-service";
 import { TIdentityTokenAuthDALFactory } from "../identity-token-auth/identity-token-auth-dal";
 import { KMS_ROOT_CONFIG_UUID } from "../kms/kms-fns";
 import { TKmsRootConfigDALFactory } from "../kms/kms-root-config-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { RootKeyEncryptionStrategy } from "../kms/kms-types";
-import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TProjectAccessRevokeServiceFactory } from "../membership/project-access-revoke-service";
 import { TMicrosoftTeamsServiceFactory } from "../microsoft-teams/microsoft-teams-service";
 import { TOrgDALFactory } from "../org/org-dal";
+import { deleteOrgMembershipsFn } from "../org/org-fns";
 import { TOrgServiceFactory } from "../org/org-service";
-import { TUserDALFactory } from "../user/user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { UserAliasType } from "../user-alias/user-alias-types";
+import { TUserDALFactory } from "../user/user-dal";
 import { TInvalidateCacheQueueFactory } from "./invalidate-cache-queue";
 import { TSuperAdminDALFactory } from "./super-admin-dal";
 import {
@@ -93,7 +100,13 @@ type TSuperAdminServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients" | "deleteByPrincipals">;
-  userAliasDAL: Pick<TUserAliasDALFactory, "findOne">;
+  pamSessionDAL: Pick<TPamSessionDALFactory, "findLiveByOrgAndUserIds" | "update">;
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPAMConnectionDetails">;
+  userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "delete">;
+  userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
+  projectAccessRevokeService: Pick<TProjectAccessRevokeServiceFactory, "revokeActorsInOrgs">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  eventEmitter: TEventEmitter;
   emailDomainDAL: TEmailDomainDALFactory;
   authService: Pick<TAuthLoginFactory, "generateUserTokens">;
   kmsService: Pick<TKmsServiceFactory, "encryptWithRootKey" | "decryptWithRootKey" | "updateEncryptionStrategy">;
@@ -172,7 +185,13 @@ export const superAdminServiceFactory = ({
   membershipUserDAL,
   membershipRoleDAL,
   usageMeteringService,
-  alertChannelRecipientDAL
+  alertChannelRecipientDAL,
+  pamSessionDAL,
+  gatewayV2Service,
+  userGroupMembershipDAL,
+  projectAccessRevokeService,
+  auditLogService,
+  eventEmitter
 }: TSuperAdminServiceFactoryDep) => {
   const initServerCfg = async () => {
     // TODO(akhilmhdh): bad  pattern time less change this later to me itself
@@ -760,7 +779,17 @@ export const superAdminServiceFactory = ({
       actorUserId: userId
     });
 
+    let sendPamCancellations = () => {};
+
     const user = await userDAL.transaction(async (tx) => {
+      sendPamCancellations = await terminatePamSessionsForUsers({
+        orgIds: orgMemberships.map((m) => m.scopeOrgId),
+        userIds: [userId],
+        pamSessionDAL,
+        gatewayV2Service,
+        tx
+      });
+
       const deletedUser = await userDAL.deleteById(userId, tx);
       // principalId carries no FK, so the user row going away leaves recipient rows behind.
       await alertChannelRecipientDAL.deleteByPrincipals(
@@ -769,6 +798,8 @@ export const superAdminServiceFactory = ({
       );
       return deletedUser;
     });
+
+    sendPamCancellations();
 
     emitUserDeletionMeterEvents(orgMemberships);
     return user;
@@ -790,7 +821,17 @@ export const superAdminServiceFactory = ({
       $in: { actorUserId: userIds }
     });
 
+    let sendPamCancellations = () => {};
+
     const users = await userDAL.transaction(async (tx) => {
+      sendPamCancellations = await terminatePamSessionsForUsers({
+        orgIds: orgMemberships.map((m) => m.scopeOrgId),
+        userIds,
+        pamSessionDAL,
+        gatewayV2Service,
+        tx
+      });
+
       const deletedUsers = await userDAL.delete(
         {
           $in: {
@@ -805,6 +846,8 @@ export const superAdminServiceFactory = ({
       );
       return deletedUsers;
     });
+
+    sendPamCancellations();
 
     emitUserDeletionMeterEvents(orgMemberships);
     return users;
@@ -1051,23 +1094,23 @@ export const superAdminServiceFactory = ({
     if (!membershipRole) {
       throw new NotFoundError({ name: "Membership Role", message: "Membership role not found" });
     }
-    const organizationMembership = await membershipUserDAL.transaction(async (tx) => {
-      const [deletedMembership] = await membershipUserDAL.delete(
-        {
-          scopeOrgId: organizationId,
-          scope: AccessScope.Organization,
-          id: membershipId
-        },
-        tx
-      );
-
-      if (deletedMembership?.actorUserId) {
-        await alertChannelRecipientDAL.pruneOutOfScopeRecipients({ userIds: [deletedMembership.actorUserId] }, tx);
-      }
-
-      return deletedMembership;
+    const [organizationMembership] = await deleteOrgMembershipsFn({
+      orgMembershipIds: [membershipId],
+      orgId: organizationId,
+      orgDAL,
+      userAliasDAL,
+      licenseService,
+      userId: actorType === ActorType.USER ? actorId : undefined,
+      membershipUserDAL,
+      userGroupMembershipDAL,
+      projectAccessRevokeService,
+      auditLogService,
+      eventEmitter
     });
 
+    usageMeteringService.emit(organizationId, SecretIdentities.key);
+    usageMeteringService.emit(organizationId, PamIdentities.key);
+    usageMeteringService.emit(organizationId, AgentVaultIdentities.key);
     return { ...organizationMembership, role: membershipRole.role, orgId: organizationId };
   };
 
@@ -1272,11 +1315,11 @@ export const superAdminServiceFactory = ({
     // initial sync upon startup
     await $syncAdminIntegrationConfig();
 
-    // sync admin integrations config every 5 minutes
-    const job = new CronJob("*/5 * * * *", $syncAdminIntegrationConfig);
-    job.start();
-
-    return job;
+    return startLocalRefresh({
+      name: "admin-integration-config-sync",
+      intervalMs: 5 * 60 * 1000,
+      task: $syncAdminIntegrationConfig
+    });
   };
 
   const initializeEnvConfigSync = async () => {
@@ -1284,11 +1327,11 @@ export const superAdminServiceFactory = ({
 
     await $syncEnvConfig();
 
-    // sync every 5 minutes
-    const job = new CronJob("*/5 * * * *", $syncEnvConfig);
-    job.start();
-
-    return job;
+    return startLocalRefresh({
+      name: "env-config-sync",
+      intervalMs: 5 * 60 * 1000,
+      task: $syncEnvConfig
+    });
   };
 
   const getEmailDomains = async ({ offset, limit, searchTerm }: TAdminGetEmailDomainsDTO) => {

@@ -482,7 +482,7 @@ export const useWebAccessSession = ({
     const terminal = new Terminal({
       cursorBlink: true,
       fontSize: 14,
-      fontFamily: '"JetBrains Mono", "Fira Code", Menlo, Monaco, "Courier New", monospace',
+      fontFamily: getComputedStyle(containerEl).getPropertyValue("--font-mono").trim(),
       theme: getTerminalTheme(resolvedThemeRef.current),
       scrollback: 10000,
       allowProposedApi: true

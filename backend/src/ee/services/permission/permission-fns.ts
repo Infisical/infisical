@@ -147,7 +147,7 @@ export function validateSecretMovePermissions(
   }
 }
 
-const OptionalArrayPermissionSchema = ProjectPermissionV2Schema.array().optional();
+export const OptionalArrayPermissionSchema = ProjectPermissionV2Schema.array().optional();
 export function checkForInvalidPermissionCombination(permissions: z.infer<typeof OptionalArrayPermissionSchema>) {
   if (!permissions) return;
 
@@ -268,7 +268,8 @@ function isAuthMethodSaml(actorAuthMethod: ActorAuthMethod) {
     AuthMethod.OKTA_SAML,
     AuthMethod.JUMPCLOUD_SAML,
     AuthMethod.GOOGLE_SAML,
-    AuthMethod.KEYCLOAK_SAML
+    AuthMethod.KEYCLOAK_SAML,
+    AuthMethod.AUTH0_SAML
   ].includes(actorAuthMethod);
 }
 

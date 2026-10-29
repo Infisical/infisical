@@ -1,0 +1,89 @@
+---
+title: "Connect to an account"
+sidebarTitle: "Connect to an account"
+description: "Open a session on an account from your browser or the Infisical CLI."
+---
+
+You can connect to an [account](/documentation/platform/pam/accounts/overview) in your browser or with the Infisical CLI. Either way, Infisical opens a [session](/documentation/platform/pam/sessions/overview), and a [gateway](/documentation/platform/gateways/overview) supplies the account's credential so that you never see it. Infisical records everything you do in the session.
+
+<Tip>
+To give an AI agent access to accounts, use [`infisical pam agentic access`](/documentation/platform/pam/ai-agents/overview) instead.
+</Tip>
+
+## Prerequisites
+
+- The Admin, Operator, or Connector [role](/documentation/platform/pam/concepts/access-control) on the account or its folder
+- An approved [access request](/documentation/platform/pam/access-requests/overview), if the account's template requires approval
+- To connect with the CLI, the [Infisical CLI](/cli/overview) installed and logged in with [`infisical login`](/cli/reference#login)
+
+## Launch a session
+
+<Steps>
+  <Step>
+    Go to **Privileged Access Management** > **Accounts** and find the account.
+  </Step>
+  <Step>
+    Select the rocket icon on the account's row.
+
+    If the row shows a key icon instead, the account requires approval. Select the key icon to [request access](/documentation/platform/pam/access-requests/overview), and launch the session once an approver approves the request.
+  </Step>
+  <Step>
+    Select a launch method, then connect:
+
+    <Tabs>
+      <Tab title="Browser">
+        Select **Browser**, then select **Connect in Browser**. The session opens in a new tab.
+
+        What the tab shows depends on the account type:
+
+        - **PostgreSQL, MySQL, Snowflake, and ClickHouse**: a table browser and a SQL editor
+        - **Redis**: a console for Redis commands
+        - **SSH**: a terminal
+        - **Windows and Windows AD**: a remote desktop
+        - **AWS IAM**: the AWS Management Console
+
+        <Note>
+        Only some [account types](/documentation/platform/pam/accounts/account-types) support the browser.
+        </Note>
+      </Tab>
+      <Tab title="CLI">
+        Select **CLI**, then copy the command and run it in your terminal. The command has this form:
+
+        ```bash
+        infisical pam access <folder>/<account>
+        ```
+
+        What happens next depends on the account type:
+
+        - **SSH**: The CLI opens a shell on the server (add `--proxy` to use your own SSH client instead)
+        - **AWS IAM**: The CLI writes temporary credentials to your AWS credentials file
+        - **Every other account type**: The CLI starts a local proxy on `127.0.0.1` and prints its port
+
+        If the CLI starts a proxy, connect your own client, such as `psql` or `kubectl`, to the printed port. The proxy signs in for you, so the client doesn't need a password.
+
+        The session lasts one hour unless you set `--duration`. For the other flags, see the [CLI reference](/cli/reference#pam-access).
+      </Tab>
+    </Tabs>
+  </Step>
+</Steps>
+
+If the account's template requires a reason, Infisical asks for one before the session starts. If the template requires MFA, Infisical asks you to complete MFA in your browser.
+
+## End a session
+
+A session ends when:
+
+- You close the browser tab, or press `Ctrl+C` in the terminal that runs the CLI
+- The session reaches the maximum duration set by the account's [template](/documentation/platform/pam/templates/overview)
+- Someone with the Admin role on the account or its folder [terminates the session](/documentation/platform/pam/sessions/overview)
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Sessions" icon="monitor" href="/documentation/platform/pam/sessions/overview">
+    Review and end the connections that people and agents make to your accounts.
+  </Card>
+  <Card title="View credentials" icon="eye" href="/documentation/platform/pam/accounts/view-credentials">
+    Reveal the password or key stored for an account.
+  </Card>
+</CardGroup>

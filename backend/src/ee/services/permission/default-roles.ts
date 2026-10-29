@@ -97,7 +97,7 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.SecretFolders
   );
 
-  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
+  can([ProjectPermissionAuditLogsActions.Read, ProjectPermissionAuditLogsActions.Edit], ProjectPermissionSub.AuditLogs);
 
   can(
     [
@@ -815,6 +815,7 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
     [
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionAgentVaultSessionActions.Create,
+      ProjectPermissionAgentVaultSessionActions.Edit,
       ProjectPermissionAgentVaultSessionActions.Revoke
     ],
     ProjectPermissionSub.AgentVaultSessions
@@ -830,6 +831,17 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
       ProjectPermissionAgentVaultProxyActions.Revoke
     ],
     ProjectPermissionSub.AgentVaultProxies
+  );
+
+  can(
+    [
+      ProjectPermissionAppConnectionActions.Read,
+      ProjectPermissionAppConnectionActions.Create,
+      ProjectPermissionAppConnectionActions.Edit,
+      ProjectPermissionAppConnectionActions.Delete,
+      ProjectPermissionAppConnectionActions.Connect
+    ],
+    ProjectPermissionSub.AppConnections
   );
 
   can(
@@ -891,7 +903,7 @@ const buildAgentVaultProjectAdminPermissionRules = () => {
 
   can([ProjectPermissionActions.Edit, ProjectPermissionActions.Delete], ProjectPermissionSub.Project);
 
-  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
+  can([ProjectPermissionAuditLogsActions.Read, ProjectPermissionAuditLogsActions.Edit], ProjectPermissionSub.AuditLogs);
 
   return rules;
 };
@@ -906,6 +918,7 @@ const buildAgentVaultProjectMemberPermissionRules = () => {
     [
       ProjectPermissionAgentVaultSessionActions.Read,
       ProjectPermissionAgentVaultSessionActions.Create,
+      ProjectPermissionAgentVaultSessionActions.Edit,
       ProjectPermissionAgentVaultSessionActions.Revoke
     ],
     ProjectPermissionSub.AgentVaultSessions

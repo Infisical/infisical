@@ -1,19 +1,20 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { OrgPermissionGuardBanner } from "@app/components/permissions/OrgPermissionCan";
-import { Button, PageHeader } from "@app/components/v2";
 import {
+  Button,
   LookingForOrgPageLink,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger
 } from "@app/components/v3";
+import { PageHeader } from "@app/components/v3/platform";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,
@@ -106,9 +107,7 @@ export const AccessManagementPage = () => {
 
   return (
     <div className="mx-auto flex flex-col justify-between bg-page text-foreground-inverse">
-      <Helmet>
-        <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
-      </Helmet>
+      <PageTitle title={t("page-titles.access-control")} />
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={isSubOrganization ? "namespace" : "org"}
@@ -130,8 +129,8 @@ export const AccessManagementPage = () => {
               hierarchy comparisons.
             </p>
             <Button
-              colorSchema="primary"
-              className="mt-2 w-fit text-xs"
+              variant={isSubOrganization ? "sub-org" : "org"}
+              className="mt-2"
               onClick={() => setIsUpgradePrivilegeSystemModalOpen(true)}
             >
               Learn More & Upgrade

@@ -22,6 +22,7 @@ import {
   FieldDescription,
   FieldError,
   Label,
+  SheetFooter,
   Stepper,
   StepperList,
   StepperStep,
@@ -57,6 +58,8 @@ type Props = {
   onCancel: () => void;
   onDirtyChange: (isDirty: boolean) => void;
   initialFormData?: Partial<TSecretSyncForm>;
+  initialFormDataIsDirty?: boolean;
+  startOnDestination?: boolean;
 };
 
 type FormTab = {
@@ -150,7 +153,9 @@ export const CreateSecretSyncForm = ({
   onComplete,
   onCancel,
   onDirtyChange,
-  initialFormData
+  initialFormData,
+  initialFormDataIsDirty = Boolean(initialFormData),
+  startOnDestination = Boolean(initialFormData)
 }: Props) => {
   const createSecretSync = useCreateSecretSync();
   const { currentProject } = useProject();
@@ -160,8 +165,7 @@ export const CreateSecretSyncForm = ({
 
   const [showConfirmation, setShowConfirmation] = useState(false);
 
-  // scoot: right now we only do this when creating a connection so we know index 1
-  const [selectedTabIndex, setSelectedTabIndex] = useState(initialFormData ? 1 : 0);
+  const [selectedTabIndex, setSelectedTabIndex] = useState(startOnDestination ? 1 : 0);
 
   const { syncOption } = useSecretSyncOption(destination);
 
@@ -185,7 +189,7 @@ export const CreateSecretSyncForm = ({
   });
 
   const { handleSubmit, trigger, control, watch, formState } = formMethods;
-  const hasUnsavedChanges = formState.isDirty || Boolean(initialFormData);
+  const hasUnsavedChanges = formState.isDirty || initialFormDataIsDirty;
   const {
     confirmDiscard,
     isDiscardDialogOpen,
@@ -346,7 +350,7 @@ export const CreateSecretSyncForm = ({
 
           <div className="flex min-w-0 flex-1 flex-col gap-y-2 overflow-y-auto px-8 py-6">
             <div className="mb-6">
-              <h2 className="text-lg font-semibold text-foreground">{currentTab.title}</h2>
+              <h2 className="text-lg font-normal text-foreground">{currentTab.title}</h2>
               <p className="mt-1 text-sm text-muted">{currentTab.subtitle}</p>
             </div>
 
@@ -413,7 +417,7 @@ export const CreateSecretSyncForm = ({
           </aside>
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
+        <SheetFooter className="shrink-0 items-center justify-between border-t">
           <span className="text-xs text-muted">{hasUnsavedChanges ? "Unsaved changes" : ""}</span>
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted">
@@ -426,7 +430,7 @@ export const CreateSecretSyncForm = ({
               {isFinalStep ? "Create Sync" : "Continue"}
             </Button>
           </div>
-        </div>
+        </SheetFooter>
       </form>
       <AlertDialog
         open={showConfirmation}

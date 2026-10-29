@@ -5,6 +5,7 @@ import { Button, Label, TextArea } from "@app/components/v3";
 import { apiRequest } from "@app/config/request";
 import { MfaSessionStatus, TMfaSessionStatusResponse } from "@app/hooks/api/mfaSession/types";
 import { PamPolicyType, TPamAccount, useAccessPamAccount } from "@app/hooks/api/pam";
+import { getAccessErrorMessage } from "@app/pages/pam/access-error";
 
 import { WebAccessStatusCard } from "./WebAccessStatusCard";
 
@@ -66,7 +67,6 @@ export const AwsIamAccessContent = ({ account }: Props) => {
           response?: {
             data?: {
               error?: string;
-              message?: string;
               details?: { mfaSessionId?: string };
             };
           };
@@ -105,7 +105,7 @@ export const AwsIamAccessContent = ({ account }: Props) => {
           }
         }
 
-        setErrorMessage(axiosErr?.response?.data?.message ?? "Failed to access AWS Console");
+        setErrorMessage(getAccessErrorMessage(err, "Failed to access AWS Console"));
         setStep("error");
       }
     },

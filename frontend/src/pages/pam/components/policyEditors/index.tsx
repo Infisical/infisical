@@ -13,7 +13,8 @@ const DEFAULT_PATTERN_PLACEHOLDER =
 const SQL_PATTERN_PLACEHOLDER = "^\\s*drop\\b\n\\btruncate\\b\n^\\s*grant\\b";
 
 const COMMAND_BLOCKING_PLACEHOLDERS: Partial<Record<PamAccountType, string>> = {
-  [PamAccountType.Snowflake]: SQL_PATTERN_PLACEHOLDER
+  [PamAccountType.Snowflake]: SQL_PATTERN_PLACEHOLDER,
+  [PamAccountType.ClickHouse]: SQL_PATTERN_PLACEHOLDER
 };
 
 const CommandBlockingEditor = ({ accountType, ...props }: PolicyEditorProps) => (
@@ -26,6 +27,7 @@ const CommandBlockingEditor = ({ accountType, ...props }: PolicyEditorProps) => 
 
 export const POLICY_EDITORS: Partial<Record<PamPolicyType, ComponentType<PolicyEditorProps>>> = {
   [PamPolicyType.RequiresApproval]: BooleanPolicyEditor,
+  [PamPolicyType.AllowAutoApproval]: BooleanPolicyEditor,
   [PamPolicyType.AllowBreakGlass]: BooleanPolicyEditor,
   [PamPolicyType.RequireMfa]: BooleanPolicyEditor,
   [PamPolicyType.RequireReason]: BooleanPolicyEditor,

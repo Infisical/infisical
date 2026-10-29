@@ -14,14 +14,21 @@ import {
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { sanitizeSqlLikeString } from "@app/lib/fn";
-import { ormify, selectAllTableCols, sqlNestRelationships, stripUndefinedInWhere, TFindFilter } from "@app/lib/knex";
+import {
+  ormify,
+  rowWithSameIdIn,
+  selectAllTableCols,
+  sqlNestRelationships,
+  stripUndefinedInWhere,
+  TFindFilter
+} from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 
 import { RequestState, SecretApprovalRequestOrderBy } from "./secret-approval-request-types";
 
 export type TSecretApprovalRequestDALFactory = ReturnType<typeof secretApprovalRequestDALFactory>;
 
-type TFindQueryFilter = {
+export type TSecretApprovalRequestListFilter = {
   projectId: string;
   userId?: string;
   status?: RequestState;
@@ -33,6 +40,8 @@ type TFindQueryFilter = {
   orderBy?: SecretApprovalRequestOrderBy;
   orderDirection?: OrderByDirection;
 };
+
+type TFindQueryFilter = TSecretApprovalRequestListFilter;
 
 // Type for the query result documents in findByProjectId and findByProjectIdBridgeSecretV2
 type TSecretApprovalRequestDoc = TSecretApprovalRequests & {
@@ -97,7 +106,7 @@ const getOrderExpression = (orderBy = SecretApprovalRequestOrderBy.CreatedAt) =>
   }
 };
 
-const applyRequestOrdering = (
+export const applyRequestOrdering = (
   query: Knex.QueryBuilder,
   orderBy?: SecretApprovalRequestOrderBy,
   orderDirection = OrderByDirection.DESC
@@ -109,6 +118,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
   const findQuery = (filter: TFindFilter<TSecretApprovalRequests>, tx: Knex) =>
     tx(TableName.SecretApprovalRequest)
       .where(filter)
+      .whereNotExists(rowWithSameIdIn(TableName.ApprovalRequests, TableName.SecretApprovalRequest))
       .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
       .join(TableName.Environment, function joinActiveEnvForSecretFolder() {
         this.on(`${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`).andOnNull(
@@ -463,6 +473,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
               `${TableName.UserGroupMembership}.groupId`
             )
             .where({ projectId })
+            .whereNotExists(rowWithSameIdIn(TableName.ApprovalRequests, TableName.SecretApprovalRequest))
             .where((qb) => {
               if (policyId) void qb.where(`${TableName.SecretApprovalPolicy}.id`, policyId);
             })
@@ -570,6 +581,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             committerUserId: committer
           })
         )
+        .whereNotExists(rowWithSameIdIn(TableName.ApprovalRequests, TableName.SecretApprovalRequest))
         .modify((qb) => buildUserAccessFilter(qb, userId))
         .select(selectAllTableCols(TableName.SecretApprovalRequest))
         .select(
@@ -642,6 +654,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         parentMapper: (el) => ({
           ...SecretApprovalRequestsSchema.parse(el),
           environment: el.environment,
+          environmentName: el.environmentName,
           projectId: el.projectId,
           policy: {
             id: el.policyId,
@@ -796,6 +809,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             committerUserId: committer
           })
         )
+        .whereNotExists(rowWithSameIdIn(TableName.ApprovalRequests, TableName.SecretApprovalRequest))
         .modify((qb) => buildUserAccessFilter(qb, userId))
         .select(selectAllTableCols(TableName.SecretApprovalRequest))
         .select(
@@ -906,6 +920,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         parentMapper: (el) => ({
           ...SecretApprovalRequestsSchema.parse(el),
           environment: el.environment,
+          environmentName: el.environmentName,
           projectId: el.projectId,
           policy: {
             id: el.policyId,
@@ -986,6 +1001,19 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findOpenByFolderIds = async (folderIds: string[], tx?: Knex) => {
+    try {
+      const docs = await (tx || db.replicaNode())(TableName.SecretApprovalRequest)
+        .whereIn("folderId", folderIds)
+        .where({ status: RequestState.Open })
+        .whereNotExists(rowWithSameIdIn(TableName.ApprovalRequests, TableName.SecretApprovalRequest))
+        .select("id", "folderId");
+      return docs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindOpenByFolderIds" });
+    }
+  };
+
   const deleteByProjectId = async (projectId: string, tx?: Knex) => {
     try {
       const query = await (tx || db)(TableName.SecretApprovalRequest)
@@ -1007,6 +1035,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
     findProjectRequestCount,
     findByProjectId,
     findByProjectIdBridgeSecretV2,
+    findOpenByFolderIds,
     deleteByProjectId
   };
 };

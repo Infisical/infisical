@@ -69,7 +69,7 @@ export const WindmillSyncFields = () => {
                 isLoading={isWorkspacesLoading && Boolean(connectionId)}
                 isDisabled={!connectionId}
                 value={workspaces?.find((workspace) => workspace.name === value) ?? null}
-                onValueChange={(option) => onChange(option.name ?? null)}
+                onValueChange={(option) => onChange(option?.name ?? null)}
                 options={workspaces}
                 placeholder="Select a workspace..."
                 getOptionLabel={(option) => option.name}

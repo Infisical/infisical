@@ -1,5 +1,5 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, CircleAlertIcon, TriangleAlertIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -14,6 +14,18 @@ import { isOrgScopedProduct } from "@app/helpers/project";
 
 import type { NavItem, Submenu } from "./types";
 import { PROJECT_TYPE_PATH } from "./types";
+
+// Important, because the menu button sizes every icon inside it and recolors them while the item is active.
+const NavAlertIcon = ({ variant }: { variant: NonNullable<NavItem["alertVariant"]> }) => (
+  <span className="ml-auto flex shrink-0">
+    {variant === "danger" ? (
+      <CircleAlertIcon aria-hidden className="size-3.5! text-danger!" />
+    ) : (
+      <TriangleAlertIcon aria-hidden className="size-3.5! text-warning!" />
+    )}
+    <span className="sr-only">Needs attention</span>
+  </span>
+);
 
 // --- Project nav link (handles submenu chevron or normal link) ---
 
@@ -70,7 +82,13 @@ export const ProjectNavLink = ({
               {item.badgeCount}
             </Badge>
           )}
-          <ChevronRight className={twMerge("size-4 opacity-50", !item.badgeCount && "ml-auto")} />
+          {item.alertVariant && <NavAlertIcon variant={item.alertVariant} />}
+          <ChevronRight
+            className={twMerge(
+              "size-4 opacity-50",
+              !item.badgeCount && !item.alertVariant && "ml-auto"
+            )}
+          />
         </SidebarMenuButton>
       </SidebarMenuItem>
     );
@@ -105,6 +123,7 @@ export const ProjectNavLink = ({
               {item.badgeCount}
             </Badge>
           )}
+          {item.alertVariant && <NavAlertIcon variant={item.alertVariant} />}
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>

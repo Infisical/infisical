@@ -9,7 +9,6 @@ import {
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
-import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
@@ -32,12 +31,14 @@ import {
   VenafiDestinationConfigSchema
 } from "./ca-signing-config-types";
 
+const CA_SIGNING_CONFIG_CONNECTION_MAP: Partial<Record<CaSigningConfigType, AppConnection>> = {
+  [CaSigningConfigType.Venafi]: AppConnection.Venafi,
+  [CaSigningConfigType.AzureAdCs]: AppConnection.AzureADCS,
+  [CaSigningConfigType.Adcs]: AppConnection.ADCS
+};
+
 // Signing through a third-party provider is the same capability as connecting one as an external CA.
-const EXTERNAL_SIGNING_TYPES: string[] = [
-  CaSigningConfigType.Venafi,
-  CaSigningConfigType.AzureAdCs,
-  CaSigningConfigType.Adcs
-];
+const EXTERNAL_SIGNING_TYPES: string[] = Object.keys(CA_SIGNING_CONFIG_CONNECTION_MAP);
 
 type TCaSigningConfigServiceFactoryDep = {
   caSigningConfigDAL: Pick<
@@ -48,7 +49,6 @@ type TCaSigningConfigServiceFactoryDep = {
   internalCertificateAuthorityDAL: Pick<TInternalCertificateAuthorityDALFactory, "findOne" | "updateById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   caAutoRenewalQueue: Pick<
     TCaAutoRenewalQueueFactory,
@@ -64,27 +64,27 @@ export const caSigningConfigServiceFactory = ({
   internalCertificateAuthorityDAL,
   permissionService,
   licenseService,
-  appConnectionDAL,
   appConnectionService,
   caAutoRenewalQueue
 }: TCaSigningConfigServiceFactoryDep) => {
-  const validateAppConnectionOrg = async (connectionId: string, actorOrgId: string) => {
-    const appConnection = await appConnectionDAL.findById(connectionId);
-    if (!appConnection || appConnection.orgId !== actorOrgId) {
-      throw new BadRequestError({ message: "App connection not found or does not belong to your organization" });
-    }
-  };
-
-  const validateAdcsAppConnectionUsage = async (connectionId: string, projectId: string, actor: OrgServiceActor) => {
-    await appConnectionService.validateAppConnectionUsageById(AppConnection.ADCS, { connectionId, projectId }, actor);
-  };
-
   const getSigningConfigByCaId = async (internalCaId: string) => {
     const config = await caSigningConfigDAL.findByCaId(internalCaId);
     if (!config) {
       throw new NotFoundError({ message: "No signing configuration found for this CA" });
     }
     return config;
+  };
+
+  const validateSigningAppConnection = async (
+    type: CaSigningConfigType,
+    connectionId: string | undefined,
+    projectId: string,
+    actor: OrgServiceActor
+  ) => {
+    const app = CA_SIGNING_CONFIG_CONNECTION_MAP[type];
+    if (!app || connectionId === undefined) return;
+
+    await appConnectionService.validateAppConnectionUsageById(app, { connectionId, projectId }, actor);
   };
 
   const createSigningConfig = async ({
@@ -144,7 +144,6 @@ export const caSigningConfigServiceFactory = ({
         throw new BadRequestError({ message: "Destination config is required for Venafi signing" });
       }
       VenafiDestinationConfigSchema.parse(destinationConfig);
-      await validateAppConnectionOrg(appConnectionId, actorOrgId);
     }
 
     // Azure AD CS requires appConnectionId and destinationConfig
@@ -156,7 +155,6 @@ export const caSigningConfigServiceFactory = ({
         throw new BadRequestError({ message: "Destination config is required for Azure AD CS signing" });
       }
       AzureAdCsDestinationConfigSchema.parse(destinationConfig);
-      await validateAppConnectionOrg(appConnectionId, actorOrgId);
     }
 
     if (type === CaSigningConfigType.Adcs) {
@@ -167,8 +165,9 @@ export const caSigningConfigServiceFactory = ({
         throw new BadRequestError({ message: "Destination config is required for ADCS signing" });
       }
       AdcsDestinationConfigSchema.parse(destinationConfig);
-      await validateAdcsAppConnectionUsage(appConnectionId, ca.projectId, permissionActor);
     }
+
+    await validateSigningAppConnection(type, appConnectionId, ca.projectId, permissionActor);
 
     const isExternalCa = EXTERNAL_SIGNING_TYPES.includes(type);
 
@@ -294,13 +293,19 @@ export const caSigningConfigServiceFactory = ({
       lastExternalCertificateId?: string;
     } = {};
 
+    await validateSigningAppConnection(
+      existing.type as CaSigningConfigType,
+      appConnectionId,
+      ca.projectId,
+      permissionActor
+    );
+
     if (existing.type === CaSigningConfigType.Internal && parentCaId !== undefined) {
       updateData.parentCaId = parentCaId;
     }
 
     if (existing.type === CaSigningConfigType.Venafi) {
       if (appConnectionId !== undefined) {
-        await validateAppConnectionOrg(appConnectionId, actorOrgId);
         updateData.appConnectionId = appConnectionId;
       }
       if (destinationConfig !== undefined) {
@@ -312,7 +317,6 @@ export const caSigningConfigServiceFactory = ({
 
     if (existing.type === CaSigningConfigType.AzureAdCs) {
       if (appConnectionId !== undefined) {
-        await validateAppConnectionOrg(appConnectionId, actorOrgId);
         updateData.appConnectionId = appConnectionId;
       }
       if (destinationConfig !== undefined) {
@@ -323,7 +327,6 @@ export const caSigningConfigServiceFactory = ({
 
     if (existing.type === CaSigningConfigType.Adcs) {
       if (appConnectionId !== undefined) {
-        await validateAdcsAppConnectionUsage(appConnectionId, ca.projectId, permissionActor);
         updateData.appConnectionId = appConnectionId;
       }
       if (destinationConfig !== undefined) {

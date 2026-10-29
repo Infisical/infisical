@@ -11,6 +11,10 @@ const PROJECT_ID = "project-1";
 const OTHER_PROJECT_ID = "project-2";
 const ACTOR_ID = "actor-1";
 const IDENTITY_ID = "identity-1";
+const GROUP_ID = "group-1";
+const OTHER_USER_ID = "user-2";
+const THIRD_USER_ID = "user-3";
+const INSERTED_AT = new Date("2026-01-01T00:00:00Z");
 
 const addIds = { userIds: [], groupIds: [], machineIdentityIds: [IDENTITY_ID], emails: [] };
 
@@ -23,26 +27,33 @@ const ctx = {
 
 const buildTx = (adminCount: number) => {
   const chain: Record<string, unknown> = {};
-  ["join", "where", "orWhere", "whereNotIn", "countDistinct"].forEach((method) => {
+  ["join", "where", "orWhere", "whereNotIn", "whereIn", "countDistinct"].forEach((method) => {
     chain[method] = vi.fn((arg: unknown) => {
       if (typeof arg === "function") (arg as (qb: unknown) => void)(chain);
       return chain;
     });
   });
-  chain.first = vi.fn().mockResolvedValue({ count: String(adminCount) });
+  chain.first = vi
+    .fn()
+    .mockResolvedValueOnce({ count: String(adminCount) })
+    .mockResolvedValue({ count: "1" });
 
-  const tx = vi.fn(() => chain) as unknown as { raw: ReturnType<typeof vi.fn> };
+  const tx = vi.fn(() => chain) as unknown as { raw: ReturnType<typeof vi.fn>; chain: typeof chain };
   tx.raw = vi.fn();
+  tx.chain = chain;
   return tx;
 };
 
 // Only the collaborators these three guards touch; everything else is left undefined so a guard that
-// fails to short-circuit shows up as a crash rather than a silent pass.
+// fails to short-circuit shows up as a crash rather than a silent pass. findActorsWithActiveOrgAccess
+// follows the org read, and groupReachableIds fakes actors that reach the org only through a group.
 const buildService = ({
   identityProjectId = null as string | null,
-  productMemberships = [] as { id: string }[],
-  adminMembershipIds = [] as string[]
+  productMemberships = [] as ({ id: string } & Record<string, string | null>)[],
+  adminMembershipIds = [] as string[],
+  groupReachableIds = [] as string[]
 } = {}) => {
+  const txs: ReturnType<typeof buildTx>[] = [];
   const deps = {
     permissionService: { getProjectPermission: vi.fn().mockResolvedValue({ hasRole: () => true }) },
     identityDAL: {
@@ -61,24 +72,52 @@ const buildService = ({
     userAliasDAL: { findBySsoExternalIds: vi.fn().mockResolvedValue([]) },
     orgDAL: {
       findById: vi.fn().mockResolvedValue({ id: ORG_ID, rootOrgId: null }),
-      findActiveEffectiveOrgMemberActorIds: vi.fn(({ actorIds }: { actorIds: string[] }) =>
-        Promise.resolve(new Set(actorIds))
+      lockActorsForOrgAccess: vi.fn().mockResolvedValue(undefined),
+      findActorsWithActiveOrgAccess: vi.fn(
+        async ({ userIds, identityIds }: { userIds: string[]; identityIds: string[] }) => {
+          const active = async (column: "actorUserId" | "actorIdentityId", ids: string[]) => {
+            if (!ids.length) return new Set<string>();
+            const rows = (await deps.membershipDAL.find({
+              scope: AccessScope.Organization,
+              $in: { [column]: ids }
+            })) as Record<string, unknown>[];
+            const direct = rows.filter((row) => ids.includes(row[column] as string));
+            const withRow = new Set(direct.map((row) => row[column] as string));
+            return new Set([
+              ...direct.filter((row) => row.isActive).map((row) => row[column] as string),
+              ...ids.filter((id) => groupReachableIds.includes(id) && !withRow.has(id))
+            ]);
+          };
+          return {
+            userIds: await active("actorUserId", userIds),
+            identityIds: await active("actorIdentityId", identityIds)
+          };
+        }
       )
     },
     membershipDAL: {
-      find: vi.fn(({ scope }: { scope: string }) =>
+      // The organization read is how an actor is judged to exist here, so it answers for whatever it is
+      // asked about. That is what an org holds for every actor it reaches, including one it does not own
+      // itself and one another product scoped to its own project.
+      find: vi.fn(({ scope, $in }: { scope: string; $in?: Record<string, string[] | undefined> }) =>
         Promise.resolve(
           scope === AccessScope.Project
-            ? productMemberships.map((row) => ({ ...row, actorIdentityId: IDENTITY_ID, createdAt: new Date() }))
-            : []
+            ? productMemberships.map((row) => ({ actorIdentityId: IDENTITY_ID, createdAt: INSERTED_AT, ...row }))
+            : Object.entries($in ?? {}).flatMap(([column, ids]) =>
+                (ids ?? []).map((id) => ({ id: `org-${id}`, [column]: id, isActive: true }))
+              )
         )
       ),
       // assertWillRetainProjectAdmin takes an advisory lock through tx.raw, then counts live admins
       // with a query built off tx() itself. The chain answers with the fixture's admin count, so
       // adminMembershipIds still decides whether the guard lets the write through.
-      transaction: vi.fn((cb: (tx: unknown) => unknown) => Promise.resolve(cb(buildTx(adminMembershipIds.length)))),
+      transaction: vi.fn((cb: (tx: unknown) => unknown) => {
+        const tx = buildTx(adminMembershipIds.length);
+        txs.push(tx);
+        return Promise.resolve(cb(tx));
+      }),
       insertMany: vi.fn((rows: Record<string, unknown>[]) =>
-        Promise.resolve(rows.map((row) => ({ ...row, id: "mem-new", createdAt: new Date() })))
+        Promise.resolve(rows.map((row) => ({ ...row, id: "mem-new", createdAt: INSERTED_AT })))
       ),
       delete: vi.fn().mockResolvedValue(undefined)
     },
@@ -86,18 +125,20 @@ const buildService = ({
       find: vi
         .fn()
         .mockResolvedValue(adminMembershipIds.map((id) => ({ membershipId: id, role: ProjectMembershipRole.Admin }))),
-      create: vi.fn(({ role }: { role: string }) => Promise.resolve({ role })),
       insertMany: vi.fn().mockResolvedValue(undefined),
       delete: vi.fn().mockResolvedValue(undefined)
     },
     projectAccessRequestDAL: { delete: vi.fn().mockResolvedValue(undefined) },
-    usageMeteringService: { emitForProject: vi.fn() }
+    usageMeteringService: { emitForProject: vi.fn() },
+    agentVaultPersonalValueDAL: { deleteForActorsWithoutGrant: vi.fn().mockResolvedValue(0) },
+    userGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) },
+    identityGroupMembershipDAL: { find: vi.fn().mockResolvedValue([]) }
   };
 
   const service = agentVaultMembershipServiceFactory(
     deps as unknown as Parameters<typeof agentVaultMembershipServiceFactory>[0]
   );
-  return { service, deps };
+  return { service, deps, txs };
 };
 
 describe("agentVaultMembership guards", () => {
@@ -128,7 +169,11 @@ describe("agentVaultMembership guards", () => {
       ctx
     });
 
-    expect(members[0].id).toBe("mem-new");
+    expect(members[0]).toMatchObject({
+      type: AgentVaultMemberType.MachineIdentity,
+      id: IDENTITY_ID,
+      addedAt: INSERTED_AT
+    });
   });
 
   test("accepts an identity created inside Agent Vault itself", async () => {
@@ -141,7 +186,11 @@ describe("agentVaultMembership guards", () => {
       ctx
     });
 
-    expect(members[0].id).toBe("mem-new");
+    expect(members[0]).toMatchObject({
+      type: AgentVaultMemberType.MachineIdentity,
+      id: IDENTITY_ID,
+      addedAt: INSERTED_AT
+    });
   });
 
   // Removing only the membership would leave the identity live but off every screen: this product's tab
@@ -166,36 +215,334 @@ describe("agentVaultMembership guards", () => {
     await service.revokeProductMembers({ projectId: PROJECT_ID, ...addIds, ctx });
 
     expect(deps.membershipDAL.delete).toHaveBeenCalledWith({ $in: { id: ["mem-1"] } }, expect.anything());
+    // Leaving Agent Vault loses every bundle, so the cleanup covers the whole project for this identity.
+    expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).toHaveBeenCalledWith(
+      { projectId: PROJECT_ID, accessBundleId: undefined, userIds: [], identityIds: [IDENTITY_ID] },
+      expect.anything()
+    );
+  });
+
+  // A sub-organization reaches one of its parent's groups through a membership of its own, and the group
+  // row keeps pointing at the parent. Judging it by that row refused every linked group.
+  test("accepts a group the organization reaches but does not own", async () => {
+    const { service, deps } = buildService();
+
+    const { members } = await service.addProductMembers({
+      projectId: PROJECT_ID,
+      userIds: [],
+      machineIdentityIds: [],
+      groupIds: [GROUP_ID],
+      emails: [],
+      role: ProjectMembershipRole.Member,
+      ctx
+    });
+
+    expect(members[0]).toMatchObject({ type: AgentVaultMemberType.Group, id: GROUP_ID, addedAt: INSERTED_AT });
+    expect(deps.membershipDAL.find).toHaveBeenCalledWith(
+      expect.objectContaining({ scope: AccessScope.Organization, $in: { actorGroupId: [GROUP_ID] } })
+    );
+  });
+
+  test("refuses a group the organization does not reach at all", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [],
+        machineIdentityIds: [],
+        groupIds: [GROUP_ID],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("not found");
+
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  // Reaching the organization through a group is how a sub-org is given a parent group's members. They
+  // reach Agent Vault the same way, by the group being a member, so neither is individually assignable.
+  // Authentication resolves them through the group and is deliberately untouched by this.
+  test("accepts an actor whose organization access comes only from a group", async () => {
+    const { service, deps } = buildService({ groupReachableIds: [OTHER_USER_ID] });
+    deps.membershipDAL.find.mockResolvedValue([]);
+
+    await service.addProductMembers({
+      projectId: PROJECT_ID,
+      userIds: [OTHER_USER_ID],
+      machineIdentityIds: [],
+      groupIds: [],
+      emails: [],
+      role: ProjectMembershipRole.Member,
+      ctx
+    });
+
+    expect(deps.membershipDAL.insertMany).toHaveBeenCalledWith(
+      [expect.objectContaining({ actorUserId: OTHER_USER_ID })],
+      expect.anything()
+    );
+  });
+
+  test("refuses an actor the organization does not reach at all", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [OTHER_USER_ID],
+        machineIdentityIds: [],
+        groupIds: [],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("is not a member of this organization");
+
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  test("refuses an actor whose organization membership is deactivated", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([{ id: "org-mem", actorUserId: OTHER_USER_ID, isActive: false }]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [OTHER_USER_ID],
+        machineIdentityIds: [],
+        groupIds: [],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+      // Named as deactivated rather than missing, because reactivating is the remedy, not inviting.
+    ).rejects.toThrow("is deactivated in this organization");
+
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  // A batch holding both kinds names both, so fixing one and retrying is not how you discover the other.
+  test("names the deactivated and the non-member in one refusal", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([{ id: "org-mem", actorUserId: OTHER_USER_ID, isActive: false }]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [OTHER_USER_ID, THIRD_USER_ID],
+        machineIdentityIds: [],
+        groupIds: [],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow(/is deactivated in this organization[\s\S]*is not a member of this organization/);
+
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
+  });
+
+  // The name lookup is not org-scoped, so resolving an outsider would hand back another tenant's email and
+  // tell a real id apart from a made-up one. Only the deactivated, who are in this org, get a name.
+  test("never names an actor from outside the organization", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([]);
+    deps.userDAL.find.mockResolvedValue([{ id: OTHER_USER_ID, username: "sam@othercompany.com" }]);
+
+    const refusal = service.addProductMembers({
+      projectId: PROJECT_ID,
+      userIds: [OTHER_USER_ID],
+      machineIdentityIds: [],
+      groupIds: [],
+      emails: [],
+      role: ProjectMembershipRole.Member,
+      ctx
+    });
+
+    await expect(refusal).rejects.toThrow(`'${OTHER_USER_ID}' is not a member of this organization`);
+    await expect(refusal).rejects.not.toThrow("sam@othercompany.com");
+  });
+
+  test("names a deactivated member, who is in this organization", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([{ id: "org-mem", actorUserId: OTHER_USER_ID, isActive: false }]);
+    deps.userDAL.find.mockResolvedValue([{ id: OTHER_USER_ID, username: "bob@test.local" }]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [OTHER_USER_ID],
+        machineIdentityIds: [],
+        groupIds: [],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("'bob@test.local' is deactivated in this organization");
+  });
+
+  test("reads correctly for several outsiders", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [OTHER_USER_ID, THIRD_USER_ID],
+        machineIdentityIds: [],
+        groupIds: [],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("are not members of this organization. Invite them to the organization first.");
+  });
+
+  // A group whose organization membership was deactivated must not be restorable by adding it again.
+  test("refuses a group whose organization membership is deactivated", async () => {
+    const { service, deps } = buildService();
+    deps.membershipDAL.find.mockResolvedValue([{ id: "org-mem", actorGroupId: GROUP_ID, isActive: false }]);
+
+    await expect(
+      service.addProductMembers({
+        projectId: PROJECT_ID,
+        userIds: [],
+        machineIdentityIds: [],
+        groupIds: [GROUP_ID],
+        emails: [],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("not found");
+
+    expect(deps.membershipDAL.insertMany).not.toHaveBeenCalled();
   });
 
   test("refuses to change your own role", async () => {
     const { service, deps } = buildService();
 
     await expect(
-      service.updateProductMemberRole({
+      service.updateProductMemberRoles({
         projectId: PROJECT_ID,
-        actor: { type: AgentVaultMemberType.User, id: ACTOR_ID },
+        userIds: [OTHER_USER_ID, ACTOR_ID],
+        groupIds: [],
+        machineIdentityIds: [],
         role: ProjectMembershipRole.Member,
         ctx
       })
     ).rejects.toThrow("your own role");
 
-    expect(deps.membershipRoleDAL.create).not.toHaveBeenCalled();
+    expect(deps.membershipRoleDAL.insertMany).not.toHaveBeenCalled();
   });
 
   test("still changes someone else's role", async () => {
-    const { service } = buildService({
+    const { service, deps } = buildService({
       productMemberships: [{ id: "mem-1" }],
       adminMembershipIds: ["mem-other"]
     });
 
-    const { member } = await service.updateProductMemberRole({
+    const { members, skipped } = await service.updateProductMemberRoles({
       projectId: PROJECT_ID,
-      actor: { type: AgentVaultMemberType.MachineIdentity, id: IDENTITY_ID },
+      userIds: [],
+      groupIds: [],
+      machineIdentityIds: [IDENTITY_ID],
       role: ProjectMembershipRole.Member,
       ctx
     });
 
-    expect(member.role).toBe(ProjectMembershipRole.Member);
+    expect(members).toMatchObject([{ type: AgentVaultMemberType.MachineIdentity, role: ProjectMembershipRole.Member }]);
+    expect(skipped).toEqual([]);
+    expect(deps.membershipRoleDAL.insertMany).toHaveBeenCalledWith(
+      [{ membershipId: "mem-1", role: ProjectMembershipRole.Member }],
+      expect.anything()
+    );
+    // A demoted admin no longer reaches the bundles they hold no grant on.
+    expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).toHaveBeenCalledWith(
+      { projectId: PROJECT_ID, accessBundleId: undefined, userIds: [], identityIds: [IDENTITY_ID] },
+      expect.anything()
+    );
+  });
+
+  test("skips a member who already has the role instead of rewriting it", async () => {
+    const { service, deps } = buildService({
+      productMemberships: [{ id: "mem-other" }],
+      adminMembershipIds: ["mem-other"]
+    });
+
+    const { members, skipped } = await service.updateProductMemberRoles({
+      projectId: PROJECT_ID,
+      userIds: [],
+      groupIds: [],
+      machineIdentityIds: [IDENTITY_ID],
+      role: ProjectMembershipRole.Admin,
+      ctx
+    });
+
+    expect(members).toEqual([]);
+    expect(skipped).toMatchObject([{ type: AgentVaultMemberType.MachineIdentity, id: IDENTITY_ID }]);
+    expect(deps.membershipRoleDAL.delete).not.toHaveBeenCalled();
+  });
+
+  test("a batch changes the members it can and reports the rest as skipped", async () => {
+    const { service, deps } = buildService({
+      productMemberships: [{ id: "mem-identity" }, { id: "mem-group", actorIdentityId: null, actorGroupId: GROUP_ID }],
+      adminMembershipIds: ["mem-group"]
+    });
+
+    const { members, skipped } = await service.updateProductMemberRoles({
+      projectId: PROJECT_ID,
+      userIds: [OTHER_USER_ID],
+      groupIds: [GROUP_ID],
+      machineIdentityIds: [IDENTITY_ID],
+      role: ProjectMembershipRole.Admin,
+      ctx
+    });
+
+    expect(members).toEqual([
+      expect.objectContaining({ type: AgentVaultMemberType.MachineIdentity, id: IDENTITY_ID, role: "admin" })
+    ]);
+    expect(skipped).toHaveLength(2);
+    expect(skipped).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: AgentVaultMemberType.User, id: OTHER_USER_ID }),
+        expect.objectContaining({ type: AgentVaultMemberType.Group, id: GROUP_ID })
+      ])
+    );
+    expect(deps.membershipRoleDAL.delete).toHaveBeenCalledWith(
+      { $in: { membershipId: ["mem-identity"] } },
+      expect.anything()
+    );
+    expect(deps.membershipRoleDAL.insertMany).toHaveBeenCalledWith(
+      [{ membershipId: "mem-identity", role: ProjectMembershipRole.Admin }],
+      expect.anything()
+    );
+    // A promotion takes nothing away, so nothing is cleared.
+    expect(deps.agentVaultPersonalValueDAL.deleteForActorsWithoutGrant).not.toHaveBeenCalled();
+  });
+
+  test("refuses one batch that would demote every remaining admin", async () => {
+    const { service, deps, txs } = buildService({
+      productMemberships: [{ id: "mem-identity" }, { id: "mem-group", actorIdentityId: null, actorGroupId: GROUP_ID }]
+    });
+
+    await expect(
+      service.updateProductMemberRoles({
+        projectId: PROJECT_ID,
+        userIds: [],
+        groupIds: [GROUP_ID],
+        machineIdentityIds: [IDENTITY_ID],
+        role: ProjectMembershipRole.Member,
+        ctx
+      })
+    ).rejects.toThrow("must keep at least one admin");
+
+    expect(txs[0].chain.whereNotIn).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.arrayContaining(["mem-identity", "mem-group"])
+    );
+    expect(deps.membershipRoleDAL.delete).not.toHaveBeenCalled();
+    expect(deps.membershipRoleDAL.insertMany).not.toHaveBeenCalled();
   });
 });

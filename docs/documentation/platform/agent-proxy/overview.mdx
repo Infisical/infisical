@@ -4,6 +4,12 @@ sidebarTitle: "Overview"
 description: "Give AI agents and untrusted code execution environments access without handing over your secrets."
 ---
 
+<Info>
+  For new setups, we recommend using [Agent Vault](/documentation/platform/agent-vault/overview). Like Agent Proxy, Agent Vault gives AI agents access to the services they call without handing the agents your credentials.
+  
+  Use Agent Proxy only if you need a sandboxed [local proxy](/documentation/platform/agent-proxy/local-agent-proxy) that runs on your own computer, or if you want the proxy to apply a [dynamic secret](/documentation/platform/dynamic-secrets/overview).
+</Info>
+
 The **Infisical Agent Proxy** is a credential broker for AI agents and untrusted code execution environments. It sits between your AI agents and the APIs they call including LLM providers, GitHub, Slack, and more.
 
 Agents like Claude Code or Codex route HTTP requests through the proxy, which swaps dummy credentials for real ones (or replaces auth headers entirely), before forwarding the request to the target service.

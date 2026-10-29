@@ -24,6 +24,7 @@ export interface TDynamicSecretLeaseDALFactory extends Omit<TOrmify<TableName.Dy
           folderId: string;
           status: string | null | undefined;
           statusDetails: string | null | undefined;
+          revocationFailing: boolean;
           createdAt: Date;
           updatedAt: Date;
         };
@@ -37,6 +38,7 @@ export interface TDynamicSecretLeaseDALFactory extends Omit<TOrmify<TableName.Dy
         status?: string | null | undefined;
         config?: unknown;
         statusDetails?: string | null | undefined;
+        encryptedLeaseData?: Buffer | null | undefined;
       }
     | undefined
   >;
@@ -47,11 +49,11 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
 
   const countLeasesForDynamicSecret = async (dynamicSecretId: string, tx?: Knex) => {
     try {
-      const doc = await (tx || db.replicaNode())(TableName.DynamicSecretLease)
-        .count("*")
+      const doc = (await (tx || db.replicaNode())(TableName.DynamicSecretLease)
+        .count("* as count")
         .where({ dynamicSecretId })
-        .first();
-      return parseInt(doc || "0", 10);
+        .first()) as { count: string | number } | undefined;
+      return parseInt(String(doc?.count ?? "0"), 10);
     } catch (error) {
       throw new DatabaseError({ error, name: "DynamicSecretCountLeases" });
     }
@@ -106,6 +108,7 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
           db.ref("folderId").withSchema(TableName.DynamicSecret).as("dynFolderId"),
           db.ref("status").withSchema(TableName.DynamicSecret).as("dynStatus"),
           db.ref("statusDetails").withSchema(TableName.DynamicSecret).as("dynStatusDetails"),
+          db.ref("revocationFailing").withSchema(TableName.DynamicSecret).as("dynRevocationFailing"),
           db.ref("createdAt").withSchema(TableName.DynamicSecret).as("dynCreatedAt"),
           db.ref("updatedAt").withSchema(TableName.DynamicSecret).as("dynUpdatedAt")
         );
@@ -124,6 +127,7 @@ export const dynamicSecretLeaseDALFactory = (db: TDbClient) => {
           folderId: doc.dynFolderId,
           status: doc.dynStatus,
           statusDetails: doc.dynStatusDetails,
+          revocationFailing: doc.dynRevocationFailing as boolean,
           createdAt: doc.dynCreatedAt,
           updatedAt: doc.dynUpdatedAt
         }

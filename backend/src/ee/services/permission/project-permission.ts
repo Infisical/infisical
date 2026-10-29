@@ -271,7 +271,8 @@ export enum ProjectPermissionSecretEventActions {
 }
 
 export enum ProjectPermissionAuditLogsActions {
-  Read = "read"
+  Read = "read",
+  Edit = "edit"
 }
 
 export enum ProjectPermissionInsightsActions {
@@ -309,6 +310,7 @@ export enum ProjectPermissionAgentVaultAccessBundleActions {
 export enum ProjectPermissionAgentVaultSessionActions {
   Read = "read",
   Create = "create",
+  Edit = "edit",
   Revoke = "revoke"
 }
 
@@ -417,7 +419,8 @@ export const ActionAllowedConditions: ActionAllowedConditionsType = {
       "assignableAction"
     ],
     [ProjectPermissionMemberActions.AssignRole]: ["userEmail", "assignableRole"],
-    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["userEmail", "assignableSubject", "assignableAction"]
+    [ProjectPermissionMemberActions.AssignAdditionalPrivileges]: ["userEmail", "assignableSubject", "assignableAction"],
+    [ProjectPermissionMemberActions.AssumePrivileges]: ["userEmail"]
   },
   [ProjectPermissionSub.Identity]: {
     [ProjectPermissionIdentityActions.Read]: ["identityId"],
@@ -1980,15 +1983,15 @@ export const buildServiceTokenProjectPermission = (
         // Folder read is implied-for-all, so it isn't granted explicitly for read-scoped tokens.
         if (canRead && subject !== ProjectPermissionSub.SecretFolders) {
           if (!useLegacyRead && subject === ProjectPermissionSub.Secrets) {
-            // @ts-expect-error CASL's per-action condition schema doesn't expose $glob, but the
-            // conditionsMatcher resolves it at runtime; same pattern is used in the legacy branch.
             can(ProjectPermissionSecretActions.ReadValue, subject, {
+              // CASL's per-action condition schema doesn't expose $glob, but the conditionsMatcher
+              // resolves it at runtime; same pattern is used in the legacy branch.
+              // @ts-expect-error see above
               secretPath: { $glob: secretPath },
               environment
             });
-            // @ts-expect-error CASL's per-action condition schema doesn't expose $glob, but the
-            // conditionsMatcher resolves it at runtime; same pattern is used in the legacy branch.
             can(ProjectPermissionSecretActions.DescribeSecret, subject, {
+              // @ts-expect-error see the ReadValue grant above
               secretPath: { $glob: secretPath },
               environment
             });

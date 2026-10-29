@@ -1,7 +1,13 @@
+import { Knex } from "knex";
+
 import { OrgMembershipStatus } from "@app/db/schemas";
+import { TEmailDomainDALFactory } from "@app/ee/services/email-domain/email-domain-dal";
+import { EmailDomainStatus } from "@app/ee/services/email-domain/email-domain-types";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+
+import { IResourceAlertProvider, TAlertRecipientScope } from "./alert-types";
 
 export type TPrincipalScopeDALs = {
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
@@ -13,6 +19,20 @@ export type TPrincipalScopeDALs = {
 export type TPrincipalScope = { orgId: string; projectId?: string | null };
 
 export type TInScopePrincipals = { userIds: Set<string>; groupIds: Set<string> };
+
+export const isOnVerifiedDomain = (email: string, verifiedDomains: Set<string>) =>
+  verifiedDomains.has(email.split("@")[1]?.toLowerCase() ?? "");
+
+export const findVerifiedEmailDomains = async (
+  emailDomainDAL: Pick<TEmailDomainDALFactory, "find">,
+  orgId: string,
+  tx?: Knex
+): Promise<Set<string>> =>
+  new Set(
+    (await emailDomainDAL.find({ orgId, status: EmailDomainStatus.Verified }, { tx })).map((domain) =>
+      domain.domain.toLowerCase()
+    )
+  );
 
 /**
  * Narrows a set of user/group ids down to the ones that are actually in the alert's scope. Shared by
@@ -30,18 +50,22 @@ export type TInScopePrincipals = { userIds: Set<string>; groupIds: Set<string> }
  */
 export const resolvePrincipalsInScope = async (
   { orgDAL, projectDAL, groupDAL }: TPrincipalScopeDALs,
-  { orgId, projectId, userIds, groupIds }: TPrincipalScope & { userIds: string[]; groupIds: string[] }
+  { orgId, projectId, userIds, groupIds }: TPrincipalScope & { userIds: string[]; groupIds: string[] },
+  tx?: Knex
 ): Promise<TInScopePrincipals> => {
   if (userIds.length === 0 && groupIds.length === 0) return { userIds: new Set(), groupIds: new Set() };
 
   const activeOrgUserIds = new Set<string>();
   if (userIds.length) {
-    const memberships = await orgDAL.findMembership({
-      $in: { actorUserId: userIds },
-      scopeOrgId: orgId,
-      isActive: true,
-      status: OrgMembershipStatus.Accepted
-    });
+    const memberships = await orgDAL.findMembership(
+      {
+        $in: { actorUserId: userIds },
+        scopeOrgId: orgId,
+        isActive: true,
+        status: OrgMembershipStatus.Accepted
+      },
+      { tx }
+    );
     memberships.forEach((membership) => {
       if (membership.actorUserId) activeOrgUserIds.add(membership.actorUserId);
     });
@@ -52,7 +76,8 @@ export const resolvePrincipalsInScope = async (
       orgId,
       projectId,
       userIds: [...activeOrgUserIds],
-      groupIds
+      groupIds,
+      tx
     });
     return { userIds: new Set(effectiveUserIds), groupIds: new Set(effectiveGroupIds) };
   }
@@ -61,6 +86,14 @@ export const resolvePrincipalsInScope = async (
 
   if (!groupDAL || groupIds.length === 0) return { userIds: inScopeUserIds, groupIds: new Set(groupIds) };
 
-  const orgGroups = await groupDAL.find({ $in: { id: groupIds }, orgId });
+  const orgGroups = await groupDAL.find({ $in: { id: groupIds }, orgId }, { tx });
   return { userIds: inScopeUserIds, groupIds: new Set(orgGroups.map((group) => group.id)) };
 };
+
+export const getRecipientScope = (
+  provider: Pick<IResourceAlertProvider, "recipientPolicy">,
+  projectId?: string | null
+): TAlertRecipientScope => ({
+  projectId: provider.recipientPolicy?.atOrgScope ? null : (projectId ?? null),
+  allowEmailAddresses: Boolean(provider.recipientPolicy?.allowEmailAddresses)
+});

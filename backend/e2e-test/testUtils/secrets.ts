@@ -5,6 +5,7 @@ import { SecretType } from "@app/db/schemas";
 import { request } from "./request";
 
 type TRawSecret = {
+  id: string;
   secretKey: string;
   secretValue: string;
   secretComment?: string;
@@ -58,6 +59,7 @@ type TUpdateSecretV2Dto = {
   value?: string;
   newKey?: string;
   comment?: string;
+  reminder?: { repeatDays: number; note?: string; recipients?: string[] };
   authToken: string;
   type?: SecretType;
 };
@@ -77,7 +79,10 @@ export const updateSecretV2 = (dto: TUpdateSecretV2Dto) =>
         secretPath: dto.secretPath,
         secretValue: dto.value,
         newSecretName: dto.newKey,
-        secretComment: dto.comment
+        secretComment: dto.comment,
+        secretReminderRepeatDays: dto.reminder?.repeatDays,
+        secretReminderNote: dto.reminder?.note,
+        secretReminderRecipients: dto.reminder?.recipients
       }
     },
     parseSecret
@@ -172,40 +177,3 @@ export const getSecretsV2 = (dto: {
       return payload;
     }
   );
-
-// Replication and import propagation run asynchronously through BullMQ, so a
-// secret shows up in the destination environment some time after the write.
-// Poll for it instead of sleeping a fixed interval: a fixed wait is at once too
-// short (it flakes whenever CI contention pushes propagation past the deadline)
-// and too long (it burns the whole interval on every pass).
-const REPLICATION_TIMEOUT_MS = 25_000;
-const REPLICATION_POLL_MS = 250;
-
-export const waitForReplicatedSecret = async (dto: {
-  workspaceId: string;
-  environmentSlug: string;
-  secretPath: string;
-  key: string;
-  value: string;
-  authToken: string;
-}) => {
-  const deadline = Date.now() + REPLICATION_TIMEOUT_MS;
-  for (;;) {
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const secret = await getSecretByNameV2(dto);
-      if (secret.secretValue === dto.value) return secret;
-    } catch {
-      // Not propagated yet — getSecretByNameV2 asserts on a 200.
-    }
-    if (Date.now() >= deadline) {
-      throw new Error(
-        `Timed out after ${REPLICATION_TIMEOUT_MS}ms waiting for "${dto.key}" to reach ${dto.environmentSlug}${dto.secretPath}`
-      );
-    }
-    // eslint-disable-next-line no-await-in-loop
-    await new Promise((resolve) => {
-      setTimeout(resolve, REPLICATION_POLL_MS);
-    });
-  }
-};

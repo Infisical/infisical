@@ -1,0 +1,48 @@
+---
+title: "MySQL credential rotation for PAM"
+sidebarTitle: "MySQL"
+description: "Rotate the passwords of MySQL accounts."
+---
+
+This page covers what's specific to rotating the password of a [MySQL account](/documentation/platform/pam/accounts/mysql). To turn on rotation and set a rotation account, see [Credential rotation](/documentation/platform/pam/credential-rotation/overview).
+
+## Rotation account
+
+The rotation account needs permission to change the target user's password:
+
+- **The account itself:** A user can change its own password, so it needs no extra privileges
+- **A different account:** The rotation account needs the global `CREATE USER` privilege, or `UPDATE` on the `mysql` system database
+
+For example, to create a rotation user and a user for it to rotate:
+
+```sql
+-- the user that Infisical signs in as to rotate passwords
+CREATE USER 'infisical_rotator'@'%' IDENTIFIED BY '<temporary-password>';
+GRANT CREATE USER ON *.* TO 'infisical_rotator'@'%';
+
+-- the user whose password Infisical rotates
+CREATE USER 'app_user'@'%' IDENTIFIED BY '<temporary-password>';
+```
+
+Add both users to Infisical PAM as MySQL accounts with the same host and port, then select `infisical_rotator` as the rotation account on the `app_user` account's **Rotation** tab.
+
+## How the password is changed
+
+Infisical signs in as the rotation account, using the account's connection details and SSL settings, and runs:
+
+```sql
+ALTER USER "<target-user>"@'%' IDENTIFIED BY '<generated-password>';
+```
+
+The statement changes the user defined for the `'%'` host, so the target user must exist for that host.
+
+## PlanetScale
+
+If the database is on PlanetScale, enter the account's username in the PlanetScale format `<username>.<branch-id>`. Infisical signs in with the full username and changes the password of `<username>`.
+
+To find the branch ID, run these commands with the [PlanetScale CLI](https://planetscale.com/docs/reference/planetscale-cli):
+
+```bash
+pscale org switch <org-name>
+pscale branch show <database> <branch-name> --format json
+```

@@ -1,22 +1,25 @@
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { SingleValue } from "react-select";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { PlusIcon, TrashIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
-  FilterableSelect,
-  FormControl,
-  FormLabel,
+  Combobox,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Field,
+  FieldError,
+  FieldLabel,
   IconButton,
-  Input,
-  Modal,
-  ModalContent
-} from "@app/components/v2";
+  Input
+} from "@app/components/v3";
 import { useOrganization, useSubscription } from "@app/context";
 import { findOrgMembershipRole, isCustomOrgRole } from "@app/helpers/roles";
 import { useGetOrgRoles, useUpdateOrgMembership } from "@app/hooks/api";
@@ -43,7 +46,8 @@ type Props = {
 
 export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Props) => {
   const { subscription } = useSubscription();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
+  const roleInputId = useId();
   const orgId = currentOrg?.id || "";
 
   const { data: roles = [] } = useGetOrgRoles(orgId);
@@ -115,32 +119,31 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
   };
 
   return (
-    <Modal
-      isOpen={popUp?.orgMembership?.isOpen}
+    <Dialog
+      open={popUp?.orgMembership?.isOpen}
       onOpenChange={(isOpen) => {
         handlePopUpToggle("orgMembership", isOpen);
         reset();
       }}
     >
-      <ModalContent bodyClassName="overflow-visible" title="Update Membership">
-        <form onSubmit={handleSubmit(onFormSubmit)}>
+      <DialogContent isPending={isSubmitting}>
+        <DialogHeader>
+          <DialogTitle>Update Membership</DialogTitle>
+        </DialogHeader>
+        <form className="flex flex-col gap-6" onSubmit={handleSubmit(onFormSubmit)}>
           <Controller
             control={control}
             name="role"
             render={({ field: { onChange, value }, fieldState: { error } }) => (
-              <FormControl
-                label="Update Organization Role"
-                errorText={error?.message}
-                isError={Boolean(error)}
-              >
-                <FilterableSelect
+              <Field>
+                <FieldLabel htmlFor={roleInputId}>Update Organization Role</FieldLabel>
+                <Combobox
+                  id={roleInputId}
                   placeholder="Select role..."
                   options={roles}
-                  onChange={(newValue) => {
-                    const role = newValue as SingleValue<(typeof roles)[number]>;
-
-                    if (!role) return;
-
+                  isClearable={false}
+                  isError={Boolean(error)}
+                  onValueChange={(role) => {
                     const isCustomRole = isCustomOrgRole(role.slug);
 
                     if (isCustomRole && subscription && !subscription?.rbac) {
@@ -153,92 +156,79 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
 
                     onChange(role);
                   }}
-                  value={value}
+                  value={value ?? null}
                   getOptionValue={(option) => option.slug}
                   getOptionLabel={(option) => option.name}
                 />
-              </FormControl>
+                <FieldError>{error?.message}</FieldError>
+              </Field>
             )}
           />
-          <div>
-            <FormLabel label="Metadata" />
-          </div>
-          <div className="mb-3 flex flex-col space-y-2">
+          <div className="flex flex-col gap-2">
+            <FieldLabel>Metadata</FieldLabel>
             {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
-              <div key={metadataFieldId} className="flex items-end space-x-2">
-                <div className="grow">
-                  {i === 0 && <span className="text-xs text-muted">Key</span>}
+              <div key={metadataFieldId} className="flex items-start gap-2">
+                <Field className="flex-1">
+                  {i === 0 && <FieldLabel className="text-xs">Key</FieldLabel>}
                   <Controller
                     control={control}
                     name={`metadata.${i}.key`}
                     render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        className="mb-0"
-                      >
-                        <Input {...field} />
-                      </FormControl>
+                      <>
+                        <Input {...field} isError={Boolean(error)} />
+                        <FieldError>{error?.message}</FieldError>
+                      </>
                     )}
                   />
-                </div>
-                <div className="grow">
-                  {i === 0 && <FormLabel label="Value" className="text-xs text-muted" isOptional />}
+                </Field>
+                <Field className="flex-1">
+                  {i === 0 && <FieldLabel className="text-xs">Value</FieldLabel>}
                   <Controller
                     control={control}
                     name={`metadata.${i}.value`}
                     render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        className="mb-0"
-                      >
-                        <Input {...field} />
-                      </FormControl>
+                      <>
+                        <Input {...field} isError={Boolean(error)} />
+                        <FieldError>{error?.message}</FieldError>
+                      </>
                     )}
                   />
-                </div>
+                </Field>
                 <IconButton
-                  ariaLabel="delete key"
-                  className="bottom-0.5 h-9"
-                  variant="outline_bg"
+                  aria-label="Remove metadata entry"
+                  variant="ghost"
+                  size="sm"
+                  className={i === 0 ? "mt-[27px]" : undefined}
                   onClick={() => metadataFormFields.remove(i)}
                 >
-                  <FontAwesomeIcon icon={faTrash} />
+                  <TrashIcon />
                 </IconButton>
               </div>
             ))}
-            <div className="mt-2 flex justify-end">
-              <Button
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                size="xs"
-                variant="outline_bg"
-                onClick={() => metadataFormFields.append({ key: "", value: "" })}
-              >
-                Add Key
-              </Button>
-            </div>
-          </div>
-          <div className="flex items-center">
             <Button
-              className="mr-4"
-              size="sm"
+              variant="ghost"
+              size="xs"
+              className="self-end"
+              onClick={() => metadataFormFields.append({ key: "", value: "" })}
+            >
+              <PlusIcon />
+              Add Key
+            </Button>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="ghost">Cancel</Button>
+            </DialogClose>
+            <Button
               type="submit"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
+              variant={isSubOrganization ? "sub-org" : "org"}
+              isPending={isSubmitting}
             >
               Update
             </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpToggle("orgMembership", false)}
-            >
-              Cancel
-            </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 };

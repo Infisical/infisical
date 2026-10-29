@@ -9,6 +9,11 @@ import { BadRequestError } from "@app/lib/errors";
 import { netbiosFromDomainFqdn } from "@app/lib/ldap/ldap-search-fns";
 
 import {
+  PamAccountSettingsOverridesSchema,
+  PamTemplateSettingsSchema
+} from "../pam-account-template/pam-account-template-schemas";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import {
   GcpServiceAccountAuthMethod,
   PamAccountType,
   PamPostgresAuthMethod,
@@ -16,11 +21,6 @@ import {
   PamSshAuthMethod
 } from "../pam/pam-enums";
 import { getApplicablePolicies, PamPolicyDescriptorSchema } from "../pam/pam-policies";
-import {
-  PamAccountSettingsOverridesSchema,
-  PamTemplateSettingsSchema
-} from "../pam-account-template/pam-account-template-schemas";
-import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
 
 const resolveSrv = promisify(dns.resolveSrv);
 
@@ -46,6 +46,13 @@ const boundedOptionalString = (max: number) =>
     .max(max)
     .transform((v) => v || undefined)
     .optional();
+
+// Clearing a number input submits "" rather than undefined, which coercion would read as port 0.
+const optionalPort = () =>
+  z.preprocess(
+    (v) => (v === null || (typeof v === "string" && v.trim() === "") ? undefined : v),
+    z.coerce.number().int().min(1).max(65535).optional()
+  );
 
 const normalizeDelimitedStringList = (value: unknown): unknown => {
   if (Array.isArray(value)) return value;
@@ -593,6 +600,67 @@ export const ACCOUNT_TYPE_CONFIGS = {
     }
   },
 
+  [PamAccountType.ClickHouse]: {
+    name: "ClickHouse",
+    icon: "ClickHouse.png",
+    connectionDetails: z
+      .object({
+        host: z.string().trim().min(1).max(255),
+        port: optionalPort(),
+        nativePort: optionalPort(),
+        database: z.string().trim().min(1).max(255),
+        sslEnabled: z.boolean(),
+        sslRejectUnauthorized: z.boolean(),
+        sslCertificate: boundedOptionalString(16384)
+      })
+      .refine((v) => v.port !== undefined || v.nativePort !== undefined, {
+        message: "Set the HTTP port, the native port, or both",
+        path: ["port"]
+      })
+      .refine((v) => v.port === undefined || v.port !== v.nativePort, {
+        message: "The HTTP and native ports must differ",
+        path: ["nativePort"]
+      }),
+    credentials: z.object({
+      username: z.string().trim().min(1).max(255),
+      password: boundedOptionalString(256)
+    }),
+    sanitizedCredentials: z.object({ username: z.string() }),
+    ui: {
+      port: {
+        label: "HTTP Port",
+        defaultValue: 8123,
+        tooltip:
+          "The HTTP interface port: 8123 for plain HTTP, 8443 for HTTPS. Leave it empty if the server only serves the native protocol."
+      },
+      nativePort: {
+        label: "Native Port",
+        defaultValue: 9000,
+        tooltip:
+          "The native TCP port, usually 9000 for plain TCP or 9440 with SSL. clickhouse-client and other native drivers need it. Leave it empty if the server only serves HTTP."
+      },
+      database: {
+        defaultValue: "default",
+        tooltip: "The database sessions open. The explorer lists the tables inside it."
+      },
+      username: {
+        defaultValue: "default",
+        tooltip: "The ClickHouse user sessions connect as. Use 'default' for the built-in user."
+      },
+      password: { widget: PamFieldWidget.Password, secret: true, optional: true },
+      sslEnabled: { label: "SSL Enabled" },
+      sslRejectUnauthorized: {
+        label: "Reject Unauthorized",
+        showWhen: { field: "sslEnabled", equals: true }
+      },
+      sslCertificate: {
+        label: "SSL Certificate",
+        widget: PamFieldWidget.Textarea,
+        showWhen: { field: "sslEnabled", equals: true }
+      }
+    }
+  },
+
   [PamAccountType.SSH]: {
     name: "SSH",
     icon: "SSH.png",
@@ -932,7 +1000,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
   >
 >;
 
-type TSupportedAccountType = keyof typeof ACCOUNT_TYPE_CONFIGS;
+export type TSupportedAccountType = keyof typeof ACCOUNT_TYPE_CONFIGS;
 
 export type TWindowsConnectionDetails = z.infer<
   (typeof ACCOUNT_TYPE_CONFIGS)[PamAccountType.Windows]["connectionDetails"]
@@ -1014,6 +1082,10 @@ export const extractGatewayTarget = async (
         host: (validated as { host: string; port: number }).host,
         port: (validated as { host: string; port: number }).port
       };
+    case PamAccountType.ClickHouse: {
+      const { host, port, nativePort } = validated as { host: string; port?: number; nativePort?: number };
+      return { host, port: port ?? nativePort };
+    }
     case PamAccountType.Kubernetes: {
       const { url } = validated as { url: string };
       const parsed = new URL(url);
@@ -1090,6 +1162,30 @@ export const resolveSelectedHost = (
 export const resolveGatewayAccountType = (accountType: PamAccountType): PamAccountType =>
   accountType === PamAccountType.WindowsAd ? PamAccountType.Windows : accountType;
 
+export const gatewaySupportsAccountType = (
+  accountType: PamAccountType,
+  supportedTypes: string[] | undefined
+): boolean => !supportedTypes || supportedTypes.includes(resolveGatewayAccountType(accountType));
+
+export const webAccessUnavailableReason = (
+  accountType: PamAccountType,
+  connectionDetails: Record<string, unknown>
+): string | null => {
+  if (accountType !== PamAccountType.ClickHouse) return null;
+  if ((connectionDetails as { port?: number }).port !== undefined) return null;
+  return "Web access needs ClickHouse's HTTP interface. Set an HTTP port on this account, or connect with a native client through the CLI.";
+};
+
+// An absent flag means a gateway too old to report it, which is exactly the case this guards.
+export const gatewaySupportsClickHouseNative = (capabilities: { clickhouseNativeProtocol?: boolean } | null) =>
+  Boolean(capabilities?.clickhouseNativeProtocol);
+
+export const requiresClickHouseNative = (
+  accountType: PamAccountType,
+  connectionDetails: Record<string, unknown>
+): boolean =>
+  accountType === PamAccountType.ClickHouse && (connectionDetails as { nativePort?: number }).nativePort !== undefined;
+
 export const buildSessionGatewayConnectionDetails = (
   accountType: PamAccountType,
   rawConnectionDetails: Record<string, unknown>,
@@ -1151,9 +1247,11 @@ const accountTypeConnectionStringSchemes = (accountType: PamAccountType): string
   return config?.connectionStringSchemes ? [...config.connectionStringSchemes] : undefined;
 };
 
-// redis can be reached without credentials
+// redis and clickhouse both accept a passwordless user, so an account without one is still launchable
+const CREDENTIAL_OPTIONAL_ACCOUNT_TYPES: PamAccountType[] = [PamAccountType.Redis, PamAccountType.ClickHouse];
+
 export const accountTypeRequiresCredential = (accountType: PamAccountType): boolean =>
-  accountType !== PamAccountType.Redis;
+  !CREDENTIAL_OPTIONAL_ACCOUNT_TYPES.includes(accountType);
 
 export const getAccountAccessibilityIssues = (account: {
   accountType: PamAccountType | string;
@@ -1187,8 +1285,8 @@ export const getAccountAccessibilityIssues = (account: {
 
     const hasRecordingConfig = Boolean(
       parsedTemplateSettings?.recordingStorageBackend === PamRecordingStorageBackend.AwsS3 &&
-        (account.recordingConnectionId || account.templateRecordingConnectionId) &&
-        (parsedOverrides?.recordingS3Config || parsedTemplateSettings?.recordingS3Config)
+      (account.recordingConnectionId || account.templateRecordingConnectionId) &&
+      (parsedOverrides?.recordingS3Config || parsedTemplateSettings?.recordingS3Config)
     );
     if (!hasRecordingConfig) issues.push(PamAccountAccessibilityIssue.NoRecordingConfig);
   }

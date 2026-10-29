@@ -8,6 +8,7 @@ export enum AuthMethod {
   JUMPCLOUD_SAML = "jumpcloud-saml",
   GOOGLE_SAML = "google-saml",
   KEYCLOAK_SAML = "keycloak-saml",
+  AUTH0_SAML = "auth0-saml",
   LDAP = "ldap",
   OIDC = "oidc"
 }
@@ -52,7 +53,8 @@ export enum AuthMode {
   AGENT_VAULT_PROXY_ACCESS_TOKEN = "agentVaultProxyAccessToken"
 }
 
-export enum ActorType { // would extend to AWS, Azure, ...
+export enum ActorType {
+  // would extend to AWS, Azure, ...
   PLATFORM = "platform", // Useful for when we want to perform logging on automated actions such as integration syncs.
   KMIP_CLIENT = "kmipClient",
   USER = "user", // userIdentity

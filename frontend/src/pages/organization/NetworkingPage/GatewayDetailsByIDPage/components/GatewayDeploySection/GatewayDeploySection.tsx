@@ -34,11 +34,13 @@ import {
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
 import { isInfisicalCloud } from "@app/helpers/platform";
+import { useScopeVariant } from "@app/hooks";
 import { useMintGatewayToken } from "@app/hooks/api/gateways-v2";
 import { GatewayAuthMethodView, TGatewayEnrollmentToken } from "@app/hooks/api/gateways-v2/types";
 
 import { AwsStartCommandContent } from "../GatewayAuthMethod/AwsStartCommandDialog";
 import { EnrollmentTokenContent } from "../GatewayAuthMethod/EnrollmentTokenDialog";
+import { GcpStartCommandContent } from "../GatewayAuthMethod/GcpStartCommandDialog";
 import { KubernetesStartCommandContent } from "../GatewayAuthMethod/KubernetesStartCommandDialog";
 
 // Mirrors the backend's parseDirectAddress so the form rejects exactly what the API would.
@@ -78,8 +80,10 @@ export const GatewayDeploySection = ({
   relayId,
   authMethod
 }: Props) => {
+  const scopeVariant = useScopeVariant();
   const isCloud = isInfisicalCloud();
   const isKubernetes = authMethod.method === "kubernetes";
+  const isGcp = authMethod.method === "gcp";
   // Relay only for Cloud, which cannot route inward, and for a gateway already running relay alone.
   const isRelayOnlyGateway = Boolean(relayId) && !directAddress;
   const [connectionMode, setConnectionMode] = useState<"relay" | "direct">(
@@ -107,10 +111,13 @@ export const GatewayDeploySection = ({
 
   if (authMethod.method === "identity") return null;
 
-  const showDeploymentControls = authMethod.method === "aws" || isKubernetes || Boolean(enrollment);
+  const showDeploymentControls =
+    authMethod.method === "aws" || isKubernetes || isGcp || Boolean(enrollment);
 
   // Derived, so switching auth method can't leave a tab selected that the new method lacks.
-  const deploymentTabs = isKubernetes ? ["helm", "cli"] : ["cli", "systemd"];
+  let deploymentTabs = ["cli", "systemd"];
+  if (isKubernetes) deploymentTabs = ["helm", "cli"];
+  if (isGcp) deploymentTabs = ["cli", "systemd", "helm"];
   const activeTab = deploymentTabs.includes(deploymentMethod)
     ? deploymentMethod
     : deploymentTabs[0];
@@ -152,15 +159,17 @@ export const GatewayDeploySection = ({
           {canEditGateway && showDeploymentControls && (
             <CardAction>
               <TabsList variant="filled" aria-label="Deployment method">
-                {isKubernetes ? (
+                {isKubernetes && (
                   <>
                     <TabsTrigger value="helm">Helm</TabsTrigger>
                     <TabsTrigger value="cli">Container command</TabsTrigger>
                   </>
-                ) : (
+                )}
+                {!isKubernetes && (
                   <>
                     <TabsTrigger value="cli">CLI</TabsTrigger>
                     <TabsTrigger value="systemd">System service</TabsTrigger>
+                    {isGcp && <TabsTrigger value="helm">Helm</TabsTrigger>}
                   </>
                 )}
               </TabsList>
@@ -182,12 +191,12 @@ export const GatewayDeploySection = ({
                 <Field>
                   <FieldLabel>Connection Mode</FieldLabel>
                   <RadioGroup value={connectionMode} onValueChange={handleConnectionModeChange}>
-                    <FieldLabel htmlFor="gateway-connection-mode-direct" variant="org">
+                    <FieldLabel htmlFor="gateway-connection-mode-direct" variant={scopeVariant}>
                       <Field orientation="horizontal">
                         <FieldContent>
                           <FieldTitle>
                             Direct Listen
-                            <Badge variant="org">Recommended</Badge>
+                            <Badge variant={scopeVariant}>Recommended</Badge>
                           </FieldTitle>
                           <FieldDescription>
                             Infisical opens the connection to the gateway. Choose this when your
@@ -197,7 +206,7 @@ export const GatewayDeploySection = ({
                         <RadioGroupItem value="direct" id="gateway-connection-mode-direct" />
                       </Field>
                     </FieldLabel>
-                    <FieldLabel htmlFor="gateway-connection-mode-relay" variant="org">
+                    <FieldLabel htmlFor="gateway-connection-mode-relay" variant={scopeVariant}>
                       <Field orientation="horizontal">
                         <FieldContent>
                           <FieldTitle>Relay</FieldTitle>
@@ -235,6 +244,17 @@ export const GatewayDeploySection = ({
                 <AwsStartCommandContent
                   gatewayId={gatewayId}
                   gatewayName={gatewayName}
+                  isDirect={connectionMode === "direct"}
+                  listenAddress={commandListenAddress}
+                />
+              )}
+
+              {authMethod.method === "gcp" && (
+                <GcpStartCommandContent
+                  gatewayId={gatewayId}
+                  gatewayName={gatewayName}
+                  gcpAuthType={authMethod.config.type}
+                  allowedServiceAccounts={authMethod.config.allowedServiceAccounts}
                   isDirect={connectionMode === "direct"}
                   listenAddress={commandListenAddress}
                 />

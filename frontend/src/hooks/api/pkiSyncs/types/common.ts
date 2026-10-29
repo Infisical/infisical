@@ -128,5 +128,6 @@ export type TPkiSyncFilterPreview = {
   matchedCount: number;
   certificates: TPkiSyncPreviewCertificate[];
   toUnlink: { id: string; commonName: string; altNames?: string | null }[];
+  toUnlinkAtDestinationCount: number;
   willRemoveFromDestination: boolean;
 };

@@ -10,7 +10,6 @@ import { Authenticator } from "@fastify/passport";
 import { requestContext } from "@fastify/request-context";
 import fastifySession from "@fastify/session";
 import RedisStore from "connect-redis";
-import { CronJob } from "cron";
 import { Strategy as GitLabStrategy } from "passport-gitlab2";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as OAuth2Strategy } from "passport-oauth2";
@@ -18,6 +17,7 @@ import { z } from "zod";
 
 import { INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN } from "@app/lib/config/const";
 import { getConfig } from "@app/lib/config/env";
+import { startLocalRefresh } from "@app/lib/cron/local-refresh";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
@@ -408,11 +408,11 @@ export const refreshOauthConfig = () => {
 export const initializeOauthConfigSync = async () => {
   logger.info("Setting up background sync process for oauth configuration");
 
-  // sync every 5 minutes
-  const job = new CronJob("*/5 * * * *", refreshOauthConfig);
-  job.start();
-
-  return job;
+  return startLocalRefresh({
+    name: "oauth-config-sync",
+    intervalMs: 5 * 60 * 1000,
+    task: refreshOauthConfig
+  });
 };
 
 export const registerSsoRouter = async (server: FastifyZodProvider) => {

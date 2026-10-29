@@ -24,6 +24,20 @@ export enum SshCertKeyAlgorithm {
   ED25519 = "ED25519"
 }
 
+export const SSH_CERT_KEY_ALGORITHMS = Object.values(SshCertKeyAlgorithm) as [
+  SshCertKeyAlgorithm,
+  ...SshCertKeyAlgorithm[]
+];
+
+export enum SshPublicKeyType {
+  RSA = "ssh-rsa",
+  ED25519 = "ssh-ed25519",
+  ECDSA_P256 = "ecdsa-sha2-nistp256",
+  ECDSA_P384 = "ecdsa-sha2-nistp384"
+}
+
+const SUPPORTED_SSH_PUBLIC_KEY_TYPES = new Set<string>(Object.values(SshPublicKeyType));
+
 export enum SshCertType {
   USER = "user",
   HOST = "host"
@@ -116,6 +130,18 @@ export const createSshKeyPair = async (keyAlgorithm: SshCertKeyAlgorithm) => {
   }
 };
 
+export const inferSshCertKeyAlgorithm = (publicKey: string): SshPublicKeyType => {
+  const space = publicKey.indexOf(" ");
+  const type = space === -1 ? publicKey : publicKey.slice(0, space);
+  if (!SUPPORTED_SSH_PUBLIC_KEY_TYPES.has(type)) {
+    throw new BadRequestError({
+      message: `Unsupported SSH key type '${type}'. Allowed types are RSA 2048, RSA 4096, ECDSA P256, ECDSA P384, and ED25519.`
+    });
+  }
+
+  return type as SshPublicKeyType;
+};
+
 /**
  * Return the SSH public key for the given SSH private key.
  */
@@ -166,11 +192,7 @@ const validateSshCertificateKeyId = (keyId: string) => {
  * Validate the format of the SSH public key
  */
 const validateSshPublicKey = async (publicKey: string) => {
-  const validPrefixes = ["ssh-rsa", "ssh-ed25519", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384"];
-  const startsWithValidPrefix = validPrefixes.some((prefix) => publicKey.startsWith(`${prefix} `));
-  if (!startsWithValidPrefix) {
-    throw new BadRequestError({ message: "Failed to validate SSH public key format: unsupported key type." });
-  }
+  inferSshCertKeyAlgorithm(publicKey);
 
   // write the key to a temp file and run `ssh-keygen -l -f`
   // check to see if OpenSSH can read/interpret the public key
