@@ -1,11 +1,11 @@
 ---
 title: "Agent Vault"
-description: "Securely run AI agents with the access, context, and capabilities they need to do work."
+description: "Let the AI agents in your infrastructure call HTTP APIs and MCP servers without holding credentials."
 sidebarTitle: "Agent Vault"
 icon: "vault"
 ---
 
-Infisical Agent Vault is an access layer for AI agents. It securely equips agents with what they need to do work, including access to the services they call: LLM providers, GitHub, Slack, and more.
+Infisical Agent Vault brokers credentials for the AI agents you run in your own infrastructure. Your agents call HTTP APIs and MCP servers through an Agent Vault proxy, which attaches the real credentials so the agents never see them.
 
 ## Get started
 
@@ -33,14 +33,14 @@ Set up Agent Vault for where your agents run.
   <Card title="Sandboxes" icon="box" href="/documentation/platform/agent-vault/guides/modal">
     Run each agent in a sandbox with its own proxy.
   </Card>
-  <Card title="Local agents" icon="terminal" href="/documentation/platform/agent-vault/guides/claude-code">
-    Launch a coding agent from your terminal with the Infisical CLI.
-  </Card>
   <Card title="Messaging gateways" icon="message-square" href="/documentation/platform/agent-vault/guides/hermes-gateway">
     Keep an assistant running on a server for a messaging platform.
   </Card>
   <Card title="Your own agent" icon="code" href="/documentation/platform/agent-vault/guides/custom-agent">
     Launch your custom agent with Agent Vault so it can make authenticated API calls without needing an actual token.
+  </Card>
+  <Card title="Local agents" icon="terminal" href="/documentation/platform/agent-vault/guides/claude-code">
+    Launch a coding agent from your terminal with the Infisical CLI.
   </Card>
 </CardGroup>
 
