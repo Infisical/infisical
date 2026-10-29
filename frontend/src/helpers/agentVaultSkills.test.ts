@@ -710,6 +710,30 @@ describe("executable files in an uploaded zip", () => {
     });
   });
 
+  // Browsers decode the "latin1" label as Windows-1252, so 日本語's bytes 0x80-0x9f once named a different file
+  // than fflate did. Node decodes it as true Latin-1, so this guards the decoder choice rather than reproducing it.
+  test("keeps 0755 for a non-Latin name in a zip that doesn't flag names as UTF-8", async () => {
+    const archive = buildSkillZip("review", [
+      toSkillFile("SKILL.md", "# Review"),
+      { ...toSkillFile("scripts/日本語.sh", "echo ok"), mode: "0755" }
+    ]);
+    const view = new DataView(archive.buffer, archive.byteOffset, archive.byteLength);
+    const clearUtf8Flag = (offset: number) => {
+      const flags = view.getUint16(offset, true);
+      if (Math.floor(flags / 0x800) % 2 === 1) view.setUint16(offset, flags - 0x800, true);
+    };
+    for (let i = 0; i + 4 <= archive.length; i += 1) {
+      const signature = view.getUint32(i, true);
+      if (signature === 0x04034b50) clearUtf8Flag(i + 6);
+      if (signature === 0x02014b50) clearUtf8Flag(i + 8);
+    }
+    const files = await readSkillUpload(new File([archive], "review.zip"));
+    expect(Object.fromEntries(files.map((file) => [file.path, file.mode]))).toEqual({
+      "SKILL.md": "0644",
+      "scripts/日本語.sh": "0755"
+    });
+  });
+
   test("reads 0644 when the archive carries no Unix modes", async () => {
     const files = await readSkillUpload(
       zipFile({ "SKILL.md": strToU8("# Review"), "scripts/check.sh": strToU8("echo ok") })

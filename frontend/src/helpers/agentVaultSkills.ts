@@ -1,5 +1,5 @@
 import { diffLines } from "diff";
-import { unzipSync, zipSync } from "fflate";
+import { strFromU8, unzipSync, zipSync } from "fflate";
 import { JSON_SCHEMA, load, YAMLException } from "js-yaml";
 
 import { TAgentVaultSkillFile, TAgentVaultSkillFileMode } from "@app/hooks/api/agentVault/types";
@@ -104,8 +104,6 @@ const readZipExecutableNames = (data: Uint8Array) => {
 
   const count = view.getUint16(end + 10, true);
   let offset = view.getUint32(end + 16, true);
-  const latin1 = new TextDecoder("latin1");
-  const utf8 = new TextDecoder();
   for (let i = 0; i < count; i += 1) {
     if (offset + 46 > data.length || view.getUint32(offset, true) !== ZIP_DIRECTORY_ENTRY) break;
     const host = view.getUint8(offset + 5);
@@ -117,7 +115,7 @@ const readZipExecutableNames = (data: Uint8Array) => {
     const unixMode = view.getUint16(offset + 40, true);
     const nameBytes = data.subarray(offset + 46, offset + 46 + nameLength);
     // eslint-disable-next-line no-bitwise
-    const name = (flags & 0x800 ? utf8 : latin1).decode(nameBytes);
+    const name = strFromU8(nameBytes, !(flags & 0x800));
     // eslint-disable-next-line no-bitwise
     if (host === ZIP_HOST_UNIX && unixMode & 0o111) executable.add(name);
     offset += 46 + nameLength + extraLength + commentLength;
