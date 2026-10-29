@@ -1,16 +1,16 @@
 ---
 title: "Agent Vault"
-description: "Securely run AI agents with the access, context, and capabilities they need to do work."
+description: "Let the AI agents in your infrastructure call HTTP APIs and MCP servers without having access to their credentials."
 sidebarTitle: "Agent Vault"
 icon: "vault"
 ---
 
-Infisical Agent Vault is an access layer for AI agents. It securely equips agents with what they need to do work, including access to the services they call: LLM providers, GitHub, Slack, and more.
+Infisical Agent Vault brokers credentials for the AI agents you run in your own infrastructure. Your agents call HTTP APIs and MCP servers through an Agent Vault proxy, which attaches the real credentials so the agents never see them.
 
 ## Get started
 
 <Card title="Quickstart" icon="rocket" href="/documentation/platform/agent-vault/quickstart">
-  Launch an agent that makes authenticated API calls without needing an actual token.
+  Store your credentials in an access bundle and connect the agents that use them.
 </Card>
 
 <CardGroup cols={3}>
@@ -25,17 +25,42 @@ Infisical Agent Vault is an access layer for AI agents. It securely equips agent
   </Card>
 </CardGroup>
 
-## Agent guides
+## Guides
 
-Set up Agent Vault for the agent you use, or for an agent you wrote yourself.
+Set up Agent Vault for where your agents run.
+
+### Sandboxes
+
+<CardGroup cols={2}>
+  <Card title="Modal" icon="/images/agent-vault-agents/modal.svg" href="/documentation/platform/agent-vault/guides/modal">
+    Run an Agent Vault proxy in each Modal sandbox so the agent never has access to a credential.
+  </Card>
+  <Card title="Daytona" icon="/images/agent-vault-agents/daytona.svg" href="/documentation/platform/agent-vault/guides/daytona">
+    Run an Agent Vault proxy beside each Daytona sandbox so the agent never has access to a credential.
+  </Card>
+</CardGroup>
+
+### Messaging gateways
+
+<CardGroup cols={2}>
+  <Card title="Hermes gateway" icon="/images/agent-vault-agents/hermes.png" href="/documentation/platform/agent-vault/guides/hermes-gateway" />
+  <Card title="OpenClaw gateway" icon="/images/agent-vault-agents/openclaw.svg" href="/documentation/platform/agent-vault/guides/openclaw-gateway" />
+</CardGroup>
+
+### Your own code
+
+<Card title="Your own agent" icon="code" href="/documentation/platform/agent-vault/guides/custom-agent">
+  Launch your custom agent with Agent Vault so it can call HTTP APIs and MCP servers without having access to their credentials.
+</Card>
+
+### Local development
 
 <CardGroup cols={3}>
-  <Card title="Claude Code" icon="terminal" href="/documentation/platform/agent-vault/guides/claude-code" />
-  <Card title="Codex" icon="terminal" href="/documentation/platform/agent-vault/guides/codex" />
-  <Card title="OpenCode" icon="terminal" href="/documentation/platform/agent-vault/guides/opencode" />
-  <Card title="Hermes Agent" icon="bot" href="/documentation/platform/agent-vault/guides/hermes" />
-  <Card title="OpenClaw" icon="bot" href="/documentation/platform/agent-vault/guides/openclaw" />
-  <Card title="Your own agent" icon="code" href="/documentation/platform/agent-vault/guides/custom-agent" />
+  <Card title="Claude Code" icon="/images/agent-vault-agents/claude-code.svg" href="/documentation/platform/agent-vault/guides/claude-code" />
+  <Card title="Codex" icon="/images/agent-vault-agents/OpenAI.png" href="/documentation/platform/agent-vault/guides/codex" />
+  <Card title="OpenCode" icon="/images/agent-vault-agents/opencode.svg" href="/documentation/platform/agent-vault/guides/opencode" />
+  <Card title="Hermes Agent" icon="/images/agent-vault-agents/hermes.png" href="/documentation/platform/agent-vault/guides/hermes" />
+  <Card title="OpenClaw" icon="/images/agent-vault-agents/openclaw.svg" href="/documentation/platform/agent-vault/guides/openclaw" />
 </CardGroup>
 
 ## Concepts
