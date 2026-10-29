@@ -9,7 +9,9 @@ import SandboxAgentVaultSetup from "/snippets/agent-vault/SandboxAgentVaultSetup
 
 This guide shows you how to run AI agents in Kubernetes behind Agent Vault. You'll create a [proxy](/documentation/platform/agent-vault/proxies) and a [machine identity](/documentation/platform/identities/machine-identities) for your orchestrator, deploy the proxy in its own namespace, create a namespace where agent pods can reach only the proxy, and start an agent with its own [session](/documentation/platform/agent-vault/sessions).
 
-For why each piece runs where it does, and how to choose between the standard runtime, gVisor, and Kata Containers, see [Run agents on Kubernetes with Agent Vault](/documentation/platform/agent-vault/guides/kubernetes).
+<Note>
+  Before you start, choose an [isolation level](/documentation/platform/agent-vault/guides/kubernetes#choose-an-isolation-level) for agent pods: the standard runtime, gVisor, or Kata Containers. The [Kubernetes overview](/documentation/platform/agent-vault/guides/kubernetes) also explains why each piece runs where it does.
+</Note>
 
 ## Prerequisites
 
