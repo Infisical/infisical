@@ -65,3 +65,10 @@ export const GitHubFindingSchema = BaseSecretScanningFindingSchema.extend({
   dataSourceType: z.literal(SecretScanningDataSource.GitHub),
   details: GitRepositoryScanFindingDetailsSchema
 });
+
+export const GitHubPullRequestScanMetadataSchema = z.object({
+  pullRequestNumber: z.number().int().positive(),
+  baseSha: z.string(),
+  headSha: z.string(),
+  checkRunId: z.number().int().positive()
+});

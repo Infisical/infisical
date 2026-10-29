@@ -6,7 +6,10 @@ import {
   SecretScanningResourcesSchema,
   SecretScanningScansSchema
 } from "@app/db/schemas";
-import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  SecretScanningDataSource,
+  SecretScanningScanTrigger
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
 import { SecretScanningDataSources } from "@app/lib/api-docs";
 import { slugSchema } from "@app/server/lib/schemas";
@@ -127,5 +130,9 @@ export const SecretScanningResourceSchema = SecretScanningResourcesSchema;
 export const SecretScanningScanSchema = SecretScanningScansSchema.omit({
   lastScannedCommit: true,
   lastScannedCommitDigest: true,
-  progressUpdatedAt: true
+  progressUpdatedAt: true,
+  metadata: true
+}).extend({
+  // Null for scans created before the trigger was recorded.
+  trigger: z.nativeEnum(SecretScanningScanTrigger).nullable().optional()
 });

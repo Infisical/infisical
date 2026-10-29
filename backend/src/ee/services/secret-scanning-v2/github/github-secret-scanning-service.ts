@@ -1,13 +1,26 @@
-import { PushEvent } from "@octokit/webhooks-types";
+import {
+  CheckRunRerequestedEvent,
+  CheckSuiteRerequestedEvent,
+  PullRequestOpenedEvent,
+  PullRequestReopenedEvent,
+  PullRequestSynchronizeEvent,
+  PushEvent
+} from "@octokit/webhooks-types";
 
 import { TSecretScanningV2DALFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-dal";
 import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { TSecretScanningV2QueueServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-queue";
+import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+
+import { GitHubPullRequestEvent } from "./github-secret-scanning-enums";
 
 export const githubSecretScanningService = (
   secretScanningV2DAL: TSecretScanningV2DALFactory,
-  secretScanningV2Queue: Pick<TSecretScanningV2QueueServiceFactory, "handleResourcePushEvent">
+  secretScanningV2Queue: Pick<
+    TSecretScanningV2QueueServiceFactory,
+    "handleResourcePushEvent" | "queueGitHubPullRequestEvent"
+  >
 ) => {
   const handleInstallationDeletedEvent = async (installationId: number) => {
     const dataSource = await secretScanningV2DAL.dataSources.findOne({
@@ -60,8 +73,88 @@ export const githubSecretScanningService = (
     });
   };
 
+  // The pull request events below only enqueue; github-secret-scanning-pull-request-events.ts processes them in the
+  // secret scanning worker, so the webhook responds before any GitHub API call or scan is made.
+  const handlePullRequestEvent = async (
+    payload: PullRequestOpenedEvent | PullRequestSynchronizeEvent | PullRequestReopenedEvent,
+    deliveryId: string
+  ) => {
+    const { installation, repository, pull_request: pullRequest } = payload;
+
+    if (!installation) {
+      logger.warn(
+        `secretScanningV2PullRequestEvent: GitHub - Insufficient data [repository=${repository.full_name}] [pullRequest=${pullRequest.number}]`
+      );
+      return;
+    }
+
+    await secretScanningV2Queue.queueGitHubPullRequestEvent(
+      {
+        event: GitHubPullRequestEvent.PullRequest,
+        installationId: installation.id,
+        repository: { id: repository.id, full_name: repository.full_name },
+        pullRequest: {
+          number: pullRequest.number,
+          baseSha: pullRequest.base.sha,
+          headSha: pullRequest.head.sha
+        }
+      },
+      deliveryId
+    );
+  };
+
+  const handleCheckRunRerequestedEvent = async (payload: CheckRunRerequestedEvent, deliveryId: string) => {
+    const { check_run: checkRun, installation, repository } = payload;
+
+    if (!installation) {
+      logger.warn(
+        `secretScanningV2CheckRunEvent: GitHub - Insufficient data [repository=${repository.full_name}] [checkRunId=${checkRun.id}]`
+      );
+      return;
+    }
+
+    if (String(checkRun.app.id) !== getConfig().INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) return;
+
+    await secretScanningV2Queue.queueGitHubPullRequestEvent(
+      {
+        event: GitHubPullRequestEvent.CheckRunRerequested,
+        installationId: installation.id,
+        repository: { id: repository.id, full_name: repository.full_name },
+        checkRunId: checkRun.id,
+        externalId: checkRun.external_id
+      },
+      deliveryId
+    );
+  };
+
+  const handleCheckSuiteRerequestedEvent = async (payload: CheckSuiteRerequestedEvent, deliveryId: string) => {
+    const { check_suite: checkSuite, installation, repository } = payload;
+
+    if (!installation) {
+      logger.warn(
+        `secretScanningV2CheckSuiteEvent: GitHub - Insufficient data [repository=${repository.full_name}] [checkSuiteId=${checkSuite.id}]`
+      );
+      return;
+    }
+
+    if (String(checkSuite.app.id) !== getConfig().INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) return;
+
+    await secretScanningV2Queue.queueGitHubPullRequestEvent(
+      {
+        event: GitHubPullRequestEvent.CheckSuiteRerequested,
+        installationId: installation.id,
+        repository: { id: repository.id, full_name: repository.full_name },
+        checkSuiteId: checkSuite.id
+      },
+      deliveryId
+    );
+  };
+
   return {
     handlePushEvent,
+    handlePullRequestEvent,
+    handleCheckRunRerequestedEvent,
+    handleCheckSuiteRerequestedEvent,
     handleInstallationDeletedEvent
   };
 };

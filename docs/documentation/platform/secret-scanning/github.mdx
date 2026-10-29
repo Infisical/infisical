@@ -56,3 +56,19 @@ To scan your GitHub repositories for leaked secrets, create a GitHub [data sourc
     ![Findings Page](/images/platform/secret-scanning/github/github-data-source-step-8.png)
   </Step>
 </Steps>
+
+## Pull request checks
+
+If **Scan New Commits** is on for a GitHub data source, Infisical scans the commits of each pull request opened against a repository in the data source. Infisical reports the result as a check named **Infisical Secret Scanning** on the pull request, and scans the pull request again each time someone pushes to it.
+
+- If Infisical finds a secret in any commit of the pull request, the check fails and marks the file and line of each secret
+- If Infisical can't finish the scan, the check fails, and you can re-run the check from the pull request
+- If Infisical finds no secrets, the check passes
+
+To stop a pull request that contains a secret from being merged, [require the check in a branch protection rule](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-status-checks-before-merging).
+
+If a finding is a false positive, add it to the allowlist in your [scanning configuration](/documentation/platform/secret-scanning/configuration), then re-run the check.
+
+<Note>
+  If your GitHub organization installed the app for your [GitHub Radar Connection](/integrations/app-connections/github-radar) before pull request checks were available, an organization owner has to accept the app's new permissions in GitHub before Infisical can check pull requests.
+</Note>

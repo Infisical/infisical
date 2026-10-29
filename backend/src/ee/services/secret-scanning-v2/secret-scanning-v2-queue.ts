@@ -8,6 +8,23 @@ import {
 } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import {
+  GitHubPullRequestScanMetadataSchema,
+  TGitHubPullRequestScanMetadata,
+  TGitHubPullRequestScanPayload,
+  TQueueGitHubPullRequestEvent
+} from "@app/ee/services/secret-scanning-v2/github";
+import {
+  getPullRequestScanCheckRunResult,
+  getPullRequestScanFailedCheckRunResult,
+  isGitHubPullRequestScanPayload,
+  PULL_REQUEST_SCAN_CANCELLED_CHECK_RUN_RESULT,
+  scanGitHubPullRequest,
+  startPullRequestCheckRun,
+  TPullRequestCheckRunResult,
+  tryCompletePullRequestCheckRun
+} from "@app/ee/services/secret-scanning-v2/github/github-secret-scanning-fns";
+import { githubPullRequestEventsFactory } from "@app/ee/services/secret-scanning-v2/github/github-secret-scanning-pull-request-events";
+import {
   assertClonedRepositoryWithinSizeLimit,
   parseScanErrorMessage,
   planCommitBatches,
@@ -40,7 +57,12 @@ import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-serv
 import { PostHogEventTypes, TSecretScanningScanCompletedEvent } from "@app/services/telemetry/telemetry-types";
 
 import { TSecretScanningV2DALFactory } from "./secret-scanning-v2-dal";
-import { SecretScanningDataSource, SecretScanningScanStatus, SecretScanningScanType } from "./secret-scanning-v2-enums";
+import {
+  SecretScanningDataSource,
+  SecretScanningScanStatus,
+  SecretScanningScanTrigger,
+  SecretScanningScanType
+} from "./secret-scanning-v2-enums";
 import { SECRET_SCANNING_FACTORY_MAP } from "./secret-scanning-v2-factory";
 import {
   TFindingsPayload,
@@ -83,6 +105,9 @@ const STUCK_SCAN_STATUS_MESSAGE =
 const FULL_SCAN_ATTEMPTS = 3;
 const FULL_SCAN_MAX_STALLED_COUNT = 2;
 const FULL_SCAN_RETRY_DELAY = ms("1m");
+
+const GITHUB_PULL_REQUEST_EVENT_ATTEMPTS = 3;
+const GITHUB_PULL_REQUEST_EVENT_RETRY_DELAY = ms("30s");
 
 const DUPLICATE_FULL_SCAN_STATUS_MESSAGE =
   "Another scan of this resource was already in progress, so this scan was not started.";
@@ -207,14 +232,16 @@ export const secretScanningV2QueueServiceFactory = ({
   const queueDataSourceFullScan = async (
     dataSource: TSecretScanningDataSourceWithConnection,
     {
+      trigger,
       resourceExternalId,
       triggeredByUserId,
       shouldScanResource
     }: {
+      trigger: SecretScanningScanTrigger.Manual | SecretScanningScanTrigger.ResourcesAdded;
       resourceExternalId?: string;
       triggeredByUserId?: string;
       shouldScanResource?: (resource: Pick<TSecretScanningResourcesInsert, "externalId" | "name">) => boolean;
-    } = {}
+    }
   ) => {
     try {
       const { type } = dataSource;
@@ -288,6 +315,7 @@ export const secretScanningV2QueueServiceFactory = ({
           resourcesToScan.map((resource) => ({
             resourceId: resource.id,
             type: SecretScanningScanType.Historical,
+            trigger,
             triggeredByUserId: triggeredByUserId ?? null
           })),
           tx
@@ -696,7 +724,8 @@ export const secretScanningV2QueueServiceFactory = ({
         const scan = await secretScanningV2DAL.scans.create(
           {
             resourceId: resource.id,
-            type: SecretScanningScanType.Realtime
+            type: SecretScanningScanType.Realtime,
+            trigger: SecretScanningScanTrigger.Push
           },
           tx
         );
@@ -752,6 +781,19 @@ export const secretScanningV2QueueServiceFactory = ({
 
     const logDetails = `[dataSourceId=${dataSourceId}] [scanId=${scanId}] [resourceId=${resourceId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
 
+    const pullRequestScan = isGitHubPullRequestScanPayload(payload) ? payload : undefined;
+
+    const reportPullRequestCheck = async (result: TPullRequestCheckRunResult) => {
+      if (!pullRequestScan) return;
+
+      await tryCompletePullRequestCheckRun({
+        installationId: pullRequestScan.installationId,
+        repositoryFullName: pullRequestScan.repository.full_name,
+        checkRunId: pullRequestScan.checkRunId,
+        result
+      });
+    };
+
     // Primary for the same reason as the full scan: a lagging replica would drop a just-queued scan.
     const primary = secretScanningV2DAL.primaryNode();
     const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId, primary);
@@ -759,6 +801,7 @@ export const secretScanningV2QueueServiceFactory = ({
 
     if (!dataSource || !resource) {
       logger.info(`secretScanningV2Queue: Diff Scan aborted, scan no longer exists ${logDetails}`);
+      await reportPullRequestCheck(PULL_REQUEST_SCAN_CANCELLED_CHECK_RUN_RESULT);
       return;
     }
 
@@ -783,6 +826,18 @@ export const secretScanningV2QueueServiceFactory = ({
         return;
       }
 
+      if (pullRequestScan) {
+        try {
+          await startPullRequestCheckRun({
+            installationId: pullRequestScan.installationId,
+            repositoryFullName: pullRequestScan.repository.full_name,
+            checkRunId: pullRequestScan.checkRunId
+          });
+        } catch (error) {
+          logger.warn(error, `secretScanningV2Queue: Failed to mark pull request check run in progress ${logDetails}`);
+        }
+      }
+
       let connection: TAppConnection | null = null;
       if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
 
@@ -797,15 +852,30 @@ export const secretScanningV2QueueServiceFactory = ({
         await writeTextToFile(configPath, config.content);
       }
 
-      const findingsPayload = await factory.getDiffScanFindingsPayload({
-        dataSource: {
-          ...dataSource,
-          connection
-        } as TSecretScanningDataSourceWithConnection,
-        resourceName: resource.name,
-        payload,
-        configPath
-      });
+      let findingsPayload: TFindingsPayload;
+      let pullRequestCheckResult: TPullRequestCheckRunResult | undefined;
+
+      if (pullRequestScan) {
+        const { findings, scannedCommitCount, totalCommitCount } = await scanGitHubPullRequest({
+          payload: pullRequestScan,
+          resourceName: resource.name,
+          configPath
+        });
+
+        findingsPayload = findings;
+        // Judged on every finding in the pull request's commits, including ones an earlier push scan already saved.
+        pullRequestCheckResult = getPullRequestScanCheckRunResult({ findings, scannedCommitCount, totalCommitCount });
+      } else {
+        findingsPayload = await factory.getDiffScanFindingsPayload({
+          dataSource: {
+            ...dataSource,
+            connection
+          } as TSecretScanningDataSourceWithConnection,
+          resourceName: resource.name,
+          payload,
+          configPath
+        });
+      }
 
       const { allFindings, closedOutByThisRun } = await secretScanningV2DAL.findings.transaction(async (tx) => {
         let findings: TSecretScanningFindings[] = [];
@@ -842,6 +912,8 @@ export const secretScanningV2QueueServiceFactory = ({
         );
         return;
       }
+
+      if (pullRequestCheckResult) await reportPullRequestCheck(pullRequestCheckResult);
 
       const newFindings = allFindings.filter((finding) => finding.scanId === scanId);
 
@@ -901,6 +973,7 @@ export const secretScanningV2QueueServiceFactory = ({
     } catch (error) {
       if (!(await secretScanningV2DAL.scans.findById(scanId, secretScanningV2DAL.primaryNode()))) {
         logger.info(`secretScanningV2Queue: Diff Scan aborted, scan was deleted while running ${logDetails}`);
+        await reportPullRequestCheck(PULL_REQUEST_SCAN_CANCELLED_CHECK_RUN_RESULT);
         return;
       }
 
@@ -910,6 +983,8 @@ export const secretScanningV2QueueServiceFactory = ({
         const failed = await markScanAsFailed({ scanId, statusMessage: errorMessage });
 
         if (failed) {
+          await reportPullRequestCheck(getPullRequestScanFailedCheckRunResult(errorMessage));
+
           await queueService.queue(
             QueueName.SecretScanningV2,
             QueueJobs.SecretScanningV2SendNotification,
@@ -1081,6 +1156,20 @@ export const secretScanningV2QueueServiceFactory = ({
 
       if (!dataSource) return;
 
+      if (scan.trigger === SecretScanningScanTrigger.PullRequest && dataSource.externalId) {
+        const metadata = GitHubPullRequestScanMetadataSchema.safeParse(scan.metadata);
+
+        if (metadata.success) {
+          await tryCompletePullRequestCheckRun({
+            // A GitHub data source's external ID is its installation ID.
+            installationId: dataSource.externalId,
+            repositoryFullName: scan.resourceName,
+            checkRunId: metadata.data.checkRunId,
+            result: getPullRequestScanFailedCheckRunResult(STUCK_SCAN_STATUS_MESSAGE, "timed_out")
+          });
+        }
+      }
+
       await queueService.queue(
         QueueName.SecretScanningV2,
         QueueJobs.SecretScanningV2SendNotification,
@@ -1176,6 +1265,145 @@ export const secretScanningV2QueueServiceFactory = ({
     { concurrency: 2 }
   );
 
+  const queueResourceFullScan = async ({
+    dataSourceId,
+    resourcePayload,
+    trigger
+  }: {
+    dataSourceId: string;
+    resourcePayload: Pick<TSecretScanningResourcesInsert, "externalId" | "name">;
+    trigger: SecretScanningScanTrigger.Push | SecretScanningScanTrigger.PullRequest;
+  }) => {
+    try {
+      const { resource, scan } = await secretScanningV2DAL.resources.transaction(async (tx) => {
+        const [upsertedResource] = await secretScanningV2DAL.resources.upsert(
+          [{ ...resourcePayload, dataSourceId }],
+          ["externalId", "dataSourceId"],
+          tx
+        );
+
+        const createdScan = await secretScanningV2DAL.scans.create(
+          { resourceId: upsertedResource.id, type: SecretScanningScanType.Historical, trigger },
+          tx
+        );
+
+        return { resource: upsertedResource, scan: createdScan };
+      });
+
+      try {
+        await enqueueFullScanJob(scan, dataSourceId);
+      } catch (error) {
+        logger.error(
+          error,
+          `secretScanningV2Queue: Failed to submit full scan for discovered resource, leaving it for redelivery [scanId=${scan.id}] [dataSourceId=${dataSourceId}] [resourceExternalId=${resourcePayload.externalId}]`
+        );
+      }
+
+      return resource;
+    } catch (error) {
+      logger.error(
+        error,
+        `secretScanningV2Queue: Failed to queue full scan for discovered resource [dataSourceId=${dataSourceId}] [resourceExternalId=${resourcePayload.externalId}]`
+      );
+    }
+  };
+
+  // Adds a resource discovered from a webhook, and scans its history when the data source scans new resources' history.
+  const discoverResource = async ({
+    dataSource,
+    resourcePayload,
+    trigger
+  }: {
+    dataSource: Pick<TSecretScanningDataSources, "id" | "isHistoricalScanEnabled">;
+    resourcePayload: Pick<TSecretScanningResourcesInsert, "externalId" | "name">;
+    trigger: SecretScanningScanTrigger.Push | SecretScanningScanTrigger.PullRequest;
+  }) => {
+    if (dataSource.isHistoricalScanEnabled) {
+      return queueResourceFullScan({ dataSourceId: dataSource.id, resourcePayload, trigger });
+    }
+
+    const [resource] = await secretScanningV2DAL.resources.upsert(
+      [{ ...resourcePayload, dataSourceId: dataSource.id }],
+      ["externalId", "dataSourceId"]
+    );
+
+    return resource;
+  };
+
+  /**
+   * The check run is created first, so the scan is inserted with the ID the check run already carries and with the
+   * check run's ID in its metadata. Nothing redelivers a realtime scan whose job was never submitted, so if either
+   * step fails the scan is failed and the check run closed here, rather than left queued.
+   */
+  const queuePullRequestScan = async ({
+    scanId,
+    dataSourceId,
+    resourceId,
+    payload
+  }: {
+    scanId: string;
+    dataSourceId: string;
+    resourceId: string;
+    payload: TGitHubPullRequestScanPayload;
+  }) => {
+    const logDetails = `[dataSourceId=${dataSourceId}] [scanId=${scanId}] [resourceId=${resourceId}] [checkRunId=${payload.checkRunId}]`;
+
+    try {
+      await secretScanningV2DAL.scans.create({
+        // @ts-expect-error id is generated before the insert because the check run was created with it
+        id: scanId,
+        resourceId,
+        type: SecretScanningScanType.Realtime,
+        trigger: SecretScanningScanTrigger.PullRequest,
+        metadata: {
+          pullRequestNumber: payload.pullRequest.number,
+          baseSha: payload.pullRequest.baseSha,
+          headSha: payload.pullRequest.headSha,
+          checkRunId: payload.checkRunId
+        } satisfies TGitHubPullRequestScanMetadata
+      });
+
+      await queueService.queue(
+        QueueName.SecretScanningV2RealtimeScan,
+        QueueJobs.SecretScanningV2DiffScan,
+        {
+          payload,
+          dataSourceId,
+          dataSourceType: SecretScanningDataSource.GitHub,
+          scanId,
+          resourceId
+        },
+        {
+          jobId: scanId,
+          removeOnFail: true
+        }
+      );
+    } catch (error) {
+      logger.error(error, `secretScanningV2Queue: Failed to queue pull request scan ${logDetails}`);
+
+      const statusMessage = "The scan could not be started.";
+
+      try {
+        await markScanAsFailed({ scanId, statusMessage });
+      } catch (markError) {
+        logger.error(markError, `secretScanningV2Queue: Failed to mark pull request scan as failed ${logDetails}`);
+      }
+
+      await tryCompletePullRequestCheckRun({
+        installationId: payload.installationId,
+        repositoryFullName: payload.repository.full_name,
+        checkRunId: payload.checkRunId,
+        result: getPullRequestScanFailedCheckRunResult(statusMessage)
+      });
+    }
+  };
+
+  const githubPullRequestEvents = githubPullRequestEventsFactory({
+    secretScanningV2DAL,
+    discoverResource,
+    queuePullRequestScan
+  });
+
   queueService.start(QueueName.SecretScanningV2, async (job) => {
     // We are keeping this for now because once deployed, the queue might still have
     // full scan and diff scan messages in it and need to be processed.
@@ -1185,37 +1413,19 @@ export const secretScanningV2QueueServiceFactory = ({
       await handleDiffScan(job as Parameters<typeof handleDiffScan>[0]);
     } else if (job.name === QueueJobs.SecretScanningV2SendNotification) {
       await handleSendNotification(job as Parameters<typeof handleSendNotification>[0]);
+    } else if (job.name === QueueJobs.SecretScanningV2GitHubPullRequestEvent) {
+      await githubPullRequestEvents.processPullRequestEvent(job.data as TQueueGitHubPullRequestEvent);
     }
   });
 
-  const queueResourceFullScan = async ({
-    dataSourceId,
-    resourcePayload
-  }: {
-    dataSourceId: string;
-    resourcePayload: Pick<TSecretScanningResourcesInsert, "externalId" | "name">;
-  }) => {
-    try {
-      const scan = await secretScanningV2DAL.resources.transaction(async (tx) => {
-        const [resource] = await secretScanningV2DAL.resources.upsert(
-          [{ ...resourcePayload, dataSourceId }],
-          ["externalId", "dataSourceId"],
-          tx
-        );
-
-        return secretScanningV2DAL.scans.create(
-          { resourceId: resource.id, type: SecretScanningScanType.Historical },
-          tx
-        );
-      });
-
-      await enqueueFullScanJob(scan, dataSourceId);
-    } catch (error) {
-      logger.error(
-        error,
-        `secretScanningV2Queue: Failed to queue full scan for discovered resource [dataSourceId=${dataSourceId}] [resourceExternalId=${resourcePayload.externalId}]`
-      );
-    }
+  // Keyed by GitHub's delivery ID, so a redelivered webhook isn't processed twice while the first is pending. Work
+  // before the check run is created is safe to repeat, and nothing after it throws, so a failed attempt is retried.
+  const queueGitHubPullRequestEvent = async (payload: TQueueGitHubPullRequestEvent, deliveryId: string) => {
+    await queueService.queue(QueueName.SecretScanningV2, QueueJobs.SecretScanningV2GitHubPullRequestEvent, payload, {
+      jobId: `secret-scanning-github-pull-request-event-${deliveryId}`,
+      attempts: GITHUB_PULL_REQUEST_EVENT_ATTEMPTS,
+      backoff: { type: "fixed", delay: GITHUB_PULL_REQUEST_EVENT_RETRY_DELAY }
+    });
   };
 
   // A push from a repository with no resource row means it was added after setup, so discovery decides
@@ -1264,7 +1474,11 @@ export const secretScanningV2QueueServiceFactory = ({
 
     // The historical scan covers the pushed commits too, so it replaces the diff scan.
     if (dataSource.isHistoricalScanEnabled) {
-      await queueResourceFullScan({ dataSourceId: dataSource.id, resourcePayload });
+      await queueResourceFullScan({
+        dataSourceId: dataSource.id,
+        resourcePayload,
+        trigger: SecretScanningScanTrigger.Push
+      });
       return;
     }
 
@@ -1282,6 +1496,7 @@ export const secretScanningV2QueueServiceFactory = ({
   return {
     queueDataSourceFullScan,
     queueResourceDiffScan,
+    queueGitHubPullRequestEvent,
     handleResourcePushEvent
   };
 };

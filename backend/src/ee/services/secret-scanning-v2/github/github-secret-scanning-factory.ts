@@ -1,16 +1,10 @@
 import { join } from "path";
 import { ProbotOctokit } from "probot";
 
-import {
-  SecretScanningDataSource,
-  SecretScanningFindingSeverity
-} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import { SecretScanningDataSource } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
   assertProviderRepositorySizeWithinLimit,
-  cloneRepository,
-  convertPatchLineToFileLineNumber,
-  replaceNonChangesWithNewlines,
-  toFindingDetails
+  cloneRepository
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-fns";
 import {
   TSecretScanningFactoryGetDiffScanFindingsPayload,
@@ -23,13 +17,17 @@ import {
   TSecretScanningFactoryTeardown,
   TSecretScanningFactoryValidateConfigUpdate
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
-import { scanContentAndGetFindings } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
-import { SecretMatch } from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-queue-types";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
 import { BasicRepositoryRegex } from "@app/lib/regex";
 import { listGitHubRadarRepositories, TGitHubRadarConnection } from "@app/services/app-connection/github-radar";
 
+import {
+  getGitHubRadarInstallationOctokit,
+  isGitHubPullRequestScanPayload,
+  scanGitHubCommitsAndGetFindings,
+  scanGitHubPullRequest
+} from "./github-secret-scanning-fns";
 import {
   TGitHubDataSourceInput,
   TGitHubDataSourceWithConnection,
@@ -152,86 +150,26 @@ export const GitHubSecretScanningFactory = () => {
     TGitHubDataSourceWithConnection,
     TQueueGitHubResourceDiffScan["payload"]
   > = async ({ dataSource, payload, resourceName, configPath }) => {
-    const appCfg = getConfig();
-    const {
-      connection: {
-        credentials: { installationId }
-      }
-    } = dataSource;
-
-    const octokit = new ProbotOctokit({
-      auth: {
-        appId: appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_ID,
-        privateKey: appCfg.INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY,
-        installationId
-      }
-    });
+    if (isGitHubPullRequestScanPayload(payload)) {
+      const { findings } = await scanGitHubPullRequest({ payload, resourceName, configPath });
+      return findings;
+    }
 
     const { commits, repository } = payload;
 
-    const [owner, repo] = repository.full_name.split("/");
-
-    const allFindings: SecretMatch[] = [];
-
-    for (const commit of commits) {
-      // eslint-disable-next-line no-await-in-loop
-      const commitData = await octokit.repos.getCommit({
-        owner,
-        repo,
-        ref: commit.id
-      });
-
-      // eslint-disable-next-line no-continue
-      if (!commitData.data.files) continue;
-
-      for (const file of commitData.data.files) {
-        if ((file.status === "added" || file.status === "modified") && file.patch) {
-          // eslint-disable-next-line
-          const findings = await scanContentAndGetFindings(
-            replaceNonChangesWithNewlines(`\n${file.patch}`),
-            configPath
-          );
-
-          const adjustedFindings = findings.map((finding) => {
-            const startLine = convertPatchLineToFileLineNumber(file.patch!, finding.StartLine);
-            const endLine =
-              finding.StartLine === finding.EndLine
-                ? startLine
-                : convertPatchLineToFileLineNumber(file.patch!, finding.EndLine);
-            const startColumn = finding.StartColumn - 1; // subtract 1 for +
-            const endColumn = finding.EndColumn - 1; // subtract 1 for +
-
-            return {
-              ...finding,
-              StartLine: startLine,
-              EndLine: endLine,
-              StartColumn: startColumn,
-              EndColumn: endColumn,
-              File: file.filename,
-              Commit: commit.id,
-              Author: commit.author.name,
-              Email: commit.author.email ?? "",
-              Message: commit.message,
-              Fingerprint: `${commit.id}:${file.filename}:${finding.RuleID}:${startLine}:${startColumn}`,
-              Date: commit.timestamp,
-              Attributes: {
-                ...finding.Attributes,
-                url: `https://github.com/${resourceName}/blob/${commit.id}/${file.filename}#L${startLine}`
-              }
-            };
-          });
-
-          allFindings.push(...adjustedFindings);
-        }
-      }
-    }
-
-    return allFindings.map((finding) => ({
-      details: toFindingDetails(finding),
-      fingerprint: finding.Fingerprint,
-      severity: SecretScanningFindingSeverity.High,
-      rule: finding.RuleID
-    }));
+    return scanGitHubCommitsAndGetFindings({
+      octokit: getGitHubRadarInstallationOctokit(dataSource.connection.credentials.installationId),
+      repositoryFullName: repository.full_name,
+      resourceName,
+      commits: commits.map((commit) => ({
+        sha: commit.id,
+        authorName: commit.author.name,
+        authorEmail: commit.author.email ?? "",
+        date: commit.timestamp,
+        message: commit.message
+      })),
+      configPath
+    });
   };
 
   return {
