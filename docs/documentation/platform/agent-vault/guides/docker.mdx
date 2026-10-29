@@ -177,7 +177,7 @@ export INFISICAL_AGENT_VAULT_SESSION_TOKEN=$(echo "$SESSION" | jq -r .session.to
 echo "$1" | docker compose -p "$PROJECT" run --rm -T agent
 ```
 
-Make the script executable with `chmod +x run-agent.sh`. For more about creating sessions from code, see [Create sessions with the API](/documentation/platform/agent-vault/sessions-api). For the flags the agent starts with, see the [`agent-vault run` CLI reference](/cli/reference#agent-vault-run).
+For more about creating sessions from code, see [Create sessions with the API](/documentation/platform/agent-vault/sessions-api). For the flags the agent starts with, see the [`agent-vault run` CLI reference](/cli/reference#agent-vault-run).
 
 <Note>
 To run a different agent, install it in [the agent's `Dockerfile`](#step-3-write-the-agent’s-dockerfile), replace the `CMD` with the agent's non-interactive command, such as `codex exec`, and replace the Claude Code settings in the agent's environment variables in `compose.yaml`.
@@ -187,9 +187,10 @@ For an agent you built yourself, run it the same way, or [set the proxy in its H
 
 ## Step 6: Verify it works
 
-Run the script with a prompt that needs an API in the access bundle:
+Make the script executable, then run it with a prompt that needs an API in the access bundle:
 
 ```bash
+chmod +x run-agent.sh
 ./run-agent.sh "Reply with the word OK."
 ```
 
@@ -230,6 +231,9 @@ If you think someone took control of the machine that runs Docker, [rotate the p
   </Accordion>
   <Accordion title="Requests to a host fail with a 403 from the start">
     The proxy's traffic policy blocks hosts that no service in the access bundle covers. Add a service for the host, or add the host to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions).
+  </Accordion>
+  <Accordion title="The agent says its API key is invalid">
+    The agent holds only a placeholder, so the error is about the key in the access bundle. The proxy's log shows `decision=brokered` and `status=401` for the provider's host. Update the key in the access bundle's service for that provider, such as **Anthropic** for Claude Code.
   </Accordion>
   <Accordion title="The proxy's log shows a 404 from api.anthropic.com">
     When Claude Code starts, it requests `/api/claude_code/settings` from `api.anthropic.com`, and the request can return a 404. Claude Code runs without the response, so you can ignore this line.
