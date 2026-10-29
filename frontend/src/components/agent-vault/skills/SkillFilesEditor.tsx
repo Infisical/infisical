@@ -154,6 +154,8 @@ type Props = {
   onChange?: (files: TSkillDraftFile[]) => void;
   /** Paths marked as changed in the tree. */
   changedPaths?: ReadonlySet<string>;
+  /** Changed files whose saved copy has the same path, so "Discard Changes" can put it back. */
+  discardablePaths?: ReadonlySet<string>;
   /** Files that can't be renamed or deleted. */
   requiredPaths?: readonly string[];
   /** Which view Markdown files open in. Code is where an editable file is changed. */
@@ -172,6 +174,7 @@ export const SkillFilesEditor = ({
   isEditing,
   onChange,
   changedPaths,
+  discardablePaths,
   requiredPaths = [],
   defaultView = "preview",
   historyKey = 0,
@@ -261,7 +264,7 @@ export const SkillFilesEditor = ({
   };
 
   const canDiscardFile = (target: TTreeTarget) =>
-    Boolean(onDiscardFile && target?.type === "file" && changedPaths?.has(target.path));
+    Boolean(onDiscardFile && target?.type === "file" && discardablePaths?.has(target.path));
 
   // New items go in the empty space or inside a folder; a file only changes, discards or deletes itself.
   const hasMenuItems = (target: TTreeTarget) =>

@@ -152,6 +152,11 @@ const SkillSheetBody = ({
         : { changedPaths: new Set<string>(), hasChanges: false },
     [edit]
   );
+  // A renamed or new file has no saved copy under its name, so only files edited in place can be discarded.
+  const discardablePaths = useMemo(() => {
+    const savedPaths = new Set(edit?.baseFiles.map((file) => file.path));
+    return new Set([...changedPaths].filter((path) => savedPaths.has(path)));
+  }, [edit, changedPaths]);
 
   // The line diff is only worked out for the save review, since it is too slow to run on every keystroke.
   const isSaveOpen = dialog === "save";
@@ -261,12 +266,8 @@ const SkillSheetBody = ({
     setEdit((prev) => {
       if (!prev) return prev;
       const saved = prev.baseFiles.find((file) => file.path === path);
-      return {
-        ...prev,
-        draft: saved
-          ? prev.draft.map((file) => (file.path === path ? saved : file))
-          : prev.draft.filter((file) => file.path !== path)
-      };
+      if (!saved) return prev;
+      return { ...prev, draft: prev.draft.map((file) => (file.path === path ? saved : file)) };
     });
     setDiscardCount((count) => count + 1);
   };
@@ -283,6 +284,7 @@ const SkillSheetBody = ({
             isEditing ? (draft) => setEdit((prev) => prev && { ...prev, draft }) : undefined
           }
           changedPaths={changedPaths}
+          discardablePaths={discardablePaths}
           requiredPaths={[SKILL_ENTRY_FILE]}
           historyKey={`${discardCount}:${edit?.baseVersion}`}
           onDiscardFile={isEditing ? handleDiscardFile : undefined}
