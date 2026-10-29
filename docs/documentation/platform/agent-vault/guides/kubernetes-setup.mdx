@@ -257,14 +257,16 @@ Save this manifest as `agent-pod.yaml`. The script in the next step starts a pod
 apiVersion: v1
 kind: Pod
 metadata:
+  # Leave <run-id> as is. The script replaces it with a unique ID for each run.
   name: agent-<run-id>
   namespace: agents
 spec:
-  # For gVisor or Kata, uncomment this line and set it to your cluster's
-  # RuntimeClass, such as gvisor or kata-qemu.
+  # The isolation level. For gVisor or Kata, uncomment this line and set it to
+  # your cluster's RuntimeClass, such as gvisor or kata-qemu.
   # runtimeClassName: gvisor
   automountServiceAccountToken: false
   restartPolicy: Never
+  # Stops a stuck agent after 30 minutes, so its session doesn't stay open.
   activeDeadlineSeconds: 1800
   securityContext:
     runAsNonRoot: true
@@ -274,7 +276,12 @@ spec:
       type: RuntimeDefault
   containers:
     - name: agent
+      # Your agent's image, with the Infisical CLI installed.
       image: <agent-image>
+      # agent-vault run fetches the proxy's certificate, sets the proxy and
+      # certificate variables, then starts the command after --. Replace
+      # <agent-command> and <argument> with your agent's command, one list item
+      # per argument, such as claude, -p, "Fix the failing test".
       command:
         - infisical
         - agent-vault
@@ -303,13 +310,7 @@ spec:
           memory: 1Gi
 ```
 
-- **`<agent-image>`:** your agent's image
-- **`<agent-command>` and `<argument>`:** the command that starts your agent, with each argument as its own list item, such as `"claude", "-p", "Fix the failing test"`
-- **`<run-id>`:** leave it as is, because the script replaces it with a unique ID for each run
-- **`infisical agent-vault run`:** fetches the proxy's certificate, then starts your agent with the proxy and [certificate trust](/documentation/platform/agent-vault/proxies#certificate-trust) variables set, so you don't install the certificate yourself (see the [CLI reference](/cli/reference#agent-vault-run))
-- **`runtimeClassName`:** picks the isolation level for the agent, and without it, the pod uses the standard runtime (see [Choose an isolation level](/documentation/platform/agent-vault/guides/kubernetes#choose-an-isolation-level))
-- **`activeDeadlineSeconds`:** stops the agent after 30 minutes, so a stuck agent doesn't keep its session open
-- **API keys in the agent's configuration:** delete the real keys, and pass a placeholder such as `agent-vault` to SDKs that won't start without one (see [Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent#step-3-replace-the-api-keys-with-placeholders))
+Remove the real API keys from your agent's configuration. If an SDK won't start without a key, pass a placeholder such as `agent-vault` instead, as in [Connect your own agent](/documentation/platform/agent-vault/guides/custom-agent#step-3-replace-the-api-keys-with-placeholders).
 
 ### Start the agent with a new session
 
