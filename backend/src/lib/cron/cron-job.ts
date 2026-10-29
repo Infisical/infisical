@@ -52,7 +52,9 @@ export const CronJobName = {
   EventOutboxStaleClaimSweeper: "event-outbox-stale-claim-sweeper",
   EventOutboxCleanup: "event-outbox-cleanup",
   SecretScanningStuckScanReaper: "secret-scanning-stuck-scan-reaper",
-  InstanceUpdateCheck: "instance-update-check"
+  InstanceUpdateCheck: "instance-update-check",
+  SecretReadActivityFlush: "secret-read-activity-flush",
+  SecretReadActivityPrune: "secret-read-activity-prune"
 } as const;
 
 const JITTER_INTERVAL_FRACTION = 0.25; // keep below ~0.48 so 30s retry fits before next 1-min fire
