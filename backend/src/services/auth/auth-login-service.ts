@@ -1153,7 +1153,7 @@ export const authLoginServiceFactory = ({
     organizationId,
     userId,
     userAuthMethod,
-    actorOrgId,
+    actorRootOrgId,
     isMfaVerified,
     mfaMethod
   }: {
@@ -1162,7 +1162,7 @@ export const authLoginServiceFactory = ({
     organizationId: string;
     userId: string;
     userAuthMethod: AuthMethod;
-    actorOrgId?: string;
+    actorRootOrgId?: string;
     isMfaVerified?: boolean;
     mfaMethod?: MfaMethod;
   }) => {
@@ -1288,8 +1288,8 @@ export const authLoginServiceFactory = ({
     }
 
     const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(rootOrg, user);
-    // Check if organization has changed
-    const hasOrganizationChanged = actorOrgId ? actorOrgId !== rootOrg.id : false;
+    // The MFA policy belongs to the root org, so moving between a root org and its sub-orgs is not a change.
+    const hasOrganizationChanged = actorRootOrgId ? actorRootOrgId !== rootOrg.id : false;
     // Check if MFA method has changed
     const hasMfaMethodChanged = mfaMethod !== requiredMfaMethod;
     // Trigger MFA if required and either not verified or something changed
