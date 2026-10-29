@@ -1,5 +1,8 @@
 import { TableName } from "@app/db/schemas";
+import { seedData1 } from "@app/db/seed-data";
 
+import { createIdentityActor } from "../../testUtils/identities";
+import { overrideLicenseFeatures } from "../../testUtils/license";
 import { createSecretV2, getSecretByNameV2 } from "../../testUtils/secrets";
 
 type TProject = { id: string; name: string; slug: string };
@@ -158,6 +161,40 @@ describe("Project deletion (soft-delete + async cleanup)", async () => {
     expect(second.slug).toBe(slug);
 
     await deleteProject(second.id, true);
+  });
+
+  test("only org admins can list, restore or permanently delete deleted projects", async () => {
+    const project = await createProject("e2e-deleted-access");
+    expect((await deleteProject(project.id)).statusCode).toBe(200);
+    const { authToken } = await createIdentityActor({ orgId: seedData1.organization.id, authToken: jwtAuthToken });
+
+    const responses = await Promise.all(
+      [
+        { method: "GET" as const, url: "/api/v1/projects/deleted" },
+        { method: "POST" as const, url: `/api/v1/projects/${project.id}/restore` },
+        { method: "DELETE" as const, url: `/api/v1/projects/deleted/${project.id}` }
+      ].map((req) => testServer.inject({ ...req, headers: { authorization: `Bearer ${authToken}` } }))
+    );
+    expect(responses.map((res) => res.statusCode)).toEqual([403, 403, 403]);
+
+    expect((await permanentlyDeleteProject(project.id)).statusCode).toBe(200);
+  });
+
+  test("refuses to restore a project when the plan's project limit is reached", async () => {
+    const project = await createProject("e2e-restore-limit");
+    expect((await deleteProject(project.id)).statusCode).toBe(200);
+
+    // the seeded project alone fills a one-project limit
+    const restoreLicense = overrideLicenseFeatures({ workspaceLimit: 1 });
+    try {
+      const res = await restoreProject(project.id);
+      expect(res.statusCode).toBe(400);
+      expect(JSON.parse(res.payload).message).toContain("project limit");
+    } finally {
+      restoreLicense();
+    }
+
+    expect((await permanentlyDeleteProject(project.id)).statusCode).toBe(200);
   });
 
   test("cannot delete an already-deleted project", async () => {
