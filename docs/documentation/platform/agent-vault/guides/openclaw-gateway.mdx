@@ -69,7 +69,7 @@ OpenClaw can keep API keys in three places. Check each one on the OpenClaw machi
 - **Channel tokens in OpenClaw's config:** such as `channels.telegram.botToken` for Telegram
 - **`~/.openclaw/.env`:** if you added keys to this file yourself, list their names without printing their values by running `grep -o '^[A-Za-z_][A-Za-z0-9_]*=' ~/.openclaw/.env | tr -d '='`
 
-Take note of each key that holds a credential for an API. In [Step 2](#step-2-set-up-agent-vault), you'll make sure your access bundle has a [service](/documentation/platform/agent-vault/services) for each of these keys.
+Take note of each key that has access to an API. In [Step 2](#step-2-set-up-agent-vault), you'll make sure your access bundle has a [service](/documentation/platform/agent-vault/services) for each of these keys.
 
 <Accordion title="How do I know which keys to use?">
 Most OpenClaw setups have three kinds of API keys:

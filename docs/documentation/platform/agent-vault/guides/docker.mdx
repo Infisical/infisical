@@ -2,7 +2,7 @@
 title: "Run agents in Docker containers with Agent Vault"
 sidebarTitle: "Docker"
 icon: "/images/agent-vault-agents/docker.svg"
-description: "Run an Agent Vault proxy beside each agent container so the agent never holds a credential."
+description: "Run an Agent Vault proxy beside each agent container so the agent never has access to a credential."
 ---
 
 import SandboxAgentVaultSetup from "/snippets/agent-vault/SandboxAgentVaultSetup.mdx";
@@ -36,9 +36,9 @@ For each run, your script does the following:
 Every proxy starts from the same proxy token, so you create the proxy in Infisical once, no matter how many agents you run.
 
 <Accordion title="Why not run the same proxy for every agent?">
-  To reach one shared proxy, every agent container would need to be on the same network, so agents running at the same time could connect to each other.
+  You can, as long as every agent's container is on a network with the proxy. This guide runs a proxy beside each agent instead, the same way the [Modal](/documentation/platform/agent-vault/guides/modal) and [Daytona](/documentation/platform/agent-vault/guides/daytona) guides do, so the proxy starts and stops with its run.
 
-  With a proxy per run, each run has its own private network. Nothing outside the run can send requests through its proxy, and agents in different runs can't reach each other.
+  Each run also gets its own private network, so nothing outside the run can send requests through its proxy.
 </Accordion>
 
 ## Prerequisites
@@ -242,7 +242,7 @@ If you think someone took control of the machine that runs Docker, [rotate the p
     The proxy's traffic policy blocks hosts that no service in the access bundle covers. Add a service for the host, or add the host to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions).
   </Accordion>
   <Accordion title="The agent says its API key is invalid">
-    The agent holds only a placeholder, so the error is about the key in the access bundle. The proxy's log shows `decision=brokered` and `status=401` for the provider's host. Update the key in the access bundle's service for that provider, such as **Anthropic** for Claude Code.
+    The agent has only a placeholder, so the error is about the key in the access bundle. The proxy's log shows `decision=brokered` and `status=401` for the provider's host. Update the key in the access bundle's service for that provider, such as **Anthropic** for Claude Code.
   </Accordion>
   <Accordion title="The proxy's log shows a 404 from api.anthropic.com">
     When Claude Code starts, it requests `/api/claude_code/settings` from `api.anthropic.com`, and the request can return a 404. Claude Code runs without the response, so you can ignore this line.
