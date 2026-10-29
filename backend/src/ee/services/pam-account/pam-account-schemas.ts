@@ -783,7 +783,8 @@ export const ACCOUNT_TYPE_CONFIGS = {
       serviceAccountEmail: {
         label: "Service Account Email",
         description:
-          'With Impersonation, the service account ID must end with "{{organizationIdPrefix}}", e.g. service-account-{{organizationIdPrefix}}@my-project.iam.gserviceaccount.com'
+          'The service account ID must end with "{{organizationIdPrefix}}", e.g. service-account-{{organizationIdPrefix}}@my-project.iam.gserviceaccount.com',
+        descriptionWhen: { field: "credentials.authMethod", equals: GcpServiceAccountAuthMethod.Impersonation }
       },
       authMethod: {
         label: "Auth Method",
@@ -997,6 +998,7 @@ export const ACCOUNT_TYPE_CONFIGS = {
           forceWhen?: readonly TFieldForcedRuleHint[];
           tooltip?: string;
           description?: string;
+          descriptionWhen?: TFieldConditionHint;
           options?: { label: string; value: string; docsUrl?: string }[];
         }
       >;
@@ -1352,7 +1354,10 @@ export const PamFieldDescriptorSchema = z.object({
   tooltip: z.string().optional(),
 
   // Help text shown under the field
-  description: z.string().optional()
+  description: z.string().optional(),
+
+  // Only show the description when the referenced field equals this value
+  descriptionWhen: PamFieldConditionSchema.optional()
 });
 
 type PamFieldDescriptor = z.infer<typeof PamFieldDescriptorSchema>;
@@ -1383,6 +1388,7 @@ type TFieldUiHint = {
   forceWhen?: readonly TFieldForcedRuleHint[];
   tooltip?: string;
   description?: string;
+  descriptionWhen?: TFieldConditionHint;
   options?: { label: string; value: string; docsUrl?: string }[];
 };
 
@@ -1450,7 +1456,8 @@ const describeField = (
     ...(resolvedShowWhen ? { showWhen: resolvedShowWhen } : {}),
     ...(hint.forceWhen ? { forceWhen: [...hint.forceWhen] } : {}),
     ...(hint.tooltip ? { tooltip: hint.tooltip } : {}),
-    ...(hint.description ? { description: hint.description } : {})
+    ...(hint.description ? { description: hint.description } : {}),
+    ...(hint.descriptionWhen ? { descriptionWhen: hint.descriptionWhen } : {})
   };
 };
 

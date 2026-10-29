@@ -167,6 +167,7 @@ export type TPamFieldDescriptor = {
   forceWhen?: { when: TPamFieldCondition; value: string | number | boolean; reason: string }[];
   tooltip?: string;
   description?: string;
+  descriptionWhen?: TPamFieldCondition;
 };
 
 export type TPamPolicyDescriptor = {

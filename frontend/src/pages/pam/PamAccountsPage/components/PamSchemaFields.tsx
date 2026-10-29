@@ -31,6 +31,7 @@ import { useOrganization } from "@app/context";
 import { PamFieldWidget, TPamFieldDescriptor } from "@app/hooks/api/pam";
 
 import {
+  isDescriptionVisible,
   isFieldVisible,
   resolveForcedRule,
   TAccountFormValues,
@@ -249,7 +250,9 @@ export const PamSchemaFields = ({ control, setValue, namePrefix, fields, smartPa
                       isDisabled={Boolean(forcedRule)}
                       smartPaste={smartPaste?.fieldKey === descriptor.key ? smartPaste : undefined}
                     />
-                    <FieldHelpText text={descriptor.description} />
+                    {isDescriptionVisible(descriptor, namePrefix, values) && (
+                      <FieldHelpText text={descriptor.description} />
+                    )}
                     {selectedDocsUrl && (
                       <FieldDescription>
                         <a
