@@ -207,9 +207,7 @@ export const internalCertificateAuthorityServiceFactory = ({
   const ROOT_CA_KEY_USAGES = x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign;
   // PQC root CAs also need digitalSignature per FIPS 204/205
   const PQC_ROOT_CA_KEY_USAGES = ROOT_CA_KEY_USAGES | x509.KeyUsageFlags.digitalSignature;
-  // Intermediate CAs: add digitalSignature + keyEncipherment for leaf cert operations
-  const PQC_CA_KEY_USAGES = ROOT_CA_KEY_USAGES | x509.KeyUsageFlags.digitalSignature;
-  const CLASSICAL_CA_KEY_USAGES = PQC_CA_KEY_USAGES | x509.KeyUsageFlags.keyEncipherment;
+  const INTERMEDIATE_CA_KEY_USAGES = ROOT_CA_KEY_USAGES | x509.KeyUsageFlags.digitalSignature;
 
   const $getSignatureKeyFamily = (sigAlg: string): string => {
     if (sigAlg.startsWith("ML-DSA")) return "ML-DSA";
@@ -810,22 +808,16 @@ export const internalCertificateAuthorityServiceFactory = ({
       caKeySourceService
     });
 
-    const effectivePathLength =
-      maxPathLength !== undefined && maxPathLength >= 0 ? maxPathLength : (ca.internalCa.maxPathLength ?? -1);
-    const resolvedPathLength =
-      effectivePathLength === -1 || effectivePathLength === null ? undefined : effectivePathLength;
+    const effectivePathLength = maxPathLength ?? ca.internalCa.maxPathLength ?? -1;
+    const resolvedPathLength = effectivePathLength === -1 ? undefined : effectivePathLength;
 
     const csrObj = await signer.createCsr({
       name: ca.internalCa.dn,
       extensions: [
         new x509.BasicConstraintsExtension(true, resolvedPathLength, true),
-        new x509.KeyUsagesExtension(
-          isPqcAlgorithm(ca.internalCa.keyAlgorithm) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES,
-          true
-        ),
+        new x509.KeyUsagesExtension(INTERMEDIATE_CA_KEY_USAGES, true),
         await x509.SubjectKeyIdentifierExtension.create(signer.caPublicKey)
-      ],
-      attributes: [new x509.ChallengePasswordAttribute("password")]
+      ]
     });
 
     return {
@@ -1034,12 +1026,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
         const csrObj = await signer.createCsr({
           name: ca.internalCa.dn,
-          extensions: [
-            new x509.KeyUsagesExtension(
-              isPqcAlgorithm(ca.internalCa.keyAlgorithm) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES
-            )
-          ],
-          attributes: [new x509.ChallengePasswordAttribute("password")]
+          extensions: [new x509.KeyUsagesExtension(INTERMEDIATE_CA_KEY_USAGES)]
         });
 
         const notBeforeDate = new Date();
@@ -1051,10 +1038,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           notAfter: new Date(notAfter),
           publicKey: csrObj.publicKey,
           extensions: [
-            new x509.KeyUsagesExtension(
-              isPqcAlgorithm(ca.internalCa.keyAlgorithm) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES,
-              true
-            ),
+            new x509.KeyUsagesExtension(INTERMEDIATE_CA_KEY_USAGES, true),
             new x509.BasicConstraintsExtension(
               true,
               ca.internalCa.maxPathLength === -1 || !ca.internalCa.maxPathLength
@@ -1533,10 +1517,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       notAfter: notAfterDate,
       publicKey: csrObj.publicKey,
       extensions: [
-        new x509.KeyUsagesExtension(
-          isPqcAlgorithm(csrObj.publicKey.algorithm.name) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES,
-          true
-        ),
+        new x509.KeyUsagesExtension(INTERMEDIATE_CA_KEY_USAGES, true),
         new x509.BasicConstraintsExtension(true, maxPathLength === -1 ? undefined : maxPathLength, true),
         await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
         await x509.SubjectKeyIdentifierExtension.create(csrObj.publicKey),
@@ -1804,13 +1785,11 @@ export const internalCertificateAuthorityServiceFactory = ({
       caKeySourceService
     });
 
-    const caKeyAlg = intermediateCa.internalCa.keyAlgorithm as CertKeyAlgorithm;
-
     const csrObj = await signer.createCsr({
       name: intermediateCa.internalCa.dn,
       extensions: [
         new x509.BasicConstraintsExtension(true, maxPathLength === -1 ? undefined : maxPathLength, true),
-        new x509.KeyUsagesExtension(isPqcAlgorithm(caKeyAlg) ? PQC_CA_KEY_USAGES : CLASSICAL_CA_KEY_USAGES, true),
+        new x509.KeyUsagesExtension(INTERMEDIATE_CA_KEY_USAGES, true),
         await x509.SubjectKeyIdentifierExtension.create(signer.caPublicKey)
       ]
     });
@@ -2063,8 +2042,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       name: leafDn,
       keys: leafKeys,
       signingAlgorithm: keyGenAlg,
-      extensions: [new x509.KeyUsagesExtension(csrKeyUsageFlags)],
-      attributes: [new x509.ChallengePasswordAttribute("password")]
+      extensions: [new x509.KeyUsagesExtension(csrKeyUsageFlags)]
     });
 
     const { caSecret, signer } = await getCaSigner({

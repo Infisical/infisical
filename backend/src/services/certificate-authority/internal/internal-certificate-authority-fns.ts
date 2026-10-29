@@ -129,8 +129,7 @@ export const InternalCertificateAuthorityFns = ({
       name: createDistinguishedName({ commonName: subscriber.commonName }),
       keys: leafKeys,
       signingAlgorithm: alg,
-      extensions: [new x509.KeyUsagesExtension(csrKeyUsages)],
-      attributes: [new x509.ChallengePasswordAttribute("password")]
+      extensions: [new x509.KeyUsagesExtension(csrKeyUsages)]
     });
 
     const { caPrivateKey, caSecret } = await getCaCredentials({
@@ -382,8 +381,7 @@ export const InternalCertificateAuthorityFns = ({
       name: createDistinguishedName({ commonName }),
       keys: leafKeys,
       signingAlgorithm: alg,
-      extensions: [new x509.KeyUsagesExtension(templateCsrKeyUsages)],
-      attributes: [new x509.ChallengePasswordAttribute("password")]
+      extensions: [new x509.KeyUsagesExtension(templateCsrKeyUsages)]
     });
 
     const { caPrivateKey, caSecret } = await getCaCredentials({

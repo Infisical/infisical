@@ -196,15 +196,17 @@ export const useGetCaCert = (caId: string) => {
   });
 };
 
-export const useGetCaCsr = (caId: string) => {
+export const useGetCaCsr = (caId: string, maxPathLength?: number) => {
   return useQuery({
-    queryKey: caKeys.getCaCsr(caId),
+    queryKey: [...caKeys.getCaCsr(caId), { maxPathLength }],
     queryFn: async () => {
       const {
         data: { csr }
       } = await apiRequest.get<{
         csr: string;
-      }>(`/api/v1/cert-manager/ca/internal/${caId}/csr`);
+      }>(`/api/v1/cert-manager/ca/internal/${caId}/csr`, {
+        params: { maxPathLength }
+      });
       return csr;
     },
     enabled: Boolean(caId)

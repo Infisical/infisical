@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import FileSaver from "file-saver";
@@ -13,11 +13,17 @@ import {
   DialogClose,
   DialogFooter,
   Field,
+  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
   IconButton,
   ScrollableContent,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   TextArea,
   Tooltip,
   TooltipContent,
@@ -48,7 +54,8 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
     resolver: zodResolver(schema)
   });
 
-  const { data: csr } = useGetCaCsr(caId);
+  const [maxPathLength, setMaxPathLength] = useState("-1");
+  const { data: csr } = useGetCaCsr(caId, Number(maxPathLength));
   const { mutateAsync: importCaCertificate } = useImportCaCertificate();
 
   useEffect(() => {
@@ -82,6 +89,24 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
     <form className="contents" onSubmit={handleSubmit(onFormSubmit)}>
       <DialogBody>
         <FieldGroup>
+          <Field>
+            <FieldLabel>Path Length</FieldLabel>
+            <Select value={maxPathLength} onValueChange={setMaxPathLength}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                {[-1, 0, 1, 2, 3].map((value) => (
+                  <SelectItem value={String(value)} key={`ca-csr-path-length-${value}`}>
+                    {String(value)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldDescription>
+              How many intermediate CAs may follow this CA in the chain. -1 means no limit.
+            </FieldDescription>
+          </Field>
           {csr && (
             <Field>
               <div className="flex items-center justify-between">
