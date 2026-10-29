@@ -5,9 +5,10 @@ import { InfoIcon, SendHorizontalIcon } from "lucide-react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { RoleOption } from "@app/components/roles";
+import { RoleOptionContent } from "@app/components/roles";
 import {
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -18,7 +19,6 @@ import {
   Field,
   FieldError,
   FieldLabel,
-  FilterableSelect,
   Tooltip,
   TooltipContent,
   TooltipTrigger
@@ -210,17 +210,21 @@ export const InviteMembersModal = ({ popUp, handlePopUpToggle, experimentVariant
                     </TooltipContent>
                   </Tooltip>
                 </FieldLabel>
-                <FilterableSelect
-                  inputId="invite-members-project-role"
+                <Combobox
+                  id="invite-members-project-role"
                   isLoading={Boolean(projectId) && isProjectRolesLoading}
-                  value={value}
-                  onChange={onChange}
+                  value={filteredRoles.find((role) => role.slug === value?.slug) ?? value}
+                  isClearable={false}
+                  onValueChange={onChange}
                   options={filteredRoles}
+                  includeMissingSelectedOptions={false}
                   getOptionValue={(option) => option.slug}
+                  getOptionKeywords={(option) => [option.slug]}
                   getOptionLabel={(option) => option.name}
                   placeholder="Select role..."
+                  searchAriaLabel="Search roles"
                   isError={Boolean(error)}
-                  components={{ Option: RoleOption }}
+                  renderOption={(option) => <RoleOptionContent role={option} />}
                 />
                 <FieldError>{error?.message}</FieldError>
               </Field>

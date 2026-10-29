@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import {
   AlertTriangleIcon,
   BanIcon,
@@ -31,6 +30,7 @@ import {
   DropdownMenuTrigger,
   IconButton,
   ProviderIcon,
+  RowLink,
   TableCell,
   TableRow,
   Tooltip,
@@ -98,7 +98,6 @@ export const SecretSyncRow = ({
   onTriggerRemoveSecrets,
   onToggleEnable
 }: Props) => {
-  const navigate = useNavigate();
   const {
     id,
     folder,
@@ -142,17 +141,7 @@ export const SecretSyncRow = ({
 
   return (
     <TableRow
-      onClick={() =>
-        navigate({
-          to: ROUTE_PATHS.SecretManager.SecretSyncDetailsByIDPage.path,
-          params: {
-            syncId: id,
-            destination,
-            projectId,
-            orgId: currentOrg.id
-          }
-        })
-      }
+      linked
       className={twMerge(
         "group h-12",
         syncStatus === SecretSyncStatus.Failed && "bg-danger/5 hover:bg-danger/10"
@@ -168,7 +157,17 @@ export const SecretSyncRow = ({
       <TableCell className="max-w-0 min-w-32!">
         <div>
           <div className="flex w-full items-center">
-            <p className="truncate">{name}</p>
+            <RowLink
+              to={ROUTE_PATHS.SecretManager.SecretSyncDetailsByIDPage.path}
+              params={{
+                syncId: id,
+                destination,
+                projectId,
+                orgId: currentOrg.id
+              }}
+            >
+              {name}
+            </RowLink>
             {description && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -207,11 +206,13 @@ export const SecretSyncRow = ({
       <TableCell>
         <div className="flex items-center gap-1">
           {syncStatus && (
-            <SecretSyncStatusBadge
-              status={syncStatus}
-              lastSyncedAt={lastSyncedAt}
-              lastSyncMessage={lastSyncMessage}
-            />
+            <span data-row-interactive>
+              <SecretSyncStatusBadge
+                status={syncStatus}
+                lastSyncedAt={lastSyncedAt}
+                lastSyncMessage={lastSyncMessage}
+              />
+            </span>
           )}
           {!isAutoSyncEnabled && (
             <Tooltip>

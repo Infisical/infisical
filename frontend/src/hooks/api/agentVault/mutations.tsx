@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 
 import { apiRequest } from "@app/config/request";
 import { useOrganization } from "@app/context";
@@ -11,23 +12,32 @@ import {
   TAgentVaultAccessBundle,
   TAgentVaultActorIdsDTO,
   TAgentVaultActorRef,
-  TAgentVaultEnrollment,
   TAgentVaultGrantedMember,
   TAgentVaultMemberWriteResult,
   TAgentVaultMintedSession,
+  TAgentVaultOauthAuthorization,
+  TAgentVaultPersonalValues,
   TAgentVaultProxy,
   TAgentVaultProxySettingsDTO,
+  TAgentVaultProxyWithToken,
   TAgentVaultService,
-  TAgentVaultSessionLogSettings,
+  TAgentVaultSession,
+  TAgentVaultSessionLogSettingsState,
   TAgentVaultVariable,
   TAgentVaultWrittenMember,
+  TCompleteAgentVaultOauthAuthorizationDTO,
   TCreateAgentVaultAccessBundleDTO,
+  TCreateAgentVaultOauthAuthorizationDTO,
+  TCreateAgentVaultOauthAuthorizationResponse,
   TCreateAgentVaultServiceDTO,
   TCreateAgentVaultSessionDTO,
   TCreateAgentVaultVariableDTO,
+  TDeleteAgentVaultPersonalValuesDTO,
+  TSetAgentVaultPersonalValuesDTO,
   TUpdateAgentVaultAccessBundleDTO,
   TUpdateAgentVaultMemberRolesDTO,
   TUpdateAgentVaultServiceDTO,
+  TUpdateAgentVaultSessionLabelDTO,
   TUpdateAgentVaultSessionLogSettingsDTO,
   TUpdateAgentVaultVariableDTO
 } from "./types";
@@ -89,13 +99,19 @@ export const useDeleteAgentVaultAccessBundle = () => {
   });
 };
 
+// The service sheet renders these inline when it recognizes them (a host-pattern conflict, an authorization that
+// expired or was already used) and hands the rest back to onRequestError, so the global toast must not also fire.
+export const SERVICE_SAVE_HANDLED_ERROR_CODES: string[] = [
+  ApiErrorTypes.BadRequestError,
+  ApiErrorTypes.ConflictError,
+  ApiErrorTypes.NotFoundError
+];
+
 export const useCreateAgentVaultService = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    // The sheet renders a host-pattern conflict inline and hands anything else back to onRequestError,
-    // so the global toast must not also fire for it.
-    meta: { skipValidationToast: true, handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    meta: { skipValidationToast: true, handledErrorCodes: SERVICE_SAVE_HANDLED_ERROR_CODES },
     mutationFn: async ({ accessBundleId, ...params }: TCreateAgentVaultServiceDTO) => {
       const { data } = await apiRequest.post<{ service: TAgentVaultService }>(
         `/api/v1/agent-vault/access-bundles/${accessBundleId}/services`,
@@ -117,9 +133,7 @@ export const useUpdateAgentVaultService = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    // The sheet renders a host-pattern conflict inline and hands anything else back to onRequestError,
-    // so the global toast must not also fire for it.
-    meta: { skipValidationToast: true, handledErrorCodes: [ApiErrorTypes.BadRequestError] },
+    meta: { skipValidationToast: true, handledErrorCodes: SERVICE_SAVE_HANDLED_ERROR_CODES },
     mutationFn: async ({ accessBundleId, serviceId, ...params }: TUpdateAgentVaultServiceDTO) => {
       const { data } = await apiRequest.patch<{ service: TAgentVaultService }>(
         `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}`,
@@ -219,6 +233,23 @@ export const useCreateAgentVaultSession = () => {
   });
 };
 
+export const useUpdateAgentVaultSessionLabel = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ sessionId, label }: TUpdateAgentVaultSessionLabelDTO) => {
+      const { data } = await apiRequest.patch<{ session: TAgentVaultSession }>(
+        `/api/v1/agent-vault/sessions/${sessionId}`,
+        { label }
+      );
+      return data.session;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.sessions(currentOrg.id) });
+    }
+  });
+};
+
 export const useRevokeAgentVaultSession = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
@@ -240,11 +271,10 @@ export const useCreateAgentVaultProxy = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (params: TAgentVaultProxySettingsDTO) => {
-      const { data } = await apiRequest.post<{
-        proxy: TAgentVaultProxy;
-        token: string;
-        expiresAt: string;
-      }>("/api/v1/agent-vault/proxies", params);
+      const { data } = await apiRequest.post<TAgentVaultProxyWithToken>(
+        "/api/v1/agent-vault/proxies",
+        params
+      );
       return data;
     },
     onSuccess: () => {
@@ -289,15 +319,21 @@ export const useDeleteAgentVaultProxy = () => {
   });
 };
 
-export const useReissueAgentVaultProxyEnrollmentToken = () =>
-  useMutation({
+export const useRotateAgentVaultProxyToken = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
     mutationFn: async (proxyId: string) => {
-      const { data } = await apiRequest.post<TAgentVaultEnrollment>(
-        `/api/v1/agent-vault/proxies/${proxyId}/token-auth/enrollment-token`
+      const { data } = await apiRequest.post<TAgentVaultProxyWithToken>(
+        `/api/v1/agent-vault/proxies/${proxyId}/token-auth/proxy-token`
       );
       return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agentVaultKeys.proxies(currentOrg.id) });
     }
   });
+};
 
 export const useRevokeAgentVaultProxyAccess = () => {
   const { currentOrg } = useOrganization();
@@ -373,14 +409,14 @@ export const useUpdateAgentVaultSessionLogSettings = () => {
 
   return useMutation({
     mutationFn: async (params: TUpdateAgentVaultSessionLogSettingsDTO) => {
-      const { data } = await apiRequest.patch<{ settings: TAgentVaultSessionLogSettings }>(
+      const { data } = await apiRequest.patch<TAgentVaultSessionLogSettingsState>(
         "/api/v1/agent-vault/settings/session-logs",
         params
       );
-      return data.settings;
+      return data;
     },
-    onSuccess: (settings) => {
-      queryClient.setQueryData(agentVaultKeys.sessionLogSettings(currentOrg.id), settings);
+    onSuccess: (state) => {
+      queryClient.setQueryData(agentVaultKeys.sessionLogSettings(currentOrg.id), state);
       // Reset, not invalidate: the cached result may be for the previous bucket.
       queryClient.resetQueries({
         queryKey: agentVaultKeys.sessionLogCorsProbe(currentOrg.id)
@@ -393,7 +429,8 @@ export const useUpdateAgentVaultSessionLogSettings = () => {
   });
 };
 
-// A rename changes the keys each service's variableReferences reports, so the bundles refresh too.
+// A rename changes the keys each service's variableReferences, and each personal value's, reports, so those refresh
+// too.
 const invalidateVariables = (queryClient: ReturnType<typeof useQueryClient>, orgId: string) =>
   Promise.all([
     queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(orgId) }),
@@ -454,3 +491,85 @@ export const useRevealAgentVaultVariableValue = () =>
       return data.value;
     }
   });
+
+export const useCreateAgentVaultOauthAuthorization = () =>
+  useMutation({
+    // The Authorize card shows every failure in place, discovery and registration ones naming the server.
+    meta: { skipErrorToast: true },
+    mutationFn: async (params: TCreateAgentVaultOauthAuthorizationDTO) => {
+      const { data } = await apiRequest.post<TCreateAgentVaultOauthAuthorizationResponse>(
+        "/api/v1/agent-vault/oauth/authorizations",
+        params
+      );
+      return data;
+    }
+  });
+
+export const useCompleteAgentVaultOauthAuthorization = () =>
+  useMutation({
+    // The callback page shows every outcome itself.
+    meta: { handledErrorCodes: [ApiErrorTypes.BadRequestError, ApiErrorTypes.NotFoundError] },
+    mutationFn: async ({
+      authorizationId,
+      ...params
+    }: TCompleteAgentVaultOauthAuthorizationDTO) => {
+      const { data } = await apiRequest.post<{ authorization: TAgentVaultOauthAuthorization }>(
+        `/api/v1/agent-vault/oauth/authorizations/${encodeURIComponent(authorizationId)}/complete`,
+        params
+      );
+      return data.authorization;
+    }
+  });
+
+// The status shows on the bundle read and the bundle list, and Used By on personal variables follows the references.
+const invalidatePersonalValues = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  orgId: string,
+  accessBundleId: string
+) =>
+  Promise.all([
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundle(orgId, accessBundleId) }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.accessBundles(orgId) }),
+    queryClient.invalidateQueries({ queryKey: agentVaultKeys.variables(orgId) })
+  ]);
+
+export const useSetAgentVaultPersonalValues = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      accessBundleId,
+      serviceId,
+      ...params
+    }: TSetAgentVaultPersonalValuesDTO) => {
+      const { data } = await apiRequest.patch<{ personalValues: TAgentVaultPersonalValues }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}/personal-values`,
+        params
+      );
+      return data.personalValues;
+    },
+    onSuccess: (_, { accessBundleId }) =>
+      invalidatePersonalValues(queryClient, currentOrg.id, accessBundleId),
+    // The service changed under the dialog, so its copy is stale: reload it before the member saves again.
+    onError: (error, { accessBundleId }) => {
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        invalidatePersonalValues(queryClient, currentOrg.id, accessBundleId).catch(() => undefined);
+      }
+    }
+  });
+};
+
+export const useDeleteAgentVaultPersonalValues = () => {
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accessBundleId, serviceId }: TDeleteAgentVaultPersonalValuesDTO) => {
+      const { data } = await apiRequest.delete<{ personalValues: TAgentVaultPersonalValues }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/services/${serviceId}/personal-values`
+      );
+      return data.personalValues;
+    },
+    onSuccess: (_, { accessBundleId }) =>
+      invalidatePersonalValues(queryClient, currentOrg.id, accessBundleId)
+  });
+};

@@ -7,6 +7,7 @@ import RE2 from "re2";
 import tls from "tls";
 
 import { getConfig } from "@app/lib/config/env";
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { logger } from "@app/lib/logger";
 import {
@@ -48,6 +49,23 @@ const shouldBlockPrivateIps = (hasGateway: boolean): boolean => {
   const appCfg = getConfig();
   if (appCfg.isDevelopmentMode || appCfg.ALLOW_INTERNAL_IP_CONNECTIONS) return false;
   return true;
+};
+
+export const getPrivateIpRangeError = (ipRanges: string[] | undefined, hasGateway: boolean): string | undefined => {
+  if (!ipRanges?.length || !shouldBlockPrivateIps(hasGateway)) return undefined;
+
+  const appCfg = getConfig();
+  const selfHostedHint = appCfg.isCloud
+    ? ""
+    : " If you are self-hosting, you can alternatively set the 'ALLOW_INTERNAL_IP_CONNECTIONS' environment variable to 'true' on your instance to scan private networks without a gateway.";
+
+  if (ipRanges.some((ip) => !ip.includes("/") && isPrivateIp(ip))) {
+    return `Private/internal IP addresses require a gateway. Use a gateway to scan private networks.${selfHostedHint}`;
+  }
+  if (ipRanges.some((cidr) => cidr.includes("/") && isPrivateIp(cidr.split("/")[0]))) {
+    return `Private/internal CIDR ranges require a gateway. Use a gateway to scan private networks.${selfHostedHint}`;
+  }
+  return undefined;
 };
 
 export type TTargetValidationResult = {
@@ -99,29 +117,20 @@ export const validateTargetConfig = (
   }
 
   if (hasIpRanges) {
+    const invalidRange = ipRanges.find((r) => net.isIP(r.split("/")[0]) === 0);
+    if (invalidRange) {
+      return {
+        valid: false,
+        error: `'${invalidRange}' is not a valid IP address or CIDR range. Add hostnames as domains instead.`
+      };
+    }
+
     const cidrRanges = ipRanges.filter((r) => r.includes("/"));
     const singleIps = ipRanges.filter((r) => !r.includes("/"));
 
-    if (shouldBlockPrivateIps(!!hasGateway)) {
-      const appCfg = getConfig();
-      const selfHostedHint = appCfg.isCloud
-        ? ""
-        : " If you are self-hosting, you can alternatively set the 'ALLOW_INTERNAL_IP_CONNECTIONS' environment variable to 'true' on your instance to scan private networks without a gateway.";
-
-      const privateIp = singleIps.find((ip) => isPrivateIp(ip));
-      if (privateIp) {
-        return {
-          valid: false,
-          error: `Private/internal IP addresses require a gateway. Use a gateway to scan private networks.${selfHostedHint}`
-        };
-      }
-      const privateCidr = cidrRanges.find((cidr) => isPrivateIp(cidr.split("/")[0]));
-      if (privateCidr) {
-        return {
-          valid: false,
-          error: `Private/internal CIDR ranges require a gateway. Use a gateway to scan private networks.${selfHostedHint}`
-        };
-      }
+    const privateIpRangeError = getPrivateIpRangeError(ipRanges, !!hasGateway);
+    if (privateIpRangeError) {
+      return { valid: false, error: privateIpRangeError };
     }
 
     let totalIpCount = singleIps.length;
@@ -131,7 +140,16 @@ export const validateTargetConfig = (
       if (!prefixMatch) {
         return { valid: false, error: `Invalid CIDR notation: ${cidr}` };
       }
+      if (!net.isIPv4(cidr.split("/")[0])) {
+        return {
+          valid: false,
+          error: `IPv6 CIDR ranges are not supported: '${cidr}'. Enter individual IPv6 addresses instead.`
+        };
+      }
       const prefix = parseInt(prefixMatch[1], 10);
+      if (prefix > 32) {
+        return { valid: false, error: `Invalid CIDR notation: ${cidr}` };
+      }
       if (prefix < MIN_CIDR_PREFIX) {
         return {
           valid: false,
@@ -295,7 +313,7 @@ const getNameField = (name: x509.Name, field: string) => name.getField(field).jo
 export const parseCertificateDer = (derBuffer: Buffer): TScanCertificateResult | null => {
   try {
     const nodeCert = new crypto.X509Certificate(derBuffer);
-    const x509Cert = new x509.X509Certificate(derBuffer);
+    const x509Cert = new x509.X509Certificate(asNonSharedBuffer(derBuffer));
 
     const altNames = nodeCert.subjectAltName
       ?.split(", ")
@@ -617,7 +635,9 @@ export const resolveTargets = async (
 
   if (targetConfig.ipRanges) {
     for (const range of targetConfig.ipRanges) {
-      const ips = expandCIDR(range);
+      // expandCIDR returns its input unchanged when it can't parse it, and the TLS connect would resolve that as a hostname.
+      const expandedIps = expandCIDR(range).filter((ip) => net.isIP(ip) !== 0);
+      const ips = blockPrivate ? expandedIps.filter((ip) => !isPrivateIp(ip)) : expandedIps;
 
       for (const ip of ips) {
         for (const port of ports) {

@@ -11,14 +11,15 @@ import {
 } from "@app/db/schemas";
 import { ProjectPermissionSecretActions } from "@app/ee/services/permission/project-permission";
 import { OrderByDirection, TGenericPermission, TProjectPermission } from "@app/lib/types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
-import { TSecretDALFactory } from "@app/services/secret/secret-dal";
-import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
-import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { TSecretDALFactory } from "@app/services/secret/secret-dal";
+import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
+import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
 
 import { ActorType } from "../auth/auth-type";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
@@ -253,6 +254,8 @@ export type TGetSecretsRawDTO = {
   excludeRotatedSecrets?: boolean;
   ifNoneMatch?: string;
   abortSignal?: AbortSignal;
+  // Called with each secret in the project a reference resolved to, a personal override included.
+  onSecretReferenced?: (secretId: string) => void;
 } & TProjectPermission;
 
 export type TGetSecretAccessListDTO = {
@@ -273,6 +276,8 @@ export type TGetASecretRawDTO = {
   includeImports?: boolean;
   version?: number;
   projectId: string;
+  // Called with each secret in the project a reference resolved to, a personal override included.
+  onSecretReferenced?: (secretId: string) => void;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetASecretByIdRawDTO = {
@@ -483,6 +488,7 @@ export type TCreateManySecretsRawFnFactory = {
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
 };
 
 export type TCreateManySecretsRawFn = {
@@ -521,6 +527,7 @@ export type TUpdateManySecretsRawFnFactory = {
   secretVersionTagV2BridgeDAL: Pick<TSecretVersionV2TagDALFactory, "insertMany">;
   resourceMetadataDAL: Pick<TResourceMetadataDALFactory, "insertMany" | "delete">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
 };
 
 export type TUpdateManySecretsRawFn = {
@@ -614,7 +621,7 @@ export type TProcessNewCommitRawDTO = {
   folders: {
     create?: { folderName: string; description?: string }[];
     update?: { folderName: string; description?: string | null; id: string }[];
-    delete?: { folderName: string; id: string }[];
+    delete?: { folderName?: string; id: string }[];
   };
 };
 

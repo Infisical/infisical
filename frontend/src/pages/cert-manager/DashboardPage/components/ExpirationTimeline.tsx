@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "@tanstack/react-router";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 
 import {
@@ -17,10 +18,12 @@ import {
 import type { TExpirationBucket } from "@app/hooks/api/certificates";
 
 import { CHART_COLORS_HEX, formatShare } from "./chart-theme";
+import type { InventoryFilters, InventoryLink } from "./inventory-link";
 
 type Props = {
   buckets: TExpirationBucket[];
-  onNavigate: (filters: Record<string, string | undefined>) => void;
+  getLink: (filters: InventoryFilters) => InventoryLink;
+  onNavigate: (filters: InventoryFilters) => void;
 };
 
 const DONUT_SEGMENTS = [
@@ -41,7 +44,7 @@ const DONUT_SEGMENTS = [
   }
 ];
 
-export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
+export const ExpirationTimeline = ({ buckets, getLink, onNavigate }: Props) => {
   const bucketMap = useMemo(() => {
     const map = new Map<string, number>();
     buckets.forEach((b) => map.set(b.bucket, b.count));
@@ -134,13 +137,10 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
                 {chartData.map((item) => {
                   const pct = formatShare(item.count, total);
                   return (
-                    <button
+                    <Link
                       key={item.label}
-                      type="button"
+                      {...getLink(item.filter)}
                       className="flex w-full cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs transition-colors hover:bg-foreground/5"
-                      onClick={() => {
-                        if (item.filter) onNavigate(item.filter);
-                      }}
                     >
                       <span
                         className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -160,7 +160,7 @@ export const ExpirationTimeline = ({ buckets, onNavigate }: Props) => {
                       <span className="shrink-0 text-right font-medium text-foreground">
                         {item.count}
                       </span>
-                    </button>
+                    </Link>
                   );
                 })}
               </div>

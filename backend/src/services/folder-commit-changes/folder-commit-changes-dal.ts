@@ -172,15 +172,13 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
 
       return docs
         .filter((doc) => doc.secretKey && doc.secretVersion !== null && doc.secretId)
-        .map(
-          (doc): SecretCommitChange => ({
-            ...doc,
-            resourceType: "secret",
-            secretKey: doc.secretKey,
-            secretVersion: doc.secretVersion.toString(),
-            secretId: doc.secretId
-          })
-        );
+        .map((doc): SecretCommitChange => ({
+          ...doc,
+          resourceType: "secret",
+          secretKey: doc.secretKey,
+          secretVersion: doc.secretVersion.toString(),
+          secretId: doc.secretId
+        }));
     } catch (error) {
       throw new DatabaseError({ error, name: "FindBySecretVersionId" });
     }
@@ -213,15 +211,13 @@ export const folderCommitChangesDALFactory = (db: TDbClient) => {
 
       return docs
         .filter((doc) => doc.folderName && doc.folderVersion !== null && doc.folderChangeId)
-        .map(
-          (doc): FolderCommitChange => ({
-            ...doc,
-            resourceType: "folder",
-            folderName: doc.folderName,
-            folderVersion: doc.folderVersion!.toString(),
-            folderChangeId: doc.folderChangeId
-          })
-        );
+        .map((doc): FolderCommitChange => ({
+          ...doc,
+          resourceType: "folder",
+          folderName: doc.folderName,
+          folderVersion: doc.folderVersion!.toString(),
+          folderChangeId: doc.folderChangeId
+        }));
     } catch (error) {
       throw new DatabaseError({ error, name: "FindByFolderVersionId" });
     }

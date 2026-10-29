@@ -69,6 +69,7 @@ export enum ApiDocsTags {
   Integrations = "Integrations",
   ServiceTokens = "Service Tokens",
   AuditLogs = "Audit Logs",
+  Alerting = "Alerting",
   PkiCertificateAuthorities = "PKI Certificate Authorities",
   PkiCertificates = "PKI Certificates",
   PkiCertificatePolicies = "PKI Certificate Policies",
@@ -877,6 +878,16 @@ export const ORGANIZATIONS = {
   LIST_USER_MEMBERSHIPS: {
     organizationId: "The ID of the organization to get memberships from."
   },
+  LIST_USER_ACCESS: {
+    organizationId: "The ID of the organization to list user access for.",
+    user: "The user who can reach the organization.",
+    membership:
+      "The user's direct organization membership, or null when they only reach the organization through groups.",
+    groups: "The groups holding an organization membership that the user belongs to.",
+    groupRoles: "The group's active organization roles, permanent roles first. Expired temporary roles are left out.",
+    groupRole: "The role slug, or 'custom' when it is a custom role.",
+    groupRoleId: "The ID of the custom role, or null for a built-in role."
+  },
   GET_USER_MEMBERSHIP: {
     organizationId: "The ID of the organization to get the membership for.",
     membershipId: "The ID of the membership to get."
@@ -946,6 +957,79 @@ export const INSIGHTS = {
       "A relative score used to rank projects by the severity of their outstanding issues. The scoring heuristic may change over time.",
     totalProjects: "The total number of secret management projects in the organization.",
     projectsWithIssues: "The number of secret management projects in the organization with at least one issue."
+  },
+  GET_UNUSED_ACCESS: {
+    projectId: "The ID of the project to list unused access for.",
+    offset: "The number of actors to skip before returning results.",
+    limit: "The maximum number of actors to return per page.",
+    search: "Only actors whose name contains this text, ignoring case.",
+    actors:
+      "The users and machine identities that can read secrets they have not read in the last 30 days, those with the most such secrets first. Project admins are left out: they can read everything by design. Empty until unusedAccessFrom.",
+    actorType: "Whether the actor is a user or a machine identity.",
+    actorId: "The ID of the user or machine identity.",
+    name: "The username of the user, or the name of the machine identity.",
+    accessibleSecretCount: "How many secrets the actor can read the value of today.",
+    unusedSecretCount:
+      "How many of those it has not read, or an import or reference of, in the last 30 days. A secret only counts once it and the actor's access are both older than that.",
+    environments: "The slugs of the environments holding the unread secrets.",
+    accessPaths: "How the actor has its access to the project's secrets.",
+    roles: "The project roles the actor holds directly, not through a group.",
+    roleId: "The ID of the custom role. Null for a built-in role.",
+    roleSlug: "The slug of the built-in role, or 'custom' for a custom role.",
+    roleName: "The name of the role.",
+    groups: "The groups the actor belongs to that are members of the project.",
+    groupId: "The ID of the group.",
+    groupName: "The name of the group.",
+    groupRoles: "The project roles the group gives its members.",
+    additionalPrivileges:
+      "The project-wide additional privileges the actor holds. Access granted on a folder is listed under folderAccess instead.",
+    additionalPrivilegeId: "The ID of the additional privilege.",
+    additionalPrivilegeName: "The name of the additional privilege.",
+    folderAccess:
+      "The folder access the actor has been granted directly on folders, active grants only. It applies whether the actor is a direct member or reaches the project through a group.",
+    folderAccessId: "The ID of the folder access grant.",
+    folderId: "The ID of the folder.",
+    folderEnvironment: "The slug of the environment the folder is in.",
+    folderSecretPath: "The path of the folder.",
+    folderRole: "The access level granted on the folder: list, read, edit, manage or full-access.",
+    totalCount: "The number of actors the caller can page through.",
+    unusedAccessFrom:
+      "When unused access starts being judged for the project: 30 days after reads started being tracked for it. Nothing is listed before then, since reads from before tracking began are unknown. Results are recomputed once a day."
+  },
+  GET_UNUSED_ACCESS_ACTOR: {
+    projectId: "The ID of the project.",
+    actorType: "Whether the actor is a user or a machine identity.",
+    actorId: "The ID of the user or machine identity.",
+    secrets:
+      "The secrets the actor can read but has not read in the last 30 days, ordered by environment and path. The list can be shorter than the actor's unusedSecretCount: it holds at most 200, only those the caller can see, and none deleted since the results were computed.",
+    secretKey: "The key of the secret.",
+    environment: "The slug of the environment the secret is in.",
+    secretPath: "The path of the folder the secret is in."
+  },
+  GET_SECRET_READ_ACTIVITY: {
+    projectId: "The ID of the project where the secret is located.",
+    secretName: "The name of the secret.",
+    environment: "The slug of the environment where the secret is located.",
+    secretPath: "The folder path where the secret is located.",
+    readsTrackedSince:
+      "Reads are reported from this date: the latest of 30 days ago, when reads started being tracked for the project, and when the secret and its folder were created.",
+    unusedAccessFrom:
+      "When unused access starts being judged for the project: 30 days after reads started being tracked for it. Before then no actor counts as unused access.",
+    actors:
+      "One entry for each user or machine identity that can read the secret's value today, directly or through a group, ordered by name. Project admins are included so their reads show.",
+    actorType: "Whether the actor is a user or a machine identity.",
+    actorId: "The ID of the user or machine identity.",
+    name: "The username of the user, or the name of the machine identity.",
+    isProjectAdmin:
+      "Whether the actor is a project admin, directly or through a group. Admins can read everything by design, so they never count as unused access.",
+    lastReadAt:
+      "When the actor last read the secret, or an import or reference of it, since readsTrackedSince, as the first read of that day. Null when they have not.",
+    accessSince:
+      "When the actor got access to this secret: the oldest of their roles, groups, privileges and folder grants that gives it on its own, from when it was last created or changed. An edit to a custom role's rules counts for every secret the role gives, since which secrets an edit opened is not recorded.",
+    readStatus:
+      "read: the actor read the secret since readsTrackedSince. unused: no read, and the secret and their access are both older than 30 days, so it counts as unused access. not-judged: no read, but it does not count yet; notJudgedReason says why.",
+    notJudgedReason:
+      "Why an actor without a read is not counted as unused access. project-admin: admins are never counted. tracking-too-new: reads have been tracked for less than 30 days, until unusedAccessFrom. access-too-new: they got access to the secret in the last 30 days. secret-too-new: the secret is newer than 30 days. Null unless readStatus is not-judged."
   },
   GET_SECRETS_ACCESS_VOLUME: {
     days: "One entry for each of the last seven days, oldest first. Days with no secret access are included with a total of zero.",
@@ -1156,6 +1240,10 @@ export const PROJECT_USERS = {
     usernames: "A list of usernames to invite to the project.",
     roleSlugs:
       "A list of role slugs to assign to the newly created project membership. If nothing is provided, it will default to the Member role."
+  },
+  LIST_AVAILABLE_USERS: {
+    projectId:
+      "The ID of the project to list available users for. Includes users who reach the project's organization through a group."
   },
   REMOVE_MEMBER: {
     projectId: "The ID of the project to remove the member from.",
@@ -2467,7 +2555,7 @@ export const ALERTING = {
   GET: {
     alertId: "The ID of the alert to get.",
     filters:
-      "The resources named in the alert's condition, such as applications and certificate profiles, each as `{ id, name }`. `name` is null for a deleted resource."
+      "The resources named in the alert's condition, such as applications, certificate profiles, and signers, each as `{ id, name }`. `name` is null for a deleted resource."
   },
   UPDATE: {
     alertId: "The ID of the alert to update.",
@@ -3070,6 +3158,11 @@ export const AppConnections = {
       apiToken: "The API Token used to access Zabbix.",
       instanceUrl: "The Zabbix instance URL to connect with."
     },
+    SERVICENOW: {
+      instanceUrl: "The base URL of the ServiceNow instance to connect with, without a path or trailing slash.",
+      username: "The User ID of the ServiceNow integration user.",
+      password: "The password of the ServiceNow integration user."
+    },
     RAILWAY: {
       apiToken: "The API token used to authenticate with Railway."
     },
@@ -3153,6 +3246,16 @@ export const AppConnections = {
       sslRejectUnauthorized:
         "Whether or not to reject untrusted SSL certificates (true/false). Set to false for iLO interfaces using self-signed certificates.",
       sslCertificate: "The CA certificate (PEM format) used to verify the iLO interface's TLS certificate."
+    },
+    JIRA: {
+      instanceUrl:
+        "The URL of your Jira site (e.g., 'https://your-domain.atlassian.net' for Jira Cloud or 'https://jira.example.com' for Jira Data Center).",
+      email: "The email address of the Atlassian account that owns the API token.",
+      apiToken: "The Atlassian API token used to authenticate with Jira Cloud.",
+      personalAccessToken: "The personal access token used to authenticate with Jira Data Center.",
+      sslRejectUnauthorized:
+        "Whether or not to reject untrusted SSL certificates (true/false). Set to false for Jira Data Center sites using self-signed certificates.",
+      sslCertificate: "The CA certificate (PEM format) used to verify the Jira Data Center site's TLS certificate."
     },
     DBT: {
       apiToken: "The API token used to authenticate with DBT.",
@@ -3334,7 +3437,7 @@ export const SecretSyncs = {
     },
     CLOUDFLARE_WORKERS: {
       syncNonSecretBindings:
-        "Whether Infisical should also sync plaintext and JSON variable bindings in addition to secret bindings."
+        "Whether Infisical should also sync plaintext and JSON variable bindings in addition to secret bindings. Only applies when variableType is secret_text or omitted."
     },
     SPACELIFT: {
       writeOnly:
@@ -3520,10 +3623,14 @@ export const SecretSyncs = {
     },
     CLOUDFLARE_PAGES: {
       projectName: "The name of the Cloudflare Pages project to sync secrets to.",
-      environment: "The environment of the Cloudflare Pages project to sync secrets to."
+      environment: "The environment of the Cloudflare Pages project to sync secrets to.",
+      variableType:
+        "The type of environment variable to sync secrets as: secret_text (default) or plain_text. If a secret already exists in the environment as the other type, the sync fails and nothing is changed. Syncs created before this option existed have no type and skip those secrets instead. Infisical only deletes variables of this type."
     },
     CLOUDFLARE_WORKERS: {
-      scriptId: "The ID of the Cloudflare Workers script to sync secrets to."
+      scriptId: "The ID of the Cloudflare Workers script to sync secrets to.",
+      variableType:
+        "The type of variable to sync secrets as: secret_text (default), plain_text or json. If a secret already exists on the Worker as a different type, the sync fails and nothing is changed, except that with syncNonSecretBindings on, a secret_text sync updates existing plaintext and JSON variables as they are. Syncs created before this option existed have no type and skip those secrets instead. Infisical only deletes variables of this type."
     },
     CLOUDFLARE_SECRETS_STORE: {
       storeId: "The ID of the Cloudflare Secrets Store to sync secrets to.",
@@ -4484,11 +4591,41 @@ export const AGENT_VAULT = {
     search: "Match access bundles by name or description.",
     limit: "The maximum number of access bundles to return.",
     offset: "How many access bundles to skip.",
-    hostPatterns: "Every host pattern the access bundle's services cover."
+    hostPatterns: "Every host pattern the access bundle's services cover.",
+    requiresSetup:
+      "true lists only the access bundles you can reach that have services still requiring your personal values. false lists the rest of them. Omit to list them all.",
+    granted:
+      "true lists only the access bundles granted to you, directly or through a group. false lists the ones you reach only as an admin. Omit to list them all.",
+    servicesRequiringSetup: "The services in this access bundle that still require your personal values.",
+    servicesRequiringSetupId: "The ID of the service, for setting your personal values on it.",
+    servicesRequiringSetupName: "The name of the service."
   },
   SERVICE: {
     serviceId: "The ID of the service.",
     name: "The name of the service.",
+    type: "The service type: `http` for an HTTP API, or `mcp` for a remote MCP server. Can't be changed after the service is created.",
+    updateType: "The service's type, `http` or `mcp`. Must match the type the service was created with.",
+    serverUrlRead: "The MCP server's full URL. Null for an `http` service.",
+    transportRead:
+      "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport. Null for an `http` service.",
+    serverUrl:
+      "The MCP server's URL, such as `https://mcp.example.com/mcp`. Must use `https`, with no username, password, query string or fragment.",
+    transport: "How the agent talks to the MCP server: `streamable-http`, or `sse` for the legacy HTTP+SSE transport.",
+    mcpCredential:
+      "The credential the proxy attaches to requests to the MCP server, a bearer token. To use OAuth instead, connect the service in the Infisical UI.",
+    authorizationId:
+      "The ID of a completed OAuth authorization for this service's server URL, started by the same user. Each authorization can be used once.",
+    updateAuthorizationId:
+      "The ID of a completed OAuth authorization, to reauthorize the service or switch it to OAuth. To keep the stored tokens, leave `credential` out.",
+    oauthStatus:
+      "Whether the OAuth connection works: `connected`, `needs-reauthorization` (the tokens can no longer be refreshed), or `needs-additional-scopes` (the MCP server asked for scopes the connection lacks).",
+    oauthIssuer: "The OAuth authorization server that issued the tokens.",
+    oauthGrantedScopes: "The scopes the authorization server granted.",
+    oauthRequiredScopes: "Scopes the MCP server asked for that the connection lacks. Reauthorize to request them.",
+    oauthExpiresAt:
+      "When the current access token expires, or null if the server didn't say. Not returned to Agent Vault members.",
+    oauthAuthorizedAt: "When the connection was last authorized. Not returned to Agent Vault members.",
+    oauthLastError: "The last refresh failure, if any. Never contains a token. Not returned to Agent Vault members.",
     hostPattern:
       "A comma-separated set of hosts this service covers, each optionally with a port (defaults to `443`). A leading `*.` wildcard matches exactly one label. Paths are not supported.",
     headerName: "The header the credential is written to. Defaults to `Authorization`.",
@@ -4526,27 +4663,93 @@ export const AGENT_VAULT = {
     substitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Never returned once saved.`,
     updateSubstitutionValue: `The real value the placeholder is replaced with. ${AGENT_VAULT_VARIABLE_REFERENCES} Omit to keep the value already stored.`,
     variableReferences:
-      "The variables this service's credential, custom header values and substitution values use. Not returned to Agent Vault members, since only admins can see variables.",
+      "The global variables this service's credential, custom header values and substitution values use. Not returned to Agent Vault members, since only admins can see global variables. A member's own personal variables are listed under personalValues.",
     referenceField:
       "Which value uses the variable: credential-value (a bearer token or a basic password), credential-username, custom-header or substitution.",
     referenceCustomHeaderId: "The custom header whose value uses the variable.",
-    referenceSubstitutionId: "The substitution whose value uses the variable."
+    referenceSubstitutionId: "The substitution whose value uses the variable.",
+    bearerMemberProvidedFields:
+      "Leave the token to each member: send `credential-value` here and no `value`. Every member sets their own, and a session uses the token of whoever it belongs to. Omit on update to keep the current setting; send an empty list to set the token yourself again, which then needs a `value`. Changing this clears every member's saved values for the service.",
+    basicMemberProvidedFields:
+      "The halves of the basic credential each member sets for themselves: `credential-username`, `credential-value` (the password) or both. Send no value for a half listed here. A session uses the values of whoever it belongs to. Omit on update to keep the current setting. Adding a half keeps what members saved, and taking one back deletes only that half's values. Changing the credential type deletes every member's values for the service.",
+    memberProvidedFields:
+      "The credential fields each member sets for themselves: credential-value (a bearer token or a basic password) and credential-username. Empty when the admin sets the whole credential."
+  },
+  PERSONAL_VALUE: {
+    credentialType:
+      "The credential type you expect the service to have. If it no longer matches, the request fails with a 409.",
+    personalValues:
+      "Your personal values for the service, or null if the service leaves no fields to its members. Only you can see these, and a stored value never comes back.",
+    isConfigured:
+      "Whether you have set every value this service requires from you. Until you do, the proxy refuses this service's requests from your sessions.",
+    fields: "Each value the service requires from you, and whether you have set it.",
+    field:
+      "Which value: credential-value (a bearer token or a basic password) or credential-username (a basic username).",
+    isSet: "Whether you have set this value.",
+    updatedAt: "When you last set this value, or null if you haven't.",
+    variableReferences: "Your personal variables that this value uses.",
+    values:
+      "The values to set, at most one per field the service leaves to its members. A field you leave out keeps its saved value, so after a field becomes member provided you only need to send that one.",
+    value: `The value. Can use up to ${AGENT_VAULT_MAX_REFERENCES_PER_FIELD} references to your personal variables, written as \`{{KEY}}\`. Never returned once saved.`
+  },
+  OAUTH: {
+    authorization: "The OAuth authorization, or null when an OAuth client must be registered first.",
+    authorizationId: "The ID of the OAuth authorization.",
+    accessBundleId: "The access bundle the service is in, or will be created in.",
+    serverUrl: "The MCP server's URL. Must match the server URL of the service the authorization is saved to.",
+    serviceId:
+      "The ID of the MCP service to reauthorize. Leave it out when connecting a new service. When set, the sign-in asks for the scopes the service already has, and can only be saved to that service.",
+    clientId:
+      "The client ID of your own OAuth app, for a server that doesn't support dynamic client registration. Register the app with the redirect URI `<your Infisical URL>/agent-vault/oauth/callback`.",
+    clientSecret: "The client secret of your own OAuth app, if it has one.",
+    registration:
+      "Send `dynamic` to register a new client with the server, even when the service being reauthorized uses your own OAuth app.",
+    registrationRequired:
+      "True when the server can't register Infisical as a client by itself, or refused to. Send `clientId` (and `clientSecret`) of your own OAuth app.",
+    redirectUri:
+      "The redirect URI Infisical sends to the authorization server. Register your own OAuth app with this exact value.",
+    oauthAdvertised:
+      "False when the MCP server answered but sent no OAuth challenge and serves no OAuth metadata. The server URL may be wrong; a server that does use OAuth can still be connected with your own client ID and secret.",
+    status: "`pending` until the authorization server redirects back, then `authorized` or `failed`.",
+    error: "Why the authorization failed, when it did.",
+    scopes: "The scopes requested, or once authorized, the scopes granted.",
+    authorizeUrl: "Open this URL in the browser to sign in to the authorization server.",
+    state: "The `state` value from the redirect.",
+    code: "The `code` value from the redirect.",
+    iss: "The `iss` value from the redirect, when the authorization server sends one.",
+    callbackError: "The `error` value from the redirect, when the authorization server sends one instead of a code.",
+    callbackErrorDescription: "The `error_description` value from the redirect."
+  },
+  CREDENTIAL_REFRESH: {
+    hostPattern: "The host pattern cached by the proxy for this service. A changed pattern returns 409.",
+    rejectedTokenHash: "The hex SHA-256 hash of the access token the MCP server rejected.",
+    requiredScopes: "The scopes requested by an insufficient_scope challenge from the MCP server.",
+    credential: "The current bearer credential for the service.",
+    credentialType: "The credential shape the proxy injects into requests.",
+    value: "The access token to attach to requests. Never expose it to the agent.",
+    source: "Set to oauth when the proxy can request an OAuth token refresh."
   },
   VARIABLE: {
     variableId: "The ID of the variable.",
-    key: "The name services use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
+    scope:
+      "global for a variable admins set up for services, or personal for one of your own, which only your personal values can use and only you can see. Personal keys are unique among your own variables.",
+    listScope:
+      "Which variables to list: global, which needs the admin role, or personal for your own. Omit to list everything you can see: your own personal variables, plus the global ones if you're an admin. Nobody can list another member's personal variables.",
+    createScope:
+      "global creates a variable services can use, which needs the admin role. personal creates one of your own, which only your personal values can use.",
+    key: "The name values use to refer to the variable, as `{{KEY}}`. Starts with a letter and uses only upper case letters, numbers and underscores.",
     value: "The value the proxy puts in place of each `{{KEY}}`.",
     updateValue: "The value the proxy puts in place of each `{{KEY}}`. Omit to keep the stored value.",
     revealedValue: "The variable's value.",
     orderBy: "What to sort variables by: key, or serviceCount for how many services use each one.",
     orderDirection: "Which way to sort: asc or desc.",
     search: "Match variables whose key contains this text.",
-    keys: "Return only the variables with these exact keys, comma-separated. Every one that exists is returned unless limit is set.",
+    keys: "Return only the variables with these exact keys, comma-separated. Every one that exists is returned unless limit is set. Requires scope, since a key can name both a global variable and one of your own.",
     limit: "The maximum number of variables to return. Defaults to 20, or to the number of keys when keys is given.",
     offset: "How many variables to skip.",
     totalCount: "How many variables match the search, across every page.",
     usedByServices:
-      "The services that use this variable, across every access bundle, ordered by access bundle name and then service name. A variable in use can't be deleted.",
+      "The services that use this variable, across every access bundle, ordered by access bundle name and then service name. For a personal variable, the services whose personal values, as you set them, use it. A variable in use can't be deleted.",
     usedByServiceId: "The ID of a service that uses this variable.",
     usedByServiceName: "The name of the service.",
     usedByServiceHostPattern: "The host pattern of the service.",
@@ -4623,9 +4826,14 @@ export const AGENT_VAULT = {
     offset: "How many proxies to skip.",
     heartbeat: "When the proxy last checked in, or `null` if it never has.",
     isHealthy: "Whether the proxy has checked in recently enough to be considered up.",
-    enrollmentToken: "A one-time token the proxy enrolls with. Shown once, and valid for one hour.",
-    rootCaCertificate:
-      "The proxy's own certificate authority, in PEM form. Sent once at enrollment so Infisical can check it is a real certificate authority and record its fingerprint; the certificate itself is not stored.",
+    proxyToken:
+      "The token the proxy starts with, on as many machines as you need. Shown once, and works until it is rotated or the proxy's access is revoked.",
+    rootCa:
+      "The certificate authority Infisical keeps for this proxy: a PEM certificate and its PKCS#8 PEM private key.",
+    rootCaCertificatePem: "The certificate authority's certificate, in PEM form.",
+    rootCaPrivateKey: "The certificate authority's private key, in PKCS#8 PEM form.",
+    servedCaCertificate:
+      "The certificate authority the proxy serves, in PEM form, when it uses its own instead of Infisical's. Infisical records its fingerprint and returns no `rootCa`.",
     rootCaFingerprint:
       "The SHA-256 fingerprint of the proxy's certificate authority. Pin this if you want to verify the proxy an agent connects to.",
     rootCaExpiresAt: "When the proxy's certificate authority expires.",
@@ -4644,6 +4852,7 @@ export const AGENT_VAULT = {
     ciphertextBytes: "The size of the encrypted chunk in bytes.",
     ciphertextSha256:
       "The SHA-256 digest of the encrypted chunk, including its IV, as base64 without padding. The bucket refuses an upload with a different digest.",
+    recordCount: "The number of requests recorded in the chunk.",
     legacyIv:
       "Sent only by Infisical CLI versions that can't record session logs. A request that includes it is refused.",
     uploadUrl:
@@ -4663,13 +4872,19 @@ export const AGENT_VAULT = {
     from: "Return only chunks with records at or after this time. A chunk can also hold earlier records, so filter records by `ts`.",
     to: "Return only chunks with records at or before this time. A chunk can also hold later records, so filter records by `ts`.",
     enabled: "Whether session logs are on.",
-    configEnabled: "Whether session logs are on. Turning them off stops recording but keeps what's already recorded.",
+    configEnabled: "Whether session logs are on. Turning them off hides recorded logs.",
+    disabledReason:
+      "Why no logs are returned: `off` when session logs are off, `not-on-plan` when the plan doesn't include the storage they use. Null when logs are returned.",
+    storageType: "Where this session's logs are read from: `default` or `external`. Null when session logs are off.",
+    storage:
+      "Where session logs are stored: `default`, stored by Infisical, or `external`, an S3 bucket you own. Required when turning session logs on.",
+    defaultStorageConfigured: "Whether default storage is available. Using it also needs a plan that includes it.",
     appConnectionId: "The ID of the AWS connection Infisical uses to write to and read from the bucket.",
     bucket:
       "The name of the S3 bucket. 3 to 63 characters: lowercase letters, numbers, dots and hyphens, starting and ending with a letter or number.",
     region: "The AWS region of the bucket.",
     keyPrefix:
-      "The folder in the bucket to store session logs in, such as `logs/agent-vault`. Up to 512 characters: letters, numbers and `! - _ . ' ( ) /`, with no slash at the start or end, no empty folder name, and no folder named `.` or `..`.",
+      "The folder in the bucket to store session logs in, such as `logs/agent-vault`. Up to 256 characters: letters, numbers and `! - _ . ' ( ) /`, with no slash at the start or end, no empty folder name, and no folder named `.` or `..`.",
     corsProbeUrl: "A URL that fails to load in a browser if the bucket's CORS rule doesn't allow Infisical.",
     connectionError:
       "The error Infisical got when it tried to use the AWS connection, for example because AWS refused to let it assume the role. Null if there's no error or no connection.",
@@ -4682,12 +4897,16 @@ export const AGENT_VAULT = {
     sessionId: "The ID of the session.",
     accessBundles: "The access bundle this session carries, by name. A list that accepts exactly one name.",
     ttl: "How long the session lasts: a duration such as 30m, 8h or 7d (at least 1m), or never. Defaults to 7d.",
+    label:
+      "A short description of what the session is for, such as `nightly deploy` or `support ticket triage`. Up to 128 characters, without line breaks, tabs, or invisible characters. Shown wherever the session is listed.",
+    updateLabel:
+      "The new label for the session, up to 128 characters, without line breaks, tabs, or invisible characters. Send null or an empty string to remove the label. You can't change the label once the session's owner is deleted.",
     token: "The session token. Returned once, at mint, and never again.",
     expiresAt: "When the session expires, or null when it never does.",
     scope: "Whose sessions to list: your own (mine) or everyone's (all, administrators only).",
     status:
       "Filter by session status: `active`, `revoked` or `expired`. Separate several with commas to match any of them.",
-    search: "Match sessions by actor name, actor email or access bundle name.",
+    search: "Match sessions by label, actor name, actor email or access bundle name.",
     limit: "The maximum number of sessions to return.",
     offset: "How many sessions to skip.",
     actorType: "Whether the session belongs to a user or a machine identity.",
@@ -4730,4 +4949,36 @@ export const PKI_SYNC_FILTERS = {
   previewApplicationId: "Preview the filters against this Application, for a PKI Sync that does not exist yet.",
   previewOffset: "The offset to start from. If you enter 10, it will start from the 10th matching certificate.",
   previewLimit: "The number of matching certificates to return."
+};
+
+export const APPROVAL_POLICY_AUTO_APPROVAL = {
+  autoApproval:
+    "Rules that approve a request instantly when another system already vouches for it. Sending this replaces the policy's inputs and rules; omit it to leave them unchanged.",
+  inputs:
+    "Request form fields: records requesters can link when they submit, such as a Jira ticket. Each one adds an optional field to the request form.",
+  inputConnectionId: "The ID of the App Connection the record is read through.",
+  inputSubject:
+    "What the requester links, from the connection's subjects in the auto-approval catalog (e.g. 'submitted-ticket').",
+  rules: "The rules a request is checked against on submission. Any passing rule approves it; a rule never rejects.",
+  ruleName: "A name that tells approvers why the rule approved a request.",
+  conditions: "Every condition in a rule must pass for the rule to approve.",
+  conditionConnectionId:
+    "The ID of the App Connection the condition reads, matching one of the inputs, or any available connection when the subject is 'requester'.",
+  conditionSubject:
+    "What the condition checks: one of the inputs' subjects, or 'requester' for the requester's own account.",
+  constraint: "Which check to run, from the subject's constraints in the auto-approval catalog (e.g. 'status').",
+  values: "The values the check accepts. Several values mean any of them; checks that take no value use an empty list.",
+  requestInputs:
+    "Values for the policy's request form fields, such as a Jira ticket key or link. Malformed values are rejected.",
+  requestInputValue: "The value the requester entered, such as 'PAY-123' or a link to the ticket.",
+  outcome:
+    "How the policy's auto-approval rules evaluated this request at submission. Null when the policy had no rules or the resource does not allow auto-approval.",
+  catalogScope: "The scope of the policy the rules are for.",
+  catalogScopeId: "The ID of the scope.",
+  optionsConnectionId: "The ID of the App Connection to list values from.",
+  optionsSubject: "The subject the condition checks.",
+  optionsConstraint: "The check to list values for.",
+  optionsSearch: "Filters the values by this text.",
+  optionsSiblings:
+    "A JSON object of the values already picked in the rule's other conditions, keyed by constraint, which narrows the values listed (e.g. statuses for the picked projects)."
 };

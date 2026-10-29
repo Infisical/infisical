@@ -40,6 +40,33 @@ export const ExpiryFieldsSchema = z.object({
   dailyReminder: z.boolean().optional()
 });
 
+const MAX_CERTIFICATE_ALERT_FILTER_IDS = 100;
+
+export const filterIdsSchema = (field: string, noun: string) =>
+  z
+    .array(z.string().toLowerCase().uuid())
+    .min(1, `${field} must list at least one ${noun}. To cover them all, leave ${field} out.`)
+    .max(MAX_CERTIFICATE_ALERT_FILTER_IDS, `${field} can list at most ${MAX_CERTIFICATE_ALERT_FILTER_IDS} ${noun}s`)
+    .superRefine((ids, ctx) => {
+      const seen = new Set<string>();
+      const duplicates = new Set<string>();
+      ids.forEach((id) => {
+        if (seen.has(id)) duplicates.add(id);
+        seen.add(id);
+      });
+      if (duplicates.size) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${field} lists the same ID more than once: ${[...duplicates].map((id) => `'${id}'`).join(", ")}`
+        });
+      }
+    })
+    .optional();
+
+export const formatIds = (ids: string[]) => ids.map((id) => `'${id}'`).join(", ");
+
+export const toIdSet = (ids: string[] = []) => new Set(ids.map((id) => id.toLowerCase()));
+
 const DAILY_SCAN_DEDUP_MARGIN_HOURS = 4;
 
 const dayMultipleDedupWindowHours = (days: number): number => days * 24 - DAILY_SCAN_DEDUP_MARGIN_HOURS;

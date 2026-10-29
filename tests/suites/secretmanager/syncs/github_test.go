@@ -260,20 +260,19 @@ func TestGitHubSync_Create(t *testing.T) {
 		proj, conn, gh := setup(t)
 		secretmanager.CreateSecret(t, proj, "dev", "PRESENT", "1")
 		dependabot := api.CreateGitHubSecretSyncJSONBodyDestinationConfig2SecretTypeDependabot
-		body := syncBody(t, proj, conn, func(tt *testing.T) api.CreateGitHubSecretSyncJSONBody_DestinationConfig {
+		dest := func(tt *testing.T) api.CreateGitHubSecretSyncJSONBody_DestinationConfig {
 			var d api.CreateGitHubSecretSyncJSONBody_DestinationConfig
 			require.NoError(tt, d.FromCreateGitHubSecretSyncJSONBodyDestinationConfig2(
 				api.CreateGitHubSecretSyncJSONBodyDestinationConfig2{
 					Owner: "acme", Repo: "app", Env: "prod", Scope: "repository-environment", SecretType: &dependabot,
 				}))
 			return d
-		}, autoSync(true))
+		}
 
 		// Action
-		res, err := proj.Tenant().Admin.API.CreateGitHubSecretSyncWithResponse(t.Context(), body)
+		res := createSync(t, proj, conn, dest, autoSync(true))
 
 		// Assert
-		require.NoError(t, err)
 		require.Equalf(t, http.StatusUnprocessableEntity, res.StatusCode(), "%s", apierr.Body(res.Body))
 		require.Contains(t, string(res.Body), "Repository environment scope is only available for Actions secrets")
 		gh.ExpectNoEvent[github.SecretCreated](t, nil)

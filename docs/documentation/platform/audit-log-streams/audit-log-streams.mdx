@@ -406,11 +406,36 @@ Audit log delivery is decoupled from the action that produced the event. When so
 If a delivery attempt to your destination fails, the event is **not** discarded immediately. Instead:
 
 1. **Automatic retries with backoff.** The event is retried automatically up to **5 attempts**. Retries use exponential backoff with jitter (starting at 30 seconds and capping at roughly 4 minutes between attempts) so a struggling or rate-limiting destination isn't hammered.
-2. **Exhaustion.** If all 5 attempts fail, the event is dropped from the stream. The drop is surfaced for observability through logs and metrics.
+2. **Exhaustion.** If all 5 attempts fail, the event is dropped from the stream. Infisical marks the stream as failing and records the drop in logs and metrics. If you've set up a [delivery failure alert](#get-alerted-when-a-stream-starts-dropping-events), Infisical also notifies your team.
 
 <Note>
     Dropping an event from a **stream** after exhausting retries does **not** remove it from Infisical's own audit log storage. The event remains queryable in Infisical (see backfilling below) as long as audit log storage is enabled.
 </Note>
+
+### Get alerted when a stream starts dropping events
+
+A **Delivery Failure** alert notifies your team when any stream in your organization drops events after all retries. The alert covers every stream in the organization, and you can't scope it to one stream or project.
+
+Infisical sends one notification when a stream starts failing. Later drops on the same stream don't send another notification until the stream recovers. The stream recovers after a batch has at least one successful delivery and no delivery failures, or when you successfully update its credentials. While a stream is failing, the stream list shows a **Failing** badge next to it. Hover over the badge to see when the stream started failing and the last delivery error.
+
+Each notification names the stream's provider, the delivery error, how many events weren't delivered, and when the stream started failing.
+
+To create an alert, you need permission to edit organization settings.
+
+<Steps>
+    <Step>
+        Go to **Audit Logs**, select the **External Log Streams** tab, and select **Alerts** next to **Add Log Stream**. If alerts already exist, select **Add Alert** at the bottom of the list.
+    </Step>
+    <Step>
+        Enter a **Name** for the alert and select the **Delivery Failure** event.
+    </Step>
+    <Step>
+        Select **Add channel** and set up at least one [notification channel](/documentation/platform/identities/machine-identities#notification-channels).
+    </Step>
+    <Step>
+        Select **Create Alert**.
+    </Step>
+</Steps>
 
 ### Can I manually retry a failed event?
 
@@ -420,7 +445,7 @@ There is no manual "retry" or "replay" button so far, and retries aren't somethi
 
 Because streaming is best-effort with bounded retries, your durable source of truth for compliance is Infisical's own audit log storage, not the stream. To backfill events that were dropped (or that occurred while a stream was misconfigured or disabled), re-ingest them from Infisical's stored audit logs:
 
-1. **Identify the gap.** Use error logs (self-hosted), or the time range of the destination outage, to determine which window of events is missing from your SIEM.
+1. **Identify the gap.** Use the last confirmed delivery, error logs (self-hosted), or the time range of the destination outage to determine which window of events is missing from your SIEM. The failure time in a [delivery failure alert](#get-alerted-when-a-stream-starts-dropping-events) marks when retries ran out, not when the missing events occurred. If you use that timestamp, start the export window earlier to cover retries and queue delays.
 2. **Export the events from Infisical.** Query the missing window from Infisical's audit logs, filtered by event type, actor, project, and date range:
    - In the UI, under **Organization Settings → Audit Logs**.
    - Via the [Export Audit Logs API](/api-reference/endpoints/audit-logs/export-audit-log), which returns events in the same structure shown below and can be paginated over the affected time range.

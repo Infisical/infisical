@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import {
   Button,
   Card,
@@ -121,6 +122,7 @@ export const CloudflarePagesConfigurePage = () => {
     targetEnvironment &&
     targetApp ? (
     <div className="flex h-full w-full items-center justify-center bg-linear-to-tr from-surface-base to-page-deep">
+      <PageTitle title="Set Up Cloudflare Pages Integration" />
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Cloudflare Pages Integration</CardTitle>
@@ -239,6 +241,9 @@ export const CloudflarePagesConfigurePage = () => {
       </Card>
     </div>
   ) : (
-    <div />
+    <>
+      <PageTitle title="Set Up Cloudflare Pages Integration" />
+      <div />
+    </>
   );
 };

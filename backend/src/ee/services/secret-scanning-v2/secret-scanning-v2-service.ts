@@ -10,12 +10,6 @@ import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import {
-  createTempFolder,
-  deleteTempFolder,
-  scanContentAndGetFindings,
-  writeTextToFile
-} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { githubSecretScanningService } from "@app/ee/services/secret-scanning-v2/github/github-secret-scanning-service";
 import { GitLabDataSourceScope } from "@app/ee/services/secret-scanning-v2/gitlab/gitlab-secret-scanning-enums";
 import {
@@ -55,6 +49,12 @@ import {
   TUpdateSecretScanningFindingDTO,
   TUpsertSecretScanningConfigDTO
 } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
+import {
+  createTempFolder,
+  deleteTempFolder,
+  scanContentAndGetFindings,
+  writeTextToFile
+} from "@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, ConflictError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -1360,7 +1360,11 @@ export const secretScanningV2ServiceFactory = ({
       return secretScanningV2DAL.findings.findByIdWithDetails(findingId, tx);
     });
 
-    return { finding: updatedFinding as TSecretScanningFinding, projectId: finding.projectId };
+    return {
+      finding: updatedFinding as TSecretScanningFinding,
+      projectId: finding.projectId,
+      previousStatus: isStatusChange ? (finding.status as SecretScanningFindingStatus) : undefined
+    };
   };
 
   const findSecretScanningConfigByProjectId = async (projectId: string, actor: OrgServiceActor) => {

@@ -23,30 +23,31 @@ import { recordSsoConfigChangeMetric, SsoConfigAction, SsoProvider } from "@app/
 import { sanitizeEmail, validateEmail } from "@app/lib/validator/validate-email";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TAlertChannelRecipientDALFactory } from "@app/services/alert/alert-channel-recipient-dal";
-import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
-import { AuthMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
+import { TAuthLoginFactory } from "@app/services/auth/auth-login-service";
+import { AuthMethod } from "@app/services/auth/auth-type";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TIdentityMetadataDALFactory } from "@app/services/identity/identity-metadata-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TUsageMeteringServiceFactory } from "@app/services/license-client/usage";
-import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 import { LoginMethod } from "@app/services/super-admin/super-admin-types";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
-import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { ensureSsoAccountVerified, isStaleSsoAlias, syncSsoUserProfile } from "@app/services/user-alias/user-alias-fns";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TEmailDomainDALFactory } from "../email-domain/email-domain-dal";
 import { findOrgIdByVerifiedDomain, verifyEmailDomainOwnership } from "../email-domain/email-domain-fns";
@@ -79,7 +80,13 @@ type TSamlConfigServiceFactoryDep = {
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne" | "updateById">;
   orgDAL: Pick<
     TOrgDALFactory,
-    "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
+    | "createMembership"
+    | "updateMembershipById"
+    | "findMembership"
+    | "findOrgById"
+    | "findOne"
+    | "updateById"
+    | "lockActorsForOrgAccess"
   >;
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
@@ -93,11 +100,12 @@ type TSamlConfigServiceFactoryDep = {
     TUserGroupMembershipDALFactory,
     "find" | "delete" | "transaction" | "insertMany" | "filterProjectsByUserMembership"
   >;
-  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "find" | "transaction">;
+  groupDAL: Pick<TGroupDALFactory, "create" | "findOne" | "find" | "transaction" | "findGroupOrgIds">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
   alertChannelRecipientDAL: Pick<TAlertChannelRecipientDALFactory, "pruneOutOfScopeRecipients">;
+  eventEmitter: TEventEmitter;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "create">;
   loginService: Pick<TAuthLoginFactory, "processProviderCallback">;
   emailDomainDAL: Pick<TEmailDomainDALFactory, "findOne">;
@@ -117,6 +125,7 @@ export const samlConfigServiceFactory = ({
   projectBotDAL,
   projectKeyDAL,
   alertChannelRecipientDAL,
+  eventEmitter,
   additionalPrivilegeDAL,
   permissionService,
   licenseService,
@@ -229,23 +238,20 @@ export const samlConfigServiceFactory = ({
       for (const groupName of groupsToAdd) {
         const group = orgGroupsMap.get(groupName);
         if (group) {
-          try {
-            await addUsersToGroupByUserIds({
-              userIds: [userId],
-              group,
-              userDAL,
-              userGroupMembershipDAL,
-              orgDAL,
-              projectKeyDAL,
-              projectDAL,
-              projectBotDAL,
-              membershipGroupDAL,
-              usageMeteringService,
-              tx: transaction
-            });
-          } catch (error) {
-            // Continue if user already in group
-          }
+          await addUsersToGroupByUserIds({
+            userIds: [userId],
+            group,
+            userDAL,
+            userGroupMembershipDAL,
+            orgDAL,
+            projectKeyDAL,
+            projectDAL,
+            projectBotDAL,
+            membershipGroupDAL,
+            usageMeteringService,
+            shouldFailOnMissingMembers: false,
+            tx: transaction
+          });
         }
       }
 
@@ -254,22 +260,21 @@ export const samlConfigServiceFactory = ({
         if (groupName) {
           const group = orgGroupsMap.get(groupName);
           if (group) {
-            try {
-              await removeUsersFromGroupByUserIds({
-                userIds: [userId],
-                group,
-                userDAL,
-                userGroupMembershipDAL,
-                membershipGroupDAL,
-                projectKeyDAL,
-                additionalPrivilegeDAL,
-                usageMeteringService,
-                alertChannelRecipientDAL,
-                tx: transaction
-              });
-            } catch (error) {
-              // Continue if user not in group
-            }
+            await removeUsersFromGroupByUserIds({
+              userIds: [userId],
+              group,
+              userDAL,
+              userGroupMembershipDAL,
+              membershipGroupDAL,
+              groupDAL,
+              projectKeyDAL,
+              additionalPrivilegeDAL,
+              usageMeteringService,
+              alertChannelRecipientDAL,
+              eventEmitter,
+              shouldFailOnMissingMembers: false,
+              tx: transaction
+            });
           }
         }
       }

@@ -1,18 +1,14 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { SingleValue } from "react-select";
 import { subject } from "@casl/ability";
 import { InfoIcon } from "lucide-react";
 
-import { AppConnectionOption } from "@app/components/app-connections";
-import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
 import {
-  Alert,
-  AlertDescription,
-  Field,
-  FieldFeedback,
-  FilterableSelect
-} from "@app/components/v3";
+  AppConnectionOptionContent,
+  useAppConnectionCreation
+} from "@app/components/app-connections";
+import { FieldLabelWithTooltip } from "@app/components/secret-rotations-v2/forms/shared";
+import { Alert, AlertDescription, Combobox, Field, FieldFeedback } from "@app/components/v3";
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionAppConnectionActions,
@@ -23,10 +19,11 @@ import {
   getSecretRotationConnectionApps,
   SECRET_ROTATION_CONNECTION_MAP
 } from "@app/helpers/secretRotationsV2";
-import { usePopUp } from "@app/hooks";
-import { useListAvailableAppConnectionsForApps } from "@app/hooks/api/appConnections";
+import {
+  TAvailableAppConnection,
+  useListAvailableAppConnectionsForApps
+} from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
-import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 import { TSecretRotationV2Form } from "./schemas";
 
@@ -35,12 +32,12 @@ type Props = {
   isUpdate: boolean;
 };
 
+type TConnectionOption = Partial<TAvailableAppConnection> &
+  Pick<TAvailableAppConnection, "id" | "name"> & { app?: AppConnection };
+
 export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }: Props) => {
   const { permission } = useProjectPermission();
   const { control, watch, setValue } = useFormContext<TSecretRotationV2Form>();
-
-  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
-  const [appToCreate, setAppToCreate] = useState<AppConnection | null>(null);
 
   const rotationType = watch("type");
   const environment = watch("environment");
@@ -80,10 +77,26 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
 
   const appNames = apps.map((accepted) => APP_CONNECTION_MAP[accepted].name).join(" or ");
 
+  const creation = useAppConnectionCreation<TConnectionOption>({
+    apps,
+    onCreated: (connection) => {
+      setValue("connection", connection, { shouldValidate: true, shouldDirty: true });
+      if (callback) callback();
+    },
+    onOpen: () =>
+      localStorage.setItem(
+        "secretRotationFormData",
+        JSON.stringify(watch(), (key, serializedValue) =>
+          key === "temporaryParameters" ? undefined : serializedValue
+        )
+      ),
+    onClose: () => localStorage.removeItem("secretRotationFormData")
+  });
+
   return (
     <>
       <Controller
-        render={({ field: { value, onChange, onBlur }, fieldState: { error } }) => (
+        render={({ field: { value, onChange, onBlur, ref }, fieldState: { error } }) => (
           <Field data-invalid={Boolean(error)}>
             <FieldLabelWithTooltip
               htmlFor="secret-rotation-connection"
@@ -91,53 +104,28 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
             >
               {connectionLabel}
             </FieldLabelWithTooltip>
-            <FilterableSelect
-              inputId="secret-rotation-connection"
-              value={value ?? null}
+            <Combobox<TConnectionOption>
+              id="secret-rotation-connection"
+              ref={ref}
+              value={allowedConnections.find((option) => option.id === value?.id) ?? value ?? null}
               onBlur={onBlur}
-              onChange={(newValue) => {
-                const selected = newValue as SingleValue<{
-                  id: string;
-                  name: string;
-                  app?: AppConnection;
-                }>;
-                if (selected?.id?.startsWith("_create")) {
-                  setAppToCreate(selected.app ?? app);
-                  handlePopUpOpen("addConnection");
-                  localStorage.setItem(
-                    "secretRotationFormData",
-                    JSON.stringify(watch(), (key, serializedValue) =>
-                      key === "temporaryParameters" ? undefined : serializedValue
-                    )
-                  );
-                  if (callback) callback();
-                  return;
-                }
-
+              onValueChange={(newValue) => {
                 onChange(newValue);
                 if (callback) callback();
               }}
+              isClearable={false}
               isLoading={isPending}
-              options={[
-                ...(canCreateConnection
-                  ? apps.map((creatable) => ({
-                      id: `_create:${creatable}`,
-                      name:
-                        apps.length > 1
-                          ? `Create ${APP_CONNECTION_MAP[creatable].name} Connection`
-                          : "Create Connection",
-                      app: creatable
-                    }))
-                  : []),
-                ...allowedConnections
-              ]}
-              groupBy={apps.length > 1 ? "app" : null}
-              getGroupHeaderLabel={(groupApp: AppConnection) => APP_CONNECTION_MAP[groupApp].name}
+              options={allowedConnections}
+              getOptionGroup={
+                apps.length > 1 ? (option) => APP_CONNECTION_MAP[option.app ?? app].name : undefined
+              }
+              getOptionKeywords={(option) => [option.id]}
               isDisabled={isUpdate}
               placeholder="Select connection..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
-              components={{ Option: AppConnectionOption }}
+              renderOption={(option) => <AppConnectionOptionContent data={option} />}
+              creation={creation}
               isError={Boolean(error)}
               aria-describedby="secret-rotation-connection-feedback"
             />
@@ -176,21 +164,6 @@ export const SecretRotationV2ConnectionField = ({ onChange: callback, isUpdate }
           </AlertDescription>
         </Alert>
       )}
-      <AddAppConnectionModal
-        isOpen={popUp.addConnection.isOpen}
-        onOpenChange={(isOpen) => {
-          localStorage.removeItem("secretRotationFormData");
-          handlePopUpToggle("addConnection", isOpen);
-        }}
-        projectType={currentProject.type}
-        projectId={currentProject.id}
-        app={appToCreate ?? app}
-        onComplete={(connection) => {
-          if (connection) {
-            setValue("connection", connection, { shouldValidate: true, shouldDirty: true });
-          }
-        }}
-      />
     </>
   );
 };

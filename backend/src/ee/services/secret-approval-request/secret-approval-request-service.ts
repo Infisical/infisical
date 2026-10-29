@@ -24,16 +24,25 @@ import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integr
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TEventEmitter } from "@app/services/event-outbox/event-outbox-types";
 import { TFolderCommitServiceFactory } from "@app/services/folder-commit/folder-commit-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TResourceMetadataDALFactory } from "@app/services/resource-metadata/resource-metadata-dal";
+import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
+import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
+import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
+import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
+import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
+import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
+import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
+import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { TSecretDALFactory } from "@app/services/secret/secret-dal";
 import {
   decryptSecretWithBot,
@@ -48,14 +57,6 @@ import { TSecretQueueFactory } from "@app/services/secret/secret-queue";
 import { SecretOperations } from "@app/services/secret/secret-types";
 import { TSecretVersionDALFactory } from "@app/services/secret/secret-version-dal";
 import { TSecretVersionTagDALFactory } from "@app/services/secret/secret-version-tag-dal";
-import { TSecretBlindIndexDALFactory } from "@app/services/secret-blind-index/secret-blind-index-dal";
-import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
-import { TSecretTagDALFactory } from "@app/services/secret-tag/secret-tag-dal";
-import { createSecretBlindIndexer } from "@app/services/secret-v2-bridge/secret-blind-index-fns";
-import { TSecretV2BridgeDALFactory } from "@app/services/secret-v2-bridge/secret-v2-bridge-dal";
-import { TSecretVersionV2DALFactory } from "@app/services/secret-v2-bridge/secret-version-dal";
-import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/secret-version-tag-dal";
-import { TSecretValidationRuleServiceFactory } from "@app/services/secret-validation-rule/secret-validation-rule-service";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
@@ -154,6 +155,7 @@ type TSecretApprovalRequestServiceFactoryDep = {
   projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
   folderCommitService: Pick<TFolderCommitServiceFactory, "createCommit">;
+  eventEmitter: TEventEmitter;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
   telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
   queueService: Pick<TQueueServiceFactory, "queue">;
@@ -204,6 +206,7 @@ export const secretApprovalRequestServiceFactory = ({
   projectMicrosoftTeamsConfigDAL,
   microsoftTeamsService,
   folderCommitService,
+  eventEmitter,
   notificationService,
   telemetryService,
   queueService,
@@ -231,6 +234,7 @@ export const secretApprovalRequestServiceFactory = ({
       secretTagDAL,
       resourceMetadataDAL,
       folderCommitService,
+      eventEmitter,
       secretQueueService,
       secretApprovalRequestSecretDAL,
       validateSecrets,
@@ -741,7 +745,7 @@ export const secretApprovalRequestServiceFactory = ({
       return secretChangeGlobalRequestBridgeService.mergeSecretChangeRequest(dto);
     }
 
-    const { approvalId, actor, actorId, actorOrgId, actorAuthMethod, bypassReason } = dto;
+    const { approvalId, actor, actorId, actorOrgId, actorAuthMethod, bypassReason, requireApprovals } = dto;
     const secretApprovalRequest = await secretApprovalRequestDAL.findById(approvalId);
     if (!secretApprovalRequest)
       throw new NotFoundError({ message: `Secret approval request with ID '${approvalId}' not found` });
@@ -793,6 +797,10 @@ export const secretApprovalRequestServiceFactory = ({
     const isSoftEnforcement = secretApprovalRequest.policy.enforcementLevel === EnforcementLevel.Soft;
     const canBypass = !bypassers.length || bypassers.some((bypasser) => bypasser.userId === actorId);
 
+    if (!hasMinApproval && requireApprovals)
+      throw new BadRequestError({
+        message: `Secret approval request '${secretApprovalRequest.slug}' needs ${policy.approvals} approval(s) before it can be merged without a policy bypass.`
+      });
     if (!hasMinApproval && !(isSoftEnforcement && canBypass))
       throw new BadRequestError({ message: "Doesn't have minimum approvals needed" });
 

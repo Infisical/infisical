@@ -110,6 +110,9 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   honeyTokenLimit: 0,
   secretsBrokering: true,
   agentVaultByoS3: false,
+  // Cloud turns it on in withCloudPlanDefaults; self-hosted needs a license that includes it.
+  agentVaultManagedStorage: false,
+  agentVaultSessionLogRetentionDays: 30,
   secretSyncLimit: null,
   maxPamAccounts: null,
   // PKI / Cert Manager

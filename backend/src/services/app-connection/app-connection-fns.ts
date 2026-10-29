@@ -23,6 +23,7 @@ import {
   transferSqlConnectionCredentialsToPlatform,
   validateSqlConnectionCredentials
 } from "@app/services/app-connection/shared/sql";
+import { DELEGATED_APPROVAL_CONNECTION_MAP } from "@app/services/delegated-approval/delegated-approval-maps";
 import { EXTERNAL_MIGRATION_APP_CONNECTIONS } from "@app/services/external-migration/external-migration-map";
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
@@ -189,6 +190,7 @@ import {
   HumanitecConnectionMethod,
   validateHumanitecConnectionCredentials
 } from "./humanitec";
+import { getJiraConnectionListItem, JiraConnectionMethod, validateJiraConnectionCredentials } from "./jira";
 import { getKeeperConnectionListItem, KeeperConnectionMethod, validateKeeperConnectionCredentials } from "./keeper";
 import {
   getKempLoadMasterConnectionListItem,
@@ -273,6 +275,11 @@ import {
   SalesforceConnectionMethod,
   validateSalesforceConnectionCredentials
 } from "./salesforce";
+import {
+  getServiceNowConnectionListItem,
+  ServiceNowConnectionMethod,
+  validateServiceNowConnectionCredentials
+} from "./servicenow";
 import { getSmbConnectionListItem, SmbConnectionMethod, validateSmbConnectionCredentials } from "./smb";
 import {
   getSnowflakeConnectionListItem,
@@ -374,7 +381,13 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.MicrosoftIntune
 ];
 
+const DELEGATED_APPROVAL_POLICY_APP_CONNECTION_MAP = Object.fromEntries(
+  Object.entries(DELEGATED_APPROVAL_CONNECTION_MAP).map(([key, value]) => [value, key])
+);
+
 const AGENT_VAULT_APP_CONNECTIONS = [AppConnection.AWS];
+
+const PAM_APP_CONNECTIONS = [AppConnection.Jira];
 
 export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?: ProjectType) => {
   switch (projectType) {
@@ -382,7 +395,8 @@ export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?
       return (
         Boolean(SECRET_SYNC_APP_CONNECTION_MAP[app]) ||
         Boolean(SECRET_ROTATION_APP_CONNECTION_MAP[app]) ||
-        EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(app)
+        EXTERNAL_MIGRATION_APP_CONNECTIONS.includes(app) ||
+        Boolean(DELEGATED_APPROVAL_POLICY_APP_CONNECTION_MAP[app])
       );
     case ProjectType.SecretScanning:
       return Boolean(SECRET_SCANNING_APP_CONNECTION_MAP[app]);
@@ -391,7 +405,7 @@ export const isAppConnectionAllowedInProject = (app: AppConnection, projectType?
     case ProjectType.KMS:
       return false;
     case ProjectType.PAM:
-      return false;
+      return PAM_APP_CONNECTIONS.includes(app);
     case ProjectType.AgentVault:
       return AGENT_VAULT_APP_CONNECTIONS.includes(app);
     default:
@@ -496,7 +510,9 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getStripeConnectionListItem(),
     getKeeperConnectionListItem(),
     getHpeIloConnectionListItem(),
-    getS3CompatibleConnectionListItem()
+    getServiceNowConnectionListItem(),
+    getS3CompatibleConnectionListItem(),
+    getJiraConnectionListItem()
   ]
     .filter((option) => isAppConnectionAllowedInProject(option.app, projectType))
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -739,7 +755,9 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Stripe]: validateStripeConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Keeper]: validateKeeperConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.HpeIloRedFish]: validateHpeIloConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.S3Compatible]: validateS3CompatibleConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.ServiceNow]: validateServiceNowConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.S3Compatible]: validateS3CompatibleConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Jira]: validateJiraConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayV2Service);
@@ -796,7 +814,10 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case RundeckConnectionMethod.ApiToken:
     case PortainerConnectionMethod.ApiToken:
     case DatadogConnectionMethod.Token:
+    case JiraConnectionMethod.ApiToken:
       return "API Token";
+    case JiraConnectionMethod.PersonalAccessToken:
+      return "Personal Access Token";
     case DNSMadeEasyConnectionMethod.APIKeySecret:
     case SpaceliftConnectionMethod.ApiKeySecret:
       return "API Key & Secret";
@@ -867,6 +888,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case F5BigIpConnectionMethod.BasicAuth:
     case NutanixPrismCentralConnectionMethod.BasicAuth:
     case HpeIloConnectionMethod.BasicAuth:
+    case ServiceNowConnectionMethod.BasicAuth:
       return "Basic Auth";
     case ExternalInfisicalConnectionMethod.MachineIdentityUniversalAuth:
       return "Machine Identity - Universal Auth";
@@ -1027,7 +1049,9 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Stripe]: platformManagedCredentialsNotSupported,
   [AppConnection.Keeper]: platformManagedCredentialsNotSupported,
   [AppConnection.HpeIloRedFish]: platformManagedCredentialsNotSupported,
-  [AppConnection.S3Compatible]: platformManagedCredentialsNotSupported
+  [AppConnection.ServiceNow]: platformManagedCredentialsNotSupported,
+  [AppConnection.S3Compatible]: platformManagedCredentialsNotSupported,
+  [AppConnection.Jira]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

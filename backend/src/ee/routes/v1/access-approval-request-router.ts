@@ -9,6 +9,10 @@ import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedUserSchema } from "@app/server/routes/sanitizedSchemas";
 import { AuthMode } from "@app/services/auth/auth-type";
+import {
+  DelegatedApprovalRequestSchema,
+  DelegatedApprovalSchema
+} from "@app/services/delegated-approval/delegated-approval-schemas";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const approvalRequestUser = z.object({ userId: z.string() }).merge(
@@ -28,6 +32,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createAccessApprovalRequest",
       body: z.object({
         permissions: z.tuple([z.string(), z.string()]).rest(z.unknown()).array().min(1),
         isTemporary: z.boolean(),
@@ -113,6 +118,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     url: "/count",
     method: "GET",
     schema: {
+      operationId: "getAccessApprovalRequestCount",
       querystring: z.object({
         projectSlug: z.string().trim(),
         policyId: z.string().trim().optional()
@@ -143,6 +149,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     url: "/",
     method: "GET",
     schema: {
+      operationId: "listAccessApprovalRequests",
       querystring: z.object({
         projectSlug: z.string().trim(),
         authorUserId: z.string().trim().optional(),
@@ -187,8 +194,10 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
               deletedAt: z.date().nullish(),
               allowedSelfApprovals: z.boolean(),
               maxTimePeriod: z.string().nullable().optional(),
-              requestExpirationTime: z.string().nullable().optional()
+              requestExpirationTime: z.string().nullable().optional(),
+              delegatedApproval: DelegatedApprovalSchema.pick({ type: true }).nullable().optional()
             }),
+            delegatedApproval: DelegatedApprovalRequestSchema.nullable().optional(),
             reviewers: z
               .object({
                 isOrgMembershipActive: z.boolean().nullable().optional(),
@@ -223,6 +232,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
     url: "/:requestId/review",
     method: "POST",
     schema: {
+      operationId: "reviewAccessApprovalRequest",
       params: z.object({
         requestId: z.string().trim()
       }),
@@ -290,6 +300,7 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "revokeAccessApprovalRequest",
       params: z.object({
         requestId: z.string().trim()
       }),
@@ -328,9 +339,113 @@ export const registerAccessApprovalRequestRouter = async (server: FastifyZodProv
   });
 
   server.route({
+    url: "/:requestId/retry-delegated-dispatch",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "retryAccessApprovalRequestDelegatedDispatch",
+      params: z.object({
+        requestId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          request: AccessApprovalRequestsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.accessApprovalRequest.retryDelegatedApprovalDispatch({
+        requestId: req.params.requestId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: result.projectId,
+        event: {
+          type: EventType.ACCESS_APPROVAL_REQUEST_DELEGATED_DISPATCH_RETRY,
+          metadata: {
+            requestId: result.request.id,
+            requestedByUserId: result.request.requestedByUserId,
+            requestedByUserName: result.requesterName,
+            requestedByUserEmail: result.requesterEmail,
+            policyId: result.request.policyId,
+            policyName: result.policyName,
+            environment: result.environment,
+            secretPath: result.secretPath,
+            delegatedApprovalType: result.delegatedApprovalType
+          }
+        }
+      });
+
+      return { request: result.request };
+    }
+  });
+
+  server.route({
+    url: "/:requestId/cancel-delegated-dispatch",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      operationId: "cancelAccessApprovalRequest",
+      description:
+        "Cancel a pending access request that an external approval system is reviewing. The requester can cancel their own request, and users who can edit the project's approval policies can cancel any of them.",
+      params: z.object({
+        requestId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          request: AccessApprovalRequestsSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.accessApprovalRequest.cancelAccessRequest({
+        requestId: req.params.requestId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: result.projectId,
+        event: {
+          type: EventType.ACCESS_APPROVAL_REQUEST_CANCEL,
+          metadata: {
+            requestId: result.request.id,
+            requestedByUserId: result.request.requestedByUserId,
+            requestedByUserName: result.requesterName,
+            requestedByUserEmail: result.requesterEmail,
+            policyId: result.request.policyId,
+            policyName: result.policyName,
+            environment: result.environment,
+            secretPath: result.secretPath
+          }
+        }
+      });
+
+      return { request: result.request };
+    }
+  });
+
+  server.route({
     url: "/:requestId",
     method: "PATCH",
     schema: {
+      operationId: "updateAccessApprovalRequest",
       params: z.object({
         requestId: z.string().trim()
       }),

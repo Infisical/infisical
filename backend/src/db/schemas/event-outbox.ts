@@ -21,7 +21,8 @@ export const EventOutboxSchema = z.object({
   lockToken: z.string().uuid().nullable().optional(),
   lastError: z.string().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  eventId: z.string().uuid().nullable().optional()
 });
 
 export type TEventOutbox = z.infer<typeof EventOutboxSchema>;

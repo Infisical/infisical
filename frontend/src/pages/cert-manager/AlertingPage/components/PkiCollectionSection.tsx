@@ -3,8 +3,15 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button } from "@app/components/v2";
-import { ConfirmationAlertDialog } from "@app/components/v3";
+import {
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  ConfirmationAlertDialog
+} from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useDeletePkiCollection } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -38,27 +45,31 @@ export const PkiCollectionSection = () => {
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-border-control bg-surface-base p-4">
-      <div className="mb-4 flex justify-between">
-        <p className="text-xl font-medium text-foreground">Certificate Collections</p>
-        <ProjectPermissionCan
-          I={ProjectPermissionActions.Create}
-          a={ProjectPermissionSub.PkiCollections}
-        >
-          {(isAllowed) => (
-            <Button
-              colorSchema="primary"
-              type="submit"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-              onClick={() => handlePopUpOpen("pkiCollection")}
-              isDisabled={!isAllowed}
-            >
-              Create
-            </Button>
-          )}
-        </ProjectPermissionCan>
-      </div>
-      <PkiCollectionTable handlePopUpOpen={handlePopUpOpen} />
+    <Card>
+      <CardHeader>
+        <CardTitle>Certificate Collections</CardTitle>
+        <CardAction>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.PkiCollections}
+          >
+            {(isAllowed) => (
+              <Button
+                type="submit"
+                onClick={() => handlePopUpOpen("pkiCollection")}
+                isDisabled={!isAllowed}
+                variant="project"
+              >
+                <FontAwesomeIcon icon={faPlus} />
+                Create
+              </Button>
+            )}
+          </ProjectPermissionCan>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <PkiCollectionTable handlePopUpOpen={handlePopUpOpen} />
+      </CardContent>
       <PkiCollectionModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <ConfirmationAlertDialog
         isOpen={popUp.deletePkiCollection.isOpen}
@@ -74,6 +85,6 @@ export const PkiCollectionSection = () => {
           )
         }
       />
-    </div>
+    </Card>
   );
 };

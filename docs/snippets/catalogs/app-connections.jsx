@@ -387,6 +387,14 @@ export const appConnections = [
     category: "SaaS",
   },
   {
+    name: "ServiceNow",
+    slug: "servicenow",
+    path: "/integrations/app-connections/servicenow",
+    description:
+      "Learn how to connect ServiceNow to route Infisical access requests through ServiceNow approvals.",
+    category: "SaaS",
+  },
+  {
     name: "OpenRouter",
     slug: "openrouter",
     path: "/integrations/app-connections/openrouter",
@@ -698,5 +706,13 @@ export const appConnections = [
     description:
       "Learn how to connect Keeper Commander Service Mode to sync secrets from Infisical.",
     category: "Security",
+  },
+  {
+    name: "Jira",
+    slug: "jira",
+    path: "/integrations/app-connections/jira",
+    description:
+      "Learn how to connect Jira Cloud or Jira Data Center so Infisical can read your Jira tickets.",
+    category: "SaaS",
   },
 ];

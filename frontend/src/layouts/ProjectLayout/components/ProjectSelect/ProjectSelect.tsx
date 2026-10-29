@@ -12,6 +12,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandItemLink,
   CommandList,
   IconButton,
   ProjectIcon
@@ -36,23 +37,6 @@ import {
   NavbarSwitcherContent,
   NavbarSwitcherTrigger
 } from "@app/layouts/NavbarSwitcher";
-
-// Modified and middle clicks belong to the browser: it opens the row's href in a new tab
-// or window, so we neither preventDefault nor navigate programmatically on those paths.
-const isBrowserHandledClick = (event: React.MouseEvent) =>
-  event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0;
-
-// The row's anchor exists for its href (new-tab, copy link, status bar preview) while cmdk
-// owns activation via onSelect. A plain primary click therefore suppresses the anchor's own
-// navigation and bubbles up to cmdk; a browser-handled click is kept away from cmdk instead,
-// so the current tab stays put while the new one opens.
-const handleRowAnchorClick = (event: React.MouseEvent) => {
-  if (isBrowserHandledClick(event)) {
-    event.stopPropagation();
-    return;
-  }
-  event.preventDefault();
-};
 
 const ProjectSelectInner = () => {
   const [open, setOpen] = useState(false);
@@ -186,18 +170,16 @@ const ProjectSelectInner = () => {
                           row it has marked aria-selected, never against the focused element, so
                           without this onFocus a tabbed-to row would activate whichever row the
                           arrow keys last selected and switch the user to the wrong project. */}
-                      <Link
+                      <CommandItemLink
                         to={getProjectHomePage(workspace.type, workspace.environments)}
                         params={{
                           projectId: workspace.id,
                           orgId: workspace.orgId
                         }}
-                        className="truncate rounded-sm text-sm outline-0 after:absolute after:inset-0 after:rounded-sm after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
                         onFocus={() => setSelectedValue(workspace.id)}
-                        onClick={handleRowAnchorClick}
                       >
                         {workspace.name}
-                      </Link>
+                      </CommandItemLink>
                       <span className="truncate text-[11px] text-muted">
                         {workspace.description || "No description"}
                       </span>

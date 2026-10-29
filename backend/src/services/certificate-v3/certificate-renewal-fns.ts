@@ -8,12 +8,6 @@ import { isPqcAlgorithm } from "@app/lib/crypto/pqc/pqc-utils";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
-import {
-  CertKeyAlgorithm,
-  CertSignatureAlgorithm,
-  CertStatus,
-  mapSanTypeToX509Type
-} from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityWithAssociatedCa } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaCapability, CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
@@ -23,6 +17,12 @@ import {
 import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
 import { CertSubjectAlternativeNameType } from "@app/services/certificate-common/certificate-constants";
 import { detectSanType } from "@app/services/certificate-common/certificate-issuance-utils";
+import {
+  CertKeyAlgorithm,
+  CertSignatureAlgorithm,
+  CertStatus,
+  mapSanTypeToX509Type
+} from "@app/services/certificate/certificate-types";
 
 import { CertExtendedKeyUsageType, CertKeyUsageType } from "../certificate-common/certificate-constants";
 import {
@@ -569,7 +569,7 @@ export const buildRenewalDistinguishedName = (certificateRequest: TCertificateRe
     domainComponents: certificateRequest.domainComponents
   });
 
-const pemBodyToDer = (pem: string): Buffer =>
+const pemBodyToDer = (pem: string): Buffer<ArrayBuffer> =>
   Buffer.from(pem.replace(new RE2("-----(BEGIN|END)[^-]+-----", "g"), "").replace(new RE2("\\s", "g"), ""), "base64");
 
 export const importKeyPairFromPem = async ({

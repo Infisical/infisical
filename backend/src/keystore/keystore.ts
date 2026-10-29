@@ -32,12 +32,18 @@ export const PgSqlLock = {
   CreateGateway: (orgId: string) => pgAdvisoryLockHashText(`create-gateway:${orgId}`),
   CreateAgentVaultProxy: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-proxy:${projectId}`),
   CreateAgentVaultVariable: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-variable:${projectId}`),
+  CreateAgentVaultPersonalVariable: (projectId: string, ownerId: string) =>
+    pgAdvisoryLockHashText(`create-agent-vault-personal-variable:${projectId}:${ownerId}`),
+  ClearAgentVaultPersonalValues: (projectId: string) =>
+    pgAdvisoryLockHashText(`clear-agent-vault-personal-values:${projectId}`),
   AccessSharedSecret: (sharedSecretId: string) => pgAdvisoryLockHashText(`access-shared-secret:${sharedSecretId}`),
   KmsOrgKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-key:${orgId}`),
   KmsOrgDataKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-data-key:${orgId}`),
   KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),
   KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`),
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
+  OrgAccessReconcile: (actorId: string) => pgAdvisoryLockHashText(`org-access-reconcile:${actorId}`),
+  OrgAccessReconcileScope: (rootOrgId: string) => pgAdvisoryLockHashText(`org-access-reconcile-scope:${rootOrgId}`),
   LastAdminGuard: (scope: "org" | "project", scopeId: string) =>
     pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
   AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
@@ -76,6 +82,8 @@ export const KeyStorePrefixes = {
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
   StripeConnectionRefreshLock: (connectionId: string) => `stripe-connection-refresh-mutex-${connectionId}` as const,
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
+  OidcIssuerKeyRotationLock: (orgId: string) => `oidc-issuer-key-rotation-mutex-${orgId}` as const,
+  OidcIssuerJwks: (orgId: string) => `oidc-issuer-jwks:${orgId}` as const,
   SecretScanningFullScanLease: (resourceId: string) => `secret-scanning-v2-full-scan-lease-${resourceId}` as const,
   SecretScanningDataSourceLock: (dataSourceId: string) =>
     `secret-scanning-v2-data-source-mutex-${dataSourceId}` as const,
@@ -171,6 +179,13 @@ export const KeyStorePrefixes = {
   AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
   // The live view's Redis stream for a session: the newest chunk file names, with their bucket and size.
   AgentVaultSessionLogFeed: (sessionId: string) => `agent-vault-session-log-feed:${sessionId}` as const,
+  AgentVaultOauthAuthorization: (authorizationId: string) =>
+    `agent-vault-oauth-authorization:${authorizationId}` as const,
+  AgentVaultOauthAuthorizationCompleteLock: (authorizationId: string) =>
+    `agent-vault-oauth-authorization:${authorizationId}:complete` as const,
+  AgentVaultOauthRefreshLock: (serviceId: string) => `agent-vault-oauth-refresh-lock:${serviceId}` as const,
+  // Bytes an org has been allowed to upload to object storage on one UTC day (YYYY-MM-DD).
+  ObjectStorageDailyBytes: (orgId: string, day: string) => `object-storage:daily-bytes:${orgId}:${day}` as const,
 
   CertDashboardStats: (projectId: string) => `cert-dashboard-stats:${projectId}` as const,
   OrgSecretScanningFindingsCount: (orgId: string) => `org-secret-scanning-findings-count:${orgId}` as const,
@@ -232,6 +247,12 @@ export const KeyStorePrefixes = {
     `telemetry-agg-stream:${event}:${bucketId}` as const,
 
   AuditLogStreamFlushDebounce: (streamId: string) => `audit-log-stream:${streamId}:flush-debounce` as const,
+  SecretReadActivityGate: (day: string, actorId: string, scope: string) =>
+    `secret-read-activity:${day}:${actorId}:${scope}` as const,
+  SecretReadActivityStream: "secret-read-activity-stream" as const,
+  SecretReadActivityConsumerLock: "secret-read-activity:consumer-lock" as const,
+  SecretReadActivityUnusedAccessLock: (projectId: string) =>
+    `secret-read-activity:unused-access-lock:${projectId}` as const,
   AuditLogIngestConsumerLock: "audit-log-ingest:consumer-lock" as const,
 
   // period is a YYYY-MM stamp so the monthly notice can only go out once per org per month
@@ -276,6 +297,7 @@ export const KeyStoreTtls = {
   InsightsDuplicationCacheInSeconds: 300, // 5 minutes
   InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
   InsightsOrgCacheInSeconds: 900, // 15 minutes
+  InsightsUnusedAccessCacheInSeconds: 86400, // 24 hours
   AdminConfigInSeconds: 60,
   UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
@@ -312,7 +334,8 @@ export const KeyStoreTtls = {
   SecretReplicationSuccessInSeconds: 10,
   NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
   LegacyPkiDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
-  WorkerHeartbeatInSeconds: 300 // 5 minutes - tolerates several missed 60s beats
+  WorkerHeartbeatInSeconds: 300, // 5 minutes - tolerates several missed 60s beats
+  OidcIssuerJwksInSeconds: 600 // 10 minutes
 };
 
 type TDeleteItems = {
@@ -357,6 +380,12 @@ export type TKeyStoreFactory = {
   deleteItems: (arg: TDeleteItems) => Promise<number>;
   incrementBy: (key: string, value: number) => Promise<number>;
   incrementByAndRefreshExpiryIfUnderLimit: (key: string, limit: number, expiryInSeconds: number) => Promise<number>;
+  incrementByIfUnderLimitWithFixedExpiry: (
+    key: string,
+    value: number,
+    limit: number,
+    expiryInSeconds: number
+  ) => Promise<number>;
   decrementByOrDelete: (key: string) => Promise<number>;
   decrementIfExists: (key: string) => Promise<number | null>;
   claimLeastLoaded: (keys: string[], baseOccupancies: number[], expiryInSeconds: number) => Promise<number>;
@@ -535,6 +564,22 @@ export const keyStoreFactory = (
     return count
   `;
 
+  // Adds the value only if the total stays within the limit, in one atomic step, and otherwise returns -1 without
+  // adding. The expiry is set only when the key has none, so it counts from the first write and retries can't push it
+  // back.
+  const INCREMENT_BY_IF_UNDER_LIMIT_WITH_FIXED_EXPIRY_SCRIPT = `
+    local current = tonumber(redis.call("GET", KEYS[1]) or "0")
+    local value = tonumber(ARGV[1])
+    if current + value > tonumber(ARGV[2]) then
+      return -1
+    end
+    local total = redis.call("INCRBY", KEYS[1], value)
+    if redis.call("TTL", KEYS[1]) == -1 then
+      redis.call("EXPIRE", KEYS[1], ARGV[3])
+    end
+    return total
+  `;
+
   // Atomic release: DECR but never below 0, and never leave a no-TTL key behind. If
   // the counter is missing or already ≤ 1, DEL so the next admit creates a fresh
   // key with a fresh TTL. Does NOT touch EXPIRE — the slot is being released.
@@ -564,6 +609,23 @@ export const keyStoreFactory = (
       INCREMENT_AND_REFRESH_EXPIRY_IF_UNDER_LIMIT_SCRIPT,
       1,
       key,
+      limit,
+      expiryInSeconds
+    );
+    return Number(result);
+  };
+
+  const incrementByIfUnderLimitWithFixedExpiry = async (
+    key: string,
+    value: number,
+    limit: number,
+    expiryInSeconds: number
+  ): Promise<number> => {
+    const result = await primaryRedis.eval(
+      INCREMENT_BY_IF_UNDER_LIMIT_WITH_FIXED_EXPIRY_SCRIPT,
+      1,
+      key,
+      value,
       limit,
       expiryInSeconds
     );
@@ -900,6 +962,7 @@ export const keyStoreFactory = (
     deleteItems,
     incrementBy,
     incrementByAndRefreshExpiryIfUnderLimit,
+    incrementByIfUnderLimitWithFixedExpiry,
     decrementByOrDelete,
     decrementIfExists,
     claimLeastLoaded,

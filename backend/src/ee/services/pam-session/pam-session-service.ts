@@ -19,6 +19,22 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TTelemetryServiceFactory } from "@app/services/telemetry/telemetry-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
+import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import {
+  buildSessionGatewayConnectionDetails,
+  extractGatewayTarget,
+  getAccountAccessibilityIssues,
+  PamAccountAccessibilityIssue,
+  parseInternalMetadata,
+  qualifyUsernameWithDomain,
+  resolveGatewayAccountType,
+  resolveSelectedHost
+} from "../pam-account/pam-account-schemas";
+import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
+import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import {
   accountTypeSupportsSessionLogMasking,
   PamAccessMethod,
@@ -44,22 +60,6 @@ import {
   resolvePolicy,
   splitPatternString
 } from "../pam/pam-policies";
-import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
-import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import {
-  buildSessionGatewayConnectionDetails,
-  extractGatewayTarget,
-  getAccountAccessibilityIssues,
-  PamAccountAccessibilityIssue,
-  parseInternalMetadata,
-  qualifyUsernameWithDomain,
-  resolveGatewayAccountType,
-  resolveSelectedHost
-} from "../pam-account/pam-account-schemas";
-import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
-import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
-import { PamRecordingStorageBackend } from "../pam-session-recording/pam-recording-enums";
-import { decryptSessionKey, generateSessionRecordingSecrets } from "../pam-session-recording/pam-recording-secrets";
 import { ResourcePermissionPamResourceActions } from "../permission/resource-permission";
 import {
   AWS_STS_MIN_DURATION_SECONDS,
@@ -110,7 +110,7 @@ type TPamSessionServiceFactoryDep = {
     TMfaSessionServiceFactory,
     "createMfaSession" | "getMfaSession" | "deleteMfaSession" | "sendMfaCode"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "findById" | "lockActorsForOrgAccess" | "findActorsWithActiveOrgAccess">;
   pamAccessRequestService: Pick<
     TPamAccessRequestServiceFactory,
     "checkGrant" | "getAccessStatusBatch" | "getFolderPolicyConfigured"
@@ -264,6 +264,7 @@ export const pamSessionServiceFactory = ({
         serviceAccountEmail: connectionDetails.serviceAccountEmail as string,
         authMethod: credentials.authMethod as string,
         serviceAccountKeyJson: credentials.serviceAccountKeyJson as string | undefined,
+        orgId,
         ttlSeconds: Math.min(remainingSeconds, 3600)
       });
       delete credentials.serviceAccountKeyJson;
@@ -509,7 +510,8 @@ export const pamSessionServiceFactory = ({
           actorEmail,
           accountId: account.id,
           mfaSessionId,
-          tokenVersionId
+          tokenVersionId,
+          allowCliHandoff: accessMethod === PamAccessMethod.Cli
         }
       );
     }
@@ -555,7 +557,9 @@ export const pamSessionServiceFactory = ({
           details: {
             requireReason: policy.requireReason,
             hasPendingRequest: statusMap.get(account.id)?.accessStatus === ApprovalAccessStatus.Pending,
-            hasApprovalPolicy: Boolean(account.folderId && foldersWithApprovalPolicy.has(account.folderId))
+            hasApprovalPolicy: Boolean(
+              account.folderId && foldersWithApprovalPolicy.isConfiguredFor(account.folderId, policy.allowAutoApproval)
+            )
           }
         });
       }

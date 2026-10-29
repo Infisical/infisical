@@ -17,7 +17,7 @@ Deploy certificates directly to your AWS Application Load Balancers (ALBs) and N
   - **ELB:** `elasticloadbalancing:DescribeLoadBalancers`, `elasticloadbalancing:DescribeListeners`, `elasticloadbalancing:DescribeListenerCertificates`, `elasticloadbalancing:AddListenerCertificates`, `elasticloadbalancing:RemoveListenerCertificates`, `elasticloadbalancing:ModifyListener`
 
 <Tip>
-  If your AWS Connection uses the **Assume Role** method and is created within Certificate Manager, use your **Organization ID** as the External ID in your AWS IAM role trust policy. You can find the Organization ID in your organization settings. See the [AWS Connection docs](/integrations/app-connections/aws) for more details.
+  If your AWS Connection uses the **Assume Role** method and is created within Infisical Certificate Management, use your **Organization ID** as the External ID in your AWS IAM role trust policy. You can find the Organization ID in your organization settings. See the [AWS Connection docs](/integrations/app-connections/aws) for more details.
 </Tip>
 
 ## Create an ELB sync
@@ -198,7 +198,7 @@ To manually sync certificates, use the [Sync Certificates](/api-reference/endpoi
   <Card title="AWS Certificate Manager" icon="aws" iconType="brands" href="/documentation/platform/pki/applications/certificate-syncs/aws-certificate-manager">
     Import certificates into ACM for other AWS services.
   </Card>
-  <Card title="Auto-Renewal" icon="rotate-cw" href="/documentation/platform/pki/applications/certificates#server-driven-renewal">
+  <Card title="Auto-Renewal" icon="rotate-cw" href="/documentation/platform/pki/applications/certificates#renewal">
     Enable automatic certificate renewal and syncing.
   </Card>
   <Card title="Alerting" icon="bell" href="/documentation/platform/pki/applications/alerting/overview">

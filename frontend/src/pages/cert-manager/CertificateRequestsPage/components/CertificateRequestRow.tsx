@@ -7,7 +7,6 @@ import { ExternalLinkIcon } from "lucide-react";
 import { createNotification } from "@app/components/notifications";
 import { getCertificateDisplayName } from "@app/components/utilities/certificateDisplayUtils";
 import { truncateSerialNumber } from "@app/components/utilities/serialNumberUtils";
-import { Tooltip } from "@app/components/v2";
 import {
   Badge,
   DropdownMenu,
@@ -16,7 +15,10 @@ import {
   DropdownMenuTrigger,
   IconButton,
   TableCell,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import {
@@ -91,38 +93,35 @@ export const CertificateRequestRow = ({ request, onViewCertificates, application
       case CertificateRequestStatus.FAILED:
       case CertificateRequestStatus.REJECTED:
         return (
-          <Tooltip
-            position="top"
-            content={errorMessage || "Certificate request failed"}
-            className="max-w-sm break-words"
-          >
-            <div>
+          <Tooltip>
+            <TooltipTrigger>
               <Badge variant="danger">Failed</Badge>
-            </div>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-sm break-words">
+              {errorMessage || "Certificate request failed"}
+            </TooltipContent>
           </Tooltip>
         );
       case CertificateRequestStatus.PENDING:
         return (
-          <Tooltip
-            position="top"
-            content={pendingMessage || "Awaiting issuance"}
-            className="max-w-sm break-words"
-          >
-            <div>
+          <Tooltip>
+            <TooltipTrigger>
               <Badge variant="info">Pending Issuance</Badge>
-            </div>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-sm break-words">
+              {pendingMessage || "Awaiting issuance"}
+            </TooltipContent>
           </Tooltip>
         );
       case CertificateRequestStatus.PENDING_VALIDATION:
         return (
-          <Tooltip
-            position="top"
-            content={pendingMessage || "Awaiting CA validation"}
-            className="max-w-sm break-words"
-          >
-            <div>
+          <Tooltip>
+            <TooltipTrigger>
               <Badge variant="warning">Pending Validation</Badge>
-            </div>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-sm break-words">
+              {pendingMessage || "Awaiting CA validation"}
+            </TooltipContent>
           </Tooltip>
         );
       case CertificateRequestStatus.PENDING_APPROVAL:
@@ -180,10 +179,15 @@ export const CertificateRequestRow = ({ request, onViewCertificates, application
       <TableCell>{getStatusBadge(request)}</TableCell>
       <TableCell isTruncatable>{request.profileName || "—"}</TableCell>
       <TableCell className="whitespace-nowrap text-accent">
-        <Tooltip content={format(new Date(request.createdAt), "MMM dd, yyyy HH:mm:ss")}>
-          <time dateTime={request.createdAt}>
-            {format(new Date(request.createdAt), "yyyy-MM-dd")}
-          </time>
+        <Tooltip>
+          <TooltipTrigger>
+            <time dateTime={request.createdAt}>
+              {format(new Date(request.createdAt), "yyyy-MM-dd")}
+            </time>
+          </TooltipTrigger>
+          <TooltipContent>
+            {format(new Date(request.createdAt), "MMM dd, yyyy HH:mm:ss")}
+          </TooltipContent>
         </Tooltip>
       </TableCell>
       <TableCell>

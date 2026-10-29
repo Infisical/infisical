@@ -95,6 +95,7 @@ I
 (?i)backends
 (?i)bool
 (?i)boolean
+(?i)booleans
 (?i)breakpoint
 (?i)bubblewrap
 (?i)bursty

@@ -31,6 +31,17 @@ import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { testBuiltConnectionWithGateway } from "../gateway-v2/gateway-v2-fns";
+import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
+import {
+  HEARTBEAT_PAUSED_FOR_ROUTING_CHANGE,
+  pausesHeartbeatForRoutingChange
+} from "../pam-account-heartbeat/pam-heartbeat-fns";
+import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
+import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
+import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
+import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
+import { terminatePamSessions } from "../pam-session/pam-session-fns";
 import {
   accountTypeSupportsSessionLogMasking,
   PamAccessType,
@@ -58,17 +69,6 @@ import {
   validateGatewayAttachment,
   validateRecordingConnection
 } from "../pam/pam-validators";
-import { TPamAccessRequestServiceFactory } from "../pam-access-request/pam-access-request-service";
-import {
-  HEARTBEAT_PAUSED_FOR_ROUTING_CHANGE,
-  pausesHeartbeatForRoutingChange
-} from "../pam-account-heartbeat/pam-heartbeat-fns";
-import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
-import { PamTemplateSettingsSchema } from "../pam-account-template/pam-account-template-schemas";
-import { TPamDiscoverySourceDALFactory } from "../pam-discovery/pam-discovery-source-dal";
-import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
-import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
-import { terminatePamSessions } from "../pam-session/pam-session-fns";
 import {
   buildGatewayConnectionTest,
   CLOUD_CONNECTION_VALIDATORS,
@@ -403,12 +403,26 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     return accounts.map((a, idx) => {
       const { accessibilityIssues, isAccessible } = computeAccessibility(a);
-      const { requiresApproval, requireReason, allowBreakGlass } = resolveAccessControls(a.templatePolicies);
-      if (requiresApproval && a.folderId && !foldersWithApprovalPolicy.has(a.folderId)) {
-        accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
-      }
+      const { requiresApproval, requireReason, allowBreakGlass, allowAutoApproval } = resolveAccessControls(
+        a.templatePolicies
+      );
       const statusEntry = accessStatusMap.get(a.id);
       const credentialStatusEntry = credentialAccessStatusMap.get(a.id);
+      const canBreakGlass = allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId);
+      const hasGrant =
+        statusEntry?.accessStatus === ApprovalAccessStatus.Granted ||
+        credentialStatusEntry?.accessStatus === ApprovalAccessStatus.Granted;
+      // Break-glass users and current grant holders can still reach a folder whose approvers and rules can't
+      // grant this account; only new requests are blocked
+      if (
+        requiresApproval &&
+        a.folderId &&
+        !canBreakGlass &&
+        !hasGrant &&
+        !foldersWithApprovalPolicy.isConfiguredFor(a.folderId, allowAutoApproval)
+      ) {
+        accessibilityIssues.push(PamAccountAccessibilityIssue.NoApprovalConfig);
+      }
       return {
         id: a.id,
         name: a.name,
@@ -436,7 +450,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
           : ApprovalAccessStatus.None,
         grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
         pendingRequestId: statusEntry?.pendingRequestId ?? null,
-        canBreakGlass: allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId),
+        canBreakGlass,
         credentialAccessStatus: requiresApproval
           ? (credentialStatusEntry?.accessStatus ?? ApprovalAccessStatus.None)
           : ApprovalAccessStatus.None,
@@ -1323,11 +1337,15 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
 
     return {
       accounts: accounts.map((a) => {
-        const { requiresApproval, requireReason, requireMfa, allowBreakGlass } = resolveAccessControls(
-          a.templatePolicies
-        );
+        const { requiresApproval, requireReason, requireMfa, allowBreakGlass, allowAutoApproval } =
+          resolveAccessControls(a.templatePolicies);
         const statusEntry = accessStatusMap.get(a.id);
-        const hasPolicyConfigured = a.folderId ? foldersWithApprovalPolicy.has(a.folderId) : false;
+        const canBreakGlass = allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId);
+        const hasPolicyConfigured = a.folderId
+          ? canBreakGlass ||
+            statusEntry?.accessStatus === ApprovalAccessStatus.Granted ||
+            foldersWithApprovalPolicy.isConfiguredFor(a.folderId, allowAutoApproval)
+          : false;
         let disabledReason: string | null = null;
         if (requiresApproval && !hasPolicyConfigured) {
           disabledReason =
@@ -1354,7 +1372,7 @@ export const pamAccountServiceFactory = (deps: TPamAccountServiceFactoryDep) => 
             : ApprovalAccessStatus.None,
           grantExpiresAt: statusEntry?.grantExpiresAt ?? null,
           pendingRequestId: statusEntry?.pendingRequestId ?? null,
-          canBreakGlass: allowBreakGlass && !!a.folderId && breakGlassFolders.has(a.folderId),
+          canBreakGlass,
           disabledReason,
           createdAt: a.createdAt,
           updatedAt: a.updatedAt
