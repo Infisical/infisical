@@ -7,10 +7,10 @@ description: "Deploy the Agent Vault proxy in your cluster, restrict agent pods 
 
 import SandboxAgentVaultSetup from "/snippets/agent-vault/SandboxAgentVaultSetup.mdx";
 
-This guide shows you how to run AI agents in Kubernetes behind Agent Vault. You'll create a [proxy](/documentation/platform/agent-vault/proxies) and a [machine identity](/documentation/platform/identities/machine-identities) for your orchestrator, deploy the proxy in its own namespace, create a namespace where agent pods can reach only the proxy, and start an agent with its own [session](/documentation/platform/agent-vault/sessions).
+This guide deploys an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) in its own namespace, locks a namespace of agent pods to it, and starts each agent with its own [session](/documentation/platform/agent-vault/sessions).
 
 <Note>
-  Before you start, choose an [isolation level](/documentation/platform/agent-vault/guides/kubernetes#choose-an-isolation-level) for agent pods: the standard runtime, gVisor, or Kata Containers. The [Kubernetes overview](/documentation/platform/agent-vault/guides/kubernetes) also explains why each piece runs where it does.
+  Before you start, choose an [isolation level](/documentation/platform/agent-vault/guides/kubernetes#choose-an-isolation-level) for agent pods: the standard runtime, gVisor, or Kata Containers. For gVisor or Kata, your cluster needs a RuntimeClass for that runtime. The [Kubernetes overview](/documentation/platform/agent-vault/guides/kubernetes) also explains why each piece runs where it does.
 </Note>
 
 ## Prerequisites
@@ -20,9 +20,8 @@ This guide shows you how to run AI agents in Kubernetes behind Agent Vault. You'
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - A Kubernetes cluster whose network plugin enforces network policies, such as [Cilium](https://cilium.io) or [Calico](https://www.tigera.io/project-calico/)
 - Permission to create namespaces and RBAC roles in the cluster with `kubectl`
-- An image for your agent that runs as a non-root user and includes the [Infisical CLI](/cli/overview) `0.44.10` or later, such as the one in [the Docker guide's `Dockerfile`](/documentation/platform/agent-vault/guides/docker#step-3-write-the-agent’s-dockerfile)
+- An agent image that runs as a non-root user and includes the [Infisical CLI](/cli/overview) `0.44.10` or later, such as [the Docker guide's](/documentation/platform/agent-vault/guides/docker#step-3-write-the-agent’s-dockerfile)
 - [`curl`](https://curl.se), [`jq`](https://jqlang.org), and [`openssl`](https://openssl-library.org) on the machine where you run the script in Step 5
-- If you want agents to run on gVisor or Kata Containers, a RuntimeClass for that runtime in the cluster (see [Choose an isolation level](/documentation/platform/agent-vault/guides/kubernetes#choose-an-isolation-level))
 
 ## Step 1: Set up Agent Vault
 
@@ -150,15 +149,14 @@ spec:
 
 - **Infisical CLI:** replace `<cli-version>` with `0.44.10` or later, because earlier versions can't start a proxy from a proxy token
 - **Instance URL:** if you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with `https://eu.infisical.com` or the URL of your self-hosted instance
-- **Private addresses:** the proxy can only reach public addresses, so if you self-host Infisical on a private address, or an API the agent calls is on one, add an egress rule for that address
-- **Other ports:** the proxy can only reach ports 443 and 80, so if a service or exception uses another port, such as `api.example.com:8443`, add an egress rule for that port
-- **DNS:** the network policies in this step and in Step 3 allow DNS only to pods labeled `k8s-app: kube-dns` in `kube-system`, so if your cluster's DNS runs elsewhere, such as a node-local DNS cache or the `openshift-dns` namespace on OpenShift, change the DNS rule in both
+- **Egress:** the proxy can only reach public addresses on ports 443 and 80, so add an egress rule for anything else, such as a self-hosted Infisical instance on a private address or a service at `api.example.com:8443`
+- **DNS:** this policy and the one in Step 3 allow DNS only to `k8s-app: kube-dns` pods in `kube-system`, so change both if your DNS runs elsewhere, such as a node-local DNS cache or OpenShift's `openshift-dns`
 
 ### Store the proxy token
 
 Store the proxy token in a Secret named `agent-vault-proxy` in the `agent-vault` namespace, under the key `INFISICAL_AGENT_VAULT_PROXY_TOKEN`. The proxy's pods start once the Secret exists.
 
-On the **Proxies** page in Agent Vault, the proxy's status changes to **Healthy** once it connects. The two replicas share the same token and certificate authority, and the Service spreads agent connections across them (see [High availability](/documentation/platform/agent-vault/proxies#high-availability)).
+On the **Proxies** page in Agent Vault, the proxy's status changes to **Healthy** once it connects. Both replicas use the same token and certificate authority, and the Service spreads connections across them ([high availability](/documentation/platform/agent-vault/proxies#high-availability)).
 
 ## Step 3: Create the agents namespace
 
@@ -204,7 +202,7 @@ spec:
         - port: 17323
 ```
 
-With the `restricted` [Pod Security Standard](https://kubernetes.io/docs/concepts/security/pod-security-standards/), Kubernetes refuses to start a pod in the namespace if the pod runs as root, keeps Linux capabilities, or can raise its privileges. The [agent pod manifest](#define-the-agents-pod) in Step 5 meets the standard.
+The `restricted` [Pod Security Standard](https://kubernetes.io/docs/concepts/security/pod-security-standards/) refuses pods that run as root, keep Linux capabilities, or can raise their privileges. The [agent pod](#define-the-agents-pod) in Step 5 meets it.
 
 ## Step 4: Set up your orchestrator
 
@@ -219,7 +217,7 @@ export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>
 export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
 ```
 
-The script in Step 5 logs in with them. The machine identity's credentials stay with the orchestrator and never go into an agent pod.
+The script in Step 5 logs in with them, and they never go into an agent pod.
 
 <Tip>
   If your orchestrator runs in a Kubernetes cluster whose API server Infisical can reach, use [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) instead, so it logs in with its service account token and has no client secret to store.
@@ -367,7 +365,7 @@ done
 exit "$EXIT_CODE"
 ```
 
-The script calls [the endpoint that creates a session](/api-reference/endpoints/agent-vault-sessions/create) and, when it exits, [the endpoint that revokes a session](/api-reference/endpoints/agent-vault-sessions/revoke). Your orchestrator can make the same calls in any language (see [Create sessions with the API](/documentation/platform/agent-vault/sessions-api)).
+Your own orchestrator can make the same [create](/api-reference/endpoints/agent-vault-sessions/create) and [revoke](/api-reference/endpoints/agent-vault-sessions/revoke) calls in any language, as in [Create sessions with the API](/documentation/platform/agent-vault/sessions-api).
 
 ## Step 6: Verify it works
 
@@ -386,7 +384,7 @@ kubectl -n agents exec agent-<run-id> -- infisical agent-vault run --ca-file=/tm
 kubectl -n agents exec agent-<run-id> -- curl -s --max-time 5 https://example.com
 ```
 
-In Agent Vault, go to **Sessions** and select **All Sessions**. Find the session by its label, `kubernetes run <run-id>`. Its **Status** is **Active** while the agent runs and **Revoked** after the script exits. [View the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to see each request the agent made.
+In Agent Vault, find the session under **Sessions** > **All Sessions** by its label, `kubernetes run <run-id>`. It's **Active** while the agent runs and **Revoked** after the script exits. [View the session's logs](/documentation/platform/agent-vault/sessions#view-session-logs) to see each request the agent made.
 
 <Check>
   Your agents now run in pods that contain only a session token, can only connect to the proxy, and lose access when the session is revoked.
