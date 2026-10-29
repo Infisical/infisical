@@ -60,7 +60,10 @@ For each agent run, your orchestrator does the following:
     The machine identity can create sessions for any access bundle it has access to. gVisor and Kata isolate a pod from the node, not one container from another, so even a separate container in the agent's pod could expose it. An agent pod gets only a session token, which you can revoke and which expires.
   </Accordion>
   <Accordion title="Can I use Agent Sandbox instead of writing pod manifests?">
-    Yes. [Agent Sandbox](https://github.com/kubernetes-sigs/agent-sandbox) is an official Kubernetes project with custom resources for agent sandboxes, such as `SandboxTemplate`, `SandboxClaim`, and `SandboxWarmPool`. Its sandboxes are pods, so the same setup applies: put the agent pod settings from the [setup guide](/documentation/platform/agent-vault/guides/kubernetes-setup#define-the-agents-pod) in a `SandboxTemplate` in the agents namespace, and the namespace's network policy limits each sandbox to the proxy. Your orchestrator still creates a session for each sandbox and gives it the session token.
+    Yes. [Agent Sandbox](https://github.com/kubernetes-sigs/agent-sandbox) is an official Kubernetes project with custom resources for agent sandboxes, such as `SandboxTemplate`, `SandboxClaim`, and `SandboxWarmPool`. Its sandboxes are pods, so the proxy and the agents namespace work the same way, with these differences:
+
+    - **Session tokens:** each sandbox still needs its own session, but a `SandboxTemplate` serves every claim, so it can't name a per-run Secret. Your orchestrator has to deliver each sandbox's session token after the claim binds. Pods in a `SandboxWarmPool` start before any session exists.
+    - **Network policies:** if the Agent Sandbox controller creates its own network policy for a template, that policy can allow traffic that the agents namespace's policy blocks. Turn it off or limit it to the proxy, then check that a sandbox can't reach the internet directly (see [Verify it works](/documentation/platform/agent-vault/guides/kubernetes-setup#step-6-verify-it-works)).
   </Accordion>
 </AccordionGroup>
 

@@ -147,7 +147,12 @@ spec:
         - port: 80
 ```
 
-If you self-host Infisical on a private address, or an API the agent calls is on a private address, add an egress rule for that address to the network policy.
+The proxy's network policy allows only ports 443 and 80 on public addresses. Add an egress rule for any other host or port the proxy has to reach:
+
+- **Private addresses:** if you self-host Infisical on a private address, or an API the agent calls is on one, add that address
+- **Other ports:** if a service or exception uses a port other than 443 or 80, such as `api.example.com:8443`, add that port
+
+Both network policies in this guide allow DNS only to pods labeled `k8s-app: kube-dns` in `kube-system`. If your cluster's DNS runs elsewhere, such as a node-local DNS cache at `169.254.20.10` or the `openshift-dns` namespace on OpenShift, change the DNS rule in both policies to match it.
 
 Store the proxy token in a Secret named `agent-vault-proxy` in the `agent-vault` namespace, under the key `INFISICAL_AGENT_VAULT_PROXY_TOKEN`. Create it with the tool you already use to manage Kubernetes secrets, such as the [Infisical Kubernetes Operator](/integrations/platforms/kubernetes/overview). The proxy's pods start once the Secret exists.
 
@@ -157,7 +162,7 @@ On the **Proxies** page in Agent Vault, the proxy's status changes to **Healthy*
 
 Save this manifest as `agents-namespace.yaml` and apply it to your cluster. It creates the `agents` namespace and blocks all traffic to and from its pods, except DNS lookups and connections to the proxy:
 
-```yaml
+```yaml expandable
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -258,6 +263,7 @@ spec:
   activeDeadlineSeconds: 1800
   securityContext:
     runAsNonRoot: true
+    # Match the user ID that your agent's image runs as.
     runAsUser: 1000
     seccompProfile:
       type: RuntimeDefault
@@ -353,7 +359,7 @@ The script calls [the endpoint that creates a session](/api-reference/endpoints/
 
 ## Step 6: Verify it works
 
-While an agent pod runs, check that its requests go through the proxy and that no other traffic leaves the pod. These commands need `curl` in the agent's image. Replace `<run-id>` with the run ID that the script printed, and `<api-host>` with a host that a service in the access bundle covers:
+While an agent pod runs, check that its requests go through the proxy and that no other traffic leaves the pod. These commands need `curl` in the agent's image, and `kubectl exec` needs the `create` permission on `pods/exec`, which the role in Step 4 doesn't grant, so run them as a cluster admin. Replace `<run-id>` with the run ID that the script printed, and `<api-host>` with a host that a service in the access bundle covers:
 
 ```bash
 # Through the proxy: returns the API's own status code, such as 200 or 401
@@ -386,6 +392,12 @@ In Agent Vault, go to **Sessions** and select **All Sessions**. Find the session
 ## Troubleshooting
 
 <AccordionGroup>
+  <Accordion title="Agent or proxy pods can't resolve hostnames">
+    The network policies allow DNS only to pods labeled `k8s-app: kube-dns` in `kube-system`. If your cluster's DNS runs elsewhere, such as a node-local DNS cache or OpenShift's `openshift-dns`, change the DNS rule in both network policies to match it. Until then, the proxy never becomes ready, and `infisical agent-vault run` can't find the proxy.
+  </Accordion>
+  <Accordion title="Requests through the proxy time out">
+    The proxy's network policy blocks the host or port. It allows only ports 443 and 80 on public addresses, so add an egress rule for a private address or another port, as [Step 2](#step-2-deploy-the-proxy) describes.
+  </Accordion>
   <Accordion title="The agent reaches the internet without going through the proxy">
     Your cluster's network plugin doesn't enforce network policies, so Kubernetes accepts the policies but nothing applies them. Flannel, the default network plugin in k3s, is one example. Install a network plugin that enforces policies, such as Cilium or Calico.
   </Accordion>
