@@ -1,6 +1,7 @@
 ---
 title: "Run agents in Docker containers with Agent Vault"
-sidebarTitle: "Docker Compose"
+sidebarTitle: "Docker"
+icon: "/images/agent-vault-agents/docker.svg"
 description: "Run an Agent Vault proxy beside each agent container so the agent never holds a credential."
 ---
 
@@ -43,9 +44,9 @@ Every proxy starts from the same proxy token, so you create the proxy in Infisic
 ## Prerequisites
 
 - The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership)
+- An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - [Docker Engine](https://docs.docker.com/engine/install/) with [Docker Compose](https://docs.docker.com/compose/install/) v2, or [Docker Desktop](https://docs.docker.com/desktop/)
 - [`curl`](https://curl.se) and [`jq`](https://jqlang.org) on the machine that runs Docker
-- The API keys your agent uses, such as your Anthropic API key
 
 ## Step 1: Set up Agent Vault
 
