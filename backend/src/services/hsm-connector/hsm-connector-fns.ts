@@ -23,8 +23,6 @@ export enum HsmGatewayCapability {
   MlDsa = "pkcs11MlDsa"
 }
 
-export const HSM_ML_DSA_MIN_GATEWAY_VERSION = "v0.44.10";
-
 const HSM_KEY_ALGORITHM_BY_CERT_KEY_ALGORITHM: Partial<Record<string, HsmKeyAlgorithm>> = {
   [CertKeyAlgorithm.RSA_2048]: HsmKeyAlgorithm.RSA_2048,
   [CertKeyAlgorithm.RSA_3072]: HsmKeyAlgorithm.RSA_3072,

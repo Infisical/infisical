@@ -58,7 +58,7 @@ export type THsmConnectorServiceFactoryDep = {
 export type THsmConnectorServiceFactory = ReturnType<typeof hsmConnectorServiceFactory>;
 
 const OLD_GATEWAY_BAD_REQUEST_MESSAGE = "Invalid request";
-const GATEWAY_MAX_SIGN_DATA_BYTES = 64 * 1024;
+const GATEWAY_MAX_SIGN_DATA_BYTES = 16 * 1024 * 1024;
 const ML_DSA_HSM_KEY_ALGORITHMS = new Set<HsmKeyAlgorithm>([
   HsmKeyAlgorithm.ML_DSA_44,
   HsmKeyAlgorithm.ML_DSA_65,

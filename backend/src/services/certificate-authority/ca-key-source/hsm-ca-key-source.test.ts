@@ -87,7 +87,7 @@ describe("HSM CA key source", () => {
         keyAlgorithm: CertKeyAlgorithm.ML_DSA_44,
         input: { hsmConnectorId: "connector" }
       })
-    ).rejects.toThrow(/could not create an ML-DSA-44 key\. Update the Gateway to v0\.44\.10 or later/);
+    ).rejects.toThrow(/slot does not support ML-DSA-44 keys/);
   });
 
   test("ML-DSA certificates signed through the HSM with CKM_ML_DSA verify against the HSM public key", async ({

@@ -12,7 +12,7 @@ import {
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { logger } from "@app/lib/logger";
 
-import { HSM_ML_DSA_MIN_GATEWAY_VERSION, HsmGatewayCapability } from "./hsm-connector-fns";
+import { HsmGatewayCapability } from "./hsm-connector-fns";
 import {
   THsmConnectorCredentials,
   THsmConnectorTestMemberResult,
@@ -24,12 +24,22 @@ const TEST_FANOUT_MAX = 10;
 const PKCS11_TARGET_HOST = "pkcs11";
 const NO_CAPABLE_MEMBER_MESSAGE =
   "No HSM-capable gateway available in the pool. Ensure at least one gateway in the pool has HSM support enabled.";
-const ML_DSA_DRIVER_HINT = "check that your HSM's PKCS#11 driver supports ML-DSA";
-const POOL_MISSING_CAPABILITY_MESSAGES: Record<HsmGatewayCapability, string> = {
-  [HsmGatewayCapability.MlDsa]: `No HSM-capable gateway in the pool supports ML-DSA keys. Update at least one of them to ${HSM_ML_DSA_MIN_GATEWAY_VERSION} or later and ${ML_DSA_DRIVER_HINT}.`
+type TMissingCapabilityMessages = { outdatedGateway: string; unsupportedHsm: string };
+const POOL_MISSING_CAPABILITY_MESSAGES: Record<HsmGatewayCapability, TMissingCapabilityMessages> = {
+  [HsmGatewayCapability.MlDsa]: {
+    outdatedGateway:
+      "No HSM-capable gateway in the pool supports ML-DSA keys. Update the pool's gateways to the latest version.",
+    unsupportedHsm:
+      "None of the HSMs attached to the pool's gateways support ML-DSA keys. Check that your HSM's PKCS#11 driver supports ML-DSA."
+  }
 };
-const GATEWAY_MISSING_CAPABILITY_MESSAGES: Record<HsmGatewayCapability, string> = {
-  [HsmGatewayCapability.MlDsa]: `The HSM Connector's gateway does not support ML-DSA keys. Update it to ${HSM_ML_DSA_MIN_GATEWAY_VERSION} or later and ${ML_DSA_DRIVER_HINT}.`
+const GATEWAY_MISSING_CAPABILITY_MESSAGES: Record<HsmGatewayCapability, TMissingCapabilityMessages> = {
+  [HsmGatewayCapability.MlDsa]: {
+    outdatedGateway:
+      "The HSM Connector's gateway does not support ML-DSA keys. Update the gateway to the latest version.",
+    unsupportedHsm:
+      "The HSM attached to the HSM Connector's gateway does not support ML-DSA keys. Check that your HSM's PKCS#11 driver supports ML-DSA."
+  }
 };
 
 type TGatewayRouting = {
@@ -47,6 +57,14 @@ const isPkcs11Capable = (capabilities: unknown, requiredCapability?: HsmGatewayC
   const caps = (capabilities as Record<string, unknown> | null | undefined) ?? {};
   return caps.pkcs11 === true && (!requiredCapability || caps[requiredCapability] === true);
 };
+
+const isOutdatedForCapability = (capabilities: unknown, requiredCapability: HsmGatewayCapability): boolean => {
+  const caps = (capabilities as Record<string, unknown> | null | undefined) ?? {};
+  return caps[requiredCapability] === undefined;
+};
+
+const pickMissingCapabilityMessage = (messages: TMissingCapabilityMessages, isOutdated: boolean): string =>
+  isOutdated ? messages.outdatedGateway : messages.unsupportedHsm;
 
 export const hsmConnectorRoutingFactory = ({
   gatewayV2Service,
@@ -72,7 +90,12 @@ export const hsmConnectorRoutingFactory = ({
           isPkcs11Capable(gateway.capabilities) &&
           !isPkcs11Capable(gateway.capabilities, requiredCapability)
         ) {
-          throw new BadRequestError({ message: GATEWAY_MISSING_CAPABILITY_MESSAGES[requiredCapability] });
+          throw new BadRequestError({
+            message: pickMissingCapabilityMessage(
+              GATEWAY_MISSING_CAPABILITY_MESSAGES[requiredCapability],
+              isOutdatedForCapability(gateway.capabilities, requiredCapability)
+            )
+          });
         }
       }
       return connector.gatewayId;
@@ -94,11 +117,16 @@ export const hsmConnectorRoutingFactory = ({
       .catch(async (err: unknown) => {
         if (!requiredCapability || !(err instanceof BadRequestError)) throw err;
         const healthyGateways = await gatewayPoolService.listHealthyGateways(poolId);
-        const hasOtherPkcs11Member = healthyGateways.some(
+        const otherPkcs11Members = healthyGateways.filter(
           (gateway) => !triedGatewayIds.has(gateway.id) && isPkcs11Capable(gateway.capabilities)
         );
-        if (hasOtherPkcs11Member) {
-          throw new BadRequestError({ message: POOL_MISSING_CAPABILITY_MESSAGES[requiredCapability] });
+        if (otherPkcs11Members.length > 0) {
+          throw new BadRequestError({
+            message: pickMissingCapabilityMessage(
+              POOL_MISSING_CAPABILITY_MESSAGES[requiredCapability],
+              otherPkcs11Members.some((gateway) => isOutdatedForCapability(gateway.capabilities, requiredCapability))
+            )
+          });
         }
         throw err;
       });

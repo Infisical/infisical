@@ -7,10 +7,7 @@ import { isPkcs11Error, Pkcs11ErrorCode } from "@app/lib/gateway-v2/pkcs11-rpc";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { THsmConnectorDALFactory } from "@app/services/hsm-connector/hsm-connector-dal";
-import {
-  certKeyAlgorithmToHsmKeyAlgorithm,
-  HSM_ML_DSA_MIN_GATEWAY_VERSION
-} from "@app/services/hsm-connector/hsm-connector-fns";
+import { certKeyAlgorithmToHsmKeyAlgorithm } from "@app/services/hsm-connector/hsm-connector-fns";
 import { THsmConnectorServiceFactory } from "@app/services/hsm-connector/hsm-connector-service";
 
 import {
@@ -74,7 +71,7 @@ export const hsmCaKeySourceFactory = ({
         .catch((err: unknown) => {
           if (isPqcAlgorithm(keyAlgorithm) && isPkcs11Error(err, Pkcs11ErrorCode.MechanismInvalid)) {
             throw new BadRequestError({
-              message: `The HSM Connector could not create an ${keyAlgorithm} key. Update the Gateway to ${HSM_ML_DSA_MIN_GATEWAY_VERSION} or later and check that your HSM's PKCS#11 driver supports ML-DSA.`
+              message: `The HSM Connector's slot does not support ${keyAlgorithm} keys. Check that your HSM's PKCS#11 driver supports ML-DSA on this slot.`
             });
           }
           throw err;

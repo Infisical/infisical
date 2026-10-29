@@ -72,11 +72,22 @@ describe("HSM Connector routing", () => {
     expect(getPlatformConnectionDetailsByGatewayId.mock.calls[0][0]).toMatchObject({ gatewayId: "new-gateway" });
   });
 
-  test("explains a pool with no member that supports ML-DSA", async () => {
-    const { routing } = buildRouting([{ id: "old-gateway", capabilities: { pkcs11: true } }]);
+  test("asks to update a pool whose members predate ML-DSA support", async () => {
+    const { routing } = buildRouting([
+      { id: "old-gateway", capabilities: { pkcs11: true } },
+      { id: "current-gateway", capabilities: { pkcs11: true, pkcs11MlDsa: false } }
+    ]);
 
     await expect(signThroughPool(routing, HsmGatewayCapability.MlDsa)).rejects.toThrow(
-      /No HSM-capable gateway in the pool supports ML-DSA keys/
+      /Update the pool's gateways to the latest version/
+    );
+  });
+
+  test("blames the HSMs when every current pool member reports no ML-DSA support", async () => {
+    const { routing } = buildRouting([{ id: "current-gateway", capabilities: { pkcs11: true, pkcs11MlDsa: false } }]);
+
+    await expect(signThroughPool(routing, HsmGatewayCapability.MlDsa)).rejects.toThrow(
+      /None of the HSMs attached to the pool's gateways support ML-DSA keys/
     );
   });
 
@@ -95,7 +106,18 @@ describe("HSM Connector routing", () => {
 
     await expect(
       signThroughPool(routing, HsmGatewayCapability.MlDsa, { gatewayId: "old-gateway", gatewayPoolId: null })
-    ).rejects.toThrow(/The HSM Connector's gateway does not support ML-DSA keys/);
+    ).rejects.toThrow(/Update the gateway to the latest version/);
+    expect(getPlatformConnectionDetailsByGatewayId).not.toHaveBeenCalled();
+  });
+
+  test("a current single gateway whose HSM lacks ML-DSA is refused with an HSM error", async () => {
+    const { routing, getPlatformConnectionDetailsByGatewayId } = buildRouting([
+      { id: "current-gateway", capabilities: { pkcs11: true, pkcs11MlDsa: false } }
+    ]);
+
+    await expect(
+      signThroughPool(routing, HsmGatewayCapability.MlDsa, { gatewayId: "current-gateway", gatewayPoolId: null })
+    ).rejects.toThrow(/The HSM attached to the HSM Connector's gateway does not support ML-DSA keys/);
     expect(getPlatformConnectionDetailsByGatewayId).not.toHaveBeenCalled();
   });
 
