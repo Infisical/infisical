@@ -121,9 +121,7 @@ import {
   TListProjectPkiSubscribersDTO,
   TListProjectsDTO,
   TLoadProjectKmsBackupDTO,
-  TPermanentlyDeleteProjectDTO,
   TProjectAccessRequestDTO,
-  TRestoreProjectDTO,
   TSearchProjectsDTO,
   TToggleProjectAutoCapitalizationDTO,
   TToggleProjectDeleteProtectionDTO,
@@ -911,13 +909,13 @@ export const projectServiceFactory = ({
     }
   };
 
-  const listDeletedProjects = async ({
+  // A deleted project can't be resolved through project permissions, so org admins manage it.
+  const $checkCanManageDeletedProjects = async ({
     actor,
     actorId,
     actorOrgId,
-    actorAuthMethod,
-    type
-  }: TListDeletedProjectsDTO) => {
+    actorAuthMethod
+  }: Omit<TProjectPermission, "projectId">) => {
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
       actor,
@@ -930,28 +928,24 @@ export const projectServiceFactory = ({
       OrgPermissionAdminConsoleAction.AccessAllProjects,
       OrgPermissionSubjects.AdminConsole
     );
-
-    return projectDAL.findDeletedProjects(actorOrgId, type);
   };
 
-  const restoreProject = async ({ actor, actorId, actorOrgId, actorAuthMethod, projectId }: TRestoreProjectDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionAdminConsoleAction.AccessAllProjects,
-      OrgPermissionSubjects.AdminConsole
-    );
-
+  const $findDeletedProject = async (projectId: string, orgId: string) => {
     const project = await projectDAL.findByIdIncludingExpired(projectId);
-    if (!project || project.orgId !== actorOrgId || !project.deleteAfter) {
+    if (!project || project.orgId !== orgId || !project.deleteAfter) {
       throw new NotFoundError({ message: `Deleted project with ID '${projectId}' not found` });
     }
+    return { ...project, deleteAfter: project.deleteAfter };
+  };
+
+  const listDeletedProjects = async ({ type, ...dto }: TListDeletedProjectsDTO) => {
+    await $checkCanManageDeletedProjects(dto);
+    return projectDAL.findDeletedProjects(dto.actorOrgId, type);
+  };
+
+  const restoreProject = async ({ projectId, ...dto }: TProjectPermission) => {
+    await $checkCanManageDeletedProjects(dto);
+    const project = await $findDeletedProject(projectId, dto.actorOrgId);
 
     if (new Date(project.deleteAfter).getTime() <= Date.now()) {
       throw new BadRequestError({
@@ -1016,30 +1010,9 @@ export const projectServiceFactory = ({
     }
   };
 
-  const permanentlyDeleteProject = async ({
-    actor,
-    actorId,
-    actorOrgId,
-    actorAuthMethod,
-    projectId
-  }: TPermanentlyDeleteProjectDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: actorOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionAdminConsoleAction.AccessAllProjects,
-      OrgPermissionSubjects.AdminConsole
-    );
-
-    const project = await projectDAL.findByIdIncludingExpired(projectId);
-    if (!project || project.orgId !== actorOrgId || !project.deleteAfter) {
-      throw new NotFoundError({ message: `Deleted project with ID '${projectId}' not found` });
-    }
+  const permanentlyDeleteProject = async ({ projectId, ...dto }: TProjectPermission) => {
+    await $checkCanManageDeletedProjects(dto);
+    const project = await $findDeletedProject(projectId, dto.actorOrgId);
 
     let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
     try {

@@ -111,10 +111,6 @@ export type TDeleteProjectDTO = {
   hardDelete?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
-export type TRestoreProjectDTO = TProjectPermission;
-
-export type TPermanentlyDeleteProjectDTO = TProjectPermission;
-
 export type TListDeletedProjectsDTO = {
   type?: ProjectType;
 } & Omit<TProjectPermission, "projectId">;
