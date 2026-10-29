@@ -42,7 +42,7 @@ If the policy sets a request expiration and ServiceNow doesn't return a decision
 
     - **Access Requests**: every request Infisical has sent
     - **Pending Requests**: requests waiting for a decision
-    - **Admin Console** (admins only): every request, with a **Resend to Infisical** button for a decision that didn't reach Infisical
+    - **Admin Console** (admins only): every request, with a [**Resend to Infisical**](#resend-to-infisical) button for a decision that didn't reach Infisical
 
     You can't approve or reject a request from these modules. Your approvers decide in the approval flow you set up in [Step 3](#step-3-set-up-the-approval-flow).
 
@@ -68,7 +68,7 @@ Infisical uses this connection to create each record and to read each decision b
 
 ## Step 3: Set up the approval flow
 
-The Infisical application includes an approval flow, **Infisical - Default Approval**, and a group of approvers, **Infisical Approvers**. The flow asks the members of the group to approve each new request. The first member who approves or rejects the request decides it, and the flow then notifies Infisical of the decision.
+The Infisical application includes an approval flow, **Infisical - Default Approval**, and a group of approvers, **Infisical Approvers**. The flow asks the members of the group to approve each new request, so the first member who approves or rejects the request decides it. In the final step, the flow then notifies Infisical of the decision.
 
 When you install the application, the group has no members and the flow is inactive. Add your approvers to the group, then activate the flow.
 
@@ -101,6 +101,10 @@ When you install the application, the group has no members and the flow is inact
   </Step>
 </Steps>
 
+<Note>
+  The **Infisical Approvers** group already has the `x_infis_approvals.approver` role. Add other roles on the **Roles** tab if you need them.
+</Note>
+
 ### Activate the flow
 
 <Steps>
@@ -124,7 +128,9 @@ When you install the application, the group has no members and the flow is inact
   </Step>
 </Steps>
 
-You can change the flow, for example to add approval steps or a trigger condition, as long as every branch still ends with the **Infisical - Notify Decision** action. See [Notify Infisical of the decision](#notify-infisical-of-the-decision).
+<Note>
+  You can change the flow, for example to add approval steps or a trigger condition, as long as every branch still ends with the **Infisical - Notify Decision** action. See [Notify Infisical of the decision](#notify-infisical-of-the-decision).
+</Note>
 
 ### Use your own flow instead
 
@@ -214,6 +220,8 @@ Requesting access under a ServiceNow policy works like any other [access request
 <Steps>
   <Step>
     In your Secrets Management project, select **Approvals** from the sidebar, open the **Access Requests** tab, and select **Request Access**.
+    ![Request Access Button](/images/platform/workflow-integrations/servicenow-integration/access-policy-request-access.png)
+
   </Step>
   <Step>
     Choose an **Environment** and **Secret Path** that the policy covers, pick the permissions, fill out **Duration** and **Note**, then select **Request Access**.
@@ -282,10 +290,10 @@ If your flow fills in **Approved By** or **Decision Notes** on the record, Infis
     the request's status in Infisical, and create the request again if the
     requester still needs access.
   </Accordion>
-  <Accordion title="Callback Failed with a connection error">
+  <Accordion title="Callback Failed with a connection error" id="resend-to-infisical">
     The ServiceNow instance can't reach the **Callback URL** on the record. Fix
     the instance's outbound firewall rules, then select **Resend to Infisical**
-    on the request in the **Admin Console**. If the URL itself is wrong, correct
+    on the request in the **Admin Console**. If the URL itself is wrong, cancel the current request, correct
     `SITE_URL` and create the request again.
   </Accordion>
   <Accordion title="Callback Failed with an invalid decision">
