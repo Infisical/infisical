@@ -347,7 +347,11 @@ export const getAzureConnectionAccessToken = async (
         projectId: appConnection.projectId
       })) as TAzureKeyVaultConnectionManagedIdentityCredentials;
 
-      if (managedIdentityCredentials.expiresAt > currentTime + 300000) {
+      if (
+        managedIdentityCredentials.accessToken &&
+        managedIdentityCredentials.expiresAt &&
+        managedIdentityCredentials.expiresAt > currentTime + 300000
+      ) {
         return { accessToken: managedIdentityCredentials.accessToken };
       }
 
@@ -565,13 +569,16 @@ export const validateAzureKeyVaultConnectionCredentials = async (
         clientId: string;
       };
 
+      // A new connection has no ID yet, so Azure cannot trust its subject. Reconnecting verifies it once the
+      // customer has added the federated credential.
+      if (!connectionId) return { tenantId: managedIdentityTenantId, clientId: managedIdentityClientId };
+
       try {
         const managedIdentityToken = await getManagedIdentityAccessToken(
           {
             orgId,
             projectId,
-            // The create schema requires an ID for this method, and updates pass the connection's own
-            connectionId: connectionId as string,
+            connectionId,
             tenantId: managedIdentityTenantId,
             clientId: managedIdentityClientId
           },

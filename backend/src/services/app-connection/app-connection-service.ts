@@ -649,11 +649,6 @@ export const appConnectionServiceFactory = ({
       }
     }
 
-    // Validation signs a token for the connection's ID, so it must not be one another connection already has
-    if (params.id && (await appConnectionDAL.findById(params.id))) {
-      throw new BadRequestError({ message: `App Connection ID '${params.id}' is already in use. Use a new ID.` });
-    }
-
     const runValidation = (validationGatewayId: string | null | undefined) =>
       validateAppConnectionCredentials(
         {
@@ -662,7 +657,6 @@ export const appConnectionServiceFactory = ({
           method,
           orgId: actor.orgId,
           projectId,
-          connectionId: params.id,
           version: 2,
           gatewayId: validationGatewayId,
           projectType: project?.type

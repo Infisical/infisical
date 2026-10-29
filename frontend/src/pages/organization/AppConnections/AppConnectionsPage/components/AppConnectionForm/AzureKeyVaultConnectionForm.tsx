@@ -59,7 +59,7 @@ type ClientSecretForm = z.infer<typeof clientSecretSchema>;
 type CertificateForm = z.infer<typeof certificateSchema>;
 type ManagedIdentityForm = z.infer<typeof managedIdentitySchema>;
 
-type TInputFormData = ClientSecretForm | CertificateForm | (ManagedIdentityForm & { id?: string });
+type TInputFormData = ClientSecretForm | CertificateForm | ManagedIdentityForm;
 
 type Props = {
   appConnection?: TAzureKeyVaultConnection;
@@ -251,12 +251,8 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
 
-  // The subject Infisical signs is the connection's ID, so a new connection's ID is chosen here and shown
-  // before it exists
-  const [connectionId] = useState(() => appConnection?.id ?? window.crypto.randomUUID());
-
   const { data: issuerUrl } = useGetOidcIssuerUrl(currentOrg.id, {
-    enabled: selectedMethod === AzureKeyVaultConnectionMethod.ManagedIdentity
+    enabled: isUpdate && selectedMethod === AzureKeyVaultConnectionMethod.ManagedIdentity
   });
 
   const onSubmitHandler = async (formData: FormData) => {
@@ -283,10 +279,8 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
         await onSubmit(formData);
         break;
       case AzureKeyVaultConnectionMethod.Certificate:
-        await onSubmit(formData);
-        break;
       case AzureKeyVaultConnectionMethod.ManagedIdentity:
-        await onSubmit(isUpdate ? formData : { ...formData, id: connectionId });
+        await onSubmit(formData);
         break;
       default:
         throw new Error(`Unhandled Azure Connection method: ${(formData as FormData).method}`);
@@ -679,16 +673,26 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                 </Field>
               )}
             />
-            <Field className="mb-4">
-              <FieldLabel>Federated Credential</FieldLabel>
-              <FieldDescription>
-                Add a federated credential to the managed identity with the Other issuer scenario
-                and these values.
+            {appConnection ? (
+              <Field className="mb-4">
+                <FieldLabel>Federated Credential</FieldLabel>
+                <FieldDescription>
+                  Add a federated credential to the managed identity with the Other issuer scenario
+                  and these values, then select Reconnect to Azure to verify it.
+                </FieldDescription>
+                {issuerUrl && <CopyableValue label="Issuer" value={issuerUrl} />}
+                <CopyableValue
+                  label="Subject Identifier"
+                  value={`app-connection:${appConnection.id}`}
+                />
+                <CopyableValue label="Audience" value={AZURE_FEDERATED_TOKEN_AUDIENCE} />
+              </Field>
+            ) : (
+              <FieldDescription className="mb-4">
+                After you create the connection, open Edit Credentials to copy the values for the
+                federated credential in Azure.
               </FieldDescription>
-              {issuerUrl && <CopyableValue label="Issuer" value={issuerUrl} />}
-              <CopyableValue label="Subject Identifier" value={`app-connection:${connectionId}`} />
-              <CopyableValue label="Audience" value={AZURE_FEDERATED_TOKEN_AUDIENCE} />
-            </Field>
+            )}
           </>
         )}
 

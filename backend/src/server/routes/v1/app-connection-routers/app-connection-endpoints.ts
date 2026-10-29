@@ -16,7 +16,6 @@ import { AuthMode } from "@app/services/auth/auth-type";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 type TAppConnectionCreateSchema<I extends TAppConnectionInput> = z.ZodType<{
-  id?: string;
   name: string;
   method: I["method"];
   credentials: I["credentials"];
@@ -344,7 +343,6 @@ export const buildCreateAppConnectionRoute = <I extends TAppConnectionInput>(
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
       const {
-        id,
         name,
         method,
         credentials,
@@ -360,7 +358,6 @@ export const buildCreateAppConnectionRoute = <I extends TAppConnectionInput>(
 
       const appConnection = await server.services.appConnection.createAppConnection(
         {
-          id,
           name,
           method,
           app,

@@ -11,7 +11,6 @@ import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 
 import { AppConnection } from "./app-connection-enums";
 import { appConnectionServiceFactory } from "./app-connection-service";
-import { AzureKeyVaultConnectionMethod } from "./azure-key-vault";
 
 const ACTOR_ORG_ID = "org-1";
 const CONNECTION_ID = "conn-1";
@@ -29,8 +28,7 @@ class PermissionReached extends Error {}
 
 const buildService = (
   connection: { orgId: string; projectId: string | null; app?: AppConnection },
-  abilities: { org?: unknown; project?: unknown } = {},
-  extraDeps: Record<string, unknown> = {}
+  abilities: { org?: unknown; project?: unknown } = {}
 ) => {
   const permissionService = {
     getOrgPermission: vi.fn(async () => {
@@ -59,8 +57,7 @@ const buildService = (
       }))
     },
     permissionService,
-    licenseService: { getPlan: vi.fn(async () => ({})) },
-    ...extraDeps
+    licenseService: { getPlan: vi.fn(async () => ({})) }
   };
 
   const deps = new Proxy(overrides, {
@@ -204,37 +201,5 @@ describe("validateAppConnectionUsageById refuses connections the caller cannot u
         actor
       )
     ).rejects.toThrow(BadRequestError);
-  });
-});
-
-describe("createAppConnection", () => {
-  test("refuses an ID another connection has, before signing a token for it", async () => {
-    const signToken = vi.fn();
-    const { service } = buildService(
-      { orgId: ACTOR_ORG_ID, projectId: null },
-      {
-        org: createMongoAbility([
-          { action: OrgPermissionAppConnectionActions.Create, subject: OrgPermissionSubjects.AppConnections }
-        ])
-      },
-      { oidcIssuerService: { signToken } }
-    );
-
-    await expect(
-      service.createAppConnection(
-        {
-          id: CONNECTION_ID,
-          name: "key-vault",
-          app: AppConnection.AzureKeyVault,
-          method: AzureKeyVaultConnectionMethod.ManagedIdentity,
-          credentials: {
-            tenantId: "00000000-0000-0000-0000-000000000000",
-            clientId: "00000000-0000-0000-0000-000000000000"
-          }
-        },
-        actor
-      )
-    ).rejects.toThrow(`App Connection ID '${CONNECTION_ID}' is already in use`);
-    expect(signToken).not.toHaveBeenCalled();
   });
 });

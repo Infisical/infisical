@@ -1220,11 +1220,11 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   for free and never logs on its own.
 - **Connections sign for their own ID only.** The subject is `getAppConnectionOidcSubject(connection.id)`,
   built server-side from the connection row, and the token is only ever sent to the provider's token
-  endpoint, never returned to a caller. The form picks a new connection's ID so the subject can be shown
-  before it exists; create rejects an ID that is already in use before validation signs anything. The
-  Azure Key Vault `managed-identity` method is the reference consumer: copy its
-  `getManagedIdentityAccessToken`, which caches the provider's access token in the credentials like the
-  secret-based methods do.
+  endpoint, never returned to a caller. Never let a caller choose the ID: a deleted connection's ID would
+  regain whatever the provider still trusts. So the connection is created first, without a token exchange,
+  and reconnecting verifies it once the customer has added the federated credential. The Azure Key Vault
+  `managed-identity` method is the reference consumer: copy its `getManagedIdentityAccessToken`, which
+  caches the provider's access token in the credentials like the secret-based methods do.
 
 ### Enterprise (EE) Features
 

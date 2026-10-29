@@ -781,7 +781,6 @@ export type TCreateAppConnectionDTO = Pick<
   | "rotation"
   | "isAutoRotationEnabled"
 > & {
-  id?: string;
   configuration?: Record<string, unknown>;
 };
 

@@ -79,8 +79,8 @@ export const AzureKeyVaultConnectionManagedIdentityInputCredentialsSchema = z.ob
 export const AzureKeyVaultConnectionManagedIdentityOutputCredentialsSchema = z.object({
   tenantId: z.string(),
   clientId: z.string(),
-  accessToken: z.string(),
-  expiresAt: z.number()
+  accessToken: z.string().optional(),
+  expiresAt: z.number().optional()
 });
 
 export const ValidateAzureKeyVaultConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -123,26 +123,15 @@ export const CreateAzureKeyVaultConnectionSchema = ValidateAzureKeyVaultConnecti
     supportsCredentialRotation: true,
     supportsGateways: true
   })
-)
-  .and(z.object({ id: z.string().uuid().optional().describe(AppConnections.CREATE(AppConnection.AzureKeyVault).id) }))
-  .superRefine((data, ctx) => {
-    if (data.method !== AzureKeyVaultConnectionMethod.ClientSecret && data.isAutoRotationEnabled) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Credential rotation is only supported for the client-secret method",
-        path: ["isAutoRotationEnabled"]
-      });
-    }
-
-    if (data.method === AzureKeyVaultConnectionMethod.ManagedIdentity && !data.id) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message:
-          "The managed-identity method requires an ID. Set the federated credential's subject to 'app-connection:<id>' before creating the connection.",
-        path: ["id"]
-      });
-    }
-  });
+).superRefine((data, ctx) => {
+  if (data.method !== AzureKeyVaultConnectionMethod.ClientSecret && data.isAutoRotationEnabled) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Credential rotation is only supported for the client-secret method",
+      path: ["isAutoRotationEnabled"]
+    });
+  }
+});
 
 export const UpdateAzureKeyVaultConnectionSchema = z
   .object({
