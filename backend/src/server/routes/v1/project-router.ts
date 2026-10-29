@@ -455,6 +455,8 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       params: z.object({
         projectId: z.string().trim().describe(PROJECTS.DELETE.projectId)
       }),
+      // Deliberate deviation, matching environment deletion: by default a secret manager project stays
+      // restorable for a grace period, and hardDelete opts out of it.
       querystring: z.object({
         hardDelete: z
           .enum(["true", "false"])
