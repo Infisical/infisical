@@ -75,7 +75,7 @@ The SDK methods are organized into the following high-level categories:
 3. `dynamic_secrets`: Manages dynamic secrets and leases.
 4. `kms`: Perform cryptographic operations with Infisical KMS.
 5. `folders`: Manages folder-related operations.
-6. `agent_vault`: Manages [Agent Vault](/documentation/platform/agent-vault/overview) sessions and proxies
+6. `agent_vault`: Manages [Agent Vault](/documentation/platform/agent-vault/overview) sessions and proxies.
 
 ### `auth`
 
@@ -847,8 +847,8 @@ sessions = client.agent_vault.sessions.list(
 ```
 
 **Parameters:**
-- `scope` (Union[AgentVaultSessionScope, str], optional): whose sessions to list, either `AgentVaultSessionScope.MINE` for the identity's own sessions or `AgentVaultSessionScope.ALL` for every session if the identity is an admin (defaults to `MINE`)
-- `statuses` (List[Union[AgentVaultSessionStatus, str]], optional): the statuses to include, from `ACTIVE`, `REVOKED`, and `EXPIRED` (defaults to all three)
+- `scope` (Union[AgentVaultSessionScope, str], optional): whose sessions to list, either `AgentVaultSessionScope.MINE` (`"mine"`) for the identity's own sessions or `AgentVaultSessionScope.ALL` (`"all"`) for every session if the identity is an admin (defaults to `AgentVaultSessionScope.MINE`)
+- `statuses` (List[Union[AgentVaultSessionStatus, str]], optional): the statuses to include, from `AgentVaultSessionStatus.ACTIVE` (`"active"`), `AgentVaultSessionStatus.REVOKED` (`"revoked"`), and `AgentVaultSessionStatus.EXPIRED` (`"expired"`) (defaults to all three)
 - `search` (str, optional): text to find in each session's [label](/documentation/platform/agent-vault/sessions#label-a-session), owner name, owner email, or access bundle name
 - `limit` (int, optional): the maximum number of sessions to return, from 1 to 100 (defaults to `20`)
 - `offset` (int, optional): the number of sessions to skip (defaults to `0`)
@@ -892,7 +892,7 @@ To pass `session.token` to the agent, follow the steps in [Start the agent with 
 
 #### Update session label
 
-Add, change, or remove a session's label, for example to record what the agent is working on. You can also change the label after the session expires or is revoked.
+Add, change, or remove a session's label, for example to record what the agent is working on. You can also change the label after the session expires or is revoked, unless the user or machine identity that owns the session was deleted.
 
 ```python
 session = client.agent_vault.sessions.update(
@@ -912,8 +912,10 @@ session = client.agent_vault.sessions.update(
 
 Revoke a session when its agent finishes, even if the agent fails. The proxy stops attaching credentials for the session within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval).
 
+If the agent can run longer than the client's access token lasts, log in again before you revoke the session, because the SDK doesn't renew the access token. A `ttl` close to how long the agent runs limits how long the session stays active if the revoke fails.
+
 ```python
-session = client.agent_vault.sessions.create(access_bundle="<access-bundle-name>")
+session = client.agent_vault.sessions.create(access_bundle="<access-bundle-name>", ttl="1h")
 try:
     run_agent(session.token) # Your code that starts the agent with the session token
 finally:
@@ -924,7 +926,7 @@ finally:
 - `session_id` (str): the ID of the session
 
 **Returns:**
-- `AgentVaultSession`: the revoked session
+- `AgentVaultSession`: the revoked session, with `accessBundles` set to `None` (call `get` for the access bundle)
 
 ### `agent_vault.proxies`
 
@@ -975,8 +977,8 @@ response = client.agent_vault.proxies.create(
 
 **Parameters:**
 - `name` (str): the name of the proxy, in lowercase letters, numbers, and hyphens (up to 64 characters)
-- `traffic_policy` (Union[AgentVaultTrafficPolicy, str], optional): the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), either `ANY_HOST` to forward requests to any host or `BUNDLE_HOSTS` to refuse requests to hosts that no service in the session's access bundle covers (defaults to `ANY_HOST`)
-- `allowed_hosts` (Union[List[str], str], optional): hosts that agents can reach under `BUNDLE_HOSTS` even if no service covers them, as a list or a comma-separated string (see [Exceptions](/documentation/platform/agent-vault/proxies#exceptions))
+- `traffic_policy` (Union[AgentVaultTrafficPolicy, str], optional): the proxy's [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), either `AgentVaultTrafficPolicy.ANY_HOST` (`"any-host"`) to forward requests to any host or `AgentVaultTrafficPolicy.BUNDLE_HOSTS` (`"bundle-hosts"`) to refuse requests to hosts that no service in the session's access bundle covers (defaults to `AgentVaultTrafficPolicy.ANY_HOST`)
+- `allowed_hosts` (Union[List[str], str], optional): hosts that agents can reach under `AgentVaultTrafficPolicy.BUNDLE_HOSTS` even if no service covers them, as a list or a comma-separated string (see [Exceptions](/documentation/platform/agent-vault/proxies#exceptions))
 - `poll_interval` (int, optional): how often, in seconds, the proxy checks its sessions and settings with Infisical, from 10 to 300 (defaults to `60`)
 
 **Returns:**
