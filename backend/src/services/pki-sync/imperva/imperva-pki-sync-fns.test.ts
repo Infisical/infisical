@@ -111,7 +111,7 @@ describe("Imperva upload failures", () => {
     const rejected = new ImpervaRequestError({ message: "Invalid input", status: 400 });
 
     expect(describeImpervaUploadFailure(rejected)).toBe(
-      "Invalid input. Imperva rejected the certificate. It has to cover every domain the website serves, and its chain has to be complete and ordered leaf first"
+      "Invalid input. Imperva rejected the certificate. It has to cover every domain the website serves, and its key has to be RSA under 4096 bits or ECDSA P-256"
     );
   });
 
@@ -359,5 +359,57 @@ describe("Imperva deployment mismatch", () => {
     ]);
     expect(result.partialFailureMessage).toContain("does not cover every managed domain");
     expect(updateById.mock.calls[0][1]).toMatchObject({ syncStatus: "failed" });
+  });
+});
+
+describe("Imperva retry decisions", () => {
+  test("stops retrying what Imperva refused, keeps retrying what it could not answer", async () => {
+    const { isImpervaRetryable } = await import("./imperva-pki-sync-fns");
+    const { ImpervaRequestError } = await import("@app/services/app-connection/imperva/imperva-connection-fns");
+
+    expect(isImpervaRetryable(new ImpervaRequestError({ message: "Invalid input", status: 400 }))).toBe(false);
+    expect(isImpervaRetryable(new ImpervaRequestError({ message: "unauthorized", status: 401 }))).toBe(false);
+    expect(isImpervaRetryable(new ImpervaRequestError({ message: "rate limited", status: 429 }))).toBe(true);
+    expect(isImpervaRetryable(new ImpervaRequestError({ message: "server error", status: 500 }))).toBe(true);
+    expect(isImpervaRetryable(new Error("socket hang up"))).toBe(true);
+  });
+
+  test("does not claim a slot when the upload is rejected", async () => {
+    const { impervaPkiSyncFactory } = await import("./imperva-pki-sync-fns");
+    const { ImpervaRequestError } = await import("@app/services/app-connection/imperva/imperva-connection-fns");
+
+    impervaRequest.mockReset();
+    impervaRequest.mockRejectedValue(new ImpervaRequestError({ message: "Invalid input", status: 400 }));
+
+    const claimExternalIdentifier = vi.fn();
+    const factory = impervaPkiSyncFactory({
+      certificateSyncDAL: {
+        findByPkiSyncId: vi.fn().mockResolvedValue([]),
+        removeCertificates: vi.fn(),
+        addCertificates: vi.fn(),
+        findByPkiSyncAndCertificate: vi.fn().mockResolvedValue(undefined),
+        updateById: vi.fn(),
+        updateSyncStatus: vi.fn(),
+        findExternalIdentifiersInUse: vi.fn().mockResolvedValue(new Set<string>()),
+        claimExternalIdentifier
+      } as never,
+      certificateDAL: { findById: vi.fn().mockResolvedValue(undefined) } as never
+    });
+
+    await expect(
+      factory.syncCertificates(
+        {
+          id: "sync-1",
+          destination: "imperva",
+          projectId: "project-1",
+          destinationConfig: { siteId: "111", siteName: "waf.example.com" },
+          syncOptions: { canRemoveCertificates: true },
+          connection: { credentials: { apiId: "id", apiKey: "key" }, gatewayId: null, gatewayPoolId: null }
+        } as never,
+        { leaf: { cert: RSA_CERT_PEM, privateKey: "key", certificateId: "cert-1" } } as never
+      )
+    ).rejects.toMatchObject({ shouldRetry: false });
+
+    expect(claimExternalIdentifier).not.toHaveBeenCalled();
   });
 });
