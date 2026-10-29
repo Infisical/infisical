@@ -74,7 +74,8 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
       return;
     }
 
-    if (!options?.pkcs12?.password || !options?.pkcs12?.alias) {
+    const pkcs12Options = options?.pkcs12;
+    if (!pkcs12Options?.password || !pkcs12Options.alias) {
       createNotification({
         text: "Password and alias are required for PKCS12 export",
         type: "error"
@@ -85,8 +86,7 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
     try {
       await downloadCertPkcs12({
         certificateId,
-        password: options.pkcs12.password,
-        alias: options.pkcs12.alias
+        ...pkcs12Options
       });
       createNotification({
         text: "PKCS12 certificate downloaded successfully",
