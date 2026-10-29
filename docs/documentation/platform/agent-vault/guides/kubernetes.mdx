@@ -20,7 +20,7 @@ flowchart LR
       proxy["Agent Vault proxy"]
     end
   end
-  infisical["Infisical"]
+  infisical["Infisical<br/>Cloud or self-hosted"]
   apis["api.anthropic.com<br/>api.github.com<br/>..."]
   orchestrator -->|"creates a session"| infisical
   orchestrator -->|"starts the pod with the session token"| agent
