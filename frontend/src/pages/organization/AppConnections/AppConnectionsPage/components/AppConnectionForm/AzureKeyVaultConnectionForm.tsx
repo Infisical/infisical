@@ -115,12 +115,22 @@ const formSchema = z.discriminatedUnion("method", [
 // Entra only accepts federated tokens with this audience
 const AZURE_FEDERATED_TOKEN_AUDIENCE = "api://AzureADTokenExchange";
 
-const CopyableValue = ({ label, value }: { label: string; value: string }) => (
+const CopyableValue = ({
+  label,
+  value,
+  placeholder
+}: {
+  label: string;
+  value?: string;
+  placeholder?: string;
+}) => (
   <div className="flex flex-col gap-1">
     <span className="text-xs text-accent">{label}</span>
     <div className="flex items-center gap-2 rounded-md border border-border bg-container p-2">
-      <p className="grow font-mono text-sm break-all text-foreground">{value}</p>
-      <CopyButton value={value} ariaLabel={`Copy ${label}`} />
+      <p className={`grow font-mono text-sm break-all ${value ? "text-foreground" : "text-muted"}`}>
+        {value ?? placeholder}
+      </p>
+      {value && <CopyButton value={value} ariaLabel={`Copy ${label}`} />}
     </div>
   </div>
 );
@@ -252,7 +262,7 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
   const { currentOrg } = useOrganization();
 
   const { data: issuerUrl } = useGetOidcIssuerUrl(currentOrg.id, {
-    enabled: isUpdate && selectedMethod === AzureKeyVaultConnectionMethod.ManagedIdentity
+    enabled: selectedMethod === AzureKeyVaultConnectionMethod.ManagedIdentity
   });
 
   const onSubmitHandler = async (formData: FormData) => {
@@ -305,6 +315,11 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
   }
 
   const methodDetails = getAppConnectionMethodDetails(selectedMethod);
+
+  let submitLabel = isUpdate ? "Reconnect to Azure" : "Connect to Azure";
+  if (selectedMethod === AzureKeyVaultConnectionMethod.ManagedIdentity) {
+    submitLabel = isUpdate ? "Verify Connection" : "Create Connection";
+  }
 
   return (
     <FormProvider {...form}>
@@ -673,26 +688,21 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                 </Field>
               )}
             />
-            {appConnection ? (
-              <Field className="mb-4">
-                <FieldLabel>Federated Credential</FieldLabel>
-                <FieldDescription>
-                  Add a federated credential to the managed identity with the Other issuer scenario
-                  and these values, then select Reconnect to Azure to verify it.
-                </FieldDescription>
-                {issuerUrl && <CopyableValue label="Issuer" value={issuerUrl} />}
-                <CopyableValue
-                  label="Subject Identifier"
-                  value={`app-connection:${appConnection.id}`}
-                />
-                <CopyableValue label="Audience" value={AZURE_FEDERATED_TOKEN_AUDIENCE} />
-              </Field>
-            ) : (
-              <FieldDescription className="mb-4">
-                After you create the connection, open Edit Credentials to copy the values for the
-                federated credential in Azure.
+            <Field className="mb-4">
+              <FieldLabel>Federated Credential</FieldLabel>
+              <FieldDescription>
+                {appConnection
+                  ? "Add these values to a federated credential on the managed identity, with the Other issuer scenario, then select Verify Connection."
+                  : "The subject is filled in once you create the connection. Then add these values to a federated credential on the managed identity, with the Other issuer scenario."}
               </FieldDescription>
-            )}
+              {issuerUrl && <CopyableValue label="Issuer" value={issuerUrl} />}
+              <CopyableValue
+                label="Subject Identifier"
+                value={appConnection && `app-connection:${appConnection.id}`}
+                placeholder="app-connection:<connection ID>"
+              />
+              <CopyableValue label="Audience" value={AZURE_FEDERATED_TOKEN_AUDIENCE} />
+            </Field>
           </>
         )}
 
@@ -708,7 +718,7 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
               isRedirecting
             }
           >
-            {isUpdate ? "Reconnect to Azure" : "Connect to Azure"}
+            {submitLabel}
           </Button>
           <Button
             type="button"
