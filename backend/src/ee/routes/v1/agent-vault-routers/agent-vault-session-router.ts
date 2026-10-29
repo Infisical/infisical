@@ -1,11 +1,6 @@
 import { z } from "zod";
 
 import {
-  AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
-  AGENT_VAULT_NO_CONTROL_CHARS_RE
-} from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
-import { AgentVaultSessionScope, AgentVaultSessionStatus } from "@app/ee/services/agent-vault/agent-vault-enums";
-import {
   agentVaultSessionLabelSchema,
   agentVaultSessionLabelUpdateSchema,
   describeSessionForAudit
@@ -16,6 +11,11 @@ import {
   AGENT_VAULT_SESSION_MAX_TTL_MS,
   AGENT_VAULT_SESSION_TTL_NEVER
 } from "@app/ee/services/agent-vault-session/agent-vault-session-service";
+import {
+  AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
+  AGENT_VAULT_NO_CONTROL_CHARS_RE
+} from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
+import { AgentVaultSessionScope, AgentVaultSessionStatus } from "@app/ee/services/agent-vault/agent-vault-enums";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { AGENT_VAULT } from "@app/lib/api-docs";
 import { ApiDocsTags } from "@app/lib/api-docs/constants";

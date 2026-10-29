@@ -367,7 +367,7 @@ const pamMappings: TFeatureMapping[] = [
 ];
 
 // Agent Vault session logs: external storage (the customer's own bucket), default storage (the instance's bucket),
-// and how many days default storage keeps them. The last two keys are placeholders until the License Server has them.
+// and how many days default storage keeps them. The retention key is a placeholder until the License Server has it.
 const agentVaultMappings: TFeatureMapping[] = [
   {
     v2Key: "agent_vault_byo_s3",

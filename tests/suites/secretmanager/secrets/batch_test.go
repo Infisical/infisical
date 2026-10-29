@@ -3,12 +3,15 @@ package secrets_test
 import (
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
+	"github.com/Infisical/infisical/tests/internal/apierr"
+	"github.com/Infisical/infisical/tests/internal/spec"
 	"github.com/stretchr/testify/require"
 )
 
@@ -222,5 +225,116 @@ func TestSecret_Batch(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, res.StatusCode())
 		require.Equal(t, "Each secret can only be deleted once per request: A", res.JSON400.Message)
 		require.Equal(t, map[string]string{"A": "value", "B": "value"}, valuesOf(t, proj))
+	})
+
+	t.Run("should keep only the last value when a batch create lists the same key twice", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		body := api.CreateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev"}
+		body.Secrets = slices.Grow(body.Secrets, 2)[:2]
+		body.Secrets[0].SecretKey, body.Secrets[0].SecretValue = "A", "first"
+		body.Secrets[1].SecretKey, body.Secrets[1].SecretValue = "A", "second"
+
+		// Action
+		res, err := tn.Admin.API.CreateManySecretsV4WithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "batch create returned %s", apierr.Body(res.Body))
+		require.Equal(t, map[string]string{"A": "second"}, valuesOf(t, proj),
+			"today a repeated key is silently de-duplicated, unlike batch delete which refuses it")
+	})
+
+	t.Run("should refuse a batch rename onto an existing name and change nothing", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		secretmanager.CreateSecret(t, proj, "dev", "A", "one")
+		secretmanager.CreateSecret(t, proj, "dev", "B", "two")
+		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev"}
+		body.Secrets = slices.Grow(body.Secrets, 1)[:1]
+		body.Secrets[0].SecretKey, body.Secrets[0].NewSecretName, body.Secrets[0].SecretValue = "A", new("B"), new("changed")
+
+		// Action
+		res, err := tn.Admin.API.UpdateManySecretsV4WithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t, "Secret with new name already exists: B", res.JSON400.Message)
+		require.Equal(t, map[string]string{"A": "one", "B": "two"}, valuesOf(t, proj))
+	})
+
+	t.Run("should name every offending key and create nothing when a batch create breaks enforced capitalization", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		configureProject(t, proj, api.UpdateProjectJSONRequestBody{AutoCapitalization: new(true)})
+		body := api.CreateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev"}
+		body.Secrets = slices.Grow(body.Secrets, 3)[:3]
+		body.Secrets[0].SecretKey, body.Secrets[0].SecretValue = "db_url", "a"
+		body.Secrets[1].SecretKey, body.Secrets[1].SecretValue = "API_KEY", "b"
+		body.Secrets[2].SecretKey, body.Secrets[2].SecretValue = "Token", "c"
+
+		// Action
+		res, err := tn.Admin.API.CreateManySecretsV4WithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equal(t, http.StatusBadRequest, res.StatusCode())
+		require.Equal(t,
+			"Secret names must be in UPPERCASE per project requirements: db_url, Token. You can disable this requirement in project settings",
+			res.JSON400.Message)
+		require.Empty(t, valuesOf(t, proj))
+	})
+
+	t.Run("should create a lowercase key in upsert mode even when the project enforces capitalization", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, "today the upsert path checks only renamed keys against the capitalization rule, so a created key bypasses it")
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		configureProject(t, proj, api.UpdateProjectJSONRequestBody{AutoCapitalization: new(true)})
+		body := api.UpdateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev", Mode: new(api.Upsert)}
+		body.Secrets = slices.Grow(body.Secrets, 1)[:1]
+		body.Secrets[0].SecretKey, body.Secrets[0].SecretValue = "db_url", new("created")
+
+		// Action
+		res, err := tn.Admin.API.UpdateManySecretsV4WithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "upsert returned %s", apierr.Body(res.Body))
+		require.Equal(t, map[string]string{"db_url": "created"}, valuesOf(t, proj))
+	})
+
+	t.Run("should answer a batch key over the 500-character column with 422 and create nothing", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, "the batch route has no length check, so the key column rejects it and the error handler maps that to 422")
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		body := api.CreateManySecretsV4JSONRequestBody{ProjectId: proj.ID, Environment: "dev"}
+		body.Secrets = slices.Grow(body.Secrets, 2)[:2]
+		body.Secrets[0].SecretKey, body.Secrets[0].SecretValue = "SHORT", "value"
+		body.Secrets[1].SecretKey, body.Secrets[1].SecretValue = strings.Repeat("K", 501), "value"
+
+		// Action
+		res, err := tn.Admin.API.CreateManySecretsV4WithResponse(t.Context(), body)
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusUnprocessableEntity, res.StatusCode(), "batch create returned %s", apierr.Body(res.Body))
+		require.Contains(t, string(res.Body), "One or more field values exceed the maximum length allowed for this resource")
+		require.Empty(t, valuesOf(t, proj))
 	})
 }

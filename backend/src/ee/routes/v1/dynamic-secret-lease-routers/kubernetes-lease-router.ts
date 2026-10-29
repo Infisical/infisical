@@ -17,6 +17,7 @@ export const registerKubernetesDynamicSecretLeaseRouter = async (server: Fastify
     },
     schema: {
       hide: false,
+      operationId: "createKubernetesDynamicSecretLease",
       tags: [ApiDocsTags.DynamicSecrets],
       body: z.object({
         dynamicSecretName: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.CREATE.dynamicSecretName).toLowerCase(),

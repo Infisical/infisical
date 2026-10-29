@@ -6,6 +6,8 @@ import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate
 import { TProjectPermission } from "@app/lib/types";
 import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
+import { CertSubjectAlternativeNameType } from "@app/services/certificate-common/certificate-constants";
+import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import {
   CertExtendedKeyUsage,
@@ -13,8 +15,6 @@ import {
   CertKeyUsage,
   CertSignatureAlgorithm
 } from "@app/services/certificate/certificate-types";
-import { CertSubjectAlternativeNameType } from "@app/services/certificate-common/certificate-constants";
-import { TResolvedCustomExtension } from "@app/services/certificate-common/certificate-extension-fns";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { CertKeySource } from "@app/services/signer/signer-enums";

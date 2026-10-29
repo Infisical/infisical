@@ -1,5 +1,6 @@
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
+import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 
 import { TApprovalPolicyDALFactory } from "../approval-policy-dal";
 import { ApprovalPolicyType, ApprovalRequestGrantStatus } from "../approval-policy-enums";
@@ -20,6 +21,7 @@ type TSecretAccessApprovalGlobalResourceDep = {
   approvalPolicyDAL: Pick<TApprovalPolicyDALFactory, "findSecretAccessPolicyByEnvIdAndSecretPath">;
   approvalRequestGrantsDAL: Pick<TApprovalRequestGrantsDALFactory, "find" | "create">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create">;
+  membershipDAL: Pick<TMembershipDALFactory, "lockUserProjectMemberships">;
 };
 
 export type TSecretAccessApprovalGlobalResource = ReturnType<typeof secretAccessApprovalGlobalResourceFactory>;
@@ -27,7 +29,8 @@ export type TSecretAccessApprovalGlobalResource = ReturnType<typeof secretAccess
 export const secretAccessApprovalGlobalResourceFactory = ({
   approvalPolicyDAL,
   approvalRequestGrantsDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  membershipDAL
 }: TSecretAccessApprovalGlobalResourceDep) =>
   ({
     matchPolicy: async (projectId, inputs) => {
@@ -67,6 +70,17 @@ export const secretAccessApprovalGlobalResourceFactory = ({
       const { requesterId } = request;
       if (!requesterId) {
         throw new NotFoundError({ message: "The user who created this access request no longer exists" });
+      }
+
+      // Same membership rows removal locks, held across the privilege insert below. A privilege written
+      // after that delete survives and takes effect if the user is added back.
+      if (
+        !(await membershipDAL.lockUserProjectMemberships({ projectId: request.projectId, userId: requesterId }, tx))
+      ) {
+        throw new BadRequestError({
+          message:
+            "The user who created this access request is no longer a member of this project, so access cannot be granted."
+        });
       }
 
       const grant = await createSecretAccessGrantWithPrivilege(

@@ -23,6 +23,25 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
+import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
+import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
+import {
+  AGENT_VAULT_SERVICE_MOVED_MESSAGE,
+  TAgentVaultOauthServiceFactory
+} from "../agent-vault-oauth/agent-vault-oauth-service";
+import { toResolvedOauthCredential } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
+import { TAgentVaultOauthConfig } from "../agent-vault-oauth/agent-vault-oauth-types";
+import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
+import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
+import {
+  getSessionLogEntitlement,
+  TSessionLogLicenseService
+} from "../agent-vault-session-log/agent-vault-session-log-license-fns";
+import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
+import { getEffectiveSessionLogConfig } from "../agent-vault-session-log/agent-vault-session-log-storage-fns";
+import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
+import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
+import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import { isUniqueViolation } from "../agent-vault/agent-vault-db-error-fns";
 import {
   AgentVaultCredentialType,
@@ -36,25 +55,6 @@ import { TAgentVaultOwner } from "../agent-vault/agent-vault-owner-fns";
 import { findReachableAccessBundleIds, liveGroupIdsFrom } from "../agent-vault/agent-vault-permission";
 import { getServiceServerUrl } from "../agent-vault/agent-vault-service-type-fns";
 import { expandStoredVariableReferences, findStoredVariableIds } from "../agent-vault/agent-vault-variable-fns";
-import { TAgentVaultServiceCustomHeaderDALFactory } from "../agent-vault-access-bundle/agent-vault-service-custom-header-dal";
-import { TAgentVaultServiceSubstitutionDALFactory } from "../agent-vault-access-bundle/agent-vault-service-substitution-dal";
-import {
-  AGENT_VAULT_SERVICE_MOVED_MESSAGE,
-  TAgentVaultOauthServiceFactory
-} from "../agent-vault-oauth/agent-vault-oauth-service";
-import { toResolvedOauthCredential } from "../agent-vault-oauth/agent-vault-oauth-token-fns";
-import { TAgentVaultOauthConfig } from "../agent-vault-oauth/agent-vault-oauth-types";
-import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
-import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
-import { hashSessionToken } from "../agent-vault-session/agent-vault-session-fns";
-import { TAgentVaultSessionLogConfigDALFactory } from "../agent-vault-session-log/agent-vault-session-log-config-dal";
-import {
-  getSessionLogEntitlement,
-  TSessionLogLicenseService
-} from "../agent-vault-session-log/agent-vault-session-log-license-fns";
-import { openSessionLogKey } from "../agent-vault-session-log/agent-vault-session-log-secrets";
-import { getEffectiveSessionLogConfig } from "../agent-vault-session-log/agent-vault-session-log-storage-fns";
-import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import {
   mintAgentVaultProxyJwt,
   RESOURCE_TYPE_AGENT_VAULT_PROXY

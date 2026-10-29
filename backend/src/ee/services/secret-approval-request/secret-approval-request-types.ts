@@ -12,8 +12,8 @@ import {
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { ResourceMetadataWithEncryptionDTO } from "@app/services/resource-metadata/resource-metadata-schema";
-import { SecretOperations } from "@app/services/secret/secret-types";
 import { SecretUpdateMode } from "@app/services/secret-v2-bridge/secret-v2-bridge-types";
+import { SecretOperations } from "@app/services/secret/secret-types";
 
 export enum RequestState {
   Open = "open",
