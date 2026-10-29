@@ -207,6 +207,15 @@ const HTTP_TEMPLATES: Omit<AgentVaultHttpTemplate, "serviceType">[] = [
     credential: { type: AgentVaultCredentialType.Bearer }
   },
   {
+    key: "shipmail",
+    name: "Shipmail",
+    image: "Shipmail.svg",
+    category: AgentVaultTemplateCategory.Communication,
+    description: "Mailboxes, calendars, and email sending.",
+    hostPattern: "shipmail.to",
+    credential: { type: AgentVaultCredentialType.Bearer }
+  },
+  {
     key: "slack",
     name: "Slack",
     image: "Slack.svg",
