@@ -61,7 +61,7 @@ This quickstart walks you through the setup shared by every Agent Vault workflow
         On the **Credential** step, paste the real key, then select **Continue**.
 
         <Note>
-          If the API takes the key somewhere other than a header, such as Telegram's bot token in the URL, [add a substitution](/documentation/platform/agent-vault/http-apis#add-a-substitution) instead. Your agent sends the placeholder you enter in **Replace**.
+          If the API takes the key somewhere other than a header, such as a bot token in the URL, [add a substitution](/documentation/platform/agent-vault/http-apis#add-a-substitution) instead. Your agent sends the placeholder you enter in **Replace**.
         </Note>
       </Step>
       <Step>
@@ -206,7 +206,18 @@ This quickstart walks you through the setup shared by every Agent Vault workflow
       ```
     </CodeGroup>
 
-    Set `credential.type` to `bearer` for an API that takes a token in a header, `basic` for an API that takes a username and password, or `passthrough` for a host that the agent can call without a credential. For a key that goes somewhere other than a header, send a [substitution](/documentation/platform/agent-vault/http-apis#substitutions) instead.
+    Set `credential.type` to `bearer` for an API that takes a token in a header, `basic` for an API that takes a username and password, or `passthrough` for a host that the agent can call without a credential.
+    
+    <Note>
+    For a key that goes somewhere other than a header, set `credential` to `{"type": "passthrough"}` and send the key as a [substitution](/documentation/platform/agent-vault/http-apis#substitutions):
+
+    ```json
+    "credential": { "type": "passthrough" },
+    "substitutions": [
+      { "placeholder": "__TELEGRAM_BOT_TOKEN__", "surfaces": ["path"], "value": "<telegram-bot-token>" }
+    ]
+    ```
+    </Note>
 
     Repeat this request for each remaining key.
   </Tab>
