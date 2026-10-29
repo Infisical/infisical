@@ -42,6 +42,9 @@ export const GITHUB_PULL_REQUEST_CHECK_NAME = "Infisical Secret Scanning";
 
 const COMPARE_COMMITS_PER_PAGE = 100;
 const COMPARE_COMMITS_MAX_PAGES = 20;
+const COMMIT_FILES_PER_PAGE = 100;
+// GitHub lists at most 3,000 of a commit's files, across pages.
+const COMMIT_MAX_LISTED_FILES = 3000;
 // GitHub rejects a check run update carrying more than 50 annotations; more are sent as further updates.
 const CHECK_RUN_ANNOTATIONS_PER_REQUEST = 50;
 const CHECK_RUN_MAX_ANNOTATIONS = 500;
@@ -112,18 +115,44 @@ export const isGitHubPullRequestScanPayload = (
   payload: TQueueSecretScanningResourceDiffScan["payload"]
 ): payload is TGitHubPullRequestScanPayload => "pullRequest" in payload && "checkRunId" in payload;
 
+// A commit's files are paginated; one response alone holds only the first page of them.
+const listCommitFiles = async (
+  octokit: TGitHubOctokit,
+  { owner, repo, sha }: { owner: string; repo: string; sha: string }
+) => {
+  const files: NonNullable<Awaited<ReturnType<TGitHubOctokit["repos"]["getCommit"]>>["data"]["files"]> = [];
+
+  for (let page = 1; files.length < COMMIT_MAX_LISTED_FILES; page += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const { data } = await octokit.repos.getCommit({ owner, repo, ref: sha, per_page: COMMIT_FILES_PER_PAGE, page });
+    const pageFiles = data.files ?? [];
+
+    files.push(...pageFiles);
+
+    if (pageFiles.length < COMMIT_FILES_PER_PAGE) break;
+  }
+
+  return { files, isComplete: files.length < COMMIT_MAX_LISTED_FILES };
+};
+
+/**
+ * A commit that changes more files than GitHub lists can't be fully scanned from the API. A pull request check passes
+ * `requireCompleteCommits` so it fails rather than passing on part of the commit; a push scan scans what it can.
+ */
 export const scanGitHubCommitsAndGetFindings = async ({
   octokit,
   repositoryFullName,
   resourceName,
   commits,
-  configPath
+  configPath,
+  requireCompleteCommits
 }: {
   octokit: TGitHubOctokit;
   repositoryFullName: string;
   resourceName: string;
   commits: TGitHubCommitToScan[];
   configPath?: string;
+  requireCompleteCommits?: boolean;
 }): Promise<TFindingsPayload> => {
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
@@ -131,16 +160,21 @@ export const scanGitHubCommitsAndGetFindings = async ({
 
   for (const commit of commits) {
     // eslint-disable-next-line no-await-in-loop
-    const commitData = await octokit.repos.getCommit({
-      owner,
-      repo,
-      ref: commit.sha
-    });
+    const { files, isComplete } = await listCommitFiles(octokit, { owner, repo, sha: commit.sha });
 
-    // eslint-disable-next-line no-continue
-    if (!commitData.data.files) continue;
+    if (!isComplete) {
+      if (requireCompleteCommits) {
+        throw new Error(
+          `Commit ${commit.sha.slice(0, 7)} changes more than ${COMMIT_MAX_LISTED_FILES.toLocaleString("en-US")} files, more than GitHub lists, so it can't be fully scanned.`
+        );
+      }
 
-    for (const file of commitData.data.files) {
+      logger.warn(
+        `secretScanningV2DiffScan: GitHub - commit files truncated, scanning the first ${files.length} [repository=${repositoryFullName}] [commit=${commit.sha}]`
+      );
+    }
+
+    for (const file of files) {
       // A renamed, copied or changed file's patch can add lines too; a removed file's adds none.
       if (file.status !== "removed" && file.patch) {
         // eslint-disable-next-line
@@ -254,7 +288,8 @@ export const scanGitHubPullRequest = async ({
     repositoryFullName: payload.repository.full_name,
     resourceName,
     commits,
-    configPath
+    configPath,
+    requireCompleteCommits: true
   });
 
   return { findings, details: { scannedCommitCount: commits.length, totalCommitCount: totalCommits } };

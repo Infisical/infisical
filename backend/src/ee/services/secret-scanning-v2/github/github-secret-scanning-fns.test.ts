@@ -245,6 +245,74 @@ describe("scanGitHubCommitsAndGetFindings", () => {
     const scanned = scanContentAndGetFindings.mock.calls.map(([content]) => content.trim());
     expect(scanned).toEqual(["added", "modified", "renamed", "copied", "changed"]);
   });
+
+  const commit = { sha: "c".repeat(40), authorName: "a", authorEmail: "a@a.com", date: "", message: "m" };
+  const makeFiles = (count: number, offset: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      status: "modified",
+      filename: `file-${offset + index}.txt`,
+      patch: `@@ -0,0 +1 @@\n+file-${offset + index}`
+    }));
+  const asOctokit = (getCommit: unknown) =>
+    ({ repos: { getCommit } }) as unknown as Parameters<typeof scanGitHubCommitsAndGetFindings>[0]["octokit"];
+
+  test("scans every page of a commit's files", async () => {
+    const getCommit = vi
+      .fn()
+      .mockResolvedValueOnce({ data: { files: makeFiles(100, 0) } })
+      .mockResolvedValueOnce({ data: { files: makeFiles(100, 100) } })
+      .mockResolvedValueOnce({ data: { files: makeFiles(5, 200) } });
+
+    await scanGitHubCommitsAndGetFindings({
+      octokit: asOctokit(getCommit),
+      repositoryFullName: "acme/api",
+      resourceName: "acme/api",
+      commits: [commit],
+      requireCompleteCommits: true
+    });
+
+    expect(getCommit).toHaveBeenCalledTimes(3);
+    expect(getCommit).toHaveBeenLastCalledWith(expect.objectContaining({ page: 3, per_page: 100 }));
+    expect(scanContentAndGetFindings).toHaveBeenCalledTimes(205);
+  });
+
+  test("fails a scan that requires every file when a commit has more files than GitHub lists", async () => {
+    let page = 0;
+    const getCommit = vi.fn().mockImplementation(() => {
+      page += 1;
+      return Promise.resolve({ data: { files: makeFiles(100, (page - 1) * 100) } });
+    });
+
+    await expect(
+      scanGitHubCommitsAndGetFindings({
+        octokit: asOctokit(getCommit),
+        repositoryFullName: "acme/api",
+        resourceName: "acme/api",
+        commits: [commit],
+        requireCompleteCommits: true
+      })
+    ).rejects.toThrow("changes more than 3,000 files");
+
+    expect(getCommit).toHaveBeenCalledTimes(30);
+    expect(scanContentAndGetFindings).not.toHaveBeenCalled();
+  });
+
+  test("scans the files GitHub lists when the scan doesn't require every file", async () => {
+    let page = 0;
+    const getCommit = vi.fn().mockImplementation(() => {
+      page += 1;
+      return Promise.resolve({ data: { files: makeFiles(100, (page - 1) * 100) } });
+    });
+
+    await scanGitHubCommitsAndGetFindings({
+      octokit: asOctokit(getCommit),
+      repositoryFullName: "acme/api",
+      resourceName: "acme/api",
+      commits: [commit]
+    });
+
+    expect(scanContentAndGetFindings).toHaveBeenCalledTimes(3000);
+  });
 });
 
 describe("createSkippedPullRequestCheckRun", () => {
