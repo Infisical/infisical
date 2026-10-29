@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Info } from "lucide-react";
 
 import { AppConnectionOptionContent } from "@app/components/app-connections";
+import { useConnectionCreation } from "@app/components/app-connections/useConnectionCreation";
 import {
   Combobox,
   Field,
@@ -14,44 +15,39 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
-import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
-import { usePopUp } from "@app/hooks";
+import { useProject } from "@app/context";
 import {
   TAvailableAppConnection,
   useListAvailableAppConnectionsForApps
 } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
-import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
+import { GatewayCapability } from "@app/hooks/api/gateways-v2/types";
 
-import { TLinuxServerDiscoveryJobForm } from "./discovery-job-form-schema";
+import { THostDiscoveryJobForm } from "./discovery-job-form-schema";
 
 type TConnectionOption = Pick<TAvailableAppConnection, "id" | "name"> &
   Partial<TAvailableAppConnection>;
 
-const CREATE_OPTION_ID = "_create";
+type Props = {
+  app: AppConnection.SSH | AppConnection.WinRM;
+  connectionLabel: string;
+  capability: GatewayCapability.CertificateScan | GatewayCapability.WindowsCertificateScan;
+};
 
-export const LinuxServerHostsFields = () => {
-  const { permission } = useProjectPermission();
+export const HostConnectionsFields = ({ app, connectionLabel, capability }: Props) => {
   const { currentProject } = useProject();
-  const { control, getValues, setValue, setError } = useFormContext<TLinuxServerDiscoveryJobForm>();
-  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
+  const { control, getValues, setValue, setError } = useFormContext<THostDiscoveryJobForm>();
 
   const { connections, isPending } = useListAvailableAppConnectionsForApps(
-    [AppConnection.SSH],
+    [app],
     currentProject.id
   );
   const { data: gateways } = useQuery(gatewaysQueryKeys.list());
 
-  const canCreateConnection = permission.can(
-    ProjectPermissionAppConnectionActions.Create,
-    ProjectPermissionSub.AppConnections
-  );
-
   const incapableGatewayIds = new Set(
     (gateways ?? [])
-      .filter((gateway) => gateway.capabilities?.certificateScan !== true)
+      .filter((gateway) => gateway.capabilities?.[capability] !== true)
       .map((gateway) => gateway.id)
   );
 
@@ -59,21 +55,40 @@ export const LinuxServerHostsFields = () => {
     connections.map((connection) => [connection.id, connection])
   );
   const resolveOption = (option: TConnectionOption) => connectionsById.get(option.id) ?? option;
-  const isMissingGateway = (option: TConnectionOption) => {
-    const connection = resolveOption(option);
-    return connection.id !== CREATE_OPTION_ID && !connection.gatewayId && !connection.gatewayPoolId;
-  };
-  const isGatewayOutdated = (option: TConnectionOption) => {
-    const connection = resolveOption(option);
-    return Boolean(connection.gatewayId) && incapableGatewayIds.has(connection.gatewayId as string);
-  };
+  const hasNoGateway = (connection: Pick<TConnectionOption, "gatewayId" | "gatewayPoolId">) =>
+    !connection.gatewayId && !connection.gatewayPoolId;
+  const hasOutdatedGateway = (connection: Pick<TConnectionOption, "gatewayId">) =>
+    Boolean(connection.gatewayId) && incapableGatewayIds.has(connection.gatewayId as string);
+  const isMissingGateway = (option: TConnectionOption) => hasNoGateway(resolveOption(option));
+  const isGatewayOutdated = (option: TConnectionOption) =>
+    hasOutdatedGateway(resolveOption(option));
   const isUnusable = (option: TConnectionOption) =>
     isMissingGateway(option) || isGatewayOutdated(option);
   const connectionOptions: TConnectionOption[] = [
-    ...(canCreateConnection ? [{ id: CREATE_OPTION_ID, name: "Create SSH Connection" }] : []),
     ...connections.filter((connection) => !isUnusable(connection)),
     ...connections.filter(isUnusable)
   ];
+
+  const creation = useConnectionCreation(app, (connection) => {
+    if (hasNoGateway(connection)) {
+      setError("connections", {
+        message: `${connectionLabel} connection '${connection.name}' has no gateway. Add one to the connection to scan this server.`
+      });
+      return;
+    }
+    if (hasOutdatedGateway(connection)) {
+      setError("connections", {
+        message: `The gateway on ${connectionLabel} connection '${connection.name}' is too old for certificate scanning. Update it to the latest version.`
+      });
+      return;
+    }
+    const existing = getValues("connections") ?? [];
+    if (existing.some((c) => c.id === connection.id)) return;
+    setValue("connections", [...existing, { id: connection.id, name: connection.name }], {
+      shouldDirty: true,
+      shouldValidate: true
+    });
+  });
 
   return (
     <>
@@ -82,18 +97,12 @@ export const LinuxServerHostsFields = () => {
         name="connections"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <Field className="mb-4">
-            <FieldLabel>SSH Connections</FieldLabel>
+            <FieldLabel>{connectionLabel} Connections</FieldLabel>
             <FieldContent>
               <Combobox
                 multiple
                 value={value}
-                onValueChange={(next) => {
-                  if (next.some((option) => option.id === CREATE_OPTION_ID)) {
-                    handlePopUpOpen("addConnection");
-                    return;
-                  }
-                  onChange(next.map(({ id, name }) => ({ id, name })));
-                }}
+                onValueChange={(next) => onChange(next.map(({ id, name }) => ({ id, name })))}
                 isLoading={isPending}
                 isError={Boolean(error)}
                 options={connectionOptions}
@@ -101,13 +110,13 @@ export const LinuxServerHostsFields = () => {
                 getOptionLabel={(option) => option.name}
                 getOptionValue={(option) => option.id}
                 isOptionDisabled={isUnusable}
+                creation={creation}
                 renderOption={(option) => {
                   let unusableLabel: string | null = null;
                   let unusableHint: string | null = null;
                   if (isMissingGateway(option)) {
                     unusableLabel = "No gateway";
-                    unusableHint =
-                      "This SSH connection has no gateway. Add one to the connection to scan this server.";
+                    unusableHint = `This ${connectionLabel} connection has no gateway. Add one to the connection to scan this server.`;
                   } else if (isGatewayOutdated(option)) {
                     unusableLabel = "Update gateway";
                     unusableHint =
@@ -116,10 +125,6 @@ export const LinuxServerHostsFields = () => {
                   return (
                     <AppConnectionOptionContent
                       data={resolveOption(option)}
-                      createLabel="Create SSH Connection"
-                      isOnlyOption={
-                        option.id === CREATE_OPTION_ID && connectionOptions.length === 1
-                      }
                       label={
                         unusableLabel && (
                           <Tooltip>
@@ -148,33 +153,13 @@ export const LinuxServerHostsFields = () => {
           </Field>
         )}
       />
-      {!isPending && !connections.length && !canCreateConnection && (
+      {!isPending && !connections.length && !creation && (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-warning">
           <Info className="size-3.5" />
-          You do not have access to any SSH Connections. Contact an admin to create one.
+          You do not have access to any {connectionLabel} Connections. Contact an admin to create
+          one.
         </p>
       )}
-      <AddAppConnectionModal
-        isOpen={popUp.addConnection.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("addConnection", isOpen)}
-        projectType={currentProject.type}
-        projectId={currentProject.id}
-        app={AppConnection.SSH}
-        onComplete={(connection) => {
-          const existing = getValues("connections") ?? [];
-          if (existing.some((c) => c.id === connection.id)) return;
-          if (!connection.gatewayId && !connection.gatewayPoolId) {
-            setError("connections", {
-              message: `SSH connection '${connection.name}' has no gateway. Add one to the connection to scan this server.`
-            });
-            return;
-          }
-          setValue("connections", [...existing, { id: connection.id, name: connection.name }], {
-            shouldDirty: true,
-            shouldValidate: true
-          });
-        }}
-      />
     </>
   );
 };

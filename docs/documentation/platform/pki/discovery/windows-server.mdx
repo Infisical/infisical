@@ -1,0 +1,84 @@
+---
+title: "Windows Server"
+description: "Find the certificates in the Windows certificate store on your Windows servers."
+---
+
+Windows Server discovery finds the certificates in the Local Machine certificate store on your Windows servers, such as the certificates that IIS, Remote Desktop, and SQL Server use. Scans reach each server through a [Windows (WinRM) connection](/integrations/app-connections/winrm) that uses an [Infisical Gateway](/documentation/platform/gateways/overview). Private keys aren't read or imported.
+
+## Prerequisites
+
+- A [gateway](/documentation/platform/gateways/overview) running the latest version, deployed where it can reach your servers over WinRM
+- A [Windows (WinRM) connection](/integrations/app-connections/winrm) for each server, configured to use a gateway or a [gateway pool](/documentation/platform/gateways/gateway-pools)
+- A Windows account for the connection that can open a WinRM session on each server, such as a member of the **Remote Management Users** group
+
+## Certificate stores
+
+Each certificate becomes an installation named after the server's hostname and the certificate's store path, for example `web-01:Cert:\LocalMachine\My\3A1F...`.
+
+You choose which stores to scan:
+
+| Store | Scanned by default | What it holds |
+| --- | --- | --- |
+| Personal | Yes | Server certificates for IIS, Remote Desktop, SQL Server, and most other applications |
+| Web Hosting | Yes | Certificates added for IIS sites |
+| Remote Desktop | No | The certificate Remote Desktop uses on the server |
+| Intermediate Certification Authorities | No | Intermediate CA certificates |
+| Trusted Root Certification Authorities | No | Root CAs the server trusts, including the public ones built into Windows |
+
+A leaf certificate is imported with its chain, built from the intermediate and root certificates on the server. CA certificates found on their own are skipped unless you turn on **Include CA Certificates**. The two certification authority stores hold only CA certificates, so you can select them only when that setting is on.
+
+If the connection's account can't open a store, the scan completes and the job lists the stores it couldn't open.
+
+## Create a Windows Server discovery job
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step>
+        In **Certificate Manager**, go to **Discovery** and select **Add Job**, then select **Windows Server**.
+      </Step>
+      <Step>
+        In **Windows (WinRM) Connections**, select the connection for each server to scan.
+      </Step>
+      <Step>
+        Under **Server Certificate Stores**, select the stores to scan. To also import CA certificates found on their own, turn on **Include CA Certificates** under **CA Certificate Stores**, then select the CA stores to scan.
+      </Step>
+      <Step>
+        Enter a **Name** and an optional **Description**. To run the job on a schedule, turn on **Scan on a Schedule** and pick a **Scan Interval**.
+      </Step>
+      <Step>
+        Review the job and select **Create Job**.
+      </Step>
+      <Step>
+        Open the job and select **Trigger Scan**, or wait for the next scheduled scan.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="API">
+    To create the job, call [the endpoint that creates a discovery job](/api-reference/endpoints/pki-discovery/create) with `discoveryType` set to `windows-server`. Set `certificateStores` to any of `My`, `WebHosting`, `Remote Desktop`, `CA`, and `Root` (defaults to `My` and `WebHosting`).
+
+    To start a scan, call [the endpoint that triggers a scan](/api-reference/endpoints/pki-discovery/trigger-scan).
+  </Tab>
+</Tabs>
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Why does the job show a warning after a scan?">
+    The scan completed, but some stores or certificates couldn't be read, or the scan stopped early. The job lists what happened. If a store couldn't be opened, check that the connection's account can read it on the server. If the scan stopped after 5,000 certificates, ran out of time, or found more certificates than one scan can return, select fewer stores.
+  </Accordion>
+  <Accordion title="Does the scan read files on disk, such as PFX files?">
+    No. Windows Server discovery only reads the certificate store.
+  </Accordion>
+</AccordionGroup>
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="Discovery overview" icon="radar" href="/documentation/platform/pki/discovery/overview">
+    Learn how installations and certificate matching work.
+  </Card>
+  <Card title="Linux Server" icon="terminal" href="/documentation/platform/pki/discovery/linux-server">
+    Find certificate files and keystores on Linux servers.
+  </Card>
+</CardGroup>
