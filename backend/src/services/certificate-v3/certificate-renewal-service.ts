@@ -1181,23 +1181,13 @@ export const certificateRenewalServiceFactory = ({
             .filter(Boolean)
             .some((name) => !requestedNames.has((name as string).trim().toLowerCase()));
           if (isRemovingName) {
-            try {
-              await assertCanRevokeCertificate({
-                certificate: originalCert,
-                ...actorCtx,
-                permissionService,
-                resourceMetadataDAL,
-                tx
-              });
-            } catch (error) {
-              if (error instanceof ForbiddenError) {
-                throw new ForbiddenRequestError({
-                  message:
-                    "Removing or changing a name on a reissue revokes this certificate, which requires permission to revoke it."
-                });
-              }
-              throw error;
-            }
+            await assertCanRevokeCertificate({
+              certificate: originalCert,
+              ...actorCtx,
+              permissionService,
+              resourceMetadataDAL,
+              tx
+            });
           }
         }
 
