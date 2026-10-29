@@ -126,9 +126,9 @@ and `packages/agentvault/` in the CLI repo. Frontend: `frontend/src/pages/agent-
 A machine identity with a **delegation** can mint a session on behalf of a user (`onBehalfOf` on mint). The session
 belongs to the user: `userId` is the user, so resolve uses the user's role and personal values without a branch of its
 own. The identity is kept as `actingIdentityId` and `actingIdentityName`, and its reach narrows the user's. A delegation
-is one
-`agent_vault_delegations` row per identity, with a scope of `all-members` or `selected`, plus
-`agent_vault_delegation_subjects` rows naming users and groups.
+is one `agent_vault_delegations` row per identity, with a scope of `all-members` or `selected`, plus
+`agent_vault_delegation_subjects` rows naming users and groups. Both reference an Agent Vault membership (`membershipId`,
+`ON DELETE CASCADE`): the delegation its identity's, and each subject the user's or group's.
 
 - **Never put the acting identity in `identityId`.** Resolve reads `userId` first and falls back to `identityId`, so
   deleting the user would quietly turn the session into the identity's own, with the identity's grants. The DB check
@@ -153,8 +153,9 @@ is one
 - **The delegation read and write return `missingAccessBundles`**, per user and group and in total: the bundles they
   can use and the identity can't. Users and the identity go through `getAgentVaultReachability`, the function mint
   uses, so the view can't disagree with mint; a group's reach is its own live role and grants, read directly since a
-  group never holds a session. The list leaves it out, because it reads every covered user's access, and the write
-  works it out after its transaction commits.
+  group never holds a session. The list leaves it out, because it reads every covered user's access. The write works
+  it out after its transaction commits and after the router writes the audit event, so a failure there can't leave a
+  committed save unaudited.
 - **Mint runs `getProjectPermission` for the user, then once more for the caller.** The permission service leaves
   the last actor it ran for in the request context, where the audit log reads the caller's permission metadata. The
   second call is memoized, so it costs no query; dropping it attributes the user's metadata to the identity.
@@ -170,9 +171,19 @@ is one
 - **A subject is named by its own Agent Vault membership**, the rule bundle grants use: a user who reaches Agent
   Vault only through a group is covered by naming the group. Coverage itself is read live, so leaving the group
   ends it.
-- **Removing an identity from Agent Vault deletes its delegation**, in the revoke transaction, so adding it back
-  restores nothing. Platform paths (org removal, the generic project membership routes) don't, and a delegation can
-  outlive the membership there; resolve still refuses, because it requires the identity's live Agent Vault role.
+- **Leaving Agent Vault by any path deletes the delegation rows**, through the membership FK cascade: Agent Vault's own
+  removal, the generic project membership routes, leaving the org, SCIM delete, and deleting the actor. So adding the
+  identity, user or group back restores nothing. Deactivating (SCIM or org) deletes nothing; mint and resolve refuse
+  through the `isActive` check. Membership rows keep their id while the actor stays a member (role changes only touch
+  `membership_roles`), so a one-off migration that rewrites membership rows has to repoint these keys.
+- **The dashboard changes a delegation one user or group at a time** (`POST` and `DELETE .../subjects`, candidates from
+  `.../subjects/available`), never through the whole-list `PUT`, so two admins editing at once, or a page holding an
+  old list, can't undo each other's changes. `PUT` stays for API callers that set the whole list, and for scope.
+- **A selected delegation whose subjects have all left reads as none** (404, left out of the list, refused at mint), and
+  the next save replaces the row instead of reviving it.
+- **A save locks parent rows, then memberships, then the delegation**, in the order deleting or removing them does:
+  `FOR KEY SHARE` on the identity, users and groups, then the memberships `FOR SHARE` in id order. Changing the order
+  brings back deadlocks with identity deletion and with removal from Agent Vault.
 - **Delegation routes take no `AuthMode.OAUTH`.** The admin check reads the role, which a delegated token's scopes
   don't narrow, and a delegation lets an identity act as other users.
 

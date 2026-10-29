@@ -1,6 +1,6 @@
 import { TGenericPermission } from "@app/lib/types";
 
-import { AgentVaultDelegationScope } from "../agent-vault/agent-vault-enums";
+import { AgentVaultDelegationScope, AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
 
 type TAgentVaultDelegationScoped = {
   projectId: string;
@@ -24,3 +24,15 @@ export type TSetDelegationDTO = TGetDelegationDTO & {
 };
 
 export type TDeleteDelegationDTO = TGetDelegationDTO;
+
+export type TChangeDelegationSubjectsDTO = TGetDelegationDTO & {
+  userIds: string[];
+  groupIds: string[];
+};
+
+export type TListAvailableDelegationSubjectsDTO = TGetDelegationDTO & {
+  actorType?: AgentVaultMemberType.User | AgentVaultMemberType.Group;
+  search?: string;
+  limit: number;
+  offset: number;
+};

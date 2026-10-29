@@ -19,9 +19,10 @@ export async function up(knex: Knex): Promise<void> {
       `CREATE INDEX agent_vault_session_by_acting_identity ON ?? ("actingIdentityId") WHERE "actingIdentityId" IS NOT NULL`,
       [TableName.AgentVaultSession]
     );
-    // An on-behalf-of session is always a user's, and an id is never stored without the name.
+    // An on-behalf-of session is always a user's, and an id is never stored without the name. actorType can be NULL on
+    // rows the previous release writes during a rolling deploy.
     await knex.raw(
-      `ALTER TABLE ?? ADD CONSTRAINT ?? CHECK (("actingIdentityName" IS NULL OR "identityId" IS NULL) AND ("actingIdentityId" IS NULL OR "actingIdentityName" IS NOT NULL))`,
+      `ALTER TABLE ?? ADD CONSTRAINT ?? CHECK (("actingIdentityName" IS NULL OR ("identityId" IS NULL AND ("actorType" IS NULL OR "actorType" = 'user'))) AND ("actingIdentityId" IS NULL OR "actingIdentityName" IS NOT NULL))`,
       [TableName.AgentVaultSession, SESSION_ACTING_IDENTITY_CHECK]
     );
   }

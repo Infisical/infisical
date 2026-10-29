@@ -4940,9 +4940,9 @@ export const AGENT_VAULT = {
     scope:
       "Which users the machine identity can start sessions on behalf of: every Agent Vault member (all-members), or only the users and the members of the groups in the delegation (selected).",
     userIds:
-      "The users the machine identity can act on behalf of. Each must be a member of Agent Vault. Only allowed when the scope is selected.",
+      "The users the machine identity can act on behalf of, up to 100. Each must be a member of Agent Vault. Only allowed when the scope is selected.",
     groupIds:
-      "The groups whose members the machine identity can act on behalf of. Each must be a member of Agent Vault. Only allowed when the scope is selected.",
+      "The groups whose members the machine identity can act on behalf of, up to 100. Each must be a member of Agent Vault. Only allowed when the scope is selected.",
     users: "The users in the delegation.",
     groups: "The groups in the delegation. Their members are covered while they stay in the group.",
     userId: "The ID of the user.",
@@ -4965,7 +4965,22 @@ export const AGENT_VAULT = {
     updatedAt: "When the delegation was last saved.",
     limit: "The maximum number of delegations to return.",
     offset: "How many delegations to skip.",
-    totalCount: "How many delegations match, across every page."
+    totalCount: "How many delegations match, across every page.",
+    addUserIds:
+      "The users to add, up to 100. Each must be a member of Agent Vault. Users the delegation already names are skipped.",
+    addGroupIds:
+      "The groups to add, up to 100. Each must be a member of Agent Vault. Groups the delegation already names are skipped.",
+    removeUserIds: "The users to take out of the delegation, up to 100. Users it doesn't name are skipped.",
+    removeGroupIds: "The groups to take out of the delegation, up to 100. Groups it doesn't name are skipped.",
+    afterRemove:
+      "The delegation after the change, or null if it no longer names anyone. A delegation that names no one is removed."
+  },
+  AVAILABLE_DELEGATION_SUBJECT: {
+    actorTypeFilter: "List only users, or only groups.",
+    search: "Match users by name, username or email address, and groups by name.",
+    limit: "The maximum number of users and groups to return.",
+    offset: "How many users and groups to skip.",
+    totalCount: "How many users and groups match, across every page."
   }
 };
 

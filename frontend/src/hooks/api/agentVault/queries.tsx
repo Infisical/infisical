@@ -130,6 +130,15 @@ export const agentVaultKeys = {
   delegations: (orgId: string) => [...agentVaultKeys.all(orgId), "delegations"] as const,
   delegation: (orgId: string, machineIdentityId: string) =>
     [...agentVaultKeys.delegations(orgId), machineIdentityId] as const,
+  // Nested under delegation() so changing the delegation can invalidate the candidates alone: the
+  // delegation itself is written from each change's result.
+  availableDelegationSubjects: (orgId: string, machineIdentityId: string) =>
+    [...agentVaultKeys.delegation(orgId, machineIdentityId), "available"] as const,
+  availableDelegationSubjectList: (
+    orgId: string,
+    machineIdentityId: string,
+    params?: TListAgentVaultMembersDTO
+  ) => [...agentVaultKeys.availableDelegationSubjects(orgId, machineIdentityId), params] as const,
   sessionLogSettings: (orgId: string) =>
     [...agentVaultKeys.all(orgId), "settings", "session-logs"] as const,
   sessionLogHealth: (orgId: string) =>
@@ -236,6 +245,33 @@ export const useListAvailableAgentVaultAccessBundleMembers = (
       return data;
     },
     enabled: enabled && Boolean(accessBundleId),
+    placeholderData: (prev) => prev
+  });
+};
+
+// The Agent Vault users and groups not yet in the machine identity's delegation. Admins only.
+export const useListAvailableAgentVaultDelegationSubjects = (
+  machineIdentityId: string,
+  { limit = AVAILABLE_MEMBER_LIMIT, ...rest }: TListAgentVaultMembersDTO = {},
+  enabled = true
+) => {
+  const { currentOrg } = useOrganization();
+  const params = { ...rest, limit };
+
+  return useQuery({
+    queryKey: agentVaultKeys.availableDelegationSubjectList(
+      currentOrg.id,
+      machineIdentityId,
+      params
+    ),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        members: TAgentVaultProductMember[];
+        totalCount: number;
+      }>(`/api/v1/agent-vault/delegations/${machineIdentityId}/subjects/available`, { params });
+      return data;
+    },
+    enabled: enabled && Boolean(machineIdentityId),
     placeholderData: (prev) => prev
   });
 };

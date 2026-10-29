@@ -302,6 +302,12 @@ export type TAgentVaultDelegationDetail = Omit<TAgentVaultDelegation, "users" | 
   missingAccessBundles: TAgentVaultMissingAccessBundle[];
 };
 
+export type TChangeAgentVaultDelegationSubjectsDTO = {
+  machineIdentityId: string;
+  userIds?: string[];
+  groupIds?: string[];
+};
+
 export type TSetAgentVaultDelegationDTO = {
   machineIdentityId: string;
   scope: AgentVaultDelegationScope;

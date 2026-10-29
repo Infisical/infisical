@@ -5064,6 +5064,180 @@ describe("Agent Vault V1 Router", async () => {
       }
     });
 
+    test("a non-admin user losing a grant mid-session takes the bundle's services away", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle(`obo-user-grant-${Date.now()}`);
+      const created = await inject("POST", `/api/v1/agent-vault/access-bundles/${bundle.id}/services`, {
+        type: "http",
+        name: "github",
+        hostPattern: "api.github.com",
+        credential: { type: "bearer", value: "shared_token" }
+      });
+      expect(created.statusCode).toBe(200);
+      const proxy = await inject("POST", "/api/v1/agent-vault/proxies", { name: `obo-user-grant-${Date.now()}` });
+      const proxyToken = proxy.json().proxyToken as string;
+      const resolve = (sessionToken: string) =>
+        testServer.inject({
+          method: "POST",
+          url: "/api/v1/agent-vault/proxy/resolve",
+          headers: { authorization: `Bearer ${proxyToken}`, "x-infisical-agent-session": sessionToken }
+        });
+      const bot = await createMemberIdentity(`obo-user-grant-bot-${Date.now()}`);
+      // A member, so their reach is their grants rather than every bundle.
+      const alice = await createAgentVaultUser("obo-user-grant-alice", projectId);
+      try {
+        await grantBundle(bundle.id, { userIds: [alice.userId], machineIdentityIds: [bot.id] });
+        await delegate(bot, { scope: "selected", userIds: [alice.userId] });
+        const minted = await mintFor(bot, { userId: alice.userId }, bundle.name);
+        expect(minted.statusCode).toBe(200);
+        const token = minted.json().session.token as string;
+        const serviceNames = async () =>
+          ((await resolve(token)).json().services as { name: string }[]).map((service) => service.name);
+
+        expect(await serviceNames()).toEqual(["github"]);
+        expect((await inject("DELETE", bundleMembersUrl(bundle.id), { userIds: [alice.userId] })).statusCode).toBe(200);
+        const withoutGrant = await resolve(token);
+        expect(withoutGrant.statusCode).toBe(200);
+        expect(await serviceNames()).toEqual([]);
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId]);
+      }
+    });
+
+    test("the identity's session list and reads leave out sessions the user started themselves", async () => {
+      const projectId = await getProjectId();
+      const bundle = await createAccessBundle(`obo-own-${Date.now()}`);
+      const bot = await createMemberIdentity(`obo-own-bot-${Date.now()}`);
+      const alice = await createAgentVaultUser("obo-own-alice", projectId);
+      try {
+        await grantBundle(bundle.id, { userIds: [alice.userId], machineIdentityIds: [bot.id] });
+        await delegate(bot, { scope: "selected", userIds: [alice.userId] });
+        const startedForAlice = (await mintFor(bot, { userId: alice.userId }, bundle.name)).json().session.id as string;
+
+        const aliceToken = await createUserAccessToken({ userId: alice.userId, orgId: seedData1.organization.id });
+        const ownSession = await testServer.inject({
+          method: "POST",
+          url: sessionsUrl,
+          headers: { authorization: `Bearer ${aliceToken}` },
+          body: { accessBundles: [bundle.name] }
+        });
+        expect(ownSession.statusCode).toBe(200);
+        const alicesOwn = ownSession.json().session.id as string;
+
+        const listed = await bot.as("GET", `${sessionsUrl}?limit=100`);
+        const listedIds = (listed.json().sessions as { id: string }[]).map((row) => row.id);
+        expect(listedIds).toContain(startedForAlice);
+        expect(listedIds).not.toContain(alicesOwn);
+        expect((await bot.as("GET", `${sessionsUrl}/${alicesOwn}`)).statusCode).toBe(404);
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId]);
+      }
+    });
+
+    test("a save replaces a delegation whose subjects all left, instead of reviving it", async () => {
+      const projectId = await getProjectId();
+      const bot = await createMemberIdentity(`obo-revive-bot-${Date.now()}`);
+      const alice = await createAgentVaultUser("obo-revive-alice", projectId);
+      const bob = await createAgentVaultUser("obo-revive-bob", projectId);
+      try {
+        const first = await delegate(bot, { scope: "selected", userIds: [alice.userId] });
+        await testDb("memberships")
+          .where({ scope: AccessScope.Project, scopeProjectId: projectId, actorUserId: alice.userId })
+          .delete();
+        expect((await inject("GET", delegationUrl(bot.id))).statusCode).toBe(404);
+
+        const replaced = (
+          await inject("PUT", delegationUrl(bot.id), { scope: "selected", userIds: [bob.userId] })
+        ).json().delegation as { createdAt: string };
+        expect(new Date(replaced.createdAt).getTime()).toBeGreaterThan(
+          new Date((first as unknown as { createdAt: string }).createdAt).getTime()
+        );
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId, bob.userId]);
+      }
+    });
+
+    test("users and groups are added and taken out one change at a time", async () => {
+      const projectId = await getProjectId();
+      const bot = await createMemberIdentity(`obo-subjects-bot-${Date.now()}`);
+      const alice = await createAgentVaultUser("obo-subjects-alice", projectId);
+      const bob = await createAgentVaultUser("obo-subjects-bob", projectId);
+      const carol = await createAgentVaultUser("obo-subjects-carol", projectId);
+      const outsider = await createAgentVaultUser("obo-subjects-outsider", null);
+      const group = await createProjectGroup(projectId, `obo-subjects-group-${Date.now()}`, ProjectMembershipRole.Member);
+      const subjectsUrl = `${delegationUrl(bot.id)}/subjects`;
+      const ours = new Set([alice.userId, bob.userId, carol.userId, group.id]);
+      const available = async (query = "") => {
+        const res = await inject("GET", `${subjectsUrl}/available?limit=100${query}`);
+        expect(res.statusCode).toBe(200);
+        return (res.json().members as { id: string }[]).map((row) => row.id).filter((id) => ours.has(id));
+      };
+      const named = (res: { json: () => { delegation: TDelegationDetail | null } }) => {
+        const { delegation } = res.json();
+        return delegation && { users: delegation.users.map((row) => row.id).sort(), groups: delegation.groups.map((row) => row.id) };
+      };
+      try {
+        expect((await available()).sort()).toEqual([...ours].sort());
+
+        // Adding to an identity with no delegation creates one to the users and groups named.
+        const first = await inject("POST", subjectsUrl, { userIds: [alice.userId] });
+        expect(first.statusCode).toBe(200);
+        expect(named(first)).toEqual({ users: [alice.userId], groups: [] });
+        const aliceAddedAt = (first.json().delegation as TDelegationDetail).users[0].addedAt;
+
+        // Two admins adding at once both land, and the row that was already there keeps its addedAt.
+        const [withBob, withGroup] = await Promise.all([
+          inject("POST", subjectsUrl, { userIds: [bob.userId] }),
+          inject("POST", subjectsUrl, { groupIds: [group.id] })
+        ]);
+        expect([withBob.statusCode, withGroup.statusCode]).toEqual([200, 200]);
+        const now = await inject("GET", delegationUrl(bot.id));
+        expect(named(now)).toEqual({ users: [alice.userId, bob.userId].sort(), groups: [group.id] });
+        expect((now.json().delegation as TDelegationDetail).users.find((row) => row.id === alice.userId)?.addedAt).toBe(
+          aliceAddedAt
+        );
+
+        expect(await available()).toEqual([carol.userId]);
+        expect(await available("&actorType=group")).toEqual([]);
+
+        const stranger = await inject("POST", subjectsUrl, { userIds: [outsider.userId] });
+        expect(stranger.statusCode).toBe(400);
+        expect(stranger.json().message).toContain("are not members of Agent Vault");
+        expect((await inject("POST", subjectsUrl, {})).statusCode).toBe(422);
+
+        // A name the delegation doesn't hold is skipped, and taking out the last one ends the delegation.
+        const lessAlice = await inject("DELETE", subjectsUrl, { userIds: [alice.userId, carol.userId] });
+        expect(lessAlice.statusCode).toBe(200);
+        expect(named(lessAlice)).toEqual({ users: [bob.userId], groups: [group.id] });
+        const emptied = await inject("DELETE", subjectsUrl, { userIds: [bob.userId], groupIds: [group.id] });
+        expect(emptied.statusCode).toBe(200);
+        expect(emptied.json().delegation).toBeNull();
+        expect((await inject("GET", delegationUrl(bot.id))).statusCode).toBe(404);
+        expect((await inject("DELETE", subjectsUrl, { userIds: [bob.userId] })).statusCode).toBe(404);
+
+        // An all-members delegation names no one, so there's nothing to add to or take out of it.
+        await delegate(bot, { scope: "all-members" });
+        const addToAll = await inject("POST", subjectsUrl, { userIds: [alice.userId] });
+        expect(addToAll.statusCode).toBe(400);
+        expect(addToAll.json().message).toContain("already acts on behalf of every Agent Vault member");
+        expect((await inject("DELETE", subjectsUrl, { userIds: [alice.userId] })).statusCode).toBe(400);
+
+        const refused = await Promise.all([
+          bot.as("POST", subjectsUrl, { userIds: [alice.userId] }),
+          bot.as("DELETE", subjectsUrl, { userIds: [alice.userId] }),
+          bot.as("GET", `${subjectsUrl}/available`)
+        ]);
+        refused.forEach((res) => expect(res.statusCode).toBe(403));
+      } finally {
+        await bot.cleanup();
+        await deleteUsers([alice.userId, bob.userId, carol.userId, outsider.userId]);
+        await group.cleanup();
+      }
+    });
+
     test("a delegation names Agent Vault members, and only an admin or the identity itself reads it", async () => {
       const projectId = await getProjectId();
       const bot = await createMemberIdentity(`obo-api-bot-${Date.now()}`);

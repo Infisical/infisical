@@ -6854,6 +6854,9 @@ interface AgentVaultDelegationDeleteEvent {
   metadata: {
     machineIdentityId: string;
     machineIdentityName: string;
+    scope: string;
+    users: { userId: string; userName: string }[];
+    groups: { groupId: string; groupName: string }[];
   };
 }
 

@@ -3,7 +3,7 @@ title: "Sessions on behalf of users"
 description: "Let a machine identity, such as a chat bot or a task runner, create sessions on behalf of users, so each session uses the personal values of the user it's for."
 ---
 
-A delegation lets a [machine identity](/documentation/platform/identities/machine-identities) create [sessions](/documentation/platform/agent-vault/sessions) on behalf of users in Agent Vault. The machine identity can still create sessions as itself. It creates a session on behalf of a user only if it sends the user's email or ID in `onBehalfOf`. A session created on behalf of a user belongs to that user, so the [proxy](/documentation/platform/agent-vault/proxies) uses the user's own [personal values](/documentation/platform/agent-vault/services#member-provided-values), not the machine identity's. The session can use an [access bundle](/documentation/platform/agent-vault/access-bundles) only if both the user and the machine identity can use the bundle.
+A delegation lets a [machine identity](/documentation/platform/identities/machine-identities) create [sessions](/documentation/platform/agent-vault/sessions) on behalf of users in Agent Vault. The machine identity can still create sessions as itself. It creates a session on behalf of a user only if it sends the user's email or ID in `onBehalfOf`. A session created on behalf of a user belongs to that user, so the [proxy](/documentation/platform/agent-vault/proxies) uses the user's own [personal values](/documentation/platform/agent-vault/http-apis#member-provided-values), not the machine identity's. The session can use an [access bundle](/documentation/platform/agent-vault/access-bundles) only if both the user and the machine identity can use the bundle.
 
 Use a delegation when one service starts agents for many people, such as a chat bot that runs an agent for each message, or a task runner that runs an agent for each ticket. Each agent then gets no more access than the person who asked for it.
 
@@ -39,14 +39,14 @@ sequenceDiagram
         In Agent Vault, go to **Access Control**, select the **Machine Identities** tab, and select the machine identity.
       </Step>
       <Step>
-        In the **Delegation** section, select **Add Users or Groups**.
+        In the **Delegation** section, select **Manage Delegation**.
 
         <Frame>
-          <img src="/images/platform/agent-vault/machine-identity-delegation.png" alt="The Delegation section of a machine identity, listing two groups and a user with the date each was added, and the Add Users or Groups button" />
+          <img src="/images/platform/agent-vault/machine-identity-delegation.png" alt="The Delegation section of a machine identity, listing two groups and a user with the date each was added, and the Manage Delegation button" />
         </Frame>
       </Step>
       <Step>
-        In **Users and Groups**, select the users and groups to add, then select **Add**. A group covers every member of the group.
+        Expand **Not in Delegation**, then select **Add** next to each user or group to add. A group covers every member of the group. If someone isn't listed, search for them by name. Changes save as you make them.
 
         To cover every current and future user in Agent Vault instead, turn on **All Agent Vault Members** and select **Allow All Members**.
       </Step>
@@ -63,15 +63,20 @@ sequenceDiagram
     ```
 
     Set `scope` to `all-members` to cover every Agent Vault member, or to `selected` with `userIds`, `groupIds`, or both. The request replaces any delegation the machine identity already has.
+
+    To add or remove users and groups without sending the whole list, call [the endpoint that adds users and groups](/api-reference/endpoints/agent-vault-delegations/add-subjects) or [the endpoint that removes them](/api-reference/endpoints/agent-vault-delegations/remove-subjects).
   </Tab>
 </Tabs>
 
 You can add only users and groups that are members of Agent Vault. If a user is in Agent Vault only through a group, add the group. If a user or group leaves Agent Vault, Infisical takes them out of the delegation, and adding them back to Agent Vault doesn't add them back to the delegation.
 
-To take a user or group out of the delegation, select the actions menu on its row in the **Delegation** section, select **Remove**, then select **Remove** again to confirm. If you remove the last user or group, or the **All Agent Vault Members** row, the machine identity can no longer act on behalf of anyone.
+To take a user or group out of the delegation, select **Manage Delegation**, select **In Delegation** on its row, select **Remove**, then select **Remove** again to confirm. If you remove the last user or group, or turn off **All Agent Vault Members**, the machine identity can no longer act on behalf of anyone.
 
 <Warning>
-  If a machine identity has a delegation, anyone who can log in as the machine identity can send requests with the personal values of every user the delegation covers. Protect the machine identity's credentials as carefully as you'd protect those users' own credentials.
+  A delegation lets a machine identity use other people's personal values, so protect who can set one and who can use one:
+
+  - If a machine identity has a delegation, anyone who can log in as the machine identity can send requests with the personal values of every user the delegation covers. Protect the machine identity's credentials as carefully as you'd protect those users' own credentials
+  - A machine identity with the Agent Vault **Admin** role can set delegations, including one for itself that covers every member, Agent Vault admins included. Give a machine identity the **Admin** role only if it needs it
 </Warning>
 
 ## Create a session on behalf of a user
@@ -166,7 +171,7 @@ When the machine identity creates the session, Infisical writes an audit event w
   <Card title="Create sessions with the API" icon="code" href="/documentation/platform/agent-vault/sessions-api">
     Create, use, and revoke a session from your own code.
   </Card>
-  <Card title="Services" icon="plug" href="/documentation/platform/agent-vault/services#member-provided-values">
+  <Card title="HTTP APIs" icon="plug" href="/documentation/platform/agent-vault/http-apis#member-provided-values">
     Leave part of a service's credential to each member.
   </Card>
 </CardGroup>

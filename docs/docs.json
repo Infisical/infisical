@@ -4595,6 +4595,9 @@
                       "api-reference/endpoints/agent-vault-delegations/list",
                       "api-reference/endpoints/agent-vault-delegations/get",
                       "api-reference/endpoints/agent-vault-delegations/set",
+                      "api-reference/endpoints/agent-vault-delegations/add-subjects",
+                      "api-reference/endpoints/agent-vault-delegations/remove-subjects",
+                      "api-reference/endpoints/agent-vault-delegations/list-available-subjects",
                       "api-reference/endpoints/agent-vault-delegations/delete"
                     ]
                   },

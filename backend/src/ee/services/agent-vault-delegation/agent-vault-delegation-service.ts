@@ -13,7 +13,8 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { TAgentVaultAccessBundleDALFactory } from "../agent-vault-access-bundle/agent-vault-access-bundle-dal";
-import { AgentVaultDelegationScope } from "../agent-vault/agent-vault-enums";
+import { TAgentVaultMemberDALFactory } from "../agent-vault-member/agent-vault-member-dal";
+import { AgentVaultDelegationScope, AgentVaultMemberType } from "../agent-vault/agent-vault-enums";
 import { getAgentVaultPermission, getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import {
   TAgentVaultDelegationDALFactory,
@@ -21,8 +22,10 @@ import {
   TAgentVaultDelegationView
 } from "./agent-vault-delegation-dal";
 import {
+  TChangeDelegationSubjectsDTO,
   TDeleteDelegationDTO,
   TGetDelegationDTO,
+  TListAvailableDelegationSubjectsDTO,
   TListDelegationsDTO,
   TSetDelegationDTO
 } from "./agent-vault-delegation-types";
@@ -30,10 +33,19 @@ import {
 type TAgentVaultDelegationServiceFactoryDep = {
   agentVaultDelegationDAL: Pick<
     TAgentVaultDelegationDALFactory,
-    "upsertScope" | "findViews" | "delete" | "transaction" | "lockMemberships"
+    | "upsertScope"
+    | "deleteIfNamesNoOne"
+    | "lockForIdentity"
+    | "removeSubjectsByActors"
+    | "findViews"
+    | "findForIdentity"
+    | "delete"
+    | "transaction"
+    | "lockMemberships"
   >;
   agentVaultDelegationSubjectDAL: Pick<TAgentVaultDelegationSubjectDALFactory, "find" | "delete" | "insertMany">;
   agentVaultAccessBundleDAL: Pick<TAgentVaultAccessBundleDALFactory, "find">;
+  agentVaultMemberDAL: Pick<TAgentVaultMemberDALFactory, "findProductMembers">;
   membershipDAL: Pick<TMembershipDALFactory, "find" | "findResourceMembershipsForActor">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "find">;
@@ -56,10 +68,23 @@ const withNoMissingAccessBundles = (delegation: TAgentVaultDelegationView) => ({
 
 const quoted = (ids: string[]) => ids.map((id) => `'${id}'`).join(", ");
 
+type TLockedMembership = Pick<TMemberships, "id" | "actorIdentityId" | "actorUserId" | "actorGroupId">;
+
+// The Agent Vault memberships of the named users and groups, which is what a delegation's subject rows reference.
+const membershipIdsNaming = (memberships: TLockedMembership[], userIds: string[], groupIds: string[]) =>
+  memberships
+    .filter(
+      (membership) =>
+        (membership.actorUserId && userIds.includes(membership.actorUserId)) ||
+        (membership.actorGroupId && groupIds.includes(membership.actorGroupId))
+    )
+    .map((membership) => membership.id);
+
 export const agentVaultDelegationServiceFactory = ({
   agentVaultDelegationDAL,
   agentVaultDelegationSubjectDAL,
   agentVaultAccessBundleDAL,
+  agentVaultMemberDAL,
   membershipDAL,
   membershipRoleDAL,
   userGroupMembershipDAL,
@@ -78,6 +103,17 @@ export const agentVaultDelegationServiceFactory = ({
         ? subject(ProjectPermissionSub.Identity, { identityId: machineIdentityId })
         : ProjectPermissionSub.Identity
     );
+  };
+
+  // Project-scoped, so an identity from another org is a 404 like one that doesn't exist.
+  const requireIdentityMembership = (memberships: TLockedMembership[], machineIdentityId: string) => {
+    const identityMembership = memberships.find((row) => row.actorIdentityId === machineIdentityId);
+    if (!identityMembership) {
+      throw new NotFoundError({
+        message: `Machine identity with ID '${machineIdentityId}' is not a member of Agent Vault. Add it under Access Control first.`
+      });
+    }
+    return identityMembership;
   };
 
   const notFound = (machineIdentityId: string) =>
@@ -310,32 +346,19 @@ export const agentVaultDelegationServiceFactory = ({
         { projectId, identityId: machineIdentityId, userIds: wantedUserIds, groupIds: wantedGroupIds },
         tx
       );
-      // Project-scoped, so an identity from another org is a 404 like one that doesn't exist.
-      const identityMembership = memberships.find((row) => row.actorIdentityId === machineIdentityId);
-      if (!identityMembership) {
-        throw new NotFoundError({
-          message: `Machine identity with ID '${machineIdentityId}' is not a member of Agent Vault. Add it under Access Control first.`
-        });
-      }
+      const identityMembership = requireIdentityMembership(memberships, machineIdentityId);
       await assertSubjectsInAgentVault(
         { projectId, userIds: wantedUserIds, groupIds: wantedGroupIds, memberships },
         tx
       );
 
+      await agentVaultDelegationDAL.deleteIfNamesNoOne({ projectId, identityId: machineIdentityId }, tx);
       const row = await agentVaultDelegationDAL.upsertScope(
         { projectId, identityId: machineIdentityId, membershipId: identityMembership.id, scope },
         tx
       );
 
-      const wantedMembershipIds = new Set(
-        memberships
-          .filter(
-            (membership) =>
-              (membership.actorUserId && wantedUserIds.includes(membership.actorUserId)) ||
-              (membership.actorGroupId && wantedGroupIds.includes(membership.actorGroupId))
-          )
-          .map((membership) => membership.id)
-      );
+      const wantedMembershipIds = new Set(membershipIdsNaming(memberships, wantedUserIds, wantedGroupIds));
       // Rows that stay are kept rather than rewritten, so each one's addedAt still says when it was added.
       const existing = await agentVaultDelegationSubjectDAL.find({ delegationId: row.id }, { tx });
       const stale = existing.filter((named) => !wantedMembershipIds.has(named.membershipId));
@@ -354,8 +377,122 @@ export const agentVaultDelegationServiceFactory = ({
       return written;
     });
 
-    // After the commit: reading every covered user's reach is many queries, none of which belong in the transaction.
-    return { delegation: await withMissingAccessBundles({ projectId, ctx, delegation }) };
+    // The missing bundles are left to the caller, through withMissingAccessBundles: reading every covered user's reach
+    // is many queries, none of which belong in the transaction, and a failure there mustn't stop the save from being
+    // audited.
+    return { delegation };
+  };
+
+  // Adds to what the delegation already names rather than replacing it, so a client that never saw the current list
+  // can't overwrite it. Creates a selected delegation if the identity has none.
+  const addDelegationSubjects = async ({
+    projectId,
+    ctx,
+    machineIdentityId,
+    userIds,
+    groupIds
+  }: TChangeDelegationSubjectsDTO) => {
+    await checkIdentityPermission({ projectId, ctx, machineIdentityId }, ProjectPermissionIdentityActions.Edit);
+
+    const delegation = await agentVaultDelegationDAL.transaction(async (tx) => {
+      // The same order a save takes them in: memberships, then the delegation row.
+      const memberships = await agentVaultDelegationDAL.lockMemberships(
+        { projectId, identityId: machineIdentityId, userIds, groupIds },
+        tx
+      );
+      const identityMembership = requireIdentityMembership(memberships, machineIdentityId);
+      await assertSubjectsInAgentVault({ projectId, userIds, groupIds, memberships }, tx);
+
+      const current = await agentVaultDelegationDAL.lockForIdentity({ projectId, identityId: machineIdentityId }, tx);
+      if (current?.scope === AgentVaultDelegationScope.AllMembers) {
+        throw new BadRequestError({
+          message: `Machine identity with ID '${machineIdentityId}' already acts on behalf of every Agent Vault member. To name users and groups instead, set its scope to selected.`
+        });
+      }
+
+      await agentVaultDelegationDAL.deleteIfNamesNoOne({ projectId, identityId: machineIdentityId }, tx);
+      const row = await agentVaultDelegationDAL.upsertScope(
+        {
+          projectId,
+          identityId: machineIdentityId,
+          membershipId: identityMembership.id,
+          scope: AgentVaultDelegationScope.Selected
+        },
+        tx
+      );
+      const existing = new Set(
+        (await agentVaultDelegationSubjectDAL.find({ delegationId: row.id }, { tx })).map((named) => named.membershipId)
+      );
+      const added = membershipIdsNaming(memberships, userIds, groupIds)
+        .filter((membershipId) => !existing.has(membershipId))
+        .map((membershipId) => ({ delegationId: row.id, membershipId }));
+      if (added.length) await agentVaultDelegationSubjectDAL.insertMany(added, tx);
+
+      const {
+        delegations: [written]
+      } = await agentVaultDelegationDAL.findViews({ projectId, identityIds: [machineIdentityId] }, tx);
+      return { written, isChanged: added.length > 0 };
+    });
+
+    // isChanged lets the caller audit only a real change: naming users and groups already in it writes nothing.
+    return { delegation: delegation.written, isChanged: delegation.isChanged };
+  };
+
+  // Names the delegation doesn't hold are skipped. Taking out the last one leaves a delegation that names no one, which
+  // reads as none, so the result is null.
+  const removeDelegationSubjects = async ({
+    projectId,
+    ctx,
+    machineIdentityId,
+    userIds,
+    groupIds
+  }: TChangeDelegationSubjectsDTO) => {
+    await checkIdentityPermission({ projectId, ctx, machineIdentityId }, ProjectPermissionIdentityActions.Edit);
+
+    const changed = await agentVaultDelegationDAL.transaction(async (tx) => {
+      const current = await agentVaultDelegationDAL.lockForIdentity({ projectId, identityId: machineIdentityId }, tx);
+      const viewNow = async () =>
+        (await agentVaultDelegationDAL.findViews({ projectId, identityIds: [machineIdentityId] }, tx)).delegations[0];
+      const before = current ? await viewNow() : undefined;
+      if (!current || !before) return undefined;
+      if (current.scope === AgentVaultDelegationScope.AllMembers) {
+        throw new BadRequestError({
+          message: `Machine identity with ID '${machineIdentityId}' acts on behalf of every Agent Vault member, so it names no users or groups to remove.`
+        });
+      }
+
+      const removed = await agentVaultDelegationDAL.removeSubjectsByActors(
+        { delegationId: current.id, userIds, groupIds },
+        tx
+      );
+      return { before, after: (await viewNow()) ?? null, isChanged: removed > 0 };
+    });
+    if (!changed) throw notFound(machineIdentityId);
+
+    return { delegation: changed.after, previous: changed.before, isChanged: changed.isChanged };
+  };
+
+  const listAvailableDelegationSubjects = async ({
+    projectId,
+    ctx,
+    machineIdentityId,
+    actorType,
+    search,
+    limit,
+    offset
+  }: TListAvailableDelegationSubjectsDTO) => {
+    await checkIdentityPermission({ projectId, ctx, machineIdentityId }, ProjectPermissionIdentityActions.Read);
+
+    const delegation = await agentVaultDelegationDAL.findForIdentity({ projectId, identityId: machineIdentityId });
+    return agentVaultMemberDAL.findProductMembers({
+      projectId,
+      orgId: ctx.actorOrgId,
+      actorTypes: actorType ? [actorType] : [AgentVaultMemberType.User, AgentVaultMemberType.Group],
+      search,
+      limit,
+      offset,
+      excludeDelegationId: delegation?.id
+    });
   };
 
   const deleteDelegation = async ({ projectId, ctx, machineIdentityId }: TDeleteDelegationDTO) => {
@@ -377,5 +514,14 @@ export const agentVaultDelegationServiceFactory = ({
     return { delegation: toDelegation(deleted) };
   };
 
-  return { listDelegations, getDelegation, setDelegation, deleteDelegation };
+  return {
+    listDelegations,
+    getDelegation,
+    setDelegation,
+    addDelegationSubjects,
+    removeDelegationSubjects,
+    listAvailableDelegationSubjects,
+    withMissingAccessBundles,
+    deleteDelegation
+  };
 };

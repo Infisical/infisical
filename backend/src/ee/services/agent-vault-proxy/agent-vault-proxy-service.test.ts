@@ -5,7 +5,7 @@ import {
   ProjectPermissionAgentVaultSessionActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { ConflictError } from "@app/lib/errors";
+import { ConflictError, UnauthorizedError } from "@app/lib/errors";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
 import { AGENT_VAULT_SERVICE_MOVED_MESSAGE } from "../agent-vault-oauth/agent-vault-oauth-service";
@@ -291,5 +291,122 @@ describe("resolve's lazy refresh", () => {
       source: "oauth",
       expiresAt: null
     });
+  });
+});
+
+describe("resolve for a session on a user's behalf", () => {
+  const USER_ID = "user-1";
+  const IDENTITY_ID = "identity-1";
+  type TActorSetup = { isAdmin?: boolean; grants?: string[]; isActive?: boolean };
+
+  // Each actor gets its own org status, role and bundle grants, and resolve's reach is read off the bundles it asks for.
+  const setupOnBehalfOf = ({
+    user = {},
+    identity = {},
+    delegationCoversUser = true
+  }: {
+    user?: TActorSetup;
+    identity?: TActorSetup;
+    delegationCoversUser?: boolean;
+  }) => {
+    const actor = (actorId: string) => (actorId === IDENTITY_ID ? identity : user);
+    const findResolvableServices = vi.fn(async () => [] as TResolveServiceRow[]);
+    const service = agentVaultProxyServiceFactory({
+      agentVaultProxyDAL: {
+        findByIdWithOrg: async () => ({ projectId: PROJECT_ID, orgId: "org-1", pollInterval: 60 })
+      } as never,
+      agentVaultResolveDAL: { findResolvableServices },
+      agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
+      agentVaultServiceSubstitutionDAL: { findByServiceIds: async () => [] },
+      agentVaultVariableDAL: { findValuesForResolve: async () => [] },
+      agentVaultPersonalValueDAL: { findForResolve: async () => [] },
+      agentVaultSessionDAL: {
+        findByTokenHash: async () =>
+          ({
+            id: "session-1",
+            projectId: PROJECT_ID,
+            userId: USER_ID,
+            identityId: null,
+            actingIdentityId: IDENTITY_ID,
+            actingIdentityName: "slack-bot",
+            revokedAt: null,
+            expiresAt: null
+          }) as never
+      },
+      agentVaultDelegationDAL: { identityCoversUser: async () => delegationCoversUser },
+      agentVaultSessionLogConfigDAL: {
+        findOne: async () => sessionLogConfig,
+        findByProjectIdFromPrimary: async () => sessionLogConfig
+      },
+      membershipDAL: {
+        findResourceMembershipsForActor: async ({ actorId }: { actorId: string }) =>
+          (actor(actorId).grants ?? []).map((scopeResourceId) => ({
+            isActive: true,
+            actorGroupId: null,
+            scopeResourceId
+          }))
+      } as never,
+      orgDAL: {
+        findEffectiveOrgMembership: async ({ actorId }: { actorId: string }) =>
+          ({ isActive: actor(actorId).isActive ?? true }) as never
+      },
+      permissionService: {
+        getProjectPermission: async ({ actorId }: { actorId: string }) =>
+          ({
+            permission: createMongoAbility([
+              {
+                action: ProjectPermissionAgentVaultSessionActions.Read,
+                subject: ProjectPermissionSub.AgentVaultSessions
+              }
+            ]),
+            hasRole: () => Boolean(actor(actorId).isAdmin),
+            memberships: []
+          }) as never
+      },
+      kmsService: {
+        createCipherPairWithDataKey: async () =>
+          ({ decryptor: ({ cipherTextBlob }: { cipherTextBlob: Buffer }) => cipherTextBlob }) as never
+      },
+      licenseService: {} as never,
+      resourceAuthMethodService: {} as never,
+      agentVaultOauthService: {
+        refreshServiceToken: vi.fn() as never,
+        reportMissingScopes: vi.fn() as never
+      }
+    });
+    const resolve = () =>
+      service.resolveSession({ proxyId: "proxy-1", orgId: "org-1", sessionToken: "token", hasSessionLogKey: false });
+    const reachedBundles = () =>
+      (findResolvableServices.mock.calls[0] as unknown as [{ accessBundleIds: string[] | null }])[0].accessBundleIds;
+    return { resolve, reachedBundles };
+  };
+
+  test("a non-admin user's reach is narrowed to the bundles the identity reaches too", async () => {
+    const { resolve, reachedBundles } = setupOnBehalfOf({
+      user: { grants: ["bundle-a", "bundle-b"] },
+      identity: { grants: ["bundle-b", "bundle-c"] }
+    });
+    await resolve();
+    expect(reachedBundles()).toEqual(["bundle-b"]);
+  });
+
+  test("an admin on either side leaves the other side's reach", async () => {
+    const adminIdentity = setupOnBehalfOf({ user: { grants: ["bundle-a"] }, identity: { isAdmin: true } });
+    await adminIdentity.resolve();
+    expect(adminIdentity.reachedBundles()).toEqual(["bundle-a"]);
+
+    const adminUser = setupOnBehalfOf({ user: { isAdmin: true }, identity: { grants: ["bundle-c"] } });
+    await adminUser.resolve();
+    expect(adminUser.reachedBundles()).toEqual(["bundle-c"]);
+  });
+
+  test("a delegation that no longer covers the user is a 401", async () => {
+    const { resolve } = setupOnBehalfOf({ user: { grants: ["bundle-a"] }, delegationCoversUser: false });
+    await expect(resolve()).rejects.toThrow(UnauthorizedError);
+  });
+
+  test("an identity deactivated in the org is a 401", async () => {
+    const { resolve } = setupOnBehalfOf({ user: { grants: ["bundle-a"] }, identity: { isActive: false } });
+    await expect(resolve()).rejects.toThrow(UnauthorizedError);
   });
 });

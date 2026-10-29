@@ -343,6 +343,8 @@ export enum PostHogEventTypes {
   AgentVaultProductMemberAdded = "Agent Vault Product Member Added",
   AgentVaultProductMemberUpdated = "Agent Vault Product Member Updated",
   AgentVaultProductMemberRemoved = "Agent Vault Product Member Removed",
+  AgentVaultDelegationSet = "Agent Vault Delegation Set",
+  AgentVaultDelegationDeleted = "Agent Vault Delegation Deleted",
 
   // Billing trials. Cloud-only: the self-hosted license backend rejects startTrial outright.
   // "awaiting_card" gets its own event rather than an outcome property on TrialStarted, because it
@@ -2613,6 +2615,17 @@ export type TAgentVaultProductMemberRemovedEvent = {
   properties: TAgentVaultEventBase & { memberType: AgentVaultMemberType };
 };
 
+// Counts only: a delegation's users and groups are never sent.
+export type TAgentVaultDelegationSetEvent = {
+  event: PostHogEventTypes.AgentVaultDelegationSet;
+  properties: TAgentVaultEventBase & { scope: string; userCount: number; groupCount: number };
+};
+
+export type TAgentVaultDelegationDeletedEvent = {
+  event: PostHogEventTypes.AgentVaultDelegationDeleted;
+  properties: TAgentVaultEventBase & { scope: string; userCount: number; groupCount: number };
+};
+
 export type TAgentVaultPostHogEvent =
   | TAgentVaultAccessBundleCreatedEvent
   | TAgentVaultAccessBundleUpdatedEvent
@@ -2636,7 +2649,9 @@ export type TAgentVaultPostHogEvent =
   | TAgentVaultSessionLogChunkAcceptedEvent
   | TAgentVaultProductMemberAddedEvent
   | TAgentVaultProductMemberUpdatedEvent
-  | TAgentVaultProductMemberRemovedEvent;
+  | TAgentVaultProductMemberRemovedEvent
+  | TAgentVaultDelegationSetEvent
+  | TAgentVaultDelegationDeletedEvent;
 
 export type TAgentVaultActorPostHogEvent = Exclude<TAgentVaultPostHogEvent, TAgentVaultSessionLogChunkAcceptedEvent>;
 

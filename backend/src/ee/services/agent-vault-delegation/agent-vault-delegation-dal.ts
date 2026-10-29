@@ -69,6 +69,58 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
     }
   };
 
+  // A selected delegation whose subjects all left reads as none, so a save replaces it rather than reviving it with its
+  // old createdAt.
+  const deleteIfNamesNoOne = async ({ projectId, identityId }: { projectId: string; identityId: string }, tx: Knex) => {
+    try {
+      await tx(DELEGATION)
+        .where(`${DELEGATION}.projectId`, projectId)
+        .where(`${DELEGATION}.identityId`, identityId)
+        .where(`${DELEGATION}.scope`, AgentVaultDelegationScope.Selected)
+        .whereNotExists(
+          tx(SUBJECTS).whereRaw(`??.?? = ??.??`, [SUBJECTS, "delegationId", DELEGATION, "id"]).select(tx.raw("1"))
+        )
+        .delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Delete emptied Agent Vault delegation" });
+    }
+  };
+
+  // The delegation row, locked until the transaction ends, so an add or a remove can't interleave with a save.
+  const lockForIdentity = async ({ projectId, identityId }: { projectId: string; identityId: string }, tx: Knex) => {
+    try {
+      return (await tx(DELEGATION).where({ projectId, identityId }).forUpdate().first()) as
+        | TAgentVaultDelegations
+        | undefined;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Lock Agent Vault delegation" });
+    }
+  };
+
+  // Takes the named users and groups out of one delegation. Names it doesn't hold are skipped.
+  const removeSubjectsByActors = async (
+    { delegationId, userIds, groupIds }: { delegationId: string; userIds: string[]; groupIds: string[] },
+    tx: Knex
+  ) => {
+    if (!userIds.length && !groupIds.length) return 0;
+    try {
+      return await tx(SUBJECTS)
+        .where(`${SUBJECTS}.delegationId`, delegationId)
+        .whereIn(
+          `${SUBJECTS}.membershipId`,
+          tx(TableName.Membership)
+            .where((actor) => {
+              if (userIds.length) void actor.orWhereIn(`${TableName.Membership}.actorUserId`, userIds);
+              if (groupIds.length) void actor.orWhereIn(`${TableName.Membership}.actorGroupId`, groupIds);
+            })
+            .select(`${TableName.Membership}.id`)
+        )
+        .delete();
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Remove users and groups from an Agent Vault delegation" });
+    }
+  };
+
   const findViews = async (
     {
       projectId,
@@ -255,6 +307,8 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
           if (userIds.length) void actor.orWhereIn(`${TableName.Membership}.actorUserId`, userIds);
           if (groupIds.length) void actor.orWhereIn(`${TableName.Membership}.actorGroupId`, groupIds);
         })
+        // In id order, the order a removal's multi-row delete takes them, so the two can't each wait on the other.
+        .orderBy(`${TableName.Membership}.id`)
         .forShare()
         .select(
           db.ref("id").withSchema(TableName.Membership),
@@ -267,7 +321,18 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, upsertScope, findViews, coversUser, findForIdentity, identityCoversUser, lockMemberships };
+  return {
+    ...orm,
+    upsertScope,
+    deleteIfNamesNoOne,
+    lockForIdentity,
+    removeSubjectsByActors,
+    findViews,
+    coversUser,
+    findForIdentity,
+    identityCoversUser,
+    lockMemberships
+  };
 };
 
 export const agentVaultDelegationSubjectDALFactory = (db: TDbClient) =>
