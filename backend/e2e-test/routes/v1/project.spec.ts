@@ -116,12 +116,16 @@ describe("Project deletion (soft-delete + async cleanup)", async () => {
     expect((await listProjects()).some((p) => p.id === project.id)).toBe(false);
   });
 
-  test("hardDelete frees the slug so a same-slug project can be recreated immediately", async () => {
+  test("hardDelete skips the grace period and frees the slug right away", async () => {
     const slug = "e2e-slug-reuse-test";
     const first = await createProject("e2e-slug-reuse-1", slug);
     expect(first.slug).toBe(slug);
 
     expect((await deleteProject(first.id, true)).statusCode).toBe(200);
+
+    expect((await listDeletedProjects()).some((p) => p.id === first.id)).toBe(false);
+    // 400 while it awaits the cleanup worker, 404 once the worker has removed it
+    expect([400, 404]).toContain((await restoreProject(first.id)).statusCode);
 
     // recreating with the same slug must succeed (slug was tombstoned on delete)
     const second = await createProject("e2e-slug-reuse-2", slug);
@@ -194,15 +198,6 @@ describe("Project deletion (soft-delete + async cleanup)", async () => {
     expect(secret.secretValue).toBe("kept");
 
     await deleteProject(project.id, true);
-  });
-
-  test("hardDelete skips the grace period so the project cannot be restored", async () => {
-    const project = await createProject("e2e-hard-delete");
-    expect((await deleteProject(project.id, true)).statusCode).toBe(200);
-
-    expect((await listDeletedProjects()).some((p) => p.id === project.id)).toBe(false);
-    // 400 while it awaits the cleanup worker, 404 once the worker has removed it
-    expect([400, 404]).toContain((await restoreProject(project.id)).statusCode);
   });
 });
 
