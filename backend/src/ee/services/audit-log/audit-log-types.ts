@@ -750,6 +750,7 @@ export enum EventType {
   VIEW_INSIGHTS_AUTH_METHODS = "view-insights-auth-methods",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_CALENDAR = "view-insights-secrets-management-calendar",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_VOLUME = "view-insights-secrets-management-access-volume",
+  VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS = "view-insights-secrets-management-unused-access",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION = "view-insights-secrets-management-org-auth-method-distribution",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_ACCESS_LOCATIONS = "view-insights-secrets-management-access-locations",
   VIEW_INSIGHTS_SECRETS_MANAGEMENT_SUMMARY = "view-insights-secrets-management-summary",
@@ -6006,6 +6007,17 @@ interface ViewSecretManagementInsightsAccessVolumeEvent {
   };
 }
 
+interface ViewSecretManagementInsightsUnusedAccessEvent {
+  type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_UNUSED_ACCESS;
+  metadata: {
+    projectId: string;
+    // Set when one principal's unused secrets were viewed rather than the project list.
+    principalType?: string;
+    principalId?: string;
+    principalName?: string;
+  };
+}
+
 interface ViewSecretManagementInsightsOrgAuthMethodDistributionEvent {
   type: EventType.VIEW_INSIGHTS_SECRETS_MANAGEMENT_ORG_AUTH_METHOD_DISTRIBUTION;
   metadata: {
@@ -8750,6 +8762,7 @@ export type Event =
   | DashboardGetSecretVersionValueEvent
   | ViewSecretManagementInsightsCalendarEvent
   | ViewSecretManagementInsightsAccessVolumeEvent
+  | ViewSecretManagementInsightsUnusedAccessEvent
   | ViewSecretManagementInsightsOrgAuthMethodDistributionEvent
   | ViewSecretManagementInsightsAccessLocationsEvent
   | ViewInsightsAuthMethodsEvent

@@ -701,28 +701,34 @@
                 ]
               },
               {
-                "group": "Agent guides",
+                "group": "Guides",
                 "pages": [
-                  "documentation/platform/agent-vault/guides/claude-code",
-                  "documentation/platform/agent-vault/guides/codex",
-                  "documentation/platform/agent-vault/guides/opencode",
                   {
-                    "group": "Hermes Agent",
-                    "root": "documentation/platform/agent-vault/guides/hermes",
+                    "group": "Sandboxes",
                     "pages": [
-                      "documentation/platform/agent-vault/guides/hermes-gateway"
+                      "documentation/platform/agent-vault/guides/modal",
+                      "documentation/platform/agent-vault/guides/daytona",
+                      "documentation/platform/agent-vault/guides/docker"
                     ]
                   },
                   {
-                    "group": "OpenClaw",
-                    "root": "documentation/platform/agent-vault/guides/openclaw",
+                    "group": "Messaging gateways",
                     "pages": [
+                      "documentation/platform/agent-vault/guides/hermes-gateway",
                       "documentation/platform/agent-vault/guides/openclaw-gateway"
                     ]
                   },
                   "documentation/platform/agent-vault/guides/custom-agent",
-                  "documentation/platform/agent-vault/guides/modal",
-                  "documentation/platform/agent-vault/guides/daytona"
+                  {
+                    "group": "Local development",
+                    "pages": [
+                      "documentation/platform/agent-vault/guides/claude-code",
+                      "documentation/platform/agent-vault/guides/codex",
+                      "documentation/platform/agent-vault/guides/opencode",
+                      "documentation/platform/agent-vault/guides/hermes",
+                      "documentation/platform/agent-vault/guides/openclaw"
+                    ]
+                  }
                 ]
               },
               {
@@ -2661,6 +2667,16 @@
                       "api-reference/endpoints/audit-logs/update-organization-audit-log-settings",
                       "api-reference/endpoints/audit-logs/get-project-audit-log-settings",
                       "api-reference/endpoints/audit-logs/update-project-audit-log-settings"
+                    ]
+                  },
+                  {
+                    "group": "Alerts",
+                    "pages": [
+                      "api-reference/endpoints/alerts/list",
+                      "api-reference/endpoints/alerts/create",
+                      "api-reference/endpoints/alerts/get-by-id",
+                      "api-reference/endpoints/alerts/update",
+                      "api-reference/endpoints/alerts/delete"
                     ]
                   },
                   {
