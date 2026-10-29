@@ -222,9 +222,7 @@ export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
 The script in Step 5 logs in with them. The machine identity's credentials stay with the orchestrator and never go into an agent pod.
 
 <Tip>
-  If your orchestrator runs in a Kubernetes cluster, we recommend [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) instead of a client secret. The orchestrator logs in with its own service account token, so there's no client secret to store or rotate. Infisical has to reach the cluster's API server to verify the token, either directly or through a [gateway](/documentation/platform/gateways/gateway-deployment) if the API server is private. In the Kubernetes Auth settings, allow only the namespace and service account that the orchestrator runs as.
-
-  An orchestrator outside a cluster, such as a CI pipeline, can't use Kubernetes Auth. Use Universal Auth, or an auth method for its platform, such as [OIDC Auth for GitHub Actions](/documentation/platform/identities/oidc-auth/github).
+  If your orchestrator runs in a Kubernetes cluster whose API server Infisical can reach, use [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) instead, so it logs in with its service account token and has no client secret to store.
 </Tip>
 
 ### Allow the orchestrator to start agent pods
