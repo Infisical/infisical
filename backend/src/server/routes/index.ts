@@ -3443,6 +3443,7 @@ export const registerRoutes = async (
   const secretAccessApprovalGlobalPolicyBridgeService = secretAccessApprovalGlobalPolicyBridgeServiceFactory({
     projectDAL,
     permissionService,
+    licenseService,
     projectEnvDAL,
     userDAL,
     groupDAL,
