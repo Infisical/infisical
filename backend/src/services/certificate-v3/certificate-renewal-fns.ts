@@ -309,6 +309,7 @@ type TOriginatingRenewalRequest = {
   keyAlgorithm: string | null;
   signatureAlgorithm: string | null;
   customExtensions: unknown;
+  csr?: string | null;
 };
 
 type TRenewalCertificateFacts = {
@@ -555,7 +556,12 @@ export const buildRenewalPreview = (requested: TOriginatingRenewalRequest, certi
     });
   }
 
-  return { request, issuerModifiedFields, hasOriginatingRequest: requested.exists };
+  return {
+    request,
+    issuerModifiedFields,
+    hasOriginatingRequest: requested.exists,
+    hasOriginatingCsr: Boolean(requested.csr)
+  };
 };
 
 export const buildRenewalDistinguishedName = (certificateRequest: TCertificateRequest): string =>

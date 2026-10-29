@@ -27,6 +27,7 @@ const constraints = {
 
 const renewalPreview = {
   hasOriginatingRequest: true,
+  hasOriginatingCsr: true,
   request: {
     commonName: "asked-for.example.com",
     altNames: [],

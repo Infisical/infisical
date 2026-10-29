@@ -2407,6 +2407,8 @@ export const CERTIFICATES = {
     id: "The ID of the certificate to preview a renewal for.",
     hasOriginatingRequest:
       "Whether the certificate has a recorded originating request. When false the preview falls back to the issued certificate, which is the case for imported and discovered certificates.",
+    hasOriginatingCsr:
+      "Whether the request that produced this certificate carried a CSR. When Infisical holds neither the private key nor this CSR, renewing with the existing key pair is refused.",
     request:
       "The values a renewal will request, taken from the request that produced this certificate including any profile defaults it recorded.",
     issuerModifiedFields:
