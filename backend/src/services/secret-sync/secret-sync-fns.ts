@@ -96,6 +96,7 @@ import { TERRAFORM_CLOUD_SYNC_LIST_OPTION, TerraformCloudSyncFns } from "./terra
 import { TRAVIS_CI_SYNC_LIST_OPTION, TravisCISyncFns } from "./travis-ci";
 import { TRIGGER_DEV_SYNC_LIST_OPTION, TriggerDevSyncFns } from "./trigger-dev";
 import { VERCEL_SYNC_LIST_OPTION, VercelSyncFns } from "./vercel";
+import { vercelPreSaveTransformDestinationConfig } from "./vercel/vercel-sync-pre-save";
 import { WINDMILL_SYNC_LIST_OPTION, WindmillSyncFns } from "./windmill";
 import { ZABBIX_SYNC_LIST_OPTION, ZabbixSyncFns } from "./zabbix";
 
@@ -165,7 +166,8 @@ const PRE_SAVE_TRANSFORM_SYNC_OPTIONS_MAP: Partial<Record<SecretSync, TPreSaveTr
 const PRE_SAVE_TRANSFORM_DESTINATION_CONFIG_MAP: Partial<Record<SecretSync, TPreSaveTransformDestinationConfigFn>> = {
   [SecretSync.AzureEntraIdScim]: azureEntraIdScimPreSaveTransformDestinationConfig,
   [SecretSync.Chef]: chefPreSaveTransformDestinationConfig,
-  [SecretSync.GCPSecretManager]: gcpPreSaveTransformDestinationConfig
+  [SecretSync.GCPSecretManager]: gcpPreSaveTransformDestinationConfig,
+  [SecretSync.Vercel]: vercelPreSaveTransformDestinationConfig
 };
 
 export const preSaveTransformSyncOptions = async (
