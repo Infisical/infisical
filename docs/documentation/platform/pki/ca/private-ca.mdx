@@ -355,7 +355,7 @@ Deleting the CA schedules its key for deletion in AWS KMS with a 30-day waiting 
 
 <AccordionGroup>
   <Accordion title="What key algorithms are supported?">
-    Infisical supports `RSA 2048`, `RSA 4096`, `ECDSA P-256`, `ECDSA P-384` key algorithms specified at the time of creating a CA.
+    You pick the key algorithm when you create the CA, and the choices depend on **Key Source**. With the default **Infisical** key source, you can choose `RSA 2048`, `RSA 3072`, `RSA 4096`, `ECDSA P-256`, `ECDSA P-384`, `ECDSA P-521`, `ML-DSA-44`, `ML-DSA-65`, or `ML-DSA-87`. For the other key sources, see [HSM-backed internal CAs](#hsm-backed-internal-cas) and [AWS KMS-backed internal CAs](#aws-kms-backed-internal-cas).
   </Accordion>
   <Accordion title="Does Infisical support chaining an Intermediate CA to an external CA?">
     Yes. You can either manually obtain a CSR and import the signed certificate, or use an integrated external CA provider like [Venafi TLS Protect Cloud](/documentation/platform/pki/ca/venafi) or [Microsoft ADCS](/documentation/platform/pki/ca/adcs) to automate the signing process.
