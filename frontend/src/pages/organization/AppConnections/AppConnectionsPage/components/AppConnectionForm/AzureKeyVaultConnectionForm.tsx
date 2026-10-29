@@ -9,7 +9,9 @@ import { z } from "zod";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  CopyButton,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   Input,
@@ -25,7 +27,7 @@ import {
   TooltipTrigger
 } from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
-import { useSubscription } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -37,6 +39,7 @@ import {
 } from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useScopeVariant } from "@app/hooks";
+import { useGetOidcIssuerUrl } from "@app/hooks/api";
 import { useGetAppConnectionOption } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
@@ -54,8 +57,9 @@ import {
 
 type ClientSecretForm = z.infer<typeof clientSecretSchema>;
 type CertificateForm = z.infer<typeof certificateSchema>;
+type ManagedIdentityForm = z.infer<typeof managedIdentitySchema>;
 
-type TInputFormData = ClientSecretForm | CertificateForm;
+type TInputFormData = ClientSecretForm | CertificateForm | (ManagedIdentityForm & { id?: string });
 
 type Props = {
   appConnection?: TAzureKeyVaultConnection;
@@ -93,11 +97,33 @@ const certificateSchema = baseSchema.extend({
   })
 });
 
+const managedIdentitySchema = baseSchema.extend({
+  method: z.literal(AzureKeyVaultConnectionMethod.ManagedIdentity),
+  credentials: z.object({
+    clientId: z.string().trim().min(1, "Client ID is required"),
+    tenantId: z.string().trim().min(1, "Tenant ID is required")
+  })
+});
+
 const formSchema = z.discriminatedUnion("method", [
   oauthSchema,
   clientSecretSchema,
-  certificateSchema
+  certificateSchema,
+  managedIdentitySchema
 ]);
+
+// Entra only accepts federated tokens with this audience
+const AZURE_FEDERATED_TOKEN_AUDIENCE = "api://AzureADTokenExchange";
+
+const CopyableValue = ({ label, value }: { label: string; value: string }) => (
+  <div className="flex flex-col gap-1">
+    <span className="text-xs text-accent">{label}</span>
+    <div className="flex items-center gap-2 rounded-md border border-border bg-container p-2">
+      <p className="grow font-mono text-sm break-all text-foreground">{value}</p>
+      <CopyButton value={value} ariaLabel={`Copy ${label}`} />
+    </div>
+  </div>
+);
 
 type FormData = z.infer<typeof formSchema>;
 
@@ -170,6 +196,18 @@ const getDefaultValues = (appConnection?: TAzureKeyVaultConnection): Partial<For
         };
       }
       break;
+    case AzureKeyVaultConnectionMethod.ManagedIdentity:
+      if ("clientId" in credentials && "tenantId" in credentials) {
+        return {
+          ...base,
+          method: AzureKeyVaultConnectionMethod.ManagedIdentity,
+          credentials: {
+            clientId: credentials.clientId,
+            tenantId: credentials.tenantId
+          }
+        };
+      }
+      break;
     default:
       return base;
   }
@@ -211,6 +249,15 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
   const gatewayPoolId = watch("gatewayPoolId");
 
   const { subscription } = useSubscription();
+  const { currentOrg } = useOrganization();
+
+  // The subject Infisical signs is the connection's ID, so a new connection's ID is chosen here and shown
+  // before it exists
+  const [connectionId] = useState(() => appConnection?.id ?? window.crypto.randomUUID());
+
+  const { data: issuerUrl } = useGetOidcIssuerUrl(currentOrg.id, {
+    enabled: selectedMethod === AzureKeyVaultConnectionMethod.ManagedIdentity
+  });
 
   const onSubmitHandler = async (formData: FormData) => {
     const state = crypto.randomBytes(16).toString("hex");
@@ -238,6 +285,9 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
       case AzureKeyVaultConnectionMethod.Certificate:
         await onSubmit(formData);
         break;
+      case AzureKeyVaultConnectionMethod.ManagedIdentity:
+        await onSubmit(isUpdate ? formData : { ...formData, id: connectionId });
+        break;
       default:
         throw new Error(`Unhandled Azure Connection method: ${(formData as FormData).method}`);
     }
@@ -253,6 +303,7 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
       isMissingConfig = false;
       break;
     case AzureKeyVaultConnectionMethod.Certificate:
+    case AzureKeyVaultConnectionMethod.ManagedIdentity:
       isMissingConfig = false;
       break;
     default:
@@ -578,6 +629,66 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                 </Field>
               )}
             />
+          </>
+        )}
+
+        {selectedMethod === AzureKeyVaultConnectionMethod.ManagedIdentity && (
+          <>
+            <Controller
+              name="credentials.tenantId"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="credentials.tenantId">
+                    Tenant ID
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        The Azure Active Directory (Entra ID) Tenant ID.
+                      </TooltipContent>
+                    </Tooltip>
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="credentials.tenantId"
+                    placeholder="00000000-0000-0000-0000-000000000000"
+                    isError={Boolean(error)}
+                  />
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+            <Controller
+              name="credentials.clientId"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <Field className="mb-4">
+                  <FieldLabel htmlFor="credentials.clientId">Client ID</FieldLabel>
+                  <Input
+                    {...field}
+                    id="credentials.clientId"
+                    placeholder="00000000-0000-0000-0000-000000000000"
+                    isError={Boolean(error)}
+                  />
+                  <FieldDescription>
+                    The client ID of the user-assigned managed identity.
+                  </FieldDescription>
+                  <FieldError errors={[error]} />
+                </Field>
+              )}
+            />
+            <Field className="mb-4">
+              <FieldLabel>Federated Credential</FieldLabel>
+              <FieldDescription>
+                Add a federated credential to the managed identity with the Other issuer scenario
+                and these values.
+              </FieldDescription>
+              {issuerUrl && <CopyableValue label="Issuer" value={issuerUrl} />}
+              <CopyableValue label="Subject Identifier" value={`app-connection:${connectionId}`} />
+              <CopyableValue label="Audience" value={AZURE_FEDERATED_TOKEN_AUDIENCE} />
+            </Field>
           </>
         )}
 

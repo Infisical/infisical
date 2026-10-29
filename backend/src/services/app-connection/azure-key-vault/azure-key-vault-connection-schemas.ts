@@ -71,6 +71,18 @@ export const AzureKeyVaultConnectionCertificateOutputCredentialsSchema = z.objec
   expiresAt: z.number()
 });
 
+export const AzureKeyVaultConnectionManagedIdentityInputCredentialsSchema = z.object({
+  tenantId: z.string().uuid().trim().min(1, "Tenant ID required"),
+  clientId: z.string().uuid().trim().min(1, "Client ID required")
+});
+
+export const AzureKeyVaultConnectionManagedIdentityOutputCredentialsSchema = z.object({
+  tenantId: z.string(),
+  clientId: z.string(),
+  accessToken: z.string(),
+  expiresAt: z.number()
+});
+
 export const ValidateAzureKeyVaultConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z
@@ -95,6 +107,14 @@ export const ValidateAzureKeyVaultConnectionCredentialsSchema = z.discriminatedU
     credentials: AzureKeyVaultConnectionCertificateInputCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.AzureKeyVault).credentials
     )
+  }),
+  z.object({
+    method: z
+      .literal(AzureKeyVaultConnectionMethod.ManagedIdentity)
+      .describe(AppConnections.CREATE(AppConnection.AzureKeyVault).method),
+    credentials: AzureKeyVaultConnectionManagedIdentityInputCredentialsSchema.describe(
+      AppConnections.CREATE(AppConnection.AzureKeyVault).credentials
+    )
   })
 ]);
 
@@ -103,15 +123,26 @@ export const CreateAzureKeyVaultConnectionSchema = ValidateAzureKeyVaultConnecti
     supportsCredentialRotation: true,
     supportsGateways: true
   })
-).superRefine((data, ctx) => {
-  if (data.method !== AzureKeyVaultConnectionMethod.ClientSecret && data.isAutoRotationEnabled) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Credential rotation is only supported for the client-secret method",
-      path: ["isAutoRotationEnabled"]
-    });
-  }
-});
+)
+  .and(z.object({ id: z.string().uuid().optional().describe(AppConnections.CREATE(AppConnection.AzureKeyVault).id) }))
+  .superRefine((data, ctx) => {
+    if (data.method !== AzureKeyVaultConnectionMethod.ClientSecret && data.isAutoRotationEnabled) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Credential rotation is only supported for the client-secret method",
+        path: ["isAutoRotationEnabled"]
+      });
+    }
+
+    if (data.method === AzureKeyVaultConnectionMethod.ManagedIdentity && !data.id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "The managed-identity method requires an ID. Set the federated credential's subject to 'app-connection:<id>' before creating the connection.",
+        path: ["id"]
+      });
+    }
+  });
 
 export const UpdateAzureKeyVaultConnectionSchema = z
   .object({
@@ -119,7 +150,8 @@ export const UpdateAzureKeyVaultConnectionSchema = z
       .union([
         AzureKeyVaultConnectionOAuthInputCredentialsSchema,
         AzureKeyVaultConnectionClientSecretInputCredentialsSchema,
-        AzureKeyVaultConnectionCertificateInputCredentialsSchema
+        AzureKeyVaultConnectionCertificateInputCredentialsSchema,
+        AzureKeyVaultConnectionManagedIdentityInputCredentialsSchema
       ])
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.AzureKeyVault).credentials)
@@ -149,6 +181,10 @@ export const AzureKeyVaultConnectionSchema = z.intersection(
     z.object({
       method: z.literal(AzureKeyVaultConnectionMethod.Certificate),
       credentials: AzureKeyVaultConnectionCertificateOutputCredentialsSchema
+    }),
+    z.object({
+      method: z.literal(AzureKeyVaultConnectionMethod.ManagedIdentity),
+      credentials: AzureKeyVaultConnectionManagedIdentityOutputCredentialsSchema
     })
   ])
 );
@@ -173,7 +209,14 @@ export const SanitizedAzureKeyVaultConnectionSchema = z.discriminatedUnion("meth
       clientId: true,
       tenantId: true
     })
-  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureKeyVault]} (Certificate)` }))
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureKeyVault]} (Certificate)` })),
+  BaseAzureKeyVaultConnectionSchema.extend({
+    method: z.literal(AzureKeyVaultConnectionMethod.ManagedIdentity),
+    credentials: AzureKeyVaultConnectionManagedIdentityOutputCredentialsSchema.pick({
+      clientId: true,
+      tenantId: true
+    })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureKeyVault]} (Managed Identity)` }))
 ]);
 
 export const AzureKeyVaultConnectionListItemSchema = z

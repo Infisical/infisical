@@ -44,6 +44,7 @@ import {
 import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -243,6 +244,7 @@ export type TAppConnectionServiceFactoryDep = {
     TKeyStoreFactory,
     "setItemWithExpiryNX" | "deleteItem" | "getItem" | "setItemWithExpiry" | "acquireLock"
   >;
+  oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
 };
 
 export type TAppConnectionServiceFactory = ReturnType<typeof appConnectionServiceFactory>;
@@ -357,7 +359,8 @@ export const appConnectionServiceFactory = ({
   appConnectionCredentialRotationService,
   identityUaDAL,
   gitHubAppDAL,
-  keyStore
+  keyStore,
+  oidcIssuerService
 }: TAppConnectionServiceFactoryDep) => {
   const listAppConnections = async (actor: OrgServiceActor, app?: AppConnection, projectId?: string) => {
     let appConnections: TAppConnections[];
@@ -646,6 +649,11 @@ export const appConnectionServiceFactory = ({
       }
     }
 
+    // Validation signs a token for the connection's ID, so it must not be one another connection already has
+    if (params.id && (await appConnectionDAL.findById(params.id))) {
+      throw new BadRequestError({ message: `App Connection ID '${params.id}' is already in use. Use a new ID.` });
+    }
+
     const runValidation = (validationGatewayId: string | null | undefined) =>
       validateAppConnectionCredentials(
         {
@@ -654,12 +662,13 @@ export const appConnectionServiceFactory = ({
           method,
           orgId: actor.orgId,
           projectId,
+          connectionId: params.id,
           version: 2,
           gatewayId: validationGatewayId,
           projectType: project?.type
         } as TAppConnectionConfig,
         gatewayV2Service,
-        { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
+        { identityUaDAL, gitHubAppDAL, kmsService, keyStore, oidcIssuerService, actorId: actor.id }
       );
 
     // Validation only dials the target and reads back, so retrying it on another member is safe.
@@ -946,6 +955,7 @@ export const appConnectionServiceFactory = ({
             app,
             orgId: actor.orgId,
             projectId: appConnection.projectId,
+            connectionId: appConnection.id,
             version: appConnection.version,
             credentials: credentialsToValidate,
             method,
@@ -953,7 +963,7 @@ export const appConnectionServiceFactory = ({
             projectType: updateProject?.type
           } as TAppConnectionConfig,
           gatewayV2Service,
-          { identityUaDAL, gitHubAppDAL, kmsService, keyStore, actorId: actor.id }
+          { identityUaDAL, gitHubAppDAL, kmsService, keyStore, oidcIssuerService, actorId: actor.id }
         );
 
       // Validation only dials the target and reads back, so retrying it on another member is safe.

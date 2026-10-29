@@ -1088,8 +1088,6 @@ export const registerRoutes = async (
     envConfig
   });
 
-  const oidcIssuerService = oidcIssuerServiceFactory({ kmsDAL, kmsService, keyStore });
-
   const encryptionKeyRotationService = encryptionKeyRotationServiceFactory({
     kmsService,
     kmsRootConfigDAL,
@@ -1346,6 +1344,8 @@ export const registerRoutes = async (
       pamAccountDAL
     })
   });
+
+  const oidcIssuerService = oidcIssuerServiceFactory({ kmsDAL, kmsService, keyStore, auditLogService });
 
   const membershipUserService = membershipUserServiceFactory({
     licenseService,
@@ -2391,7 +2391,8 @@ export const registerRoutes = async (
     microsoftTeamsService,
     telemetryService,
     projectFolderGrantDAL,
-    orgDAL
+    orgDAL,
+    oidcIssuerService
   });
 
   const secretQueueService = secretQueueFactory({
@@ -3341,7 +3342,8 @@ export const registerRoutes = async (
     appConnectionCredentialRotationService,
     identityUaDAL,
     gitHubAppDAL,
-    keyStore
+    keyStore,
+    oidcIssuerService
   });
 
   const delegatedApprovalCallbackService = delegatedApprovalCallbackServiceFactory({
@@ -3757,7 +3759,8 @@ export const registerRoutes = async (
     certificateSyncDAL,
     gatewayV2Service,
     gatewayPoolService,
-    telemetryService
+    telemetryService,
+    oidcIssuerService
   });
 
   const pkiSyncCleanup = pkiSyncCleanupQueueServiceFactory({

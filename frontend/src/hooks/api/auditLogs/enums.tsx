@@ -188,6 +188,7 @@ export enum EventType {
   DELETE_APP_CONNECTION = "delete-app-connection",
   GET_APP_CONNECTION_USAGE = "get-app-connection-usage",
   MIGRATE_APP_CONNECTION = "migrate-app-connection",
+  ISSUE_OIDC_TOKEN = "issue-oidc-token",
   CREATE_GITHUB_APP = "create-github-app",
   DELETE_GITHUB_APP = "delete-github-app",
   GET_SECRET_SYNCS = "get-secret-syncs",

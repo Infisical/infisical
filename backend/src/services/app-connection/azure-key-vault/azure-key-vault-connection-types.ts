@@ -6,6 +6,7 @@ import { AppConnection } from "../app-connection-enums";
 import {
   AzureKeyVaultConnectionCertificateOutputCredentialsSchema,
   AzureKeyVaultConnectionClientSecretOutputCredentialsSchema,
+  AzureKeyVaultConnectionManagedIdentityOutputCredentialsSchema,
   AzureKeyVaultConnectionOAuthOutputCredentialsSchema,
   AzureKeyVaultConnectionSchema,
   CreateAzureKeyVaultConnectionSchema,
@@ -25,6 +26,8 @@ export type TAzureKeyVaultConnectionConfig = DiscriminativePick<
   "method" | "app" | "credentials"
 > & {
   orgId: string;
+  projectId?: string | null;
+  connectionId?: string;
 };
 
 export type ExchangeCodeAzureResponse = {
@@ -45,4 +48,8 @@ export type TAzureKeyVaultConnectionClientSecretCredentials = z.infer<
 
 export type TAzureKeyVaultConnectionCertificateCredentials = z.infer<
   typeof AzureKeyVaultConnectionCertificateOutputCredentialsSchema
+>;
+
+export type TAzureKeyVaultConnectionManagedIdentityCredentials = z.infer<
+  typeof AzureKeyVaultConnectionManagedIdentityOutputCredentialsSchema
 >;

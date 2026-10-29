@@ -10,6 +10,7 @@ import { TAppConnectionDALFactory } from "@app/services/app-connection/app-conne
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 
 import { AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION } from "./aws-certificate-manager/aws-certificate-manager-pki-sync-constants";
 import { awsCertificateManagerPkiSyncFactory } from "./aws-certificate-manager/aws-certificate-manager-pki-sync-fns";
@@ -319,6 +320,7 @@ export const PkiSyncFns = {
       gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
       keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
+      oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
     }
   ): Promise<TPkiSyncSyncResult> => {
     switch (pkiSync.destination) {
@@ -328,7 +330,8 @@ export const PkiSyncFns = {
           appConnectionDAL: dependencies.appConnectionDAL,
           kmsService: dependencies.kmsService,
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          oidcIssuerService: dependencies.oidcIssuerService
         });
         return azureKeyVaultPkiSync.syncCertificates(pkiSync, certificateMap);
       }
@@ -575,6 +578,7 @@ export const PkiSyncFns = {
       gatewayV2Service?: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId" | "getGatewayById">;
       gatewayPoolService?: Pick<TGatewayPoolServiceFactory, "resolveEffectiveGatewayId">;
       keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry">;
+      oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
     }
   ): Promise<void> => {
     switch (pkiSync.destination) {
@@ -584,7 +588,8 @@ export const PkiSyncFns = {
           appConnectionDAL: dependencies.appConnectionDAL,
           kmsService: dependencies.kmsService,
           certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          oidcIssuerService: dependencies.oidcIssuerService
         });
         await azureKeyVaultPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,

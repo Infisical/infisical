@@ -29,6 +29,7 @@ import { TGitHubAppDALFactory } from "@app/services/github-app/github-app-dal";
 import { TIdentityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
 import { SECRET_SYNC_CONNECTION_MAP } from "@app/services/secret-sync/secret-sync-maps";
 
 import {
@@ -84,7 +85,7 @@ import {
   getAzureEntraIdConnectionListItem,
   validateAzureEntraIdConnectionCredentials
 } from "./azure-entra-id";
-import { AzureKeyVaultConnectionMethod } from "./azure-key-vault";
+import { AzureKeyVaultConnectionMethod, TAzureKeyVaultConnectionConfig } from "./azure-key-vault";
 import {
   getAzureKeyVaultConnectionListItem,
   validateAzureKeyVaultConnectionCredentials
@@ -644,6 +645,7 @@ export const validateAppConnectionCredentials = async (
     gitHubAppDAL: Pick<TGitHubAppDALFactory, "findOne">;
     kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
     keyStore: Pick<TKeyStoreFactory, "setItemWithExpiryNX">;
+    oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">;
     actorId?: string;
   }
 ): Promise<TAppConnection["credentials"]> => {
@@ -657,7 +659,11 @@ export const validateAppConnectionCredentials = async (
       })) as TAppConnectionCredentialsValidator,
     [AppConnection.GitHubRadar]: validateGitHubRadarConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GCP]: validateGcpConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.AzureKeyVault]: validateAzureKeyVaultConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.AzureKeyVault]: ((config: TAppConnectionConfig) =>
+      validateAzureKeyVaultConnectionCredentials(
+        config as TAzureKeyVaultConnectionConfig,
+        deps.oidcIssuerService
+      )) as TAppConnectionCredentialsValidator,
     [AppConnection.AzureAppConfiguration]:
       validateAzureAppConfigurationConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.AzureClientSecrets]:
@@ -896,6 +902,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
       return "API Token";
     case OVHConnectionMethod.Certificate:
       return "Certificate";
+    case AzureKeyVaultConnectionMethod.ManagedIdentity:
+      return "Managed Identity";
     default:
       // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unhandled App Connection Method: ${method}`);

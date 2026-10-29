@@ -1,11 +1,13 @@
 import { Knex } from "knex";
 
+import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { AsymmetricKeyAlgorithm, SigningAlgorithm } from "@app/lib/crypto/sign/types";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsKeyUsage } from "@app/services/kms/kms-types";
@@ -28,13 +30,19 @@ type TOidcIssuerServiceFactoryDep = {
   kmsDAL: Pick<TKmsKeyDALFactory, "find" | "delete" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "getPublicKey" | "signWithKmsKey">;
   keyStore: Pick<TKeyStoreFactory, "acquireLock" | "getItem" | "setItemWithExpiry">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 type TJwks = { keys: Awaited<ReturnType<typeof publicKeyToJwk>>[] };
 
 export type TOidcIssuerServiceFactory = ReturnType<typeof oidcIssuerServiceFactory>;
 
-export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidcIssuerServiceFactoryDep) => {
+export const oidcIssuerServiceFactory = ({
+  kmsDAL,
+  kmsService,
+  keyStore,
+  auditLogService
+}: TOidcIssuerServiceFactoryDep) => {
   const $getIssuerUrl = (orgId: string) => {
     const { SITE_URL } = getConfig();
     if (!SITE_URL) {
@@ -160,7 +168,7 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
     return signingKey;
   };
 
-  const signToken = async ({ orgId, subject, audience }: TSignOidcIssuerTokenDTO) => {
+  const signToken = async ({ orgId, projectId, subject, audience }: TSignOidcIssuerTokenDTO) => {
     const issuer = $getIssuerUrl(orgId);
     const { id: kmsId } = await $getSigningKey(orgId);
 
@@ -173,8 +181,9 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
     );
 
     const iat = Math.floor(Date.now() / 1000);
+    const jti = crypto.nativeCrypto.randomUUID();
 
-    return signJwt({
+    const token = await signJwt({
       kid,
       claims: {
         iss: issuer,
@@ -183,11 +192,20 @@ export const oidcIssuerServiceFactory = ({ kmsDAL, kmsService, keyStore }: TOidc
         iat,
         nbf: iat,
         exp: iat + TOKEN_TTL_SECONDS,
-        jti: crypto.nativeCrypto.randomUUID()
+        jti
       },
       sign: async (data) =>
         (await sign({ data, signingAlgorithm: SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_256, isDigest: false })).signature
     });
+
+    await auditLogService.createAuditLog({
+      orgId,
+      projectId: projectId ?? undefined,
+      actor: { type: ActorType.PLATFORM, metadata: {} },
+      event: { type: EventType.ISSUE_OIDC_TOKEN, metadata: { subject, audience, tokenId: jti } }
+    });
+
+    return token;
   };
 
   const getDiscoveryDocument = (orgId: string) => {

@@ -2913,6 +2913,7 @@ export const AppConnections = {
       credentials: `The credentials used to connect with ${appName}.`,
       method: `The method used to authenticate with ${appName}.`,
       stsEndpoint: `An optional custom endpoint URL for the AWS STS API to use when connecting with ${appName}.`,
+      id: `The ID to give the ${appName} Connection. Required for the managed-identity method: Infisical signs its tokens with the subject 'app-connection:<id>', so that subject must be on the federated credential before the connection is created.`,
       isPlatformManagedCredentials: `Whether or not the ${appName} Connection credentials should be managed by Infisical. Once enabled this cannot be reversed.`,
       projectId: `The ID of the project to create the ${appName} Connection in.`,
       isAutoRotationEnabled: `Whether or not automatic credential rotation is enabled for the ${appName} Connection.`,
