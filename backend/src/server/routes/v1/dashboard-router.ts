@@ -2019,32 +2019,16 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { projectId, environments, secretPath, secretKey } = req.query;
 
-      const existingEnvironments: string[] = [];
-      for (const environment of environments) {
-        try {
-          // eslint-disable-next-line no-await-in-loop
-          const { secrets } = await server.services.secret.getSecretsRaw({
-            personalOverridesBehavior: PersonalOverridesBehavior.NeverInclude,
-            secretImportReferencesBehavior: SecretImportReferencesBehavior.SourceEnvironment,
-            actorId: req.permission.id,
-            actor: req.permission.type,
-            actorOrgId: req.permission.orgId,
-            actorAuthMethod: req.permission.authMethod,
-            viewSecretValue: false,
-            throwOnMissingReadValuePermission: false,
-            projectId,
-            environment,
-            path: secretPath,
-            keys: [secretKey]
-          });
-
-          if (secrets.some((secret) => secret.secretKey === secretKey && secret.type === SecretType.Shared))
-            existingEnvironments.push(environment);
-        } catch (error) {
-          // the folder can be missing in some environments, which means the key is free there
-          if (!(error instanceof NotFoundError)) throw error;
-        }
-      }
+      const existingEnvironments = await server.services.secret.getSecretKeyEnvironments({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorOrgId: req.permission.orgId,
+        actorAuthMethod: req.permission.authMethod,
+        projectId,
+        environments,
+        path: secretPath,
+        secretKey
+      });
 
       return { existingEnvironments };
     }

@@ -110,6 +110,7 @@ import {
   TDispatchSecretMoveSideEffectsDTO,
   TGetAccessibleSecretsDTO,
   TGetASecretDTO,
+  TGetSecretKeyEnvironmentsDTO,
   TGetSecretReferencesTreeDTO,
   TGetSecretsDTO,
   TGetSecretsMultiEnvDTO,
@@ -1337,6 +1338,57 @@ export const secretV2BridgeServiceFactory = ({
     );
 
     return secrets;
+  };
+
+  const getSecretKeyEnvironments = async ({
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    projectId,
+    environments,
+    path,
+    secretKey
+  }: TGetSecretKeyEnvironmentsDTO) => {
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.SecretManager
+    });
+
+    const folders = await folderDAL.findBySecretPathMultiEnv(projectId, environments, path);
+    if (!folders.length) return [];
+
+    const folderEnvironments = new Map(folders.map((folder) => [folder.id, folder.environment.slug]));
+    const secrets = await secretDAL.findByFolderIds({
+      folderIds: folders.map((folder) => folder.id),
+      userId: actorId,
+      tx: undefined,
+      filters: { keys: [secretKey] }
+    });
+
+    const existingEnvironments = new Set<string>();
+    secrets.forEach((secret) => {
+      const environment = folderEnvironments.get(secret.folderId);
+      if (
+        environment &&
+        secret.type === SecretType.Shared &&
+        secret.key === secretKey &&
+        hasSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret, {
+          environment,
+          secretPath: path,
+          secretName: secret.key,
+          secretTags: secret.tags.map((tag) => tag.slug)
+        })
+      ) {
+        existingEnvironments.add(environment);
+      }
+    });
+
+    return environments.filter((environment) => existingEnvironments.has(environment));
   };
 
   const getSecrets = async (dto: TGetSecretsDTO) => {
@@ -4073,6 +4125,7 @@ export const secretV2BridgeServiceFactory = ({
     deleteManySecret: withSecretMetrics(deleteManySecret, { duration: "write", write: "delete" }),
     getSecrets: withSecretMetrics(getSecrets, { duration: "read" }),
     getSecretByName,
+    getSecretKeyEnvironments,
     getSecretVersions,
     backfillSecretReferences,
     moveSecrets,

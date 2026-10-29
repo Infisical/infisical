@@ -8,6 +8,7 @@ import {
   useState
 } from "react";
 
+import { createNotification } from "@app/components/notifications";
 import { parsePastedEnv } from "@app/components/utilities/parseSecrets";
 import {
   InfisicalSecretInput,
@@ -43,6 +44,7 @@ type Props = {
     isDirectSave?: boolean
   ) => Promise<void>;
   onPasteSecrets: (env: TParsedEnv) => void;
+  onQueuedSecretConflict?: (key: string) => boolean;
   renderResourceTypeTrigger: (isDisabled: boolean) => ReactNode;
   saveLabel?: string;
   secretPath: string;
@@ -56,6 +58,7 @@ export const QuickAddSecretRow = ({
   existingSecretKeys,
   onCreateSecret,
   onPasteSecrets,
+  onQueuedSecretConflict,
   renderResourceTypeTrigger,
   saveLabel,
   secretPath,
@@ -77,6 +80,9 @@ export const QuickAddSecretRow = ({
   const [valueEditorStyle, setValueEditorStyle] = useState<CSSProperties>();
   const isMultiEnvironmentView = environments.length > 1;
   const environmentSlugs = environments.join(",");
+  const latestKeyRef = useRef(key);
+  latestKeyRef.current = key;
+  const confirmedFreeKeyRef = useRef<string>(undefined);
 
   useEffect(() => {
     if (!isMultiEnvironmentView) {
@@ -126,6 +132,8 @@ export const QuickAddSecretRow = ({
         secretKey
       }).catch(() => []);
       if (isCancelled) return;
+      if (!environmentsWithKey.length)
+        confirmedFreeKeyRef.current = `${secretKey}|${environmentSlugs}`;
       setError(
         environmentsWithKey.length
           ? getDuplicateKeyError(environmentsWithKey, isMultiEnvironmentView)
@@ -198,6 +206,32 @@ export const QuickAddSecretRow = ({
           onCreateSecret(environment, normalizedKey, value, comment, isDirectSave)
         )
       );
+      if (!isDirectSave && confirmedFreeKeyRef.current !== `${normalizedKey}|${environmentSlugs}`) {
+        const queuedDraft = { key: normalizedKey, value, comment };
+        fetchSecretKeyExistingEnvironments({
+          projectId: currentProject.id,
+          environments,
+          secretPath,
+          secretKey: normalizedKey
+        })
+          .catch(() => [])
+          .then((environmentsWithKey) => {
+            if (!environmentsWithKey.length || !onQueuedSecretConflict?.(queuedDraft.key)) return;
+            const duplicateKeyError = getDuplicateKeyError(
+              environmentsWithKey,
+              isMultiEnvironmentView
+            );
+            createNotification({
+              type: "error",
+              text: `${duplicateKeyError}, so '${queuedDraft.key}' was removed from your pending changes`
+            });
+            if (latestKeyRef.current) return;
+            setKey(queuedDraft.key);
+            setValue(queuedDraft.value);
+            setComment(queuedDraft.comment);
+            setError(duplicateKeyError);
+          });
+      }
       setKey("");
       setValue("");
       setComment("");

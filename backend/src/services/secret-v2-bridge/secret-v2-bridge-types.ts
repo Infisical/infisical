@@ -532,6 +532,13 @@ export type TGetSecretsMultiEnvDTO = Pick<
   isInternal?: boolean;
 };
 
+export type TGetSecretKeyEnvironmentsDTO = Pick<
+  TGetSecretsMultiEnvDTO,
+  "actorId" | "actor" | "path" | "projectId" | "actorOrgId" | "actorAuthMethod" | "environments"
+> & {
+  secretKey: string;
+};
+
 export type TGetSecretsRawByFolderMappingsDTO = {
   projectId: string;
   folderMappings: { folderId: string; path: string; environment: string }[];
