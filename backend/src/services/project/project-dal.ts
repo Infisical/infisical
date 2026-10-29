@@ -34,6 +34,33 @@ import {
 } from "../secret-v2-bridge/secret-tree-hard-delete-fns";
 import { Filter, ProjectFilterType, SearchProjectSortBy } from "./project-types";
 
+type TDeletedByRow = {
+  deletedByUserId: string | null;
+  deletedByIdentityId: string | null;
+  deletedByUserEmail: string | null;
+  deletedByUserUsername: string | null;
+  deletedByUserFirstName: string | null;
+  deletedByUserLastName: string | null;
+  deletedByIdentityName: string | null;
+};
+
+const toDeletedBy = (row: TDeletedByRow) => {
+  if (row.deletedByUserId) {
+    return {
+      type: "user" as const,
+      id: row.deletedByUserId,
+      email: row.deletedByUserEmail,
+      username: row.deletedByUserUsername,
+      firstName: row.deletedByUserFirstName,
+      lastName: row.deletedByUserLastName
+    };
+  }
+  if (row.deletedByIdentityId) {
+    return { type: "identity" as const, id: row.deletedByIdentityId, name: row.deletedByIdentityName ?? "" };
+  }
+  return null;
+};
+
 export type TProjectDALFactory = ReturnType<typeof projectDALFactory>;
 
 export const projectDALFactory = (db: TDbClient) => {
@@ -969,19 +996,12 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findProjectDeletedEnvironments = async (projectId: string, tx?: Knex) => {
     try {
-      type DeletedEnvironmentRow = {
+      type DeletedEnvironmentRow = TDeletedByRow & {
         id: string;
         slug: string;
         name: string;
         deleteAfter: Date;
         softDeletedAt: Date;
-        deletedByUserId: string | null;
-        deletedByIdentityId: string | null;
-        deletedByUserEmail: string | null;
-        deletedByUserUsername: string | null;
-        deletedByUserFirstName: string | null;
-        deletedByUserLastName: string | null;
-        deletedByIdentityName: string | null;
       };
 
       const rows = (await (tx || db.replicaNode())(TableName.Environment)
@@ -1006,45 +1026,14 @@ export const projectDALFactory = (db: TDbClient) => {
         )
         .orderBy(`${TableName.Environment}.position`, "asc")) as DeletedEnvironmentRow[];
 
-      return rows.map((row) => {
-        let deletedBy:
-          | {
-              type: "user";
-              id: string;
-              email: string | null;
-              username: string | null;
-              firstName: string | null;
-              lastName: string | null;
-            }
-          | { type: "identity"; id: string; name: string }
-          | null = null;
-
-        if (row.deletedByUserId) {
-          deletedBy = {
-            type: "user",
-            id: row.deletedByUserId,
-            email: row.deletedByUserEmail,
-            username: row.deletedByUserUsername,
-            firstName: row.deletedByUserFirstName,
-            lastName: row.deletedByUserLastName
-          };
-        } else if (row.deletedByIdentityId) {
-          deletedBy = {
-            type: "identity",
-            id: row.deletedByIdentityId,
-            name: row.deletedByIdentityName ?? ""
-          };
-        }
-
-        return {
-          id: row.id,
-          slug: row.slug,
-          name: row.name,
-          deleteAfter: row.deleteAfter,
-          softDeletedAt: row.softDeletedAt,
-          deletedBy
-        };
-      });
+      return rows.map((row) => ({
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        deleteAfter: row.deleteAfter,
+        softDeletedAt: row.softDeletedAt,
+        deletedBy: toDeletedBy(row)
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find project deleted environments" });
     }
@@ -1052,19 +1041,12 @@ export const projectDALFactory = (db: TDbClient) => {
 
   const findDeletedProjects = async (orgId: string, type?: ProjectType, tx?: Knex) => {
     try {
-      type DeletedProjectRow = {
+      type DeletedProjectRow = TDeletedByRow & {
         id: string;
         name: string;
         type: string;
         deleteAfter: Date;
         softDeletedAt: Date;
-        deletedByActorType: string | null;
-        deletedByActorId: string | null;
-        deletedByUserEmail: string | null;
-        deletedByUserUsername: string | null;
-        deletedByUserFirstName: string | null;
-        deletedByUserLastName: string | null;
-        deletedByIdentityName: string | null;
       };
 
       const query = (tx || db.replicaNode())(TableName.Project)
@@ -1079,8 +1061,8 @@ export const projectDALFactory = (db: TDbClient) => {
           `${TableName.Project}.type`,
           `${TableName.Project}.deleteAfter`,
           `${TableName.Project}.softDeletedAt`,
-          `${TableName.Project}.deletedByActorType`,
-          `${TableName.Project}.deletedByActorId`,
+          db.ref("id").withSchema(TableName.Users).as("deletedByUserId"),
+          db.ref("id").withSchema(TableName.Identity).as("deletedByIdentityId"),
           db.ref("email").withSchema(TableName.Users).as("deletedByUserEmail"),
           db.ref("username").withSchema(TableName.Users).as("deletedByUserUsername"),
           db.ref("firstName").withSchema(TableName.Users).as("deletedByUserFirstName"),
@@ -1092,45 +1074,14 @@ export const projectDALFactory = (db: TDbClient) => {
 
       const rows = (await query) as DeletedProjectRow[];
 
-      return rows.map((row) => {
-        let deletedBy:
-          | {
-              type: "user";
-              id: string;
-              email: string | null;
-              username: string | null;
-              firstName: string | null;
-              lastName: string | null;
-            }
-          | { type: "identity"; id: string; name: string }
-          | null = null;
-
-        if (row.deletedByActorId && row.deletedByActorType === ActorType.USER) {
-          deletedBy = {
-            type: "user",
-            id: row.deletedByActorId,
-            email: row.deletedByUserEmail,
-            username: row.deletedByUserUsername,
-            firstName: row.deletedByUserFirstName,
-            lastName: row.deletedByUserLastName
-          };
-        } else if (row.deletedByActorId && row.deletedByActorType === ActorType.IDENTITY) {
-          deletedBy = {
-            type: "identity",
-            id: row.deletedByActorId,
-            name: row.deletedByIdentityName ?? ""
-          };
-        }
-
-        return {
-          id: row.id,
-          name: row.name,
-          type: row.type,
-          deleteAfter: row.deleteAfter,
-          softDeletedAt: row.softDeletedAt,
-          deletedBy
-        };
-      });
+      return rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        type: row.type,
+        deleteAfter: row.deleteAfter,
+        softDeletedAt: row.softDeletedAt,
+        deletedBy: toDeletedBy(row)
+      }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find deleted projects" });
     }
