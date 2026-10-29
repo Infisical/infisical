@@ -494,7 +494,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
             id: project.id,
             name: project.name,
             softDelete: true,
-            hardDelete: req.query.hardDelete
+            deleteAfter: project.deleteAfter
           }
         }
       });
