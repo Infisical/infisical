@@ -154,6 +154,8 @@ spec:
 - **Other ports:** the proxy can only reach ports 443 and 80, so if a service or exception uses another port, such as `api.example.com:8443`, add an egress rule for that port
 - **DNS:** the network policies in this step and in Step 3 allow DNS only to pods labeled `k8s-app: kube-dns` in `kube-system`, so if your cluster's DNS runs elsewhere, such as a node-local DNS cache or the `openshift-dns` namespace on OpenShift, change the DNS rule in both
 
+### Store the proxy token
+
 Store the proxy token in a Secret named `agent-vault-proxy` in the `agent-vault` namespace, under the key `INFISICAL_AGENT_VAULT_PROXY_TOKEN`. Create it with the tool you already use to manage Kubernetes secrets, such as the [Infisical Kubernetes Operator](/integrations/platforms/kubernetes/overview). The proxy's pods start once the Secret exists.
 
 On the **Proxies** page in Agent Vault, the proxy's status changes to **Healthy** once it connects. The two replicas share the same token and certificate authority, and the Service spreads agent connections across them (see [High availability](/documentation/platform/agent-vault/proxies#high-availability)).
