@@ -218,6 +218,49 @@ To remove a report from the history, hover over its row and select the trash ico
 
 ![Report history](/images/platform/insights/audit-reports/report-history.png)
 
+## Unused secret access
+
+{/* vale Vale.Spelling = NO */}
+
+The **Overprivileged Access** card lists users and machine identities that can read the values of secrets they haven't read in the last 30 days. Use it to find access you can remove. Identities with the most unread secrets are listed first.
+
+{/* vale Vale.Spelling = YES */}
+
+Each row shows:
+
+- **Name** and **Type**: the user or machine identity
+- **Secrets Not Read**: how many of the secrets the identity can read it hasn't read, and what percentage that is
+- **Environments**: the environments that contain those unread secrets
+- **Access Paths**: the roles, additional privileges, groups, and folder access that give the identity its access
+
+To find an identity by name, use the search box. Select a row to see that identity's unread secrets, grouped by environment. To open a secret, hover over its row and select the arrow icon.
+
+### Who is counted
+
+The card counts every user and machine identity that can read a secret's value, whether through a role, an additional privilege, or a [group](/documentation/platform/groups). Infisical combines all of an identity's access before checking it, so a deny rule in one role still applies when another role allows access. Members of a group appear as their own rows, not as the group.
+
+Project admins aren't counted, because they can read every secret by design.
+
+### When results appear
+
+Infisical records each read of a secret's value, whether it comes from the dashboard, CLI, SDKs, or API, and including reads through [secret imports](/documentation/platform/secret-reference#secret-imports) and [secret references](/documentation/platform/secret-reference#secret-referencing). Infisical started recording reads when this feature was released, so a project needs 30 days of recorded reads before the card shows results. Until then, the card shows **Not enough read history yet** and the date results will start.
+
+A secret counts against an identity only once both the secret and the identity's access to it are more than 30 days old. New secrets and newly granted access aren't flagged until they've had a full 30 days to be read.
+
+Infisical recalculates the card at most once a day. The **Updates in** badge next to the card title shows when the next update happens.
+
+### Read activity for a secret
+
+To see who has read a single secret, open the secret's **More secret actions** menu in the secrets overview and select **View Access**. The **Graph** view connects each identity that can read the value to the secret, with a solid line if they've read it and a dashed line if they haven't, and shows whether their access is direct or through a group.
+
+The **Table** view adds a **Last Read** column if your role has the **Read** permission on **Insights**:
+
+| Value | Meaning |
+|---|---|
+| **Today**, **Yesterday**, or **N days ago** | When the identity last read the secret's value |
+| **No Reads** | The identity hasn't read the value in the last 30 days and counts as unused access |
+| **No Reads Yet** | The identity isn't counted yet, for example because it's a project admin, or the secret, its access, or the project's read history is newer than 30 days (hover over the badge to see why) |
+
 ## Duplicated secrets
 
 The **Duplicated Secrets** card groups secrets in the project that share the same value, across environments and paths. Expand a group to see each secret's key, environment, and path. To open a secret's folder, hover over its row and select the arrow icon.
