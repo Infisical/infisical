@@ -172,6 +172,7 @@ export function SecretEntryFields({
         </div>
         <ReferenceEditor
           multiline
+          masked
           value={entry.value}
           scope={scope}
           onValueChange={(value) => onPatch({ value })}

@@ -369,15 +369,19 @@ type ControlProps = {
   onChange: (event: ChangeEvent<Field>) => void;
   onSelect: (event: SyntheticEvent<Field>) => void;
   onKeyDown: (event: KeyboardEvent<Field>) => void;
+  onFocus: () => void;
   onBlur: (event: FocusEvent<Field>) => void;
   onScroll: () => void;
 };
+
+const mask = "••••••••••••••••";
 
 export function ReferenceEditor({
   value,
   scope,
   multiline = false,
   readOnly = false,
+  masked = false,
   className,
   onValueChange,
   onKeyDown,
@@ -388,6 +392,7 @@ export function ReferenceEditor({
   scope?: Scope;
   multiline?: boolean;
   readOnly?: boolean;
+  masked?: boolean;
   className?: string;
   onValueChange: (value: string) => void;
   onKeyDown?: (event: KeyboardEvent<Field>) => void;
@@ -402,6 +407,8 @@ export function ReferenceEditor({
   const [active, setActive] = useState(false);
   const [cursor, setCursor] = useState(0);
   const [highlighted, setHighlighted] = useState(0);
+  const [focused, setFocused] = useState(false);
+  const hidden = masked && !focused && value !== "";
 
   const openLeft = unclosedLeft(value, cursor - 1);
   const input = openLeft !== -1 ? value.slice(openLeft + 1, cursor) : "";
@@ -491,7 +498,7 @@ export function ReferenceEditor({
         <div ref={wrap} className={className ? `${styles.editor} ${className}` : styles.editor}>
           {children({
             ref: control,
-            value,
+            value: hidden ? mask : value,
             role: "combobox",
             "aria-autocomplete": "list",
             "aria-expanded": open,
@@ -538,15 +545,17 @@ export function ReferenceEditor({
               }
               onKeyDown?.(event);
             },
+            onFocus: () => setFocused(true),
             onBlur: (event) => {
               setActive(false);
+              setFocused(false);
               onBlur?.(event);
             },
             onScroll: sync
           })}
           <div ref={layer} aria-hidden className={styles.layer}>
-            <ReferenceText value={value} scope={scope} />
-            {value.endsWith("\n") && <br />}
+            {hidden ? mask : <ReferenceText value={value} scope={scope} />}
+            {!hidden && value.endsWith("\n") && <br />}
           </div>
         </div>
       </PopoverAnchor>

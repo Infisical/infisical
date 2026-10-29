@@ -228,6 +228,14 @@
   letter-spacing: var(--v4-type-body-letter-spacing);
 }
 
+/* A theme flip changes every colour token at once, so a transitioned surface would fade from the old theme for a moment. */
+.v4[data-theme-switching],
+.v4[data-theme-switching] *,
+.v4[data-theme-switching] *::before,
+.v4[data-theme-switching] *::after {
+  transition: none !important;
+}
+
 .v4 :where(h1, h2, h3, h4, h5, h6) {
   font-family: inherit;
 }

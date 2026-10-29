@@ -48,6 +48,21 @@ export function V4Scope({
     [forwardedRef]
   );
   React.useEffect(() => watchScrollEdges(), []);
+  const appliedTheme = React.useRef(resolvedTheme);
+  React.useLayoutEffect(() => {
+    if (appliedTheme.current === resolvedTheme) return undefined;
+    appliedTheme.current = resolvedTheme;
+    const scopes = [wrapper, container].filter((node): node is HTMLDivElement => Boolean(node));
+    scopes.forEach((node) => node.setAttribute("data-theme-switching", ""));
+    scopes.forEach((node) => getComputedStyle(node).transitionProperty);
+    const frame = requestAnimationFrame(() =>
+      scopes.forEach((node) => node.removeAttribute("data-theme-switching"))
+    );
+    return () => {
+      cancelAnimationFrame(frame);
+      scopes.forEach((node) => node.removeAttribute("data-theme-switching"));
+    };
+  }, [resolvedTheme, wrapper, container]);
   React.useLayoutEffect(() => {
     if (!wrapper || theme !== undefined) return undefined;
     const update = () => setInherited(inheritedTheme(wrapper, parentTheme));
