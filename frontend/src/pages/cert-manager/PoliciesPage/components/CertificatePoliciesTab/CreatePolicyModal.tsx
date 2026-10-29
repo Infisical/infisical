@@ -114,6 +114,7 @@ interface Props {
 
 export type CertificatePolicyWizardHandle = {
   goNext: () => Promise<void>;
+  goToStep: (index: number) => Promise<void>;
   submit: () => Promise<void>;
 };
 
@@ -1122,6 +1123,14 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
       setStep(step + 1);
     };
 
+    const goToStep = async (index: number) => {
+      if (index > step) {
+        if (step === 0 && !(await trigger(["name"]))) return;
+        if (!validateStep()) return;
+      }
+      setStep(index);
+    };
+
     const renderUsageGrid = (
       options: readonly string[],
       policyOf: (u: never) => UsagePolicy,
@@ -1196,6 +1205,7 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
 
     useImperativeHandle(ref, () => ({
       goNext,
+      goToStep,
       submit: () => handleSubmit(onFormSubmit)()
     }));
 
@@ -1922,8 +1932,13 @@ export const CreatePolicyModal = ({
                 activeStep={step}
                 orientation="vertical"
                 onStepChange={(i) => {
+                  if (isEdit) {
+                    wizardRef.current?.goToStep(i);
+                    return;
+                  }
                   if (i < step) setStep(i);
                 }}
+                nonLinear={Boolean(isEdit)}
               >
                 <StepperList>
                   {STEPS.map((s, i) => (
