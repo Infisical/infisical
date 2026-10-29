@@ -15,7 +15,7 @@ import { TMembershipDALFactory } from "./membership-dal";
 
 type TProjectAccessRevokeServiceFactoryDep = {
   membershipDAL: Pick<TMembershipDALFactory, "delete">;
-  projectDAL: Pick<TProjectDALFactory, "find">;
+  projectDAL: Pick<TProjectDALFactory, "findIncludingExpired">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "delete">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
   applicationMembershipCleanupService: Pick<
@@ -79,7 +79,10 @@ export const projectAccessRevokeServiceFactory = ({
       ? await membershipDAL.delete({ ...projectScope, $in: { ...projectScope.$in, actorIdentityId: identityIds } }, tx)
       : [];
 
-    const projectIds = (await projectDAL.find({ $in: { orgId: orgIds } }, { tx })).map((project) => project.id);
+    // Includes projects pending deletion, so restoring one can't bring back an offboarded actor's privileges.
+    const projectIds = (await projectDAL.findIncludingExpired({ $in: { orgId: orgIds } }, { tx })).map(
+      (project) => project.id
+    );
     const resourceRows = projectIds.length
       ? await applicationMembershipCleanupService.cleanupActorsApplicationMembershipsInProjects(
           { projectIds, userIds, identityIds },
