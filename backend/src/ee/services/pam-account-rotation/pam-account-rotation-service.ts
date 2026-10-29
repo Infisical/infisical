@@ -1,3 +1,4 @@
+import { Knex } from "knex";
 import pLimit from "p-limit";
 
 import { TGatewayPoolServiceFactory } from "@app/ee/services/gateway-pool/gateway-pool-service";
@@ -81,6 +82,7 @@ type TPamAccountRotationServiceFactoryDep = {
     | "findRotationCandidates"
     | "reconcileRotationScheduleForAccount"
     | "transaction"
+    | "primaryNode"
   >;
   pamDiscoverySourceDAL: Pick<TPamDiscoverySourceDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -819,13 +821,17 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     }
   };
 
-  const loadAccount = async (accountId: string, projectId: string): Promise<TPamAccountDetail> => {
-    const account = await pamAccountDAL.findByIdWithDetails(accountId);
+  const loadAccount = async (accountId: string, projectId: string, tx?: Knex): Promise<TPamAccountDetail> => {
+    const account = await pamAccountDAL.findByIdWithDetails(accountId, tx);
     if (!account || account.projectId !== projectId) {
       throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
     }
     return account;
   };
+
+  // discovery import binds and rotates an account right after creating it, before a read replica may have it
+  const loadAccountFromPrimary = (accountId: string, projectId: string) =>
+    loadAccount(accountId, projectId, pamAccountDAL.primaryNode());
 
   const getRotation = async ({
     accountId,
@@ -896,7 +902,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     projectId,
     ...ctx
   }: TSetPamRotationAccountDTO & TActorContext) => {
-    const account = await loadAccount(accountId, projectId);
+    const account = await loadAccountFromPrimary(accountId, projectId);
     await checkAccount(
       accountId,
       account.folderId,
@@ -1004,7 +1010,7 @@ export const pamAccountRotationServiceFactory = (deps: TPamAccountRotationServic
     rotationStatus: string;
     message?: string;
   }> => {
-    const account = await loadAccount(accountId, projectId);
+    const account = await loadAccountFromPrimary(accountId, projectId);
     await checkAccount(
       accountId,
       account.folderId,

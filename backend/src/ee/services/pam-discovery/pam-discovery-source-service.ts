@@ -1,3 +1,4 @@
+import { ForbiddenError } from "@casl/ability";
 import pLimit from "p-limit";
 
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
@@ -89,6 +90,14 @@ const MAX_SCAN_DURATION_MS = 45 * 60 * 1000;
 const DISCOVERED_UPSERT_CONCURRENCY = 8;
 
 const IMPORT_ROTATION_CONCURRENCY = 5;
+
+const toResultMessage = (err: unknown, fallback: string) =>
+  err instanceof BadRequestError ||
+  err instanceof NotFoundError ||
+  err instanceof ForbiddenRequestError ||
+  err instanceof ForbiddenError
+    ? err.message
+    : fallback;
 
 const withScanTimeout = async <T>(scan: Promise<T>, controller: AbortController, timeoutMs: number): Promise<T> => {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -766,7 +775,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
       } catch (err) {
         return {
           rotationStatus: ROTATION_STATUS.Failed,
-          rotationMessage: err instanceof Error ? err.message : "Failed to set the rotation account"
+          rotationMessage: toResultMessage(err, "Failed to set the rotation account")
         };
       }
       await auditLogService.createAuditLog({
@@ -780,7 +789,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
         .rotateNow({ accountId, projectId, ...ctx })
         .catch((err: unknown) => ({
           rotationStatus: ROTATION_STATUS.Failed,
-          message: err instanceof Error ? err.message : "Rotation failed"
+          message: toResultMessage(err, "Rotation failed")
         }));
       await auditLogService.createAuditLog({
         ...auditLogInfo,
@@ -859,7 +868,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
           return {
             discoveredAccountId: item.discoveredAccountId,
             status: PamDiscoveryImportStatus.Error,
-            message: err instanceof Error ? err.message : "Import failed"
+            message: toResultMessage(err, "Import failed")
           };
         }
       })
