@@ -39,6 +39,27 @@ jobs:
       - name: Run chart-testing (lint)
         run: ct lint --config ct.yaml --charts helm-charts/infisical-standalone-postgres
 
+      - name: Check rolloutOnEveryRender rendering
+        working-directory: helm-charts/infisical-standalone-postgres
+        run: |
+          set -euo pipefail
+          ls charts/*.tgz >/dev/null 2>&1 || helm dependency build .
+          render() { helm template infisical . -s templates/infisical.yaml "$@"; }
+
+          [ "$(render | grep -c 'updatedAt:')" -eq 2 ]
+          [ "$(render --set infisical.rolloutOnEveryRender=null | grep -c 'updatedAt:')" -eq 2 ]
+
+          render --set infisical.rolloutOnEveryRender=false > "$RUNNER_TEMP/first.yaml"
+          sleep 2
+          render --set infisical.rolloutOnEveryRender=false > "$RUNNER_TEMP/second.yaml"
+          diff "$RUNNER_TEMP/first.yaml" "$RUNNER_TEMP/second.yaml"
+          [ "$(grep -cE 'updatedAt:|annotations:' "$RUNNER_TEMP/first.yaml" || true)" -eq 0 ]
+
+          custom=$(render --set infisical.rolloutOnEveryRender=false --set infisical.podAnnotations.pod=a --set infisical.deploymentAnnotations.deploy=b)
+          [ "$(grep -c 'updatedAt:' <<<"$custom" || true)" -eq 0 ]
+          grep -q 'pod: a' <<<"$custom"
+          grep -q 'deploy: b' <<<"$custom"
+
       - name: Create kind cluster
         uses: helm/kind-action@a1b0e391336a6ee6713a0583f8c6240d70863de3 # v1.12.0
 
