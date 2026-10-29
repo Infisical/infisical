@@ -38,6 +38,7 @@ import {
   TAgentVaultProductMember,
   TAgentVaultProductMemberOf,
   TAgentVaultProxy,
+  TAgentVaultProxyCa,
   TAgentVaultSession,
   TAgentVaultSessionLogCorsProbe,
   TAgentVaultSessionLogHealth,
@@ -101,6 +102,8 @@ export const agentVaultKeys = {
   proxies: (orgId: string) => [...agentVaultKeys.all(orgId), "proxies"] as const,
   proxyList: (orgId: string, params?: TListAgentVaultProxiesDTO) =>
     [...agentVaultKeys.proxies(orgId), params] as const,
+  proxyCa: (orgId: string, proxyId: string) =>
+    [...agentVaultKeys.proxies(orgId), proxyId, "ca"] as const,
   accessBundleMembers: (orgId: string, accessBundleId: string) =>
     [...agentVaultKeys.accessBundle(orgId, accessBundleId), "members"] as const,
   accessBundleMemberList: (
@@ -348,6 +351,13 @@ export const useListAgentVaultProxies = (
       return data;
     }
   });
+};
+
+export const fetchAgentVaultProxyCa = async (proxyId: string) => {
+  const { data } = await apiRequest.get<{ ca: TAgentVaultProxyCa }>(
+    `/api/v1/agent-vault/proxies/${proxyId}/ca`
+  );
+  return data.ca;
 };
 
 export const useGetAgentVaultSessionLogSettings = (enabled = true) => {

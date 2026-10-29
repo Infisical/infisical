@@ -4829,6 +4829,7 @@ export const AGENT_VAULT = {
     rootCa:
       "The certificate authority Infisical keeps for this proxy: a PEM certificate and its PKCS#8 PEM private key.",
     rootCaCertificatePem: "The certificate authority's certificate, in PEM form.",
+    ca: "The certificate authority the proxy serves. Agents trust it to accept the proxy's certificates, and a SOCKS5 client such as E2B uses it to verify the proxy's SOCKS5 port. Only the public certificate, never its key.",
     rootCaPrivateKey: "The certificate authority's private key, in PKCS#8 PEM form.",
     servedCaCertificate:
       "The certificate authority the proxy serves, in PEM form, when it uses its own instead of Infisical's. Infisical records its fingerprint and returns no `rootCa`.",

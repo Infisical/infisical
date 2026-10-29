@@ -1,8 +1,11 @@
 import { ReactNode, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import { format } from "date-fns";
 import {
   BanIcon,
   ChevronDownIcon,
+  DownloadIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
@@ -57,7 +60,8 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useProjectPermission } from "@app/context";
+import { useOrganization, useProjectPermission } from "@app/context";
+import { downloadTxtFile } from "@app/helpers/download";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -65,7 +69,9 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useResetPageHelper } from "@app/hooks";
 import {
+  agentVaultKeys,
   AgentVaultTrafficPolicy,
+  fetchAgentVaultProxyCa,
   useDeleteAgentVaultProxy,
   useListAgentVaultProxies,
   useRevokeAgentVaultProxyAccess,
@@ -139,6 +145,27 @@ const truncateFingerprint = (fingerprint: string) =>
 export const AgentVaultProxiesPage = () => {
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
+  const { currentOrg } = useOrganization();
+  const queryClient = useQueryClient();
+
+  // Fetched on click rather than with the list: the certificate is only needed when someone asks for it.
+  const downloadProxyCa = async (proxy: TAgentVaultProxy) => {
+    try {
+      const ca = await queryClient.fetchQuery({
+        queryKey: agentVaultKeys.proxyCa(currentOrg.id, proxy.id),
+        queryFn: () => fetchAgentVaultProxyCa(proxy.id)
+      });
+      downloadTxtFile(`${proxy.name}-ca.pem`, ca.certificate);
+    } catch (error) {
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message
+        : undefined;
+      createNotification({
+        type: "error",
+        text: message ?? "Failed to download the certificate authority"
+      });
+    }
+  };
 
   const [sortColumn, setSortColumn] = useState(SortColumn.Created);
   const [sortDirection, setSortDirection] = useState<"ascending" | "descending">("descending");
@@ -338,6 +365,19 @@ export const AgentVaultProxiesPage = () => {
                             variant="ghost"
                             size="xs"
                           />
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <IconButton
+                                aria-label="Download certificate authority"
+                                variant="ghost"
+                                size="xs"
+                                onClick={() => downloadProxyCa(proxy)}
+                              >
+                                <DownloadIcon />
+                              </IconButton>
+                            </TooltipTrigger>
+                            <TooltipContent>Download certificate authority</TooltipContent>
+                          </Tooltip>
                         </div>
                       ) : (
                         <span className="text-muted">&mdash;</span>

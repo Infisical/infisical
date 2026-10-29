@@ -5137,6 +5137,63 @@ describe("Agent Vault V1 Router", async () => {
       expect(row.encryptedRootCaPrivateKey).not.toBeNull();
     });
 
+    test("the CA download returns the CA the proxy serves, to members as well as admins", async () => {
+      const created = await createProxy("ca-download");
+      const { rootCa } = JSON.parse((await asProxy(created.proxyToken, "bootstrap", {})).payload) as {
+        rootCa: TRootCa;
+      };
+
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(200);
+      const { ca } = JSON.parse(res.payload) as { ca: { certificate: string; fingerprint: string; expiresAt: string } };
+      expect(ca.certificate).toBe(rootCa.certificate);
+      expect(ca.fingerprint).toBe(created.proxy.rootCaFingerprint);
+      expect(new Date(ca.expiresAt).getTime()).toBe(new x509.X509Certificate(rootCa.certificate).notAfter.getTime());
+      expect(res.payload).not.toContain("PRIVATE KEY");
+
+      const member = await createUaIdentity(`av-proxy-ca-member-${Date.now()}`);
+      try {
+        expect(
+          (await inject("POST", "/api/v1/agent-vault/members", { machineIdentityIds: [member.id], role: "member" }))
+            .statusCode
+        ).toBe(200);
+        const asMember = await member.asIdentity("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+        expect(asMember.statusCode).toBe(200);
+        expect((JSON.parse(asMember.payload) as { ca: { certificate: string } }).ca.certificate).toBe(
+          rootCa.certificate
+        );
+      } finally {
+        await deleteUaIdentity(member.id);
+      }
+    });
+
+    test("after a rotation the CA download returns the new CA", async () => {
+      const created = await createProxy("ca-download-rotate");
+      const rotated = await rotate(created.proxy.id);
+
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(200);
+      const { ca } = JSON.parse(res.payload) as { ca: { fingerprint: string } };
+      expect(ca.fingerprint).toBe(rotated.proxy.rootCaFingerprint);
+      expect(ca.fingerprint).not.toBe(created.proxy.rootCaFingerprint);
+    });
+
+    test("the CA download is a 409 for a proxy serving its own CA, which Infisical doesn't hold", async () => {
+      const created = await createProxy("ca-download-own");
+      expect((await asProxy(created.proxyToken, "bootstrap", { servedCaCertificate: await caPem() })).statusCode).toBe(
+        200
+      );
+
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${created.proxy.id}/ca`);
+      expect(res.statusCode).toBe(409);
+      expect(JSON.parse(res.payload).message).toContain("--ca-cert");
+    });
+
+    test("the CA download is a 404 for a proxy that doesn't exist", async () => {
+      const res = await inject("GET", `/api/v1/agent-vault/proxies/${crypto.randomUUID()}/ca`);
+      expect(res.statusCode).toBe(404);
+    });
+
     test("a served CA that isn't a CA, or isn't a certificate, is refused and changes nothing", async () => {
       const created = await createProxy("token-bad-served-ca");
       const before = await testDb("agent_vault_proxies").where({ id: created.proxy.id }).first();

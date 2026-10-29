@@ -77,6 +77,40 @@ export const registerAgentVaultProxyRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
+    method: "GET",
+    url: "/:proxyId/ca",
+    config: { rateLimit: readLimit },
+    schema: {
+      hide: false,
+      operationId: "getAgentVaultProxyCa",
+      description:
+        "Get the certificate authority an Agent Vault proxy serves. Returns 409 when the proxy serves its own certificate authority, which Infisical does not hold.",
+      tags: [ApiDocsTags.AgentVaultProxies],
+      params: z.object({
+        proxyId: z.string().uuid().describe(AGENT_VAULT.PROXY.proxyId)
+      }),
+      response: {
+        200: z.object({
+          ca: z
+            .object({
+              certificate: z.string().describe(AGENT_VAULT.PROXY.rootCaCertificatePem),
+              fingerprint: z.string().describe(AGENT_VAULT.PROXY.rootCaFingerprint),
+              expiresAt: z.date().describe(AGENT_VAULT.PROXY.rootCaExpiresAt)
+            })
+            .describe(AGENT_VAULT.PROXY.ca)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.agentVaultProxy.getProxyCa({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        proxyId: req.params.proxyId
+      })
+  });
+
+  server.route({
     method: "POST",
     url: "/",
     config: { rateLimit: writeLimit },
