@@ -14,14 +14,12 @@ export const useAgentVaultSheetState = () => {
     sessionId,
     isOpen: Boolean(sessionId),
     openSheet: (id: string) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       navigate({ search: { ...search, sessionId: id } as any });
     },
     closeSheet: () => {
       const rest = Object.fromEntries(
         Object.entries(search).filter(([key]) => key !== "sessionId")
       );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       navigate({ search: rest as any });
     }
   };

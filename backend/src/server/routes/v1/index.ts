@@ -31,6 +31,8 @@ import { registerCertificateInventoryViewRouter } from "./certificate-inventory-
 import { registerCertificatePolicyRouter } from "./certificate-policy-router";
 import { registerCertificateProfilesRouter } from "./certificate-profiles-router";
 import { registerCertificateRouter } from "./certificate-router";
+import { registerDelegatedApprovalCallbackRouter } from "./delegated-approval-callback-router";
+import { registerDelegatedApprovalRouter } from "./delegated-approval-router";
 import { DEPRECATED_CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./deprecated-certificate-authority-routers";
 import { registerDeprecatedCertRouter } from "./deprecated-certificate-router";
 import { registerDeprecatedCertificateTemplateRouter } from "./deprecated-certificate-template-router";
@@ -377,6 +379,8 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   );
 
   await server.register(registerEventRouter, { prefix: "/events" });
+  await server.register(registerDelegatedApprovalRouter, { prefix: "/delegated-approvals" });
+  await server.register(registerDelegatedApprovalCallbackRouter, { prefix: "/delegated-approvals" });
   await server.register(
     async (approvalPolicyRouter) => {
       // Register policy type-specific endpoints

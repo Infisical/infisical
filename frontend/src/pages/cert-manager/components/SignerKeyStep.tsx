@@ -46,7 +46,6 @@ const formatHsmKeyOption = (key: THsmConnectorKey) =>
 export type HsmConnectorOption = { id: string; name: string; slotLabel: string };
 
 type SignerKeyStepProps = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   control: Control<any>;
   requiresHsm: boolean;
   hsmConnectorOptions: HsmConnectorOption[];
@@ -117,7 +116,6 @@ export const SignerKeyStep = ({
     isHsmKeyLookupFetching || (Boolean(hsmConnectorId) && debouncedKeyLabel !== typedKeyLabel);
   useEffect(() => {
     hsmKeyUnresolvedField.onChange(isHsmKeyLookupPending || matchingHsmKeys?.length === 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHsmKeyLookupPending, matchingHsmKeys]);
 
   useEffect(() => {
@@ -129,7 +127,6 @@ export const SignerKeyStep = ({
     } else if (!keys.some((key) => key.keyId === hsmKeyIdField.value)) {
       hsmKeyIdField.onChange("");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchingHsmKeys]);
 
   let hsmKeyLookupHint = "The label of the certificate's private key on the HSM.";
@@ -176,7 +173,6 @@ export const SignerKeyStep = ({
     ) {
       keyAlgorithmField.onChange(algorithmOptions[0]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isHsm,
     minRsaKeyBits,

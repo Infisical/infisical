@@ -650,6 +650,7 @@ export function DataGrid<Row>({
               tabIndex={-1}
               aria-colindex={c + 2}
               aria-selected={selected}
+              // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- WAI-ARIA 1.2 allows aria-readonly on gridcell; oxlint's role table omits it.
               aria-readonly={!editable || !canEditColumn(column)}
               data-active={active || undefined}
               data-selected={selected || undefined}

@@ -61,7 +61,7 @@ export const CustomExtensionDefaults = ({
 
   const allSelectableOidsUsed = Boolean(
     selectableOids?.length &&
-      selectableOids.every((oid) => extensions.some((extension) => extension.oid === oid))
+    selectableOids.every((oid) => extensions.some((extension) => extension.oid === oid))
   );
 
   const takenOidsExcept = (index: number) =>

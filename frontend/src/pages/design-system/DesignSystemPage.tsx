@@ -13,6 +13,7 @@ import {
   scrollInsetTo,
   TopBar
 } from "@app/components/v4/ui/top-bar";
+import "@app/components/v4/v4.css";
 
 import {
   AccentPanelButton,
@@ -34,8 +35,6 @@ import {
 } from "./navigation";
 import { RulesPage } from "./RulesPage";
 import { WorkbenchPalette } from "./workbench-palette";
-
-import "@app/components/v4/v4.css";
 
 const pullRequest = "https://github.com/Infisical/infisical/pull/8753";
 const documentation = "https://infisical.com/docs";

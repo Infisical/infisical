@@ -202,9 +202,10 @@ export const rollbackState = (
   const paths = [commit.path, ...nested];
   return {
     resources: replaceTrackedAt(current, target, commit, paths),
-    folders: paths.map(
-      (path): RollbackFolder => ({ path, changes: diffState(current, target, commit, path) })
-    )
+    folders: paths.map((path): RollbackFolder => ({
+      path,
+      changes: diffState(current, target, commit, path)
+    }))
   };
 };
 

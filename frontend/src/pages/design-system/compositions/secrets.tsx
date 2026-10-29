@@ -57,6 +57,20 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 import { AppInset, AppShell, PageGutter, TopBar } from "@app/components/v4/ui/top-bar";
 
 import {
+  createResources,
+  environments,
+  projects,
+  readableValue,
+  type Resource,
+  resourceKey,
+  type ResourceKind,
+  type Scenario,
+  scopeMatches,
+  type Secret,
+  versionsOf
+} from "./secrets-model";
+import { useSecretsScenario } from "./secrets-scenarios";
+import {
   applyPending,
   type PendingChange,
   pendingIn,
@@ -101,20 +115,6 @@ import {
   ResourceCount,
   ResourceFilterMenu
 } from "./secrets/toolbar";
-import {
-  createResources,
-  environments,
-  projects,
-  readableValue,
-  type Resource,
-  resourceKey,
-  type ResourceKind,
-  type Scenario,
-  scopeMatches,
-  type Secret,
-  versionsOf
-} from "./secrets-model";
-import { useSecretsScenario } from "./secrets-scenarios";
 import { projectSections, user } from "./shared";
 
 import styles from "./secrets/overview.module.css";
@@ -211,13 +211,13 @@ function Overview({ scenario }: { scenario: Scenario }) {
   if (unavailable) writeBlock = "Resources are not available in this scenario";
   const overlayOpen = Boolean(
     importRequest ||
-      copyInvocation ||
-      tagging ||
-      moving ||
-      commitEnvironment ||
-      syncOpen ||
-      reviewOpen ||
-      deletingEnvironment
+    copyInvocation ||
+    tagging ||
+    moving ||
+    commitEnvironment ||
+    syncOpen ||
+    reviewOpen ||
+    deletingEnvironment
   );
   useEffect(() => {
     const focus = (event: KeyboardEvent) => {

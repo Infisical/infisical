@@ -31,6 +31,7 @@ const makeEvent = (overrides?: Partial<TEvent>): TEvent => ({
   type: EVENT_TYPE,
   time: new Date().toISOString(),
   data: makePayload(),
+  isFinalAttempt: false,
   ...overrides
 });
 

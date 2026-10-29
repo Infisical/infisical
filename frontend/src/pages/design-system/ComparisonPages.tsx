@@ -1,7 +1,7 @@
 import { type ComponentType, lazy, Suspense } from "react";
 
-import { SecretsScenarios } from "./compositions/secrets-scenarios";
 import { ComparisonSlider } from "./comparison-slider";
+import { SecretsScenarios } from "./compositions/secrets-scenarios";
 import { PageHeading } from "./doc-parts";
 import { type ComparisonPage, comparisonPages } from "./navigation";
 

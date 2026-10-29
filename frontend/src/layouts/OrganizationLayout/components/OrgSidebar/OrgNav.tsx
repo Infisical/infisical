@@ -24,7 +24,7 @@ export const OrgNav = () => {
 
   useEffect(() => {
     setShowSettings(isOnSettingsArea);
-  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   const handleOpenSettings = () => {
     setShowSettings(true);

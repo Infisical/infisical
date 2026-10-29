@@ -119,8 +119,8 @@ export function MultiSelect({
   }, [open, disabled, creation.cancel]);
   const canCreate = Boolean(
     props.onCreate &&
-      query.trim() &&
-      !options.some((option) => option.label.toLowerCase() === query.trim().toLowerCase())
+    query.trim() &&
+    !options.some((option) => option.label.toLowerCase() === query.trim().toLowerCase())
   );
   const create = () => {
     if (canCreate && !creating && !disabled) creation.create(query.trim());

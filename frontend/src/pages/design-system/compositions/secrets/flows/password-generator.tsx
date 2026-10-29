@@ -59,7 +59,6 @@ export function PasswordGenerator({
   });
   const [refresh, setRefresh] = useState(0);
   const [copied, setCopied] = useState<"Copied" | "Copy failed">();
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh only forces a new value
   const password = useMemo(() => generate(length, options), [length, options, refresh]);
   return (
     <Popover

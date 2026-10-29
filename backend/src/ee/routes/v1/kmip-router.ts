@@ -11,8 +11,8 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { validateAltNamesField } from "@app/services/certificate-authority/certificate-authority-validators";
+import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 
 const KmipClientResponseSchema = KmipClientsSchema.pick({

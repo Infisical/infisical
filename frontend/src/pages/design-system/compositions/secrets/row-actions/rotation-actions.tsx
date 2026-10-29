@@ -25,6 +25,7 @@ import { Switch } from "@app/components/v4/ui/switch";
 import { Text } from "@app/components/v4/ui/text";
 
 import { type Resource, type Secret, versionsOf } from "../../secrets-model";
+import { SecretRotationFlow } from "../flows/secret-rotation-flow";
 import {
   nextRotationFrom,
   rotationParameters,
@@ -40,7 +41,6 @@ import {
   UnixLinuxLocalAccountRotationMethod,
   WindowsLocalAccountRotationMethod
 } from "../flows/secret-rotation/schemas";
-import { SecretRotationFlow } from "../flows/secret-rotation-flow";
 import { LOCAL_ONLY } from "../flows/shared";
 import { credentialsOf, rotatedCredentials } from "./rotation-credentials";
 import { RotationCredentialsDialog } from "./rotation-credentials-dialog";

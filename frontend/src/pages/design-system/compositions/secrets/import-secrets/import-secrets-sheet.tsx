@@ -248,7 +248,7 @@ function ImportSecretsContent({
   const hasNestedErrors = Boolean(nestedImport?.errors.length);
   const areAllFoldersCollapsed = Boolean(
     nestedImport?.folderPaths.length &&
-      nestedImport.folderPaths.every((path) => collapsedFolders.has(path))
+    nestedImport.folderPaths.every((path) => collapsedFolders.has(path))
   );
   const hasInvalidKey = activeSecrets
     ? Object.entries(activeSecrets).some(
@@ -701,7 +701,9 @@ function ImportSecretsContent({
           {hasNestedErrors && (
             <Alert tone="bad" title="Some keys cannot be imported">
               <ul className={styles.errorList}>
-                {nestedImport?.errors.map((error) => <li key={error}>{error}</li>)}
+                {nestedImport?.errors.map((error) => (
+                  <li key={error}>{error}</li>
+                ))}
               </ul>
             </Alert>
           )}

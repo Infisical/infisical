@@ -1,6 +1,5 @@
-import dns from "node:dns/promises";
-
 import { ForbiddenError } from "@casl/ability";
+import dns from "node:dns/promises";
 
 import { OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionEmailDomainActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";

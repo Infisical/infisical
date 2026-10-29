@@ -178,23 +178,24 @@ export default function Example() {
             description: "Approved by you just now."
         }), 1200);
     };
+    const undo = (id: string) => {
+        const base = original(id);
+        if (!base)
+            return;
+        replace(id, {
+            ...base,
+            state: "new",
+            error: undefined,
+            title: base.state === "resolved" ? (<>
+            <code>{base.object}</code> access requested
+          </>) : (base.title),
+            description: base.state === "resolved"
+                ? "Read access to staging for 1 hour. The approval was taken back."
+                : base.description
+        });
+    };
     return (<figure className="m-0 flex min-w-0 w-full flex-col gap-3"><div className="flex min-h-8 min-w-0 w-full flex-col gap-3 items-stretch">
-      <ApprovalQueue requests={requests} current="db" historyHref="#approval-queue" onApprove={approve} onView={(id) => setViewing(id)} onUndo={(id) => {
-            const base = original(id);
-            if (!base)
-                return;
-            replace(id, {
-                ...base,
-                state: "new",
-                error: undefined,
-                title: base.state === "resolved" ? (<>
-                  <code>{base.object}</code> access requested
-                </>) : (base.title),
-                description: base.state === "resolved"
-                    ? "Read access to staging for 1 hour. The approval was taken back."
-                    : base.description
-            });
-        }} onRetry={approve}/>
+      <ApprovalQueue requests={requests} current="db" historyHref="#approval-queue" onApprove={approve} onView={(id) => setViewing(id)} onUndo={undo} onRetry={approve}/>
       {viewing && diffs[viewing] && (<pre aria-label={`Diff for ${original(viewing)?.object}`}>{diffs[viewing]}</pre>)}
     </div><figcaption className="text-muted-foreground text-xs">{"New, pending, resolved with undo, failed with retry"}</figcaption></figure>);
 }

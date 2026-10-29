@@ -1,9 +1,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
-
 import tailwind from "@tailwindcss/postcss";
 import postcss from "postcss";
+import { describe, expect, it } from "vitest";
 
 describe("v4 stylesheet compilation", () => {
   it("generates semantic utilities from its separately imported stylesheet without global theme overrides", async () => {

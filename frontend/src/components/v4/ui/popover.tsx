@@ -69,7 +69,6 @@ function PopoverAnchor({
       node.current = element;
       if (typeof ref === "function") ref(element);
       else if (ref) {
-        // eslint-disable-next-line no-param-reassign -- React attaches forwarded object refs by mutation.
         ref.current = element;
       }
     },

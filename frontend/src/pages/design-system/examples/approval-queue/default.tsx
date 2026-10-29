@@ -92,6 +92,27 @@ export default function Example() {
       1200
     );
   };
+  const undo = (id: string) => {
+    const base = original(id);
+    if (!base) return;
+    replace(id, {
+      ...base,
+      state: "new",
+      error: undefined,
+      title:
+        base.state === "resolved" ? (
+          <>
+            <code>{base.object}</code> access requested
+          </>
+        ) : (
+          base.title
+        ),
+      description:
+        base.state === "resolved"
+          ? "Read access to staging for 1 hour. The approval was taken back."
+          : base.description
+    });
+  };
   return (
     <ExampleCell label="New, pending, resolved with undo, failed with retry" align="stretch">
       <ApprovalQueue
@@ -100,27 +121,7 @@ export default function Example() {
         historyHref="#approval-queue"
         onApprove={approve}
         onView={(id) => setViewing(id)}
-        onUndo={(id) => {
-          const base = original(id);
-          if (!base) return;
-          replace(id, {
-            ...base,
-            state: "new",
-            error: undefined,
-            title:
-              base.state === "resolved" ? (
-                <>
-                  <code>{base.object}</code> access requested
-                </>
-              ) : (
-                base.title
-              ),
-            description:
-              base.state === "resolved"
-                ? "Read access to staging for 1 hour. The approval was taken back."
-                : base.description
-          });
-        }}
+        onUndo={undo}
         onRetry={approve}
       />
       {viewing && diffs[viewing] && (

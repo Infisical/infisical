@@ -42,7 +42,6 @@ import {
   type ResourceKind,
   type Secret
 } from "../secrets-model";
-import { canReconcile } from "./row-actions/rotation-actions";
 import {
   ActionButton,
   ExpandToggle,
@@ -52,6 +51,7 @@ import {
   SelectCell,
   StatusCell
 } from "./overview-cells";
+import { canReconcile } from "./row-actions/rotation-actions";
 
 import styles from "./overview.module.css";
 
@@ -59,11 +59,11 @@ type Of<K extends ResourceKind> = Extract<Resource, { kind: K }>;
 const mask = "••••••••••••••••";
 const tone = (value: string): BadgeTone =>
   (
-    ({
+    {
       active: "ok",
       triggered: "bad",
       revoked: "soft"
-    }) as Record<string, BadgeTone>
+    } as Record<string, BadgeTone>
   )[value] ?? "soft";
 
 function InfoHint({ text }: { text: string }) {

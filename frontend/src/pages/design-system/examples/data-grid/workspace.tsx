@@ -57,15 +57,13 @@ export default function Example() {
   const [next, setNext] = useState(initial.length);
   const columns: GridColumn<Row>[] = [
     ...baseColumns,
-    ...added.map(
-      (column): GridColumn<Row> => ({
-        id: column.name,
-        header: column.name,
-        type: column.type,
-        nullable: column.nullable,
-        getValue: (row) => row.extra[column.name] ?? null
-      })
-    )
+    ...added.map((column): GridColumn<Row> => ({
+      id: column.name,
+      header: column.name,
+      type: column.type,
+      nullable: column.nullable,
+      getValue: (row) => row.extra[column.name] ?? null
+    }))
   ];
   return (
     <ExampleCell align="stretch" label="Editable and sortable">

@@ -51,6 +51,16 @@ import { SmtpTemplates } from "@app/services/smtp/smtp-service";
 import { PostHogEventTypes } from "@app/services/telemetry/telemetry-types";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import {
+  hasRevealableCredential,
+  noRevealableCredentialMessage,
+  normalizeCredentialAuthMethod
+} from "../pam-account/pam-account-schemas";
+import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
+import { terminatePamSessions } from "../pam-session/pam-session-fns";
 import {
   PamAccessType,
   PamAccountType,
@@ -65,16 +75,6 @@ import {
   verifyProductMembership
 } from "../pam/pam-permission";
 import { resolveAccessControls } from "../pam/pam-policies";
-import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
-import {
-  hasRevealableCredential,
-  noRevealableCredentialMessage,
-  normalizeCredentialAuthMethod
-} from "../pam-account/pam-account-schemas";
-import { TPamAccountTemplateDALFactory } from "../pam-account-template/pam-account-template-dal";
-import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
-import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
-import { terminatePamSessions } from "../pam-session/pam-session-fns";
 import { buildPamAccessRequestEvent } from "./pam-access-request-events";
 import { escapeMarkdown, getSlackSendTargets } from "./pam-access-request-fns";
 import { TPamAccessRequestData } from "./pam-access-request-types";

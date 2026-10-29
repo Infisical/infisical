@@ -111,7 +111,6 @@ export function SecretSyncStatusBadge({
   syncs: readonly LocalSecretSync[];
   project: string;
   environments: string[];
-  // eslint-disable-next-line react/no-unused-prop-types -- main filters the badge by environment only, the host still passes the path
   path: string;
 }) {
   const [open, setOpen] = useState(false);

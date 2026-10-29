@@ -44,9 +44,9 @@ import {
 import { usePopUp } from "@app/hooks";
 import { useAddGatewayToPool, useRemoveGatewayFromPool } from "@app/hooks/api/gateway-pools";
 import { TGatewayPool } from "@app/hooks/api/gateway-pools/types";
-import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 import { useTriggerGatewayV2Heartbeat } from "@app/hooks/api/gateways-v2";
 import { isGatewayHealthy } from "@app/hooks/api/gateways-v2/utils";
+import { gatewaysQueryKeys } from "@app/hooks/api/gateways/queries";
 
 import { PoolHealthBadge } from "./PoolHealthBadge";
 

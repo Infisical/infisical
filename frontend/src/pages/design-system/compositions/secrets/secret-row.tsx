@@ -64,13 +64,6 @@ import {
   versionsOf
 } from "../secrets-model";
 import { environmentLabel, LOCAL_ONLY } from "./flows/shared";
-import { AccessInsightsSheet } from "./row-actions/access-insights-sheet";
-import { CommentForm, MetadataForm, ReminderSheet, TagForm } from "./row-actions/annotations";
-import { EditSecretSheet } from "./row-actions/edit-secret-sheet";
-import { dependentsOf, ReferencesDialog } from "./row-actions/references-dialog";
-import { ShareSecretSheet } from "./row-actions/share-secret-sheet";
-import type { SecretUpdate } from "./row-actions/types";
-import { VersionHistorySheet } from "./row-actions/version-history-sheet";
 import {
   ActionButton,
   type EnvironmentStatus,
@@ -82,6 +75,13 @@ import {
   SelectCell,
   StatusCell
 } from "./overview-cells";
+import { AccessInsightsSheet } from "./row-actions/access-insights-sheet";
+import { CommentForm, MetadataForm, ReminderSheet, TagForm } from "./row-actions/annotations";
+import { EditSecretSheet } from "./row-actions/edit-secret-sheet";
+import { dependentsOf, ReferencesDialog } from "./row-actions/references-dialog";
+import { ShareSecretSheet } from "./row-actions/share-secret-sheet";
+import type { SecretUpdate } from "./row-actions/types";
+import { VersionHistorySheet } from "./row-actions/version-history-sheet";
 import {
   hasReference,
   ReferenceEditor,
@@ -326,9 +326,9 @@ function SecretActions({
   else if (value === "") referencesBlock = "Create secret to view references";
   const annotated = Boolean(
     (!ctx.single && secret.comment) ||
-      secret.tags.length ||
-      secret.reminder ||
-      secret.metadata.length
+    secret.tags.length ||
+    secret.reminder ||
+    secret.metadata.length
   );
   const popover = open && popovers.includes(open) ? open : undefined;
   const later = (action: () => void) => () => {

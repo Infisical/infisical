@@ -21,7 +21,8 @@ const generateWith = (file: string, from: string, to: string) => {
       "scripts/check-v4.ts",
       "src/components/v4",
       "src/pages/design-system/examples",
-      "package.json"
+      "package.json",
+      ".oxfmtrc.json"
     ].forEach((entry) => {
       cpSync(path.resolve(entry), path.join(fixture, entry), { recursive: true });
     });

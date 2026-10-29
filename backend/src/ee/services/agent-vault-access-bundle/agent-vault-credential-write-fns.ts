@@ -1,6 +1,7 @@
 import { TAgentVaultServices } from "@app/db/schemas";
 import { BadRequestError } from "@app/lib/errors";
 
+import { sameMemberProvidedFields } from "../agent-vault-personal-value/agent-vault-personal-value-fns";
 import {
   AgentVaultBearerConfigSchema,
   TAgentVaultCredentialConfig
@@ -10,7 +11,6 @@ import {
   AgentVaultVariableReferenceField,
   TAgentVaultMemberProvidedField
 } from "../agent-vault/agent-vault-enums";
-import { sameMemberProvidedFields } from "../agent-vault-personal-value/agent-vault-personal-value-fns";
 import { TAgentVaultCredentialInput, TAgentVaultCredentialUpdate } from "./agent-vault-access-bundle-types";
 
 // `null` clears the sealed column, `undefined` leaves it alone. $decryptCredential reads a NULL secret

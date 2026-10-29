@@ -929,7 +929,7 @@ function AwsAdvancedOptions({ destination }: { destination: SecretSync }) {
   const hasTags = Array.isArray(tags);
   const hasError = Boolean(
     (formState.errors.syncOptions as Record<string, unknown> | undefined)?.tags ||
-      (formState.errors.syncOptions as Record<string, unknown> | undefined)?.keyId
+    (formState.errors.syncOptions as Record<string, unknown> | undefined)?.keyId
   );
   const [openItem, setOpenItem] = useState(
     keyId || hasTags || metadataActive || hasError ? "advanced" : ""

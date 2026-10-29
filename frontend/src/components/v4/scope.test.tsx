@@ -4,8 +4,8 @@ import { createPortal } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ChartStyle } from "./ui/chart";
 import { useV4PortalContainer, useV4Theme, V4Scope } from "./scope";
+import { ChartStyle } from "./ui/chart";
 
 let host: HTMLDivElement;
 let root: Root;
