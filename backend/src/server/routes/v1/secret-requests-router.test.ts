@@ -17,7 +17,17 @@ const buildServer = async () => {
   app.setSerializerCompiler(serializerCompiler);
 
   app.decorate("services", {
-    secretSharing: { createSecretRequest: vi.fn().mockResolvedValue({ id: REQUEST_ID }) },
+    secretSharing: {
+      createSecretRequest: vi.fn().mockResolvedValue({ id: REQUEST_ID }),
+      deleteSharedSecretById: vi.fn().mockResolvedValue({
+        id: REQUEST_ID,
+        type: "request",
+        accessType: "organization",
+        expiresAt: new Date(Date.now() + 86_400_000),
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+    },
     auditLog: { createAuditLog: vi.fn().mockResolvedValue(undefined) },
     telemetry: { sendPostHogEvents }
   } as never);
@@ -43,11 +53,14 @@ describe("secret request routes", () => {
     app = undefined;
   });
 
-  test("a new secret request's id is not sent to analytics", async () => {
+  test.each([
+    ["created", { method: "POST", url: URL, body: { expiresIn: "1d" } }],
+    ["deleted", { method: "DELETE", url: `${URL}/${REQUEST_ID}` }]
+  ] as const)("a %s secret request's id is not sent to analytics", async (_, request) => {
     const server = await buildServer();
     app = server.app;
 
-    const res = await app.inject({ method: "POST", url: URL, body: { expiresIn: "1d" } });
+    const res = await app.inject(request);
 
     expect(res.statusCode).toBe(200);
     expect(server.sendPostHogEvents).toHaveBeenCalledTimes(1);
