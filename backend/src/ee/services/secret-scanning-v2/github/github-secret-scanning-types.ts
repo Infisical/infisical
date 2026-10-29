@@ -57,7 +57,11 @@ export type TQueueGitHubPullRequestEvent = {
   installationId: number;
   repository: Pick<Repository, "id" | "full_name">;
 } & (
-  | { event: GitHubPullRequestEvent.PullRequest; pullRequest: TGitHubPullRequestScanPayload["pullRequest"] }
+  | {
+      event: GitHubPullRequestEvent.PullRequest;
+      pullRequest: TGitHubPullRequestScanPayload["pullRequest"];
+      isFromFork: boolean;
+    }
   | { event: GitHubPullRequestEvent.CheckRunRerequested; checkRunId: number; externalId: string | null }
   | { event: GitHubPullRequestEvent.CheckSuiteRerequested; checkSuiteId: number }
   | {

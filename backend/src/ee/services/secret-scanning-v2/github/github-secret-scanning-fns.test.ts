@@ -8,15 +8,17 @@ import { TFindingsPayload } from "@app/ee/services/secret-scanning-v2/secret-sca
 
 import {
   completePullRequestCheckRun,
+  createSkippedPullRequestCheckRun,
   getPullRequestScanCheckRunResult,
   isGitHubPullRequestScanPayload,
   scanGitHubCommitsAndGetFindings
 } from "./github-secret-scanning-fns";
 
 const checksUpdate = vi.fn();
+const checksCreate = vi.fn();
 
 vi.mock("probot", () => ({
-  ProbotOctokit: vi.fn(() => ({ checks: { update: checksUpdate } }))
+  ProbotOctokit: vi.fn(() => ({ checks: { update: checksUpdate, create: checksCreate } }))
 }));
 
 vi.mock("@app/lib/config/env", async (importOriginal) => ({
@@ -233,5 +235,30 @@ describe("scanGitHubCommitsAndGetFindings", () => {
 
     const scanned = scanContentAndGetFindings.mock.calls.map(([content]) => (content as string).trim());
     expect(scanned).toEqual(["added", "modified", "renamed", "copied", "changed"]);
+  });
+});
+
+describe("createSkippedPullRequestCheckRun", () => {
+  test("creates a check that is already completed as skipped, with no scan behind it", async () => {
+    checksCreate.mockReset();
+
+    await createSkippedPullRequestCheckRun({
+      installationId: "1",
+      repositoryFullName: "acme/api",
+      headSha: "b".repeat(40),
+      title: "Fork not scanned",
+      summary: "summary"
+    });
+
+    expect(checksCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        owner: "acme",
+        repo: "api",
+        head_sha: "b".repeat(40),
+        status: "completed",
+        conclusion: "skipped"
+      })
+    );
+    expect(checksCreate.mock.calls[0][0]).not.toHaveProperty("external_id");
   });
 });

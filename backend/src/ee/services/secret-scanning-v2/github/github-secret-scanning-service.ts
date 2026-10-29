@@ -99,7 +99,9 @@ export const githubSecretScanningService = (
           number: pullRequest.number,
           baseSha: pullRequest.base.sha,
           headSha: pullRequest.head.sha
-        }
+        },
+        // A fork whose repository was deleted has no head repository.
+        isFromFork: pullRequest.head.repo?.id !== repository.id
       },
       deliveryId
     );

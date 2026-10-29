@@ -290,6 +290,35 @@ export const createPullRequestCheckRun = async ({
   return data.id;
 };
 
+// Completed on creation, so a required check doesn't block the pull request. `skipped` passes branch protection.
+export const createSkippedPullRequestCheckRun = async ({
+  installationId,
+  repositoryFullName,
+  headSha,
+  title,
+  summary
+}: {
+  installationId: string;
+  repositoryFullName: string;
+  headSha: string;
+  title: string;
+  summary: string;
+}) => {
+  const octokit = getGitHubRadarInstallationOctokit(installationId);
+  const { owner, repo } = splitRepositoryFullName(repositoryFullName);
+
+  await octokit.checks.create({
+    owner,
+    repo,
+    name: GITHUB_PULL_REQUEST_CHECK_NAME,
+    head_sha: headSha,
+    status: "completed",
+    conclusion: "skipped",
+    completed_at: new Date().toISOString(),
+    output: { title, summary }
+  });
+};
+
 // A suite holds one App's check runs for one commit; `latest` returns only the newest run with our check's name.
 export const getLatestPullRequestCheckRunExternalId = async ({
   installationId,
@@ -575,11 +604,13 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
     installationId,
     repository,
     pullRequest,
+    isFromFork,
     expectedResourceId
   }: {
     installationId: number;
     repository: Pick<Repository, "id" | "full_name">;
     pullRequest: TGitHubPullRequestScanPayload["pullRequest"];
+    isFromFork?: boolean;
     expectedResourceId?: string;
   }) => {
     const logDetails = `[installationId=${installationId}] [repository=${repository.full_name}] [pullRequest=${pullRequest.number}] [headSha=${pullRequest.headSha}]`;
@@ -610,6 +641,28 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
       logger.info(
         `secretScanningV2PullRequestEvent: GitHub - ignoring pull request from unknown repository, discovery is disabled ${logDetails}`
       );
+      return;
+    }
+
+    // Anyone can open a pull request from a fork of a public repository, so scanning one would let any GitHub account
+    // spend the instance's scan workers and the installation's API quota, and plant findings in the org. The commits are
+    // scanned once merged, by the push scan. Nothing is discovered either.
+    if (isFromFork) {
+      try {
+        await createSkippedPullRequestCheckRun({
+          installationId: String(installationId),
+          repositoryFullName: repository.full_name,
+          headSha: pullRequest.headSha,
+          title: "Fork not scanned",
+          summary:
+            "Infisical doesn't scan pull requests from forks. Their commits are scanned after they are merged into this repository."
+        });
+      } catch (error) {
+        logger.warn(
+          error,
+          `secretScanningV2PullRequestEvent: GitHub - could not create skipped check run for fork ${logDetails}`
+        );
+      }
       return;
     }
 
@@ -864,7 +917,12 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
 
   switch (event.event) {
     case GitHubPullRequestEvent.PullRequest:
-      return startPullRequestScan({ installationId, repository, pullRequest: event.pullRequest });
+      return startPullRequestScan({
+        installationId,
+        repository,
+        pullRequest: event.pullRequest,
+        isFromFork: event.isFromFork
+      });
     case GitHubPullRequestEvent.CheckRunRerequested:
       return rerunPullRequestScan({
         installationId,
