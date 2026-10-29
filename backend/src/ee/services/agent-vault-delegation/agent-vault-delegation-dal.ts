@@ -69,6 +69,42 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
     }
   };
 
+  // Creates a selected delegation, or locks the one already there and returns it with its scope unchanged. The conflict
+  // waits for a save still writing the row, so the returned scope is the committed one.
+  const createSelectedOrLock = async (
+    { projectId, identityId, membershipId }: { projectId: string; identityId: string; membershipId: string },
+    tx: Knex
+  ): Promise<TAgentVaultDelegations> => {
+    try {
+      const [row] = (await tx(TableName.AgentVaultDelegation)
+        .insert({ projectId, identityId, membershipId, scope: AgentVaultDelegationScope.Selected })
+        .onConflict(["identityId", "projectId"])
+        .merge({ membershipId })
+        .returning("*")) as TAgentVaultDelegations[];
+      return row;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Create or lock Agent Vault delegation" });
+    }
+  };
+
+  // Returns how many were new: memberships the delegation already names are skipped.
+  const insertSubjectsSkippingNamed = async (
+    { delegationId, membershipIds }: { delegationId: string; membershipIds: string[] },
+    tx: Knex
+  ) => {
+    if (!membershipIds.length) return 0;
+    try {
+      const rows = await tx(SUBJECTS)
+        .insert(membershipIds.map((membershipId) => ({ delegationId, membershipId })))
+        .onConflict(["membershipId", "delegationId"])
+        .ignore()
+        .returning("id");
+      return rows.length;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Add Agent Vault delegation subjects" });
+    }
+  };
+
   // A selected delegation whose subjects all left reads as none, so a save replaces it rather than reviving it with its
   // old createdAt.
   const deleteIfNamesNoOne = async ({ projectId, identityId }: { projectId: string; identityId: string }, tx: Knex) => {
@@ -324,6 +360,8 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
   return {
     ...orm,
     upsertScope,
+    createSelectedOrLock,
+    insertSubjectsSkippingNamed,
     deleteIfNamesNoOne,
     lockForIdentity,
     removeSubjectsByActors,

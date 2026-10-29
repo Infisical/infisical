@@ -34,6 +34,8 @@ type TAgentVaultDelegationServiceFactoryDep = {
   agentVaultDelegationDAL: Pick<
     TAgentVaultDelegationDALFactory,
     | "upsertScope"
+    | "createSelectedOrLock"
+    | "insertSubjectsSkippingNamed"
     | "deleteIfNamesNoOne"
     | "lockForIdentity"
     | "removeSubjectsByActors"
@@ -394,7 +396,15 @@ export const agentVaultDelegationServiceFactory = ({
   }: TChangeDelegationSubjectsDTO) => {
     await checkIdentityPermission({ projectId, ctx, machineIdentityId }, ProjectPermissionIdentityActions.Edit);
 
-    const delegation = await agentVaultDelegationDAL.transaction(async (tx) => {
+    const refuseAllMembers = (scope?: string) => {
+      if (scope === AgentVaultDelegationScope.AllMembers) {
+        throw new BadRequestError({
+          message: `Machine identity with ID '${machineIdentityId}' already acts on behalf of every Agent Vault member. To name users and groups instead, set its scope to selected.`
+        });
+      }
+    };
+
+    const { delegation, isChanged } = await agentVaultDelegationDAL.transaction(async (tx) => {
       // The same order a save takes them in: memberships, then the delegation row.
       const memberships = await agentVaultDelegationDAL.lockMemberships(
         { projectId, identityId: machineIdentityId, userIds, groupIds },
@@ -404,38 +414,29 @@ export const agentVaultDelegationServiceFactory = ({
       await assertSubjectsInAgentVault({ projectId, userIds, groupIds, memberships }, tx);
 
       const current = await agentVaultDelegationDAL.lockForIdentity({ projectId, identityId: machineIdentityId }, tx);
-      if (current?.scope === AgentVaultDelegationScope.AllMembers) {
-        throw new BadRequestError({
-          message: `Machine identity with ID '${machineIdentityId}' already acts on behalf of every Agent Vault member. To name users and groups instead, set its scope to selected.`
-        });
-      }
+      refuseAllMembers(current?.scope);
 
       await agentVaultDelegationDAL.deleteIfNamesNoOne({ projectId, identityId: machineIdentityId }, tx);
-      const row = await agentVaultDelegationDAL.upsertScope(
-        {
-          projectId,
-          identityId: machineIdentityId,
-          membershipId: identityMembership.id,
-          scope: AgentVaultDelegationScope.Selected
-        },
+      // With no row there was nothing to lock above, so a save can have created one since: checked again here.
+      const row = await agentVaultDelegationDAL.createSelectedOrLock(
+        { projectId, identityId: machineIdentityId, membershipId: identityMembership.id },
         tx
       );
-      const existing = new Set(
-        (await agentVaultDelegationSubjectDAL.find({ delegationId: row.id }, { tx })).map((named) => named.membershipId)
-      );
-      const added = membershipIdsNaming(memberships, userIds, groupIds)
-        .filter((membershipId) => !existing.has(membershipId))
-        .map((membershipId) => ({ delegationId: row.id, membershipId }));
-      if (added.length) await agentVaultDelegationSubjectDAL.insertMany(added, tx);
+      refuseAllMembers(row.scope);
 
+      const added = await agentVaultDelegationDAL.insertSubjectsSkippingNamed(
+        { delegationId: row.id, membershipIds: membershipIdsNaming(memberships, userIds, groupIds) },
+        tx
+      );
+      // Read in the transaction because the replica may not have the write yet.
       const {
         delegations: [written]
       } = await agentVaultDelegationDAL.findViews({ projectId, identityIds: [machineIdentityId] }, tx);
-      return { written, isChanged: added.length > 0 };
+      return { delegation: written, isChanged: added > 0 };
     });
 
     // isChanged lets the caller audit only a real change: naming users and groups already in it writes nothing.
-    return { delegation: delegation.written, isChanged: delegation.isChanged };
+    return { delegation, isChanged };
   };
 
   // Names the delegation doesn't hold are skipped. Taking out the last one leaves a delegation that names no one, which

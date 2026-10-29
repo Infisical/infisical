@@ -228,8 +228,13 @@ const ManageDelegationContent = ({
   const deleteDelegation = useDeleteAgentVaultDelegation();
   const addSubjects = useAddAgentVaultDelegationSubjects();
   const removeSubjects = useRemoveAgentVaultDelegationSubjects();
+  // Every write's response replaces the cached delegation, so one at a time keeps a slower earlier
+  // response from overwriting a later one.
   const isChanging =
-    setDelegation.isPending || deleteDelegation.isPending || removeSubjects.isPending;
+    setDelegation.isPending ||
+    deleteDelegation.isPending ||
+    removeSubjects.isPending ||
+    addSubjects.isPending;
 
   const subjects: TDelegationSubjectRow[] = [
     ...(delegation?.groups ?? []).map((group) => ({
@@ -257,7 +262,7 @@ const ManageDelegationContent = ({
   const candidateCount = available?.totalCount ?? 0;
   const isAvailableLoading = isAvailablePending || (isAvailablePlaceholder && !candidates.length);
   // an added candidate stays in this list until the refetch lands
-  const isAddLocked = addSubjects.isPending || isAvailableFetching;
+  const isAddLocked = isChanging || isAvailableFetching;
 
   // A delegation that names no one has nothing above the fold, so the add list starts open. This
   // content remounts per identity, so the first settled result is always this identity's own.
