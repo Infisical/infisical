@@ -19,6 +19,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { bufferToArrayBuffer } from "@app/lib/csr/pkcs11-algorithm-map";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -230,9 +231,13 @@ export const awsKmsCaKeySourceFactory = ({
       const certSigningAlgorithm = { name: keyAlgCfg.name, hash } as Algorithm;
       const ephemeralKeyParams = { ...keyAlgCfg, hash } as RsaHashedKeyGenParams;
 
-      const caPublicKey = await crypto.nativeCrypto.subtle.importKey("spki", publicKeySpki, keyAlgCfg, true, [
-        "verify"
-      ]);
+      const caPublicKey = await crypto.nativeCrypto.subtle.importKey(
+        "spki",
+        asNonSharedBuffer(publicKeySpki),
+        keyAlgCfg,
+        true,
+        ["verify"]
+      );
 
       return buildExternalCaSigner({
         caPublicKey,

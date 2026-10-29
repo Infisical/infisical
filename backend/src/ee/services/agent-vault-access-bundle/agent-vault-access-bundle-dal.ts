@@ -44,6 +44,7 @@ export type TAgentVaultAccessBundleOrderBy = "name" | "serviceCount" | "createdA
 type TFindAccessBundlesDTO = {
   projectId: string;
   accessBundleIds: string[] | null;
+  excludeAccessBundleIds?: string[];
   search?: string;
   orderBy: TAgentVaultAccessBundleOrderBy;
   orderDirection: "asc" | "desc";
@@ -62,7 +63,16 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.AgentVaultAccessBundle);
 
   const findForList = async (
-    { projectId, accessBundleIds, search, orderBy, orderDirection, limit, offset }: TFindAccessBundlesDTO,
+    {
+      projectId,
+      accessBundleIds,
+      excludeAccessBundleIds,
+      search,
+      orderBy,
+      orderDirection,
+      limit,
+      offset
+    }: TFindAccessBundlesDTO,
     tx?: Knex
   ): Promise<{ accessBundles: TAgentVaultAccessBundleListRow[]; totalCount: number }> => {
     if (accessBundleIds?.length === 0) return { accessBundles: [], totalCount: 0 };
@@ -75,6 +85,9 @@ export const agentVaultAccessBundleDALFactory = (db: TDbClient) => {
       const applyFilters = (query: Knex.QueryBuilder) => {
         void query.where(`${TableName.AgentVaultAccessBundle}.projectId`, projectId);
         if (accessBundleIds) void query.whereIn(`${TableName.AgentVaultAccessBundle}.id`, accessBundleIds);
+        if (excludeAccessBundleIds?.length) {
+          void query.whereNotIn(`${TableName.AgentVaultAccessBundle}.id`, excludeAccessBundleIds);
+        }
         if (search) {
           const term = `%${sanitizeSqlLikeString(search)}%`;
           void query.where((qb) => {

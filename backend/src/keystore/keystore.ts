@@ -32,12 +32,18 @@ export const PgSqlLock = {
   CreateGateway: (orgId: string) => pgAdvisoryLockHashText(`create-gateway:${orgId}`),
   CreateAgentVaultProxy: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-proxy:${projectId}`),
   CreateAgentVaultVariable: (projectId: string) => pgAdvisoryLockHashText(`create-agent-vault-variable:${projectId}`),
+  CreateAgentVaultPersonalVariable: (projectId: string, ownerId: string) =>
+    pgAdvisoryLockHashText(`create-agent-vault-personal-variable:${projectId}:${ownerId}`),
+  ClearAgentVaultPersonalValues: (projectId: string) =>
+    pgAdvisoryLockHashText(`clear-agent-vault-personal-values:${projectId}`),
   AccessSharedSecret: (sharedSecretId: string) => pgAdvisoryLockHashText(`access-shared-secret:${sharedSecretId}`),
   KmsOrgKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-key:${orgId}`),
   KmsOrgDataKeyCreation: (orgId: string) => pgAdvisoryLockHashText(`kms-org-data-key:${orgId}`),
   KmsProjectKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-key:${projectId}`),
   KmsProjectDataKeyCreation: (projectId: string) => pgAdvisoryLockHashText(`kms-project-data-key:${projectId}`),
   ScimGroupUpdate: (groupId: string) => pgAdvisoryLockHashText(`scim-group-update:${groupId}`),
+  OrgAccessReconcile: (actorId: string) => pgAdvisoryLockHashText(`org-access-reconcile:${actorId}`),
+  OrgAccessReconcileScope: (rootOrgId: string) => pgAdvisoryLockHashText(`org-access-reconcile-scope:${rootOrgId}`),
   LastAdminGuard: (scope: "org" | "project", scopeId: string) =>
     pgAdvisoryLockHashText(`last-admin-guard:${scope}:${scopeId}`),
   AuditReportRequest: (projectId: string) => pgAdvisoryLockHashText(`audit-report-request:${projectId}`),
@@ -76,6 +82,8 @@ export const KeyStorePrefixes = {
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
   StripeConnectionRefreshLock: (connectionId: string) => `stripe-connection-refresh-mutex-${connectionId}` as const,
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
+  OidcIssuerKeyRotationLock: (orgId: string) => `oidc-issuer-key-rotation-mutex-${orgId}` as const,
+  OidcIssuerJwks: (orgId: string) => `oidc-issuer-jwks:${orgId}` as const,
   SecretScanningFullScanLease: (resourceId: string) => `secret-scanning-v2-full-scan-lease-${resourceId}` as const,
   SecretScanningDataSourceLock: (dataSourceId: string) =>
     `secret-scanning-v2-data-source-mutex-${dataSourceId}` as const,
@@ -171,6 +179,11 @@ export const KeyStorePrefixes = {
   AgentVaultDefaultProject: (orgId: string) => `agent-vault-default-project:${orgId}` as const,
   // The live view's Redis stream for a session: the newest chunk file names, with their bucket and size.
   AgentVaultSessionLogFeed: (sessionId: string) => `agent-vault-session-log-feed:${sessionId}` as const,
+  AgentVaultOauthAuthorization: (authorizationId: string) =>
+    `agent-vault-oauth-authorization:${authorizationId}` as const,
+  AgentVaultOauthAuthorizationCompleteLock: (authorizationId: string) =>
+    `agent-vault-oauth-authorization:${authorizationId}:complete` as const,
+  AgentVaultOauthRefreshLock: (serviceId: string) => `agent-vault-oauth-refresh-lock:${serviceId}` as const,
   // Bytes an org has been allowed to upload to object storage on one UTC day (YYYY-MM-DD).
   ObjectStorageDailyBytes: (orgId: string, day: string) => `object-storage:daily-bytes:${orgId}:${day}` as const,
 
@@ -234,6 +247,12 @@ export const KeyStorePrefixes = {
     `telemetry-agg-stream:${event}:${bucketId}` as const,
 
   AuditLogStreamFlushDebounce: (streamId: string) => `audit-log-stream:${streamId}:flush-debounce` as const,
+  SecretReadActivityGate: (day: string, actorId: string, scope: string) =>
+    `secret-read-activity:${day}:${actorId}:${scope}` as const,
+  SecretReadActivityStream: "secret-read-activity-stream" as const,
+  SecretReadActivityConsumerLock: "secret-read-activity:consumer-lock" as const,
+  SecretReadActivityUnusedAccessLock: (projectId: string) =>
+    `secret-read-activity:unused-access-lock:${projectId}` as const,
   AuditLogIngestConsumerLock: "audit-log-ingest:consumer-lock" as const,
 
   // period is a YYYY-MM stamp so the monthly notice can only go out once per org per month
@@ -278,6 +297,7 @@ export const KeyStoreTtls = {
   InsightsDuplicationCacheInSeconds: 300, // 5 minutes
   InsightsWeeklyHistoryCacheInSeconds: 86400, // 24 hours
   InsightsOrgCacheInSeconds: 900, // 15 minutes
+  InsightsUnusedAccessCacheInSeconds: 86400, // 24 hours
   AdminConfigInSeconds: 60,
   UpdateCheckLatestVersionInSeconds: 1209600, // 14 days (survives one missed weekly check)
   InvalidatingCacheInSeconds: 1800, // 30 minutes max lock for cache invalidation job
@@ -314,7 +334,8 @@ export const KeyStoreTtls = {
   SecretReplicationSuccessInSeconds: 10,
   NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
   LegacyPkiDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
-  WorkerHeartbeatInSeconds: 300 // 5 minutes - tolerates several missed 60s beats
+  WorkerHeartbeatInSeconds: 300, // 5 minutes - tolerates several missed 60s beats
+  OidcIssuerJwksInSeconds: 600 // 10 minutes
 };
 
 type TDeleteItems = {

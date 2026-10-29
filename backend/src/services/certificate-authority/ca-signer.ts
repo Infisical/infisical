@@ -7,6 +7,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { getPqcCrypto } from "@app/lib/crypto/pqc";
 import { bufferToArrayBuffer, ecdsaRawRsToDer } from "@app/lib/csr/pkcs11-algorithm-map";
 import { BadRequestError } from "@app/lib/errors";
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
 
 // @peculiar/x509's generators require a local CryptoKey, so for CAs whose key lives outside
@@ -222,7 +223,9 @@ export const buildPqcExternalCaSigner = async ({
   signTbs: (tbs: Buffer) => Promise<ArrayBuffer>;
 }): Promise<TCaSigner> => {
   const pqcCrypto = getPqcCrypto();
-  const caPublicKey = await pqcCrypto.subtle.importKey("spki", publicKeySpki, keyAlgCfg, true, ["verify"]);
+  const caPublicKey = await pqcCrypto.subtle.importKey("spki", asNonSharedBuffer(publicKeySpki), keyAlgCfg, true, [
+    "verify"
+  ]);
   return buildExternalCaSigner({
     caPublicKey,
     signingAlgorithm: keyAlgCfg,

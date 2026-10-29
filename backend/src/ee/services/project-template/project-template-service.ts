@@ -19,6 +19,7 @@ import {
 } from "@app/ee/services/project-template/project-template-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
+import { containsLogUnsafeCharacters, LOG_UNSAFE_TEXT_MESSAGE } from "@app/lib/validator/log-safe-text";
 import { unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
 import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
@@ -40,6 +41,22 @@ type TProjectTemplatesServiceFactoryDep = {
   orgMembershipDAL: TOrgMembershipDALFactory;
   groupDAL: Pick<TGroupDALFactory, "find">;
   identityDAL: Pick<TIdentityDALFactory, "find">;
+};
+
+const $validateProjectManagedIdentityNames = (
+  projectManagedIdentities: TProjectTemplateProjectManagedIdentity[],
+  existingNames: string[] = []
+) => {
+  const existing = new Set(existingNames);
+  projectManagedIdentities.forEach(({ name }) => {
+    if (existing.has(name)) return;
+    if (name.length > 255) {
+      throw new BadRequestError({ message: `Project-managed identity name "${name.slice(0, 32)}..." is too long` });
+    }
+    if (containsLogUnsafeCharacters(name)) {
+      throw new BadRequestError({ message: `Project-managed identity name: ${LOG_UNSAFE_TEXT_MESSAGE}` });
+    }
+  });
 };
 
 const $unpackProjectTemplate = (
@@ -416,6 +433,7 @@ export const projectTemplateServiceFactory = ({
           message: "Project-managed identity names must be unique within the template"
         });
       }
+      $validateProjectManagedIdentityNames(projectManagedIdentities);
     }
 
     const projectTemplateEnvironments =
@@ -716,6 +734,12 @@ export const projectTemplateServiceFactory = ({
           message: "Project-managed identity names must be unique within the template"
         });
       }
+      $validateProjectManagedIdentityNames(
+        projectManagedIdentities,
+        ((projectTemplate.projectManagedIdentities as TProjectTemplateProjectManagedIdentity[]) || []).map(
+          (i) => i.name
+        )
+      );
     }
 
     if (params.name && projectTemplate.name !== params.name) {

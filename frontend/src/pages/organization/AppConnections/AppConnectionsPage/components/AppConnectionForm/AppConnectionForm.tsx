@@ -58,6 +58,7 @@ import { HCVaultConnectionForm } from "./HCVaultConnectionForm";
 import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
 import { HpeIloConnectionForm } from "./HpeIloConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
+import { JiraConnectionForm } from "./JiraConnectionForm";
 import { KeeperConnectionForm } from "./KeeperConnectionForm";
 import { KempLoadMasterConnectionForm } from "./KempLoadMasterConnectionForm";
 import { LaravelForgeConnectionForm } from "./LaravelForgeConnectionForm";
@@ -90,6 +91,7 @@ import { RenderConnectionForm } from "./RenderConnectionForm";
 import { RundeckConnectionForm } from "./RundeckConnectionForm";
 import { S3CompatibleConnectionForm } from "./S3CompatibleConnectionForm";
 import { SalesforceConnectionForm } from "./SalesforceConnectionForm";
+import { ServiceNowConnectionForm } from "./ServiceNowConnectionForm";
 import { SmbConnectionForm } from "./SmbConnectionForm";
 import { SnowflakeConnectionForm } from "./SnowflakeConnectionForm";
 import { SpaceliftConnectionForm } from "./SpaceliftConnectionForm";
@@ -343,6 +345,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <DevinConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Daytona:
         return <DaytonaConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.ServiceNow:
+        return <ServiceNowConnectionForm onSubmit={onSubmit} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Cloud66:
@@ -387,6 +391,8 @@ const CreateForm = ({ app, onComplete, projectId, projectType }: CreateFormProps
         return <F5BigIpConnectionForm onSubmit={onSubmit} />;
       case AppConnection.HpeIloRedFish:
         return <HpeIloConnectionForm onSubmit={onSubmit} />;
+      case AppConnection.Jira:
+        return <JiraConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} />;
       case AppConnection.Rundeck:
@@ -657,6 +663,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <DevinConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Daytona:
         return <DaytonaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.ServiceNow:
+        return <ServiceNowConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.CircleCI:
         return <CircleCIConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Cloud66:
@@ -695,6 +703,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
         return <F5BigIpConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.HpeIloRedFish:
         return <HpeIloConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+      case AppConnection.Jira:
+        return <JiraConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Convex:
         return <ConvexConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
       case AppConnection.Rundeck:

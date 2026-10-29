@@ -124,3 +124,19 @@ controllerManager:
 <Tip>
   Custom service accounts are supported in chart version `0.10.11` and above.
 </Tip>
+
+### Syncing resources in parallel
+
+By default, the operator syncs one resource at a time.
+To speed up syncing, set `maxConcurrency` at the top level of `values.yaml` to the number of resources the operator should sync at the same time.
+
+```yaml values.yaml
+maxConcurrency: 5
+```
+
+The value must be at least `1`, and a higher value sends more requests to Infisical at the same time.
+`maxConcurrency` is supported in chart version `0.11.15` and above.
+
+<Note>
+  `maxConcurrency` currently only applies to [InfisicalStaticSecret](/integrations/platforms/kubernetes/infisical-static-secret-crd) resources. The operator still syncs every other resource type one at a time.
+</Note>

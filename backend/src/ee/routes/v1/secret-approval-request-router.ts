@@ -9,6 +9,7 @@ import {
 } from "@app/ee/services/secret-approval-request/secret-approval-request-types";
 import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { auditSafeText } from "@app/server/lib/schemas";
 import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { SanitizedTagSchema, SanitizedUserSchema, secretRawSchema } from "@app/server/routes/sanitizedSchemas";
@@ -150,7 +151,13 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
         id: z.string().uuid()
       }),
       body: z.object({
-        bypassReason: z.string().max(1000).optional()
+        bypassReason: z.string().max(1000).optional(),
+        requireApprovals: z
+          .boolean()
+          .optional()
+          .describe(
+            "When true, the merge fails instead of bypassing a soft-enforced policy whose required approvals are not met."
+          )
       }),
       response: {
         200: z.object({
@@ -167,7 +174,8 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
           approvalId: req.params.id,
-          bypassReason: req.body.bypassReason
+          bypassReason: req.body.bypassReason,
+          requireApprovals: req.body.requireApprovals
         });
 
       await server.services.auditLog.createAuditLog({
@@ -229,7 +237,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
       }),
       body: z.object({
         status: z.enum([ApprovalStatus.APPROVED, ApprovalStatus.REJECTED]),
-        comment: z.string().optional()
+        comment: auditSafeText(z.string(), { allowMultiline: true }).optional()
       }),
       response: {
         200: z.object({

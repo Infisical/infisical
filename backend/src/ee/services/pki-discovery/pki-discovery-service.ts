@@ -18,18 +18,20 @@ import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } 
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TGatewayV2DALFactory } from "../gateway-v2/gateway-v2-dal";
 import { TPkiDiscoveryConfigDALFactory } from "./pki-discovery-config-dal";
 import { validateTargetConfig } from "./pki-discovery-fns";
-import { sshConnectionWithoutGatewayMessage } from "./pki-discovery-host-fns";
+import { hostConnectionWithoutGatewayMessage } from "./pki-discovery-host-fns";
+import { LINUX_SERVER_SCAN } from "./pki-discovery-host-scan-fns";
 import { TPkiDiscoveryScanHistoryDALFactory } from "./pki-discovery-scan-history-dal";
 import {
   formatTargetConfigIssue,
-  LinuxServerTargetConfigSchema,
-  NetworkTargetConfigSchema
+  NetworkTargetConfigSchema,
+  selectsCaStoresWithoutImport
 } from "./pki-discovery-schemas";
 import {
   PkiDiscoveryScanStatus,
@@ -44,12 +46,29 @@ import {
   TNetworkTargetConfig,
   TPkiDiscoveryTargetConfig,
   TTriggerPkiDiscoveryScanDTO,
-  TUpdatePkiDiscoveryDTO
+  TUpdatePkiDiscoveryDTO,
+  TWindowsServerTargetConfig
 } from "./pki-discovery-types";
+import { WINDOWS_SERVER_SCAN } from "./pki-discovery-windows-scan-fns";
 
 const MAX_CLOUD_DISCOVERIES = 10;
 const SCAN_RATE_LIMIT_HOURS = 24;
 const CONNECTION_VALIDATION_CONCURRENCY = 5;
+
+const HOST_DISCOVERY_TYPES = {
+  [PkiDiscoveryType.LinuxServer]: LINUX_SERVER_SCAN,
+  [PkiDiscoveryType.WindowsServer]: WINDOWS_SERVER_SCAN
+} as const;
+
+type THostDiscoveryType = keyof typeof HOST_DISCOVERY_TYPES;
+
+const isHostDiscoveryType = (discoveryType: string): discoveryType is THostDiscoveryType =>
+  Object.hasOwn(HOST_DISCOVERY_TYPES, discoveryType);
+
+const hostConnectionIds = (discoveryType: string, targetConfig: unknown) =>
+  isHostDiscoveryType(discoveryType)
+    ? (targetConfig as TLinuxServerTargetConfig | TWindowsServerTargetConfig).connectionIds
+    : [];
 
 type TPkiDiscoveryServiceFactoryDep = {
   pkiDiscoveryConfigDAL: Pick<
@@ -110,37 +129,53 @@ export const pkiDiscoveryServiceFactory = ({
     return config;
   };
 
-  const $validateLinuxServerTarget = async (
+  const $validateHostTarget = async (
+    discoveryType: THostDiscoveryType,
     targetConfig: TPkiDiscoveryTargetConfig,
     projectId: string,
     actor: OrgServiceActor,
     existingConnectionIds?: string[]
-  ): Promise<TLinuxServerTargetConfig> => {
-    const config = $parseTargetConfig<TLinuxServerTargetConfig>(LinuxServerTargetConfigSchema, targetConfig);
+  ): Promise<TLinuxServerTargetConfig | TWindowsServerTargetConfig> => {
+    const hostType = HOST_DISCOVERY_TYPES[discoveryType];
+    const config = $parseTargetConfig<TLinuxServerTargetConfig | TWindowsServerTargetConfig>(
+      hostType.schema,
+      targetConfig
+    );
     const alreadyValidated = new Set(existingConnectionIds);
     const newConnectionIds = config.connectionIds.filter((connectionId) => !alreadyValidated.has(connectionId));
     const limit = pLimit(CONNECTION_VALIDATION_CONCURRENCY);
     const connections = await Promise.all(
       newConnectionIds.map((connectionId) =>
         limit(() =>
-          appConnectionService.validateAppConnectionUsageById(AppConnection.SSH, { connectionId, projectId }, actor)
+          appConnectionService.validateAppConnectionUsageById(hostType.app, { connectionId, projectId }, actor)
         )
       )
     );
+    if (
+      discoveryType === PkiDiscoveryType.WindowsServer &&
+      selectsCaStoresWithoutImport(config as TWindowsServerTargetConfig)
+    ) {
+      throw new BadRequestError({
+        message:
+          "The Intermediate and Trusted Root stores only hold CA certificates. Turn on importStandaloneCaCertificates or remove them from certificateStores."
+      });
+    }
     const connectionWithoutGateway = connections.find(
       (connection) => !connection.gatewayId && !connection.gatewayPoolId
     );
     if (connectionWithoutGateway) {
-      throw new BadRequestError({ message: sshConnectionWithoutGatewayMessage(connectionWithoutGateway.name) });
+      throw new BadRequestError({
+        message: hostConnectionWithoutGatewayMessage(hostType, connectionWithoutGateway.name)
+      });
     }
     return config;
   };
 
   const $assertJobGatewayAllowed = (discoveryType: PkiDiscoveryType, hasJobGateway: boolean) => {
-    if (discoveryType !== PkiDiscoveryType.Network && hasJobGateway) {
+    if (isHostDiscoveryType(discoveryType) && hasJobGateway) {
+      const hostType = HOST_DISCOVERY_TYPES[discoveryType];
       throw new BadRequestError({
-        message:
-          "Linux Server discovery uses the gateway of each SSH connection, so a gateway or gateway pool cannot be set on the job"
+        message: `${hostType.label} discovery uses the gateway of each ${APP_CONNECTION_NAME_MAP[hostType.app]} connection, so a gateway or gateway pool cannot be set on the job`
       });
     }
   };
@@ -164,7 +199,8 @@ export const pkiDiscoveryServiceFactory = ({
       case PkiDiscoveryType.Network:
         return $validateNetworkTarget(targetConfig, hasGateway);
       case PkiDiscoveryType.LinuxServer:
-        return $validateLinuxServerTarget(targetConfig, projectId, actor, existingConnectionIds);
+      case PkiDiscoveryType.WindowsServer:
+        return $validateHostTarget(discoveryType, targetConfig, projectId, actor, existingConnectionIds);
       default:
         throw new BadRequestError({ message: `Unsupported discovery type: ${discoveryType as string}` });
     }
@@ -332,15 +368,14 @@ export const pkiDiscoveryServiceFactory = ({
     const isGatewayChanging = gatewayIdValue !== undefined || gatewayPoolIdValue !== undefined;
     const effectiveHasGateway = Boolean(
       (gatewayIdValue === undefined ? discovery.gatewayId : gatewayIdValue) ||
-        (gatewayPoolIdValue === undefined ? discovery.gatewayPoolId : gatewayPoolIdValue)
+      (gatewayPoolIdValue === undefined ? discovery.gatewayPoolId : gatewayPoolIdValue)
     );
 
     $assertJobGatewayAllowed(discoveryType, Boolean(gatewayId || gatewayPoolId));
 
-    const existingConnectionIds =
-      discoveryType === PkiDiscoveryType.LinuxServer
-        ? (discovery.targetConfig as TLinuxServerTargetConfig).connectionIds
-        : undefined;
+    const existingConnectionIds = isHostDiscoveryType(discoveryType)
+      ? hostConnectionIds(discoveryType, discovery.targetConfig)
+      : undefined;
 
     const validatedTargetConfig = targetConfig
       ? await $validateTarget({
@@ -450,10 +485,7 @@ export const pkiDiscoveryServiceFactory = ({
     discoveries: T[],
     orgId: string
   ) => {
-    const connectionIdsOf = (discovery: T) =>
-      discovery.discoveryType === PkiDiscoveryType.LinuxServer
-        ? (discovery.targetConfig as TLinuxServerTargetConfig).connectionIds
-        : [];
+    const connectionIdsOf = (discovery: T) => hostConnectionIds(discovery.discoveryType, discovery.targetConfig);
     const connectionIds = [...new Set(discoveries.flatMap(connectionIdsOf))];
     const rows = connectionIds.length ? await appConnectionDAL.find({ $in: { id: connectionIds }, orgId }) : [];
     const connectionsById = new Map(

@@ -3,8 +3,8 @@ import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-grou
 import { logger } from "@app/lib/logger";
 import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { TAlertRecipient } from "./alert-channel-types";

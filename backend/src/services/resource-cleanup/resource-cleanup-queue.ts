@@ -14,10 +14,10 @@ import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identit
 import { TIdentityAccessTokenRevocationDALFactory } from "../identity-access-token/identity-access-token-revocation-dal";
 import { TIdentityUaClientSecretDALFactory } from "../identity-ua/identity-ua-client-secret-dal";
 import { TOrgServiceFactory } from "../org/org-service";
-import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretFolderVersionDALFactory } from "../secret-folder/secret-folder-version-dal";
 import { TSecretSharingDALFactory } from "../secret-sharing/secret-sharing-dal";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
+import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TServiceTokenServiceFactory } from "../service-token/service-token-service";
 
 type TDailyResourceCleanUpQueueServiceFactoryDep = {

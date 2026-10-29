@@ -221,16 +221,9 @@ for (const sourcePath of sourcePaths) {
   visit(source);
 }
 
-const outsideLegacy = [
-  "frontend/src/components/basic/InputField.tsx",
-  "frontend/src/components/basic/Error.tsx",
-  "frontend/src/components/integrations/NoEnvironmentsBanner.tsx",
-  "frontend/src/components/navigation/SecretDashboardPathBreadcrumb.tsx",
-  "frontend/src/components/tags/CreateTagModal/CreateTagModal.tsx",
-  "frontend/src/pages/secret-manager/OverviewPage/components/SecretSearchInput/SecretSearchInput.tsx",
-  "frontend/src/pages/secret-manager/OverviewPage/components/SecretSearchInput/index.tsx",
-  "frontend/src/legacy.css"
-].filter((file) => existsSync(path.join(root, file)));
+const outsideLegacy = ["frontend/src/legacy.css"].filter((file) =>
+  existsSync(path.join(root, file))
+);
 const result = {
   head: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
   workingTree: execFileSync("git", ["status", "--porcelain"], {

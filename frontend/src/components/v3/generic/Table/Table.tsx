@@ -3,6 +3,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { cn } from "@app/components/v3/utils";
 
+import { rowLinkContainerClassName } from "../RowLink";
 import { Skeleton } from "../Skeleton";
 
 const Table = React.forwardRef<
@@ -150,22 +151,24 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
   );
 }
 
-const TableRow = React.forwardRef<HTMLTableRowElement, React.ComponentProps<"tr">>(
-  ({ className, ...props }, ref) => {
-    return (
-      <tr
-        ref={ref}
-        data-slot="table-row"
-        className={cn(
-          "border-b border-border transition-colors duration-75 hover:bg-container-hover data-[state=selected]:bg-container-hover",
-          props.onClick && "cursor-pointer select-none",
-          className
-        )}
-        {...props}
-      />
-    );
-  }
-);
+const TableRow = React.forwardRef<
+  HTMLTableRowElement,
+  React.ComponentProps<"tr"> & { linked?: boolean }
+>(({ className, linked, ...props }, ref) => {
+  return (
+    <tr
+      ref={ref}
+      data-slot="table-row"
+      className={cn(
+        "border-b border-border transition-colors duration-75 hover:bg-container-hover data-[state=selected]:bg-container-hover",
+        props.onClick && "cursor-pointer select-none",
+        linked && rowLinkContainerClassName,
+        className
+      )}
+      {...props}
+    />
+  );
+});
 
 TableRow.displayName = "TableRow";
 

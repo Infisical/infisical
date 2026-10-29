@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Controller, UseFormReturn } from "react-hook-form";
 
 import { AppConnectionOptionContent } from "@app/components/app-connections";
+import { useConnectionCreation } from "@app/components/app-connections/useConnectionCreation";
 import {
   PostQuantumCertificatesUpgradeIntent,
   useUpgradeGate
@@ -36,7 +37,6 @@ import { CertKeyAlgorithm } from "@app/hooks/api/certificates/enums";
 import { CertKeySource } from "@app/hooks/api/signers";
 import { CreateHsmConnectorWizard } from "@app/pages/cert-manager/SettingsPage/components/HsmConnectorsTab/CreateHsmConnectorWizard";
 
-import { useConnectionCreation } from "../CaInstallCertModal/useConnectionCreation";
 import { CaWizardForm } from "./schemas";
 import { HsmConnectorOption, isKeyAlgorithmSupportedByKeySource } from "./types";
 

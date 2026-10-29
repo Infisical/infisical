@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
+import { PageTitle } from "@app/components/PageTitle";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject } from "@app/context";
 import { useAuthorizeIntegration } from "@app/hooks/api";
@@ -51,5 +52,10 @@ export const GithubOauthCallbackPage = () => {
     })();
   }, []);
 
-  return <div />;
+  return (
+    <>
+      <PageTitle title="Connecting GitHub Integration" />
+      <div />
+    </>
+  );
 };

@@ -2,6 +2,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { isPqcAlgorithm } from "@app/lib/crypto/pqc";
 import { bufferToArrayBuffer, Pkcs11Mechanism } from "@app/lib/csr/pkcs11-algorithm-map";
 import { BadRequestError } from "@app/lib/errors";
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { isPkcs11Error, Pkcs11ErrorCode } from "@app/lib/gateway-v2/pkcs11-rpc";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { CertKeyAlgorithm } from "@app/services/certificate/certificate-types";
@@ -129,7 +130,7 @@ export const hsmCaKeySourceFactory = ({
 
       const caPublicKey = await crypto.nativeCrypto.subtle.importKey(
         "spki",
-        publicKeySpki,
+        asNonSharedBuffer(publicKeySpki),
         caKeyAlgorithmToHsmShape(keyAlgorithm).importParams,
         true,
         ["verify"]
