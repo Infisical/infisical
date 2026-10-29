@@ -6,6 +6,12 @@
       "prettier": { "allowed": false },
       "formatter": [{ "language_server": { "name": "oxfmt" } }]
     },
+    "TSX": {
+      "language_servers": ["oxlint", "oxfmt", "!eslint", "..."],
+      "format_on_save": "on",
+      "prettier": { "allowed": false },
+      "formatter": [{ "language_server": { "name": "oxfmt" } }]
+    },
     "JavaScript": {
       "language_servers": ["oxlint", "oxfmt", "!eslint", "..."],
       "format_on_save": "on",

@@ -1,11 +1,35 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import picomatch from "picomatch";
-import ts from "typescript";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+// The frontend's TypeScript 7 has no JS compiler API, and a second `typescript` dependency would
+// fight it for the `tsc` bin, so the TS 6 checker is installed into node_modules/.cache on first run.
+const typescriptVersion = "6.0.3";
+const typescriptDir = path.join(
+  frontend,
+  `node_modules/.cache/audit-v2-ui/typescript-${typescriptVersion}`
+);
+if (!existsSync(path.join(typescriptDir, "node_modules/typescript"))) {
+  execFileSync(
+    "npm",
+    [
+      "install",
+      "--prefix",
+      typescriptDir,
+      "--no-audit",
+      "--no-fund",
+      `typescript@${typescriptVersion}`
+    ],
+    { stdio: ["ignore", process.stderr, process.stderr] }
+  );
+}
+const ts = createRequire(path.join(typescriptDir, "package.json"))("typescript");
+
 const root = path.resolve(frontend, "..");
 const relative = (file) => path.relative(root, file).split(path.sep).join("/");
 const tracked = execFileSync(

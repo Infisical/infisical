@@ -3,11 +3,11 @@
   "oxc.typeAware": true,
   "eslint.enable": false,
   "prettier.enable": false,
-  "[typescript]": {
+  "[typescript][typescriptreact]": {
     "editor.defaultFormatter": "oxc.oxc-vscode",
     "editor.formatOnSave": true
   },
-  "[javascript]": {
+  "[javascript][javascriptreact]": {
     "editor.defaultFormatter": "oxc.oxc-vscode",
     "editor.formatOnSave": true
   },

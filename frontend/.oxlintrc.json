@@ -64,7 +64,7 @@
     "no-import-assign": "off",
     "no-invalid-regexp": "error",
     "no-irregular-whitespace": "error",
-    "no-loss-of-precision": "off",
+    "no-loss-of-precision": "error",
     "no-misleading-character-class": "error",
     "no-new-native-nonconstructor": "off",
     "no-nonoctal-decimal-escape": "error",
