@@ -208,7 +208,7 @@ With the `restricted` [Pod Security Standard](https://kubernetes.io/docs/concept
 
 ## Step 4: Set up your orchestrator
 
-Your orchestrator is whatever starts your agents, such as a job runner, a controller, or a CI pipeline. Run it outside the `agents` namespace. Agent pods can't reach it, because their network policy only allows the proxy.
+Your orchestrator starts each agent run, and it can be a script, a CI pipeline, a job runner, or a Kubernetes controller. Run it outside the `agents` namespace, so agent pods can't reach it.
 
 ### Log in as the machine identity
 
