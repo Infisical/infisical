@@ -6,7 +6,7 @@ description: "Launch your custom agent with Agent Vault so it can call HTTP APIs
 
 import SeparateMachinesNote from "/snippets/agent-vault/SeparateMachinesNote.mdx";
 
-If you have a custom agent harness that you start from code rather than a CLI, you can connect it to Agent Vault via the Infisical API. The agent's HTTP client sends each request through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) with a [session](/documentation/platform/agent-vault/sessions) token, and the proxy attaches the real credential before forwarding the request to the API.
+If you have a custom agent harness that you start from code rather than a CLI, you can connect it to Agent Vault via the Infisical API. The agent's HTTP client sends each request through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) with a [session](/documentation/platform/agent-vault/sessions) token, and the proxy attaches the real credential before forwarding the request to the API or MCP server.
 
 ## Prerequisites
 
@@ -20,7 +20,7 @@ If you have a custom agent harness that you start from code rather than a CLI, y
 
 ### Create a proxy
 
-First, create a proxy. Every request your agent makes goes through the proxy, which attaches the real credential from the access bundle before forwarding the request to the API.
+First, create a proxy. Every request your agent makes goes through the proxy, which attaches the real credential from the access bundle before forwarding the request to the API or MCP server.
 
 <Steps>
   <Step>

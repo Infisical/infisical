@@ -707,7 +707,8 @@
                     "group": "Sandboxes",
                     "pages": [
                       "documentation/platform/agent-vault/guides/modal",
-                      "documentation/platform/agent-vault/guides/daytona"
+                      "documentation/platform/agent-vault/guides/daytona",
+                      "documentation/platform/agent-vault/guides/docker"
                     ]
                   },
                   {
