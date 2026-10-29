@@ -708,13 +708,14 @@ export const secretReadActivityServiceFactory = ({
         message: `No unused access found for ${actorType} '${actorId}' in this project`
       });
     }
-    // An actor past those cached in full is scanned for on its own, and kept for the same day.
+    // An actor past those cached in full is scanned for on its own, and kept only until the project result expires, so
+    // its secrets never outlive the counts shown beside them.
     const secretIds =
       details[actorId] ??
       (await withCache({
         keyStore,
         key: KeyStorePrefixes.InsightsCache(projectId, `unused-access:${actorType}:${actorId}`),
-        ttlSeconds: KeyStoreTtls.InsightsUnusedAccessCacheInSeconds,
+        ttlSeconds: Math.max(remainingTTL, 1),
         fetcher: async () =>
           (await $tallyUnusedAccess(projectId, actor.orgId)).tallies.get(actorId)?.unusedSecretIds ?? []
       }));

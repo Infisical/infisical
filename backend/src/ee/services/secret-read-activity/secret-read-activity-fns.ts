@@ -7,6 +7,7 @@ import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal
 import { getPredefinedRoles } from "@app/services/project-role/project-role-fns";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { buildFolderIdMap, buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
+import { MAX_SECRET_REFERENCE_DEPTH } from "@app/services/secret-v2-bridge/secret-reference-fns";
 
 import {
   SecretReadNotJudgedReason,
@@ -85,9 +86,13 @@ export const computeSecretReach = (secret: TReachSecret, graph: TSecretReachGrap
   const secretIds = new Set([secret.id]);
   const folderIds = new Set([secret.folderId]);
 
-  const pendingSecrets = [secret];
-  while (pendingSecrets.length) {
-    for (const referencer of graph.getReferencers(pendingSecrets.pop() as TReachSecret)) {
+  // A read expands references at most MAX_SECRET_REFERENCE_DEPTH + 1 levels down, so a referencer further away never
+  // returns this secret. Levels are walked in order, so each referencer is reached at its shortest distance.
+  let pendingSecrets = [secret];
+  for (let depth = 0; depth <= MAX_SECRET_REFERENCE_DEPTH && pendingSecrets.length; depth += 1) {
+    const referencers = pendingSecrets.flatMap((pending) => graph.getReferencers(pending));
+    pendingSecrets = [];
+    for (const referencer of referencers) {
       // A personal secret is left out of folder reads that skip personal values, so only a read of the personal secret
       // itself counts, not of its folder. Nothing referencing it is followed either: a reference to its key resolves to
       // the shared secret unless the reader expands their own overrides, which records exactly what resolved.

@@ -8,6 +8,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { ActorType } from "@app/services/auth/auth-type";
+import { MAX_SECRET_REFERENCE_DEPTH } from "@app/services/secret-v2-bridge/secret-reference-fns";
 
 import {
   classifySecretReads,
@@ -90,6 +91,23 @@ describe("computeSecretReach", () => {
     const reach = computeSecretReach(dbPass, graph);
     expect([...reach.secretIds].sort()).toEqual([connection.id, dbPass.id, dbUrl.id].sort());
     expect([...reach.folderIds].sort()).toEqual(["consumer", "edge", "nested", "shared"]);
+  });
+
+  test("stops at the depth a read expands references to", () => {
+    const chain: TReachSecret[] = Array.from({ length: MAX_SECRET_REFERENCE_DEPTH + 3 }, (_, index) => ({
+      id: `s${index}`,
+      folderId: `f${index}`,
+      key: `S${index}`
+    }));
+    const reach = computeSecretReach(chain[0], {
+      getReferencers: (secret) => {
+        const next = chain[chain.indexOf(secret) + 1];
+        return next ? [next] : [];
+      },
+      getImporterFolderIds: () => []
+    });
+    expect(reach.secretIds.has(chain[MAX_SECRET_REFERENCE_DEPTH + 1].id)).toBe(true);
+    expect(reach.secretIds.has(chain[MAX_SECRET_REFERENCE_DEPTH + 2].id)).toBe(false);
   });
 });
 

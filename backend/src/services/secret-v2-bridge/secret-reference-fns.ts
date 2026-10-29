@@ -125,7 +125,7 @@ type TInterpolateSecretArg = {
 // A cross-project secret carries no id: only this project's secrets are reported to onSecretExpanded.
 type TCachedReferencedSecret = { id?: string; value: string; tags: string[]; exists: boolean };
 
-const MAX_SECRET_REFERENCE_DEPTH = 10;
+export const MAX_SECRET_REFERENCE_DEPTH = 10;
 export const expandSecretReferencesFactory = ({
   projectId,
   decryptSecretValue: decryptSecret,
