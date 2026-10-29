@@ -1,13 +1,18 @@
 {{- $infisicalValues := .Values.infisical }}
+{{- $rolloutOnEveryRender := ne (toString $infisicalValues.rolloutOnEveryRender) "false" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "infisical.fullname" . }}
+  {{- if or $rolloutOnEveryRender $infisicalValues.deploymentAnnotations }}
   annotations:
-    updatedAt: {{ now | date "2006-01-01 MST 15:04:05" | quote }}
+    {{- if $rolloutOnEveryRender }}
+    updatedAt: {{ now | date "2006-01-02 MST 15:04:05" | quote }}
+    {{- end }}
     {{- with $infisicalValues.deploymentAnnotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
+  {{- end }}
   labels:
     {{- include "infisical.labels" . | nindent 4 }}
 spec:
@@ -19,11 +24,15 @@ spec:
     metadata:
       labels:
         {{- include "infisical.matchLabels" . | nindent 8 }}
+      {{- if or $rolloutOnEveryRender $infisicalValues.podAnnotations }}
       annotations:
-        updatedAt: {{ now | date "2006-01-01 MST 15:04:05" | quote }}
+        {{- if $rolloutOnEveryRender }}
+        updatedAt: {{ now | date "2006-01-02 MST 15:04:05" | quote }}
+        {{- end }}
         {{- with $infisicalValues.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+      {{- end }}
     spec:
       serviceAccountName: {{ include "infisical.serviceAccountName" . }}
     {{- with $infisicalValues.podSecurityContext }}
