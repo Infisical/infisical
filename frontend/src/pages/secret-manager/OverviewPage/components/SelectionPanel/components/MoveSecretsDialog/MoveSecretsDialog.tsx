@@ -1529,7 +1529,7 @@ const MultiEnvContent = ({
         } catch (error) {
           let errorMessage = (error as Error)?.message ?? "Failed to move secrets";
           if (axios.isAxiosError(error)) {
-            const { message } = error?.response?.data as { message: string };
+            const { message } = (error.response?.data ?? {}) as { message: string };
             if (message) errorMessage = message;
           }
 

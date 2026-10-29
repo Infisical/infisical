@@ -31,8 +31,6 @@ import { Skeleton } from "@app/components/v3/generic/Skeleton";
 import { TextArea as Textarea } from "@app/components/v3/generic/TextArea";
 import { cn } from "@app/components/v3/utils";
 
-import { useBadgeOverflow } from "./hooks/use-badge-overflow";
-import { useDebouncedCallback } from "./hooks/use-debounced-callback";
 import { DataGridCellWrapper } from "./data-grid-cell-wrapper";
 import type { DataGridCellProps, FileCellData } from "./data-grid-types";
 import {
@@ -45,6 +43,8 @@ import {
   getUrlHref,
   parseLocalDate
 } from "./data-grid-utils";
+import { useBadgeOverflow } from "./hooks/use-badge-overflow";
+import { useDebouncedCallback } from "./hooks/use-debounced-callback";
 
 export function ShortTextCell<TData>({
   cell,

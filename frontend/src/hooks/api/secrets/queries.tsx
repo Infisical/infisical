@@ -227,7 +227,7 @@ export const useGetProjectSecretsAllEnv = ({
       enabled: Boolean(projectId && environment),
       onError: (error: unknown) => {
         if (axios.isAxiosError(error) && !isErrorHandled) {
-          const { message, requestId } = error.response?.data as {
+          const { message, requestId } = (error.response?.data ?? {}) as {
             message: string;
             requestId: string;
           };

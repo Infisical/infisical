@@ -17,7 +17,6 @@ import {
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { CertManagerAdminOnly } from "@app/pages/cert-manager/components/CertManagerAdminOnly";
 
-import { getInventoryLink, type InventoryFilters } from "./components/inventory-link";
 import {
   ActivityTrend,
   CodeSigningSection,
@@ -28,6 +27,7 @@ import {
   PqcTrend,
   ValidityReadinessSection
 } from "./components";
+import { getInventoryLink, type InventoryFilters } from "./components/inventory-link";
 
 export const DashboardPage = () => {
   const { currentProject } = useProject();

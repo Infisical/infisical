@@ -63,6 +63,11 @@ import { isPqcAlgorithm } from "@app/hooks/api/certificates/constants";
 
 import { PkiDocsUrls } from "../../../pki-docs-urls";
 import {
+  CUSTOM_EXTENSION_CRITICALITY_LABELS,
+  CustomExtensionRuleDialog
+} from "./CustomExtensionRuleDialog";
+import { isValidDomainComponentSequence, PolicyFormData, policySchema } from "./shared";
+import {
   CertDurationUnit,
   CertExtendedKeyUsageType,
   CertExtensionCriticality,
@@ -88,11 +93,6 @@ import {
   SUBJECT_ATTRIBUTE_TYPE_OPTIONS
 } from "./shared/certificate-constants";
 import { CERTIFICATE_POLICY_PRESETS } from "./shared/policy-presets";
-import {
-  CUSTOM_EXTENSION_CRITICALITY_LABELS,
-  CustomExtensionRuleDialog
-} from "./CustomExtensionRuleDialog";
-import { isValidDomainComponentSequence, PolicyFormData, policySchema } from "./shared";
 
 export type FormData = PolicyFormData;
 
@@ -778,14 +778,14 @@ export const CertificatePolicyWizard = forwardRef<CertificatePolicyWizardHandle,
         setRestrictExtendedKeyUsages(
           Boolean(
             formData.extendedKeyUsages?.requiredUsages?.length ||
-              formData.extendedKeyUsages?.optionalUsages?.length
+            formData.extendedKeyUsages?.optionalUsages?.length
           )
         );
         setRestrictValidity(Boolean(formData.validity?.maxDuration));
         setConfigureBasicConstraints(
           Boolean(
             formData.basicConstraints?.isCA &&
-              formData.basicConstraints.isCA !== CertPolicyState.DENIED
+            formData.basicConstraints.isCA !== CertPolicyState.DENIED
           )
         );
 

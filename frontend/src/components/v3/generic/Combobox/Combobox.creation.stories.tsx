@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 
 import { useDiscardChangesGuard } from "@app/hooks/useDiscardChangesGuard";
 
+import { Combobox, type ComboboxFormCreationRenderProps } from ".";
 import { DiscardChangesAlertDialog } from "../AlertDialog/DiscardChangesAlertDialog";
 import { Button } from "../Button";
 import {
@@ -28,7 +29,6 @@ import {
   SheetTrigger
 } from "../Sheet";
 import { Stepper, StepperList, StepperStep } from "../Stepper";
-import { Combobox, type ComboboxFormCreationRenderProps } from ".";
 
 type Profile = { id: string; name: string };
 const PROFILES: Profile[] = [{ id: "existing", name: "Existing Profile" }];

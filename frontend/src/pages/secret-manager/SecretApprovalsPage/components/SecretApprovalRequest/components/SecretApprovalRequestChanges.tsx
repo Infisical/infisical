@@ -317,10 +317,10 @@ export const SecretApprovalRequestChanges = ({
 
   const canReview = Boolean(
     secretApprovalRequestDetails &&
-      !hasMerged &&
-      secretApprovalRequestDetails.status === "open" &&
-      !shouldBlockSelfReview &&
-      canApprove
+    !hasMerged &&
+    secretApprovalRequestDetails.status === "open" &&
+    !shouldBlockSelfReview &&
+    canApprove
   );
 
   const importSource = `${replicatedImport?.importEnv?.slug ?? ""} ${

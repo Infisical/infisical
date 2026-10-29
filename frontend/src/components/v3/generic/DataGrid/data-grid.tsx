@@ -3,7 +3,6 @@ import { Plus } from "lucide-react";
 
 import { cn } from "@app/components/v3/utils";
 
-import { useAsRef } from "./hooks/use-as-ref";
 import { DataGridColumnHeader } from "./data-grid-column-header";
 import { DataGridContextMenu } from "./data-grid-context-menu";
 import { DataGridPasteDialog } from "./data-grid-paste-dialog";
@@ -16,12 +15,14 @@ import {
   getColumnPinningStyle,
   sanitizeCssId
 } from "./data-grid-utils";
+import { useAsRef } from "./hooks/use-as-ref";
 import type { useDataGrid } from "./use-data-grid";
 
 const EMPTY_CELL_SELECTION_SET = new Set<string>();
 
 interface DataGridProps<TData>
-  extends Omit<ReturnType<typeof useDataGrid<TData>>, "dir">,
+  extends
+    Omit<ReturnType<typeof useDataGrid<TData>>, "dir">,
     Omit<React.ComponentProps<"div">, "contextMenu"> {
   dir?: Direction;
   height?: number;

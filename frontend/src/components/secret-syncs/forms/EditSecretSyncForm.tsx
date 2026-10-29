@@ -25,12 +25,12 @@ import {
   useUpdateSecretSync
 } from "@app/hooks/api/secretSyncs";
 
-import { SecretSyncOptionsFields } from "./SecretSyncOptionsFields/SecretSyncOptionsFields";
 import { DuplicateDestinationConfirmationModal } from "./DuplicateDestinationConfirmationModal";
 import { TSecretSyncForm, UpdateSecretSyncFormSchema } from "./schemas";
 import { SecretSyncDestinationFields } from "./SecretSyncDestinationFields";
 import { SecretSyncDetailsFields } from "./SecretSyncDetailsFields";
 import { SecretSyncInitialSyncBehaviorFields } from "./SecretSyncInitialSyncBehaviorFields";
+import { SecretSyncOptionsFields } from "./SecretSyncOptionsFields/SecretSyncOptionsFields";
 import { SecretSyncSourceFields } from "./SecretSyncSourceFields";
 
 type Props = {

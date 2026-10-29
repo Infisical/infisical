@@ -59,9 +59,9 @@ export const GitHubSyncFields = () => {
       {
         enabled: Boolean(
           connectionId &&
-            currentRepo &&
-            currentOwner &&
-            currentScope === GitHubSyncScope.RepositoryEnvironment
+          currentRepo &&
+          currentOwner &&
+          currentScope === GitHubSyncScope.RepositoryEnvironment
         )
       }
     );

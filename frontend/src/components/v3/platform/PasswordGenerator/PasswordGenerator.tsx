@@ -223,7 +223,7 @@ export const PasswordGenerator = ({
 
   const hasRegexLengthConflict = Boolean(
     valueConstraints?.regexPattern &&
-      (valueConstraints.minLength !== undefined || valueConstraints.maxLength !== undefined)
+    (valueConstraints.minLength !== undefined || valueConstraints.maxLength !== undefined)
   );
 
   // Auto-select matching rule only when exactly one environment is selected

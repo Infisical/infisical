@@ -16,9 +16,9 @@ import {
   DropdownMenuTrigger
 } from "@app/components/v3/generic/Dropdown";
 
-import { useAsRef } from "./hooks/use-as-ref";
 import type { CellUpdate, ContextMenuState } from "./data-grid-types";
 import { parseCellKey } from "./data-grid-utils";
+import { useAsRef } from "./hooks/use-as-ref";
 
 interface DataGridContextMenuProps<TData> {
   tableMeta: TableMeta<TData>;
@@ -61,7 +61,8 @@ export function DataGridContextMenu<TData>({
 }
 
 interface ContextMenuProps<TData>
-  extends Pick<
+  extends
+    Pick<
       TableMeta<TData>,
       | "dataGridRef"
       | "onContextMenuOpenChange"
