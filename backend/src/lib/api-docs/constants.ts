@@ -2327,7 +2327,9 @@ export const CERTIFICATES = {
     csr: "A PEM-encoded certificate signing request to renew from. Its subject, key and extensions take precedence, so only TTL and basic constraints may be set alongside it.",
     attributes:
       "Certificate fields to change on renewal. Anything omitted is copied from the certificate being renewed. Profile defaults are not applied.",
-    removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain."
+    removeRootsFromChain: "Whether to remove the root certificate from the returned certificate chain.",
+    externalConfiguration: "Options for certificates issued by an external certificate authority.",
+    reissue: "Reissue the certificate on the same DigiCert order instead of placing a new order."
   },
   RENEWAL_PREVIEW: {
     id: "The ID of the certificate to preview a renewal for.",

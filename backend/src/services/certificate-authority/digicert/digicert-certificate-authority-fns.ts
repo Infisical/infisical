@@ -32,7 +32,7 @@ import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
 import { createDistinguishedName, keyAlgorithmToAlgCfg } from "../certificate-authority-fns";
 import { TExternalCertificateAuthorityDALFactory } from "../external-certificate-authority-dal";
-import { createDigiCertApiClient } from "./digicert-api-client";
+import { createDigiCertApiClient, TDigiCertApiClient } from "./digicert-api-client";
 import {
   DIGICERT_FINAL_ISSUED_STATUSES,
   DigiCertOrderStatus,
@@ -46,8 +46,10 @@ import {
 } from "./digicert-certificate-authority-shared";
 import {
   TCreateDigiCertCertificateAuthorityDTO,
+  TDigiCertCertificateAuthority,
   TDigiCertCertificateRequestMetadata,
   TPlaceOrderResponse,
+  TReissueOrderRequest,
   TUpdateDigiCertCertificateAuthorityDTO
 } from "./digicert-certificate-authority-types";
 import { digiCertCodeSigningFns } from "./digicert-code-signing-fns";
@@ -321,30 +323,7 @@ export const DigiCertCertificateAuthorityFns = ({
     return cas.map(castDbEntryToDigiCertCertificateAuthority);
   };
 
-  const orderCertificate = async ({
-    caId,
-    commonName,
-    altNames = [],
-    signatureAlgorithm,
-    keyAlgorithm = CertKeyAlgorithm.RSA_2048,
-    csr,
-    ttl,
-    renewalOfOrderId
-  }: {
-    caId: string;
-    commonName: string;
-    altNames?: string[];
-    signatureAlgorithm?: string;
-    keyAlgorithm?: CertKeyAlgorithm;
-    csr?: string;
-    ttl: string;
-    renewalOfOrderId?: number;
-  }): Promise<{
-    metadata: TDigiCertCertificateRequestMetadata;
-    privateKey: string;
-    immediateCertificateId?: number;
-    orderId: number;
-  }> => {
+  const $getActiveDigiCertCa = async (caId: string) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.DIGICERT) {
       throw new BadRequestError({ message: "CA is not a DigiCert certificate authority" });
@@ -355,8 +334,53 @@ export const DigiCertCertificateAuthorityFns = ({
       throw new BadRequestError({ message: `DigiCert CA is disabled [caId=${caId}]` });
     }
 
-    const { productNameId } = digicertCa.configuration;
+    const { apiKey, baseUrl } = await getDigiCertClientCredentials(
+      digicertCa.configuration.appConnectionId,
+      appConnectionDAL,
+      kmsService
+    );
 
+    return { digicertCa, client: createDigiCertApiClient(apiKey, baseUrl) };
+  };
+
+  const $getOrderForCa = async (
+    client: TDigiCertApiClient,
+    configuration: TDigiCertCertificateAuthority["configuration"],
+    orderId: number
+  ) => {
+    const order = await client.getOrder(orderId);
+    if (
+      order.organization?.id !== configuration.organizationId ||
+      order.product?.name_id !== configuration.productNameId
+    ) {
+      throw new BadRequestError({
+        message: `DigiCert order ${orderId} belongs to a different DigiCert organization or product than this certificate authority.`
+      });
+    }
+    return order;
+  };
+
+  const $getCertificateSerialNumber = async (client: TDigiCertApiClient, digicertCertificateId: number) => {
+    const pem = await client.downloadCertificatePem(digicertCertificateId);
+    const { leaf } = extractLeafAndChain(pem);
+    return new x509.X509Certificate(leaf).serialNumber.toLowerCase();
+  };
+
+  const $buildCertificatePayload = async ({
+    caId,
+    commonName,
+    altNames,
+    signatureAlgorithm,
+    keyAlgorithm,
+    csr
+  }: {
+    caId: string;
+    commonName: string;
+    altNames: string[];
+    signatureAlgorithm?: string;
+    keyAlgorithm: CertKeyAlgorithm;
+    csr?: string;
+  }) => {
     const effectiveCommonName = commonName?.trim() || altNames.find((value) => value.trim().length > 0)?.trim() || "";
     if (!effectiveCommonName) {
       throw new BadRequestError({
@@ -389,13 +413,6 @@ export const DigiCertCertificateAuthorityFns = ({
       csrPem = csrObj.toString("pem");
     }
 
-    const { apiKey, baseUrl } = await getDigiCertClientCredentials(
-      digicertCa.configuration.appConnectionId,
-      appConnectionDAL,
-      kmsService
-    );
-    const client = createDigiCertApiClient(apiKey, baseUrl);
-
     const extraSans = altNames.filter((value) => value.toLowerCase() !== effectiveCommonName.toLowerCase());
 
     const normalizedSignature = signatureAlgorithm?.toLowerCase() ?? "";
@@ -403,15 +420,57 @@ export const DigiCertCertificateAuthorityFns = ({
     if (normalizedSignature.includes("sha512")) signatureHash = "sha512";
     else if (normalizedSignature.includes("sha384")) signatureHash = "sha384";
 
-    const validityDays = parseTtlToDays(ttl);
-
-    const baseOrderPayload = {
+    return {
       certificate: {
         common_name: effectiveCommonName,
         ...(extraSans.length > 0 ? { dns_names: extraSans } : {}),
         csr: csrPem,
         signature_hash: signatureHash
       },
+      privateKeyPem
+    };
+  };
+
+  const orderCertificate = async ({
+    caId,
+    commonName,
+    altNames = [],
+    signatureAlgorithm,
+    keyAlgorithm = CertKeyAlgorithm.RSA_2048,
+    csr,
+    ttl,
+    renewalOfOrderId
+  }: {
+    caId: string;
+    commonName: string;
+    altNames?: string[];
+    signatureAlgorithm?: string;
+    keyAlgorithm?: CertKeyAlgorithm;
+    csr?: string;
+    ttl: string;
+    renewalOfOrderId?: number;
+  }): Promise<{
+    metadata: TDigiCertCertificateRequestMetadata;
+    privateKey: string;
+    immediateCertificateId?: number;
+    orderId: number;
+  }> => {
+    const { digicertCa, client } = await $getActiveDigiCertCa(caId);
+    const { productNameId } = digicertCa.configuration;
+
+    const { certificate, privateKeyPem } = await $buildCertificatePayload({
+      caId,
+      commonName,
+      altNames,
+      signatureAlgorithm,
+      keyAlgorithm,
+      csr
+    });
+
+    const validityDays = parseTtlToDays(ttl);
+
+    const baseOrderPayload = {
+      certificate,
       organization: { id: digicertCa.configuration.organizationId },
       order_validity: { days: validityDays },
       dcv_method: "dns-txt-token" as const,
@@ -458,6 +517,78 @@ export const DigiCertCertificateAuthorityFns = ({
       privateKey: privateKeyPem,
       immediateCertificateId: orderResponse.certificate_id,
       orderId: orderResponse.id
+    };
+  };
+
+  const reissueCertificate = async ({
+    caId,
+    orderId,
+    commonName,
+    altNames = [],
+    signatureAlgorithm,
+    keyAlgorithm = CertKeyAlgorithm.RSA_2048,
+    csr
+  }: {
+    caId: string;
+    orderId: number;
+    commonName: string;
+    altNames?: string[];
+    signatureAlgorithm?: string;
+    keyAlgorithm?: CertKeyAlgorithm;
+    csr?: string;
+  }): Promise<{
+    metadata: TDigiCertCertificateRequestMetadata;
+    privateKey: string;
+    immediateCertificateId?: number;
+    orderId: number;
+  }> => {
+    const { digicertCa, client } = await $getActiveDigiCertCa(caId);
+    const { productNameId, organizationId } = digicertCa.configuration;
+
+    const order = await $getOrderForCa(client, digicertCa.configuration, orderId);
+    const orderStatus = order.status?.toLowerCase();
+    if (orderStatus === DigiCertOrderStatus.ReissuePending) {
+      throw new BadRequestError({
+        message: `DigiCert order ${orderId} already has a reissue in progress. Finish or cancel it in DigiCert CertCentral.`
+      });
+    }
+    if (orderStatus !== DigiCertOrderStatus.Issued || !order.certificate?.id) {
+      throw new BadRequestError({
+        message: `DigiCert order ${orderId} is ${order.status ?? "not issued"}, so it can't be reissued.`
+      });
+    }
+    const previousCertificateId = order.certificate.id;
+
+    const { certificate, privateKeyPem } = await $buildCertificatePayload({
+      caId,
+      commonName,
+      altNames,
+      signatureAlgorithm,
+      keyAlgorithm,
+      csr
+    });
+
+    const reissuePayload: TReissueOrderRequest = { certificate, dcv_method: "dns-txt-token", skip_approval: true };
+    const reissueResponse = await client.reissueOrder(orderId, reissuePayload);
+    const immediateCertificateId =
+      reissueResponse.certificate_id && reissueResponse.certificate_id !== previousCertificateId
+        ? reissueResponse.certificate_id
+        : undefined;
+
+    return {
+      metadata: {
+        digicert: {
+          orderId,
+          certificateId: immediateCertificateId,
+          productNameId,
+          organizationId,
+          orderPlacedAt: new Date().toISOString(),
+          previousCertificateId
+        }
+      },
+      privateKey: privateKeyPem,
+      immediateCertificateId,
+      orderId
     };
   };
 
@@ -539,7 +670,8 @@ export const DigiCertCertificateAuthorityFns = ({
           signatureAlgorithm: parsedFields.signatureAlgorithm ?? certificateRequest.signatureAlgorithm ?? undefined,
           externalMetadata: {
             type: CaType.DIGICERT,
-            orderId: digicertOrderId
+            orderId: digicertOrderId,
+            certificateId: digicertCertificateId
           } satisfies TDigiCertExternalMetadata,
           renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
         },
@@ -648,16 +780,7 @@ export const DigiCertCertificateAuthorityFns = ({
     );
     const client = createDigiCertApiClient(apiKey, baseUrl);
 
-    const order = await client.getOrder(orderId);
-
-    if (
-      order.organization?.id !== digicertCa.configuration.organizationId ||
-      order.product?.name_id !== digicertCa.configuration.productNameId
-    ) {
-      throw new BadRequestError({
-        message: `DigiCert order ${orderId} belongs to a different DigiCert organization or product than this certificate authority.`
-      });
-    }
+    const order = await $getOrderForCa(client, digicertCa.configuration, orderId);
 
     const digicertCertificateId = order.certificate?.id;
     if (!digicertCertificateId) {
@@ -666,15 +789,14 @@ export const DigiCertCertificateAuthorityFns = ({
       });
     }
 
-    const pem = await client.downloadCertificatePem(digicertCertificateId);
-    const { leaf } = extractLeafAndChain(pem);
-    const orderSerialNumber = new x509.X509Certificate(leaf).serialNumber;
-
-    if (orderSerialNumber.toLowerCase() !== serialNumber.toLowerCase()) {
+    const orderSerialNumber = await $getCertificateSerialNumber(client, digicertCertificateId);
+    if (orderSerialNumber !== serialNumber.toLowerCase()) {
       throw new BadRequestError({
         message: `DigiCert order ${orderId} was issued for a different certificate than the one being imported. Check the order number in DigiCert CertCentral.`
       });
     }
+
+    return { certificateId: digicertCertificateId };
   };
 
   const revokeCertificate = async ({
@@ -703,7 +825,7 @@ export const DigiCertCertificateAuthorityFns = ({
         message: `Certificate has no DigiCert order reference in externalMetadata — cannot revoke on DigiCert [certificateId=${cert.id}]`
       });
     }
-    const { orderId } = parsedMetadata.data;
+    const { orderId, certificateId: storedDigiCertCertificateId } = parsedMetadata.data;
 
     const digicertCa = castDbEntryToDigiCertCertificateAuthority(ca);
     const { apiKey, baseUrl } = await getDigiCertClientCredentials(
@@ -713,13 +835,33 @@ export const DigiCertCertificateAuthorityFns = ({
     );
     const client = createDigiCertApiClient(apiKey, baseUrl);
 
+    let digicertCertificateId = storedDigiCertCertificateId;
+    if (!digicertCertificateId) {
+      const order = await client.getOrder(orderId);
+      const currentCertificateId = order.certificate?.id;
+      if (currentCertificateId) {
+        const currentSerialNumber = await $getCertificateSerialNumber(client, currentCertificateId);
+        if (currentSerialNumber !== cert.serialNumber.toLowerCase()) {
+          throw new BadRequestError({
+            message: `This certificate is no longer the current one on DigiCert order ${orderId}, and revoking the order would also revoke the certificate that replaced it. Revoke this certificate in DigiCert CertCentral.`
+          });
+        }
+        digicertCertificateId = currentCertificateId;
+      }
+    }
+
     try {
-      await client.revokeOrder(orderId, `Revoked via Infisical — reason: ${reason}`);
+      const comments = `Revoked via Infisical. Reason: ${reason}`;
+      if (digicertCertificateId) {
+        await client.revokeCertificate(digicertCertificateId, comments);
+      } else {
+        await client.revokeOrder(orderId, comments);
+      }
     } catch (err) {
       const message = (err as Error)?.message ?? "";
-      if (message.includes("order_already_revoked") || message.includes("order_is_revoked")) {
+      if (message.includes("already_revoked") || message.includes("is_revoked")) {
         logger.info(
-          `DigiCert order already revoked upstream — treating as success [caId=${caId}] [certificateId=${cert.id}] [orderId=${orderId}]`
+          `DigiCert certificate already revoked upstream, treating as success [caId=${caId}] [certificateId=${cert.id}] [orderId=${orderId}] [digicertCertificateId=${digicertCertificateId ?? "none"}]`
         );
       } else {
         throw err;
@@ -727,7 +869,7 @@ export const DigiCertCertificateAuthorityFns = ({
     }
 
     logger.info(
-      `DigiCert order revocation submitted [caId=${caId}] [certificateId=${cert.id}] [orderId=${orderId}] [reason=${reason}]`
+      `DigiCert revocation submitted [caId=${caId}] [certificateId=${cert.id}] [orderId=${orderId}] [digicertCertificateId=${digicertCertificateId ?? "none"}] [reason=${reason}]`
     );
   };
 
@@ -736,6 +878,7 @@ export const DigiCertCertificateAuthorityFns = ({
     updateCertificateAuthority,
     listCertificateAuthorities,
     orderCertificate,
+    reissueCertificate,
     fetchAndAttachIssuedCertificate,
     pollOrderForCertificate,
     revokeCertificate,

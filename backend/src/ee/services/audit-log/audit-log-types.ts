@@ -4285,6 +4285,7 @@ interface RenewCertificate {
     applicationName?: string | null;
     serialNumber?: string;
     renewalKeySource: CertificateRenewalKeySource;
+    reissue: boolean;
     changedAttributes: TRenewalAuditChange[];
   };
 }

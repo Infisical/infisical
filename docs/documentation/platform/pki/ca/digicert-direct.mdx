@@ -115,7 +115,9 @@ When you request a certificate through a DigiCert CertCentral CA, the request mo
 <AccordionGroup>
   <Accordion title="What happens when I revoke a DigiCert-issued certificate in Infisical?">
     Revoking the certificate in Infisical immediately marks it `Revoked` in the local inventory
-    **and** submits a revocation request to DigiCert CertCentral against the underlying order.
+    **and** asks DigiCert CertCentral to revoke that certificate only, so other certificates on the
+    same order stay valid. If a newer certificate has already replaced it on the order, for example
+    after a reissue made in CertCentral, revoke it in DigiCert CertCentral instead.
     Depending on your CertCentral account's revocation policy, DigiCert may queue that request for
     administrator approval before the certificate is actually revoked on their side.
   </Accordion>

@@ -12,7 +12,8 @@ import {
   TOrderStatusChangesResponse,
   TOrganizationValidationsResponse,
   TPlaceOrderRequest,
-  TPlaceOrderResponse
+  TPlaceOrderResponse,
+  TReissueOrderRequest
 } from "./digicert-certificate-authority-types";
 
 export type TDigiCertApiClient = ReturnType<typeof createDigiCertApiClient>;
@@ -54,7 +55,10 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
       return data;
     }, `order placement for product ${productSlug}`);
 
-  const reissueOrder = async <TResp = TPlaceOrderResponse>(orderId: number, body: Record<string, unknown>) =>
+  const reissueOrder = async <TResp = TPlaceOrderResponse>(
+    orderId: number,
+    body: TReissueOrderRequest | Record<string, unknown>
+  ) =>
     wrap(async () => {
       const { data } = await request.post<TResp>(`${baseURL}/order/certificate/${orderId}/reissue`, body, { headers });
       return data;
@@ -118,6 +122,11 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
       await request.put(`${baseURL}/order/certificate/${orderId}/revoke`, { comments }, { headers });
     }, `order revocation for ${orderId}`);
 
+  const revokeCertificate = async (certificateId: number, comments: string) =>
+    wrap(async () => {
+      await request.put(`${baseURL}/certificate/${certificateId}/revoke`, { comments }, { headers });
+    }, `certificate revocation for ${certificateId}`);
+
   const listOrderStatusChanges = async ({ seconds }: { seconds: number }) =>
     wrap(async () => {
       const params = new URLSearchParams({ seconds: String(seconds) });
@@ -137,6 +146,7 @@ export const createDigiCertApiClient = (apiKey: string, baseURL: string) => {
     downloadCertificatePem,
     getOrdersByAlternativeId,
     revokeOrder,
+    revokeCertificate,
     listOrderStatusChanges
   };
 };

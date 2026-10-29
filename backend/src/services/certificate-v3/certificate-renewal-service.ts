@@ -79,6 +79,7 @@ import {
   validateCertificateRequestLicense,
   validatePqcLicense
 } from "../certificate-common/certificate-utils";
+import { DigiCertExternalMetadataSchema } from "../certificate-common/external-metadata-schemas";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
 import { TCertificateRequestDALFactory } from "../certificate-request/certificate-request-dal";
 import {
@@ -1079,11 +1080,13 @@ export const certificateRenewalServiceFactory = ({
     removeRootsFromChain,
     renewalKeySource: requestedKeySource,
     csr,
-    attributes
+    attributes,
+    externalConfiguration
   }: Omit<TRenewCertificateDTO, "certificateRequestId"> & {
     internal?: boolean;
   }): Promise<TCertificateIssuanceResponse> => {
     const actorCtx: TRenewalActor = { actor, actorId, actorAuthMethod, actorOrgId };
+    const reissue = Boolean(externalConfiguration?.reissue);
     const keySource = resolveRenewalKeySource({ renewalKeySource: requestedKeySource, csr });
     let csrRenewalRequest: TCertificateRequest | null = null;
     if (keySource === CertificateRenewalKeySource.Csr && csr) {
@@ -1130,6 +1133,20 @@ export const certificateRenewalServiceFactory = ({
           },
           tx
         );
+
+        if (reissue && !(caType && caSupportsCapability(caType, CaCapability.REISSUE_CERTIFICATES))) {
+          throw new BadRequestError({
+            message: "Reissue is only available for DigiCert certificates."
+          });
+        }
+        if (reissue && attributes?.ttl) {
+          throw new BadRequestError({ message: "Remove the TTL. It can't be set on a reissue." });
+        }
+        if (reissue && !DigiCertExternalMetadataSchema.safeParse(originalCert.externalMetadata).success) {
+          throw new BadRequestError({
+            message: "This certificate has no DigiCert order to reissue. Place a new order instead."
+          });
+        }
 
         const { certificateRequest, replayedRequest, ttl, resolvedCustomExtensions } = $buildValidatedRenewalRequest({
           originalCert,
@@ -1465,6 +1482,7 @@ export const certificateRenewalServiceFactory = ({
         state: renewalRequest.state,
         locality: renewalRequest.locality,
         isRenewal: true,
+        ...(reissue && { isReissue: true }),
         originalCertificateId: certificateId,
         certificateRequestId: certificateRequest.id,
         basicConstraints: renewalBasicConstraints,

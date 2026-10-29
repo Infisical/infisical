@@ -69,6 +69,7 @@ export const DigiCertCertificateRequestMetadataSchema = z.object({
     lastCheckedAt: z.string().optional(),
     lastCheckStatus: z.string().optional(),
     isRenewal: z.boolean().optional(),
-    originalCertificateId: z.string().uuid().optional()
+    originalCertificateId: z.string().uuid().optional(),
+    previousCertificateId: z.number().int().optional()
   })
 });

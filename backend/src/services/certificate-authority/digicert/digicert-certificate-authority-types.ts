@@ -31,6 +31,17 @@ export type TPlaceOrderRequest = {
   renewal_of_order_id?: number;
 };
 
+export type TReissueOrderRequest = {
+  certificate: {
+    common_name: string;
+    dns_names?: string[];
+    csr: string;
+    signature_hash?: string;
+  };
+  dcv_method?: "dns-txt-token";
+  skip_approval?: boolean;
+};
+
 export type TDigiCertDcvToken = {
   token: string;
   status?: string;
