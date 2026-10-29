@@ -46,6 +46,10 @@ output-options:
     - syncGitHubSecretSync
     - removeGitHubSecretSyncSecrets
     - deleteGitHubAppConnection
+    - createVercelAppConnection
+    - createVercelSecretSync
+    - getVercelSecretSync
+    - syncVercelSecretSync
     - attachUniversalAuth
     - createUniversalAuthClientSecret
     - loginWithUniversalAuth

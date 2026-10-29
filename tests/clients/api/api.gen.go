@@ -7254,6 +7254,189 @@ func (e UpdatePostgresAppConnection500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CreateVercelAppConnectionJSONBodyIsAutoRotationEnabled.
+const (
+	CreateVercelAppConnectionJSONBodyIsAutoRotationEnabledFalse CreateVercelAppConnectionJSONBodyIsAutoRotationEnabled = false
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnectionJSONBodyIsAutoRotationEnabled enum.
+func (e CreateVercelAppConnectionJSONBodyIsAutoRotationEnabled) Valid() bool {
+	switch e {
+	case CreateVercelAppConnectionJSONBodyIsAutoRotationEnabledFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentials.
+const (
+	CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentialsFalse CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentials = false
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentials enum.
+func (e CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentials) Valid() bool {
+	switch e {
+	case CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentialsFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnectionJSONBody0Method.
+const (
+	CreateVercelAppConnectionJSONBody0MethodApiToken CreateVercelAppConnectionJSONBody0Method = "api-token"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnectionJSONBody0Method enum.
+func (e CreateVercelAppConnectionJSONBody0Method) Valid() bool {
+	switch e {
+	case CreateVercelAppConnectionJSONBody0MethodApiToken:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	CreateVercelAppConnection200JSONResponseBodyAppConnection0AppVercel CreateVercelAppConnection200JSONResponseBodyAppConnection0App = "vercel"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e CreateVercelAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection200JSONResponseBodyAppConnection0AppVercel:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	CreateVercelAppConnection200JSONResponseBodyAppConnection0MethodApiToken CreateVercelAppConnection200JSONResponseBodyAppConnection0Method = "api-token"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e CreateVercelAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection200JSONResponseBodyAppConnection0MethodApiToken:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection400JSONResponseBodyStatusCode.
+const (
+	CreateVercelAppConnection400JSONResponseBodyStatusCodeN400 CreateVercelAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection400JSONResponseBodyStatusCode enum.
+func (e CreateVercelAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection401JSONResponseBodyStatusCode.
+const (
+	CreateVercelAppConnection401JSONResponseBodyStatusCodeN401 CreateVercelAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection401JSONResponseBodyStatusCode enum.
+func (e CreateVercelAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection403JSONResponseBodyStatusCode.
+const (
+	CreateVercelAppConnection403JSONResponseBodyStatusCodeN403 CreateVercelAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection403JSONResponseBodyStatusCode enum.
+func (e CreateVercelAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection404JSONResponseBodyStatusCode.
+const (
+	CreateVercelAppConnection404JSONResponseBodyStatusCodeN404 CreateVercelAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection404JSONResponseBodyStatusCode enum.
+func (e CreateVercelAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection422JSONResponseBodyStatusCode.
+const (
+	CreateVercelAppConnection422JSONResponseBodyStatusCodeN422 CreateVercelAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection422JSONResponseBodyStatusCode enum.
+func (e CreateVercelAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection500JSONResponseBodyStatusCode.
+const (
+	CreateVercelAppConnection500JSONResponseBodyStatusCodeN500 CreateVercelAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection500JSONResponseBodyStatusCode enum.
+func (e CreateVercelAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RefreshAuthToken400JSONResponseBodyStatusCode.
 const (
 	RefreshAuthToken400JSONResponseBodyStatusCodeN400 RefreshAuthToken400JSONResponseBodyStatusCode = 400
@@ -9845,6 +10028,7 @@ const (
 	DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenClientWrite                DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissions = "confirmation_token_client_write"
 	DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenRead                       DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissions = "confirmation_token_read"
 	DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountRead                        DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissions = "connected_account_read"
+	DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountWrite                       DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissions = "connected_account_write"
 	DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsCouponRead                                  DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissions = "coupon_read"
 	DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsCouponWrite                                 DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissions = "coupon_write"
 	DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsCreditNoteRead                              DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissions = "credit_note_read"
@@ -10040,6 +10224,8 @@ func (e DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissio
 	case DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenRead:
 		return true
 	case DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountRead:
+		return true
+	case DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountWrite:
 		return true
 	case DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsCouponRead:
 		return true
@@ -11771,6 +11957,7 @@ const (
 	ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenClientWrite                ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "confirmation_token_client_write"
 	ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenRead                       ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "confirmation_token_read"
 	ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountRead                        ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "connected_account_read"
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountWrite                       ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "connected_account_write"
 	ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsCouponRead                                  ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "coupon_read"
 	ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsCouponWrite                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "coupon_write"
 	ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsCreditNoteRead                              ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "credit_note_read"
@@ -11966,6 +12153,8 @@ func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersP
 	case ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenRead:
 		return true
 	case ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountRead:
+		return true
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountWrite:
 		return true
 	case ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsCouponRead:
 		return true
@@ -13703,6 +13892,7 @@ const (
 	ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenClientWrite                ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissions = "confirmation_token_client_write"
 	ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenRead                       ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissions = "confirmation_token_read"
 	ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountRead                        ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissions = "connected_account_read"
+	ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountWrite                       ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissions = "connected_account_write"
 	ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsCouponRead                                  ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissions = "coupon_read"
 	ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsCouponWrite                                 ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissions = "coupon_write"
 	ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsCreditNoteRead                              ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissions = "credit_note_read"
@@ -13898,6 +14088,8 @@ func (e ListProjectSecretsOverview200JSONResponseBodySecretRotations28Parameters
 	case ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenRead:
 		return true
 	case ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountRead:
+		return true
+	case ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountWrite:
 		return true
 	case ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsCouponRead:
 		return true
@@ -44883,6 +45075,738 @@ func (e CreateOciVaultSecretSync500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CreateVercelSecretSyncJSONBodyDestinationConfig0Env0.
+const (
+	CreateVercelSecretSyncJSONBodyDestinationConfig0Env0Development CreateVercelSecretSyncJSONBodyDestinationConfig0Env0 = "development"
+	CreateVercelSecretSyncJSONBodyDestinationConfig0Env0Preview     CreateVercelSecretSyncJSONBodyDestinationConfig0Env0 = "preview"
+	CreateVercelSecretSyncJSONBodyDestinationConfig0Env0Production  CreateVercelSecretSyncJSONBodyDestinationConfig0Env0 = "production"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSyncJSONBodyDestinationConfig0Env0 enum.
+func (e CreateVercelSecretSyncJSONBodyDestinationConfig0Env0) Valid() bool {
+	switch e {
+	case CreateVercelSecretSyncJSONBodyDestinationConfig0Env0Development:
+		return true
+	case CreateVercelSecretSyncJSONBodyDestinationConfig0Env0Preview:
+		return true
+	case CreateVercelSecretSyncJSONBodyDestinationConfig0Env0Production:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSyncJSONBodyDestinationConfig0Scope.
+const (
+	CreateVercelSecretSyncJSONBodyDestinationConfig0ScopeProject CreateVercelSecretSyncJSONBodyDestinationConfig0Scope = "project"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSyncJSONBodyDestinationConfig0Scope enum.
+func (e CreateVercelSecretSyncJSONBodyDestinationConfig0Scope) Valid() bool {
+	switch e {
+	case CreateVercelSecretSyncJSONBodyDestinationConfig0ScopeProject:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSyncJSONBodyDestinationConfig1Scope.
+const (
+	CreateVercelSecretSyncJSONBodyDestinationConfig1ScopeTeam CreateVercelSecretSyncJSONBodyDestinationConfig1Scope = "team"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSyncJSONBodyDestinationConfig1Scope enum.
+func (e CreateVercelSecretSyncJSONBodyDestinationConfig1Scope) Valid() bool {
+	switch e {
+	case CreateVercelSecretSyncJSONBodyDestinationConfig1ScopeTeam:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments.
+const (
+	CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironmentsDevelopment CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments = "development"
+	CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironmentsPreview     CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments = "preview"
+	CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironmentsProduction  CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments = "production"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments enum.
+func (e CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments) Valid() bool {
+	switch e {
+	case CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironmentsDevelopment:
+		return true
+	case CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironmentsPreview:
+		return true
+	case CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironmentsProduction:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior.
+const (
+	CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehaviorImportPrioritizeDestination CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior = "import-prioritize-destination"
+	CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehaviorImportPrioritizeSource      CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior = "import-prioritize-source"
+	CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehaviorOverwriteDestination        CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior = "overwrite-destination"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior enum.
+func (e CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior) Valid() bool {
+	switch e {
+	case CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehaviorImportPrioritizeDestination:
+		return true
+	case CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehaviorImportPrioritizeSource:
+		return true
+	case CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehaviorOverwriteDestination:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp.
+const (
+	CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionAppVercel CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp = "vercel"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp enum.
+func (e CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionAppVercel:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync200JSONResponseBodySecretSyncDestination.
+const (
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationVercel CreateVercelSecretSync200JSONResponseBodySecretSyncDestination = "vercel"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync200JSONResponseBodySecretSyncDestination enum.
+func (e CreateVercelSecretSync200JSONResponseBodySecretSyncDestination) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationVercel:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0.
+const (
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Development CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "development"
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Preview     CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "preview"
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Production  CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "production"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 enum.
+func (e CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Development:
+		return true
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Preview:
+		return true
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Production:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope.
+const (
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeProject CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope = "project"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope enum.
+func (e CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeProject:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope.
+const (
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeTeam CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope = "team"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope enum.
+func (e CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeTeam:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments.
+const (
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsDevelopment CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "development"
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsPreview     CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "preview"
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsProduction  CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "production"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments enum.
+func (e CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsDevelopment:
+		return true
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsPreview:
+		return true
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsProduction:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior.
+const (
+	CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeDestination CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "import-prioritize-destination"
+	CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeSource      CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "import-prioritize-source"
+	CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination        CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "overwrite-destination"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior enum.
+func (e CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeDestination:
+		return true
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeSource:
+		return true
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync400JSONResponseBodyStatusCode.
+const (
+	CreateVercelSecretSync400JSONResponseBodyStatusCodeN400 CreateVercelSecretSync400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync400JSONResponseBodyStatusCode enum.
+func (e CreateVercelSecretSync400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync401JSONResponseBodyStatusCode.
+const (
+	CreateVercelSecretSync401JSONResponseBodyStatusCodeN401 CreateVercelSecretSync401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync401JSONResponseBodyStatusCode enum.
+func (e CreateVercelSecretSync401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync403JSONResponseBodyStatusCode.
+const (
+	CreateVercelSecretSync403JSONResponseBodyStatusCodeN403 CreateVercelSecretSync403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync403JSONResponseBodyStatusCode enum.
+func (e CreateVercelSecretSync403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync404JSONResponseBodyStatusCode.
+const (
+	CreateVercelSecretSync404JSONResponseBodyStatusCodeN404 CreateVercelSecretSync404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync404JSONResponseBodyStatusCode enum.
+func (e CreateVercelSecretSync404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync422JSONResponseBodyStatusCode.
+const (
+	CreateVercelSecretSync422JSONResponseBodyStatusCodeN422 CreateVercelSecretSync422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync422JSONResponseBodyStatusCode enum.
+func (e CreateVercelSecretSync422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync500JSONResponseBodyStatusCode.
+const (
+	CreateVercelSecretSync500JSONResponseBodyStatusCodeN500 CreateVercelSecretSync500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync500JSONResponseBodyStatusCode enum.
+func (e CreateVercelSecretSync500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp.
+const (
+	GetVercelSecretSync200JSONResponseBodySecretSyncConnectionAppVercel GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp = "vercel"
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp enum.
+func (e GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp) Valid() bool {
+	switch e {
+	case GetVercelSecretSync200JSONResponseBodySecretSyncConnectionAppVercel:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync200JSONResponseBodySecretSyncDestination.
+const (
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationVercel GetVercelSecretSync200JSONResponseBodySecretSyncDestination = "vercel"
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync200JSONResponseBodySecretSyncDestination enum.
+func (e GetVercelSecretSync200JSONResponseBodySecretSyncDestination) Valid() bool {
+	switch e {
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationVercel:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0.
+const (
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Development GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "development"
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Preview     GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "preview"
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Production  GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "production"
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 enum.
+func (e GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) Valid() bool {
+	switch e {
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Development:
+		return true
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Preview:
+		return true
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Production:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope.
+const (
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeProject GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope = "project"
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope enum.
+func (e GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope) Valid() bool {
+	switch e {
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeProject:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope.
+const (
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeTeam GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope = "team"
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope enum.
+func (e GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope) Valid() bool {
+	switch e {
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeTeam:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments.
+const (
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsDevelopment GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "development"
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsPreview     GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "preview"
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsProduction  GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "production"
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments enum.
+func (e GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments) Valid() bool {
+	switch e {
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsDevelopment:
+		return true
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsPreview:
+		return true
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsProduction:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior.
+const (
+	GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeDestination GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "import-prioritize-destination"
+	GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeSource      GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "import-prioritize-source"
+	GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination        GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "overwrite-destination"
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior enum.
+func (e GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior) Valid() bool {
+	switch e {
+	case GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeDestination:
+		return true
+	case GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeSource:
+		return true
+	case GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync400JSONResponseBodyStatusCode.
+const (
+	GetVercelSecretSync400JSONResponseBodyStatusCodeN400 GetVercelSecretSync400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync400JSONResponseBodyStatusCode enum.
+func (e GetVercelSecretSync400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetVercelSecretSync400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync401JSONResponseBodyStatusCode.
+const (
+	GetVercelSecretSync401JSONResponseBodyStatusCodeN401 GetVercelSecretSync401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync401JSONResponseBodyStatusCode enum.
+func (e GetVercelSecretSync401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetVercelSecretSync401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync403JSONResponseBodyStatusCode.
+const (
+	GetVercelSecretSync403JSONResponseBodyStatusCodeN403 GetVercelSecretSync403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync403JSONResponseBodyStatusCode enum.
+func (e GetVercelSecretSync403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetVercelSecretSync403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync404JSONResponseBodyStatusCode.
+const (
+	GetVercelSecretSync404JSONResponseBodyStatusCodeN404 GetVercelSecretSync404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync404JSONResponseBodyStatusCode enum.
+func (e GetVercelSecretSync404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetVercelSecretSync404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync422JSONResponseBodyStatusCode.
+const (
+	GetVercelSecretSync422JSONResponseBodyStatusCodeN422 GetVercelSecretSync422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync422JSONResponseBodyStatusCode enum.
+func (e GetVercelSecretSync422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetVercelSecretSync422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync500JSONResponseBodyStatusCode.
+const (
+	GetVercelSecretSync500JSONResponseBodyStatusCodeN500 GetVercelSecretSync500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync500JSONResponseBodyStatusCode enum.
+func (e GetVercelSecretSync500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetVercelSecretSync500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp.
+const (
+	SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionAppVercel SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp = "vercel"
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp enum.
+func (e SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionAppVercel:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync200JSONResponseBodySecretSyncDestination.
+const (
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationVercel SyncVercelSecretSync200JSONResponseBodySecretSyncDestination = "vercel"
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync200JSONResponseBodySecretSyncDestination enum.
+func (e SyncVercelSecretSync200JSONResponseBodySecretSyncDestination) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationVercel:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0.
+const (
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Development SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "development"
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Preview     SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "preview"
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Production  SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "production"
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 enum.
+func (e SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Development:
+		return true
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Preview:
+		return true
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Production:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope.
+const (
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeProject SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope = "project"
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope enum.
+func (e SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeProject:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope.
+const (
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeTeam SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope = "team"
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope enum.
+func (e SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeTeam:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments.
+const (
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsDevelopment SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "development"
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsPreview     SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "preview"
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsProduction  SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "production"
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments enum.
+func (e SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsDevelopment:
+		return true
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsPreview:
+		return true
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsProduction:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior.
+const (
+	SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeDestination SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "import-prioritize-destination"
+	SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeSource      SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "import-prioritize-source"
+	SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination        SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "overwrite-destination"
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior enum.
+func (e SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeDestination:
+		return true
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeSource:
+		return true
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync400JSONResponseBodyStatusCode.
+const (
+	SyncVercelSecretSync400JSONResponseBodyStatusCodeN400 SyncVercelSecretSync400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync400JSONResponseBodyStatusCode enum.
+func (e SyncVercelSecretSync400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync401JSONResponseBodyStatusCode.
+const (
+	SyncVercelSecretSync401JSONResponseBodyStatusCodeN401 SyncVercelSecretSync401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync401JSONResponseBodyStatusCode enum.
+func (e SyncVercelSecretSync401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync403JSONResponseBodyStatusCode.
+const (
+	SyncVercelSecretSync403JSONResponseBodyStatusCodeN403 SyncVercelSecretSync403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync403JSONResponseBodyStatusCode enum.
+func (e SyncVercelSecretSync403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync404JSONResponseBodyStatusCode.
+const (
+	SyncVercelSecretSync404JSONResponseBodyStatusCodeN404 SyncVercelSecretSync404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync404JSONResponseBodyStatusCode enum.
+func (e SyncVercelSecretSync404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync422JSONResponseBodyStatusCode.
+const (
+	SyncVercelSecretSync422JSONResponseBodyStatusCodeN422 SyncVercelSecretSync422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync422JSONResponseBodyStatusCode enum.
+func (e SyncVercelSecretSync422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync500JSONResponseBodyStatusCode.
+const (
+	SyncVercelSecretSync500JSONResponseBodyStatusCodeN500 SyncVercelSecretSync500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync500JSONResponseBodyStatusCode enum.
+func (e SyncVercelSecretSync500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListSecretValidationRules200JSONResponseBodySecretValidationRules0Type.
 const (
 	ListSecretValidationRules200JSONResponseBodySecretValidationRules0TypeStaticSecrets ListSecretValidationRules200JSONResponseBodySecretValidationRules0Type = "static-secrets"
@@ -63841,6 +64765,170 @@ type UpdatePostgresAppConnection422JSONResponseBodyStatusCode float32
 // UpdatePostgresAppConnection500JSONResponseBodyStatusCode defines parameters for UpdatePostgresAppConnection.
 type UpdatePostgresAppConnection500JSONResponseBodyStatusCode float32
 
+// CreateVercelAppConnectionJSONBody defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBody struct {
+	// Description An optional description for the Vercel Connection.
+	Description *string `json:"description,omitempty"`
+
+	// GatewayId Not supported for Vercel Connections.
+	GatewayId *CreateVercelAppConnectionJSONBody_GatewayId `json:"gatewayId,omitempty"`
+
+	// GatewayPoolId Not supported for Vercel Connections.
+	GatewayPoolId *CreateVercelAppConnectionJSONBody_GatewayPoolId `json:"gatewayPoolId,omitempty"`
+
+	// IsAutoRotationEnabled Not supported for Vercel Connections.
+	IsAutoRotationEnabled *CreateVercelAppConnectionJSONBodyIsAutoRotationEnabled `json:"isAutoRotationEnabled,omitempty"`
+
+	// IsPlatformManagedCredentials Not supported for Vercel Connections.
+	IsPlatformManagedCredentials *CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentials `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Name The name of the Vercel Connection to create. Must be slug-friendly.
+	Name string `json:"name"`
+
+	// ProjectId The ID of the project to create the Vercel Connection in.
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation Not supported for Vercel Connections.
+	Rotation *CreateVercelAppConnectionJSONBody_Rotation `json:"rotation,omitempty"`
+	union    json.RawMessage
+}
+
+// CreateVercelAppConnectionJSONBodyGatewayId0 defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBodyGatewayId0 = interface{}
+
+// CreateVercelAppConnectionJSONBodyGatewayId1 defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBodyGatewayId1 = interface{}
+
+// CreateVercelAppConnectionJSONBody_GatewayId defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBody_GatewayId struct {
+	union json.RawMessage
+}
+
+// CreateVercelAppConnectionJSONBodyGatewayPoolId0 defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBodyGatewayPoolId0 = interface{}
+
+// CreateVercelAppConnectionJSONBodyGatewayPoolId1 defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBodyGatewayPoolId1 = interface{}
+
+// CreateVercelAppConnectionJSONBody_GatewayPoolId defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBody_GatewayPoolId struct {
+	union json.RawMessage
+}
+
+// CreateVercelAppConnectionJSONBodyIsAutoRotationEnabled defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBodyIsAutoRotationEnabled bool
+
+// CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentials defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentials bool
+
+// CreateVercelAppConnectionJSONBodyRotation0 defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBodyRotation0 = interface{}
+
+// CreateVercelAppConnectionJSONBodyRotation1 defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBodyRotation1 = interface{}
+
+// CreateVercelAppConnectionJSONBody_Rotation defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBody_Rotation struct {
+	union json.RawMessage
+}
+
+// CreateVercelAppConnectionJSONBody0 defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBody0 struct {
+	// Credentials The credentials used to connect with Vercel.
+	Credentials struct {
+		// ApiToken The API token used to authenticate with Vercel.
+		ApiToken string `json:"apiToken"`
+	} `json:"credentials"`
+
+	// Method The method used to authenticate with Vercel.
+	Method CreateVercelAppConnectionJSONBody0Method `json:"method"`
+}
+
+// CreateVercelAppConnectionJSONBody0Method defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBody0Method string
+
+// CreateVercelAppConnection200JSONResponseBodyAppConnection0 defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection200JSONResponseBodyAppConnection0 struct {
+	App                          CreateVercelAppConnection200JSONResponseBodyAppConnection0App    `json:"app"`
+	CreatedAt                    time.Time                                                        `json:"createdAt"`
+	Credentials                  map[string]interface{}                                           `json:"credentials"`
+	CredentialsHash              *string                                                          `json:"credentialsHash,omitempty"`
+	Description                  *string                                                          `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                              `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                              `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                               `json:"id"`
+	IsAutoRotationEnabled        *bool                                                            `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                            `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateVercelAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                           `json:"name"`
+	OrgId                        openapi_types.UUID                                               `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateVercelAppConnection200JSONResponseBodyAppConnection0App defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection200JSONResponseBodyAppConnection0App string
+
+// CreateVercelAppConnection200JSONResponseBodyAppConnection0Method defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection200JSONResponseBodyAppConnection0Method string
+
+// CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// CreateVercelAppConnection200JSONResponseBody_AppConnection defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// CreateVercelAppConnection400JSONResponseBodyStatusCode defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection400JSONResponseBodyStatusCode float32
+
+// CreateVercelAppConnection401JSONResponseBodyStatusCode defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection401JSONResponseBodyStatusCode float32
+
+// CreateVercelAppConnection403JSONResponseBodyStatusCode defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection403JSONResponseBodyStatusCode float32
+
+// CreateVercelAppConnection404JSONResponseBodyStatusCode defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection404JSONResponseBodyStatusCode float32
+
+// CreateVercelAppConnection422JSONResponseBodyStatusCode defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection422JSONResponseBodyStatusCode float32
+
+// CreateVercelAppConnection500JSONResponseBodyStatusCode defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection500JSONResponseBodyStatusCode float32
+
 // RefreshAuthToken400JSONResponseBodyStatusCode defines parameters for RefreshAuthToken.
 type RefreshAuthToken400JSONResponseBodyStatusCode float32
 
@@ -81302,6 +82390,406 @@ type CreateOciVaultSecretSync422JSONResponseBodyStatusCode float32
 // CreateOciVaultSecretSync500JSONResponseBodyStatusCode defines parameters for CreateOciVaultSecretSync.
 type CreateOciVaultSecretSync500JSONResponseBodyStatusCode float32
 
+// CreateVercelSecretSyncJSONBody defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBody struct {
+	// ConnectionId The ID of the Vercel Connection to use for syncing.
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+
+	// Description An optional description for the Vercel Sync.
+	Description       *string                                          `json:"description,omitempty"`
+	DestinationConfig CreateVercelSecretSyncJSONBody_DestinationConfig `json:"destinationConfig"`
+
+	// Environment The slug of the project environment to sync secrets from.
+	Environment string `json:"environment"`
+
+	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
+	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
+
+	// Name The name of the Vercel Sync to create. Must be slug-friendly.
+	Name string `json:"name"`
+
+	// ProjectId The ID of the project to create the sync in.
+	ProjectId string `json:"projectId"`
+
+	// SecretPath The folder path to sync secrets from.
+	SecretPath string `json:"secretPath"`
+
+	// SyncOptions Optional parameters to modify how secrets are synced.
+	SyncOptions struct {
+		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+		InitialSyncBehavior CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+		// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+		KeySchema *string `json:"keySchema,omitempty"`
+	} `json:"syncOptions"`
+}
+
+// CreateVercelSecretSyncJSONBodyDestinationConfig0 defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBodyDestinationConfig0 struct {
+	// App The ID of the Vercel app to sync secrets to.
+	App string `json:"app"`
+
+	// AppName The name of the Vercel app to sync secrets to.
+	AppName string `json:"appName"`
+
+	// Branch The branch to sync preview secrets to.
+	Branch *string `json:"branch,omitempty"`
+
+	// Env The ID of the Vercel environment to sync secrets to.
+	Env   CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env `json:"env"`
+	Scope CreateVercelSecretSyncJSONBodyDestinationConfig0Scope  `json:"scope"`
+
+	// Sensitive Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment.
+	Sensitive *bool `json:"sensitive,omitempty"`
+
+	// TeamId The ID of the Vercel team to sync secrets to.
+	TeamId string `json:"teamId"`
+}
+
+// CreateVercelSecretSyncJSONBodyDestinationConfig0Env0 defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBodyDestinationConfig0Env0 string
+
+// CreateVercelSecretSyncJSONBodyDestinationConfig0Env1 defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBodyDestinationConfig0Env1 = string
+
+// CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env struct {
+	union json.RawMessage
+}
+
+// CreateVercelSecretSyncJSONBodyDestinationConfig0Scope defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBodyDestinationConfig0Scope string
+
+// CreateVercelSecretSyncJSONBodyDestinationConfig1 defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBodyDestinationConfig1 struct {
+	// ApplyToAllCustomEnvironments Whether to apply shared environment variables to all custom environments in the team.
+	ApplyToAllCustomEnvironments *bool                                                 `json:"applyToAllCustomEnvironments,omitempty"`
+	Scope                        CreateVercelSecretSyncJSONBodyDestinationConfig1Scope `json:"scope"`
+
+	// Sensitive Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment.
+	Sensitive *bool `json:"sensitive,omitempty"`
+
+	// TargetEnvironments An optional array of Vercel default environments (development, preview, production) to add shared environment variables to.
+	TargetEnvironments *[]CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments `json:"targetEnvironments,omitempty"`
+
+	// TargetProjects An optional array of Vercel projects to add shared environment variables to.
+	TargetProjects *[]string `json:"targetProjects,omitempty"`
+
+	// TeamId The ID of the Vercel team to sync secrets to.
+	TeamId string `json:"teamId"`
+
+	// TeamName The name of the team to sync the secrets to. This is an optional field only intended for display purposes.
+	TeamName *string `json:"teamName,omitempty"`
+}
+
+// CreateVercelSecretSyncJSONBodyDestinationConfig1Scope defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBodyDestinationConfig1Scope string
+
+// CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments string
+
+// CreateVercelSecretSyncJSONBody_DestinationConfig defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBody_DestinationConfig struct {
+	union json.RawMessage
+}
+
+// CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior string
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp string
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncDestination defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncDestination string
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 struct {
+	// App The ID of the Vercel app to sync secrets to.
+	App string `json:"app"`
+
+	// AppName The name of the Vercel app to sync secrets to.
+	AppName string `json:"appName"`
+
+	// Branch The branch to sync preview secrets to.
+	Branch *string `json:"branch,omitempty"`
+
+	// Env The ID of the Vercel environment to sync secrets to.
+	Env   CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env `json:"env"`
+	Scope CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope   `json:"scope"`
+
+	// Sensitive Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment.
+	Sensitive *bool `json:"sensitive,omitempty"`
+
+	// TeamId The ID of the Vercel team to sync secrets to.
+	TeamId string `json:"teamId"`
+}
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 string
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 = string
+
+// CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env struct {
+	union json.RawMessage
+}
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 struct {
+	// ApplyToAllCustomEnvironments Whether to apply shared environment variables to all custom environments in the team.
+	ApplyToAllCustomEnvironments *bool                                                                      `json:"applyToAllCustomEnvironments,omitempty"`
+	Scope                        CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+
+	// Sensitive Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment.
+	Sensitive *bool `json:"sensitive,omitempty"`
+
+	// TargetEnvironments An optional array of Vercel default environments (development, preview, production) to add shared environment variables to.
+	TargetEnvironments *[]CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments `json:"targetEnvironments,omitempty"`
+
+	// TargetProjects An optional array of Vercel projects to add shared environment variables to.
+	TargetProjects *[]string `json:"targetProjects,omitempty"`
+
+	// TeamId The ID of the Vercel team to sync secrets to.
+	TeamId string `json:"teamId"`
+
+	// TeamName The name of the team to sync the secrets to. This is an optional field only intended for display purposes.
+	TeamName *string `json:"teamName,omitempty"`
+}
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments string
+
+// CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig struct {
+	union json.RawMessage
+}
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior string
+
+// CreateVercelSecretSync400JSONResponseBodyStatusCode defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync400JSONResponseBodyStatusCode float32
+
+// CreateVercelSecretSync401JSONResponseBodyStatusCode defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync401JSONResponseBodyStatusCode float32
+
+// CreateVercelSecretSync403JSONResponseBodyStatusCode defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync403JSONResponseBodyStatusCode float32
+
+// CreateVercelSecretSync404JSONResponseBodyStatusCode defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync404JSONResponseBodyStatusCode float32
+
+// CreateVercelSecretSync422JSONResponseBodyStatusCode defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync422JSONResponseBodyStatusCode float32
+
+// CreateVercelSecretSync500JSONResponseBodyStatusCode defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync500JSONResponseBodyStatusCode float32
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp string
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncDestination defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncDestination string
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 struct {
+	// App The ID of the Vercel app to sync secrets to.
+	App string `json:"app"`
+
+	// AppName The name of the Vercel app to sync secrets to.
+	AppName string `json:"appName"`
+
+	// Branch The branch to sync preview secrets to.
+	Branch *string `json:"branch,omitempty"`
+
+	// Env The ID of the Vercel environment to sync secrets to.
+	Env   GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env `json:"env"`
+	Scope GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope   `json:"scope"`
+
+	// Sensitive Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment.
+	Sensitive *bool `json:"sensitive,omitempty"`
+
+	// TeamId The ID of the Vercel team to sync secrets to.
+	TeamId string `json:"teamId"`
+}
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 string
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 = string
+
+// GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env struct {
+	union json.RawMessage
+}
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 struct {
+	// ApplyToAllCustomEnvironments Whether to apply shared environment variables to all custom environments in the team.
+	ApplyToAllCustomEnvironments *bool                                                                   `json:"applyToAllCustomEnvironments,omitempty"`
+	Scope                        GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+
+	// Sensitive Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment.
+	Sensitive *bool `json:"sensitive,omitempty"`
+
+	// TargetEnvironments An optional array of Vercel default environments (development, preview, production) to add shared environment variables to.
+	TargetEnvironments *[]GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments `json:"targetEnvironments,omitempty"`
+
+	// TargetProjects An optional array of Vercel projects to add shared environment variables to.
+	TargetProjects *[]string `json:"targetProjects,omitempty"`
+
+	// TeamId The ID of the Vercel team to sync secrets to.
+	TeamId string `json:"teamId"`
+
+	// TeamName The name of the team to sync the secrets to. This is an optional field only intended for display purposes.
+	TeamName *string `json:"teamName,omitempty"`
+}
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments string
+
+// GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig struct {
+	union json.RawMessage
+}
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior string
+
+// GetVercelSecretSync400JSONResponseBodyStatusCode defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync400JSONResponseBodyStatusCode float32
+
+// GetVercelSecretSync401JSONResponseBodyStatusCode defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync401JSONResponseBodyStatusCode float32
+
+// GetVercelSecretSync403JSONResponseBodyStatusCode defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync403JSONResponseBodyStatusCode float32
+
+// GetVercelSecretSync404JSONResponseBodyStatusCode defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync404JSONResponseBodyStatusCode float32
+
+// GetVercelSecretSync422JSONResponseBodyStatusCode defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync422JSONResponseBodyStatusCode float32
+
+// GetVercelSecretSync500JSONResponseBodyStatusCode defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync500JSONResponseBodyStatusCode float32
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp string
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncDestination defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncDestination string
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 struct {
+	// App The ID of the Vercel app to sync secrets to.
+	App string `json:"app"`
+
+	// AppName The name of the Vercel app to sync secrets to.
+	AppName string `json:"appName"`
+
+	// Branch The branch to sync preview secrets to.
+	Branch *string `json:"branch,omitempty"`
+
+	// Env The ID of the Vercel environment to sync secrets to.
+	Env   SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env `json:"env"`
+	Scope SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope   `json:"scope"`
+
+	// Sensitive Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment.
+	Sensitive *bool `json:"sensitive,omitempty"`
+
+	// TeamId The ID of the Vercel team to sync secrets to.
+	TeamId string `json:"teamId"`
+}
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 string
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 = string
+
+// SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env struct {
+	union json.RawMessage
+}
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 struct {
+	// ApplyToAllCustomEnvironments Whether to apply shared environment variables to all custom environments in the team.
+	ApplyToAllCustomEnvironments *bool                                                                    `json:"applyToAllCustomEnvironments,omitempty"`
+	Scope                        SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+
+	// Sensitive Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment.
+	Sensitive *bool `json:"sensitive,omitempty"`
+
+	// TargetEnvironments An optional array of Vercel default environments (development, preview, production) to add shared environment variables to.
+	TargetEnvironments *[]SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments `json:"targetEnvironments,omitempty"`
+
+	// TargetProjects An optional array of Vercel projects to add shared environment variables to.
+	TargetProjects *[]string `json:"targetProjects,omitempty"`
+
+	// TeamId The ID of the Vercel team to sync secrets to.
+	TeamId string `json:"teamId"`
+
+	// TeamName The name of the team to sync the secrets to. This is an optional field only intended for display purposes.
+	TeamName *string `json:"teamName,omitempty"`
+}
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments string
+
+// SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig struct {
+	union json.RawMessage
+}
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior string
+
+// SyncVercelSecretSync400JSONResponseBodyStatusCode defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync400JSONResponseBodyStatusCode float32
+
+// SyncVercelSecretSync401JSONResponseBodyStatusCode defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync401JSONResponseBodyStatusCode float32
+
+// SyncVercelSecretSync403JSONResponseBodyStatusCode defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync403JSONResponseBodyStatusCode float32
+
+// SyncVercelSecretSync404JSONResponseBodyStatusCode defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync404JSONResponseBodyStatusCode float32
+
+// SyncVercelSecretSync422JSONResponseBodyStatusCode defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync422JSONResponseBodyStatusCode float32
+
+// SyncVercelSecretSync500JSONResponseBodyStatusCode defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync500JSONResponseBodyStatusCode float32
+
 // ListSecretValidationRulesParams defines parameters for ListSecretValidationRules.
 type ListSecretValidationRulesParams struct {
 	// ProjectId The ID of the project to list Secret Validation Rules from.
@@ -86461,6 +87949,9 @@ type CreatePostgresAppConnectionJSONRequestBody CreatePostgresAppConnectionJSONB
 // UpdatePostgresAppConnectionJSONRequestBody defines body for UpdatePostgresAppConnection for application/json ContentType.
 type UpdatePostgresAppConnectionJSONRequestBody UpdatePostgresAppConnectionJSONBody
 
+// CreateVercelAppConnectionJSONRequestBody defines body for CreateVercelAppConnection for application/json ContentType.
+type CreateVercelAppConnectionJSONRequestBody CreateVercelAppConnectionJSONBody
+
 // AttachUniversalAuthJSONRequestBody defines body for AttachUniversalAuth for application/json ContentType.
 type AttachUniversalAuthJSONRequestBody AttachUniversalAuthJSONBody
 
@@ -86752,6 +88243,9 @@ type UpdateGitHubSecretSyncJSONRequestBody UpdateGitHubSecretSyncJSONBody
 
 // CreateOciVaultSecretSyncJSONRequestBody defines body for CreateOciVaultSecretSync for application/json ContentType.
 type CreateOciVaultSecretSyncJSONRequestBody CreateOciVaultSecretSyncJSONBody
+
+// CreateVercelSecretSyncJSONRequestBody defines body for CreateVercelSecretSync for application/json ContentType.
+type CreateVercelSecretSyncJSONRequestBody CreateVercelSecretSyncJSONBody
 
 // CreateStaticSecretsValidationRuleJSONRequestBody defines body for CreateStaticSecretsValidationRule for application/json ContentType.
 type CreateStaticSecretsValidationRuleJSONRequestBody CreateStaticSecretsValidationRuleJSONBody
@@ -91862,6 +93356,394 @@ func (t UpdatePostgresAppConnection200JSONResponseBody_AppConnection) MarshalJSO
 }
 
 func (t *UpdatePostgresAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateVercelAppConnectionJSONBody0 returns the union data inside the CreateVercelAppConnectionJSONBody as a CreateVercelAppConnectionJSONBody0
+func (t CreateVercelAppConnectionJSONBody) AsCreateVercelAppConnectionJSONBody0() (CreateVercelAppConnectionJSONBody0, error) {
+	var body CreateVercelAppConnectionJSONBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelAppConnectionJSONBody0 overwrites any union data inside the CreateVercelAppConnectionJSONBody as the provided CreateVercelAppConnectionJSONBody0
+func (t *CreateVercelAppConnectionJSONBody) FromCreateVercelAppConnectionJSONBody0(v CreateVercelAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelAppConnectionJSONBody0 performs a merge with any union data inside the CreateVercelAppConnectionJSONBody, using the provided CreateVercelAppConnectionJSONBody0
+func (t *CreateVercelAppConnectionJSONBody) MergeCreateVercelAppConnectionJSONBody0(v CreateVercelAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelAppConnectionJSONBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if t.Description != nil {
+		object["description"], err = json.Marshal(t.Description)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'description': %w", err)
+		}
+	}
+
+	if t.GatewayId != nil {
+		object["gatewayId"], err = json.Marshal(t.GatewayId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayId': %w", err)
+		}
+	}
+
+	if t.GatewayPoolId != nil {
+		object["gatewayPoolId"], err = json.Marshal(t.GatewayPoolId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if t.IsAutoRotationEnabled != nil {
+		object["isAutoRotationEnabled"], err = json.Marshal(t.IsAutoRotationEnabled)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if t.IsPlatformManagedCredentials != nil {
+		object["isPlatformManagedCredentials"], err = json.Marshal(t.IsPlatformManagedCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	object["name"], err = json.Marshal(t.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'name': %w", err)
+	}
+
+	if t.ProjectId != nil {
+		object["projectId"], err = json.Marshal(t.ProjectId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'projectId': %w", err)
+		}
+	}
+
+	if t.Rotation != nil {
+		object["rotation"], err = json.Marshal(t.Rotation)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'rotation': %w", err)
+		}
+	}
+	b, err = json.Marshal(object)
+	return b, err
+}
+
+func (t *CreateVercelAppConnectionJSONBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["description"]; found {
+		err = json.Unmarshal(raw, &t.Description)
+		if err != nil {
+			return fmt.Errorf("error reading 'description': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayId': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayPoolId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayPoolId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if raw, found := object["isAutoRotationEnabled"]; found {
+		err = json.Unmarshal(raw, &t.IsAutoRotationEnabled)
+		if err != nil {
+			return fmt.Errorf("error reading 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if raw, found := object["isPlatformManagedCredentials"]; found {
+		err = json.Unmarshal(raw, &t.IsPlatformManagedCredentials)
+		if err != nil {
+			return fmt.Errorf("error reading 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	if raw, found := object["name"]; found {
+		err = json.Unmarshal(raw, &t.Name)
+		if err != nil {
+			return fmt.Errorf("error reading 'name': %w", err)
+		}
+	}
+
+	if raw, found := object["projectId"]; found {
+		err = json.Unmarshal(raw, &t.ProjectId)
+		if err != nil {
+			return fmt.Errorf("error reading 'projectId': %w", err)
+		}
+	}
+
+	if raw, found := object["rotation"]; found {
+		err = json.Unmarshal(raw, &t.Rotation)
+		if err != nil {
+			return fmt.Errorf("error reading 'rotation': %w", err)
+		}
+	}
+
+	return err
+}
+
+// AsCreateVercelAppConnectionJSONBodyGatewayId0 returns the union data inside the CreateVercelAppConnectionJSONBody_GatewayId as a CreateVercelAppConnectionJSONBodyGatewayId0
+func (t CreateVercelAppConnectionJSONBody_GatewayId) AsCreateVercelAppConnectionJSONBodyGatewayId0() (CreateVercelAppConnectionJSONBodyGatewayId0, error) {
+	var body CreateVercelAppConnectionJSONBodyGatewayId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelAppConnectionJSONBodyGatewayId0 overwrites any union data inside the CreateVercelAppConnectionJSONBody_GatewayId as the provided CreateVercelAppConnectionJSONBodyGatewayId0
+func (t *CreateVercelAppConnectionJSONBody_GatewayId) FromCreateVercelAppConnectionJSONBodyGatewayId0(v CreateVercelAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelAppConnectionJSONBodyGatewayId0 performs a merge with any union data inside the CreateVercelAppConnectionJSONBody_GatewayId, using the provided CreateVercelAppConnectionJSONBodyGatewayId0
+func (t *CreateVercelAppConnectionJSONBody_GatewayId) MergeCreateVercelAppConnectionJSONBodyGatewayId0(v CreateVercelAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateVercelAppConnectionJSONBodyGatewayId1 returns the union data inside the CreateVercelAppConnectionJSONBody_GatewayId as a CreateVercelAppConnectionJSONBodyGatewayId1
+func (t CreateVercelAppConnectionJSONBody_GatewayId) AsCreateVercelAppConnectionJSONBodyGatewayId1() (CreateVercelAppConnectionJSONBodyGatewayId1, error) {
+	var body CreateVercelAppConnectionJSONBodyGatewayId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelAppConnectionJSONBodyGatewayId1 overwrites any union data inside the CreateVercelAppConnectionJSONBody_GatewayId as the provided CreateVercelAppConnectionJSONBodyGatewayId1
+func (t *CreateVercelAppConnectionJSONBody_GatewayId) FromCreateVercelAppConnectionJSONBodyGatewayId1(v CreateVercelAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelAppConnectionJSONBodyGatewayId1 performs a merge with any union data inside the CreateVercelAppConnectionJSONBody_GatewayId, using the provided CreateVercelAppConnectionJSONBodyGatewayId1
+func (t *CreateVercelAppConnectionJSONBody_GatewayId) MergeCreateVercelAppConnectionJSONBodyGatewayId1(v CreateVercelAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelAppConnectionJSONBody_GatewayId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateVercelAppConnectionJSONBody_GatewayId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateVercelAppConnectionJSONBodyGatewayPoolId0 returns the union data inside the CreateVercelAppConnectionJSONBody_GatewayPoolId as a CreateVercelAppConnectionJSONBodyGatewayPoolId0
+func (t CreateVercelAppConnectionJSONBody_GatewayPoolId) AsCreateVercelAppConnectionJSONBodyGatewayPoolId0() (CreateVercelAppConnectionJSONBodyGatewayPoolId0, error) {
+	var body CreateVercelAppConnectionJSONBodyGatewayPoolId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelAppConnectionJSONBodyGatewayPoolId0 overwrites any union data inside the CreateVercelAppConnectionJSONBody_GatewayPoolId as the provided CreateVercelAppConnectionJSONBodyGatewayPoolId0
+func (t *CreateVercelAppConnectionJSONBody_GatewayPoolId) FromCreateVercelAppConnectionJSONBodyGatewayPoolId0(v CreateVercelAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelAppConnectionJSONBodyGatewayPoolId0 performs a merge with any union data inside the CreateVercelAppConnectionJSONBody_GatewayPoolId, using the provided CreateVercelAppConnectionJSONBodyGatewayPoolId0
+func (t *CreateVercelAppConnectionJSONBody_GatewayPoolId) MergeCreateVercelAppConnectionJSONBodyGatewayPoolId0(v CreateVercelAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateVercelAppConnectionJSONBodyGatewayPoolId1 returns the union data inside the CreateVercelAppConnectionJSONBody_GatewayPoolId as a CreateVercelAppConnectionJSONBodyGatewayPoolId1
+func (t CreateVercelAppConnectionJSONBody_GatewayPoolId) AsCreateVercelAppConnectionJSONBodyGatewayPoolId1() (CreateVercelAppConnectionJSONBodyGatewayPoolId1, error) {
+	var body CreateVercelAppConnectionJSONBodyGatewayPoolId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelAppConnectionJSONBodyGatewayPoolId1 overwrites any union data inside the CreateVercelAppConnectionJSONBody_GatewayPoolId as the provided CreateVercelAppConnectionJSONBodyGatewayPoolId1
+func (t *CreateVercelAppConnectionJSONBody_GatewayPoolId) FromCreateVercelAppConnectionJSONBodyGatewayPoolId1(v CreateVercelAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelAppConnectionJSONBodyGatewayPoolId1 performs a merge with any union data inside the CreateVercelAppConnectionJSONBody_GatewayPoolId, using the provided CreateVercelAppConnectionJSONBodyGatewayPoolId1
+func (t *CreateVercelAppConnectionJSONBody_GatewayPoolId) MergeCreateVercelAppConnectionJSONBodyGatewayPoolId1(v CreateVercelAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelAppConnectionJSONBody_GatewayPoolId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateVercelAppConnectionJSONBody_GatewayPoolId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateVercelAppConnectionJSONBodyRotation0 returns the union data inside the CreateVercelAppConnectionJSONBody_Rotation as a CreateVercelAppConnectionJSONBodyRotation0
+func (t CreateVercelAppConnectionJSONBody_Rotation) AsCreateVercelAppConnectionJSONBodyRotation0() (CreateVercelAppConnectionJSONBodyRotation0, error) {
+	var body CreateVercelAppConnectionJSONBodyRotation0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelAppConnectionJSONBodyRotation0 overwrites any union data inside the CreateVercelAppConnectionJSONBody_Rotation as the provided CreateVercelAppConnectionJSONBodyRotation0
+func (t *CreateVercelAppConnectionJSONBody_Rotation) FromCreateVercelAppConnectionJSONBodyRotation0(v CreateVercelAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelAppConnectionJSONBodyRotation0 performs a merge with any union data inside the CreateVercelAppConnectionJSONBody_Rotation, using the provided CreateVercelAppConnectionJSONBodyRotation0
+func (t *CreateVercelAppConnectionJSONBody_Rotation) MergeCreateVercelAppConnectionJSONBodyRotation0(v CreateVercelAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateVercelAppConnectionJSONBodyRotation1 returns the union data inside the CreateVercelAppConnectionJSONBody_Rotation as a CreateVercelAppConnectionJSONBodyRotation1
+func (t CreateVercelAppConnectionJSONBody_Rotation) AsCreateVercelAppConnectionJSONBodyRotation1() (CreateVercelAppConnectionJSONBodyRotation1, error) {
+	var body CreateVercelAppConnectionJSONBodyRotation1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelAppConnectionJSONBodyRotation1 overwrites any union data inside the CreateVercelAppConnectionJSONBody_Rotation as the provided CreateVercelAppConnectionJSONBodyRotation1
+func (t *CreateVercelAppConnectionJSONBody_Rotation) FromCreateVercelAppConnectionJSONBodyRotation1(v CreateVercelAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelAppConnectionJSONBodyRotation1 performs a merge with any union data inside the CreateVercelAppConnectionJSONBody_Rotation, using the provided CreateVercelAppConnectionJSONBodyRotation1
+func (t *CreateVercelAppConnectionJSONBody_Rotation) MergeCreateVercelAppConnectionJSONBodyRotation1(v CreateVercelAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelAppConnectionJSONBody_Rotation) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateVercelAppConnectionJSONBody_Rotation) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateVercelAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the CreateVercelAppConnection200JSONResponseBody_AppConnection as a CreateVercelAppConnection200JSONResponseBodyAppConnection0
+func (t CreateVercelAppConnection200JSONResponseBody_AppConnection) AsCreateVercelAppConnection200JSONResponseBodyAppConnection0() (CreateVercelAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body CreateVercelAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the CreateVercelAppConnection200JSONResponseBody_AppConnection as the provided CreateVercelAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateVercelAppConnection200JSONResponseBody_AppConnection) FromCreateVercelAppConnection200JSONResponseBodyAppConnection0(v CreateVercelAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the CreateVercelAppConnection200JSONResponseBody_AppConnection, using the provided CreateVercelAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateVercelAppConnection200JSONResponseBody_AppConnection) MergeCreateVercelAppConnection200JSONResponseBodyAppConnection0(v CreateVercelAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateVercelAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -103173,6 +105055,502 @@ func (t *SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) U
 	return err
 }
 
+// AsCreateVercelSecretSyncJSONBodyDestinationConfig0Env0 returns the union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env as a CreateVercelSecretSyncJSONBodyDestinationConfig0Env0
+func (t CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env) AsCreateVercelSecretSyncJSONBodyDestinationConfig0Env0() (CreateVercelSecretSyncJSONBodyDestinationConfig0Env0, error) {
+	var body CreateVercelSecretSyncJSONBodyDestinationConfig0Env0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelSecretSyncJSONBodyDestinationConfig0Env0 overwrites any union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env as the provided CreateVercelSecretSyncJSONBodyDestinationConfig0Env0
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env) FromCreateVercelSecretSyncJSONBodyDestinationConfig0Env0(v CreateVercelSecretSyncJSONBodyDestinationConfig0Env0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelSecretSyncJSONBodyDestinationConfig0Env0 performs a merge with any union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env, using the provided CreateVercelSecretSyncJSONBodyDestinationConfig0Env0
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env) MergeCreateVercelSecretSyncJSONBodyDestinationConfig0Env0(v CreateVercelSecretSyncJSONBodyDestinationConfig0Env0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateVercelSecretSyncJSONBodyDestinationConfig0Env1 returns the union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env as a CreateVercelSecretSyncJSONBodyDestinationConfig0Env1
+func (t CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env) AsCreateVercelSecretSyncJSONBodyDestinationConfig0Env1() (CreateVercelSecretSyncJSONBodyDestinationConfig0Env1, error) {
+	var body CreateVercelSecretSyncJSONBodyDestinationConfig0Env1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelSecretSyncJSONBodyDestinationConfig0Env1 overwrites any union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env as the provided CreateVercelSecretSyncJSONBodyDestinationConfig0Env1
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env) FromCreateVercelSecretSyncJSONBodyDestinationConfig0Env1(v CreateVercelSecretSyncJSONBodyDestinationConfig0Env1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelSecretSyncJSONBodyDestinationConfig0Env1 performs a merge with any union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env, using the provided CreateVercelSecretSyncJSONBodyDestinationConfig0Env1
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env) MergeCreateVercelSecretSyncJSONBodyDestinationConfig0Env1(v CreateVercelSecretSyncJSONBodyDestinationConfig0Env1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateVercelSecretSyncJSONBodyDestinationConfig0 returns the union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig as a CreateVercelSecretSyncJSONBodyDestinationConfig0
+func (t CreateVercelSecretSyncJSONBody_DestinationConfig) AsCreateVercelSecretSyncJSONBodyDestinationConfig0() (CreateVercelSecretSyncJSONBodyDestinationConfig0, error) {
+	var body CreateVercelSecretSyncJSONBodyDestinationConfig0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelSecretSyncJSONBodyDestinationConfig0 overwrites any union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig as the provided CreateVercelSecretSyncJSONBodyDestinationConfig0
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig) FromCreateVercelSecretSyncJSONBodyDestinationConfig0(v CreateVercelSecretSyncJSONBodyDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelSecretSyncJSONBodyDestinationConfig0 performs a merge with any union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig, using the provided CreateVercelSecretSyncJSONBodyDestinationConfig0
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig) MergeCreateVercelSecretSyncJSONBodyDestinationConfig0(v CreateVercelSecretSyncJSONBodyDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateVercelSecretSyncJSONBodyDestinationConfig1 returns the union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig as a CreateVercelSecretSyncJSONBodyDestinationConfig1
+func (t CreateVercelSecretSyncJSONBody_DestinationConfig) AsCreateVercelSecretSyncJSONBodyDestinationConfig1() (CreateVercelSecretSyncJSONBodyDestinationConfig1, error) {
+	var body CreateVercelSecretSyncJSONBodyDestinationConfig1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelSecretSyncJSONBodyDestinationConfig1 overwrites any union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig as the provided CreateVercelSecretSyncJSONBodyDestinationConfig1
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig) FromCreateVercelSecretSyncJSONBodyDestinationConfig1(v CreateVercelSecretSyncJSONBodyDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelSecretSyncJSONBodyDestinationConfig1 performs a merge with any union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig, using the provided CreateVercelSecretSyncJSONBodyDestinationConfig1
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig) MergeCreateVercelSecretSyncJSONBodyDestinationConfig1(v CreateVercelSecretSyncJSONBodyDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelSecretSyncJSONBody_DestinationConfig) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 returns the union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as a CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) AsCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0() (CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0, error) {
+	var body CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 overwrites any union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as the provided CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) FromCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0(v CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 performs a merge with any union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env, using the provided CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MergeCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0(v CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 returns the union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as a CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) AsCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1() (CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1, error) {
+	var body CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 overwrites any union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as the provided CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) FromCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1(v CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 performs a merge with any union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env, using the provided CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MergeCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1(v CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 returns the union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0() (CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0, error) {
+	var body CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 overwrites any union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 performs a merge with any union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 returns the union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1() (CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1, error) {
+	var body CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 overwrites any union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 performs a merge with any union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 returns the union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as a GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) AsGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0() (GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0, error) {
+	var body GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 overwrites any union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as the provided GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) FromGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0(v GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 performs a merge with any union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env, using the provided GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MergeGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0(v GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 returns the union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as a GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) AsGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1() (GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1, error) {
+	var body GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 overwrites any union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as the provided GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) FromGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1(v GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 performs a merge with any union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env, using the provided GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MergeGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1(v GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 returns the union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0() (GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0, error) {
+	var body GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 overwrites any union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 performs a merge with any union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 returns the union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1() (GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1, error) {
+	var body GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 overwrites any union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 performs a merge with any union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 returns the union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as a SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) AsSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0() (SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0, error) {
+	var body SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 overwrites any union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as the provided SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) FromSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0(v SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 performs a merge with any union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env, using the provided SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MergeSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0(v SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 returns the union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as a SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) AsSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1() (SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1, error) {
+	var body SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 overwrites any union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as the provided SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) FromSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1(v SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 performs a merge with any union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env, using the provided SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MergeSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1(v SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 returns the union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0() (SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0, error) {
+	var body SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 overwrites any union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 performs a merge with any union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 returns the union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1() (SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1, error) {
+	var body SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 overwrites any union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 performs a merge with any union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // AsListSecretValidationRules200JSONResponseBodySecretValidationRules0 returns the union data inside the ListSecretValidationRules200JSONResponseBody_SecretValidationRules_Item as a ListSecretValidationRules200JSONResponseBodySecretValidationRules0
 func (t ListSecretValidationRules200JSONResponseBody_SecretValidationRules_Item) AsListSecretValidationRules200JSONResponseBodySecretValidationRules0() (ListSecretValidationRules200JSONResponseBodySecretValidationRules0, error) {
 	var body ListSecretValidationRules200JSONResponseBodySecretValidationRules0
@@ -106211,6 +108589,18 @@ type ClientInterface interface {
 	// Update the specified PostgreSQL Connection.
 	UpdatePostgresAppConnection(ctx context.Context, connectionId openapi_types.UUID, body UpdatePostgresAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateVercelAppConnectionWithBody performs a POST /api/v1/app-connections/vercel (the `CreateVercelAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a Vercel Connection.
+	CreateVercelAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateVercelAppConnection performs a POST /api/v1/app-connections/vercel (the `CreateVercelAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create a Vercel Connection.
+	CreateVercelAppConnection(ctx context.Context, body CreateVercelAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RefreshAuthToken performs a POST /api/v1/auth/token (the `RefreshAuthToken` operationId) request.
 	RefreshAuthToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -107914,6 +110304,28 @@ type ClientInterface interface {
 	//
 	// Create an OCI Vault Sync for the specified project environment.
 	CreateOciVaultSecretSync(ctx context.Context, body CreateOciVaultSecretSyncJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateVercelSecretSyncWithBody performs a POST /api/v1/secret-syncs/vercel (the `CreateVercelSecretSync` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a Vercel Sync for the specified project environment.
+	CreateVercelSecretSyncWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateVercelSecretSync performs a POST /api/v1/secret-syncs/vercel (the `CreateVercelSecretSync` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create a Vercel Sync for the specified project environment.
+	CreateVercelSecretSync(ctx context.Context, body CreateVercelSecretSyncJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetVercelSecretSync performs a GET /api/v1/secret-syncs/vercel/{syncId} (the `GetVercelSecretSync` operationId) request.
+	//
+	// Get the specified Vercel Sync by ID.
+	GetVercelSecretSync(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SyncVercelSecretSync performs a POST /api/v1/secret-syncs/vercel/{syncId}/sync-secrets (the `SyncVercelSecretSync` operationId) request.
+	//
+	// Trigger a sync for the specified Vercel Sync.
+	SyncVercelSecretSync(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListSecretValidationRules performs a GET /api/v1/secret-validation-rules (the `ListSecretValidationRules` operationId) request.
 	//
@@ -109659,6 +112071,38 @@ func (c *Client) UpdatePostgresAppConnectionWithBody(ctx context.Context, connec
 // Update the specified PostgreSQL Connection.
 func (c *Client) UpdatePostgresAppConnection(ctx context.Context, connectionId openapi_types.UUID, body UpdatePostgresAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdatePostgresAppConnectionRequest(c.Server, connectionId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateVercelAppConnectionWithBody performs a POST /api/v1/app-connections/vercel (the `CreateVercelAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a Vercel Connection.
+func (c *Client) CreateVercelAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateVercelAppConnectionRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateVercelAppConnection performs a POST /api/v1/app-connections/vercel (the `CreateVercelAppConnection` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create a Vercel Connection.
+func (c *Client) CreateVercelAppConnection(ctx context.Context, body CreateVercelAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateVercelAppConnectionRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -115044,6 +117488,68 @@ func (c *Client) CreateOciVaultSecretSync(ctx context.Context, body CreateOciVau
 	return c.Client.Do(req)
 }
 
+// CreateVercelSecretSyncWithBody performs a POST /api/v1/secret-syncs/vercel (the `CreateVercelSecretSync` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a Vercel Sync for the specified project environment.
+func (c *Client) CreateVercelSecretSyncWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateVercelSecretSyncRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateVercelSecretSync performs a POST /api/v1/secret-syncs/vercel (the `CreateVercelSecretSync` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create a Vercel Sync for the specified project environment.
+func (c *Client) CreateVercelSecretSync(ctx context.Context, body CreateVercelSecretSyncJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateVercelSecretSyncRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetVercelSecretSync performs a GET /api/v1/secret-syncs/vercel/{syncId} (the `GetVercelSecretSync` operationId) request.
+//
+// Get the specified Vercel Sync by ID.
+func (c *Client) GetVercelSecretSync(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetVercelSecretSyncRequest(c.Server, syncId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SyncVercelSecretSync performs a POST /api/v1/secret-syncs/vercel/{syncId}/sync-secrets (the `SyncVercelSecretSync` operationId) request.
+//
+// Trigger a sync for the specified Vercel Sync.
+func (c *Client) SyncVercelSecretSync(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSyncVercelSecretSyncRequest(c.Server, syncId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListSecretValidationRules performs a GET /api/v1/secret-validation-rules (the `ListSecretValidationRules` operationId) request.
 //
 // List every Secret Validation Rule in the specified project, of any type.
@@ -119636,6 +122142,46 @@ func NewUpdatePostgresAppConnectionRequestWithBody(server string, connectionId o
 	}
 
 	req, err := http.NewRequest(http.MethodPatch, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateVercelAppConnectionRequest calls the generic CreateVercelAppConnection builder with application/json body
+func NewCreateVercelAppConnectionRequest(server string, body CreateVercelAppConnectionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateVercelAppConnectionRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateVercelAppConnectionRequestWithBody constructs an http.Request for the CreateVercelAppConnection method, with any body, and a specified content type
+func NewCreateVercelAppConnectionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/vercel")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -133477,6 +136023,114 @@ func NewCreateOciVaultSecretSyncRequestWithBody(server string, contentType strin
 	return req, nil
 }
 
+// NewCreateVercelSecretSyncRequest calls the generic CreateVercelSecretSync builder with application/json body
+func NewCreateVercelSecretSyncRequest(server string, body CreateVercelSecretSyncJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateVercelSecretSyncRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateVercelSecretSyncRequestWithBody constructs an http.Request for the CreateVercelSecretSync method, with any body, and a specified content type
+func NewCreateVercelSecretSyncRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/secret-syncs/vercel")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetVercelSecretSyncRequest constructs an http.Request for the GetVercelSecretSync method
+func NewGetVercelSecretSyncRequest(server string, syncId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "syncId", syncId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/secret-syncs/vercel/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSyncVercelSecretSyncRequest constructs an http.Request for the SyncVercelSecretSync method
+func NewSyncVercelSecretSyncRequest(server string, syncId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "syncId", syncId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/secret-syncs/vercel/%s/sync-secrets", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListSecretValidationRulesRequest constructs an http.Request for the ListSecretValidationRules method
 func NewListSecretValidationRulesRequest(server string, params *ListSecretValidationRulesParams) (*http.Request, error) {
 	var err error
@@ -140173,6 +142827,20 @@ type ClientWithResponsesInterface interface {
 	// Update the specified PostgreSQL Connection.
 	UpdatePostgresAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, body UpdatePostgresAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePostgresAppConnectionResponse, error)
 
+	// CreateVercelAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/vercel (the `CreateVercelAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a Vercel Connection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateVercelAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVercelAppConnectionResponse, error)
+
+	// CreateVercelAppConnectionWithResponse performs a POST /api/v1/app-connections/vercel (the `CreateVercelAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create a Vercel Connection.
+	CreateVercelAppConnectionWithResponse(ctx context.Context, body CreateVercelAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVercelAppConnectionResponse, error)
+
 	// RefreshAuthTokenWithResponse performs a POST /api/v1/auth/token (the `RefreshAuthToken` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -142420,6 +145088,34 @@ type ClientWithResponsesInterface interface {
 	//
 	// Create an OCI Vault Sync for the specified project environment.
 	CreateOciVaultSecretSyncWithResponse(ctx context.Context, body CreateOciVaultSecretSyncJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateOciVaultSecretSyncResponse, error)
+
+	// CreateVercelSecretSyncWithBodyWithResponse performs a POST /api/v1/secret-syncs/vercel (the `CreateVercelSecretSync` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a Vercel Sync for the specified project environment.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateVercelSecretSyncWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVercelSecretSyncResponse, error)
+
+	// CreateVercelSecretSyncWithResponse performs a POST /api/v1/secret-syncs/vercel (the `CreateVercelSecretSync` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create a Vercel Sync for the specified project environment.
+	CreateVercelSecretSyncWithResponse(ctx context.Context, body CreateVercelSecretSyncJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVercelSecretSyncResponse, error)
+
+	// GetVercelSecretSyncWithResponse performs a GET /api/v1/secret-syncs/vercel/{syncId} (the `GetVercelSecretSync` operationId) request.
+	//
+	// Get the specified Vercel Sync by ID.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetVercelSecretSyncWithResponse(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetVercelSecretSyncResponse, error)
+
+	// SyncVercelSecretSyncWithResponse performs a POST /api/v1/secret-syncs/vercel/{syncId}/sync-secrets (the `SyncVercelSecretSync` operationId) request.
+	//
+	// Trigger a sync for the specified Vercel Sync.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	SyncVercelSecretSyncWithResponse(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*SyncVercelSecretSyncResponse, error)
 
 	// ListSecretValidationRulesWithResponse performs a GET /api/v1/secret-validation-rules (the `ListSecretValidationRules` operationId) request.
 	//
@@ -150436,6 +153132,157 @@ func (r UpdatePostgresAppConnectionResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r UpdatePostgresAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateVercelAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection CreateVercelAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateVercelAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateVercelAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateVercelAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateVercelAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                 `json:"error"`
+		Message    interface{}                                            `json:"message,omitempty"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateVercelAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateVercelAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateVercelAppConnectionResponse) GetJSON200() *struct {
+	AppConnection CreateVercelAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateVercelAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateVercelAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateVercelAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateVercelAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateVercelAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateVercelAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateVercelAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateVercelAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateVercelAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                                 `json:"error"`
+	Message    interface{}                                            `json:"message,omitempty"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateVercelAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateVercelAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateVercelAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateVercelAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateVercelAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateVercelAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateVercelAppConnectionResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -201987,6 +204834,783 @@ func (r CreateOciVaultSecretSyncResponse) ContentType() string {
 	return ""
 }
 
+type CreateVercelSecretSyncResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		SecretSync struct {
+			Connection struct {
+				App  CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+				Id   openapi_types.UUID                                               `json:"id"`
+				Name string                                                           `json:"name"`
+			} `json:"connection"`
+			ConnectionId      openapi_types.UUID                                                     `json:"connectionId"`
+			CreatedAt         time.Time                                                              `json:"createdAt"`
+			Description       *string                                                                `json:"description,omitempty"`
+			Destination       CreateVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+			DestinationConfig CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+			Environment       *struct {
+				Id   openapi_types.UUID `json:"id"`
+				Name string             `json:"name"`
+				Slug string             `json:"slug"`
+			} `json:"environment"`
+			Folder *struct {
+				Id   string `json:"id"`
+				Path string `json:"path"`
+			} `json:"folder"`
+			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                openapi_types.UUID  `json:"id"`
+			ImportStatus      *string             `json:"importStatus,omitempty"`
+			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name              string              `json:"name"`
+			ProjectId         string              `json:"projectId"`
+			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+			// SyncOptions Optional parameters to modify how secrets are synced.
+			SyncOptions struct {
+				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+				InitialSyncBehavior CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+				// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+				KeySchema *string `json:"keySchema,omitempty"`
+			} `json:"syncOptions"`
+			SyncStatus *string   `json:"syncStatus,omitempty"`
+			UpdatedAt  time.Time `json:"updatedAt"`
+			Version    *float32  `json:"version,omitempty"`
+		} `json:"secretSync"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                              `json:"error"`
+		Message    interface{}                                         `json:"message,omitempty"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateVercelSecretSyncResponse) GetJSON200() *struct {
+	SecretSync struct {
+		Connection struct {
+			App  CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+			Id   openapi_types.UUID                                               `json:"id"`
+			Name string                                                           `json:"name"`
+		} `json:"connection"`
+		ConnectionId      openapi_types.UUID                                                     `json:"connectionId"`
+		CreatedAt         time.Time                                                              `json:"createdAt"`
+		Description       *string                                                                `json:"description,omitempty"`
+		Destination       CreateVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+		DestinationConfig CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+		Environment       *struct {
+			Id   openapi_types.UUID `json:"id"`
+			Name string             `json:"name"`
+			Slug string             `json:"slug"`
+		} `json:"environment"`
+		Folder *struct {
+			Id   string `json:"id"`
+			Path string `json:"path"`
+		} `json:"folder"`
+		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                openapi_types.UUID  `json:"id"`
+		ImportStatus      *string             `json:"importStatus,omitempty"`
+		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name              string              `json:"name"`
+		ProjectId         string              `json:"projectId"`
+		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+		// SyncOptions Optional parameters to modify how secrets are synced.
+		SyncOptions struct {
+			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+			InitialSyncBehavior CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+			// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+			KeySchema *string `json:"keySchema,omitempty"`
+		} `json:"syncOptions"`
+		SyncStatus *string   `json:"syncStatus,omitempty"`
+		UpdatedAt  time.Time `json:"updatedAt"`
+		Version    *float32  `json:"version,omitempty"`
+	} `json:"secretSync"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateVercelSecretSyncResponse) GetJSON400() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateVercelSecretSyncResponse) GetJSON401() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateVercelSecretSyncResponse) GetJSON403() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateVercelSecretSyncResponse) GetJSON404() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateVercelSecretSyncResponse) GetJSON422() *struct {
+	Error      string                                              `json:"error"`
+	Message    interface{}                                         `json:"message,omitempty"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateVercelSecretSyncResponse) GetJSON500() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateVercelSecretSyncResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateVercelSecretSyncResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateVercelSecretSyncResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateVercelSecretSyncResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetVercelSecretSyncResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		SecretSync struct {
+			Connection struct {
+				App  GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+				Id   openapi_types.UUID                                            `json:"id"`
+				Name string                                                        `json:"name"`
+			} `json:"connection"`
+			ConnectionId      openapi_types.UUID                                                  `json:"connectionId"`
+			CreatedAt         time.Time                                                           `json:"createdAt"`
+			Description       *string                                                             `json:"description,omitempty"`
+			Destination       GetVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+			DestinationConfig GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+			Environment       *struct {
+				Id   openapi_types.UUID `json:"id"`
+				Name string             `json:"name"`
+				Slug string             `json:"slug"`
+			} `json:"environment"`
+			Folder *struct {
+				Id   string `json:"id"`
+				Path string `json:"path"`
+			} `json:"folder"`
+			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                openapi_types.UUID  `json:"id"`
+			ImportStatus      *string             `json:"importStatus,omitempty"`
+			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name              string              `json:"name"`
+			ProjectId         string              `json:"projectId"`
+			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+			// SyncOptions Optional parameters to modify how secrets are synced.
+			SyncOptions struct {
+				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+				InitialSyncBehavior GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+				// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+				KeySchema *string `json:"keySchema,omitempty"`
+			} `json:"syncOptions"`
+			SyncStatus *string   `json:"syncStatus,omitempty"`
+			UpdatedAt  time.Time `json:"updatedAt"`
+			Version    *float32  `json:"version,omitempty"`
+		} `json:"secretSync"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                           `json:"error"`
+		Message    interface{}                                      `json:"message,omitempty"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetVercelSecretSyncResponse) GetJSON200() *struct {
+	SecretSync struct {
+		Connection struct {
+			App  GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+			Id   openapi_types.UUID                                            `json:"id"`
+			Name string                                                        `json:"name"`
+		} `json:"connection"`
+		ConnectionId      openapi_types.UUID                                                  `json:"connectionId"`
+		CreatedAt         time.Time                                                           `json:"createdAt"`
+		Description       *string                                                             `json:"description,omitempty"`
+		Destination       GetVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+		DestinationConfig GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+		Environment       *struct {
+			Id   openapi_types.UUID `json:"id"`
+			Name string             `json:"name"`
+			Slug string             `json:"slug"`
+		} `json:"environment"`
+		Folder *struct {
+			Id   string `json:"id"`
+			Path string `json:"path"`
+		} `json:"folder"`
+		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                openapi_types.UUID  `json:"id"`
+		ImportStatus      *string             `json:"importStatus,omitempty"`
+		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name              string              `json:"name"`
+		ProjectId         string              `json:"projectId"`
+		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+		// SyncOptions Optional parameters to modify how secrets are synced.
+		SyncOptions struct {
+			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+			InitialSyncBehavior GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+			// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+			KeySchema *string `json:"keySchema,omitempty"`
+		} `json:"syncOptions"`
+		SyncStatus *string   `json:"syncStatus,omitempty"`
+		UpdatedAt  time.Time `json:"updatedAt"`
+		Version    *float32  `json:"version,omitempty"`
+	} `json:"secretSync"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetVercelSecretSyncResponse) GetJSON400() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetVercelSecretSyncResponse) GetJSON401() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetVercelSecretSyncResponse) GetJSON403() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetVercelSecretSyncResponse) GetJSON404() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetVercelSecretSyncResponse) GetJSON422() *struct {
+	Error      string                                           `json:"error"`
+	Message    interface{}                                      `json:"message,omitempty"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetVercelSecretSyncResponse) GetJSON500() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetVercelSecretSyncResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetVercelSecretSyncResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetVercelSecretSyncResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetVercelSecretSyncResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SyncVercelSecretSyncResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		SecretSync struct {
+			Connection struct {
+				App  SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+				Id   openapi_types.UUID                                             `json:"id"`
+				Name string                                                         `json:"name"`
+			} `json:"connection"`
+			ConnectionId      openapi_types.UUID                                                   `json:"connectionId"`
+			CreatedAt         time.Time                                                            `json:"createdAt"`
+			Description       *string                                                              `json:"description,omitempty"`
+			Destination       SyncVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+			DestinationConfig SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+			Environment       *struct {
+				Id   openapi_types.UUID `json:"id"`
+				Name string             `json:"name"`
+				Slug string             `json:"slug"`
+			} `json:"environment"`
+			Folder *struct {
+				Id   string `json:"id"`
+				Path string `json:"path"`
+			} `json:"folder"`
+			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                openapi_types.UUID  `json:"id"`
+			ImportStatus      *string             `json:"importStatus,omitempty"`
+			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name              string              `json:"name"`
+			ProjectId         string              `json:"projectId"`
+			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+			// SyncOptions Optional parameters to modify how secrets are synced.
+			SyncOptions struct {
+				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+				InitialSyncBehavior SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+				// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+				KeySchema *string `json:"keySchema,omitempty"`
+			} `json:"syncOptions"`
+			SyncStatus *string   `json:"syncStatus,omitempty"`
+			UpdatedAt  time.Time `json:"updatedAt"`
+			Version    *float32  `json:"version,omitempty"`
+		} `json:"secretSync"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                            `json:"error"`
+		Message    interface{}                                       `json:"message,omitempty"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SyncVercelSecretSyncResponse) GetJSON200() *struct {
+	SecretSync struct {
+		Connection struct {
+			App  SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+			Id   openapi_types.UUID                                             `json:"id"`
+			Name string                                                         `json:"name"`
+		} `json:"connection"`
+		ConnectionId      openapi_types.UUID                                                   `json:"connectionId"`
+		CreatedAt         time.Time                                                            `json:"createdAt"`
+		Description       *string                                                              `json:"description,omitempty"`
+		Destination       SyncVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+		DestinationConfig SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+		Environment       *struct {
+			Id   openapi_types.UUID `json:"id"`
+			Name string             `json:"name"`
+			Slug string             `json:"slug"`
+		} `json:"environment"`
+		Folder *struct {
+			Id   string `json:"id"`
+			Path string `json:"path"`
+		} `json:"folder"`
+		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                openapi_types.UUID  `json:"id"`
+		ImportStatus      *string             `json:"importStatus,omitempty"`
+		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name              string              `json:"name"`
+		ProjectId         string              `json:"projectId"`
+		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+		// SyncOptions Optional parameters to modify how secrets are synced.
+		SyncOptions struct {
+			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+			InitialSyncBehavior SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+			// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+			KeySchema *string `json:"keySchema,omitempty"`
+		} `json:"syncOptions"`
+		SyncStatus *string   `json:"syncStatus,omitempty"`
+		UpdatedAt  time.Time `json:"updatedAt"`
+		Version    *float32  `json:"version,omitempty"`
+	} `json:"secretSync"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SyncVercelSecretSyncResponse) GetJSON400() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SyncVercelSecretSyncResponse) GetJSON401() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SyncVercelSecretSyncResponse) GetJSON403() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SyncVercelSecretSyncResponse) GetJSON404() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SyncVercelSecretSyncResponse) GetJSON422() *struct {
+	Error      string                                            `json:"error"`
+	Message    interface{}                                       `json:"message,omitempty"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r SyncVercelSecretSyncResponse) GetJSON500() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r SyncVercelSecretSyncResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SyncVercelSecretSyncResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SyncVercelSecretSyncResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SyncVercelSecretSyncResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListSecretValidationRulesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -227621,6 +231245,32 @@ func (c *ClientWithResponses) UpdatePostgresAppConnectionWithResponse(ctx contex
 	return ParseUpdatePostgresAppConnectionResponse(rsp)
 }
 
+// CreateVercelAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/vercel (the `CreateVercelAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a Vercel Connection.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateVercelAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVercelAppConnectionResponse, error) {
+	rsp, err := c.CreateVercelAppConnectionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateVercelAppConnectionResponse(rsp)
+}
+
+// CreateVercelAppConnectionWithResponse performs a POST /api/v1/app-connections/vercel (the `CreateVercelAppConnection` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create a Vercel Connection.
+func (c *ClientWithResponses) CreateVercelAppConnectionWithResponse(ctx context.Context, body CreateVercelAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVercelAppConnectionResponse, error) {
+	rsp, err := c.CreateVercelAppConnection(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateVercelAppConnectionResponse(rsp)
+}
+
 // RefreshAuthTokenWithResponse performs a POST /api/v1/auth/token (the `RefreshAuthToken` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -232073,6 +235723,58 @@ func (c *ClientWithResponses) CreateOciVaultSecretSyncWithResponse(ctx context.C
 		return nil, err
 	}
 	return ParseCreateOciVaultSecretSyncResponse(rsp)
+}
+
+// CreateVercelSecretSyncWithBodyWithResponse performs a POST /api/v1/secret-syncs/vercel (the `CreateVercelSecretSync` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a Vercel Sync for the specified project environment.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateVercelSecretSyncWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVercelSecretSyncResponse, error) {
+	rsp, err := c.CreateVercelSecretSyncWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateVercelSecretSyncResponse(rsp)
+}
+
+// CreateVercelSecretSyncWithResponse performs a POST /api/v1/secret-syncs/vercel (the `CreateVercelSecretSync` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create a Vercel Sync for the specified project environment.
+func (c *ClientWithResponses) CreateVercelSecretSyncWithResponse(ctx context.Context, body CreateVercelSecretSyncJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVercelSecretSyncResponse, error) {
+	rsp, err := c.CreateVercelSecretSync(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateVercelSecretSyncResponse(rsp)
+}
+
+// GetVercelSecretSyncWithResponse performs a GET /api/v1/secret-syncs/vercel/{syncId} (the `GetVercelSecretSync` operationId) request.
+//
+// Get the specified Vercel Sync by ID.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetVercelSecretSyncWithResponse(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetVercelSecretSyncResponse, error) {
+	rsp, err := c.GetVercelSecretSync(ctx, syncId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetVercelSecretSyncResponse(rsp)
+}
+
+// SyncVercelSecretSyncWithResponse performs a POST /api/v1/secret-syncs/vercel/{syncId}/sync-secrets (the `SyncVercelSecretSync` operationId) request.
+//
+// Trigger a sync for the specified Vercel Sync.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) SyncVercelSecretSyncWithResponse(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*SyncVercelSecretSyncResponse, error) {
+	rsp, err := c.SyncVercelSecretSync(ctx, syncId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSyncVercelSecretSyncResponse(rsp)
 }
 
 // ListSecretValidationRulesWithResponse performs a GET /api/v1/secret-validation-rules (the `ListSecretValidationRules` operationId) request.
@@ -238834,6 +242536,108 @@ func ParseUpdatePostgresAppConnectionResponse(rsp *http.Response) (*UpdatePostgr
 			Message    string                                                   `json:"message"`
 			ReqId      string                                                   `json:"reqId"`
 			StatusCode UpdatePostgresAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateVercelAppConnectionResponse parses an HTTP response from a CreateVercelAppConnectionWithResponse call
+func ParseCreateVercelAppConnectionResponse(rsp *http.Response) (*CreateVercelAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateVercelAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection CreateVercelAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateVercelAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateVercelAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateVercelAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateVercelAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    interface{}                                            `json:"message,omitempty"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateVercelAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateVercelAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -271535,6 +275339,474 @@ func ParseCreateOciVaultSecretSyncResponse(rsp *http.Response) (*CreateOciVaultS
 			Message    string                                                `json:"message"`
 			ReqId      string                                                `json:"reqId"`
 			StatusCode CreateOciVaultSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateVercelSecretSyncResponse parses an HTTP response from a CreateVercelSecretSyncWithResponse call
+func ParseCreateVercelSecretSyncResponse(rsp *http.Response) (*CreateVercelSecretSyncResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateVercelSecretSyncResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			SecretSync struct {
+				Connection struct {
+					App  CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+					Id   openapi_types.UUID                                               `json:"id"`
+					Name string                                                           `json:"name"`
+				} `json:"connection"`
+				ConnectionId      openapi_types.UUID                                                     `json:"connectionId"`
+				CreatedAt         time.Time                                                              `json:"createdAt"`
+				Description       *string                                                                `json:"description,omitempty"`
+				Destination       CreateVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+				DestinationConfig CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+				Environment       *struct {
+					Id   openapi_types.UUID `json:"id"`
+					Name string             `json:"name"`
+					Slug string             `json:"slug"`
+				} `json:"environment"`
+				Folder *struct {
+					Id   string `json:"id"`
+					Path string `json:"path"`
+				} `json:"folder"`
+				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                openapi_types.UUID  `json:"id"`
+				ImportStatus      *string             `json:"importStatus,omitempty"`
+				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name              string              `json:"name"`
+				ProjectId         string              `json:"projectId"`
+				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+				// SyncOptions Optional parameters to modify how secrets are synced.
+				SyncOptions struct {
+					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+					InitialSyncBehavior CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+					// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+					KeySchema *string `json:"keySchema,omitempty"`
+				} `json:"syncOptions"`
+				SyncStatus *string   `json:"syncStatus,omitempty"`
+				UpdatedAt  time.Time `json:"updatedAt"`
+				Version    *float32  `json:"version,omitempty"`
+			} `json:"secretSync"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    interface{}                                         `json:"message,omitempty"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetVercelSecretSyncResponse parses an HTTP response from a GetVercelSecretSyncWithResponse call
+func ParseGetVercelSecretSyncResponse(rsp *http.Response) (*GetVercelSecretSyncResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetVercelSecretSyncResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			SecretSync struct {
+				Connection struct {
+					App  GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+					Id   openapi_types.UUID                                            `json:"id"`
+					Name string                                                        `json:"name"`
+				} `json:"connection"`
+				ConnectionId      openapi_types.UUID                                                  `json:"connectionId"`
+				CreatedAt         time.Time                                                           `json:"createdAt"`
+				Description       *string                                                             `json:"description,omitempty"`
+				Destination       GetVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+				DestinationConfig GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+				Environment       *struct {
+					Id   openapi_types.UUID `json:"id"`
+					Name string             `json:"name"`
+					Slug string             `json:"slug"`
+				} `json:"environment"`
+				Folder *struct {
+					Id   string `json:"id"`
+					Path string `json:"path"`
+				} `json:"folder"`
+				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                openapi_types.UUID  `json:"id"`
+				ImportStatus      *string             `json:"importStatus,omitempty"`
+				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name              string              `json:"name"`
+				ProjectId         string              `json:"projectId"`
+				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+				// SyncOptions Optional parameters to modify how secrets are synced.
+				SyncOptions struct {
+					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+					InitialSyncBehavior GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+					// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+					KeySchema *string `json:"keySchema,omitempty"`
+				} `json:"syncOptions"`
+				SyncStatus *string   `json:"syncStatus,omitempty"`
+				UpdatedAt  time.Time `json:"updatedAt"`
+				Version    *float32  `json:"version,omitempty"`
+			} `json:"secretSync"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    interface{}                                      `json:"message,omitempty"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSyncVercelSecretSyncResponse parses an HTTP response from a SyncVercelSecretSyncWithResponse call
+func ParseSyncVercelSecretSyncResponse(rsp *http.Response) (*SyncVercelSecretSyncResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SyncVercelSecretSyncResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			SecretSync struct {
+				Connection struct {
+					App  SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+					Id   openapi_types.UUID                                             `json:"id"`
+					Name string                                                         `json:"name"`
+				} `json:"connection"`
+				ConnectionId      openapi_types.UUID                                                   `json:"connectionId"`
+				CreatedAt         time.Time                                                            `json:"createdAt"`
+				Description       *string                                                              `json:"description,omitempty"`
+				Destination       SyncVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+				DestinationConfig SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+				Environment       *struct {
+					Id   openapi_types.UUID `json:"id"`
+					Name string             `json:"name"`
+					Slug string             `json:"slug"`
+				} `json:"environment"`
+				Folder *struct {
+					Id   string `json:"id"`
+					Path string `json:"path"`
+				} `json:"folder"`
+				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                openapi_types.UUID  `json:"id"`
+				ImportStatus      *string             `json:"importStatus,omitempty"`
+				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name              string              `json:"name"`
+				ProjectId         string              `json:"projectId"`
+				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+				// SyncOptions Optional parameters to modify how secrets are synced.
+				SyncOptions struct {
+					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+					InitialSyncBehavior SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+					// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+					KeySchema *string `json:"keySchema,omitempty"`
+				} `json:"syncOptions"`
+				SyncStatus *string   `json:"syncStatus,omitempty"`
+				UpdatedAt  time.Time `json:"updatedAt"`
+				Version    *float32  `json:"version,omitempty"`
+			} `json:"secretSync"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    interface{}                                       `json:"message,omitempty"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
