@@ -73,6 +73,7 @@ import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TSecretApprovalPolicyServiceFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-service";
 import { TSecretApprovalRequestServiceFactory } from "@app/ee/services/secret-approval-request/secret-approval-request-service";
 import { TSecretChangeGlobalPolicyBridgeServiceFactory } from "@app/ee/services/secret-change-global-policy-bridge/secret-change-global-policy-bridge-service";
+import { TSecretReadActivityServiceFactory } from "@app/ee/services/secret-read-activity/secret-read-activity-service";
 import { TSecretRotationV2ServiceFactory } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-service";
 import { TSecretScanningV2InstanceServiceFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-instance-service";
 import { TSecretScanningV2ProjectResolverFactory } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-project-resolver";
@@ -458,6 +459,7 @@ declare module "fastify" {
     microsoftTeams: TMicrosoftTeamsServiceFactory;
     assumePrivileges: TAssumePrivilegeServiceFactory;
     insights: TInsightsServiceFactory;
+    secretReadActivity: TSecretReadActivityServiceFactory;
     auditReport: TAuditReportServiceFactory;
     relay: TRelayServiceFactory;
     gatewayV2: TGatewayV2ServiceFactory;

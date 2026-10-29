@@ -65,7 +65,7 @@ type TSecretImportSecretsV2 = {
   })[];
 };
 
-const LEVEL_BREAK = 10;
+export const LEVEL_BREAK = 10;
 const getImportUniqKey = (envSlug: string, path: string) => `${envSlug}=${path}`;
 const RESERVED_IMPORT_REGEX = new RE2("/__reserve_replication_([a-f0-9-]{36})");
 

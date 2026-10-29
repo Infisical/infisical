@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import { subject } from "@casl/ability";
 import { Link } from "@tanstack/react-router";
+import axios from "axios";
+import { addDays, format, max } from "date-fns";
 import {
   BanIcon,
   CheckIcon,
@@ -9,8 +11,10 @@ import {
   HardDriveIcon,
   InfoIcon,
   MoreHorizontalIcon,
+  NetworkIcon,
   PlusIcon,
   SearchIcon,
+  TableIcon,
   TriangleAlertIcon,
   UserIcon,
   UserPlusIcon,
@@ -18,8 +22,14 @@ import {
 } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
+import { SecretAccessGraph, TAccessGraphInput } from "@app/components/secrets/SecretAccessGraph";
+import {
+  SecretReadStatusBadge,
+  TReaderReadStatus
+} from "@app/components/secrets/SecretReadStatusBadge";
 import {
   Button,
+  ButtonGroup,
   Combobox,
   Command,
   CommandEmpty,
@@ -75,6 +85,7 @@ import {
 } from "@app/context";
 import {
   PermissionConditionOperators,
+  ProjectPermissionInsightsActions,
   ProjectPermissionSecretActions
 } from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
@@ -86,6 +97,11 @@ import {
 } from "@app/hooks/api";
 import { useGetAvailableOrgUsers } from "@app/hooks/api/organization/queries";
 import { useCreateProjectUserAdditionalPrivilege } from "@app/hooks/api/projectUserAdditionalPrivilege";
+import {
+  SecretReadNotJudgedReason,
+  SecretReadStatus,
+  useGetSecretReadActivity
+} from "@app/hooks/api/secretInsights";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretAccessListEntry } from "@app/hooks/api/secrets/types";
 import { IdentityProjectAdditionalPrivilegeModifySection } from "@app/pages/project/IdentityDetailsByIDPage/components/IdentityProjectAdditionalPrivilegeSection/IdentityProjectAdditionalPrivilegeModifySection";
@@ -96,6 +112,15 @@ type Props = {
   environment: string;
   secretPath: string;
 };
+
+type AccessView = "graph" | "table";
+
+const grantsReadValue = (actions: Iterable<string>) =>
+  [...actions].some(
+    (action) =>
+      action === ProjectPermissionSecretActions.ReadValue ||
+      action === ProjectPermissionSecretActions.DescribeAndReadValue
+  );
 
 type EditingPrivilege = {
   type: "user" | "identity";
@@ -417,6 +442,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
   const [searchFilter, setSearchFilter] = useState("");
   const [typeFilters, setTypeFilters] = useState<Set<AccessRowType>>(() => new Set());
   const [showAllEntities, setShowAllEntities] = useState(true);
+  const [view, setView] = useState<AccessView>("graph");
 
   const toggleTypeFilter = (type: AccessRowType) => {
     setTypeFilters((prev) => {
@@ -464,6 +490,154 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
     secretKey,
     includeAllEntities: showAllEntities
   });
+
+  const canReadInsights = permission.can(
+    ProjectPermissionInsightsActions.Read,
+    ProjectPermissionSub.Insights
+  );
+  const {
+    data: readActivity,
+    isLoading: isReadActivityLoading,
+    error: readActivityError
+  } = useGetSecretReadActivity(
+    { projectId: currentProject.id, environment, secretPath, secretKey },
+    { enabled: canReadInsights }
+  );
+  const readActors = useMemo(
+    () => new Map(readActivity?.actors.map((actor) => [actor.actorId, actor])),
+    [readActivity]
+  );
+
+  // What a reader's row and node say about their reads, worded from the status the API gives each reader.
+  const readStatusOf = (actorId: string): TReaderReadStatus | undefined => {
+    if (!readActivity) return undefined;
+    const actor = readActors.get(actorId);
+    if (actor?.readStatus === SecretReadStatus.Read && actor.lastReadAt) {
+      return { kind: "read", lastReadAt: actor.lastReadAt };
+    }
+    if (actor?.readStatus === SecretReadStatus.Unused) {
+      return { kind: "unread", since: readActivity.readsTrackedSince };
+    }
+    if (actor?.notJudgedReason === SecretReadNotJudgedReason.ProjectAdmin) {
+      return {
+        kind: "pending",
+        reason:
+          "Project admins can read everything by design, so they are not counted as unused access."
+      };
+    }
+    if (actor?.notJudgedReason === SecretReadNotJudgedReason.TrackingTooNew) {
+      // The project's start date is too early for a secret or an access that is newer still: each needs 30 days too.
+      const judgedAt = max([
+        new Date(readActivity.unusedAccessFrom),
+        addDays(new Date(readActivity.readsTrackedSince), 30),
+        addDays(new Date(actor.accessSince), 30)
+      ]);
+      return {
+        kind: "pending",
+        reason: `Reads have only been tracked since ${format(new Date(readActivity.readsTrackedSince), "PP")}. If they still have not read it, they will count as unused access from ${format(judgedAt, "PP")}.`
+      };
+    }
+    if (actor?.notJudgedReason === SecretReadNotJudgedReason.AccessTooNew) {
+      return {
+        kind: "pending",
+        reason: `They got access to this secret on ${format(new Date(actor.accessSince), "PP")}, so they have not had 30 days to read it.`
+      };
+    }
+    if (actor?.notJudgedReason === SecretReadNotJudgedReason.SecretTooNew) {
+      return {
+        kind: "pending",
+        reason: "The secret is newer than 30 days, so nobody has had 30 days to read it."
+      };
+    }
+    return { kind: "pending", reason: "Not counted as unused access." };
+  };
+
+  let readActivityDescription = "Loading read activity...";
+  if (readActivityError) {
+    readActivityDescription =
+      (axios.isAxiosError(readActivityError) &&
+        (readActivityError.response?.data as { message?: string })?.message) ||
+      "Read activity is unavailable.";
+  } else if (readActivity) {
+    readActivityDescription = `Reads by users and machine identities since ${format(new Date(readActivity.readsTrackedSince), "PP")}, including reads through imports and references.`;
+  }
+
+  // Every reader who can read the value, directly or through a group, with one line each to the secret. The read
+  // activity names them exactly, with each member's own folder grants applied to what a group gives them; without
+  // it, the access list decides, judging a group on its roles alone.
+  const graphInput = useMemo<TAccessGraphInput | undefined>(() => {
+    if (!secretAccessList) return undefined;
+    const groups = secretAccessList.groups.filter((group) => grantsReadValue(group.allowedActions));
+    const entries = [
+      ...secretAccessList.users.map((entry) => ({ type: "user" as const, entry })),
+      ...secretAccessList.identities.map((entry) => ({ type: "identity" as const, entry }))
+    ];
+    const entryById = new Map(entries.map(({ entry }) => [entry.id, entry]));
+    const isDirect = (id: string) => grantsReadValue(entryById.get(id)?.allowedActions ?? []);
+    const groupIdsOf = (type: "user" | "identity", id: string) =>
+      groups
+        .filter((group) => (type === "user" ? group.userIds : group.identityIds).includes(id))
+        .map((group) => group.id);
+    const toReader = (type: "user" | "identity", id: string, name: string, isAdmin: boolean) => {
+      const status = readStatusOf(id);
+      return {
+        id,
+        name,
+        type,
+        isDirect: isDirect(id),
+        groupIds: groupIdsOf(type, id),
+        isAdmin,
+        lastReadAt: status?.kind === "read" ? status.lastReadAt : undefined,
+        unreadSince: status?.kind === "unread" ? status.since : undefined
+      };
+    };
+    const readers = readActivity
+      ? readActivity.actors.map((actor) =>
+          toReader(actor.actorType, actor.actorId, actor.name, actor.isProjectAdmin)
+        )
+      : entries.flatMap(({ type, entry }) =>
+          isDirect(entry.id) || groupIdsOf(type, entry.id).length
+            ? [toReader(type, entry.id, entry.name, false)]
+            : []
+        );
+    return {
+      secret: { key: secretKey, environment, secretPath },
+      readers,
+      // Every group that grants the value is drawn, including one whose members also have it directly.
+      groups: groups.map((group) => ({
+        id: group.id,
+        name: group.name,
+        memberCount: group.userIds.length + group.identityIds.length
+      })),
+      hasReadActivity: Boolean(canReadInsights && readActivity),
+      trackedSince: readActivity?.readsTrackedSince
+    };
+    // readStatusOf only reads readActivity and readActors, which are both listed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    secretAccessList,
+    readActors,
+    readActivity,
+    canReadInsights,
+    secretKey,
+    environment,
+    secretPath
+  ]);
+
+  const renderLastRead = (row: AccessRow) => {
+    if (row.type === "group") return null;
+    // A folder read is credited to every secret in the folder, including ones this row can only describe.
+    const canReadValue = grantsReadValue([
+      ...row.entry.allowedActions,
+      ...(row.inheritedActions ?? [])
+    ]);
+    if (!canReadValue) return null;
+    if (isReadActivityLoading) return <Skeleton className="h-4 w-20 rounded" />;
+    const status = readStatusOf(row.entry.id);
+    if (!status) return null;
+
+    return <SecretReadStatusBadge status={status} />;
+  };
 
   const flatRows = useMemo<AccessRow[]>(() => {
     if (!secretAccessList) return [];
@@ -592,73 +766,106 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
     <>
       <div className="flex thin-scrollbar flex-col gap-4 overflow-y-auto p-4">
         <div className="flex items-center gap-2">
-          <Label className="cursor-pointer gap-1.5 text-xs whitespace-nowrap text-muted">
-            <Toggle
-              size="sm"
-              variant="project"
-              checked={showAllEntities}
-              onCheckedChange={setShowAllEntities}
-            />
-            Show all members
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <InfoIcon className="size-3.5 text-muted" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-60">
-                When enabled, all project members are shown including those without any access to
-                this secret.
-              </TooltipContent>
-            </Tooltip>
-          </Label>
-          <InputGroup className="flex-1">
-            <InputGroupAddon>
-              <SearchIcon />
-            </InputGroupAddon>
-            <InputGroupInput
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value)}
-              placeholder="Search by name..."
-            />
-          </InputGroup>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <IconButton
-                variant={isFilterActive ? "project" : "outline"}
-                aria-label="Filter by type"
-              >
-                <FilterIcon />
-              </IconButton>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {ALL_TYPE_FILTERS.map((type) => {
-                const { icon: TypeIcon, label } = TYPE_CONFIG[type];
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={type}
-                    checked={typeFilters.has(type)}
-                    onCheckedChange={() => toggleTypeFilter(type)}
-                    onSelect={(e) => e.preventDefault()}
+          <ButtonGroup>
+            <Button
+              size="xs"
+              variant={view === "graph" ? "project" : "outline"}
+              aria-pressed={view === "graph"}
+              onClick={() => setView("graph")}
+            >
+              <NetworkIcon />
+              Graph
+            </Button>
+            <Button
+              size="xs"
+              variant={view === "table" ? "project" : "outline"}
+              aria-pressed={view === "table"}
+              onClick={() => setView("table")}
+            >
+              <TableIcon />
+              Table
+            </Button>
+          </ButtonGroup>
+          {view === "table" && (
+            <>
+              <Label className="cursor-pointer gap-1.5 text-xs whitespace-nowrap text-muted">
+                <Toggle
+                  size="sm"
+                  variant="project"
+                  checked={showAllEntities}
+                  onCheckedChange={setShowAllEntities}
+                />
+                Show all members
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <InfoIcon className="size-3.5 text-muted" />
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-60">
+                    When enabled, all project members are shown including those without any access
+                    to this secret.
+                  </TooltipContent>
+                </Tooltip>
+              </Label>
+              <InputGroup className="flex-1">
+                <InputGroupAddon>
+                  <SearchIcon />
+                </InputGroupAddon>
+                <InputGroupInput
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  placeholder="Search by name..."
+                />
+              </InputGroup>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    variant={isFilterActive ? "project" : "outline"}
+                    aria-label="Filter by type"
                   >
-                    <TypeIcon className="size-4" />
-                    {label}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <AddMemberPopover
-            secretKey={secretKey}
-            environment={environment}
-            secretPath={secretPath}
-          />
+                    <FilterIcon />
+                  </IconButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {ALL_TYPE_FILTERS.map((type) => {
+                    const { icon: TypeIcon, label } = TYPE_CONFIG[type];
+                    return (
+                      <DropdownMenuCheckboxItem
+                        key={type}
+                        checked={typeFilters.has(type)}
+                        onCheckedChange={() => toggleTypeFilter(type)}
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        <TypeIcon className="size-4" />
+                        {label}
+                      </DropdownMenuCheckboxItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+          {view === "table" && (
+            <AddMemberPopover
+              secretKey={secretKey}
+              environment={environment}
+              secretPath={secretPath}
+            />
+          )}
         </div>
-        {/* eslint-disable-next-line no-nested-ternary */}
-        {isLoading ? (
+        {/* eslint-disable no-nested-ternary */}
+        {view === "graph" ? (
+          isLoading || !graphInput ? (
+            <Skeleton className="h-[560px] w-full" />
+          ) : (
+            <SecretAccessGraph input={graphInput} />
+          )
+        ) : isLoading ? (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Type</TableHead>
                 <TableHead>Name</TableHead>
+                {canReadInsights && <TableHead className="w-40">Last Read</TableHead>}
                 {PERMISSION_COLUMNS.filter((col) => !col.isLegacy).map((col) => (
                   <TableHead key={col.action} className="w-[100px] text-center">
                     {col.label}
@@ -676,6 +883,11 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                   <TableCell>
                     <Skeleton className="h-4 w-24 rounded" />
                   </TableCell>
+                  {canReadInsights && (
+                    <TableCell className="w-40">
+                      <Skeleton className="h-4 w-20 rounded" />
+                    </TableCell>
+                  )}
                   {PERMISSION_COLUMNS.filter((col) => !col.isLegacy).map((col) => (
                     <TableCell key={col.action} className="w-[100px] text-center">
                       <Skeleton className="mx-auto h-4 w-4 rounded" />
@@ -699,19 +911,25 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
           </Empty>
         ) : (
           <Table containerClassName="overflow-auto">
-            <TableHeader className="sticky -top-px z-20 bg-container [&_tr]:border-b-0">
+            <TableHeader sticky>
               <TableRow>
-                <TableHead className="w-48 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
-                  Type
-                </TableHead>
-                <TableHead className="border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]">
-                  Name
-                </TableHead>
+                <TableHead className="w-48">Type</TableHead>
+                <TableHead>Name</TableHead>
+                {canReadInsights && (
+                  <TableHead className="w-40">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex items-center gap-1">
+                          Last Read
+                          <InfoIcon className="size-3.5 text-muted" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>{readActivityDescription}</TooltipContent>
+                    </Tooltip>
+                  </TableHead>
+                )}
                 {visibleColumns.map((col) => (
-                  <TableHead
-                    key={col.action}
-                    className="w-[100px] border-b-0 text-center shadow-[inset_0_-1px_0_var(--color-border)]"
-                  >
+                  <TableHead key={col.action} className="w-[100px] text-center">
                     {col.isLegacy ? (
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -730,7 +948,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                     )}
                   </TableHead>
                 ))}
-                <TableHead className="w-10 border-b-0 shadow-[inset_0_-1px_0_var(--color-border)]" />
+                <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -765,6 +983,11 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
                         )}
                       </div>
                     </TableCell>
+                    {canReadInsights && (
+                      <TableCell className="w-40 whitespace-nowrap">
+                        {renderLastRead(row)}
+                      </TableCell>
+                    )}
                     {visibleColumns.map((col) => {
                       const hasDirect = row.entry.allowedActions.includes(col.action);
                       const hasInherited = row.inheritedActions?.has(col.action);
@@ -827,6 +1050,7 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
             </TableBody>
           </Table>
         )}
+        {/* eslint-enable no-nested-ternary */}
       </div>
 
       <Sheet
