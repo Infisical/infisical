@@ -808,7 +808,18 @@ export const internalCertificateAuthorityServiceFactory = ({
       caKeySourceService
     });
 
-    const effectivePathLength = maxPathLength ?? ca.internalCa.maxPathLength ?? -1;
+    const storedPathLength = ca.internalCa.maxPathLength ?? -1;
+    if (
+      storedPathLength >= 0 &&
+      maxPathLength !== undefined &&
+      maxPathLength !== -1 &&
+      maxPathLength !== storedPathLength
+    ) {
+      throw new BadRequestError({
+        message: `Path length must be ${storedPathLength} to match this CA's existing certificate`
+      });
+    }
+    const effectivePathLength = storedPathLength >= 0 ? storedPathLength : (maxPathLength ?? -1);
     const resolvedPathLength = effectivePathLength === -1 ? undefined : effectivePathLength;
 
     const csrObj = await signer.createCsr({

@@ -29,7 +29,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useGetCaCsr, useImportCaCertificate } from "@app/hooks/api";
+import { CaType, useGetCa, useGetCaCsr, useImportCaCertificate } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
@@ -54,7 +54,12 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
     resolver: zodResolver(schema)
   });
 
-  const [maxPathLength, setMaxPathLength] = useState("-1");
+  const { data: ca } = useGetCa({ caId, type: CaType.INTERNAL });
+  const storedPathLength =
+    ca?.type === CaType.INTERNAL ? ca.configuration.maxPathLength : undefined;
+  const isPathLengthLocked = typeof storedPathLength === "number" && storedPathLength >= 0;
+  const [selectedPathLength, setSelectedPathLength] = useState("-1");
+  const maxPathLength = isPathLengthLocked ? String(storedPathLength) : selectedPathLength;
   const { data: csr } = useGetCaCsr(caId, Number(maxPathLength));
   const { mutateAsync: importCaCertificate } = useImportCaCertificate();
 
@@ -91,12 +96,16 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
         <FieldGroup>
           <Field>
             <FieldLabel>Path Length</FieldLabel>
-            <Select value={maxPathLength} onValueChange={setMaxPathLength}>
+            <Select
+              value={maxPathLength}
+              onValueChange={setSelectedPathLength}
+              disabled={isPathLengthLocked}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent position="popper">
-                {[-1, 0, 1, 2, 3].map((value) => (
+                {(isPathLengthLocked ? [storedPathLength] : [-1, 0, 1, 2, 3]).map((value) => (
                   <SelectItem value={String(value)} key={`ca-csr-path-length-${value}`}>
                     {String(value)}
                   </SelectItem>
@@ -104,7 +113,9 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
               </SelectContent>
             </Select>
             <FieldDescription>
-              How many intermediate CAs may follow this CA in the chain. -1 means no limit.
+              {isPathLengthLocked
+                ? "Set by this CA's current certificate and kept on renewal."
+                : "How many intermediate CAs may follow this CA in the chain. -1 means no limit."}
             </FieldDescription>
           </Field>
           {csr && (

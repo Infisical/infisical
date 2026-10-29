@@ -62,6 +62,7 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
           .number()
           .int()
           .min(-1)
+          .max(255)
           .optional()
           .describe(CERTIFICATE_AUTHORITIES.GET_CSR.maxPathLength)
       }),
