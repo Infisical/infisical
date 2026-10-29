@@ -64,7 +64,7 @@ If **Scan New Commits** is on for a GitHub data source, Infisical scans the comm
 - If Infisical finds a secret in any commit of the pull request, the check fails and marks the file and line of each secret, unless the secret's finding is marked as a false positive or ignored
 - If Infisical can't finish the scan, the check fails, and you can re-run the check from the pull request
 - If Infisical finds no secrets, the check passes
-- If the pull request comes from a fork, Infisical doesn't scan it and marks the check as skipped, which doesn't block merging. Infisical scans its commits after they're merged into the repository.
+- If the pull request comes from a fork, Infisical doesn't scan it and marks the check as skipped, which doesn't block merging (Infisical scans its commits after they're merged into the repository)
 
 To stop a pull request that contains a secret from being merged, [require the check in a branch protection rule](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-status-checks-before-merging).
 
