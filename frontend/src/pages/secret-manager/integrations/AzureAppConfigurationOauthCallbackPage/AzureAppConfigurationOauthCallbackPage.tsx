@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -14,6 +14,7 @@ export const AzureAppConfigurationOauthCallbackPage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useAuthorizeIntegration();
   const [error, setError] = useState<string | null>(null);
+  const hasStarted = useRef(false);
   const { currentOrg } = useOrganization();
   const { code, state } = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.AzureAppConfigurationsOauthCallbackPage.id
@@ -21,6 +22,10 @@ export const AzureAppConfigurationOauthCallbackPage = () => {
   const { currentProject } = useProject();
 
   useEffect(() => {
+    // Runs once: a second run under StrictMode would find the CSRF token already consumed.
+    if (hasStarted.current) return;
+    hasStarted.current = true;
+
     (async () => {
       try {
         // validate state
@@ -44,7 +49,8 @@ export const AzureAppConfigurationOauthCallbackPage = () => {
           },
           search: {
             integrationAuthId: integrationAuth.id
-          }
+          },
+          replace: true
         });
       } catch (err) {
         console.error(err);
