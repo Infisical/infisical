@@ -46,8 +46,9 @@ import {
   SecretScanningScanTrigger,
   SecretScanningScanType
 } from "./secret-scanning-v2-enums";
-import { SECRET_SCANNING_EVENT_PROCESSOR_MAP, SECRET_SCANNING_FACTORY_MAP } from "./secret-scanning-v2-factory";
+import { SECRET_SCANNING_FACTORY_MAP } from "./secret-scanning-v2-factory";
 import {
+  TFindingsPayload,
   TQueueSecretScanningDataSourceEvent,
   TQueueSecretScanningDataSourceFullScan,
   TQueueSecretScanningResourceDiffScan,
@@ -55,7 +56,6 @@ import {
   TQueueSecretScanningSendNotification,
   TSecretScanningDataSourceWithConnection,
   TSecretScanningDiscoverResource,
-  TSecretScanningEventProcessorParams,
   TSecretScanningFinding,
   TSecretScanningQueueReportedDiffScan
 } from "./secret-scanning-v2-types";
@@ -1322,15 +1322,21 @@ export const secretScanningV2QueueServiceFactory = ({
     }
   };
 
-  const eventProcessorParams: TSecretScanningEventProcessorParams = {
-    secretScanningV2DAL,
-    auditLogService,
-    discoverResource,
-    queueReportedDiffScan
-  };
-
   const processDataSourceEvent = async ({ dataSourceType, event }: TQueueSecretScanningDataSourceEvent) => {
-    await SECRET_SCANNING_EVENT_PROCESSOR_MAP[dataSourceType](eventProcessorParams).processEvent(event);
+    const factory = SECRET_SCANNING_FACTORY_MAP[dataSourceType]({ kmsService, appConnectionDAL });
+
+    if (!factory.processEvent) {
+      logger.error(`secretScanningV2Queue: Data source has no event processing [dataSourceType=${dataSourceType}]`);
+      return;
+    }
+
+    await factory.processEvent({
+      event,
+      secretScanningV2DAL,
+      auditLogService,
+      discoverResource,
+      queueReportedDiffScan
+    });
   };
 
   queueService.start(QueueName.SecretScanningV2, async (job) => {

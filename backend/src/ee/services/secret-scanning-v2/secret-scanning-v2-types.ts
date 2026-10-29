@@ -322,7 +322,8 @@ export type TSecretScanningFactory<
   T extends TSecretScanningDataSourceWithConnection,
   P extends TQueueSecretScanningResourceDiffScan["payload"],
   I extends TSecretScanningDataSourceInput,
-  C extends TSecretScanningDataSourceCredentials | undefined = undefined
+  C extends TSecretScanningDataSourceCredentials | undefined = undefined,
+  E extends TQueueSecretScanningDataSourceEvent["event"] = TQueueSecretScanningDataSourceEvent["event"]
 > = (params: TSecretScanningFactoryParams) => {
   listRawResources: TSecretScanningFactoryListRawResources<T>;
   getFullScanPath: TSecretScanningFactoryGetFullScanPath<T>;
@@ -336,6 +337,8 @@ export type TSecretScanningFactory<
   getDiffScanFindingsPayload: TSecretScanningFactoryGetDiffScanFindingsPayload<T, P>;
   getDiffScanReport?: TSecretScanningFactoryGetDiffScanReport<P>;
   getScanReport?: TSecretScanningFactoryGetScanReport;
+  // Processes webhook events beyond pushes, in the worker; only providers that receive them implement it.
+  processEvent?: TSecretScanningFactoryProcessEvent<E>;
 };
 
 export type TSecretScanningDiscoverResource = (params: {
@@ -354,18 +357,13 @@ export type TSecretScanningQueueReportedDiffScan = (
   }
 ) => Promise<void>;
 
-export type TSecretScanningEventProcessorParams = {
+export type TSecretScanningFactoryProcessEvent<E extends TQueueSecretScanningDataSourceEvent["event"]> = (params: {
+  event: E;
   secretScanningV2DAL: TSecretScanningV2DALFactory;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   discoverResource: TSecretScanningDiscoverResource;
   queueReportedDiffScan: TSecretScanningQueueReportedDiffScan;
-};
-
-export type TSecretScanningEventProcessor<E extends TQueueSecretScanningDataSourceEvent["event"]> = (
-  params: TSecretScanningEventProcessorParams
-) => {
-  processEvent: (event: E) => Promise<void>;
-};
+}) => Promise<void>;
 
 export type TFindingsPayload = Pick<TSecretScanningFindingsInsert, "details" | "fingerprint" | "severity" | "rule">[];
 export type TGetFindingsPayload = Promise<TFindingsPayload>;

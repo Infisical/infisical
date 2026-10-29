@@ -75,7 +75,7 @@ export const githubSecretScanningService = (
     });
   };
 
-  // The pull request events below only enqueue; github-secret-scanning-event-processor.ts processes them in the
+  // The pull request events below only enqueue; processGitHubPullRequestEvent processes them in the
   // secret scanning worker, so the webhook responds before any GitHub API call or scan is made.
   const handlePullRequestEvent = async (
     payload: PullRequestOpenedEvent | PullRequestSynchronizeEvent | PullRequestReopenedEvent,

@@ -32,6 +32,7 @@ import {
   getGitHubRadarInstallationOctokit,
   getPullRequestScanMetadata,
   isGitHubPullRequestScanPayload,
+  processGitHubPullRequestEvent,
   scanGitHubCommitsAndGetFindings,
   scanGitHubPullRequest
 } from "./github-secret-scanning-fns";
@@ -217,6 +218,7 @@ export const GitHubSecretScanningFactory = () => {
     getDiffScanFindingsPayload,
     getDiffScanReport,
     getScanReport,
+    processEvent: processGitHubPullRequestEvent,
     teardown,
     setupWebhook,
     validateConfigUpdate
