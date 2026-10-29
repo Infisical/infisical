@@ -187,21 +187,30 @@ Run [Agent Vault](/documentation/platform/agent-vault/overview), which lets AI a
     { name: "--ca-cert", value: "<string>", type: "string", description: "Your own certificate authority to serve instead of the one Infisical generates, as PEM text, PEM encoded as base64, or the path to a PEM file. Pass it with `--ca-key`. Can also be set with `INFISICAL_AGENT_VAULT_CA_CERT`." },
     { name: "--ca-key", value: "<string>", type: "string", description: "The ECDSA P-256 private key for `--ca-cert`, in the same formats. Can also be set with `INFISICAL_AGENT_VAULT_CA_KEY`, which keeps the key off the command line." },
     { name: "--data-dir", value: "<string>", type: "string", description: "The directory where the proxy keeps a cache of its settings and certificate authority, if the directory is writable. The proxy starts from the cache if it can't reach Infisical. Defaults to `~/.infisical/agent-vault`, or `/etc/infisical/agent-vault` when run as root. Can also be set with `INFISICAL_AGENT_VAULT_DATA_DIR`." },
+    { name: "--listen-host", value: "<string>", type: "string", description: "The host name or IP address the HTTP proxy listens on, such as `127.0.0.1`, without a port. Defaults to all interfaces. Can also be set with `INFISICAL_AGENT_VAULT_LISTEN_HOST`." },
     { name: "--log-file", value: "<string>", type: "string", description: "A file to also write logs to, as JSON lines. The file is appended to." },
     { name: "--log-format", value: "<string>", type: "string", default: "console", description: "The format of the logs written to stderr: `console` or `json`." },
-    { name: "--port", value: "<int>", type: "int", default: "17323", description: "The port to listen on, on all interfaces. `0` picks any free port, which the startup line reports. Can also be set with `INFISICAL_AGENT_VAULT_PORT`." },
+    { name: "--port", value: "<int>", type: "int", default: "17323", description: "The port for the HTTP proxy, on the address `--listen-host` sets. `0` picks any free port, which the startup line reports. Can also be set with `INFISICAL_AGENT_VAULT_PORT`." },
     { name: "--proxy-token", value: "<string>", type: "string", description: "The proxy token, which Infisical shows once when you create the proxy or rotate its token. Can also be set with `INFISICAL_AGENT_VAULT_PROXY_TOKEN`, which keeps it off the command line." },
+    { name: "--socks5-allow-private-destinations", type: "bool", description: "Let requests through the SOCKS5 port reach private, loopback, and link-local addresses when the traffic policy is **Any host** and no service names the host. Can also be set with `INFISICAL_AGENT_VAULT_SOCKS5_ALLOW_PRIVATE_DESTINATIONS`." },
+    { name: "--socks5-port", value: "<int>", type: "int", description: "Turns on a port for SOCKS5 over TLS, on all interfaces, from `1` to `65535` and different from `--port`. Needs `--socks5-tls-name`, or `--socks5-tls-cert` and `--socks5-tls-key`. Off by default. Can also be set with `INFISICAL_AGENT_VAULT_SOCKS5_PORT`." },
+    { name: "--socks5-tls-cert", value: "<string>", type: "string", description: "Your own certificate for the SOCKS5 port, as PEM text, PEM encoded as base64, or the path to a PEM file. Pass it with `--socks5-tls-key`. The proxy reads it when it starts. Can also be set with `INFISICAL_AGENT_VAULT_SOCKS5_TLS_CERT`." },
+    { name: "--socks5-tls-key", value: "<string>", type: "string", description: "The private key for `--socks5-tls-cert`, in the same formats. Can also be set with `INFISICAL_AGENT_VAULT_SOCKS5_TLS_KEY`, which keeps the key off the command line." },
+    { name: "--socks5-tls-name", value: "<string>", type: "string", description: "The DNS name or IP address clients reach the SOCKS5 port by. The proxy makes the port's certificate for this name from its certificate authority, and renews it. Can also be set with `INFISICAL_AGENT_VAULT_SOCKS5_TLS_NAME`." },
   ]}
   examples={[
     { title: "Start a proxy", code: "INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> infisical agent-vault proxy" },
     { title: "Serve your own certificate authority", code: "INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> infisical agent-vault proxy --ca-cert=./ca.crt --ca-key=./ca.key" },
     { title: "Log JSON to a file on a custom port", code: "INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> infisical agent-vault proxy --port=18000 --log-format=json --log-file=/var/log/infisical/agent-vault.log" },
+    { title: "Accept SOCKS5 over TLS and keep the HTTP port local", code: "INFISICAL_AGENT_VAULT_PROXY_TOKEN=<proxy-token> infisical agent-vault proxy --listen-host=127.0.0.1 --socks5-port=1080 --socks5-tls-name=proxy.example.com" },
   ]}
 >
 
 Run an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) in the foreground. For each request, the proxy decides whether the agent's session allows the host and attaches the real credential on the way out, so the agent never holds a secret.
 
 Start the proxy with its proxy token. You can run the proxy on as many machines as you need with the same token. Each time the proxy starts, it loads its settings and certificate authority from Infisical. If it can't reach Infisical, it retries for 60 seconds, then starts from the cache in `--data-dir` if there is one, or exits.
+
+To accept SOCKS5 connections from sandbox providers such as E2B, pass `--socks5-port`. Learn more about [the SOCKS5 port](/documentation/platform/agent-vault/proxies#accept-connections-over-socks5).
 
 You set the proxy's traffic policy, exceptions, and poll interval in Infisical, not with flags.
 

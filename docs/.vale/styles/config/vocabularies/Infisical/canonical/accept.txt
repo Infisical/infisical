@@ -252,6 +252,7 @@ Devin
 Mintlify
 Ona
 Daytona
+E2B
 DBT
 Ab Initio
 Initio
@@ -692,3 +693,6 @@ Stripe
 
 # --- Surfaced by the Agent Vault Docker guide ---
 gVisor
+
+# --- Surfaced by the Agent Vault E2B guide ---
+SOCKS5
