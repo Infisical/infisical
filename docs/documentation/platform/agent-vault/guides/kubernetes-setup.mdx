@@ -30,7 +30,7 @@ This guide shows you how to run AI agents in Kubernetes behind Agent Vault. You'
 
 ## Step 2: Deploy the proxy
 
-Save this manifest as `agent-vault-proxy.yaml` and apply it to your cluster, such as with `kubectl apply -f agent-vault-proxy.yaml` or through Flux or Argo CD. It creates the `agent-vault` namespace and runs the proxy in it. Replace `<cli-version>` with `0.44.10` or later, because earlier versions can't start a proxy from a proxy token, and `<your-instance-url>` with `https://app.infisical.com`, `https://eu.infisical.com`, or the URL of your self-hosted instance:
+Save this manifest as `agent-vault-proxy.yaml` and apply it to your cluster, such as with `kubectl apply -f agent-vault-proxy.yaml` or through Flux or Argo CD. It creates the `agent-vault` namespace and runs the proxy in it:
 
 ```yaml expandable
 apiVersion: v1
@@ -64,7 +64,7 @@ spec:
       containers:
         - name: agent-vault-proxy
           image: infisical/cli:<cli-version>
-          args: ["agent-vault", "proxy", "--domain", "<your-instance-url>"]
+          args: ["agent-vault", "proxy", "--domain", "https://app.infisical.com"]
           envFrom:
             - secretRef:
                 name: agent-vault-proxy
@@ -148,12 +148,11 @@ spec:
         - port: 80
 ```
 
-The proxy's network policy allows only ports 443 and 80 on public addresses. Add an egress rule for any other host or port the proxy has to reach:
-
-- **Private addresses:** if you self-host Infisical on a private address, or an API the agent calls is on one, add that address
-- **Other ports:** if a service or exception uses a port other than 443 or 80, such as `api.example.com:8443`, add that port
-
-Both network policies in this guide allow DNS only to pods labeled `k8s-app: kube-dns` in `kube-system`. If your cluster's DNS runs elsewhere, such as a node-local DNS cache at `169.254.20.10` or the `openshift-dns` namespace on OpenShift, change the DNS rule in both policies to match it.
+- **Infisical CLI:** replace `<cli-version>` with `0.44.10` or later, because earlier versions can't start a proxy from a proxy token
+- **Instance URL:** if you use EU Cloud or self-host Infisical, replace `https://app.infisical.com` with `https://eu.infisical.com` or the URL of your self-hosted instance
+- **Private addresses:** the proxy can only reach public addresses, so if you self-host Infisical on a private address, or an API the agent calls is on one, add an egress rule for that address
+- **Other ports:** the proxy can only reach ports 443 and 80, so if a service or exception uses another port, such as `api.example.com:8443`, add an egress rule for that port
+- **DNS:** the network policies in this step and in Step 3 allow DNS only to pods labeled `k8s-app: kube-dns` in `kube-system`, so if your cluster's DNS runs elsewhere, such as a node-local DNS cache or the `openshift-dns` namespace on OpenShift, change the DNS rule in both
 
 Store the proxy token in a Secret named `agent-vault-proxy` in the `agent-vault` namespace, under the key `INFISICAL_AGENT_VAULT_PROXY_TOKEN`. Create it with the tool you already use to manage Kubernetes secrets, such as the [Infisical Kubernetes Operator](/integrations/platforms/kubernetes/overview). The proxy's pods start once the Secret exists.
 
