@@ -15,7 +15,7 @@ With Agent Vault, the agent's container has no API keys. Each run is its own Doc
 flowchart LR
   script["Your script"]
   subgraph compose["Docker Compose project, one per run"]
-    agent["Agent container<br/>(can only reach the proxy)"]
+    agent["Agent container<br/>(no internet access)"]
     proxy["Proxy container<br/>(runs Agent Vault proxy)"]
   end
   apis["api.anthropic.com<br/>api.github.com<br/>..."]
@@ -167,15 +167,21 @@ SESSION_ID=$(echo "$SESSION" | jq -r .session.id)
 cleanup() {
   status=$?
   # Removing the containers deletes the proxy's log, so print it first if the run failed.
-  [ "$status" -eq 0 ] || docker compose -p "$PROJECT" logs --no-log-prefix agent-vault-proxy
+  [ "$status" -eq 0 ] || docker compose -p "$PROJECT" logs --no-log-prefix agent-vault-proxy || true
+  # The down command doesn't remove the agent's container, so remove it first.
+  docker rm -f "$PROJECT-agent" >/dev/null 2>&1 || true
   docker compose -p "$PROJECT" down || true
   curl -fsS -o /dev/null -X POST "$INFISICAL_DOMAIN/api/v1/agent-vault/sessions/$SESSION_ID/revoke" \
     -H "Authorization: Bearer $ACCESS_TOKEN"
 }
 trap cleanup EXIT
+trap "exit 130" INT
+trap "exit 143" TERM
 
 export INFISICAL_AGENT_VAULT_SESSION_TOKEN=$(echo "$SESSION" | jq -r .session.token)
-echo "$1" | docker compose -p "$PROJECT" run --rm -T agent
+# Run the agent in the background so that canceling the script stops the agent right away.
+echo "$1" | docker compose -p "$PROJECT" run --rm -T --name "$PROJECT-agent" agent &
+wait $!
 ```
 
 For more about creating sessions from code, see [Create sessions with the API](/documentation/platform/agent-vault/sessions-api). For the flags the agent starts with, see the [`agent-vault run` CLI reference](/cli/reference#agent-vault-run).
@@ -195,7 +201,7 @@ chmod +x run-agent.sh
 ./run-agent.sh "Reply with the word OK."
 ```
 
-Claude Code replies, even though its container has no Anthropic API key and can only connect to the proxy.
+Claude Code replies, even though its container has no Anthropic API key and no internet access.
 
 <Check>
   Each run now gets its own containers, network, and session. The only credential in the agent's container is a session token, and the script revokes the session when the run ends.
@@ -207,7 +213,9 @@ To check which requests the agent made, [set up session logs](/documentation/pla
 
 ### Network access from the agent's container
 
-The agent's container can only connect to its own proxy. It can't look up hostnames on the internet either, because on an internal network, Docker only answers DNS lookups for the names of containers. With the **Access bundle hosts only** traffic policy, the agent can reach two kinds of hosts through the proxy: the hosts of the services in the session's access bundle, and the proxy's exceptions.
+The agent's container can't reach the internet. It can't look up hostnames on the internet either, because on an internal network, Docker only answers DNS lookups for the names of containers. With the **Access bundle hosts only** traffic policy, the agent can reach two kinds of hosts through the proxy: the hosts of the services in the session's access bundle, and the proxy's exceptions.
+
+The agent can still connect to services on the Docker host that listen on all of the host's addresses, such as `0.0.0.0`, through the gateway address of the run's network. To keep the agent away from a service on the host, have the service listen only on `127.0.0.1`, or block traffic from Docker's networks to the host with a firewall rule.
 
 ### Isolation between containers
 
