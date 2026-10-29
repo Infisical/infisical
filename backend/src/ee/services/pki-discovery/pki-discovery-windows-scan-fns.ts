@@ -2,6 +2,7 @@ import { HttpStatusCode } from "axios";
 import net from "net";
 import { z } from "zod";
 
+import { BadRequestError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway-v2/types";
 import { callWinRmEndpoint, WinRmRpcEndpoint, WinRmRpcFailure } from "@app/lib/gateway-v2/winrm-rpc";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -45,6 +46,9 @@ const DEFAULT_WINRM_HTTPS_PORT = 5986;
 const MAX_WINDOWS_SCAN_CERTIFICATES = 5000;
 // Matches the gateway's Windows scan slots, so one job never queues past them and reads as busy.
 const WINDOWS_HOST_CONCURRENCY = 4;
+const MAX_WINDOWS_CHAIN_LENGTH = 10;
+// Chains reference a shared pool, so a small response can still expand into far more certificate data.
+const MAX_WINDOWS_EXPANDED_CHAIN_BYTES = 64 * 1024 * 1024;
 
 const WindowsStoreCertificateSchema = z.object({
   store: z.string().max(64),
@@ -55,16 +59,20 @@ const WindowsStoreCertificateSchema = z.object({
     .array(
       z.object({
         kind: z.nativeEnum(HostCertificateChainKind).catch(HostCertificateChainKind.Ca),
-        indexes: z.array(z.number().int().nonnegative())
+        indexes: z
+          .array(z.number().int().nonnegative())
+          .max(MAX_WINDOWS_CHAIN_LENGTH)
+          .refine((indexes) => new Set(indexes).size === indexes.length)
       })
     )
+    .max(1)
     .nullish()
 });
 
 export const WindowsCertificateScanResponseSchema = z.object({
   host: z.object({ hostname: z.string().max(255).optional().default("") }),
   pool: z.array(z.string()).nullish(),
-  certificates: z.array(WindowsStoreCertificateSchema).nullish(),
+  certificates: z.array(WindowsStoreCertificateSchema).max(MAX_WINDOWS_SCAN_CERTIFICATES).nullish(),
   deniedStores: z.array(z.string()).nullish(),
   unreadableIssuerStores: z.array(z.string()).nullish(),
   truncatedIssuerStores: z.array(z.string()).nullish(),
@@ -191,6 +199,17 @@ const buildStoreLocationDetails = (
 
 const isWindowsCertificateStore = (store: string): store is WindowsCertificateStore =>
   (Object.values(WindowsCertificateStore) as string[]).includes(store);
+
+export const expandedChainBytes = (certificates: TWindowsStoreCertificate[], pool: Buffer[]) =>
+  certificates.reduce(
+    (total, cert) =>
+      total +
+      (cert.chains ?? []).reduce(
+        (sum, chain) => sum + chain.indexes.reduce((bytes, idx) => bytes + (pool[idx]?.length ?? 0), 0),
+        0
+      ),
+    0
+  );
 
 export const resolveStoreChains = (cert: TWindowsStoreCertificate, pool: Buffer[], importStandaloneCa: boolean) =>
   (cert.chains ?? [])
@@ -338,6 +357,11 @@ const scanWindowsConnection = async (
 
     const scannedHost = { ...host, hostname: response.host.hostname };
     const pool = (response.pool ?? []).map((der) => Buffer.from(der, "base64"));
+    if (expandedChainBytes(response.certificates ?? [], pool) > MAX_WINDOWS_EXPANDED_CHAIN_BYTES) {
+      throw new BadRequestError({
+        message: "The scan found more certificates than one scan can return. Select fewer certificate stores."
+      });
+    }
     await run.writeLimit(async () => {
       for (const cert of response.certificates ?? []) {
         try {

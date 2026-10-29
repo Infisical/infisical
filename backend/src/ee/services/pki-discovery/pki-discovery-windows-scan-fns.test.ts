@@ -9,6 +9,7 @@ import {
   WindowsCertificateStore
 } from "./pki-discovery-types";
 import {
+  expandedChainBytes,
   resolveStoreChains,
   storeCertificatePath,
   summarizeWindowsScanIssues,
@@ -61,6 +62,28 @@ describe("selectsCaStoresWithoutImport", () => {
 });
 
 describe("WindowsCertificateScanResponseSchema", () => {
+  const withChain = (indexes: number[]) => ({
+    host: { hostname: "web-01" },
+    pool: ["MA=="],
+    certificates: [
+      {
+        store: WindowsCertificateStore.Personal,
+        thumbprint: "AA",
+        hasPrivateKey: true,
+        status: HostCertificateFileStatus.Ok,
+        chains: [{ kind: HostCertificateChainKind.Leaf, indexes }]
+      }
+    ]
+  });
+
+  test("rejects a chain that repeats a certificate or runs past the gateway's chain limit", () => {
+    expect(WindowsCertificateScanResponseSchema.safeParse(withChain([0, 0])).success).toBe(false);
+    expect(
+      WindowsCertificateScanResponseSchema.safeParse(withChain(Array.from({ length: 11 }, (_, i) => i))).success
+    ).toBe(false);
+    expect(WindowsCertificateScanResponseSchema.safeParse(withChain([0])).success).toBe(true);
+  });
+
   test("accepts a gateway response with null lists", () => {
     const parsed = WindowsCertificateScanResponseSchema.parse({
       host: { hostname: "web-01" },
@@ -228,5 +251,19 @@ describe("summarizeWindowsScanIssues", () => {
 
   test("reports nothing for a clean scan", () => {
     expect(summarizeWindowsScanIssues("web-01", { host: { hostname: "web-01" }, certificates: [] })).toEqual([]);
+  });
+});
+
+describe("expandedChainBytes", () => {
+  test("counts every pooled certificate a chain references", () => {
+    const pool = [Buffer.alloc(100), Buffer.alloc(40)];
+    const cert = {
+      store: WindowsCertificateStore.Personal,
+      thumbprint: "AA",
+      hasPrivateKey: false,
+      status: HostCertificateFileStatus.Ok,
+      chains: [{ kind: HostCertificateChainKind.Leaf, indexes: [0, 1] }]
+    };
+    expect(expandedChainBytes([cert, { ...cert, thumbprint: "BB" }], pool)).toBe(280);
   });
 });
