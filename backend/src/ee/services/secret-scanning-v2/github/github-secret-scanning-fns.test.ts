@@ -14,9 +14,17 @@ import {
   scanGitHubCommitsAndGetFindings
 } from "./github-secret-scanning-fns";
 
-const checksUpdate = vi.fn();
-const checksCreate = vi.fn();
-const checksListForRef = vi.fn();
+type TCheckRunParams = {
+  name?: string;
+  conclusion?: string;
+  output: { annotations: { message: string }[] };
+  actions?: { identifier: string }[];
+};
+
+const checksUpdate = vi.fn<(params: TCheckRunParams) => Promise<void>>();
+const checksCreate = vi.fn<(params: TCheckRunParams) => Promise<void>>();
+const checksListForRef =
+  vi.fn<(params: Record<string, unknown>) => Promise<{ data: { total_count: number; check_runs: unknown[] } }>>();
 
 vi.mock("probot", () => ({
   ProbotOctokit: vi.fn(() => ({ checks: { update: checksUpdate, create: checksCreate, listForRef: checksListForRef } }))
@@ -30,10 +38,10 @@ vi.mock("@app/lib/config/env", async (importOriginal) => ({
   })
 }));
 
-const scanContentAndGetFindings = vi.fn();
+const scanContentAndGetFindings = vi.fn<(content: string, configPath?: string) => Promise<unknown[]>>();
 
 vi.mock("@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns", () => ({
-  scanContentAndGetFindings: (...args: unknown[]) => scanContentAndGetFindings(...args)
+  scanContentAndGetFindings: (content: string, configPath?: string) => scanContentAndGetFindings(content, configPath)
 }));
 
 vi.mock("@app/lib/logger", () => ({
@@ -187,7 +195,7 @@ describe("completePullRequestCheckRun", () => {
     expect(second.output.annotations).toHaveLength(50);
     expect(second.conclusion).toBeUndefined();
     expect(third.output.annotations).toHaveLength(20);
-    expect(first.actions.map((action: { identifier: string }) => action.identifier)).toEqual([
+    expect(first.actions?.map((action) => action.identifier)).toEqual([
       SecretScanningFindingStatus.FalsePositive,
       SecretScanningFindingStatus.Ignore
     ]);
@@ -234,7 +242,7 @@ describe("scanGitHubCommitsAndGetFindings", () => {
       commits: [{ sha: "a".repeat(40), authorName: "a", authorEmail: "a@a.com", date: "", message: "m" }]
     });
 
-    const scanned = scanContentAndGetFindings.mock.calls.map(([content]) => (content as string).trim());
+    const scanned = scanContentAndGetFindings.mock.calls.map(([content]) => content.trim());
     expect(scanned).toEqual(["added", "modified", "renamed", "copied", "changed"]);
   });
 });
