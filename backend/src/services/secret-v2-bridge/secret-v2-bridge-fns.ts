@@ -32,14 +32,14 @@ import { KmsDataKey } from "../kms/kms-types";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TReminderMove } from "../reminder/reminder-types";
 import { ResourceMetadataWithEncryptionDTO } from "../resource-metadata/resource-metadata-schema";
-import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
-import { TSecretQueueFactory } from "../secret/secret-queue";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretImportDALFactory } from "../secret-import/secret-import-dal";
 import {
   describeSecretValidationFailures,
   SecretValidationError
 } from "../secret-validation-rule/secret-validation-rule-errors";
+import { INFISICAL_SECRET_VALUE_HIDDEN_MASK } from "../secret/secret-fns";
+import { TSecretQueueFactory } from "../secret/secret-queue";
 import { createSecretBlindIndexer, TSecretBlindIndexer, TSecretValueBlindIndexes } from "./secret-blind-index-fns";
 import { emitSecretsModified, secretModifiedEvents } from "./secret-events";
 import { expandSecretReferencesFactory, getAllSecretReferences } from "./secret-reference-fns";

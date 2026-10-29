@@ -24,10 +24,10 @@ import { isS3DirectoryBucket } from "@app/services/object-storage/object-storage
 import { TObjectStorageServiceFactory } from "@app/services/object-storage/object-storage-service";
 import { ObjectStorageType } from "@app/services/object-storage/object-storage-types";
 
-import { getAgentVaultPermission } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultProxyDALFactory } from "../agent-vault-proxy/agent-vault-proxy-dal";
 import { TAgentVaultSessionDALFactory } from "../agent-vault-session/agent-vault-session-dal";
 import { isOwnerlessSession, isSessionOwnedBy } from "../agent-vault-session/agent-vault-session-fns";
+import { getAgentVaultPermission } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultSessionLogConfigDALFactory } from "./agent-vault-session-log-config-dal";
 import {
   AGENT_VAULT_SESSION_LOG_CHUNK_ID_TIME_TOLERANCE_MS,

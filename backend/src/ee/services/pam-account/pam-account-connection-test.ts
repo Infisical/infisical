@@ -1,6 +1,5 @@
 import ConnectionString from "mongodb-connection-string-url";
 
-import { PamAccountType, PamPostgresAuthMethod, PamSshAuthMethod } from "../pam/pam-enums";
 import {
   AWS_STS_MIN_DURATION_SECONDS,
   generateAwsIamSessionCredentials,
@@ -8,6 +7,7 @@ import {
 } from "../pam-session/aws-iam/aws-iam-federation";
 import { AZURE_SCOPES, getAzureAccessToken } from "../pam-session/azure/azure-federation";
 import { mintGcpAccessToken } from "../pam-session/gcp/gcp-federation";
+import { PamAccountType, PamPostgresAuthMethod, PamSshAuthMethod } from "../pam/pam-enums";
 import {
   extractGatewayTarget,
   isCredentialConfigured,

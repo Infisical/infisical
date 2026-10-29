@@ -11,9 +11,9 @@ import {
   NUTANIX_DEFAULT_PORT
 } from "@app/services/app-connection/nutanix-prism-central/nutanix-prism-central-connection-fns";
 import { TNutanixPrismCentralConnection } from "@app/services/app-connection/nutanix-prism-central/nutanix-prism-central-connection-types";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
 
 import { PkiSyncError } from "../pki-sync-errors";

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 
 import {
@@ -19,7 +20,10 @@ import {
   TableCell,
   TableHead,
   TableHeader,
-  TableRow
+  TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger
 } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { getInstancePinningLink } from "@app/helpers/project";
@@ -87,18 +91,39 @@ export const DiscoveryInstallationsSection = ({ discoveryId, projectId, isScanRu
               <TableBody>
                 {installations.map((installation) => (
                   <TableRow key={installation.id} linked>
-                    <TableCell>
+                    <TableCell className="max-w-48">
                       <RowLink
                         {...getInstancePinningLink(
                           currentProject.orgId,
                           currentProject,
                           `discovery/installations/${installation.id}`
                         )!}
+                        title={installation.name || getEndpoint(installation)}
                       >
                         {installation.name || getEndpoint(installation)}
                       </RowLink>
                     </TableCell>
-                    <TableCell>{installation.primaryCertName || "N/A"}</TableCell>
+                    <TableCell className="max-w-44">
+                      {installation.primaryCertName ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Link
+                              {...getInstancePinningLink(
+                                currentProject.orgId,
+                                currentProject,
+                                `discovery/installations/${installation.id}`
+                              )!}
+                              className="block truncate"
+                            >
+                              {installation.primaryCertName}
+                            </Link>
+                          </TooltipTrigger>
+                          <TooltipContent>{installation.primaryCertName}</TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        "N/A"
+                      )}
+                    </TableCell>
                     <TableCell>{getGatewayLabel(installation) || "N/A"}</TableCell>
                     <TableCell>
                       {format(new Date(installation.lastSeenAt), "MMM dd, yyyy HH:mm")}

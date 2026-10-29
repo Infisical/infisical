@@ -473,7 +473,7 @@ hostile input: nothing it sends may erase or hide its own records, so the proxy 
 - **Default storage problems go to the server logs, never to an org.** The operator, not an org admin, owns that
   bucket: at boot, API pods list it, write a tagged test file, read it back and send a CORS preflight for `SITE_URL`,
   and log what failed; health skips default storage, and failed reads tell everyone, admins too, to contact support.
-- **Each storage type has its own plan flag**: `agentVaultManagedStorage` (default on) and `agentVaultByoS3`. The flag
+- **Each storage type has its own plan flag**: `agentVaultManagedStorage` and `agentVaultByoS3`. Cloud plans always include default storage unless the org's plan or an override turns it off (`withCloudPlanDefaults`), and self-hosted needs a license that includes it. The flag
   for the storage in use gates uploads and reads, so an org without it can't record or view session logs: unlike
   most paid features, which read from Infisical's database, each read is a billed S3 request. Keep the read check.
   Turning off is never gated, and turning off clears the saved storage, so it always frees the connection. The row

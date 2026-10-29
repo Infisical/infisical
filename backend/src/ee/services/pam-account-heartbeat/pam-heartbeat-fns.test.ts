@@ -1,10 +1,10 @@
 import { describe, expect, test } from "vitest";
 
-import { PamHeartbeatStatus } from "../pam/pam-enums";
 import {
   DEFAULT_HEARTBEAT_CONFIG,
   PamHeartbeatConfigSchema
 } from "../pam-account-template/pam-account-template-schemas";
+import { PamHeartbeatStatus } from "../pam/pam-enums";
 import {
   classifyCloudProbeError,
   describeFailure,

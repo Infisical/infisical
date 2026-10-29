@@ -1,3 +1,5 @@
+import { Knex } from "knex";
+
 import { BadRequestError } from "@app/lib/errors";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -14,12 +16,14 @@ export const approvalPolicyMembershipVerifierFactory = ({
     userIds,
     groupIds,
     orgId,
-    projectId
+    projectId,
+    tx
   }: {
     userIds: string[];
     groupIds: string[];
     orgId: string;
     projectId: string;
+    tx?: Knex;
   }) => {
     const uniqueUserIds = [...new Set(userIds)];
     const uniqueGroupIds = [...new Set(groupIds)];
@@ -32,7 +36,8 @@ export const approvalPolicyMembershipVerifierFactory = ({
       orgId,
       projectId,
       userIds: uniqueUserIds,
-      groupIds: uniqueGroupIds
+      groupIds: uniqueGroupIds,
+      ...(tx ? { tx } : {})
     });
     const projectMemberUserIds = new Set(effectiveUserIds);
     const userIdsWithoutAccess = uniqueUserIds.filter((id) => !projectMemberUserIds.has(id));
