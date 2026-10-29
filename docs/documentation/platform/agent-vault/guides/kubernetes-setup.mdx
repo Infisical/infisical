@@ -210,12 +210,19 @@ With the `restricted` [Pod Security Standard](https://kubernetes.io/docs/concept
 
 Your orchestrator starts each agent run, and it can be a script, a CI pipeline, a job runner, or a Kubernetes controller. Run it outside the `agents` namespace, so agent pods can't reach it.
 
-### Log in as the machine identity
+### Give your orchestrator the machine identity's credentials
 
-Your orchestrator needs an access token for the machine identity from [Step 1](#step-1-set-up-agent-vault). To get one, follow [Log in as the machine identity](/documentation/platform/agent-vault/sessions-api#step-2-log-in-as-the-machine-identity). The machine identity's credentials stay with the orchestrator and never go into an agent pod.
+Set the client ID and client secret of the machine identity from [Step 1](#step-1-set-up-agent-vault) in the environment where your orchestrator runs:
+
+```bash
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>
+export INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>
+```
+
+The script in Step 5 logs in with them. The machine identity's credentials stay with the orchestrator and never go into an agent pod.
 
 <Tip>
-  If your orchestrator runs in a Kubernetes cluster, we recommend [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth). The orchestrator logs in with its own service account token, so there's no client secret to store or rotate. Infisical has to reach the cluster's API server to verify the token, either directly or through a [gateway](/documentation/platform/gateways/gateway-deployment) if the API server is private. In the Kubernetes Auth settings, allow only the namespace and service account that the orchestrator runs as.
+  If your orchestrator runs in a Kubernetes cluster, we recommend [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) instead of a client secret. The orchestrator logs in with its own service account token, so there's no client secret to store or rotate. Infisical has to reach the cluster's API server to verify the token, either directly or through a [gateway](/documentation/platform/gateways/gateway-deployment) if the API server is private. In the Kubernetes Auth settings, allow only the namespace and service account that the orchestrator runs as.
 
   An orchestrator outside a cluster, such as a CI pipeline, can't use Kubernetes Auth. Use Universal Auth, or an auth method for its platform, such as [OIDC Auth for GitHub Actions](/documentation/platform/identities/oidc-auth/github).
 </Tip>
@@ -307,13 +314,16 @@ spec:
 
 ### Start the agent with a new session
 
-This script is a minimal orchestrator: it does those four things for one agent run. Use it as is to try the setup, or as a reference for your own orchestrator. Replace `<access-token>` with the machine identity's access token from [Step 4](#log-in-as-the-machine-identity), and `<access-bundle-name>` with the name of the access bundle. If you use EU Cloud or self-host Infisical, also replace `https://app.infisical.com` with `https://eu.infisical.com` or the URL of your self-hosted instance:
+This script is a minimal orchestrator: it does those four things for one agent run. Use it as is to try the setup, or as a reference for your own orchestrator. Replace `<access-bundle-name>` with the name of the access bundle. If you use EU Cloud or self-host Infisical, also replace `https://app.infisical.com` with `https://eu.infisical.com` or the URL of your self-hosted instance:
 
 ```bash expandable
 set -euo pipefail
 
 INFISICAL_URL=https://app.infisical.com
-ACCESS_TOKEN=<access-token>
+ACCESS_TOKEN=$(curl -fsS -X POST "$INFISICAL_URL/api/v1/auth/universal-auth/login" \
+  -H "Content-Type: application/json" \
+  -d "{\"clientId\": \"$INFISICAL_UNIVERSAL_AUTH_CLIENT_ID\", \"clientSecret\": \"$INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET\"}" \
+  | jq -r .accessToken)
 # Unique per run, so runs started at the same time don't share names.
 RUN_ID=$(date +%s)-$(openssl rand -hex 3)
 echo "Run ID: $RUN_ID"
