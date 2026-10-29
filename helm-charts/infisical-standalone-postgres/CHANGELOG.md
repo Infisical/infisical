@@ -4,7 +4,7 @@ Changes:
 * Fixed the `updatedAt` date format, which printed the month in place of the day of the month.
 * Backwards compatible. The default keeps the current behavior, including for releases upgraded with `--reuse-values`, where the new key is unset. Only an explicit `false` turns the annotation off, and doing so triggers a one-time pod rollout.
 
-## 1.11.1
+## 1.11.1 (October 22, 2026)
 Changes:
 * Updated the default `infisical.image.tag` value from `v0.158.0` to `v0.167.0`.
 * Updated the default `infisical.autoBootstrap.image.tag` value from `0.41.86` to `0.44.6`.
