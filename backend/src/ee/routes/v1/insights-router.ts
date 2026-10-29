@@ -284,6 +284,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       hide: true,
+      operationId: "createOrgSecretsAuditReport",
       body: z.object({
         reports: OrgAuditReportRequestConfigSchema.array().min(1).max(5),
         emailRecipients: z.array(z.string().trim().email().max(255)).max(20).optional()
@@ -317,6 +318,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     schema: {
       hide: true,
+      operationId: "listOrgSecretsAuditReports",
       querystring: z.object({
         offset: z.coerce.number().int().min(0).max(10000).default(0),
         limit: z.coerce.number().int().min(1).max(100).default(10)
@@ -350,6 +352,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       hide: true,
+      operationId: "deleteOrgSecretsAuditReport",
       params: z.object({ reportId: z.string().uuid() }),
       response: {
         200: OrgAuditReportSchema
@@ -776,6 +779,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       hide: true,
+      operationId: "createProjectSecretsAuditReport",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -816,6 +820,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     schema: {
       hide: true,
+      operationId: "listProjectSecretsAuditReports",
       params: z.object({
         projectId: z.string().trim()
       }),
@@ -850,6 +855,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: readLimit },
     schema: {
       hide: true,
+      operationId: "getProjectSecretsAuditReport",
       params: z.object({ projectId: z.string().trim(), reportId: z.string().uuid() }),
       response: {
         200: AuditReportSchema
@@ -880,6 +886,7 @@ export const registerInsightsRouter = async (server: FastifyZodProvider) => {
     config: { rateLimit: writeLimit },
     schema: {
       hide: true,
+      operationId: "deleteProjectSecretsAuditReport",
       params: z.object({ projectId: z.string().trim(), reportId: z.string().uuid() }),
       response: {
         200: AuditReportSchema
