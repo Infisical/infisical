@@ -42,7 +42,7 @@ You need an orchestrator: a program that starts each agent run. It can be a scri
 For each agent run, your orchestrator does the following:
 
 1. Creates a session for the run with the [Infisical API](/documentation/platform/agent-vault/sessions-api)
-2. Starts the agent's pod with the session token in its proxy settings
+2. Starts the agent's pod with the session token
 3. Revokes the session and deletes the pod when the agent finishes
 
 <Warning>
