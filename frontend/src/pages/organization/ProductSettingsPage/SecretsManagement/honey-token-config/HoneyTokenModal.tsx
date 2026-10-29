@@ -137,7 +137,7 @@ export const HoneyTokenModal = ({ isOpen, onOpenChange }: Props) => {
         awsRegion: DEFAULT_AWS_REGION
       });
     }
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const webhookSigningKey = watch("webhookSigningKey");
   const stackName = watch("stackName");

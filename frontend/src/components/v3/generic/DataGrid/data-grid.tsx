@@ -153,7 +153,7 @@ export function DataGrid<TData>({
                         ? "ascending"
                         : currentSort?.desc === true // eslint-disable-line no-nested-ternary
                           ? "descending"
-                          : isSortable // eslint-disable-line no-nested-ternary
+                          : isSortable
                             ? "none"
                             : undefined
                     }

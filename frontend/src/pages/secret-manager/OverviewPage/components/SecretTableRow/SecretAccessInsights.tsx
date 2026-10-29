@@ -613,7 +613,6 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
       trackedSince: readActivity?.readsTrackedSince
     };
     // readStatusOf only reads readActivity and readActors, which are both listed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     secretAccessList,
     readActors,

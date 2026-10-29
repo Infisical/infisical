@@ -43,7 +43,6 @@ const getSubjectAttributePlaceholder = (type: CertSubjectAttributeType): string 
 };
 
 type SubjectAttributesFieldProps = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   control: Control<any>;
   allowedAttributeTypes: CertSubjectAttributeType[];
   error?: string;

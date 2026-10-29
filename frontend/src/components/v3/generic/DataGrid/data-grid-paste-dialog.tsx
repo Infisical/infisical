@@ -120,7 +120,6 @@ function PasteDialogImpl({ pasteDialog, onPasteDialogOpenChange, onCellsPaste }:
   );
 }
 
-// eslint-disable-next-line react/prop-types
 function RadioItem({ className, ...props }: React.ComponentProps<"input">) {
   return (
     <input
