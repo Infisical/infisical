@@ -249,8 +249,6 @@ rules:
 
 ## Step 5: Run an agent
 
-For each agent run, your orchestrator does four things: creates a session, puts the session token in a Secret, starts the agent's pod with that Secret, and revokes the session and deletes the pod and Secret when the agent finishes.
-
 ### Define the agent's pod
 
 Save this manifest as `agent-pod.yaml`. The script in the next step starts a pod from it for each run:
@@ -315,7 +313,7 @@ spec:
 
 ### Start the agent with a new session
 
-This script is a minimal orchestrator: it does those four things for one agent run. Use it as is to try the setup, or as a reference for your own orchestrator. Replace `<access-bundle-name>` with the name of the access bundle. If you use EU Cloud or self-host Infisical, also replace `https://app.infisical.com` with `https://eu.infisical.com` or the URL of your self-hosted instance:
+This script is a minimal orchestrator that runs one agent with its own session. Replace `<access-bundle-name>` with your access bundle's name, and `https://app.infisical.com` with your instance's URL if you don't use US Cloud:
 
 ```bash expandable
 set -euo pipefail
