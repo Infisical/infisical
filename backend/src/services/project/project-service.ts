@@ -966,6 +966,18 @@ export const projectServiceFactory = ({
     }
 
     try {
+      // Revoking a lease that expired while the project was deleted fails because the project can't be
+      // resolved, and its retries may have run out, so queue those revocations again. They're queued
+      // before the restore so a queue failure leaves the project deleted and the restore retryable, and
+      // delayed so they run after it commits.
+      const expiredLeases = await dynamicSecretLeaseDAL.findExpiredByProjectId(project.id);
+      const revokeAt = new Date(Date.now() + 60_000);
+      await Promise.all(
+        expiredLeases.map((lease) =>
+          dynamicSecretQueueService.setLeaseRevocation(lease.id, lease.dynamicSecretId, revokeAt)
+        )
+      );
+
       // Read before the transaction: a plan cache miss queries on its own connection.
       const plan = await licenseService.getPlan(project.orgId);
 
@@ -995,15 +1007,6 @@ export const projectServiceFactory = ({
       usageMeteringService.emit(project.orgId, SecretIdentities.key);
       usageMeteringService.emit(project.orgId, PamIdentities.key);
       usageMeteringService.emit(project.orgId, AgentVaultIdentities.key);
-
-      // Revoking a lease that expired while the project was deleted fails because the project can't be
-      // resolved, and its retries may have run out, so queue those revocations again.
-      const expiredLeases = await dynamicSecretLeaseDAL.findExpiredByProjectId(project.id);
-      await Promise.all(
-        expiredLeases.map((lease) =>
-          dynamicSecretQueueService.setLeaseRevocation(lease.id, lease.dynamicSecretId, lease.expireAt)
-        )
-      );
       return restoredProject;
     } finally {
       await lock.release();
