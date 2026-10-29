@@ -141,7 +141,8 @@ export const scanGitHubCommitsAndGetFindings = async ({
     if (!commitData.data.files) continue;
 
     for (const file of commitData.data.files) {
-      if ((file.status === "added" || file.status === "modified") && file.patch) {
+      // A renamed, copied or changed file's patch can add lines too; a removed file's adds none.
+      if (file.status !== "removed" && file.patch) {
         // eslint-disable-next-line
         const findings = await scanContentAndGetFindings(replaceNonChangesWithNewlines(`\n${file.patch}`), configPath);
 
@@ -690,7 +691,8 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
       return;
     }
 
-    const previousScan = await secretScanningV2DAL.scans.findById(scanId.data);
+    // Primary: the event can arrive right after the scan completed, before a replica has its final metadata.
+    const previousScan = await secretScanningV2DAL.scans.findById(scanId.data, secretScanningV2DAL.primaryNode());
     const metadata = GitHubPullRequestScanMetadataSchema.safeParse(previousScan?.metadata);
 
     if (!previousScan || previousScan.trigger !== SecretScanningScanTrigger.PullRequest || !metadata.success) {
@@ -775,8 +777,11 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
       return;
     }
 
+    // Primary throughout: a click right after the check completes can reach a replica that still has the scan's queued
+    // metadata, with no finding IDs, or no scan at all.
+    const primary = secretScanningV2DAL.primaryNode();
     const scanId = z.string().uuid().safeParse(externalId);
-    const previousScan = scanId.success ? await secretScanningV2DAL.scans.findById(scanId.data) : undefined;
+    const previousScan = scanId.success ? await secretScanningV2DAL.scans.findById(scanId.data, primary) : undefined;
     const metadata = GitHubPullRequestScanMetadataSchema.safeParse(previousScan?.metadata);
 
     if (!previousScan || previousScan.trigger !== SecretScanningScanTrigger.PullRequest || !metadata.success) {
@@ -786,8 +791,10 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
       return;
     }
 
-    const resource = await secretScanningV2DAL.resources.findById(previousScan.resourceId);
-    const dataSource = resource ? await secretScanningV2DAL.dataSources.findById(resource.dataSourceId) : undefined;
+    const resource = await secretScanningV2DAL.resources.findById(previousScan.resourceId, primary);
+    const dataSource = resource
+      ? await secretScanningV2DAL.dataSources.findById(resource.dataSourceId, primary)
+      : undefined;
 
     if (
       !resource ||
@@ -805,7 +812,7 @@ export const processGitHubPullRequestEvent: TSecretScanningFactoryProcessEvent<T
     const { pullRequestNumber, findingIds = [] } = metadata.data;
 
     const findings = findingIds.length
-      ? await secretScanningV2DAL.findings.find({ resourceId: resource.id, $in: { id: findingIds } })
+      ? await secretScanningV2DAL.findings.find({ resourceId: resource.id, $in: { id: findingIds } }, { tx: primary })
       : [];
     const findingsToSkip = findings.filter((finding) => !isPullRequestCheckSkipStatus(finding.status));
 

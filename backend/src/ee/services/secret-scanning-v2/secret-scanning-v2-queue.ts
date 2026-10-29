@@ -82,6 +82,7 @@ const STUCK_SCAN_REAP_BATCH_SIZE = 100;
 const QUEUED_SCAN_REDELIVERY_GRACE = ms("5m");
 const STUCK_SCAN_STATUS_MESSAGE =
   "The scan did not complete and was cancelled. This usually means the resource is too large to scan.";
+const NEVER_STARTED_SCAN_STATUS_MESSAGE = "The scan was queued but never started.";
 
 // A full scan usually dies because the worker was OOM-killed on a large repository, which retrying
 // does resolve — the pod that picks it up next is not the one that ran out of memory. The two
@@ -774,18 +775,46 @@ export const secretScanningV2QueueServiceFactory = ({
 
     const report = factory.getDiffScanReport?.(payload);
 
-    // Primary for the same reason as the full scan: a lagging replica would drop a just-queued scan.
-    const primary = secretScanningV2DAL.primaryNode();
-    const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId, primary);
-    const resource = dataSource ? await secretScanningV2DAL.resources.findById(resourceId, primary) : undefined;
+    const prepareScan = async () => {
+      // Primary for the same reason as the full scan: a lagging replica would drop a just-queued scan.
+      const primary = secretScanningV2DAL.primaryNode();
+      const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId, primary);
+      const resource = dataSource ? await secretScanningV2DAL.resources.findById(resourceId, primary) : undefined;
 
-    if (!dataSource || !resource) {
+      if (!dataSource || !resource) return null;
+
+      return { dataSource, resource, tempFolder: await createTempFolder() };
+    };
+
+    let prepared: Awaited<ReturnType<typeof prepareScan>>;
+
+    try {
+      prepared = await prepareScan();
+    } catch (error) {
+      logger.error(error, `secretScanningV2Queue: Diff Scan could not be prepared ${logDetails}`);
+
+      // Nothing redelivers a diff scan, so its last attempt closes it out here rather than leaving it queued. If even
+      // that fails, the stuck-scan reaper fails it later.
+      if (retryCount === retryLimit) {
+        const statusMessage = parseScanErrorMessage(error);
+
+        try {
+          if (await markScanAsFailed({ scanId, statusMessage })) await report?.fail({ reason: statusMessage });
+        } catch (markError) {
+          logger.error(markError, `secretScanningV2Queue: Failed to mark unprepared diff scan as failed ${logDetails}`);
+        }
+      }
+
+      throw error;
+    }
+
+    if (!prepared) {
       logger.info(`secretScanningV2Queue: Diff Scan aborted, scan no longer exists ${logDetails}`);
       await report?.cancel();
       return;
     }
 
-    const tempFolder = await createTempFolder();
+    const { dataSource, resource, tempFolder } = prepared;
 
     logger.info(
       `secretScanningV2Queue: Diff Scan Started ${logDetails} [scanType=${SecretScanningScanType.Realtime}] [tempFolder=${tempFolder}]`
@@ -1088,14 +1117,19 @@ export const secretScanningV2QueueServiceFactory = ({
   const failStuckScan = async (scan: Awaited<ReturnType<typeof secretScanningV2DAL.scans.findStuck>>[number]) => {
     const logDetails = `[scanId=${scan.id}] [resourceId=${scan.resourceId}] [dataSourceId=${scan.dataSourceId}] [startedAt=${scan.startedAt?.toISOString()}]`;
 
+    // A queued scan here is a realtime scan whose job was lost before it started; its payload isn't stored, so it can't
+    // be redelivered the way a queued historical scan is.
+    const statusMessage =
+      scan.status === SecretScanningScanStatus.Queued ? NEVER_STARTED_SCAN_STATUS_MESSAGE : STUCK_SCAN_STATUS_MESSAGE;
+
     try {
       // Guarded on the status we read: if the worker did finish between the read and this write, the
       // update matches nothing and the scan keeps its real outcome.
       const updatedScans = await secretScanningV2DAL.scans.update(
-        { id: scan.id, status: SecretScanningScanStatus.Scanning },
+        { id: scan.id, status: scan.status },
         {
           status: SecretScanningScanStatus.Failed,
-          statusMessage: STUCK_SCAN_STATUS_MESSAGE,
+          statusMessage,
           completedAt: new Date()
         }
       );
@@ -1110,7 +1144,7 @@ export const secretScanningV2QueueServiceFactory = ({
 
       await SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({ kmsService, appConnectionDAL })
         .getScanReport?.({ scan, dataSource, resourceName: scan.resourceName })
-        ?.fail({ reason: STUCK_SCAN_STATUS_MESSAGE, isTimedOut: true });
+        ?.fail({ reason: statusMessage, isTimedOut: true });
 
       await queueService.queue(
         QueueName.SecretScanningV2,
@@ -1119,7 +1153,7 @@ export const secretScanningV2QueueServiceFactory = ({
           status: SecretScanningScanStatus.Failed,
           resourceName: scan.resourceName,
           dataSource,
-          errorMessage: STUCK_SCAN_STATUS_MESSAGE
+          errorMessage: statusMessage
         },
         { jobId: `secret-scanning-notification-${scan.id}`, removeOnFail: true }
       );

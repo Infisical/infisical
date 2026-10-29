@@ -9,7 +9,8 @@ import { TFindingsPayload } from "@app/ee/services/secret-scanning-v2/secret-sca
 import {
   completePullRequestCheckRun,
   getPullRequestScanCheckRunResult,
-  isGitHubPullRequestScanPayload
+  isGitHubPullRequestScanPayload,
+  scanGitHubCommitsAndGetFindings
 } from "./github-secret-scanning-fns";
 
 const checksUpdate = vi.fn();
@@ -24,6 +25,12 @@ vi.mock("@app/lib/config/env", async (importOriginal) => ({
     INF_APP_CONNECTION_GITHUB_RADAR_APP_ID: "1",
     INF_APP_CONNECTION_GITHUB_RADAR_APP_PRIVATE_KEY: "key"
   })
+}));
+
+const scanContentAndGetFindings = vi.fn();
+
+vi.mock("@app/ee/services/secret-scanning/secret-scanning-queue/secret-scanning-fns", () => ({
+  scanContentAndGetFindings: (...args: unknown[]) => scanContentAndGetFindings(...args)
 }));
 
 vi.mock("@app/lib/logger", () => ({
@@ -197,5 +204,34 @@ describe("completePullRequestCheckRun", () => {
     expect(checksUpdate).toHaveBeenCalledTimes(1);
     expect(checksUpdate.mock.calls[0][0]).toMatchObject({ conclusion: "success", output: { annotations: [] } });
     expect(checksUpdate.mock.calls[0][0].actions).toBeUndefined();
+  });
+});
+
+describe("scanGitHubCommitsAndGetFindings", () => {
+  beforeEach(() => {
+    scanContentAndGetFindings.mockReset();
+    scanContentAndGetFindings.mockResolvedValue([]);
+  });
+
+  test("scans the patch of every file except removed ones", async () => {
+    const getCommit = vi.fn().mockResolvedValue({
+      data: {
+        files: ["added", "modified", "renamed", "copied", "changed", "removed"].map((status) => ({
+          status,
+          filename: `${status}.txt`,
+          patch: `@@ -0,0 +1 @@\n+${status}`
+        }))
+      }
+    });
+
+    await scanGitHubCommitsAndGetFindings({
+      octokit: { repos: { getCommit } } as unknown as Parameters<typeof scanGitHubCommitsAndGetFindings>[0]["octokit"],
+      repositoryFullName: "acme/api",
+      resourceName: "acme/api",
+      commits: [{ sha: "a".repeat(40), authorName: "a", authorEmail: "a@a.com", date: "", message: "m" }]
+    });
+
+    const scanned = scanContentAndGetFindings.mock.calls.map(([content]) => (content as string).trim());
+    expect(scanned).toEqual(["added", "modified", "renamed", "copied", "changed"]);
   });
 });
