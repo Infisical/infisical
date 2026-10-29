@@ -1,0 +1,96 @@
+---
+title: "Run agents on Kubernetes with Agent Vault"
+sidebarTitle: "Kubernetes"
+icon: "/images/stack/kubernetes.png"
+description: "Learn how to run AI agents in Kubernetes pods that contain no credentials and can only connect to the Agent Vault proxy."
+---
+
+An AI agent runs commands that a prompt can influence, so any API key you put in the agent's pod can leak through a [prompt injection](/documentation/platform/agent-vault/why-agent-vault). With Agent Vault, agent pods contain no API keys. Each pod receives a [session](/documentation/platform/agent-vault/sessions) token instead, and sends its requests through an Agent Vault [proxy](/documentation/platform/agent-vault/proxies) that attaches the real credentials.
+
+This page explains how the pieces fit together in a cluster and how to choose an isolation level for agent pods. To set it up, follow [Set up Agent Vault on Kubernetes](/documentation/platform/agent-vault/guides/kubernetes-setup).
+
+```mermaid
+flowchart LR
+  subgraph cluster["Kubernetes cluster"]
+    orchestrator["Your orchestrator<br/>stores the machine identity"]
+    subgraph agents["agents namespace"]
+      agent["Agent pod<br/>session token only"]
+    end
+    subgraph av["agent-vault namespace"]
+      proxy["Agent Vault proxy"]
+    end
+  end
+  infisical["Infisical"]
+  apis["api.anthropic.com<br/>api.github.com<br/>..."]
+  orchestrator -->|"creates a session"| infisical
+  orchestrator -->|"starts the pod with the session token"| agent
+  agent -->|"every request"| proxy
+  proxy -->|"request with the credential"| apis
+  proxy -->|"fetches the credentials"| infisical
+```
+
+## How the pieces fit together
+
+| Piece | Where it runs | Credentials it stores |
+|---|---|---|
+| Agent Vault proxy | A Deployment in its own namespace | The proxy token |
+| Agent pods | A namespace for agents, one pod per agent run | Only the session token for that run |
+| Your orchestrator | Outside the agents namespace | A [machine identity](/documentation/platform/identities/machine-identities) that creates a session for each agent run |
+
+You need an orchestrator: a program that starts each agent run. It can be a script, a job in your CI pipeline or job runner, or a Kubernetes controller. If you don't have one yet, the [setup guide](/documentation/platform/agent-vault/guides/kubernetes-setup#step-5-run-an-agent) includes a script you can start from.
+
+For each agent run, your orchestrator does the following:
+
+1. Creates a session for the run with the [Infisical API](/documentation/platform/agent-vault/sessions-api)
+2. Starts the agent's pod with the session token in its proxy settings
+3. Revokes the session and deletes the pod when the agent finishes
+
+<Warning>
+  Agent pods can only be limited to the proxy if your cluster's network plugin enforces network policies, such as [Cilium](https://cilium.io) or [Calico](https://www.tigera.io/project-calico/). Some network plugins, such as Flannel, accept network policies without enforcing them.
+</Warning>
+
+<AccordionGroup>
+  <Accordion title="Why does the proxy run in its own namespace?">
+    A network policy applies to a whole pod. A proxy in the agent's pod would need a route to the internet that the agent could also use, and its proxy token would sit beside the agent.
+  </Accordion>
+  <Accordion title="Why can agent pods only reach the proxy?">
+    Code in the agent's container can ignore `HTTPS_PROXY` and connect to an API directly. A network policy that allows only the proxy makes every request go through Agent Vault, and also blocks your cloud's metadata service and the Kubernetes API.
+  </Accordion>
+  <Accordion title="Why does the machine identity stay out of agent pods?">
+    The machine identity can create sessions for any access bundle it has access to. gVisor and Kata isolate a pod from the node, not one container from another, so even a separate container in the agent's pod could expose it. An agent pod gets only a session token, which you can revoke and which expires.
+  </Accordion>
+</AccordionGroup>
+
+## Choose an isolation level
+
+A standard container shares the node's Linux kernel, so code in an agent's container that exploits a kernel bug can reach the node and every pod on it. To give agent pods a stronger boundary, run them with a different container runtime by setting `runtimeClassName` in the pod spec. Everything else on this page stays the same at every isolation level.
+
+| | Standard runtime | gVisor | Kata Containers |
+|---|---|---|---|
+| Boundary | Shares the node's kernel | A kernel that runs in user space handles the agent's system calls | Each pod runs in its own lightweight virtual machine |
+| Use it when | Agents only run tools and code you trust | Agents run generated or downloaded code | Agents run code from untrusted sources, or from several customers on the same nodes |
+| What the nodes need | Nothing | [gVisor](https://gvisor.dev/docs/user_guide/containerd/quick_start/) installed and registered with containerd, and a RuntimeClass | Hardware virtualization, [Kata Containers](https://github.com/kata-containers/kata-containers/blob/main/docs/install/README.md) installed, and a RuntimeClass |
+| Managed options | Every cluster | [GKE Sandbox](https://cloud.google.com/kubernetes-engine/docs/concepts/sandbox-pods) | [AKS Pod Sandboxing](https://learn.microsoft.com/en-us/azure/aks/use-pod-sandboxing) |
+| Costs | None | Slower file and network I/O, and some system calls aren't supported, so some software won't run | More memory per pod and slower pod startup |
+
+<Warning>
+  Kata Containers only runs on nodes with hardware virtualization (KVM), and most cloud VMs don't provide it:
+
+  - **Supported:** bare metal nodes, such as EC2 `.metal` instance types, and VMs with nested virtualization turned on, such as Google Compute Engine N2 or C3 VMs created with `--enable-nested-virtualization`
+  - **Not supported:** standard EC2 instance types, EKS on Fargate, and GKE Autopilot
+
+  To check a node, run `ls /dev/kvm` on it. If the file doesn't exist, Kata pods can't start on that node.
+</Warning>
+
+An isolation level limits what a process can reach after it escapes its container. It doesn't limit what requests the agent can make with its session's access. Agent Vault and the network policies control that access.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Set up on Kubernetes" icon="ship" href="/documentation/platform/agent-vault/guides/kubernetes-setup">
+    Deploy the proxy, lock agent pods to it, and start an agent with its own session.
+  </Card>
+  <Card title="Create sessions with the API" icon="code" href="/documentation/platform/agent-vault/sessions-api">
+    Create and revoke a session for each agent run from your orchestrator.
+  </Card>
+</CardGroup>

@@ -112,6 +112,10 @@ SecretProviderClass
 CustomResourceDefinition
 Kubebuilder
 Kyverno
+gVisor
+Kata
+containerd
+RuntimeClass
 minikube
 Traefik
 Bitnami
