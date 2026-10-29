@@ -310,7 +310,7 @@ export const createSkippedPullRequestCheckRun = async ({
   await octokit.checks.create({
     owner,
     repo,
-    name: GITHUB_PULL_REQUEST_CHECK_NAME,
+    name: `${GITHUB_PULL_REQUEST_CHECK_NAME} (fork skipped)`,
     head_sha: headSha,
     status: "completed",
     conclusion: "skipped",
