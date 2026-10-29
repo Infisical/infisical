@@ -12,6 +12,7 @@ import { delay } from "@app/lib/delay";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, GatewayTransportError, NotFoundError } from "@app/lib/errors";
 import { hasPostgresErrorCode } from "@app/lib/errors/postgres";
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { callCertificateScan, TCertificateScanRequest } from "@app/lib/gateway-v2/certificate-scan-rpc";
 import { getMissingGatewayMessage } from "@app/lib/gateway-v2/gateway-errors";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
@@ -109,7 +110,7 @@ type TScannedHost = TResolvedHost & { hostname: string };
 
 type TKeystorePassword = TCertificateScanRequest["keystorePasswords"][number];
 
-const derToPem = (der: Buffer) => new x509.X509Certificate(der).toString("pem");
+const derToPem = (der: Buffer) => new x509.X509Certificate(asNonSharedBuffer(der)).toString("pem");
 
 const canScanCertificates = (capabilities: unknown) =>
   (capabilities as Record<string, unknown> | null)?.certificateScan === true;

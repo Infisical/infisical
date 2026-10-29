@@ -100,3 +100,52 @@ func TestProjectMembership_PrivilegeBoundary(t *testing.T) {
 		}
 	})
 }
+
+func TestProjectMembership_GroupRole(t *testing.T) {
+	t.Parallel()
+	h := harness.From(t)
+
+	t.Run("should give a user who is a member only through a group the group's viewer role", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		res := createSecret(t, tn.Admin.API, proj, "dev", "/", "GROUPED", "grouped-value")
+		requireStatus(t, http.StatusOK, res.StatusCode(), res.Body)
+		user := tn.NewUser(t, harness.WithName("grouped"))
+		group := fixture.NewGroup(t, tn)
+		group.AddUser(t, user)
+
+		// Action
+		proj.GrantGroup(t, group, "viewer")
+
+		// Assert
+		listed := listSecrets(t, user.API, proj, "dev", "/")
+		requireStatus(t, http.StatusOK, listed.StatusCode(), listed.Body)
+		require.Len(t, listed.JSON200.Secrets, 1)
+		require.Equal(t, "grouped-value", listed.JSON200.Secrets[0].SecretValue)
+		refused := createSecret(t, user.API, proj, "dev", "/", "FROM_VIEWER", "v")
+		requireStatus(t, http.StatusForbidden, refused.StatusCode(), refused.Body)
+		require.Equal(t, []string{"GROUPED"}, keysOf(listSecrets(t, tn.Admin.API, proj, "dev", "/")))
+	})
+
+	t.Run("should let a user who is a member only through a group write when the group holds member", func(t *testing.T) {
+		t.Parallel()
+
+		// Setup
+		tn := h.NewTenant(t)
+		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
+		user := tn.NewUser(t, harness.WithName("grouped"))
+		group := fixture.NewGroup(t, tn)
+		group.AddUser(t, user)
+
+		// Action
+		proj.GrantGroup(t, group, "member")
+
+		// Assert
+		created := createSecret(t, user.API, proj, "dev", "/", "FROM_MEMBER", "v")
+		requireStatus(t, http.StatusOK, created.StatusCode(), created.Body)
+		require.Equal(t, []string{"FROM_MEMBER"}, keysOf(listSecrets(t, tn.Admin.API, proj, "dev", "/")))
+	})
+}

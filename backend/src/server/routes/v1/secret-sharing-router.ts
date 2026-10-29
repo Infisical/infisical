@@ -1,5 +1,4 @@
 import fastifyMultipart from "@fastify/multipart";
-// @ts-expect-error this is due to esm compatibility issue
 import { fileTypeFromBuffer } from "file-type";
 import { z } from "zod";
 

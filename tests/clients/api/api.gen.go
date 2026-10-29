@@ -144,6 +144,21 @@ func (e ListAccessApprovalPolicies200JSONResponseBodyApprovalsBypassersType) Val
 	}
 }
 
+// Defines values for ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType.
+const (
+	ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalTypeServicenow ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType enum.
+func (e ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType) Valid() bool {
+	switch e {
+	case ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalTypeServicenow:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListAccessApprovalPolicies400JSONResponseBodyStatusCode.
 const (
 	ListAccessApprovalPolicies400JSONResponseBodyStatusCodeN400 ListAccessApprovalPolicies400JSONResponseBodyStatusCode = 400
@@ -294,6 +309,21 @@ func (e CreateAccessApprovalPolicyJSONBodyBypassers1Type) Valid() bool {
 	}
 }
 
+// Defines values for CreateAccessApprovalPolicyJSONBodyDelegatedApprovalType.
+const (
+	CreateAccessApprovalPolicyJSONBodyDelegatedApprovalTypeServicenow CreateAccessApprovalPolicyJSONBodyDelegatedApprovalType = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the CreateAccessApprovalPolicyJSONBodyDelegatedApprovalType enum.
+func (e CreateAccessApprovalPolicyJSONBodyDelegatedApprovalType) Valid() bool {
+	switch e {
+	case CreateAccessApprovalPolicyJSONBodyDelegatedApprovalTypeServicenow:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateAccessApprovalPolicyJSONBodyEnforcementLevel.
 const (
 	CreateAccessApprovalPolicyJSONBodyEnforcementLevelHard CreateAccessApprovalPolicyJSONBodyEnforcementLevel = "hard"
@@ -306,6 +336,21 @@ func (e CreateAccessApprovalPolicyJSONBodyEnforcementLevel) Valid() bool {
 	case CreateAccessApprovalPolicyJSONBodyEnforcementLevelHard:
 		return true
 	case CreateAccessApprovalPolicyJSONBodyEnforcementLevelSoft:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType.
+const (
+	CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalTypeServicenow CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType enum.
+func (e CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType) Valid() bool {
+	switch e {
+	case CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalTypeServicenow:
 		return true
 	default:
 		return false
@@ -492,6 +537,21 @@ func (e GetAccessApprovalPolicyCount500JSONResponseBodyStatusCode) Valid() bool 
 	}
 }
 
+// Defines values for DeleteAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType.
+const (
+	DeleteAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalTypeServicenow DeleteAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the DeleteAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType enum.
+func (e DeleteAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType) Valid() bool {
+	switch e {
+	case DeleteAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalTypeServicenow:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for DeleteAccessApprovalPolicy400JSONResponseBodyStatusCode.
 const (
 	DeleteAccessApprovalPolicy400JSONResponseBodyStatusCodeN400 DeleteAccessApprovalPolicy400JSONResponseBodyStatusCode = 400
@@ -612,6 +672,21 @@ func (e GetAccessApprovalPolicy200JSONResponseBodyApprovalBypassersType) Valid()
 	case GetAccessApprovalPolicy200JSONResponseBodyApprovalBypassersTypeGroup:
 		return true
 	case GetAccessApprovalPolicy200JSONResponseBodyApprovalBypassersTypeUser:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType.
+const (
+	GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalTypeServicenow GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType enum.
+func (e GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType) Valid() bool {
+	switch e {
+	case GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalTypeServicenow:
 		return true
 	default:
 		return false
@@ -768,6 +843,21 @@ func (e UpdateAccessApprovalPolicyJSONBodyBypassers1Type) Valid() bool {
 	}
 }
 
+// Defines values for UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalType.
+const (
+	UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalTypeServicenow UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalType = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalType enum.
+func (e UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalType) Valid() bool {
+	switch e {
+	case UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalTypeServicenow:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UpdateAccessApprovalPolicyJSONBodyEnforcementLevel.
 const (
 	UpdateAccessApprovalPolicyJSONBodyEnforcementLevelHard UpdateAccessApprovalPolicyJSONBodyEnforcementLevel = "hard"
@@ -780,6 +870,21 @@ func (e UpdateAccessApprovalPolicyJSONBodyEnforcementLevel) Valid() bool {
 	case UpdateAccessApprovalPolicyJSONBodyEnforcementLevelHard:
 		return true
 	case UpdateAccessApprovalPolicyJSONBodyEnforcementLevelSoft:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType.
+const (
+	UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalTypeServicenow UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType enum.
+func (e UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType) Valid() bool {
+	switch e {
+	case UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalTypeServicenow:
 		return true
 	default:
 		return false
@@ -870,6 +975,66 @@ const (
 func (e UpdateAccessApprovalPolicy500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case UpdateAccessApprovalPolicy500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0Type.
+const (
+	ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0TypeServicenow ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0Type = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0Type enum.
+func (e ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0Type) Valid() bool {
+	switch e {
+	case ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0TypeServicenow:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus.
+const (
+	ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusApproved        ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus = "approved"
+	ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusFailed          ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus = "failed"
+	ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusFailedDispatch  ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus = "failed_dispatch"
+	ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusPendingDispatch ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus = "pending_dispatch"
+	ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusRejected        ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus = "rejected"
+	ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusWaitingApproval ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus = "waiting_approval"
+)
+
+// Valid indicates whether the value is a known member of the ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus enum.
+func (e ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus) Valid() bool {
+	switch e {
+	case ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusApproved:
+		return true
+	case ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusFailed:
+		return true
+	case ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusFailedDispatch:
+		return true
+	case ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusPendingDispatch:
+		return true
+	case ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusRejected:
+		return true
+	case ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatusWaitingApproval:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType.
+const (
+	ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalTypeServicenow ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType enum.
+func (e ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType) Valid() bool {
+	switch e {
+	case ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalTypeServicenow:
 		return true
 	default:
 		return false
@@ -7254,6 +7419,372 @@ func (e UpdatePostgresAppConnection500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CreateServiceNowAppConnectionJSONBodyIsAutoRotationEnabled.
+const (
+	CreateServiceNowAppConnectionJSONBodyIsAutoRotationEnabledFalse CreateServiceNowAppConnectionJSONBodyIsAutoRotationEnabled = false
+)
+
+// Valid indicates whether the value is a known member of the CreateServiceNowAppConnectionJSONBodyIsAutoRotationEnabled enum.
+func (e CreateServiceNowAppConnectionJSONBodyIsAutoRotationEnabled) Valid() bool {
+	switch e {
+	case CreateServiceNowAppConnectionJSONBodyIsAutoRotationEnabledFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateServiceNowAppConnectionJSONBodyIsPlatformManagedCredentials.
+const (
+	CreateServiceNowAppConnectionJSONBodyIsPlatformManagedCredentialsFalse CreateServiceNowAppConnectionJSONBodyIsPlatformManagedCredentials = false
+)
+
+// Valid indicates whether the value is a known member of the CreateServiceNowAppConnectionJSONBodyIsPlatformManagedCredentials enum.
+func (e CreateServiceNowAppConnectionJSONBodyIsPlatformManagedCredentials) Valid() bool {
+	switch e {
+	case CreateServiceNowAppConnectionJSONBodyIsPlatformManagedCredentialsFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateServiceNowAppConnectionJSONBody0Method.
+const (
+	CreateServiceNowAppConnectionJSONBody0MethodBasicAuth CreateServiceNowAppConnectionJSONBody0Method = "basic-auth"
+)
+
+// Valid indicates whether the value is a known member of the CreateServiceNowAppConnectionJSONBody0Method enum.
+func (e CreateServiceNowAppConnectionJSONBody0Method) Valid() bool {
+	switch e {
+	case CreateServiceNowAppConnectionJSONBody0MethodBasicAuth:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateServiceNowAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	CreateServiceNowAppConnection200JSONResponseBodyAppConnection0AppServicenow CreateServiceNowAppConnection200JSONResponseBodyAppConnection0App = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the CreateServiceNowAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e CreateServiceNowAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case CreateServiceNowAppConnection200JSONResponseBodyAppConnection0AppServicenow:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateServiceNowAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	CreateServiceNowAppConnection200JSONResponseBodyAppConnection0MethodBasicAuth CreateServiceNowAppConnection200JSONResponseBodyAppConnection0Method = "basic-auth"
+)
+
+// Valid indicates whether the value is a known member of the CreateServiceNowAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e CreateServiceNowAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case CreateServiceNowAppConnection200JSONResponseBodyAppConnection0MethodBasicAuth:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateServiceNowAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	CreateServiceNowAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  CreateServiceNowAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	CreateServiceNowAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess CreateServiceNowAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateServiceNowAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e CreateServiceNowAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateServiceNowAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case CreateServiceNowAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateServiceNowAppConnection400JSONResponseBodyStatusCode.
+const (
+	CreateServiceNowAppConnection400JSONResponseBodyStatusCodeN400 CreateServiceNowAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateServiceNowAppConnection400JSONResponseBodyStatusCode enum.
+func (e CreateServiceNowAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateServiceNowAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateServiceNowAppConnection401JSONResponseBodyStatusCode.
+const (
+	CreateServiceNowAppConnection401JSONResponseBodyStatusCodeN401 CreateServiceNowAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateServiceNowAppConnection401JSONResponseBodyStatusCode enum.
+func (e CreateServiceNowAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateServiceNowAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateServiceNowAppConnection403JSONResponseBodyStatusCode.
+const (
+	CreateServiceNowAppConnection403JSONResponseBodyStatusCodeN403 CreateServiceNowAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateServiceNowAppConnection403JSONResponseBodyStatusCode enum.
+func (e CreateServiceNowAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateServiceNowAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateServiceNowAppConnection404JSONResponseBodyStatusCode.
+const (
+	CreateServiceNowAppConnection404JSONResponseBodyStatusCodeN404 CreateServiceNowAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateServiceNowAppConnection404JSONResponseBodyStatusCode enum.
+func (e CreateServiceNowAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateServiceNowAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateServiceNowAppConnection422JSONResponseBodyStatusCode.
+const (
+	CreateServiceNowAppConnection422JSONResponseBodyStatusCodeN422 CreateServiceNowAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateServiceNowAppConnection422JSONResponseBodyStatusCode enum.
+func (e CreateServiceNowAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateServiceNowAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateServiceNowAppConnection500JSONResponseBodyStatusCode.
+const (
+	CreateServiceNowAppConnection500JSONResponseBodyStatusCodeN500 CreateServiceNowAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateServiceNowAppConnection500JSONResponseBodyStatusCode enum.
+func (e CreateServiceNowAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateServiceNowAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnectionJSONBodyIsAutoRotationEnabled.
+const (
+	CreateVercelAppConnectionJSONBodyIsAutoRotationEnabledFalse CreateVercelAppConnectionJSONBodyIsAutoRotationEnabled = false
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnectionJSONBodyIsAutoRotationEnabled enum.
+func (e CreateVercelAppConnectionJSONBodyIsAutoRotationEnabled) Valid() bool {
+	switch e {
+	case CreateVercelAppConnectionJSONBodyIsAutoRotationEnabledFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentials.
+const (
+	CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentialsFalse CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentials = false
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentials enum.
+func (e CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentials) Valid() bool {
+	switch e {
+	case CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentialsFalse:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnectionJSONBody0Method.
+const (
+	CreateVercelAppConnectionJSONBody0MethodApiToken CreateVercelAppConnectionJSONBody0Method = "api-token"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnectionJSONBody0Method enum.
+func (e CreateVercelAppConnectionJSONBody0Method) Valid() bool {
+	switch e {
+	case CreateVercelAppConnectionJSONBody0MethodApiToken:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection200JSONResponseBodyAppConnection0App.
+const (
+	CreateVercelAppConnection200JSONResponseBodyAppConnection0AppVercel CreateVercelAppConnection200JSONResponseBodyAppConnection0App = "vercel"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection200JSONResponseBodyAppConnection0App enum.
+func (e CreateVercelAppConnection200JSONResponseBodyAppConnection0App) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection200JSONResponseBodyAppConnection0AppVercel:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection200JSONResponseBodyAppConnection0Method.
+const (
+	CreateVercelAppConnection200JSONResponseBodyAppConnection0MethodApiToken CreateVercelAppConnection200JSONResponseBodyAppConnection0Method = "api-token"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection200JSONResponseBodyAppConnection0Method enum.
+func (e CreateVercelAppConnection200JSONResponseBodyAppConnection0Method) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection200JSONResponseBodyAppConnection0MethodApiToken:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus.
+const (
+	CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed  CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "failed"
+	CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus = "success"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus enum.
+func (e CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusFailed:
+		return true
+	case CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatusSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection400JSONResponseBodyStatusCode.
+const (
+	CreateVercelAppConnection400JSONResponseBodyStatusCodeN400 CreateVercelAppConnection400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection400JSONResponseBodyStatusCode enum.
+func (e CreateVercelAppConnection400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection401JSONResponseBodyStatusCode.
+const (
+	CreateVercelAppConnection401JSONResponseBodyStatusCodeN401 CreateVercelAppConnection401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection401JSONResponseBodyStatusCode enum.
+func (e CreateVercelAppConnection401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection403JSONResponseBodyStatusCode.
+const (
+	CreateVercelAppConnection403JSONResponseBodyStatusCodeN403 CreateVercelAppConnection403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection403JSONResponseBodyStatusCode enum.
+func (e CreateVercelAppConnection403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection404JSONResponseBodyStatusCode.
+const (
+	CreateVercelAppConnection404JSONResponseBodyStatusCodeN404 CreateVercelAppConnection404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection404JSONResponseBodyStatusCode enum.
+func (e CreateVercelAppConnection404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection422JSONResponseBodyStatusCode.
+const (
+	CreateVercelAppConnection422JSONResponseBodyStatusCodeN422 CreateVercelAppConnection422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection422JSONResponseBodyStatusCode enum.
+func (e CreateVercelAppConnection422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelAppConnection500JSONResponseBodyStatusCode.
+const (
+	CreateVercelAppConnection500JSONResponseBodyStatusCodeN500 CreateVercelAppConnection500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelAppConnection500JSONResponseBodyStatusCode enum.
+func (e CreateVercelAppConnection500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelAppConnection500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for RefreshAuthToken400JSONResponseBodyStatusCode.
 const (
 	RefreshAuthToken400JSONResponseBodyStatusCodeN400 RefreshAuthToken400JSONResponseBodyStatusCode = 400
@@ -9845,6 +10376,7 @@ const (
 	DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenClientWrite                DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissions = "confirmation_token_client_write"
 	DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenRead                       DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissions = "confirmation_token_read"
 	DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountRead                        DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissions = "connected_account_read"
+	DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountWrite                       DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissions = "connected_account_write"
 	DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsCouponRead                                  DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissions = "coupon_read"
 	DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsCouponWrite                                 DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissions = "coupon_write"
 	DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsCreditNoteRead                              DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissions = "credit_note_read"
@@ -10040,6 +10572,8 @@ func (e DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissio
 	case DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenRead:
 		return true
 	case DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountRead:
+		return true
+	case DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountWrite:
 		return true
 	case DeepSearchSecrets200JSONResponseBodySecretRotations28ParametersPermissionsCouponRead:
 		return true
@@ -11771,6 +12305,7 @@ const (
 	ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenClientWrite                ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "confirmation_token_client_write"
 	ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenRead                       ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "confirmation_token_read"
 	ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountRead                        ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "connected_account_read"
+	ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountWrite                       ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "connected_account_write"
 	ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsCouponRead                                  ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "coupon_read"
 	ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsCouponWrite                                 ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "coupon_write"
 	ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsCreditNoteRead                              ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissions = "credit_note_read"
@@ -11966,6 +12501,8 @@ func (e ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersP
 	case ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenRead:
 		return true
 	case ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountRead:
+		return true
+	case ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountWrite:
 		return true
 	case ListProjectSecretsDetails200JSONResponseBodySecretRotations28ParametersPermissionsCouponRead:
 		return true
@@ -13703,6 +14240,7 @@ const (
 	ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenClientWrite                ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissions = "confirmation_token_client_write"
 	ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenRead                       ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissions = "confirmation_token_read"
 	ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountRead                        ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissions = "connected_account_read"
+	ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountWrite                       ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissions = "connected_account_write"
 	ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsCouponRead                                  ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissions = "coupon_read"
 	ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsCouponWrite                                 ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissions = "coupon_write"
 	ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsCreditNoteRead                              ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissions = "credit_note_read"
@@ -13898,6 +14436,8 @@ func (e ListProjectSecretsOverview200JSONResponseBodySecretRotations28Parameters
 	case ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsConfirmationTokenRead:
 		return true
 	case ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountRead:
+		return true
+	case ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsConnectedAccountWrite:
 		return true
 	case ListProjectSecretsOverview200JSONResponseBodySecretRotations28ParametersPermissionsCouponRead:
 		return true
@@ -14283,6 +14823,126 @@ const (
 func (e ListProjectSecretsOverview500JSONResponseBodyStatusCode) Valid() bool {
 	switch e {
 	case ListProjectSecretsOverview500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandleDelegatedApprovalCallbackJSONBodyEvent.
+const (
+	SecretsManagementAccessRequest HandleDelegatedApprovalCallbackJSONBodyEvent = "secrets_management.access_request"
+)
+
+// Valid indicates whether the value is a known member of the HandleDelegatedApprovalCallbackJSONBodyEvent enum.
+func (e HandleDelegatedApprovalCallbackJSONBodyEvent) Valid() bool {
+	switch e {
+	case SecretsManagementAccessRequest:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandleDelegatedApprovalCallbackJSONBodyVersion.
+const (
+	N1 HandleDelegatedApprovalCallbackJSONBodyVersion = 1
+)
+
+// Valid indicates whether the value is a known member of the HandleDelegatedApprovalCallbackJSONBodyVersion enum.
+func (e HandleDelegatedApprovalCallbackJSONBodyVersion) Valid() bool {
+	switch e {
+	case N1:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode.
+const (
+	HandleDelegatedApprovalCallback400JSONResponseBodyStatusCodeN400 HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode enum.
+func (e HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case HandleDelegatedApprovalCallback400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode.
+const (
+	HandleDelegatedApprovalCallback401JSONResponseBodyStatusCodeN401 HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode enum.
+func (e HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case HandleDelegatedApprovalCallback401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode.
+const (
+	HandleDelegatedApprovalCallback403JSONResponseBodyStatusCodeN403 HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode enum.
+func (e HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case HandleDelegatedApprovalCallback403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode.
+const (
+	HandleDelegatedApprovalCallback404JSONResponseBodyStatusCodeN404 HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode enum.
+func (e HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case HandleDelegatedApprovalCallback404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode.
+const (
+	HandleDelegatedApprovalCallback422JSONResponseBodyStatusCodeN422 HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode enum.
+func (e HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case HandleDelegatedApprovalCallback422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode.
+const (
+	HandleDelegatedApprovalCallback500JSONResponseBodyStatusCodeN500 HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode enum.
+func (e HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case HandleDelegatedApprovalCallback500JSONResponseBodyStatusCodeN500:
 		return true
 	default:
 		return false
@@ -44883,6 +45543,738 @@ func (e CreateOciVaultSecretSync500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for CreateVercelSecretSyncJSONBodyDestinationConfig0Env0.
+const (
+	CreateVercelSecretSyncJSONBodyDestinationConfig0Env0Development CreateVercelSecretSyncJSONBodyDestinationConfig0Env0 = "development"
+	CreateVercelSecretSyncJSONBodyDestinationConfig0Env0Preview     CreateVercelSecretSyncJSONBodyDestinationConfig0Env0 = "preview"
+	CreateVercelSecretSyncJSONBodyDestinationConfig0Env0Production  CreateVercelSecretSyncJSONBodyDestinationConfig0Env0 = "production"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSyncJSONBodyDestinationConfig0Env0 enum.
+func (e CreateVercelSecretSyncJSONBodyDestinationConfig0Env0) Valid() bool {
+	switch e {
+	case CreateVercelSecretSyncJSONBodyDestinationConfig0Env0Development:
+		return true
+	case CreateVercelSecretSyncJSONBodyDestinationConfig0Env0Preview:
+		return true
+	case CreateVercelSecretSyncJSONBodyDestinationConfig0Env0Production:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSyncJSONBodyDestinationConfig0Scope.
+const (
+	CreateVercelSecretSyncJSONBodyDestinationConfig0ScopeProject CreateVercelSecretSyncJSONBodyDestinationConfig0Scope = "project"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSyncJSONBodyDestinationConfig0Scope enum.
+func (e CreateVercelSecretSyncJSONBodyDestinationConfig0Scope) Valid() bool {
+	switch e {
+	case CreateVercelSecretSyncJSONBodyDestinationConfig0ScopeProject:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSyncJSONBodyDestinationConfig1Scope.
+const (
+	CreateVercelSecretSyncJSONBodyDestinationConfig1ScopeTeam CreateVercelSecretSyncJSONBodyDestinationConfig1Scope = "team"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSyncJSONBodyDestinationConfig1Scope enum.
+func (e CreateVercelSecretSyncJSONBodyDestinationConfig1Scope) Valid() bool {
+	switch e {
+	case CreateVercelSecretSyncJSONBodyDestinationConfig1ScopeTeam:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments.
+const (
+	CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironmentsDevelopment CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments = "development"
+	CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironmentsPreview     CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments = "preview"
+	CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironmentsProduction  CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments = "production"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments enum.
+func (e CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments) Valid() bool {
+	switch e {
+	case CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironmentsDevelopment:
+		return true
+	case CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironmentsPreview:
+		return true
+	case CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironmentsProduction:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior.
+const (
+	CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehaviorImportPrioritizeDestination CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior = "import-prioritize-destination"
+	CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehaviorImportPrioritizeSource      CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior = "import-prioritize-source"
+	CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehaviorOverwriteDestination        CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior = "overwrite-destination"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior enum.
+func (e CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior) Valid() bool {
+	switch e {
+	case CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehaviorImportPrioritizeDestination:
+		return true
+	case CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehaviorImportPrioritizeSource:
+		return true
+	case CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehaviorOverwriteDestination:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp.
+const (
+	CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionAppVercel CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp = "vercel"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp enum.
+func (e CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionAppVercel:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync200JSONResponseBodySecretSyncDestination.
+const (
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationVercel CreateVercelSecretSync200JSONResponseBodySecretSyncDestination = "vercel"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync200JSONResponseBodySecretSyncDestination enum.
+func (e CreateVercelSecretSync200JSONResponseBodySecretSyncDestination) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationVercel:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0.
+const (
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Development CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "development"
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Preview     CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "preview"
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Production  CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "production"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 enum.
+func (e CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Development:
+		return true
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Preview:
+		return true
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Production:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope.
+const (
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeProject CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope = "project"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope enum.
+func (e CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeProject:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope.
+const (
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeTeam CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope = "team"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope enum.
+func (e CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeTeam:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments.
+const (
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsDevelopment CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "development"
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsPreview     CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "preview"
+	CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsProduction  CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "production"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments enum.
+func (e CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsDevelopment:
+		return true
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsPreview:
+		return true
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsProduction:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior.
+const (
+	CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeDestination CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "import-prioritize-destination"
+	CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeSource      CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "import-prioritize-source"
+	CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination        CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "overwrite-destination"
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior enum.
+func (e CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeDestination:
+		return true
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeSource:
+		return true
+	case CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync400JSONResponseBodyStatusCode.
+const (
+	CreateVercelSecretSync400JSONResponseBodyStatusCodeN400 CreateVercelSecretSync400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync400JSONResponseBodyStatusCode enum.
+func (e CreateVercelSecretSync400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync401JSONResponseBodyStatusCode.
+const (
+	CreateVercelSecretSync401JSONResponseBodyStatusCodeN401 CreateVercelSecretSync401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync401JSONResponseBodyStatusCode enum.
+func (e CreateVercelSecretSync401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync403JSONResponseBodyStatusCode.
+const (
+	CreateVercelSecretSync403JSONResponseBodyStatusCodeN403 CreateVercelSecretSync403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync403JSONResponseBodyStatusCode enum.
+func (e CreateVercelSecretSync403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync404JSONResponseBodyStatusCode.
+const (
+	CreateVercelSecretSync404JSONResponseBodyStatusCodeN404 CreateVercelSecretSync404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync404JSONResponseBodyStatusCode enum.
+func (e CreateVercelSecretSync404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync422JSONResponseBodyStatusCode.
+const (
+	CreateVercelSecretSync422JSONResponseBodyStatusCodeN422 CreateVercelSecretSync422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync422JSONResponseBodyStatusCode enum.
+func (e CreateVercelSecretSync422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CreateVercelSecretSync500JSONResponseBodyStatusCode.
+const (
+	CreateVercelSecretSync500JSONResponseBodyStatusCodeN500 CreateVercelSecretSync500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the CreateVercelSecretSync500JSONResponseBodyStatusCode enum.
+func (e CreateVercelSecretSync500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case CreateVercelSecretSync500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp.
+const (
+	GetVercelSecretSync200JSONResponseBodySecretSyncConnectionAppVercel GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp = "vercel"
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp enum.
+func (e GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp) Valid() bool {
+	switch e {
+	case GetVercelSecretSync200JSONResponseBodySecretSyncConnectionAppVercel:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync200JSONResponseBodySecretSyncDestination.
+const (
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationVercel GetVercelSecretSync200JSONResponseBodySecretSyncDestination = "vercel"
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync200JSONResponseBodySecretSyncDestination enum.
+func (e GetVercelSecretSync200JSONResponseBodySecretSyncDestination) Valid() bool {
+	switch e {
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationVercel:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0.
+const (
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Development GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "development"
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Preview     GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "preview"
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Production  GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "production"
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 enum.
+func (e GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) Valid() bool {
+	switch e {
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Development:
+		return true
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Preview:
+		return true
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Production:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope.
+const (
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeProject GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope = "project"
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope enum.
+func (e GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope) Valid() bool {
+	switch e {
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeProject:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope.
+const (
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeTeam GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope = "team"
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope enum.
+func (e GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope) Valid() bool {
+	switch e {
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeTeam:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments.
+const (
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsDevelopment GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "development"
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsPreview     GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "preview"
+	GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsProduction  GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "production"
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments enum.
+func (e GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments) Valid() bool {
+	switch e {
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsDevelopment:
+		return true
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsPreview:
+		return true
+	case GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsProduction:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior.
+const (
+	GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeDestination GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "import-prioritize-destination"
+	GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeSource      GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "import-prioritize-source"
+	GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination        GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "overwrite-destination"
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior enum.
+func (e GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior) Valid() bool {
+	switch e {
+	case GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeDestination:
+		return true
+	case GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeSource:
+		return true
+	case GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync400JSONResponseBodyStatusCode.
+const (
+	GetVercelSecretSync400JSONResponseBodyStatusCodeN400 GetVercelSecretSync400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync400JSONResponseBodyStatusCode enum.
+func (e GetVercelSecretSync400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetVercelSecretSync400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync401JSONResponseBodyStatusCode.
+const (
+	GetVercelSecretSync401JSONResponseBodyStatusCodeN401 GetVercelSecretSync401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync401JSONResponseBodyStatusCode enum.
+func (e GetVercelSecretSync401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetVercelSecretSync401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync403JSONResponseBodyStatusCode.
+const (
+	GetVercelSecretSync403JSONResponseBodyStatusCodeN403 GetVercelSecretSync403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync403JSONResponseBodyStatusCode enum.
+func (e GetVercelSecretSync403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetVercelSecretSync403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync404JSONResponseBodyStatusCode.
+const (
+	GetVercelSecretSync404JSONResponseBodyStatusCodeN404 GetVercelSecretSync404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync404JSONResponseBodyStatusCode enum.
+func (e GetVercelSecretSync404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetVercelSecretSync404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync422JSONResponseBodyStatusCode.
+const (
+	GetVercelSecretSync422JSONResponseBodyStatusCodeN422 GetVercelSecretSync422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync422JSONResponseBodyStatusCode enum.
+func (e GetVercelSecretSync422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetVercelSecretSync422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetVercelSecretSync500JSONResponseBodyStatusCode.
+const (
+	GetVercelSecretSync500JSONResponseBodyStatusCodeN500 GetVercelSecretSync500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the GetVercelSecretSync500JSONResponseBodyStatusCode enum.
+func (e GetVercelSecretSync500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case GetVercelSecretSync500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp.
+const (
+	SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionAppVercel SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp = "vercel"
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp enum.
+func (e SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionAppVercel:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync200JSONResponseBodySecretSyncDestination.
+const (
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationVercel SyncVercelSecretSync200JSONResponseBodySecretSyncDestination = "vercel"
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync200JSONResponseBodySecretSyncDestination enum.
+func (e SyncVercelSecretSync200JSONResponseBodySecretSyncDestination) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationVercel:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0.
+const (
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Development SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "development"
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Preview     SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "preview"
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Production  SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 = "production"
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 enum.
+func (e SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Development:
+		return true
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Preview:
+		return true
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0Production:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope.
+const (
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeProject SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope = "project"
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope enum.
+func (e SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0ScopeProject:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope.
+const (
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeTeam SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope = "team"
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope enum.
+func (e SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1ScopeTeam:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments.
+const (
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsDevelopment SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "development"
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsPreview     SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "preview"
+	SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsProduction  SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments = "production"
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments enum.
+func (e SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsDevelopment:
+		return true
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsPreview:
+		return true
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironmentsProduction:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior.
+const (
+	SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeDestination SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "import-prioritize-destination"
+	SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeSource      SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "import-prioritize-source"
+	SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination        SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior = "overwrite-destination"
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior enum.
+func (e SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeDestination:
+		return true
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorImportPrioritizeSource:
+		return true
+	case SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehaviorOverwriteDestination:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync400JSONResponseBodyStatusCode.
+const (
+	SyncVercelSecretSync400JSONResponseBodyStatusCodeN400 SyncVercelSecretSync400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync400JSONResponseBodyStatusCode enum.
+func (e SyncVercelSecretSync400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync401JSONResponseBodyStatusCode.
+const (
+	SyncVercelSecretSync401JSONResponseBodyStatusCodeN401 SyncVercelSecretSync401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync401JSONResponseBodyStatusCode enum.
+func (e SyncVercelSecretSync401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync403JSONResponseBodyStatusCode.
+const (
+	SyncVercelSecretSync403JSONResponseBodyStatusCodeN403 SyncVercelSecretSync403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync403JSONResponseBodyStatusCode enum.
+func (e SyncVercelSecretSync403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync404JSONResponseBodyStatusCode.
+const (
+	SyncVercelSecretSync404JSONResponseBodyStatusCodeN404 SyncVercelSecretSync404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync404JSONResponseBodyStatusCode enum.
+func (e SyncVercelSecretSync404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync422JSONResponseBodyStatusCode.
+const (
+	SyncVercelSecretSync422JSONResponseBodyStatusCodeN422 SyncVercelSecretSync422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync422JSONResponseBodyStatusCode enum.
+func (e SyncVercelSecretSync422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SyncVercelSecretSync500JSONResponseBodyStatusCode.
+const (
+	SyncVercelSecretSync500JSONResponseBodyStatusCodeN500 SyncVercelSecretSync500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the SyncVercelSecretSync500JSONResponseBodyStatusCode enum.
+func (e SyncVercelSecretSync500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case SyncVercelSecretSync500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ListSecretValidationRules200JSONResponseBodySecretValidationRules0Type.
 const (
 	ListSecretValidationRules200JSONResponseBodySecretValidationRules0TypeStaticSecrets ListSecretValidationRules200JSONResponseBodySecretValidationRules0Type = "static-secrets"
@@ -51558,6 +52950,21 @@ func (e CreateSecretApprovalPolicyJSONBodyBypassers1Type) Valid() bool {
 	}
 }
 
+// Defines values for CreateSecretApprovalPolicyJSONBodyDelegatedApprovalType.
+const (
+	CreateSecretApprovalPolicyJSONBodyDelegatedApprovalTypeServicenow CreateSecretApprovalPolicyJSONBodyDelegatedApprovalType = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the CreateSecretApprovalPolicyJSONBodyDelegatedApprovalType enum.
+func (e CreateSecretApprovalPolicyJSONBodyDelegatedApprovalType) Valid() bool {
+	switch e {
+	case CreateSecretApprovalPolicyJSONBodyDelegatedApprovalTypeServicenow:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CreateSecretApprovalPolicyJSONBodyEnforcementLevel.
 const (
 	CreateSecretApprovalPolicyJSONBodyEnforcementLevelHard CreateSecretApprovalPolicyJSONBodyEnforcementLevel = "hard"
@@ -52026,6 +53433,21 @@ const (
 func (e UpdateSecretApprovalPolicyJSONBodyBypassers1Type) Valid() bool {
 	switch e {
 	case UpdateSecretApprovalPolicyJSONBodyBypassers1TypeUser:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalType.
+const (
+	UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalTypeServicenow UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalType = "servicenow"
+)
+
+// Valid indicates whether the value is a known member of the UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalType enum.
+func (e UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalType) Valid() bool {
+	switch e {
+	case UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalTypeServicenow:
 		return true
 	default:
 		return false
@@ -56520,6 +57942,96 @@ func (e DeleteServiceToken500JSONResponseBodyStatusCode) Valid() bool {
 	}
 }
 
+// Defines values for DeleteUser400JSONResponseBodyStatusCode.
+const (
+	DeleteUser400JSONResponseBodyStatusCodeN400 DeleteUser400JSONResponseBodyStatusCode = 400
+)
+
+// Valid indicates whether the value is a known member of the DeleteUser400JSONResponseBodyStatusCode enum.
+func (e DeleteUser400JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteUser400JSONResponseBodyStatusCodeN400:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteUser401JSONResponseBodyStatusCode.
+const (
+	DeleteUser401JSONResponseBodyStatusCodeN401 DeleteUser401JSONResponseBodyStatusCode = 401
+)
+
+// Valid indicates whether the value is a known member of the DeleteUser401JSONResponseBodyStatusCode enum.
+func (e DeleteUser401JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteUser401JSONResponseBodyStatusCodeN401:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteUser403JSONResponseBodyStatusCode.
+const (
+	DeleteUser403JSONResponseBodyStatusCodeN403 DeleteUser403JSONResponseBodyStatusCode = 403
+)
+
+// Valid indicates whether the value is a known member of the DeleteUser403JSONResponseBodyStatusCode enum.
+func (e DeleteUser403JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteUser403JSONResponseBodyStatusCodeN403:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteUser404JSONResponseBodyStatusCode.
+const (
+	DeleteUser404JSONResponseBodyStatusCodeN404 DeleteUser404JSONResponseBodyStatusCode = 404
+)
+
+// Valid indicates whether the value is a known member of the DeleteUser404JSONResponseBodyStatusCode enum.
+func (e DeleteUser404JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteUser404JSONResponseBodyStatusCodeN404:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteUser422JSONResponseBodyStatusCode.
+const (
+	DeleteUser422JSONResponseBodyStatusCodeN422 DeleteUser422JSONResponseBodyStatusCode = 422
+)
+
+// Valid indicates whether the value is a known member of the DeleteUser422JSONResponseBodyStatusCode enum.
+func (e DeleteUser422JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteUser422JSONResponseBodyStatusCodeN422:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for DeleteUser500JSONResponseBodyStatusCode.
+const (
+	DeleteUser500JSONResponseBodyStatusCodeN500 DeleteUser500JSONResponseBodyStatusCode = 500
+)
+
+// Valid indicates whether the value is a known member of the DeleteUser500JSONResponseBodyStatusCode enum.
+func (e DeleteUser500JSONResponseBodyStatusCode) Valid() bool {
+	switch e {
+	case DeleteUser500JSONResponseBodyStatusCodeN500:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for GetCurrentUser400JSONResponseBodyStatusCode.
 const (
 	GetCurrentUser400JSONResponseBodyStatusCodeN400 GetCurrentUser400JSONResponseBodyStatusCode = 400
@@ -59189,6 +60701,9 @@ type ListAccessApprovalPolicies200JSONResponseBodyApprovalsApproversType string
 // ListAccessApprovalPolicies200JSONResponseBodyApprovalsBypassersType defines parameters for ListAccessApprovalPolicies.
 type ListAccessApprovalPolicies200JSONResponseBodyApprovalsBypassersType string
 
+// ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType defines parameters for ListAccessApprovalPolicies.
+type ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType string
+
 // ListAccessApprovalPolicies400JSONResponseBodyStatusCode defines parameters for ListAccessApprovalPolicies.
 type ListAccessApprovalPolicies400JSONResponseBodyStatusCode float32
 
@@ -59209,22 +60724,34 @@ type ListAccessApprovalPolicies500JSONResponseBodyStatusCode float32
 
 // CreateAccessApprovalPolicyJSONBody defines parameters for CreateAccessApprovalPolicy.
 type CreateAccessApprovalPolicyJSONBody struct {
+	// AllowedSelfApprovals Defaults to true, or to false when delegatedApproval is set.
 	AllowedSelfApprovals *bool    `json:"allowedSelfApprovals,omitempty"`
 	Approvals            *float32 `json:"approvals,omitempty"`
 	ApprovalsRequired    *[]struct {
 		NumberOfApprovals int `json:"numberOfApprovals"`
 		StepNumber        int `json:"stepNumber"`
 	} `json:"approvalsRequired,omitempty"`
-	Approvers             []CreateAccessApprovalPolicyJSONBody_Approvers_Item  `json:"approvers"`
-	Bypassers             *[]CreateAccessApprovalPolicyJSONBody_Bypassers_Item `json:"bypassers,omitempty"`
-	EnforcementLevel      *CreateAccessApprovalPolicyJSONBodyEnforcementLevel  `json:"enforcementLevel,omitempty"`
-	Environment           *string                                              `json:"environment,omitempty"`
-	Environments          *[]string                                            `json:"environments,omitempty"`
-	MaxTimePeriod         *string                                              `json:"maxTimePeriod,omitempty"`
-	Name                  *string                                              `json:"name,omitempty"`
-	ProjectSlug           string                                               `json:"projectSlug"`
-	RequestExpirationTime *string                                              `json:"requestExpirationTime,omitempty"`
-	SecretPath            string                                               `json:"secretPath"`
+
+	// Approvers Required unless delegatedApproval is set, and must be omitted when it is.
+	Approvers *[]CreateAccessApprovalPolicyJSONBody_Approvers_Item `json:"approvers,omitempty"`
+	Bypassers *[]CreateAccessApprovalPolicyJSONBody_Bypassers_Item `json:"bypassers,omitempty"`
+
+	// DelegatedApproval Hand requests made against this policy to a delegated approval system.
+	DelegatedApproval *struct {
+		// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+		ConnectionId openapi_types.UUID `json:"connectionId"`
+
+		// Type The delegated approval system that reviews requests made against this policy.
+		Type CreateAccessApprovalPolicyJSONBodyDelegatedApprovalType `json:"type"`
+	} `json:"delegatedApproval,omitempty"`
+	EnforcementLevel      *CreateAccessApprovalPolicyJSONBodyEnforcementLevel `json:"enforcementLevel,omitempty"`
+	Environment           *string                                             `json:"environment,omitempty"`
+	Environments          *[]string                                           `json:"environments,omitempty"`
+	MaxTimePeriod         *string                                             `json:"maxTimePeriod,omitempty"`
+	Name                  *string                                             `json:"name,omitempty"`
+	ProjectSlug           string                                              `json:"projectSlug"`
+	RequestExpirationTime *string                                             `json:"requestExpirationTime,omitempty"`
+	SecretPath            string                                              `json:"secretPath"`
 }
 
 // CreateAccessApprovalPolicyJSONBodyApprovers0 defines parameters for CreateAccessApprovalPolicy.
@@ -59277,8 +60804,14 @@ type CreateAccessApprovalPolicyJSONBody_Bypassers_Item struct {
 	union json.RawMessage
 }
 
+// CreateAccessApprovalPolicyJSONBodyDelegatedApprovalType defines parameters for CreateAccessApprovalPolicy.
+type CreateAccessApprovalPolicyJSONBodyDelegatedApprovalType string
+
 // CreateAccessApprovalPolicyJSONBodyEnforcementLevel defines parameters for CreateAccessApprovalPolicy.
 type CreateAccessApprovalPolicyJSONBodyEnforcementLevel string
+
+// CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType defines parameters for CreateAccessApprovalPolicy.
+type CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType string
 
 // CreateAccessApprovalPolicy400JSONResponseBodyStatusCode defines parameters for CreateAccessApprovalPolicy.
 type CreateAccessApprovalPolicy400JSONResponseBodyStatusCode float32
@@ -59322,6 +60855,9 @@ type GetAccessApprovalPolicyCount422JSONResponseBodyStatusCode float32
 // GetAccessApprovalPolicyCount500JSONResponseBodyStatusCode defines parameters for GetAccessApprovalPolicyCount.
 type GetAccessApprovalPolicyCount500JSONResponseBodyStatusCode float32
 
+// DeleteAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType defines parameters for DeleteAccessApprovalPolicy.
+type DeleteAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType string
+
 // DeleteAccessApprovalPolicy400JSONResponseBodyStatusCode defines parameters for DeleteAccessApprovalPolicy.
 type DeleteAccessApprovalPolicy400JSONResponseBodyStatusCode float32
 
@@ -59346,6 +60882,9 @@ type GetAccessApprovalPolicy200JSONResponseBodyApprovalApproversType string
 // GetAccessApprovalPolicy200JSONResponseBodyApprovalBypassersType defines parameters for GetAccessApprovalPolicy.
 type GetAccessApprovalPolicy200JSONResponseBodyApprovalBypassersType string
 
+// GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType defines parameters for GetAccessApprovalPolicy.
+type GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType string
+
 // GetAccessApprovalPolicy400JSONResponseBodyStatusCode defines parameters for GetAccessApprovalPolicy.
 type GetAccessApprovalPolicy400JSONResponseBodyStatusCode float32
 
@@ -59366,20 +60905,32 @@ type GetAccessApprovalPolicy500JSONResponseBodyStatusCode float32
 
 // UpdateAccessApprovalPolicyJSONBody defines parameters for UpdateAccessApprovalPolicy.
 type UpdateAccessApprovalPolicyJSONBody struct {
+	// AllowedSelfApprovals Defaults to true, or to false when the policy is handled by a delegated approval system.
 	AllowedSelfApprovals *bool    `json:"allowedSelfApprovals,omitempty"`
 	Approvals            *float32 `json:"approvals,omitempty"`
 	ApprovalsRequired    *[]struct {
 		NumberOfApprovals int `json:"numberOfApprovals"`
 		StepNumber        int `json:"stepNumber"`
 	} `json:"approvalsRequired,omitempty"`
-	Approvers             []UpdateAccessApprovalPolicyJSONBody_Approvers_Item  `json:"approvers"`
-	Bypassers             *[]UpdateAccessApprovalPolicyJSONBody_Bypassers_Item `json:"bypassers,omitempty"`
-	EnforcementLevel      *UpdateAccessApprovalPolicyJSONBodyEnforcementLevel  `json:"enforcementLevel,omitempty"`
-	Environments          *[]string                                            `json:"environments,omitempty"`
-	MaxTimePeriod         *string                                              `json:"maxTimePeriod,omitempty"`
-	Name                  *string                                              `json:"name,omitempty"`
-	RequestExpirationTime *string                                              `json:"requestExpirationTime,omitempty"`
-	SecretPath            *string                                              `json:"secretPath,omitempty"`
+
+	// Approvers Required unless the policy is handled by a delegated approval system, and must be omitted when it is.
+	Approvers *[]UpdateAccessApprovalPolicyJSONBody_Approvers_Item `json:"approvers,omitempty"`
+	Bypassers *[]UpdateAccessApprovalPolicyJSONBody_Bypassers_Item `json:"bypassers,omitempty"`
+
+	// DelegatedApproval Hand requests made against this policy to a delegated approval system. Send null to stop using one.
+	DelegatedApproval *struct {
+		// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+		ConnectionId openapi_types.UUID `json:"connectionId"`
+
+		// Type The delegated approval system that reviews requests made against this policy.
+		Type UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalType `json:"type"`
+	} `json:"delegatedApproval,omitempty"`
+	EnforcementLevel      *UpdateAccessApprovalPolicyJSONBodyEnforcementLevel `json:"enforcementLevel,omitempty"`
+	Environments          *[]string                                           `json:"environments,omitempty"`
+	MaxTimePeriod         *string                                             `json:"maxTimePeriod,omitempty"`
+	Name                  *string                                             `json:"name,omitempty"`
+	RequestExpirationTime *string                                             `json:"requestExpirationTime,omitempty"`
+	SecretPath            *string                                             `json:"secretPath,omitempty"`
 }
 
 // UpdateAccessApprovalPolicyJSONBodyApprovers0 defines parameters for UpdateAccessApprovalPolicy.
@@ -59432,8 +60983,14 @@ type UpdateAccessApprovalPolicyJSONBody_Bypassers_Item struct {
 	union json.RawMessage
 }
 
+// UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalType defines parameters for UpdateAccessApprovalPolicy.
+type UpdateAccessApprovalPolicyJSONBodyDelegatedApprovalType string
+
 // UpdateAccessApprovalPolicyJSONBodyEnforcementLevel defines parameters for UpdateAccessApprovalPolicy.
 type UpdateAccessApprovalPolicyJSONBodyEnforcementLevel string
+
+// UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType defines parameters for UpdateAccessApprovalPolicy.
+type UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType string
 
 // UpdateAccessApprovalPolicy400JSONResponseBodyStatusCode defines parameters for UpdateAccessApprovalPolicy.
 type UpdateAccessApprovalPolicy400JSONResponseBodyStatusCode float32
@@ -59459,6 +61016,27 @@ type ListAccessApprovalRequestsParams struct {
 	AuthorUserId *string `form:"authorUserId,omitempty" json:"authorUserId,omitempty"`
 	EnvSlug      *string `form:"envSlug,omitempty" json:"envSlug,omitempty"`
 }
+
+// ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0 defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0 struct {
+	// RecordNumber The number of the ServiceNow record that tracks this request, as shown in ServiceNow.
+	RecordNumber string                                                                              `json:"recordNumber"`
+	Type         ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0Type `json:"type"`
+}
+
+// ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0Type defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0Type string
+
+// ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider struct {
+	union json.RawMessage
+}
+
+// ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus string
+
+// ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType defines parameters for ListAccessApprovalRequests.
+type ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType string
 
 // ListAccessApprovalRequests400JSONResponseBodyStatusCode defines parameters for ListAccessApprovalRequests.
 type ListAccessApprovalRequests400JSONResponseBodyStatusCode float32
@@ -63840,6 +65418,346 @@ type UpdatePostgresAppConnection422JSONResponseBodyStatusCode float32
 
 // UpdatePostgresAppConnection500JSONResponseBodyStatusCode defines parameters for UpdatePostgresAppConnection.
 type UpdatePostgresAppConnection500JSONResponseBodyStatusCode float32
+
+// CreateServiceNowAppConnectionJSONBody defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnectionJSONBody struct {
+	// Description An optional description for the ServiceNow Connection.
+	Description *string `json:"description,omitempty"`
+
+	// GatewayId Not supported for ServiceNow Connections.
+	GatewayId *CreateServiceNowAppConnectionJSONBody_GatewayId `json:"gatewayId,omitempty"`
+
+	// GatewayPoolId Not supported for ServiceNow Connections.
+	GatewayPoolId *CreateServiceNowAppConnectionJSONBody_GatewayPoolId `json:"gatewayPoolId,omitempty"`
+
+	// IsAutoRotationEnabled Not supported for ServiceNow Connections.
+	IsAutoRotationEnabled *CreateServiceNowAppConnectionJSONBodyIsAutoRotationEnabled `json:"isAutoRotationEnabled,omitempty"`
+
+	// IsPlatformManagedCredentials Not supported for ServiceNow Connections.
+	IsPlatformManagedCredentials *CreateServiceNowAppConnectionJSONBodyIsPlatformManagedCredentials `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Name The name of the ServiceNow Connection to create. Must be slug-friendly.
+	Name string `json:"name"`
+
+	// ProjectId The ID of the project to create the ServiceNow Connection in.
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation Not supported for ServiceNow Connections.
+	Rotation *CreateServiceNowAppConnectionJSONBody_Rotation `json:"rotation,omitempty"`
+	union    json.RawMessage
+}
+
+// CreateServiceNowAppConnectionJSONBodyGatewayId0 defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnectionJSONBodyGatewayId0 = interface{}
+
+// CreateServiceNowAppConnectionJSONBodyGatewayId1 defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnectionJSONBodyGatewayId1 = interface{}
+
+// CreateServiceNowAppConnectionJSONBody_GatewayId defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnectionJSONBody_GatewayId struct {
+	union json.RawMessage
+}
+
+// CreateServiceNowAppConnectionJSONBodyGatewayPoolId0 defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnectionJSONBodyGatewayPoolId0 = interface{}
+
+// CreateServiceNowAppConnectionJSONBodyGatewayPoolId1 defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnectionJSONBodyGatewayPoolId1 = interface{}
+
+// CreateServiceNowAppConnectionJSONBody_GatewayPoolId defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnectionJSONBody_GatewayPoolId struct {
+	union json.RawMessage
+}
+
+// CreateServiceNowAppConnectionJSONBodyIsAutoRotationEnabled defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnectionJSONBodyIsAutoRotationEnabled bool
+
+// CreateServiceNowAppConnectionJSONBodyIsPlatformManagedCredentials defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnectionJSONBodyIsPlatformManagedCredentials bool
+
+// CreateServiceNowAppConnectionJSONBodyRotation0 defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnectionJSONBodyRotation0 = interface{}
+
+// CreateServiceNowAppConnectionJSONBodyRotation1 defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnectionJSONBodyRotation1 = interface{}
+
+// CreateServiceNowAppConnectionJSONBody_Rotation defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnectionJSONBody_Rotation struct {
+	union json.RawMessage
+}
+
+// CreateServiceNowAppConnectionJSONBody0 defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnectionJSONBody0 struct {
+	// Credentials The credentials used to connect with ServiceNow.
+	Credentials struct {
+		// InstanceUrl The base URL of the ServiceNow instance to connect with, without a path or trailing slash.
+		InstanceUrl string `json:"instanceUrl"`
+
+		// Password The password of the ServiceNow integration user.
+		Password string `json:"password"`
+
+		// Username The User ID of the ServiceNow integration user.
+		Username string `json:"username"`
+	} `json:"credentials"`
+
+	// Method The method used to authenticate with ServiceNow.
+	Method CreateServiceNowAppConnectionJSONBody0Method `json:"method"`
+}
+
+// CreateServiceNowAppConnectionJSONBody0Method defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnectionJSONBody0Method string
+
+// CreateServiceNowAppConnection200JSONResponseBodyAppConnection0 defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnection200JSONResponseBodyAppConnection0 struct {
+	App         CreateServiceNowAppConnection200JSONResponseBodyAppConnection0App `json:"app"`
+	CreatedAt   time.Time                                                         `json:"createdAt"`
+	Credentials struct {
+		// InstanceUrl The base URL of the ServiceNow instance to connect with, without a path or trailing slash.
+		InstanceUrl string `json:"instanceUrl"`
+
+		// Username The User ID of the ServiceNow integration user.
+		Username string `json:"username"`
+	} `json:"credentials"`
+	CredentialsHash              *string                                                              `json:"credentialsHash,omitempty"`
+	Description                  *string                                                              `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                                  `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                                  `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                                   `json:"id"`
+	IsAutoRotationEnabled        *bool                                                                `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                                `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateServiceNowAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                               `json:"name"`
+	OrgId                        openapi_types.UUID                                                   `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateServiceNowAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateServiceNowAppConnection200JSONResponseBodyAppConnection0App defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnection200JSONResponseBodyAppConnection0App string
+
+// CreateServiceNowAppConnection200JSONResponseBodyAppConnection0Method defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnection200JSONResponseBodyAppConnection0Method string
+
+// CreateServiceNowAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// CreateServiceNowAppConnection200JSONResponseBody_AppConnection defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// CreateServiceNowAppConnection400JSONResponseBodyStatusCode defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnection400JSONResponseBodyStatusCode float32
+
+// CreateServiceNowAppConnection401JSONResponseBodyStatusCode defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnection401JSONResponseBodyStatusCode float32
+
+// CreateServiceNowAppConnection403JSONResponseBodyStatusCode defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnection403JSONResponseBodyStatusCode float32
+
+// CreateServiceNowAppConnection404JSONResponseBodyStatusCode defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnection404JSONResponseBodyStatusCode float32
+
+// CreateServiceNowAppConnection422JSONResponseBodyStatusCode defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnection422JSONResponseBodyStatusCode float32
+
+// CreateServiceNowAppConnection500JSONResponseBodyStatusCode defines parameters for CreateServiceNowAppConnection.
+type CreateServiceNowAppConnection500JSONResponseBodyStatusCode float32
+
+// CreateVercelAppConnectionJSONBody defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBody struct {
+	// Description An optional description for the Vercel Connection.
+	Description *string `json:"description,omitempty"`
+
+	// GatewayId Not supported for Vercel Connections.
+	GatewayId *CreateVercelAppConnectionJSONBody_GatewayId `json:"gatewayId,omitempty"`
+
+	// GatewayPoolId Not supported for Vercel Connections.
+	GatewayPoolId *CreateVercelAppConnectionJSONBody_GatewayPoolId `json:"gatewayPoolId,omitempty"`
+
+	// IsAutoRotationEnabled Not supported for Vercel Connections.
+	IsAutoRotationEnabled *CreateVercelAppConnectionJSONBodyIsAutoRotationEnabled `json:"isAutoRotationEnabled,omitempty"`
+
+	// IsPlatformManagedCredentials Not supported for Vercel Connections.
+	IsPlatformManagedCredentials *CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentials `json:"isPlatformManagedCredentials,omitempty"`
+
+	// Name The name of the Vercel Connection to create. Must be slug-friendly.
+	Name string `json:"name"`
+
+	// ProjectId The ID of the project to create the Vercel Connection in.
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation Not supported for Vercel Connections.
+	Rotation *CreateVercelAppConnectionJSONBody_Rotation `json:"rotation,omitempty"`
+	union    json.RawMessage
+}
+
+// CreateVercelAppConnectionJSONBodyGatewayId0 defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBodyGatewayId0 = interface{}
+
+// CreateVercelAppConnectionJSONBodyGatewayId1 defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBodyGatewayId1 = interface{}
+
+// CreateVercelAppConnectionJSONBody_GatewayId defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBody_GatewayId struct {
+	union json.RawMessage
+}
+
+// CreateVercelAppConnectionJSONBodyGatewayPoolId0 defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBodyGatewayPoolId0 = interface{}
+
+// CreateVercelAppConnectionJSONBodyGatewayPoolId1 defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBodyGatewayPoolId1 = interface{}
+
+// CreateVercelAppConnectionJSONBody_GatewayPoolId defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBody_GatewayPoolId struct {
+	union json.RawMessage
+}
+
+// CreateVercelAppConnectionJSONBodyIsAutoRotationEnabled defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBodyIsAutoRotationEnabled bool
+
+// CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentials defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBodyIsPlatformManagedCredentials bool
+
+// CreateVercelAppConnectionJSONBodyRotation0 defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBodyRotation0 = interface{}
+
+// CreateVercelAppConnectionJSONBodyRotation1 defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBodyRotation1 = interface{}
+
+// CreateVercelAppConnectionJSONBody_Rotation defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBody_Rotation struct {
+	union json.RawMessage
+}
+
+// CreateVercelAppConnectionJSONBody0 defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBody0 struct {
+	// Credentials The credentials used to connect with Vercel.
+	Credentials struct {
+		// ApiToken The API token used to authenticate with Vercel.
+		ApiToken string `json:"apiToken"`
+	} `json:"credentials"`
+
+	// Method The method used to authenticate with Vercel.
+	Method CreateVercelAppConnectionJSONBody0Method `json:"method"`
+}
+
+// CreateVercelAppConnectionJSONBody0Method defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnectionJSONBody0Method string
+
+// CreateVercelAppConnection200JSONResponseBodyAppConnection0 defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection200JSONResponseBodyAppConnection0 struct {
+	App                          CreateVercelAppConnection200JSONResponseBodyAppConnection0App    `json:"app"`
+	CreatedAt                    time.Time                                                        `json:"createdAt"`
+	Credentials                  map[string]interface{}                                           `json:"credentials"`
+	CredentialsHash              *string                                                          `json:"credentialsHash,omitempty"`
+	Description                  *string                                                          `json:"description,omitempty"`
+	GatewayId                    *openapi_types.UUID                                              `json:"gatewayId,omitempty"`
+	GatewayPoolId                *openapi_types.UUID                                              `json:"gatewayPoolId,omitempty"`
+	Id                           openapi_types.UUID                                               `json:"id"`
+	IsAutoRotationEnabled        *bool                                                            `json:"isAutoRotationEnabled,omitempty"`
+	IsPlatformManagedCredentials *bool                                                            `json:"isPlatformManagedCredentials,omitempty"`
+	Method                       CreateVercelAppConnection200JSONResponseBodyAppConnection0Method `json:"method"`
+	Name                         string                                                           `json:"name"`
+	OrgId                        openapi_types.UUID                                               `json:"orgId"`
+	Project                      *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+		Slug string `json:"slug"`
+		Type string `json:"type"`
+	} `json:"project,omitempty"`
+	ProjectId *string `json:"projectId,omitempty"`
+
+	// Rotation The credential rotation configuration, if configured.
+	Rotation *struct {
+		// LastRotationMessage The message from the last rotation attempt.
+		LastRotationMessage *string `json:"lastRotationMessage,omitempty"`
+
+		// NextRotationAt The next scheduled rotation time.
+		NextRotationAt *time.Time `json:"nextRotationAt,omitempty"`
+
+		// RotateAtUtc The UTC time of day at which rotation should occur.
+		RotateAtUtc struct {
+			// Hours The hour (0-23) at which to rotate.
+			Hours float32 `json:"hours"`
+
+			// Minutes The minute (0-59) at which to rotate.
+			Minutes float32 `json:"minutes"`
+		} `json:"rotateAtUtc"`
+
+		// RotationInterval The interval in days between credential rotations.
+		RotationInterval float32 `json:"rotationInterval"`
+
+		// RotationStatus The status of the last rotation attempt.
+		RotationStatus CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus `json:"rotationStatus"`
+	} `json:"rotation,omitempty"`
+	UpdatedAt time.Time `json:"updatedAt"`
+	Version   *float32  `json:"version,omitempty"`
+}
+
+// CreateVercelAppConnection200JSONResponseBodyAppConnection0App defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection200JSONResponseBodyAppConnection0App string
+
+// CreateVercelAppConnection200JSONResponseBodyAppConnection0Method defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection200JSONResponseBodyAppConnection0Method string
+
+// CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection200JSONResponseBodyAppConnection0RotationRotationStatus string
+
+// CreateVercelAppConnection200JSONResponseBody_AppConnection defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection200JSONResponseBody_AppConnection struct {
+	union json.RawMessage
+}
+
+// CreateVercelAppConnection400JSONResponseBodyStatusCode defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection400JSONResponseBodyStatusCode float32
+
+// CreateVercelAppConnection401JSONResponseBodyStatusCode defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection401JSONResponseBodyStatusCode float32
+
+// CreateVercelAppConnection403JSONResponseBodyStatusCode defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection403JSONResponseBodyStatusCode float32
+
+// CreateVercelAppConnection404JSONResponseBodyStatusCode defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection404JSONResponseBodyStatusCode float32
+
+// CreateVercelAppConnection422JSONResponseBodyStatusCode defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection422JSONResponseBodyStatusCode float32
+
+// CreateVercelAppConnection500JSONResponseBodyStatusCode defines parameters for CreateVercelAppConnection.
+type CreateVercelAppConnection500JSONResponseBodyStatusCode float32
 
 // RefreshAuthToken400JSONResponseBodyStatusCode defines parameters for RefreshAuthToken.
 type RefreshAuthToken400JSONResponseBodyStatusCode float32
@@ -70795,6 +72713,50 @@ type ListProjectSecretsOverview422JSONResponseBodyStatusCode float32
 
 // ListProjectSecretsOverview500JSONResponseBodyStatusCode defines parameters for ListProjectSecretsOverview.
 type ListProjectSecretsOverview500JSONResponseBodyStatusCode float32
+
+// HandleDelegatedApprovalCallbackJSONBody defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallbackJSONBody struct {
+	Details struct {
+		// ExternalId The delegated approval system's record ID for the request.
+		ExternalId string `json:"externalId"`
+	} `json:"details"`
+
+	// Event The event Infisical named when it created the request, returned unchanged.
+	Event HandleDelegatedApprovalCallbackJSONBodyEvent `json:"event"`
+
+	// Version The callback contract version.
+	Version HandleDelegatedApprovalCallbackJSONBodyVersion `json:"version"`
+}
+
+// HandleDelegatedApprovalCallbackParams defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallbackParams struct {
+	// InfisicalApprovalToken The callback token Infisical issued when it sent the request.
+	InfisicalApprovalToken *string `json:"infisical-approval-token,omitempty"`
+}
+
+// HandleDelegatedApprovalCallbackJSONBodyEvent defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallbackJSONBodyEvent string
+
+// HandleDelegatedApprovalCallbackJSONBodyVersion defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallbackJSONBodyVersion float32
+
+// HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode float32
+
+// HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode float32
+
+// HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode float32
+
+// HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode float32
+
+// HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode float32
+
+// HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode defines parameters for HandleDelegatedApprovalCallback.
+type HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode float32
 
 // ListDynamicSecretsParams defines parameters for ListDynamicSecrets.
 type ListDynamicSecretsParams struct {
@@ -81302,6 +83264,406 @@ type CreateOciVaultSecretSync422JSONResponseBodyStatusCode float32
 // CreateOciVaultSecretSync500JSONResponseBodyStatusCode defines parameters for CreateOciVaultSecretSync.
 type CreateOciVaultSecretSync500JSONResponseBodyStatusCode float32
 
+// CreateVercelSecretSyncJSONBody defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBody struct {
+	// ConnectionId The ID of the Vercel Connection to use for syncing.
+	ConnectionId openapi_types.UUID `json:"connectionId"`
+
+	// Description An optional description for the Vercel Sync.
+	Description       *string                                          `json:"description,omitempty"`
+	DestinationConfig CreateVercelSecretSyncJSONBody_DestinationConfig `json:"destinationConfig"`
+
+	// Environment The slug of the project environment to sync secrets from.
+	Environment string `json:"environment"`
+
+	// IsAutoSyncEnabled Whether secrets should be automatically synced when changes occur at the source location or not.
+	IsAutoSyncEnabled *bool `json:"isAutoSyncEnabled,omitempty"`
+
+	// Name The name of the Vercel Sync to create. Must be slug-friendly.
+	Name string `json:"name"`
+
+	// ProjectId The ID of the project to create the sync in.
+	ProjectId string `json:"projectId"`
+
+	// SecretPath The folder path to sync secrets from.
+	SecretPath string `json:"secretPath"`
+
+	// SyncOptions Optional parameters to modify how secrets are synced.
+	SyncOptions struct {
+		// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+		DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+		// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+		IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+		// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+		InitialSyncBehavior CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+		// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+		KeySchema *string `json:"keySchema,omitempty"`
+	} `json:"syncOptions"`
+}
+
+// CreateVercelSecretSyncJSONBodyDestinationConfig0 defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBodyDestinationConfig0 struct {
+	// App The ID of the Vercel app to sync secrets to.
+	App string `json:"app"`
+
+	// AppName The name of the Vercel app to sync secrets to.
+	AppName string `json:"appName"`
+
+	// Branch The branch to sync preview secrets to.
+	Branch *string `json:"branch,omitempty"`
+
+	// Env The ID of the Vercel environment to sync secrets to.
+	Env   CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env `json:"env"`
+	Scope CreateVercelSecretSyncJSONBodyDestinationConfig0Scope  `json:"scope"`
+
+	// Sensitive Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment.
+	Sensitive *bool `json:"sensitive,omitempty"`
+
+	// TeamId The ID of the Vercel team to sync secrets to.
+	TeamId string `json:"teamId"`
+}
+
+// CreateVercelSecretSyncJSONBodyDestinationConfig0Env0 defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBodyDestinationConfig0Env0 string
+
+// CreateVercelSecretSyncJSONBodyDestinationConfig0Env1 defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBodyDestinationConfig0Env1 = string
+
+// CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env struct {
+	union json.RawMessage
+}
+
+// CreateVercelSecretSyncJSONBodyDestinationConfig0Scope defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBodyDestinationConfig0Scope string
+
+// CreateVercelSecretSyncJSONBodyDestinationConfig1 defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBodyDestinationConfig1 struct {
+	// ApplyToAllCustomEnvironments Whether to apply shared environment variables to all custom environments in the team.
+	ApplyToAllCustomEnvironments *bool                                                 `json:"applyToAllCustomEnvironments,omitempty"`
+	Scope                        CreateVercelSecretSyncJSONBodyDestinationConfig1Scope `json:"scope"`
+
+	// Sensitive Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment.
+	Sensitive *bool `json:"sensitive,omitempty"`
+
+	// TargetEnvironments An optional array of Vercel default environments (development, preview, production) to add shared environment variables to.
+	TargetEnvironments *[]CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments `json:"targetEnvironments,omitempty"`
+
+	// TargetProjects An optional array of Vercel projects to add shared environment variables to.
+	TargetProjects *[]string `json:"targetProjects,omitempty"`
+
+	// TeamId The ID of the Vercel team to sync secrets to.
+	TeamId string `json:"teamId"`
+
+	// TeamName The name of the team to sync the secrets to. This is an optional field only intended for display purposes.
+	TeamName *string `json:"teamName,omitempty"`
+}
+
+// CreateVercelSecretSyncJSONBodyDestinationConfig1Scope defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBodyDestinationConfig1Scope string
+
+// CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBodyDestinationConfig1TargetEnvironments string
+
+// CreateVercelSecretSyncJSONBody_DestinationConfig defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBody_DestinationConfig struct {
+	union json.RawMessage
+}
+
+// CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSyncJSONBodySyncOptionsInitialSyncBehavior string
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp string
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncDestination defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncDestination string
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 struct {
+	// App The ID of the Vercel app to sync secrets to.
+	App string `json:"app"`
+
+	// AppName The name of the Vercel app to sync secrets to.
+	AppName string `json:"appName"`
+
+	// Branch The branch to sync preview secrets to.
+	Branch *string `json:"branch,omitempty"`
+
+	// Env The ID of the Vercel environment to sync secrets to.
+	Env   CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env `json:"env"`
+	Scope CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope   `json:"scope"`
+
+	// Sensitive Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment.
+	Sensitive *bool `json:"sensitive,omitempty"`
+
+	// TeamId The ID of the Vercel team to sync secrets to.
+	TeamId string `json:"teamId"`
+}
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 string
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 = string
+
+// CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env struct {
+	union json.RawMessage
+}
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 struct {
+	// ApplyToAllCustomEnvironments Whether to apply shared environment variables to all custom environments in the team.
+	ApplyToAllCustomEnvironments *bool                                                                      `json:"applyToAllCustomEnvironments,omitempty"`
+	Scope                        CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+
+	// Sensitive Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment.
+	Sensitive *bool `json:"sensitive,omitempty"`
+
+	// TargetEnvironments An optional array of Vercel default environments (development, preview, production) to add shared environment variables to.
+	TargetEnvironments *[]CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments `json:"targetEnvironments,omitempty"`
+
+	// TargetProjects An optional array of Vercel projects to add shared environment variables to.
+	TargetProjects *[]string `json:"targetProjects,omitempty"`
+
+	// TeamId The ID of the Vercel team to sync secrets to.
+	TeamId string `json:"teamId"`
+
+	// TeamName The name of the team to sync the secrets to. This is an optional field only intended for display purposes.
+	TeamName *string `json:"teamName,omitempty"`
+}
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments string
+
+// CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig struct {
+	union json.RawMessage
+}
+
+// CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior string
+
+// CreateVercelSecretSync400JSONResponseBodyStatusCode defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync400JSONResponseBodyStatusCode float32
+
+// CreateVercelSecretSync401JSONResponseBodyStatusCode defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync401JSONResponseBodyStatusCode float32
+
+// CreateVercelSecretSync403JSONResponseBodyStatusCode defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync403JSONResponseBodyStatusCode float32
+
+// CreateVercelSecretSync404JSONResponseBodyStatusCode defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync404JSONResponseBodyStatusCode float32
+
+// CreateVercelSecretSync422JSONResponseBodyStatusCode defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync422JSONResponseBodyStatusCode float32
+
+// CreateVercelSecretSync500JSONResponseBodyStatusCode defines parameters for CreateVercelSecretSync.
+type CreateVercelSecretSync500JSONResponseBodyStatusCode float32
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp string
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncDestination defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncDestination string
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 struct {
+	// App The ID of the Vercel app to sync secrets to.
+	App string `json:"app"`
+
+	// AppName The name of the Vercel app to sync secrets to.
+	AppName string `json:"appName"`
+
+	// Branch The branch to sync preview secrets to.
+	Branch *string `json:"branch,omitempty"`
+
+	// Env The ID of the Vercel environment to sync secrets to.
+	Env   GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env `json:"env"`
+	Scope GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope   `json:"scope"`
+
+	// Sensitive Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment.
+	Sensitive *bool `json:"sensitive,omitempty"`
+
+	// TeamId The ID of the Vercel team to sync secrets to.
+	TeamId string `json:"teamId"`
+}
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 string
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 = string
+
+// GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env struct {
+	union json.RawMessage
+}
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 struct {
+	// ApplyToAllCustomEnvironments Whether to apply shared environment variables to all custom environments in the team.
+	ApplyToAllCustomEnvironments *bool                                                                   `json:"applyToAllCustomEnvironments,omitempty"`
+	Scope                        GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+
+	// Sensitive Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment.
+	Sensitive *bool `json:"sensitive,omitempty"`
+
+	// TargetEnvironments An optional array of Vercel default environments (development, preview, production) to add shared environment variables to.
+	TargetEnvironments *[]GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments `json:"targetEnvironments,omitempty"`
+
+	// TargetProjects An optional array of Vercel projects to add shared environment variables to.
+	TargetProjects *[]string `json:"targetProjects,omitempty"`
+
+	// TeamId The ID of the Vercel team to sync secrets to.
+	TeamId string `json:"teamId"`
+
+	// TeamName The name of the team to sync the secrets to. This is an optional field only intended for display purposes.
+	TeamName *string `json:"teamName,omitempty"`
+}
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments string
+
+// GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig struct {
+	union json.RawMessage
+}
+
+// GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior string
+
+// GetVercelSecretSync400JSONResponseBodyStatusCode defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync400JSONResponseBodyStatusCode float32
+
+// GetVercelSecretSync401JSONResponseBodyStatusCode defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync401JSONResponseBodyStatusCode float32
+
+// GetVercelSecretSync403JSONResponseBodyStatusCode defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync403JSONResponseBodyStatusCode float32
+
+// GetVercelSecretSync404JSONResponseBodyStatusCode defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync404JSONResponseBodyStatusCode float32
+
+// GetVercelSecretSync422JSONResponseBodyStatusCode defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync422JSONResponseBodyStatusCode float32
+
+// GetVercelSecretSync500JSONResponseBodyStatusCode defines parameters for GetVercelSecretSync.
+type GetVercelSecretSync500JSONResponseBodyStatusCode float32
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp string
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncDestination defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncDestination string
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 struct {
+	// App The ID of the Vercel app to sync secrets to.
+	App string `json:"app"`
+
+	// AppName The name of the Vercel app to sync secrets to.
+	AppName string `json:"appName"`
+
+	// Branch The branch to sync preview secrets to.
+	Branch *string `json:"branch,omitempty"`
+
+	// Env The ID of the Vercel environment to sync secrets to.
+	Env   SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env `json:"env"`
+	Scope SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope   `json:"scope"`
+
+	// Sensitive Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment.
+	Sensitive *bool `json:"sensitive,omitempty"`
+
+	// TeamId The ID of the Vercel team to sync secrets to.
+	TeamId string `json:"teamId"`
+}
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 string
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 = string
+
+// SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env struct {
+	union json.RawMessage
+}
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Scope string
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 struct {
+	// ApplyToAllCustomEnvironments Whether to apply shared environment variables to all custom environments in the team.
+	ApplyToAllCustomEnvironments *bool                                                                    `json:"applyToAllCustomEnvironments,omitempty"`
+	Scope                        SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope `json:"scope"`
+
+	// Sensitive Whether to create Vercel environment variables as Sensitive (cannot be read back). Not allowed when targeting the Development environment.
+	Sensitive *bool `json:"sensitive,omitempty"`
+
+	// TargetEnvironments An optional array of Vercel default environments (development, preview, production) to add shared environment variables to.
+	TargetEnvironments *[]SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments `json:"targetEnvironments,omitempty"`
+
+	// TargetProjects An optional array of Vercel projects to add shared environment variables to.
+	TargetProjects *[]string `json:"targetProjects,omitempty"`
+
+	// TeamId The ID of the Vercel team to sync secrets to.
+	TeamId string `json:"teamId"`
+
+	// TeamName The name of the team to sync the secrets to. This is an optional field only intended for display purposes.
+	TeamName *string `json:"teamName,omitempty"`
+}
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1Scope string
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1TargetEnvironments string
+
+// SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig struct {
+	union json.RawMessage
+}
+
+// SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior string
+
+// SyncVercelSecretSync400JSONResponseBodyStatusCode defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync400JSONResponseBodyStatusCode float32
+
+// SyncVercelSecretSync401JSONResponseBodyStatusCode defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync401JSONResponseBodyStatusCode float32
+
+// SyncVercelSecretSync403JSONResponseBodyStatusCode defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync403JSONResponseBodyStatusCode float32
+
+// SyncVercelSecretSync404JSONResponseBodyStatusCode defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync404JSONResponseBodyStatusCode float32
+
+// SyncVercelSecretSync422JSONResponseBodyStatusCode defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync422JSONResponseBodyStatusCode float32
+
+// SyncVercelSecretSync500JSONResponseBodyStatusCode defines parameters for SyncVercelSecretSync.
+type SyncVercelSecretSync500JSONResponseBodyStatusCode float32
+
 // ListSecretValidationRulesParams defines parameters for ListSecretValidationRules.
 type ListSecretValidationRulesParams struct {
 	// ProjectId The ID of the project to list Secret Validation Rules from.
@@ -83701,12 +86063,21 @@ type CreateSecretApprovalPolicyJSONBody struct {
 	Approvers                  []CreateSecretApprovalPolicyJSONBody_Approvers_Item  `json:"approvers"`
 	BypassForMachineIdentities *bool                                                `json:"bypassForMachineIdentities,omitempty"`
 	Bypassers                  *[]CreateSecretApprovalPolicyJSONBody_Bypassers_Item `json:"bypassers,omitempty"`
-	EnforcementLevel           *CreateSecretApprovalPolicyJSONBodyEnforcementLevel  `json:"enforcementLevel,omitempty"`
-	Environment                *string                                              `json:"environment,omitempty"`
-	Environments               *[]string                                            `json:"environments,omitempty"`
-	Name                       *string                                              `json:"name,omitempty"`
-	ProjectId                  string                                               `json:"projectId"`
-	SecretPath                 string                                               `json:"secretPath"`
+
+	// DelegatedApproval Not supported on secret change policies. Only secret access policies can be handled by a delegated approval system, so sending this returns an error.
+	DelegatedApproval *struct {
+		// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+		ConnectionId openapi_types.UUID `json:"connectionId"`
+
+		// Type The delegated approval system that reviews requests made against this policy.
+		Type CreateSecretApprovalPolicyJSONBodyDelegatedApprovalType `json:"type"`
+	} `json:"delegatedApproval,omitempty"`
+	EnforcementLevel *CreateSecretApprovalPolicyJSONBodyEnforcementLevel `json:"enforcementLevel,omitempty"`
+	Environment      *string                                             `json:"environment,omitempty"`
+	Environments     *[]string                                           `json:"environments,omitempty"`
+	Name             *string                                             `json:"name,omitempty"`
+	ProjectId        string                                              `json:"projectId"`
+	SecretPath       string                                              `json:"secretPath"`
 }
 
 // CreateSecretApprovalPolicyJSONBodyApprovers0 defines parameters for CreateSecretApprovalPolicy.
@@ -83756,6 +86127,9 @@ type CreateSecretApprovalPolicyJSONBodyBypassers1Type string
 type CreateSecretApprovalPolicyJSONBody_Bypassers_Item struct {
 	union json.RawMessage
 }
+
+// CreateSecretApprovalPolicyJSONBodyDelegatedApprovalType defines parameters for CreateSecretApprovalPolicy.
+type CreateSecretApprovalPolicyJSONBodyDelegatedApprovalType string
 
 // CreateSecretApprovalPolicyJSONBodyEnforcementLevel defines parameters for CreateSecretApprovalPolicy.
 type CreateSecretApprovalPolicyJSONBodyEnforcementLevel string
@@ -83852,10 +86226,19 @@ type UpdateSecretApprovalPolicyJSONBody struct {
 	Approvers                  []UpdateSecretApprovalPolicyJSONBody_Approvers_Item  `json:"approvers"`
 	BypassForMachineIdentities *bool                                                `json:"bypassForMachineIdentities,omitempty"`
 	Bypassers                  *[]UpdateSecretApprovalPolicyJSONBody_Bypassers_Item `json:"bypassers,omitempty"`
-	EnforcementLevel           *UpdateSecretApprovalPolicyJSONBodyEnforcementLevel  `json:"enforcementLevel,omitempty"`
-	Environments               *[]string                                            `json:"environments,omitempty"`
-	Name                       *string                                              `json:"name,omitempty"`
-	SecretPath                 *string                                              `json:"secretPath,omitempty"`
+
+	// DelegatedApproval Not supported on secret change policies. Only secret access policies can be handled by a delegated approval system, so sending this returns an error.
+	DelegatedApproval *struct {
+		// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+		ConnectionId openapi_types.UUID `json:"connectionId"`
+
+		// Type The delegated approval system that reviews requests made against this policy.
+		Type UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalType `json:"type"`
+	} `json:"delegatedApproval,omitempty"`
+	EnforcementLevel *UpdateSecretApprovalPolicyJSONBodyEnforcementLevel `json:"enforcementLevel,omitempty"`
+	Environments     *[]string                                           `json:"environments,omitempty"`
+	Name             *string                                             `json:"name,omitempty"`
+	SecretPath       *string                                             `json:"secretPath,omitempty"`
 }
 
 // UpdateSecretApprovalPolicyJSONBodyApprovers0 defines parameters for UpdateSecretApprovalPolicy.
@@ -83905,6 +86288,9 @@ type UpdateSecretApprovalPolicyJSONBodyBypassers1Type string
 type UpdateSecretApprovalPolicyJSONBody_Bypassers_Item struct {
 	union json.RawMessage
 }
+
+// UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalType defines parameters for UpdateSecretApprovalPolicy.
+type UpdateSecretApprovalPolicyJSONBodyDelegatedApprovalType string
 
 // UpdateSecretApprovalPolicyJSONBodyEnforcementLevel defines parameters for UpdateSecretApprovalPolicy.
 type UpdateSecretApprovalPolicyJSONBodyEnforcementLevel string
@@ -85018,6 +87404,24 @@ type DeleteServiceToken422JSONResponseBodyStatusCode float32
 
 // DeleteServiceToken500JSONResponseBodyStatusCode defines parameters for DeleteServiceToken.
 type DeleteServiceToken500JSONResponseBodyStatusCode float32
+
+// DeleteUser400JSONResponseBodyStatusCode defines parameters for DeleteUser.
+type DeleteUser400JSONResponseBodyStatusCode float32
+
+// DeleteUser401JSONResponseBodyStatusCode defines parameters for DeleteUser.
+type DeleteUser401JSONResponseBodyStatusCode float32
+
+// DeleteUser403JSONResponseBodyStatusCode defines parameters for DeleteUser.
+type DeleteUser403JSONResponseBodyStatusCode float32
+
+// DeleteUser404JSONResponseBodyStatusCode defines parameters for DeleteUser.
+type DeleteUser404JSONResponseBodyStatusCode float32
+
+// DeleteUser422JSONResponseBodyStatusCode defines parameters for DeleteUser.
+type DeleteUser422JSONResponseBodyStatusCode float32
+
+// DeleteUser500JSONResponseBodyStatusCode defines parameters for DeleteUser.
+type DeleteUser500JSONResponseBodyStatusCode float32
 
 // GetCurrentUser400JSONResponseBodyStatusCode defines parameters for GetCurrentUser.
 type GetCurrentUser400JSONResponseBodyStatusCode float32
@@ -86461,6 +88865,12 @@ type CreatePostgresAppConnectionJSONRequestBody CreatePostgresAppConnectionJSONB
 // UpdatePostgresAppConnectionJSONRequestBody defines body for UpdatePostgresAppConnection for application/json ContentType.
 type UpdatePostgresAppConnectionJSONRequestBody UpdatePostgresAppConnectionJSONBody
 
+// CreateServiceNowAppConnectionJSONRequestBody defines body for CreateServiceNowAppConnection for application/json ContentType.
+type CreateServiceNowAppConnectionJSONRequestBody CreateServiceNowAppConnectionJSONBody
+
+// CreateVercelAppConnectionJSONRequestBody defines body for CreateVercelAppConnection for application/json ContentType.
+type CreateVercelAppConnectionJSONRequestBody CreateVercelAppConnectionJSONBody
+
 // AttachUniversalAuthJSONRequestBody defines body for AttachUniversalAuth for application/json ContentType.
 type AttachUniversalAuthJSONRequestBody AttachUniversalAuthJSONBody
 
@@ -86469,6 +88879,9 @@ type CreateUniversalAuthClientSecretJSONRequestBody CreateUniversalAuthClientSec
 
 // LoginWithUniversalAuthJSONRequestBody defines body for LoginWithUniversalAuth for application/json ContentType.
 type LoginWithUniversalAuthJSONRequestBody LoginWithUniversalAuthJSONBody
+
+// HandleDelegatedApprovalCallbackJSONRequestBody defines body for HandleDelegatedApprovalCallback for application/json ContentType.
+type HandleDelegatedApprovalCallbackJSONRequestBody HandleDelegatedApprovalCallbackJSONBody
 
 // CreateDynamicSecretJSONRequestBody defines body for CreateDynamicSecret for application/json ContentType.
 type CreateDynamicSecretJSONRequestBody CreateDynamicSecretJSONBody
@@ -86752,6 +89165,9 @@ type UpdateGitHubSecretSyncJSONRequestBody UpdateGitHubSecretSyncJSONBody
 
 // CreateOciVaultSecretSyncJSONRequestBody defines body for CreateOciVaultSecretSync for application/json ContentType.
 type CreateOciVaultSecretSyncJSONRequestBody CreateOciVaultSecretSyncJSONBody
+
+// CreateVercelSecretSyncJSONRequestBody defines body for CreateVercelSecretSync for application/json ContentType.
+type CreateVercelSecretSyncJSONRequestBody CreateVercelSecretSyncJSONBody
 
 // CreateStaticSecretsValidationRuleJSONRequestBody defines body for CreateStaticSecretsValidationRule for application/json ContentType.
 type CreateStaticSecretsValidationRuleJSONRequestBody CreateStaticSecretsValidationRuleJSONBody
@@ -87168,6 +89584,42 @@ func (t UpdateAccessApprovalPolicyJSONBody_Bypassers_Item) MarshalJSON() ([]byte
 }
 
 func (t *UpdateAccessApprovalPolicyJSONBody_Bypassers_Item) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0 returns the union data inside the ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider as a ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0
+func (t ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider) AsListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0() (ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0, error) {
+	var body ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0 overwrites any union data inside the ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider as the provided ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0
+func (t *ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider) FromListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0(v ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0 performs a merge with any union data inside the ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider, using the provided ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0
+func (t *ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider) MergeListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0(v ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalProvider0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -91862,6 +94314,782 @@ func (t UpdatePostgresAppConnection200JSONResponseBody_AppConnection) MarshalJSO
 }
 
 func (t *UpdatePostgresAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateServiceNowAppConnectionJSONBody0 returns the union data inside the CreateServiceNowAppConnectionJSONBody as a CreateServiceNowAppConnectionJSONBody0
+func (t CreateServiceNowAppConnectionJSONBody) AsCreateServiceNowAppConnectionJSONBody0() (CreateServiceNowAppConnectionJSONBody0, error) {
+	var body CreateServiceNowAppConnectionJSONBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateServiceNowAppConnectionJSONBody0 overwrites any union data inside the CreateServiceNowAppConnectionJSONBody as the provided CreateServiceNowAppConnectionJSONBody0
+func (t *CreateServiceNowAppConnectionJSONBody) FromCreateServiceNowAppConnectionJSONBody0(v CreateServiceNowAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateServiceNowAppConnectionJSONBody0 performs a merge with any union data inside the CreateServiceNowAppConnectionJSONBody, using the provided CreateServiceNowAppConnectionJSONBody0
+func (t *CreateServiceNowAppConnectionJSONBody) MergeCreateServiceNowAppConnectionJSONBody0(v CreateServiceNowAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateServiceNowAppConnectionJSONBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if t.Description != nil {
+		object["description"], err = json.Marshal(t.Description)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'description': %w", err)
+		}
+	}
+
+	if t.GatewayId != nil {
+		object["gatewayId"], err = json.Marshal(t.GatewayId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayId': %w", err)
+		}
+	}
+
+	if t.GatewayPoolId != nil {
+		object["gatewayPoolId"], err = json.Marshal(t.GatewayPoolId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if t.IsAutoRotationEnabled != nil {
+		object["isAutoRotationEnabled"], err = json.Marshal(t.IsAutoRotationEnabled)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if t.IsPlatformManagedCredentials != nil {
+		object["isPlatformManagedCredentials"], err = json.Marshal(t.IsPlatformManagedCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	object["name"], err = json.Marshal(t.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'name': %w", err)
+	}
+
+	if t.ProjectId != nil {
+		object["projectId"], err = json.Marshal(t.ProjectId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'projectId': %w", err)
+		}
+	}
+
+	if t.Rotation != nil {
+		object["rotation"], err = json.Marshal(t.Rotation)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'rotation': %w", err)
+		}
+	}
+	b, err = json.Marshal(object)
+	return b, err
+}
+
+func (t *CreateServiceNowAppConnectionJSONBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["description"]; found {
+		err = json.Unmarshal(raw, &t.Description)
+		if err != nil {
+			return fmt.Errorf("error reading 'description': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayId': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayPoolId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayPoolId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if raw, found := object["isAutoRotationEnabled"]; found {
+		err = json.Unmarshal(raw, &t.IsAutoRotationEnabled)
+		if err != nil {
+			return fmt.Errorf("error reading 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if raw, found := object["isPlatformManagedCredentials"]; found {
+		err = json.Unmarshal(raw, &t.IsPlatformManagedCredentials)
+		if err != nil {
+			return fmt.Errorf("error reading 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	if raw, found := object["name"]; found {
+		err = json.Unmarshal(raw, &t.Name)
+		if err != nil {
+			return fmt.Errorf("error reading 'name': %w", err)
+		}
+	}
+
+	if raw, found := object["projectId"]; found {
+		err = json.Unmarshal(raw, &t.ProjectId)
+		if err != nil {
+			return fmt.Errorf("error reading 'projectId': %w", err)
+		}
+	}
+
+	if raw, found := object["rotation"]; found {
+		err = json.Unmarshal(raw, &t.Rotation)
+		if err != nil {
+			return fmt.Errorf("error reading 'rotation': %w", err)
+		}
+	}
+
+	return err
+}
+
+// AsCreateServiceNowAppConnectionJSONBodyGatewayId0 returns the union data inside the CreateServiceNowAppConnectionJSONBody_GatewayId as a CreateServiceNowAppConnectionJSONBodyGatewayId0
+func (t CreateServiceNowAppConnectionJSONBody_GatewayId) AsCreateServiceNowAppConnectionJSONBodyGatewayId0() (CreateServiceNowAppConnectionJSONBodyGatewayId0, error) {
+	var body CreateServiceNowAppConnectionJSONBodyGatewayId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateServiceNowAppConnectionJSONBodyGatewayId0 overwrites any union data inside the CreateServiceNowAppConnectionJSONBody_GatewayId as the provided CreateServiceNowAppConnectionJSONBodyGatewayId0
+func (t *CreateServiceNowAppConnectionJSONBody_GatewayId) FromCreateServiceNowAppConnectionJSONBodyGatewayId0(v CreateServiceNowAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateServiceNowAppConnectionJSONBodyGatewayId0 performs a merge with any union data inside the CreateServiceNowAppConnectionJSONBody_GatewayId, using the provided CreateServiceNowAppConnectionJSONBodyGatewayId0
+func (t *CreateServiceNowAppConnectionJSONBody_GatewayId) MergeCreateServiceNowAppConnectionJSONBodyGatewayId0(v CreateServiceNowAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateServiceNowAppConnectionJSONBodyGatewayId1 returns the union data inside the CreateServiceNowAppConnectionJSONBody_GatewayId as a CreateServiceNowAppConnectionJSONBodyGatewayId1
+func (t CreateServiceNowAppConnectionJSONBody_GatewayId) AsCreateServiceNowAppConnectionJSONBodyGatewayId1() (CreateServiceNowAppConnectionJSONBodyGatewayId1, error) {
+	var body CreateServiceNowAppConnectionJSONBodyGatewayId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateServiceNowAppConnectionJSONBodyGatewayId1 overwrites any union data inside the CreateServiceNowAppConnectionJSONBody_GatewayId as the provided CreateServiceNowAppConnectionJSONBodyGatewayId1
+func (t *CreateServiceNowAppConnectionJSONBody_GatewayId) FromCreateServiceNowAppConnectionJSONBodyGatewayId1(v CreateServiceNowAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateServiceNowAppConnectionJSONBodyGatewayId1 performs a merge with any union data inside the CreateServiceNowAppConnectionJSONBody_GatewayId, using the provided CreateServiceNowAppConnectionJSONBodyGatewayId1
+func (t *CreateServiceNowAppConnectionJSONBody_GatewayId) MergeCreateServiceNowAppConnectionJSONBodyGatewayId1(v CreateServiceNowAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateServiceNowAppConnectionJSONBody_GatewayId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateServiceNowAppConnectionJSONBody_GatewayId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateServiceNowAppConnectionJSONBodyGatewayPoolId0 returns the union data inside the CreateServiceNowAppConnectionJSONBody_GatewayPoolId as a CreateServiceNowAppConnectionJSONBodyGatewayPoolId0
+func (t CreateServiceNowAppConnectionJSONBody_GatewayPoolId) AsCreateServiceNowAppConnectionJSONBodyGatewayPoolId0() (CreateServiceNowAppConnectionJSONBodyGatewayPoolId0, error) {
+	var body CreateServiceNowAppConnectionJSONBodyGatewayPoolId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateServiceNowAppConnectionJSONBodyGatewayPoolId0 overwrites any union data inside the CreateServiceNowAppConnectionJSONBody_GatewayPoolId as the provided CreateServiceNowAppConnectionJSONBodyGatewayPoolId0
+func (t *CreateServiceNowAppConnectionJSONBody_GatewayPoolId) FromCreateServiceNowAppConnectionJSONBodyGatewayPoolId0(v CreateServiceNowAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateServiceNowAppConnectionJSONBodyGatewayPoolId0 performs a merge with any union data inside the CreateServiceNowAppConnectionJSONBody_GatewayPoolId, using the provided CreateServiceNowAppConnectionJSONBodyGatewayPoolId0
+func (t *CreateServiceNowAppConnectionJSONBody_GatewayPoolId) MergeCreateServiceNowAppConnectionJSONBodyGatewayPoolId0(v CreateServiceNowAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateServiceNowAppConnectionJSONBodyGatewayPoolId1 returns the union data inside the CreateServiceNowAppConnectionJSONBody_GatewayPoolId as a CreateServiceNowAppConnectionJSONBodyGatewayPoolId1
+func (t CreateServiceNowAppConnectionJSONBody_GatewayPoolId) AsCreateServiceNowAppConnectionJSONBodyGatewayPoolId1() (CreateServiceNowAppConnectionJSONBodyGatewayPoolId1, error) {
+	var body CreateServiceNowAppConnectionJSONBodyGatewayPoolId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateServiceNowAppConnectionJSONBodyGatewayPoolId1 overwrites any union data inside the CreateServiceNowAppConnectionJSONBody_GatewayPoolId as the provided CreateServiceNowAppConnectionJSONBodyGatewayPoolId1
+func (t *CreateServiceNowAppConnectionJSONBody_GatewayPoolId) FromCreateServiceNowAppConnectionJSONBodyGatewayPoolId1(v CreateServiceNowAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateServiceNowAppConnectionJSONBodyGatewayPoolId1 performs a merge with any union data inside the CreateServiceNowAppConnectionJSONBody_GatewayPoolId, using the provided CreateServiceNowAppConnectionJSONBodyGatewayPoolId1
+func (t *CreateServiceNowAppConnectionJSONBody_GatewayPoolId) MergeCreateServiceNowAppConnectionJSONBodyGatewayPoolId1(v CreateServiceNowAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateServiceNowAppConnectionJSONBody_GatewayPoolId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateServiceNowAppConnectionJSONBody_GatewayPoolId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateServiceNowAppConnectionJSONBodyRotation0 returns the union data inside the CreateServiceNowAppConnectionJSONBody_Rotation as a CreateServiceNowAppConnectionJSONBodyRotation0
+func (t CreateServiceNowAppConnectionJSONBody_Rotation) AsCreateServiceNowAppConnectionJSONBodyRotation0() (CreateServiceNowAppConnectionJSONBodyRotation0, error) {
+	var body CreateServiceNowAppConnectionJSONBodyRotation0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateServiceNowAppConnectionJSONBodyRotation0 overwrites any union data inside the CreateServiceNowAppConnectionJSONBody_Rotation as the provided CreateServiceNowAppConnectionJSONBodyRotation0
+func (t *CreateServiceNowAppConnectionJSONBody_Rotation) FromCreateServiceNowAppConnectionJSONBodyRotation0(v CreateServiceNowAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateServiceNowAppConnectionJSONBodyRotation0 performs a merge with any union data inside the CreateServiceNowAppConnectionJSONBody_Rotation, using the provided CreateServiceNowAppConnectionJSONBodyRotation0
+func (t *CreateServiceNowAppConnectionJSONBody_Rotation) MergeCreateServiceNowAppConnectionJSONBodyRotation0(v CreateServiceNowAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateServiceNowAppConnectionJSONBodyRotation1 returns the union data inside the CreateServiceNowAppConnectionJSONBody_Rotation as a CreateServiceNowAppConnectionJSONBodyRotation1
+func (t CreateServiceNowAppConnectionJSONBody_Rotation) AsCreateServiceNowAppConnectionJSONBodyRotation1() (CreateServiceNowAppConnectionJSONBodyRotation1, error) {
+	var body CreateServiceNowAppConnectionJSONBodyRotation1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateServiceNowAppConnectionJSONBodyRotation1 overwrites any union data inside the CreateServiceNowAppConnectionJSONBody_Rotation as the provided CreateServiceNowAppConnectionJSONBodyRotation1
+func (t *CreateServiceNowAppConnectionJSONBody_Rotation) FromCreateServiceNowAppConnectionJSONBodyRotation1(v CreateServiceNowAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateServiceNowAppConnectionJSONBodyRotation1 performs a merge with any union data inside the CreateServiceNowAppConnectionJSONBody_Rotation, using the provided CreateServiceNowAppConnectionJSONBodyRotation1
+func (t *CreateServiceNowAppConnectionJSONBody_Rotation) MergeCreateServiceNowAppConnectionJSONBodyRotation1(v CreateServiceNowAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateServiceNowAppConnectionJSONBody_Rotation) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateServiceNowAppConnectionJSONBody_Rotation) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateServiceNowAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the CreateServiceNowAppConnection200JSONResponseBody_AppConnection as a CreateServiceNowAppConnection200JSONResponseBodyAppConnection0
+func (t CreateServiceNowAppConnection200JSONResponseBody_AppConnection) AsCreateServiceNowAppConnection200JSONResponseBodyAppConnection0() (CreateServiceNowAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body CreateServiceNowAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateServiceNowAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the CreateServiceNowAppConnection200JSONResponseBody_AppConnection as the provided CreateServiceNowAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateServiceNowAppConnection200JSONResponseBody_AppConnection) FromCreateServiceNowAppConnection200JSONResponseBodyAppConnection0(v CreateServiceNowAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateServiceNowAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the CreateServiceNowAppConnection200JSONResponseBody_AppConnection, using the provided CreateServiceNowAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateServiceNowAppConnection200JSONResponseBody_AppConnection) MergeCreateServiceNowAppConnection200JSONResponseBodyAppConnection0(v CreateServiceNowAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateServiceNowAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateServiceNowAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateVercelAppConnectionJSONBody0 returns the union data inside the CreateVercelAppConnectionJSONBody as a CreateVercelAppConnectionJSONBody0
+func (t CreateVercelAppConnectionJSONBody) AsCreateVercelAppConnectionJSONBody0() (CreateVercelAppConnectionJSONBody0, error) {
+	var body CreateVercelAppConnectionJSONBody0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelAppConnectionJSONBody0 overwrites any union data inside the CreateVercelAppConnectionJSONBody as the provided CreateVercelAppConnectionJSONBody0
+func (t *CreateVercelAppConnectionJSONBody) FromCreateVercelAppConnectionJSONBody0(v CreateVercelAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelAppConnectionJSONBody0 performs a merge with any union data inside the CreateVercelAppConnectionJSONBody, using the provided CreateVercelAppConnectionJSONBody0
+func (t *CreateVercelAppConnectionJSONBody) MergeCreateVercelAppConnectionJSONBody0(v CreateVercelAppConnectionJSONBody0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelAppConnectionJSONBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	object := make(map[string]json.RawMessage)
+	if t.union != nil {
+		err = json.Unmarshal(b, &object)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if t.Description != nil {
+		object["description"], err = json.Marshal(t.Description)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'description': %w", err)
+		}
+	}
+
+	if t.GatewayId != nil {
+		object["gatewayId"], err = json.Marshal(t.GatewayId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayId': %w", err)
+		}
+	}
+
+	if t.GatewayPoolId != nil {
+		object["gatewayPoolId"], err = json.Marshal(t.GatewayPoolId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if t.IsAutoRotationEnabled != nil {
+		object["isAutoRotationEnabled"], err = json.Marshal(t.IsAutoRotationEnabled)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if t.IsPlatformManagedCredentials != nil {
+		object["isPlatformManagedCredentials"], err = json.Marshal(t.IsPlatformManagedCredentials)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	object["name"], err = json.Marshal(t.Name)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling 'name': %w", err)
+	}
+
+	if t.ProjectId != nil {
+		object["projectId"], err = json.Marshal(t.ProjectId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'projectId': %w", err)
+		}
+	}
+
+	if t.Rotation != nil {
+		object["rotation"], err = json.Marshal(t.Rotation)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'rotation': %w", err)
+		}
+	}
+	b, err = json.Marshal(object)
+	return b, err
+}
+
+func (t *CreateVercelAppConnectionJSONBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	if err != nil {
+		return err
+	}
+	object := make(map[string]json.RawMessage)
+	err = json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["description"]; found {
+		err = json.Unmarshal(raw, &t.Description)
+		if err != nil {
+			return fmt.Errorf("error reading 'description': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayId': %w", err)
+		}
+	}
+
+	if raw, found := object["gatewayPoolId"]; found {
+		err = json.Unmarshal(raw, &t.GatewayPoolId)
+		if err != nil {
+			return fmt.Errorf("error reading 'gatewayPoolId': %w", err)
+		}
+	}
+
+	if raw, found := object["isAutoRotationEnabled"]; found {
+		err = json.Unmarshal(raw, &t.IsAutoRotationEnabled)
+		if err != nil {
+			return fmt.Errorf("error reading 'isAutoRotationEnabled': %w", err)
+		}
+	}
+
+	if raw, found := object["isPlatformManagedCredentials"]; found {
+		err = json.Unmarshal(raw, &t.IsPlatformManagedCredentials)
+		if err != nil {
+			return fmt.Errorf("error reading 'isPlatformManagedCredentials': %w", err)
+		}
+	}
+
+	if raw, found := object["name"]; found {
+		err = json.Unmarshal(raw, &t.Name)
+		if err != nil {
+			return fmt.Errorf("error reading 'name': %w", err)
+		}
+	}
+
+	if raw, found := object["projectId"]; found {
+		err = json.Unmarshal(raw, &t.ProjectId)
+		if err != nil {
+			return fmt.Errorf("error reading 'projectId': %w", err)
+		}
+	}
+
+	if raw, found := object["rotation"]; found {
+		err = json.Unmarshal(raw, &t.Rotation)
+		if err != nil {
+			return fmt.Errorf("error reading 'rotation': %w", err)
+		}
+	}
+
+	return err
+}
+
+// AsCreateVercelAppConnectionJSONBodyGatewayId0 returns the union data inside the CreateVercelAppConnectionJSONBody_GatewayId as a CreateVercelAppConnectionJSONBodyGatewayId0
+func (t CreateVercelAppConnectionJSONBody_GatewayId) AsCreateVercelAppConnectionJSONBodyGatewayId0() (CreateVercelAppConnectionJSONBodyGatewayId0, error) {
+	var body CreateVercelAppConnectionJSONBodyGatewayId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelAppConnectionJSONBodyGatewayId0 overwrites any union data inside the CreateVercelAppConnectionJSONBody_GatewayId as the provided CreateVercelAppConnectionJSONBodyGatewayId0
+func (t *CreateVercelAppConnectionJSONBody_GatewayId) FromCreateVercelAppConnectionJSONBodyGatewayId0(v CreateVercelAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelAppConnectionJSONBodyGatewayId0 performs a merge with any union data inside the CreateVercelAppConnectionJSONBody_GatewayId, using the provided CreateVercelAppConnectionJSONBodyGatewayId0
+func (t *CreateVercelAppConnectionJSONBody_GatewayId) MergeCreateVercelAppConnectionJSONBodyGatewayId0(v CreateVercelAppConnectionJSONBodyGatewayId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateVercelAppConnectionJSONBodyGatewayId1 returns the union data inside the CreateVercelAppConnectionJSONBody_GatewayId as a CreateVercelAppConnectionJSONBodyGatewayId1
+func (t CreateVercelAppConnectionJSONBody_GatewayId) AsCreateVercelAppConnectionJSONBodyGatewayId1() (CreateVercelAppConnectionJSONBodyGatewayId1, error) {
+	var body CreateVercelAppConnectionJSONBodyGatewayId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelAppConnectionJSONBodyGatewayId1 overwrites any union data inside the CreateVercelAppConnectionJSONBody_GatewayId as the provided CreateVercelAppConnectionJSONBodyGatewayId1
+func (t *CreateVercelAppConnectionJSONBody_GatewayId) FromCreateVercelAppConnectionJSONBodyGatewayId1(v CreateVercelAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelAppConnectionJSONBodyGatewayId1 performs a merge with any union data inside the CreateVercelAppConnectionJSONBody_GatewayId, using the provided CreateVercelAppConnectionJSONBodyGatewayId1
+func (t *CreateVercelAppConnectionJSONBody_GatewayId) MergeCreateVercelAppConnectionJSONBodyGatewayId1(v CreateVercelAppConnectionJSONBodyGatewayId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelAppConnectionJSONBody_GatewayId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateVercelAppConnectionJSONBody_GatewayId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateVercelAppConnectionJSONBodyGatewayPoolId0 returns the union data inside the CreateVercelAppConnectionJSONBody_GatewayPoolId as a CreateVercelAppConnectionJSONBodyGatewayPoolId0
+func (t CreateVercelAppConnectionJSONBody_GatewayPoolId) AsCreateVercelAppConnectionJSONBodyGatewayPoolId0() (CreateVercelAppConnectionJSONBodyGatewayPoolId0, error) {
+	var body CreateVercelAppConnectionJSONBodyGatewayPoolId0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelAppConnectionJSONBodyGatewayPoolId0 overwrites any union data inside the CreateVercelAppConnectionJSONBody_GatewayPoolId as the provided CreateVercelAppConnectionJSONBodyGatewayPoolId0
+func (t *CreateVercelAppConnectionJSONBody_GatewayPoolId) FromCreateVercelAppConnectionJSONBodyGatewayPoolId0(v CreateVercelAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelAppConnectionJSONBodyGatewayPoolId0 performs a merge with any union data inside the CreateVercelAppConnectionJSONBody_GatewayPoolId, using the provided CreateVercelAppConnectionJSONBodyGatewayPoolId0
+func (t *CreateVercelAppConnectionJSONBody_GatewayPoolId) MergeCreateVercelAppConnectionJSONBodyGatewayPoolId0(v CreateVercelAppConnectionJSONBodyGatewayPoolId0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateVercelAppConnectionJSONBodyGatewayPoolId1 returns the union data inside the CreateVercelAppConnectionJSONBody_GatewayPoolId as a CreateVercelAppConnectionJSONBodyGatewayPoolId1
+func (t CreateVercelAppConnectionJSONBody_GatewayPoolId) AsCreateVercelAppConnectionJSONBodyGatewayPoolId1() (CreateVercelAppConnectionJSONBodyGatewayPoolId1, error) {
+	var body CreateVercelAppConnectionJSONBodyGatewayPoolId1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelAppConnectionJSONBodyGatewayPoolId1 overwrites any union data inside the CreateVercelAppConnectionJSONBody_GatewayPoolId as the provided CreateVercelAppConnectionJSONBodyGatewayPoolId1
+func (t *CreateVercelAppConnectionJSONBody_GatewayPoolId) FromCreateVercelAppConnectionJSONBodyGatewayPoolId1(v CreateVercelAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelAppConnectionJSONBodyGatewayPoolId1 performs a merge with any union data inside the CreateVercelAppConnectionJSONBody_GatewayPoolId, using the provided CreateVercelAppConnectionJSONBodyGatewayPoolId1
+func (t *CreateVercelAppConnectionJSONBody_GatewayPoolId) MergeCreateVercelAppConnectionJSONBodyGatewayPoolId1(v CreateVercelAppConnectionJSONBodyGatewayPoolId1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelAppConnectionJSONBody_GatewayPoolId) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateVercelAppConnectionJSONBody_GatewayPoolId) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateVercelAppConnectionJSONBodyRotation0 returns the union data inside the CreateVercelAppConnectionJSONBody_Rotation as a CreateVercelAppConnectionJSONBodyRotation0
+func (t CreateVercelAppConnectionJSONBody_Rotation) AsCreateVercelAppConnectionJSONBodyRotation0() (CreateVercelAppConnectionJSONBodyRotation0, error) {
+	var body CreateVercelAppConnectionJSONBodyRotation0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelAppConnectionJSONBodyRotation0 overwrites any union data inside the CreateVercelAppConnectionJSONBody_Rotation as the provided CreateVercelAppConnectionJSONBodyRotation0
+func (t *CreateVercelAppConnectionJSONBody_Rotation) FromCreateVercelAppConnectionJSONBodyRotation0(v CreateVercelAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelAppConnectionJSONBodyRotation0 performs a merge with any union data inside the CreateVercelAppConnectionJSONBody_Rotation, using the provided CreateVercelAppConnectionJSONBodyRotation0
+func (t *CreateVercelAppConnectionJSONBody_Rotation) MergeCreateVercelAppConnectionJSONBodyRotation0(v CreateVercelAppConnectionJSONBodyRotation0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateVercelAppConnectionJSONBodyRotation1 returns the union data inside the CreateVercelAppConnectionJSONBody_Rotation as a CreateVercelAppConnectionJSONBodyRotation1
+func (t CreateVercelAppConnectionJSONBody_Rotation) AsCreateVercelAppConnectionJSONBodyRotation1() (CreateVercelAppConnectionJSONBodyRotation1, error) {
+	var body CreateVercelAppConnectionJSONBodyRotation1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelAppConnectionJSONBodyRotation1 overwrites any union data inside the CreateVercelAppConnectionJSONBody_Rotation as the provided CreateVercelAppConnectionJSONBodyRotation1
+func (t *CreateVercelAppConnectionJSONBody_Rotation) FromCreateVercelAppConnectionJSONBodyRotation1(v CreateVercelAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelAppConnectionJSONBodyRotation1 performs a merge with any union data inside the CreateVercelAppConnectionJSONBody_Rotation, using the provided CreateVercelAppConnectionJSONBodyRotation1
+func (t *CreateVercelAppConnectionJSONBody_Rotation) MergeCreateVercelAppConnectionJSONBodyRotation1(v CreateVercelAppConnectionJSONBodyRotation1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelAppConnectionJSONBody_Rotation) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateVercelAppConnectionJSONBody_Rotation) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateVercelAppConnection200JSONResponseBodyAppConnection0 returns the union data inside the CreateVercelAppConnection200JSONResponseBody_AppConnection as a CreateVercelAppConnection200JSONResponseBodyAppConnection0
+func (t CreateVercelAppConnection200JSONResponseBody_AppConnection) AsCreateVercelAppConnection200JSONResponseBodyAppConnection0() (CreateVercelAppConnection200JSONResponseBodyAppConnection0, error) {
+	var body CreateVercelAppConnection200JSONResponseBodyAppConnection0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelAppConnection200JSONResponseBodyAppConnection0 overwrites any union data inside the CreateVercelAppConnection200JSONResponseBody_AppConnection as the provided CreateVercelAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateVercelAppConnection200JSONResponseBody_AppConnection) FromCreateVercelAppConnection200JSONResponseBodyAppConnection0(v CreateVercelAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelAppConnection200JSONResponseBodyAppConnection0 performs a merge with any union data inside the CreateVercelAppConnection200JSONResponseBody_AppConnection, using the provided CreateVercelAppConnection200JSONResponseBodyAppConnection0
+func (t *CreateVercelAppConnection200JSONResponseBody_AppConnection) MergeCreateVercelAppConnection200JSONResponseBodyAppConnection0(v CreateVercelAppConnection200JSONResponseBodyAppConnection0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelAppConnection200JSONResponseBody_AppConnection) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateVercelAppConnection200JSONResponseBody_AppConnection) UnmarshalJSON(b []byte) error {
 	err := t.union.UnmarshalJSON(b)
 	return err
 }
@@ -103173,6 +106401,502 @@ func (t *SyncGitHubSecretSync200JSONResponseBody_SecretSync_DestinationConfig) U
 	return err
 }
 
+// AsCreateVercelSecretSyncJSONBodyDestinationConfig0Env0 returns the union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env as a CreateVercelSecretSyncJSONBodyDestinationConfig0Env0
+func (t CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env) AsCreateVercelSecretSyncJSONBodyDestinationConfig0Env0() (CreateVercelSecretSyncJSONBodyDestinationConfig0Env0, error) {
+	var body CreateVercelSecretSyncJSONBodyDestinationConfig0Env0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelSecretSyncJSONBodyDestinationConfig0Env0 overwrites any union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env as the provided CreateVercelSecretSyncJSONBodyDestinationConfig0Env0
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env) FromCreateVercelSecretSyncJSONBodyDestinationConfig0Env0(v CreateVercelSecretSyncJSONBodyDestinationConfig0Env0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelSecretSyncJSONBodyDestinationConfig0Env0 performs a merge with any union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env, using the provided CreateVercelSecretSyncJSONBodyDestinationConfig0Env0
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env) MergeCreateVercelSecretSyncJSONBodyDestinationConfig0Env0(v CreateVercelSecretSyncJSONBodyDestinationConfig0Env0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateVercelSecretSyncJSONBodyDestinationConfig0Env1 returns the union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env as a CreateVercelSecretSyncJSONBodyDestinationConfig0Env1
+func (t CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env) AsCreateVercelSecretSyncJSONBodyDestinationConfig0Env1() (CreateVercelSecretSyncJSONBodyDestinationConfig0Env1, error) {
+	var body CreateVercelSecretSyncJSONBodyDestinationConfig0Env1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelSecretSyncJSONBodyDestinationConfig0Env1 overwrites any union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env as the provided CreateVercelSecretSyncJSONBodyDestinationConfig0Env1
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env) FromCreateVercelSecretSyncJSONBodyDestinationConfig0Env1(v CreateVercelSecretSyncJSONBodyDestinationConfig0Env1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelSecretSyncJSONBodyDestinationConfig0Env1 performs a merge with any union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env, using the provided CreateVercelSecretSyncJSONBodyDestinationConfig0Env1
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env) MergeCreateVercelSecretSyncJSONBodyDestinationConfig0Env1(v CreateVercelSecretSyncJSONBodyDestinationConfig0Env1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig_0_Env) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateVercelSecretSyncJSONBodyDestinationConfig0 returns the union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig as a CreateVercelSecretSyncJSONBodyDestinationConfig0
+func (t CreateVercelSecretSyncJSONBody_DestinationConfig) AsCreateVercelSecretSyncJSONBodyDestinationConfig0() (CreateVercelSecretSyncJSONBodyDestinationConfig0, error) {
+	var body CreateVercelSecretSyncJSONBodyDestinationConfig0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelSecretSyncJSONBodyDestinationConfig0 overwrites any union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig as the provided CreateVercelSecretSyncJSONBodyDestinationConfig0
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig) FromCreateVercelSecretSyncJSONBodyDestinationConfig0(v CreateVercelSecretSyncJSONBodyDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelSecretSyncJSONBodyDestinationConfig0 performs a merge with any union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig, using the provided CreateVercelSecretSyncJSONBodyDestinationConfig0
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig) MergeCreateVercelSecretSyncJSONBodyDestinationConfig0(v CreateVercelSecretSyncJSONBodyDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateVercelSecretSyncJSONBodyDestinationConfig1 returns the union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig as a CreateVercelSecretSyncJSONBodyDestinationConfig1
+func (t CreateVercelSecretSyncJSONBody_DestinationConfig) AsCreateVercelSecretSyncJSONBodyDestinationConfig1() (CreateVercelSecretSyncJSONBodyDestinationConfig1, error) {
+	var body CreateVercelSecretSyncJSONBodyDestinationConfig1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelSecretSyncJSONBodyDestinationConfig1 overwrites any union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig as the provided CreateVercelSecretSyncJSONBodyDestinationConfig1
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig) FromCreateVercelSecretSyncJSONBodyDestinationConfig1(v CreateVercelSecretSyncJSONBodyDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelSecretSyncJSONBodyDestinationConfig1 performs a merge with any union data inside the CreateVercelSecretSyncJSONBody_DestinationConfig, using the provided CreateVercelSecretSyncJSONBodyDestinationConfig1
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig) MergeCreateVercelSecretSyncJSONBodyDestinationConfig1(v CreateVercelSecretSyncJSONBodyDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelSecretSyncJSONBody_DestinationConfig) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateVercelSecretSyncJSONBody_DestinationConfig) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 returns the union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as a CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) AsCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0() (CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0, error) {
+	var body CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 overwrites any union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as the provided CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) FromCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0(v CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 performs a merge with any union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env, using the provided CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MergeCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0(v CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 returns the union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as a CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) AsCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1() (CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1, error) {
+	var body CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 overwrites any union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as the provided CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) FromCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1(v CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 performs a merge with any union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env, using the provided CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MergeCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1(v CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 returns the union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0() (CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0, error) {
+	var body CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 overwrites any union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 performs a merge with any union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 returns the union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1() (CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1, error) {
+	var body CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 overwrites any union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 performs a merge with any union data inside the CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeCreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v CreateVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 returns the union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as a GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) AsGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0() (GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0, error) {
+	var body GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 overwrites any union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as the provided GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) FromGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0(v GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 performs a merge with any union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env, using the provided GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MergeGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0(v GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 returns the union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as a GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) AsGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1() (GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1, error) {
+	var body GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 overwrites any union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as the provided GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) FromGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1(v GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 performs a merge with any union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env, using the provided GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MergeGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1(v GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 returns the union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0() (GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0, error) {
+	var body GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 overwrites any union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 performs a merge with any union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 returns the union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1() (GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1, error) {
+	var body GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 overwrites any union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 performs a merge with any union data inside the GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeGetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v GetVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 returns the union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as a SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) AsSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0() (SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0, error) {
+	var body SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 overwrites any union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as the provided SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) FromSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0(v SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0 performs a merge with any union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env, using the provided SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MergeSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0(v SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 returns the union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as a SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) AsSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1() (SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1, error) {
+	var body SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 overwrites any union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env as the provided SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) FromSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1(v SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1 performs a merge with any union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env, using the provided SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MergeSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1(v SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0Env1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig_0_Env) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 returns the union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0() (SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0, error) {
+	var body SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 overwrites any union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0 performs a merge with any union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0(v SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 returns the union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as a SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) AsSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1() (SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1, error) {
+	var body SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 overwrites any union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig as the provided SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) FromSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1 performs a merge with any union data inside the SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig, using the provided SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MergeSyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1(v SyncVercelSecretSync200JSONResponseBodySecretSyncDestinationConfig1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // AsListSecretValidationRules200JSONResponseBodySecretValidationRules0 returns the union data inside the ListSecretValidationRules200JSONResponseBody_SecretValidationRules_Item as a ListSecretValidationRules200JSONResponseBodySecretValidationRules0
 func (t ListSecretValidationRules200JSONResponseBody_SecretValidationRules_Item) AsListSecretValidationRules200JSONResponseBodySecretValidationRules0() (ListSecretValidationRules200JSONResponseBodySecretValidationRules0, error) {
 	var body ListSecretValidationRules200JSONResponseBodySecretValidationRules0
@@ -106211,6 +109935,30 @@ type ClientInterface interface {
 	// Update the specified PostgreSQL Connection.
 	UpdatePostgresAppConnection(ctx context.Context, connectionId openapi_types.UUID, body UpdatePostgresAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateServiceNowAppConnectionWithBody performs a POST /api/v1/app-connections/servicenow (the `CreateServiceNowAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a ServiceNow Connection.
+	CreateServiceNowAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateServiceNowAppConnection performs a POST /api/v1/app-connections/servicenow (the `CreateServiceNowAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create a ServiceNow Connection.
+	CreateServiceNowAppConnection(ctx context.Context, body CreateServiceNowAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateVercelAppConnectionWithBody performs a POST /api/v1/app-connections/vercel (the `CreateVercelAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a Vercel Connection.
+	CreateVercelAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateVercelAppConnection performs a POST /api/v1/app-connections/vercel (the `CreateVercelAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create a Vercel Connection.
+	CreateVercelAppConnection(ctx context.Context, body CreateVercelAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// RefreshAuthToken performs a POST /api/v1/auth/token (the `RefreshAuthToken` operationId) request.
 	RefreshAuthToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -106295,6 +110043,18 @@ type ClientInterface interface {
 	//
 	// List project secrets overview.
 	ListProjectSecretsOverview(ctx context.Context, params *ListProjectSecretsOverviewParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// HandleDelegatedApprovalCallbackWithBody performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Receive a decision notification from a delegated approval system.
+	HandleDelegatedApprovalCallbackWithBody(ctx context.Context, params *HandleDelegatedApprovalCallbackParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// HandleDelegatedApprovalCallback performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Receive a decision notification from a delegated approval system.
+	HandleDelegatedApprovalCallback(ctx context.Context, params *HandleDelegatedApprovalCallbackParams, body HandleDelegatedApprovalCallbackJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListDynamicSecrets performs a GET /api/v1/dynamic-secrets (the `ListDynamicSecrets` operationId) request.
 	ListDynamicSecrets(ctx context.Context, params *ListDynamicSecretsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -107915,6 +111675,28 @@ type ClientInterface interface {
 	// Create an OCI Vault Sync for the specified project environment.
 	CreateOciVaultSecretSync(ctx context.Context, body CreateOciVaultSecretSyncJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CreateVercelSecretSyncWithBody performs a POST /api/v1/secret-syncs/vercel (the `CreateVercelSecretSync` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a Vercel Sync for the specified project environment.
+	CreateVercelSecretSyncWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateVercelSecretSync performs a POST /api/v1/secret-syncs/vercel (the `CreateVercelSecretSync` operationId) request.
+	// Takes a body of the `application/json` content type.
+	//
+	// Create a Vercel Sync for the specified project environment.
+	CreateVercelSecretSync(ctx context.Context, body CreateVercelSecretSyncJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetVercelSecretSync performs a GET /api/v1/secret-syncs/vercel/{syncId} (the `GetVercelSecretSync` operationId) request.
+	//
+	// Get the specified Vercel Sync by ID.
+	GetVercelSecretSync(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SyncVercelSecretSync performs a POST /api/v1/secret-syncs/vercel/{syncId}/sync-secrets (the `SyncVercelSecretSync` operationId) request.
+	//
+	// Trigger a sync for the specified Vercel Sync.
+	SyncVercelSecretSync(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListSecretValidationRules performs a GET /api/v1/secret-validation-rules (the `ListSecretValidationRules` operationId) request.
 	//
 	// List every Secret Validation Rule in the specified project, of any type.
@@ -108618,6 +112400,9 @@ type ClientInterface interface {
 
 	// DeleteServiceToken performs a DELETE /api/v2/service-token/{serviceTokenId} (the `DeleteServiceToken` operationId) request.
 	DeleteServiceToken(ctx context.Context, serviceTokenId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteUser performs a DELETE /api/v2/users/me (the `DeleteUser` operationId) request.
+	DeleteUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetCurrentUser performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
 	//
@@ -109669,6 +113454,70 @@ func (c *Client) UpdatePostgresAppConnection(ctx context.Context, connectionId o
 	return c.Client.Do(req)
 }
 
+// CreateServiceNowAppConnectionWithBody performs a POST /api/v1/app-connections/servicenow (the `CreateServiceNowAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a ServiceNow Connection.
+func (c *Client) CreateServiceNowAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateServiceNowAppConnectionRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateServiceNowAppConnection performs a POST /api/v1/app-connections/servicenow (the `CreateServiceNowAppConnection` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create a ServiceNow Connection.
+func (c *Client) CreateServiceNowAppConnection(ctx context.Context, body CreateServiceNowAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateServiceNowAppConnectionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateVercelAppConnectionWithBody performs a POST /api/v1/app-connections/vercel (the `CreateVercelAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a Vercel Connection.
+func (c *Client) CreateVercelAppConnectionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateVercelAppConnectionRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateVercelAppConnection performs a POST /api/v1/app-connections/vercel (the `CreateVercelAppConnection` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create a Vercel Connection.
+func (c *Client) CreateVercelAppConnection(ctx context.Context, body CreateVercelAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateVercelAppConnectionRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // RefreshAuthToken performs a POST /api/v1/auth/token (the `RefreshAuthToken` operationId) request.
 func (c *Client) RefreshAuthToken(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRefreshAuthTokenRequest(c.Server)
@@ -109934,6 +113783,38 @@ func (c *Client) ListProjectSecretsDetails(ctx context.Context, params *ListProj
 // List project secrets overview.
 func (c *Client) ListProjectSecretsOverview(ctx context.Context, params *ListProjectSecretsOverviewParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListProjectSecretsOverviewRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// HandleDelegatedApprovalCallbackWithBody performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request,
+// with any type of body and a specified content type.
+//
+// Receive a decision notification from a delegated approval system.
+func (c *Client) HandleDelegatedApprovalCallbackWithBody(ctx context.Context, params *HandleDelegatedApprovalCallbackParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewHandleDelegatedApprovalCallbackRequestWithBody(c.Server, params, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// HandleDelegatedApprovalCallback performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Receive a decision notification from a delegated approval system.
+func (c *Client) HandleDelegatedApprovalCallback(ctx context.Context, params *HandleDelegatedApprovalCallbackParams, body HandleDelegatedApprovalCallbackJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewHandleDelegatedApprovalCallbackRequest(c.Server, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -115044,6 +118925,68 @@ func (c *Client) CreateOciVaultSecretSync(ctx context.Context, body CreateOciVau
 	return c.Client.Do(req)
 }
 
+// CreateVercelSecretSyncWithBody performs a POST /api/v1/secret-syncs/vercel (the `CreateVercelSecretSync` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a Vercel Sync for the specified project environment.
+func (c *Client) CreateVercelSecretSyncWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateVercelSecretSyncRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// CreateVercelSecretSync performs a POST /api/v1/secret-syncs/vercel (the `CreateVercelSecretSync` operationId) request.
+// Takes a body of the `application/json` content type.
+//
+// Create a Vercel Sync for the specified project environment.
+func (c *Client) CreateVercelSecretSync(ctx context.Context, body CreateVercelSecretSyncJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateVercelSecretSyncRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// GetVercelSecretSync performs a GET /api/v1/secret-syncs/vercel/{syncId} (the `GetVercelSecretSync` operationId) request.
+//
+// Get the specified Vercel Sync by ID.
+func (c *Client) GetVercelSecretSync(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetVercelSecretSyncRequest(c.Server, syncId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// SyncVercelSecretSync performs a POST /api/v1/secret-syncs/vercel/{syncId}/sync-secrets (the `SyncVercelSecretSync` operationId) request.
+//
+// Trigger a sync for the specified Vercel Sync.
+func (c *Client) SyncVercelSecretSync(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSyncVercelSecretSyncRequest(c.Server, syncId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 // ListSecretValidationRules performs a GET /api/v1/secret-validation-rules (the `ListSecretValidationRules` operationId) request.
 //
 // List every Secret Validation Rule in the specified project, of any type.
@@ -117198,6 +121141,19 @@ func (c *Client) CreateServiceToken(ctx context.Context, body CreateServiceToken
 // DeleteServiceToken performs a DELETE /api/v2/service-token/{serviceTokenId} (the `DeleteServiceToken` operationId) request.
 func (c *Client) DeleteServiceToken(ctx context.Context, serviceTokenId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteServiceTokenRequest(c.Server, serviceTokenId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// DeleteUser performs a DELETE /api/v2/users/me (the `DeleteUser` operationId) request.
+func (c *Client) DeleteUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteUserRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -119645,6 +123601,86 @@ func NewUpdatePostgresAppConnectionRequestWithBody(server string, connectionId o
 	return req, nil
 }
 
+// NewCreateServiceNowAppConnectionRequest calls the generic CreateServiceNowAppConnection builder with application/json body
+func NewCreateServiceNowAppConnectionRequest(server string, body CreateServiceNowAppConnectionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateServiceNowAppConnectionRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateServiceNowAppConnectionRequestWithBody constructs an http.Request for the CreateServiceNowAppConnection method, with any body, and a specified content type
+func NewCreateServiceNowAppConnectionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/servicenow")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCreateVercelAppConnectionRequest calls the generic CreateVercelAppConnection builder with application/json body
+func NewCreateVercelAppConnectionRequest(server string, body CreateVercelAppConnectionJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateVercelAppConnectionRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateVercelAppConnectionRequestWithBody constructs an http.Request for the CreateVercelAppConnection method, with any body, and a specified content type
+func NewCreateVercelAppConnectionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/app-connections/vercel")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewRefreshAuthTokenRequest constructs an http.Request for the RefreshAuthToken method
 func NewRefreshAuthTokenRequest(server string) (*http.Request, error) {
 	var err error
@@ -121110,6 +125146,61 @@ func NewListProjectSecretsOverviewRequest(server string, params *ListProjectSecr
 	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewHandleDelegatedApprovalCallbackRequest calls the generic HandleDelegatedApprovalCallback builder with application/json body
+func NewHandleDelegatedApprovalCallbackRequest(server string, params *HandleDelegatedApprovalCallbackParams, body HandleDelegatedApprovalCallbackJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewHandleDelegatedApprovalCallbackRequestWithBody(server, params, "application/json", bodyReader)
+}
+
+// NewHandleDelegatedApprovalCallbackRequestWithBody constructs an http.Request for the HandleDelegatedApprovalCallback method, with any body, and a specified content type
+func NewHandleDelegatedApprovalCallbackRequestWithBody(server string, params *HandleDelegatedApprovalCallbackParams, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/delegated-approvals/callback")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.InfisicalApprovalToken != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithOptions("simple", false, "infisical-approval-token", *params.InfisicalApprovalToken, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationHeader, Type: "string", Format: ""})
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("infisical-approval-token", headerParam0)
+		}
+
 	}
 
 	return req, nil
@@ -133477,6 +137568,114 @@ func NewCreateOciVaultSecretSyncRequestWithBody(server string, contentType strin
 	return req, nil
 }
 
+// NewCreateVercelSecretSyncRequest calls the generic CreateVercelSecretSync builder with application/json body
+func NewCreateVercelSecretSyncRequest(server string, body CreateVercelSecretSyncJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateVercelSecretSyncRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateVercelSecretSyncRequestWithBody constructs an http.Request for the CreateVercelSecretSync method, with any body, and a specified content type
+func NewCreateVercelSecretSyncRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/secret-syncs/vercel")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetVercelSecretSyncRequest constructs an http.Request for the GetVercelSecretSync method
+func NewGetVercelSecretSyncRequest(server string, syncId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "syncId", syncId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/secret-syncs/vercel/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewSyncVercelSecretSyncRequest constructs an http.Request for the SyncVercelSecretSync method
+func NewSyncVercelSecretSyncRequest(server string, syncId openapi_types.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "syncId", syncId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: "uuid"})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v1/secret-syncs/vercel/%s/sync-secrets", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListSecretValidationRulesRequest constructs an http.Request for the ListSecretValidationRules method
 func NewListSecretValidationRulesRequest(server string, params *ListSecretValidationRulesParams) (*http.Request, error) {
 	var err error
@@ -138423,6 +142622,33 @@ func NewDeleteServiceTokenRequest(server string, serviceTokenId string) (*http.R
 	return req, nil
 }
 
+// NewDeleteUserRequest constructs an http.Request for the DeleteUser method
+func NewDeleteUserRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/v2/users/me")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewGetCurrentUserRequest constructs an http.Request for the GetCurrentUser method
 func NewGetCurrentUserRequest(server string) (*http.Request, error) {
 	var err error
@@ -140173,6 +144399,34 @@ type ClientWithResponsesInterface interface {
 	// Update the specified PostgreSQL Connection.
 	UpdatePostgresAppConnectionWithResponse(ctx context.Context, connectionId openapi_types.UUID, body UpdatePostgresAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdatePostgresAppConnectionResponse, error)
 
+	// CreateServiceNowAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/servicenow (the `CreateServiceNowAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a ServiceNow Connection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateServiceNowAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateServiceNowAppConnectionResponse, error)
+
+	// CreateServiceNowAppConnectionWithResponse performs a POST /api/v1/app-connections/servicenow (the `CreateServiceNowAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create a ServiceNow Connection.
+	CreateServiceNowAppConnectionWithResponse(ctx context.Context, body CreateServiceNowAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateServiceNowAppConnectionResponse, error)
+
+	// CreateVercelAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/vercel (the `CreateVercelAppConnection` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a Vercel Connection.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateVercelAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVercelAppConnectionResponse, error)
+
+	// CreateVercelAppConnectionWithResponse performs a POST /api/v1/app-connections/vercel (the `CreateVercelAppConnection` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create a Vercel Connection.
+	CreateVercelAppConnectionWithResponse(ctx context.Context, body CreateVercelAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVercelAppConnectionResponse, error)
+
 	// RefreshAuthTokenWithResponse performs a POST /api/v1/auth/token (the `RefreshAuthToken` operationId) request.
 	//
 	// Returns a wrapper object for the known response body format(s).
@@ -140289,6 +144543,20 @@ type ClientWithResponsesInterface interface {
 	//
 	// Returns a wrapper object for the known response body format(s).
 	ListProjectSecretsOverviewWithResponse(ctx context.Context, params *ListProjectSecretsOverviewParams, reqEditors ...RequestEditorFn) (*ListProjectSecretsOverviewResponse, error)
+
+	// HandleDelegatedApprovalCallbackWithBodyWithResponse performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Receive a decision notification from a delegated approval system.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	HandleDelegatedApprovalCallbackWithBodyWithResponse(ctx context.Context, params *HandleDelegatedApprovalCallbackParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*HandleDelegatedApprovalCallbackResponse, error)
+
+	// HandleDelegatedApprovalCallbackWithResponse performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Receive a decision notification from a delegated approval system.
+	HandleDelegatedApprovalCallbackWithResponse(ctx context.Context, params *HandleDelegatedApprovalCallbackParams, body HandleDelegatedApprovalCallbackJSONRequestBody, reqEditors ...RequestEditorFn) (*HandleDelegatedApprovalCallbackResponse, error)
 
 	// ListDynamicSecretsWithResponse performs a GET /api/v1/dynamic-secrets (the `ListDynamicSecrets` operationId) request.
 	//
@@ -142421,6 +146689,34 @@ type ClientWithResponsesInterface interface {
 	// Create an OCI Vault Sync for the specified project environment.
 	CreateOciVaultSecretSyncWithResponse(ctx context.Context, body CreateOciVaultSecretSyncJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateOciVaultSecretSyncResponse, error)
 
+	// CreateVercelSecretSyncWithBodyWithResponse performs a POST /api/v1/secret-syncs/vercel (the `CreateVercelSecretSync` operationId) request,
+	// with any type of body and a specified content type.
+	//
+	// Create a Vercel Sync for the specified project environment.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	CreateVercelSecretSyncWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVercelSecretSyncResponse, error)
+
+	// CreateVercelSecretSyncWithResponse performs a POST /api/v1/secret-syncs/vercel (the `CreateVercelSecretSync` operationId) request.
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Create a Vercel Sync for the specified project environment.
+	CreateVercelSecretSyncWithResponse(ctx context.Context, body CreateVercelSecretSyncJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVercelSecretSyncResponse, error)
+
+	// GetVercelSecretSyncWithResponse performs a GET /api/v1/secret-syncs/vercel/{syncId} (the `GetVercelSecretSync` operationId) request.
+	//
+	// Get the specified Vercel Sync by ID.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	GetVercelSecretSyncWithResponse(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetVercelSecretSyncResponse, error)
+
+	// SyncVercelSecretSyncWithResponse performs a POST /api/v1/secret-syncs/vercel/{syncId}/sync-secrets (the `SyncVercelSecretSync` operationId) request.
+	//
+	// Trigger a sync for the specified Vercel Sync.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	SyncVercelSecretSyncWithResponse(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*SyncVercelSecretSyncResponse, error)
+
 	// ListSecretValidationRulesWithResponse performs a GET /api/v1/secret-validation-rules (the `ListSecretValidationRules` operationId) request.
 	//
 	// List every Secret Validation Rule in the specified project, of any type.
@@ -143337,6 +147633,11 @@ type ClientWithResponsesInterface interface {
 	// Returns a wrapper object for the known response body format(s).
 	DeleteServiceTokenWithResponse(ctx context.Context, serviceTokenId string, reqEditors ...RequestEditorFn) (*DeleteServiceTokenResponse, error)
 
+	// DeleteUserWithResponse performs a DELETE /api/v2/users/me (the `DeleteUser` operationId) request.
+	//
+	// Returns a wrapper object for the known response body format(s).
+	DeleteUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error)
+
 	// GetCurrentUserWithResponse performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
 	//
 	// Retrieve the current user on the request.
@@ -143794,7 +148095,14 @@ type ListAccessApprovalPoliciesResponse struct {
 				Id   *string                                                             `json:"id,omitempty"`
 				Type ListAccessApprovalPolicies200JSONResponseBodyApprovalsBypassersType `json:"type"`
 			} `json:"bypassers"`
-			CreatedAt        time.Time          `json:"createdAt"`
+			CreatedAt         time.Time `json:"createdAt"`
+			DelegatedApproval *struct {
+				// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+				ConnectionId openapi_types.UUID `json:"connectionId"`
+
+				// Type The delegated approval system that reviews requests made against this policy.
+				Type ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType `json:"type"`
+			} `json:"delegatedApproval,omitempty"`
 			DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
 			EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
 			EnvId            openapi_types.UUID `json:"envId"`
@@ -143880,7 +148188,14 @@ func (r ListAccessApprovalPoliciesResponse) GetJSON200() *struct {
 			Id   *string                                                             `json:"id,omitempty"`
 			Type ListAccessApprovalPolicies200JSONResponseBodyApprovalsBypassersType `json:"type"`
 		} `json:"bypassers"`
-		CreatedAt        time.Time          `json:"createdAt"`
+		CreatedAt         time.Time `json:"createdAt"`
+		DelegatedApproval *struct {
+			// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+			ConnectionId openapi_types.UUID `json:"connectionId"`
+
+			// Type The delegated approval system that reviews requests made against this policy.
+			Type ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType `json:"type"`
+		} `json:"delegatedApproval,omitempty"`
 		DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
 		EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
 		EnvId            openapi_types.UUID `json:"envId"`
@@ -144003,14 +148318,21 @@ type CreateAccessApprovalPolicyResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Approval struct {
-			AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-			Approvals                  *float32           `json:"approvals,omitempty"`
-			BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-			CreatedAt                  time.Time          `json:"createdAt"`
-			DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-			EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-			EnvId                      openapi_types.UUID `json:"envId"`
-			Environment                struct {
+			AllowedSelfApprovals       *bool     `json:"allowedSelfApprovals,omitempty"`
+			Approvals                  *float32  `json:"approvals,omitempty"`
+			BypassForMachineIdentities *bool     `json:"bypassForMachineIdentities,omitempty"`
+			CreatedAt                  time.Time `json:"createdAt"`
+			DelegatedApproval          *struct {
+				// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+				ConnectionId openapi_types.UUID `json:"connectionId"`
+
+				// Type The delegated approval system that reviews requests made against this policy.
+				Type CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+			} `json:"delegatedApproval,omitempty"`
+			DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
+			EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
+			EnvId            openapi_types.UUID `json:"envId"`
+			Environment      struct {
 				Id   string `json:"id"`
 				Name string `json:"name"`
 				Slug string `json:"slug"`
@@ -144076,14 +148398,21 @@ type CreateAccessApprovalPolicyResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r CreateAccessApprovalPolicyResponse) GetJSON200() *struct {
 	Approval struct {
-		AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-		Approvals                  *float32           `json:"approvals,omitempty"`
-		BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-		CreatedAt                  time.Time          `json:"createdAt"`
-		DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-		EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-		EnvId                      openapi_types.UUID `json:"envId"`
-		Environment                struct {
+		AllowedSelfApprovals       *bool     `json:"allowedSelfApprovals,omitempty"`
+		Approvals                  *float32  `json:"approvals,omitempty"`
+		BypassForMachineIdentities *bool     `json:"bypassForMachineIdentities,omitempty"`
+		CreatedAt                  time.Time `json:"createdAt"`
+		DelegatedApproval          *struct {
+			// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+			ConnectionId openapi_types.UUID `json:"connectionId"`
+
+			// Type The delegated approval system that reviews requests made against this policy.
+			Type CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+		} `json:"delegatedApproval,omitempty"`
+		DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
+		EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
+		EnvId            openapi_types.UUID `json:"envId"`
+		Environment      struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
 			Slug string `json:"slug"`
@@ -144351,14 +148680,21 @@ type DeleteAccessApprovalPolicyResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Approval struct {
-			AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-			Approvals                  *float32           `json:"approvals,omitempty"`
-			BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-			CreatedAt                  time.Time          `json:"createdAt"`
-			DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-			EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-			EnvId                      openapi_types.UUID `json:"envId"`
-			Environment                struct {
+			AllowedSelfApprovals       *bool     `json:"allowedSelfApprovals,omitempty"`
+			Approvals                  *float32  `json:"approvals,omitempty"`
+			BypassForMachineIdentities *bool     `json:"bypassForMachineIdentities,omitempty"`
+			CreatedAt                  time.Time `json:"createdAt"`
+			DelegatedApproval          *struct {
+				// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+				ConnectionId openapi_types.UUID `json:"connectionId"`
+
+				// Type The delegated approval system that reviews requests made against this policy.
+				Type DeleteAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+			} `json:"delegatedApproval,omitempty"`
+			DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
+			EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
+			EnvId            openapi_types.UUID `json:"envId"`
+			Environment      struct {
 				Id   string `json:"id"`
 				Name string `json:"name"`
 				Slug string `json:"slug"`
@@ -144424,14 +148760,21 @@ type DeleteAccessApprovalPolicyResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r DeleteAccessApprovalPolicyResponse) GetJSON200() *struct {
 	Approval struct {
-		AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-		Approvals                  *float32           `json:"approvals,omitempty"`
-		BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-		CreatedAt                  time.Time          `json:"createdAt"`
-		DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-		EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-		EnvId                      openapi_types.UUID `json:"envId"`
-		Environment                struct {
+		AllowedSelfApprovals       *bool     `json:"allowedSelfApprovals,omitempty"`
+		Approvals                  *float32  `json:"approvals,omitempty"`
+		BypassForMachineIdentities *bool     `json:"bypassForMachineIdentities,omitempty"`
+		CreatedAt                  time.Time `json:"createdAt"`
+		DelegatedApproval          *struct {
+			// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+			ConnectionId openapi_types.UUID `json:"connectionId"`
+
+			// Type The delegated approval system that reviews requests made against this policy.
+			Type DeleteAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+		} `json:"delegatedApproval,omitempty"`
+		DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
+		EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
+		EnvId            openapi_types.UUID `json:"envId"`
+		Environment      struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
 			Slug string `json:"slug"`
@@ -144563,7 +148906,14 @@ type GetAccessApprovalPolicyResponse struct {
 				Name *string                                                         `json:"name,omitempty"`
 				Type GetAccessApprovalPolicy200JSONResponseBodyApprovalBypassersType `json:"type"`
 			} `json:"bypassers,omitempty"`
-			CreatedAt        time.Time          `json:"createdAt"`
+			CreatedAt         time.Time `json:"createdAt"`
+			DelegatedApproval *struct {
+				// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+				ConnectionId openapi_types.UUID `json:"connectionId"`
+
+				// Type The delegated approval system that reviews requests made against this policy.
+				Type GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+			} `json:"delegatedApproval,omitempty"`
 			DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
 			EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
 			EnvId            openapi_types.UUID `json:"envId"`
@@ -144650,7 +149000,14 @@ func (r GetAccessApprovalPolicyResponse) GetJSON200() *struct {
 			Name *string                                                         `json:"name,omitempty"`
 			Type GetAccessApprovalPolicy200JSONResponseBodyApprovalBypassersType `json:"type"`
 		} `json:"bypassers,omitempty"`
-		CreatedAt        time.Time          `json:"createdAt"`
+		CreatedAt         time.Time `json:"createdAt"`
+		DelegatedApproval *struct {
+			// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+			ConnectionId openapi_types.UUID `json:"connectionId"`
+
+			// Type The delegated approval system that reviews requests made against this policy.
+			Type GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+		} `json:"delegatedApproval,omitempty"`
 		DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
 		EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
 		EnvId            openapi_types.UUID `json:"envId"`
@@ -144773,14 +149130,21 @@ type UpdateAccessApprovalPolicyResponse struct {
 	// JSON200 the response for an HTTP 200 `application/json` response
 	JSON200 *struct {
 		Approval struct {
-			AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-			Approvals                  *float32           `json:"approvals,omitempty"`
-			BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-			CreatedAt                  time.Time          `json:"createdAt"`
-			DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-			EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-			EnvId                      openapi_types.UUID `json:"envId"`
-			Environment                struct {
+			AllowedSelfApprovals       *bool     `json:"allowedSelfApprovals,omitempty"`
+			Approvals                  *float32  `json:"approvals,omitempty"`
+			BypassForMachineIdentities *bool     `json:"bypassForMachineIdentities,omitempty"`
+			CreatedAt                  time.Time `json:"createdAt"`
+			DelegatedApproval          *struct {
+				// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+				ConnectionId openapi_types.UUID `json:"connectionId"`
+
+				// Type The delegated approval system that reviews requests made against this policy.
+				Type UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+			} `json:"delegatedApproval,omitempty"`
+			DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
+			EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
+			EnvId            openapi_types.UUID `json:"envId"`
+			Environment      struct {
 				Id   string `json:"id"`
 				Name string `json:"name"`
 				Slug string `json:"slug"`
@@ -144846,14 +149210,21 @@ type UpdateAccessApprovalPolicyResponse struct {
 // GetJSON200 returns the response for an HTTP 200 `application/json` response
 func (r UpdateAccessApprovalPolicyResponse) GetJSON200() *struct {
 	Approval struct {
-		AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-		Approvals                  *float32           `json:"approvals,omitempty"`
-		BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-		CreatedAt                  time.Time          `json:"createdAt"`
-		DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-		EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-		EnvId                      openapi_types.UUID `json:"envId"`
-		Environment                struct {
+		AllowedSelfApprovals       *bool     `json:"allowedSelfApprovals,omitempty"`
+		Approvals                  *float32  `json:"approvals,omitempty"`
+		BypassForMachineIdentities *bool     `json:"bypassForMachineIdentities,omitempty"`
+		CreatedAt                  time.Time `json:"createdAt"`
+		DelegatedApproval          *struct {
+			// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+			ConnectionId openapi_types.UUID `json:"connectionId"`
+
+			// Type The delegated approval system that reviews requests made against this policy.
+			Type UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+		} `json:"delegatedApproval,omitempty"`
+		DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
+		EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
+		EnvId            openapi_types.UUID `json:"envId"`
+		Environment      struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
 			Slug string `json:"slug"`
@@ -144978,19 +149349,29 @@ type ListAccessApprovalRequestsResponse struct {
 				UserId    string  `json:"userId"`
 				Username  string  `json:"username"`
 			} `json:"approvedByUser"`
-			ApprovedByUserId *openapi_types.UUID `json:"approvedByUserId,omitempty"`
-			BypassReason     *string             `json:"bypassReason,omitempty"`
-			CreatedAt        time.Time           `json:"createdAt"`
-			EditNote         *string             `json:"editNote,omitempty"`
-			EditedByUserId   *openapi_types.UUID `json:"editedByUserId,omitempty"`
-			EnvironmentName  string              `json:"environmentName"`
-			ExpiresAt        *time.Time          `json:"expiresAt,omitempty"`
-			Id               openapi_types.UUID  `json:"id"`
-			IsApproved       bool                `json:"isApproved"`
-			IsTemporary      bool                `json:"isTemporary"`
-			Note             *string             `json:"note,omitempty"`
-			Permissions      interface{}         `json:"permissions,omitempty"`
-			Policy           struct {
+			ApprovedByUserId  *openapi_types.UUID `json:"approvedByUserId,omitempty"`
+			BypassReason      *string             `json:"bypassReason,omitempty"`
+			CreatedAt         time.Time           `json:"createdAt"`
+			DelegatedApproval *struct {
+				// Provider How the delegated approval system identifies this request to its own users, when it reported that.
+				Provider *ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider `json:"provider"`
+
+				// Status Where the request stands in the delegated approval system that reviews it.
+				Status ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus `json:"status"`
+
+				// StatusReason Why the request is not progressing in, or could not be completed by, the delegated approval system, when that is the case.
+				StatusReason *string `json:"statusReason"`
+			} `json:"delegatedApproval,omitempty"`
+			EditNote        *string             `json:"editNote,omitempty"`
+			EditedByUserId  *openapi_types.UUID `json:"editedByUserId,omitempty"`
+			EnvironmentName string              `json:"environmentName"`
+			ExpiresAt       *time.Time          `json:"expiresAt,omitempty"`
+			Id              openapi_types.UUID  `json:"id"`
+			IsApproved      bool                `json:"isApproved"`
+			IsTemporary     bool                `json:"isTemporary"`
+			Note            *string             `json:"note,omitempty"`
+			Permissions     interface{}         `json:"permissions,omitempty"`
+			Policy          struct {
 				AllowedSelfApprovals bool    `json:"allowedSelfApprovals"`
 				Approvals            float32 `json:"approvals"`
 				Approvers            []struct {
@@ -145001,7 +149382,11 @@ type ListAccessApprovalRequestsResponse struct {
 					UserId                *string  `json:"userId,omitempty"`
 					Username              *string  `json:"username,omitempty"`
 				} `json:"approvers"`
-				Bypassers             []string   `json:"bypassers"`
+				Bypassers         []string `json:"bypassers"`
+				DelegatedApproval *struct {
+					// Type The delegated approval system that reviews requests made against this policy.
+					Type ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType `json:"type"`
+				} `json:"delegatedApproval,omitempty"`
 				DeletedAt             *time.Time `json:"deletedAt,omitempty"`
 				EnforcementLevel      string     `json:"enforcementLevel"`
 				EnvId                 string     `json:"envId"`
@@ -145107,19 +149492,29 @@ func (r ListAccessApprovalRequestsResponse) GetJSON200() *struct {
 			UserId    string  `json:"userId"`
 			Username  string  `json:"username"`
 		} `json:"approvedByUser"`
-		ApprovedByUserId *openapi_types.UUID `json:"approvedByUserId,omitempty"`
-		BypassReason     *string             `json:"bypassReason,omitempty"`
-		CreatedAt        time.Time           `json:"createdAt"`
-		EditNote         *string             `json:"editNote,omitempty"`
-		EditedByUserId   *openapi_types.UUID `json:"editedByUserId,omitempty"`
-		EnvironmentName  string              `json:"environmentName"`
-		ExpiresAt        *time.Time          `json:"expiresAt,omitempty"`
-		Id               openapi_types.UUID  `json:"id"`
-		IsApproved       bool                `json:"isApproved"`
-		IsTemporary      bool                `json:"isTemporary"`
-		Note             *string             `json:"note,omitempty"`
-		Permissions      interface{}         `json:"permissions,omitempty"`
-		Policy           struct {
+		ApprovedByUserId  *openapi_types.UUID `json:"approvedByUserId,omitempty"`
+		BypassReason      *string             `json:"bypassReason,omitempty"`
+		CreatedAt         time.Time           `json:"createdAt"`
+		DelegatedApproval *struct {
+			// Provider How the delegated approval system identifies this request to its own users, when it reported that.
+			Provider *ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider `json:"provider"`
+
+			// Status Where the request stands in the delegated approval system that reviews it.
+			Status ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus `json:"status"`
+
+			// StatusReason Why the request is not progressing in, or could not be completed by, the delegated approval system, when that is the case.
+			StatusReason *string `json:"statusReason"`
+		} `json:"delegatedApproval,omitempty"`
+		EditNote        *string             `json:"editNote,omitempty"`
+		EditedByUserId  *openapi_types.UUID `json:"editedByUserId,omitempty"`
+		EnvironmentName string              `json:"environmentName"`
+		ExpiresAt       *time.Time          `json:"expiresAt,omitempty"`
+		Id              openapi_types.UUID  `json:"id"`
+		IsApproved      bool                `json:"isApproved"`
+		IsTemporary     bool                `json:"isTemporary"`
+		Note            *string             `json:"note,omitempty"`
+		Permissions     interface{}         `json:"permissions,omitempty"`
+		Policy          struct {
 			AllowedSelfApprovals bool    `json:"allowedSelfApprovals"`
 			Approvals            float32 `json:"approvals"`
 			Approvers            []struct {
@@ -145130,7 +149525,11 @@ func (r ListAccessApprovalRequestsResponse) GetJSON200() *struct {
 				UserId                *string  `json:"userId,omitempty"`
 				Username              *string  `json:"username,omitempty"`
 			} `json:"approvers"`
-			Bypassers             []string   `json:"bypassers"`
+			Bypassers         []string `json:"bypassers"`
+			DelegatedApproval *struct {
+				// Type The delegated approval system that reviews requests made against this policy.
+				Type ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType `json:"type"`
+			} `json:"delegatedApproval,omitempty"`
 			DeletedAt             *time.Time `json:"deletedAt,omitempty"`
 			EnforcementLevel      string     `json:"enforcementLevel"`
 			EnvId                 string     `json:"envId"`
@@ -150442,6 +154841,308 @@ func (r UpdatePostgresAppConnectionResponse) ContentType() string {
 	return ""
 }
 
+type CreateServiceNowAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection CreateServiceNowAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                `json:"details,omitempty"`
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateServiceNowAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateServiceNowAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                `json:"details,omitempty"`
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateServiceNowAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateServiceNowAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                     `json:"error"`
+		Message    interface{}                                                `json:"message,omitempty"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateServiceNowAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                     `json:"error"`
+		Message    string                                                     `json:"message"`
+		ReqId      string                                                     `json:"reqId"`
+		StatusCode CreateServiceNowAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateServiceNowAppConnectionResponse) GetJSON200() *struct {
+	AppConnection CreateServiceNowAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateServiceNowAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                                `json:"details,omitempty"`
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateServiceNowAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateServiceNowAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateServiceNowAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateServiceNowAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                                `json:"details,omitempty"`
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateServiceNowAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateServiceNowAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateServiceNowAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateServiceNowAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                                     `json:"error"`
+	Message    interface{}                                                `json:"message,omitempty"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateServiceNowAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateServiceNowAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                                     `json:"error"`
+	Message    string                                                     `json:"message"`
+	ReqId      string                                                     `json:"reqId"`
+	StatusCode CreateServiceNowAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateServiceNowAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateServiceNowAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateServiceNowAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateServiceNowAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateVercelAppConnectionResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		AppConnection CreateVercelAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateVercelAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateVercelAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                            `json:"details,omitempty"`
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateVercelAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateVercelAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                 `json:"error"`
+		Message    interface{}                                            `json:"message,omitempty"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateVercelAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                 `json:"error"`
+		Message    string                                                 `json:"message"`
+		ReqId      string                                                 `json:"reqId"`
+		StatusCode CreateVercelAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateVercelAppConnectionResponse) GetJSON200() *struct {
+	AppConnection CreateVercelAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateVercelAppConnectionResponse) GetJSON400() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateVercelAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateVercelAppConnectionResponse) GetJSON401() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateVercelAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateVercelAppConnectionResponse) GetJSON403() *struct {
+	Details    interface{}                                            `json:"details,omitempty"`
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateVercelAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateVercelAppConnectionResponse) GetJSON404() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateVercelAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateVercelAppConnectionResponse) GetJSON422() *struct {
+	Error      string                                                 `json:"error"`
+	Message    interface{}                                            `json:"message,omitempty"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateVercelAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateVercelAppConnectionResponse) GetJSON500() *struct {
+	Error      string                                                 `json:"error"`
+	Message    string                                                 `json:"message"`
+	ReqId      string                                                 `json:"reqId"`
+	StatusCode CreateVercelAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateVercelAppConnectionResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateVercelAppConnectionResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateVercelAppConnectionResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateVercelAppConnectionResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type RefreshAuthTokenResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -152858,15 +157559,16 @@ type DeepSearchSecretsResponse struct {
 				Key   string  `json:"key"`
 				Value *string `json:"value,omitempty"`
 			} `json:"metadata,omitempty"`
-			Name             string              `json:"name"`
-			Path             string              `json:"path"`
-			ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-			Status           *string             `json:"status,omitempty"`
-			StatusDetails    *string             `json:"statusDetails,omitempty"`
-			Type             string              `json:"type"`
-			UpdatedAt        time.Time           `json:"updatedAt"`
-			UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-			Version          float32             `json:"version"`
+			Name              string              `json:"name"`
+			Path              string              `json:"path"`
+			ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+			RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+			Status            *string             `json:"status,omitempty"`
+			StatusDetails     *string             `json:"statusDetails,omitempty"`
+			Type              string              `json:"type"`
+			UpdatedAt         time.Time           `json:"updatedAt"`
+			UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+			Version           float32             `json:"version"`
 		} `json:"dynamicSecrets,omitempty"`
 		Folders *[]struct {
 			CreatedAt          time.Time           `json:"createdAt"`
@@ -152990,15 +157692,16 @@ func (r DeepSearchSecretsResponse) GetJSON200() *struct {
 			Key   string  `json:"key"`
 			Value *string `json:"value,omitempty"`
 		} `json:"metadata,omitempty"`
-		Name             string              `json:"name"`
-		Path             string              `json:"path"`
-		ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-		Status           *string             `json:"status,omitempty"`
-		StatusDetails    *string             `json:"statusDetails,omitempty"`
-		Type             string              `json:"type"`
-		UpdatedAt        time.Time           `json:"updatedAt"`
-		UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-		Version          float32             `json:"version"`
+		Name              string              `json:"name"`
+		Path              string              `json:"path"`
+		ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+		RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+		Status            *string             `json:"status,omitempty"`
+		StatusDetails     *string             `json:"statusDetails,omitempty"`
+		Type              string              `json:"type"`
+		UpdatedAt         time.Time           `json:"updatedAt"`
+		UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+		Version           float32             `json:"version"`
 	} `json:"dynamicSecrets,omitempty"`
 	Folders *[]struct {
 		CreatedAt          time.Time           `json:"createdAt"`
@@ -153172,14 +157875,15 @@ type ListProjectSecretsDetailsResponse struct {
 				Key   string  `json:"key"`
 				Value *string `json:"value,omitempty"`
 			} `json:"metadata,omitempty"`
-			Name             string              `json:"name"`
-			ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-			Status           *string             `json:"status,omitempty"`
-			StatusDetails    *string             `json:"statusDetails,omitempty"`
-			Type             string              `json:"type"`
-			UpdatedAt        time.Time           `json:"updatedAt"`
-			UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-			Version          float32             `json:"version"`
+			Name              string              `json:"name"`
+			ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+			RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+			Status            *string             `json:"status,omitempty"`
+			StatusDetails     *string             `json:"statusDetails,omitempty"`
+			Type              string              `json:"type"`
+			UpdatedAt         time.Time           `json:"updatedAt"`
+			UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+			Version           float32             `json:"version"`
 		} `json:"dynamicSecrets,omitempty"`
 		Folders *[]struct {
 			CreatedAt          time.Time           `json:"createdAt"`
@@ -153415,14 +158119,15 @@ func (r ListProjectSecretsDetailsResponse) GetJSON200() *struct {
 			Key   string  `json:"key"`
 			Value *string `json:"value,omitempty"`
 		} `json:"metadata,omitempty"`
-		Name             string              `json:"name"`
-		ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-		Status           *string             `json:"status,omitempty"`
-		StatusDetails    *string             `json:"statusDetails,omitempty"`
-		Type             string              `json:"type"`
-		UpdatedAt        time.Time           `json:"updatedAt"`
-		UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-		Version          float32             `json:"version"`
+		Name              string              `json:"name"`
+		ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+		RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+		Status            *string             `json:"status,omitempty"`
+		StatusDetails     *string             `json:"statusDetails,omitempty"`
+		Type              string              `json:"type"`
+		UpdatedAt         time.Time           `json:"updatedAt"`
+		UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+		Version           float32             `json:"version"`
 	} `json:"dynamicSecrets,omitempty"`
 	Folders *[]struct {
 		CreatedAt          time.Time           `json:"createdAt"`
@@ -153710,14 +158415,15 @@ type ListProjectSecretsOverviewResponse struct {
 				Key   string  `json:"key"`
 				Value *string `json:"value,omitempty"`
 			} `json:"metadata,omitempty"`
-			Name             string              `json:"name"`
-			ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-			Status           *string             `json:"status,omitempty"`
-			StatusDetails    *string             `json:"statusDetails,omitempty"`
-			Type             string              `json:"type"`
-			UpdatedAt        time.Time           `json:"updatedAt"`
-			UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-			Version          float32             `json:"version"`
+			Name              string              `json:"name"`
+			ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+			RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+			Status            *string             `json:"status,omitempty"`
+			StatusDetails     *string             `json:"statusDetails,omitempty"`
+			Type              string              `json:"type"`
+			UpdatedAt         time.Time           `json:"updatedAt"`
+			UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+			Version           float32             `json:"version"`
 		} `json:"dynamicSecrets,omitempty"`
 		Folders *[]struct {
 			CreatedAt          time.Time           `json:"createdAt"`
@@ -153960,14 +158666,15 @@ func (r ListProjectSecretsOverviewResponse) GetJSON200() *struct {
 			Key   string  `json:"key"`
 			Value *string `json:"value,omitempty"`
 		} `json:"metadata,omitempty"`
-		Name             string              `json:"name"`
-		ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-		Status           *string             `json:"status,omitempty"`
-		StatusDetails    *string             `json:"statusDetails,omitempty"`
-		Type             string              `json:"type"`
-		UpdatedAt        time.Time           `json:"updatedAt"`
-		UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-		Version          float32             `json:"version"`
+		Name              string              `json:"name"`
+		ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+		RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+		Status            *string             `json:"status,omitempty"`
+		StatusDetails     *string             `json:"statusDetails,omitempty"`
+		Type              string              `json:"type"`
+		UpdatedAt         time.Time           `json:"updatedAt"`
+		UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+		Version           float32             `json:"version"`
 	} `json:"dynamicSecrets,omitempty"`
 	Folders *[]struct {
 		CreatedAt          time.Time           `json:"createdAt"`
@@ -154242,6 +158949,157 @@ func (r ListProjectSecretsOverviewResponse) ContentType() string {
 	return ""
 }
 
+type HandleDelegatedApprovalCallbackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		Message string `json:"message"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                                  `json:"details,omitempty"`
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                                  `json:"details,omitempty"`
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                                       `json:"error"`
+		Message    interface{}                                                  `json:"message,omitempty"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                                       `json:"error"`
+		Message    string                                                       `json:"message"`
+		ReqId      string                                                       `json:"reqId"`
+		StatusCode HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r HandleDelegatedApprovalCallbackResponse) GetJSON200() *struct {
+	Message string `json:"message"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r HandleDelegatedApprovalCallbackResponse) GetJSON400() *struct {
+	Details    interface{}                                                  `json:"details,omitempty"`
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r HandleDelegatedApprovalCallbackResponse) GetJSON401() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r HandleDelegatedApprovalCallbackResponse) GetJSON403() *struct {
+	Details    interface{}                                                  `json:"details,omitempty"`
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r HandleDelegatedApprovalCallbackResponse) GetJSON404() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r HandleDelegatedApprovalCallbackResponse) GetJSON422() *struct {
+	Error      string                                                       `json:"error"`
+	Message    interface{}                                                  `json:"message,omitempty"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r HandleDelegatedApprovalCallbackResponse) GetJSON500() *struct {
+	Error      string                                                       `json:"error"`
+	Message    string                                                       `json:"message"`
+	ReqId      string                                                       `json:"reqId"`
+	StatusCode HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r HandleDelegatedApprovalCallbackResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r HandleDelegatedApprovalCallbackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r HandleDelegatedApprovalCallbackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r HandleDelegatedApprovalCallbackResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type ListDynamicSecretsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -154260,14 +159118,15 @@ type ListDynamicSecretsResponse struct {
 				Key   string  `json:"key"`
 				Value *string `json:"value,omitempty"`
 			} `json:"metadata,omitempty"`
-			Name             string              `json:"name"`
-			ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-			Status           *string             `json:"status,omitempty"`
-			StatusDetails    *string             `json:"statusDetails,omitempty"`
-			Type             string              `json:"type"`
-			UpdatedAt        time.Time           `json:"updatedAt"`
-			UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-			Version          float32             `json:"version"`
+			Name              string              `json:"name"`
+			ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+			RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+			Status            *string             `json:"status,omitempty"`
+			StatusDetails     *string             `json:"statusDetails,omitempty"`
+			Type              string              `json:"type"`
+			UpdatedAt         time.Time           `json:"updatedAt"`
+			UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+			Version           float32             `json:"version"`
 		} `json:"dynamicSecrets"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -154331,14 +159190,15 @@ func (r ListDynamicSecretsResponse) GetJSON200() *struct {
 			Key   string  `json:"key"`
 			Value *string `json:"value,omitempty"`
 		} `json:"metadata,omitempty"`
-		Name             string              `json:"name"`
-		ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-		Status           *string             `json:"status,omitempty"`
-		StatusDetails    *string             `json:"statusDetails,omitempty"`
-		Type             string              `json:"type"`
-		UpdatedAt        time.Time           `json:"updatedAt"`
-		UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-		Version          float32             `json:"version"`
+		Name              string              `json:"name"`
+		ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+		RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+		Status            *string             `json:"status,omitempty"`
+		StatusDetails     *string             `json:"statusDetails,omitempty"`
+		Type              string              `json:"type"`
+		UpdatedAt         time.Time           `json:"updatedAt"`
+		UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+		Version           float32             `json:"version"`
 	} `json:"dynamicSecrets"`
 } {
 	return r.JSON200
@@ -154454,14 +159314,15 @@ type CreateDynamicSecretResponse struct {
 				Key   string  `json:"key"`
 				Value *string `json:"value,omitempty"`
 			} `json:"metadata,omitempty"`
-			Name             string              `json:"name"`
-			ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-			Status           *string             `json:"status,omitempty"`
-			StatusDetails    *string             `json:"statusDetails,omitempty"`
-			Type             string              `json:"type"`
-			UpdatedAt        time.Time           `json:"updatedAt"`
-			UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-			Version          float32             `json:"version"`
+			Name              string              `json:"name"`
+			ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+			RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+			Status            *string             `json:"status,omitempty"`
+			StatusDetails     *string             `json:"statusDetails,omitempty"`
+			Type              string              `json:"type"`
+			UpdatedAt         time.Time           `json:"updatedAt"`
+			UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+			Version           float32             `json:"version"`
 		} `json:"dynamicSecret"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -154526,14 +159387,15 @@ func (r CreateDynamicSecretResponse) GetJSON200() *struct {
 			Key   string  `json:"key"`
 			Value *string `json:"value,omitempty"`
 		} `json:"metadata,omitempty"`
-		Name             string              `json:"name"`
-		ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-		Status           *string             `json:"status,omitempty"`
-		StatusDetails    *string             `json:"statusDetails,omitempty"`
-		Type             string              `json:"type"`
-		UpdatedAt        time.Time           `json:"updatedAt"`
-		UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-		Version          float32             `json:"version"`
+		Name              string              `json:"name"`
+		ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+		RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+		Status            *string             `json:"status,omitempty"`
+		StatusDetails     *string             `json:"statusDetails,omitempty"`
+		Type              string              `json:"type"`
+		UpdatedAt         time.Time           `json:"updatedAt"`
+		UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+		Version           float32             `json:"version"`
 	} `json:"dynamicSecret"`
 } {
 	return r.JSON200
@@ -154649,14 +159511,15 @@ type CreateDynamicSecretLeaseResponse struct {
 				Key   string  `json:"key"`
 				Value *string `json:"value,omitempty"`
 			} `json:"metadata,omitempty"`
-			Name             string              `json:"name"`
-			ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-			Status           *string             `json:"status,omitempty"`
-			StatusDetails    *string             `json:"statusDetails,omitempty"`
-			Type             string              `json:"type"`
-			UpdatedAt        time.Time           `json:"updatedAt"`
-			UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-			Version          float32             `json:"version"`
+			Name              string              `json:"name"`
+			ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+			RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+			Status            *string             `json:"status,omitempty"`
+			StatusDetails     *string             `json:"statusDetails,omitempty"`
+			Type              string              `json:"type"`
+			UpdatedAt         time.Time           `json:"updatedAt"`
+			UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+			Version           float32             `json:"version"`
 		} `json:"dynamicSecret"`
 		Lease struct {
 			Config           interface{}        `json:"config,omitempty"`
@@ -154733,14 +159596,15 @@ func (r CreateDynamicSecretLeaseResponse) GetJSON200() *struct {
 			Key   string  `json:"key"`
 			Value *string `json:"value,omitempty"`
 		} `json:"metadata,omitempty"`
-		Name             string              `json:"name"`
-		ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-		Status           *string             `json:"status,omitempty"`
-		StatusDetails    *string             `json:"statusDetails,omitempty"`
-		Type             string              `json:"type"`
-		UpdatedAt        time.Time           `json:"updatedAt"`
-		UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-		Version          float32             `json:"version"`
+		Name              string              `json:"name"`
+		ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+		RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+		Status            *string             `json:"status,omitempty"`
+		StatusDetails     *string             `json:"statusDetails,omitempty"`
+		Type              string              `json:"type"`
+		UpdatedAt         time.Time           `json:"updatedAt"`
+		UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+		Version           float32             `json:"version"`
 	} `json:"dynamicSecret"`
 	Lease struct {
 		Config           interface{}        `json:"config,omitempty"`
@@ -155043,14 +159907,15 @@ type GetDynamicSecretLeaseResponse struct {
 					Key   string  `json:"key"`
 					Value *string `json:"value,omitempty"`
 				} `json:"metadata,omitempty"`
-				Name             string              `json:"name"`
-				ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-				Status           *string             `json:"status,omitempty"`
-				StatusDetails    *string             `json:"statusDetails,omitempty"`
-				Type             string              `json:"type"`
-				UpdatedAt        time.Time           `json:"updatedAt"`
-				UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-				Version          float32             `json:"version"`
+				Name              string              `json:"name"`
+				ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+				RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+				Status            *string             `json:"status,omitempty"`
+				StatusDetails     *string             `json:"statusDetails,omitempty"`
+				Type              string              `json:"type"`
+				UpdatedAt         time.Time           `json:"updatedAt"`
+				UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+				Version           float32             `json:"version"`
 			} `json:"dynamicSecret"`
 			DynamicSecretId  openapi_types.UUID `json:"dynamicSecretId"`
 			ExpireAt         time.Time          `json:"expireAt"`
@@ -155126,14 +159991,15 @@ func (r GetDynamicSecretLeaseResponse) GetJSON200() *struct {
 				Key   string  `json:"key"`
 				Value *string `json:"value,omitempty"`
 			} `json:"metadata,omitempty"`
-			Name             string              `json:"name"`
-			ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-			Status           *string             `json:"status,omitempty"`
-			StatusDetails    *string             `json:"statusDetails,omitempty"`
-			Type             string              `json:"type"`
-			UpdatedAt        time.Time           `json:"updatedAt"`
-			UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-			Version          float32             `json:"version"`
+			Name              string              `json:"name"`
+			ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+			RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+			Status            *string             `json:"status,omitempty"`
+			StatusDetails     *string             `json:"statusDetails,omitempty"`
+			Type              string              `json:"type"`
+			UpdatedAt         time.Time           `json:"updatedAt"`
+			UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+			Version           float32             `json:"version"`
 		} `json:"dynamicSecret"`
 		DynamicSecretId  openapi_types.UUID `json:"dynamicSecretId"`
 		ExpireAt         time.Time          `json:"expireAt"`
@@ -155430,14 +160296,15 @@ type DeleteDynamicSecretResponse struct {
 				Key   string  `json:"key"`
 				Value *string `json:"value,omitempty"`
 			} `json:"metadata,omitempty"`
-			Name             string              `json:"name"`
-			ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-			Status           *string             `json:"status,omitempty"`
-			StatusDetails    *string             `json:"statusDetails,omitempty"`
-			Type             string              `json:"type"`
-			UpdatedAt        time.Time           `json:"updatedAt"`
-			UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-			Version          float32             `json:"version"`
+			Name              string              `json:"name"`
+			ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+			RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+			Status            *string             `json:"status,omitempty"`
+			StatusDetails     *string             `json:"statusDetails,omitempty"`
+			Type              string              `json:"type"`
+			UpdatedAt         time.Time           `json:"updatedAt"`
+			UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+			Version           float32             `json:"version"`
 		} `json:"dynamicSecret"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -155501,14 +160368,15 @@ func (r DeleteDynamicSecretResponse) GetJSON200() *struct {
 			Key   string  `json:"key"`
 			Value *string `json:"value,omitempty"`
 		} `json:"metadata,omitempty"`
-		Name             string              `json:"name"`
-		ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-		Status           *string             `json:"status,omitempty"`
-		StatusDetails    *string             `json:"statusDetails,omitempty"`
-		Type             string              `json:"type"`
-		UpdatedAt        time.Time           `json:"updatedAt"`
-		UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-		Version          float32             `json:"version"`
+		Name              string              `json:"name"`
+		ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+		RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+		Status            *string             `json:"status,omitempty"`
+		StatusDetails     *string             `json:"statusDetails,omitempty"`
+		Type              string              `json:"type"`
+		UpdatedAt         time.Time           `json:"updatedAt"`
+		UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+		Version           float32             `json:"version"`
 	} `json:"dynamicSecret"`
 } {
 	return r.JSON200
@@ -155624,14 +160492,15 @@ type GetDynamicSecretResponse struct {
 				Key   string  `json:"key"`
 				Value *string `json:"value,omitempty"`
 			} `json:"metadata,omitempty"`
-			Name             string              `json:"name"`
-			ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-			Status           *string             `json:"status,omitempty"`
-			StatusDetails    *string             `json:"statusDetails,omitempty"`
-			Type             string              `json:"type"`
-			UpdatedAt        time.Time           `json:"updatedAt"`
-			UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-			Version          float32             `json:"version"`
+			Name              string              `json:"name"`
+			ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+			RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+			Status            *string             `json:"status,omitempty"`
+			StatusDetails     *string             `json:"statusDetails,omitempty"`
+			Type              string              `json:"type"`
+			UpdatedAt         time.Time           `json:"updatedAt"`
+			UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+			Version           float32             `json:"version"`
 		} `json:"dynamicSecret"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -155696,14 +160565,15 @@ func (r GetDynamicSecretResponse) GetJSON200() *struct {
 			Key   string  `json:"key"`
 			Value *string `json:"value,omitempty"`
 		} `json:"metadata,omitempty"`
-		Name             string              `json:"name"`
-		ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-		Status           *string             `json:"status,omitempty"`
-		StatusDetails    *string             `json:"statusDetails,omitempty"`
-		Type             string              `json:"type"`
-		UpdatedAt        time.Time           `json:"updatedAt"`
-		UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-		Version          float32             `json:"version"`
+		Name              string              `json:"name"`
+		ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+		RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+		Status            *string             `json:"status,omitempty"`
+		StatusDetails     *string             `json:"statusDetails,omitempty"`
+		Type              string              `json:"type"`
+		UpdatedAt         time.Time           `json:"updatedAt"`
+		UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+		Version           float32             `json:"version"`
 	} `json:"dynamicSecret"`
 } {
 	return r.JSON200
@@ -155819,14 +160689,15 @@ type UpdateDynamicSecretResponse struct {
 				Key   string  `json:"key"`
 				Value *string `json:"value,omitempty"`
 			} `json:"metadata,omitempty"`
-			Name             string              `json:"name"`
-			ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-			Status           *string             `json:"status,omitempty"`
-			StatusDetails    *string             `json:"statusDetails,omitempty"`
-			Type             string              `json:"type"`
-			UpdatedAt        time.Time           `json:"updatedAt"`
-			UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-			Version          float32             `json:"version"`
+			Name              string              `json:"name"`
+			ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+			RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+			Status            *string             `json:"status,omitempty"`
+			StatusDetails     *string             `json:"statusDetails,omitempty"`
+			Type              string              `json:"type"`
+			UpdatedAt         time.Time           `json:"updatedAt"`
+			UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+			Version           float32             `json:"version"`
 		} `json:"dynamicSecret"`
 	}
 	// JSON400 the response for an HTTP 400 `application/json` response
@@ -155891,14 +160762,15 @@ func (r UpdateDynamicSecretResponse) GetJSON200() *struct {
 			Key   string  `json:"key"`
 			Value *string `json:"value,omitempty"`
 		} `json:"metadata,omitempty"`
-		Name             string              `json:"name"`
-		ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-		Status           *string             `json:"status,omitempty"`
-		StatusDetails    *string             `json:"statusDetails,omitempty"`
-		Type             string              `json:"type"`
-		UpdatedAt        time.Time           `json:"updatedAt"`
-		UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-		Version          float32             `json:"version"`
+		Name              string              `json:"name"`
+		ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+		RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+		Status            *string             `json:"status,omitempty"`
+		StatusDetails     *string             `json:"statusDetails,omitempty"`
+		Type              string              `json:"type"`
+		UpdatedAt         time.Time           `json:"updatedAt"`
+		UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+		Version           float32             `json:"version"`
 	} `json:"dynamicSecret"`
 } {
 	return r.JSON200
@@ -193013,6 +197885,7 @@ type ListAwsParameterStoreSecretSyncsResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -193135,6 +198008,7 @@ func (r ListAwsParameterStoreSecretSyncsResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -193308,6 +198182,7 @@ type CreateAwsParameterStoreSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -193430,6 +198305,7 @@ func (r CreateAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -193913,6 +198789,7 @@ type GetAwsParameterStoreSecretSyncByNameResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -194035,6 +198912,7 @@ func (r GetAwsParameterStoreSecretSyncByNameResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -194208,6 +199086,7 @@ type DeleteAwsParameterStoreSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -194330,6 +199209,7 @@ func (r DeleteAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -194503,6 +199383,7 @@ type GetAwsParameterStoreSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -194625,6 +199506,7 @@ func (r GetAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -194798,6 +199680,7 @@ type UpdateAwsParameterStoreSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -194920,6 +199803,7 @@ func (r UpdateAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -195093,6 +199977,7 @@ type ImportAwsParameterStoreSecretSyncSecretsResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -195215,6 +200100,7 @@ func (r ImportAwsParameterStoreSecretSyncSecretsResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -195388,6 +200274,7 @@ type RemoveAwsParameterStoreSecretSyncSecretsResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -195510,6 +200397,7 @@ func (r RemoveAwsParameterStoreSecretSyncSecretsResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -195683,6 +200571,7 @@ type SyncAwsParameterStoreSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -195805,6 +200694,7 @@ func (r SyncAwsParameterStoreSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -195972,6 +200862,7 @@ type ListAwsSecretsManagerSecretSyncsResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -196088,6 +200979,7 @@ func (r ListAwsSecretsManagerSecretSyncsResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -196255,6 +201147,7 @@ type CreateAwsSecretsManagerSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -196371,6 +201264,7 @@ func (r CreateAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -196848,6 +201742,7 @@ type GetAwsSecretsManagerSecretSyncByNameResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -196964,6 +201859,7 @@ func (r GetAwsSecretsManagerSecretSyncByNameResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -197131,6 +202027,7 @@ type DeleteAwsSecretsManagerSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -197247,6 +202144,7 @@ func (r DeleteAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -197414,6 +202312,7 @@ type GetAwsSecretsManagerSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -197530,6 +202429,7 @@ func (r GetAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -197697,6 +202597,7 @@ type UpdateAwsSecretsManagerSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -197813,6 +202714,7 @@ func (r UpdateAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -197980,6 +202882,7 @@ type ImportAwsSecretsManagerSecretSyncSecretsResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -198096,6 +202999,7 @@ func (r ImportAwsSecretsManagerSecretSyncSecretsResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -198263,6 +203167,7 @@ type RemoveAwsSecretsManagerSecretSyncSecretsResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -198379,6 +203284,7 @@ func (r RemoveAwsSecretsManagerSecretSyncSecretsResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -198546,6 +203452,7 @@ type SyncAwsSecretsManagerSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -198662,6 +203569,7 @@ func (r SyncAwsSecretsManagerSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -198838,6 +203746,7 @@ type CreateChefSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -198951,6 +203860,7 @@ func (r CreateChefSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -199106,6 +204016,7 @@ type ListGitHubSecretSyncsResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -199210,6 +204121,7 @@ func (r ListGitHubSecretSyncsResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -199365,6 +204277,7 @@ type CreateGitHubSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -199469,6 +204382,7 @@ func (r CreateGitHubSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -199934,6 +204848,7 @@ type GetGitHubSecretSyncByNameResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -200038,6 +204953,7 @@ func (r GetGitHubSecretSyncByNameResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -200193,6 +205109,7 @@ type DeleteGitHubSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -200297,6 +205214,7 @@ func (r DeleteGitHubSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -200452,6 +205370,7 @@ type GetGitHubSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -200556,6 +205475,7 @@ func (r GetGitHubSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -200711,6 +205631,7 @@ type UpdateGitHubSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -200815,6 +205736,7 @@ func (r UpdateGitHubSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -200970,6 +205892,7 @@ type ImportGitHubSecretSyncSecretsResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -201074,6 +205997,7 @@ func (r ImportGitHubSecretSyncSecretsResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -201229,6 +206153,7 @@ type RemoveGitHubSecretSyncSecretsResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -201333,6 +206258,7 @@ func (r RemoveGitHubSecretSyncSecretsResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -201488,6 +206414,7 @@ type SyncGitHubSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -201592,6 +206519,7 @@ func (r SyncGitHubSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -201756,6 +206684,7 @@ type CreateOciVaultSecretSyncResponse struct {
 			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 			Name              string              `json:"name"`
 			ProjectId         string              `json:"projectId"`
@@ -201869,6 +206798,7 @@ func (r CreateOciVaultSecretSyncResponse) GetJSON200() *struct {
 		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 		Name              string              `json:"name"`
 		ProjectId         string              `json:"projectId"`
@@ -201981,6 +206911,789 @@ func (r CreateOciVaultSecretSyncResponse) StatusCode() int {
 
 // ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
 func (r CreateOciVaultSecretSyncResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type CreateVercelSecretSyncResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		SecretSync struct {
+			Connection struct {
+				App  CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+				Id   openapi_types.UUID                                               `json:"id"`
+				Name string                                                           `json:"name"`
+			} `json:"connection"`
+			ConnectionId      openapi_types.UUID                                                     `json:"connectionId"`
+			CreatedAt         time.Time                                                              `json:"createdAt"`
+			Description       *string                                                                `json:"description,omitempty"`
+			Destination       CreateVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+			DestinationConfig CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+			Environment       *struct {
+				Id   openapi_types.UUID `json:"id"`
+				Name string             `json:"name"`
+				Slug string             `json:"slug"`
+			} `json:"environment"`
+			Folder *struct {
+				Id   string `json:"id"`
+				Path string `json:"path"`
+			} `json:"folder"`
+			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                openapi_types.UUID  `json:"id"`
+			ImportStatus      *string             `json:"importStatus,omitempty"`
+			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name              string              `json:"name"`
+			ProjectId         string              `json:"projectId"`
+			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+			// SyncOptions Optional parameters to modify how secrets are synced.
+			SyncOptions struct {
+				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+				InitialSyncBehavior CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+				// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+				KeySchema *string `json:"keySchema,omitempty"`
+			} `json:"syncOptions"`
+			SyncStatus *string   `json:"syncStatus,omitempty"`
+			UpdatedAt  time.Time `json:"updatedAt"`
+			Version    *float32  `json:"version,omitempty"`
+		} `json:"secretSync"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                         `json:"details,omitempty"`
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                              `json:"error"`
+		Message    interface{}                                         `json:"message,omitempty"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                              `json:"error"`
+		Message    string                                              `json:"message"`
+		ReqId      string                                              `json:"reqId"`
+		StatusCode CreateVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r CreateVercelSecretSyncResponse) GetJSON200() *struct {
+	SecretSync struct {
+		Connection struct {
+			App  CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+			Id   openapi_types.UUID                                               `json:"id"`
+			Name string                                                           `json:"name"`
+		} `json:"connection"`
+		ConnectionId      openapi_types.UUID                                                     `json:"connectionId"`
+		CreatedAt         time.Time                                                              `json:"createdAt"`
+		Description       *string                                                                `json:"description,omitempty"`
+		Destination       CreateVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+		DestinationConfig CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+		Environment       *struct {
+			Id   openapi_types.UUID `json:"id"`
+			Name string             `json:"name"`
+			Slug string             `json:"slug"`
+		} `json:"environment"`
+		Folder *struct {
+			Id   string `json:"id"`
+			Path string `json:"path"`
+		} `json:"folder"`
+		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                openapi_types.UUID  `json:"id"`
+		ImportStatus      *string             `json:"importStatus,omitempty"`
+		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name              string              `json:"name"`
+		ProjectId         string              `json:"projectId"`
+		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+		// SyncOptions Optional parameters to modify how secrets are synced.
+		SyncOptions struct {
+			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+			InitialSyncBehavior CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+			// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+			KeySchema *string `json:"keySchema,omitempty"`
+		} `json:"syncOptions"`
+		SyncStatus *string   `json:"syncStatus,omitempty"`
+		UpdatedAt  time.Time `json:"updatedAt"`
+		Version    *float32  `json:"version,omitempty"`
+	} `json:"secretSync"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r CreateVercelSecretSyncResponse) GetJSON400() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r CreateVercelSecretSyncResponse) GetJSON401() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r CreateVercelSecretSyncResponse) GetJSON403() *struct {
+	Details    interface{}                                         `json:"details,omitempty"`
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r CreateVercelSecretSyncResponse) GetJSON404() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r CreateVercelSecretSyncResponse) GetJSON422() *struct {
+	Error      string                                              `json:"error"`
+	Message    interface{}                                         `json:"message,omitempty"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r CreateVercelSecretSyncResponse) GetJSON500() *struct {
+	Error      string                                              `json:"error"`
+	Message    string                                              `json:"message"`
+	ReqId      string                                              `json:"reqId"`
+	StatusCode CreateVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r CreateVercelSecretSyncResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateVercelSecretSyncResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateVercelSecretSyncResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r CreateVercelSecretSyncResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type GetVercelSecretSyncResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		SecretSync struct {
+			Connection struct {
+				App  GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+				Id   openapi_types.UUID                                            `json:"id"`
+				Name string                                                        `json:"name"`
+			} `json:"connection"`
+			ConnectionId      openapi_types.UUID                                                  `json:"connectionId"`
+			CreatedAt         time.Time                                                           `json:"createdAt"`
+			Description       *string                                                             `json:"description,omitempty"`
+			Destination       GetVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+			DestinationConfig GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+			Environment       *struct {
+				Id   openapi_types.UUID `json:"id"`
+				Name string             `json:"name"`
+				Slug string             `json:"slug"`
+			} `json:"environment"`
+			Folder *struct {
+				Id   string `json:"id"`
+				Path string `json:"path"`
+			} `json:"folder"`
+			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                openapi_types.UUID  `json:"id"`
+			ImportStatus      *string             `json:"importStatus,omitempty"`
+			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name              string              `json:"name"`
+			ProjectId         string              `json:"projectId"`
+			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+			// SyncOptions Optional parameters to modify how secrets are synced.
+			SyncOptions struct {
+				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+				InitialSyncBehavior GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+				// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+				KeySchema *string `json:"keySchema,omitempty"`
+			} `json:"syncOptions"`
+			SyncStatus *string   `json:"syncStatus,omitempty"`
+			UpdatedAt  time.Time `json:"updatedAt"`
+			Version    *float32  `json:"version,omitempty"`
+		} `json:"secretSync"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                      `json:"details,omitempty"`
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                           `json:"error"`
+		Message    interface{}                                      `json:"message,omitempty"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                           `json:"error"`
+		Message    string                                           `json:"message"`
+		ReqId      string                                           `json:"reqId"`
+		StatusCode GetVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r GetVercelSecretSyncResponse) GetJSON200() *struct {
+	SecretSync struct {
+		Connection struct {
+			App  GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+			Id   openapi_types.UUID                                            `json:"id"`
+			Name string                                                        `json:"name"`
+		} `json:"connection"`
+		ConnectionId      openapi_types.UUID                                                  `json:"connectionId"`
+		CreatedAt         time.Time                                                           `json:"createdAt"`
+		Description       *string                                                             `json:"description,omitempty"`
+		Destination       GetVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+		DestinationConfig GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+		Environment       *struct {
+			Id   openapi_types.UUID `json:"id"`
+			Name string             `json:"name"`
+			Slug string             `json:"slug"`
+		} `json:"environment"`
+		Folder *struct {
+			Id   string `json:"id"`
+			Path string `json:"path"`
+		} `json:"folder"`
+		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                openapi_types.UUID  `json:"id"`
+		ImportStatus      *string             `json:"importStatus,omitempty"`
+		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name              string              `json:"name"`
+		ProjectId         string              `json:"projectId"`
+		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+		// SyncOptions Optional parameters to modify how secrets are synced.
+		SyncOptions struct {
+			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+			InitialSyncBehavior GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+			// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+			KeySchema *string `json:"keySchema,omitempty"`
+		} `json:"syncOptions"`
+		SyncStatus *string   `json:"syncStatus,omitempty"`
+		UpdatedAt  time.Time `json:"updatedAt"`
+		Version    *float32  `json:"version,omitempty"`
+	} `json:"secretSync"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r GetVercelSecretSyncResponse) GetJSON400() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r GetVercelSecretSyncResponse) GetJSON401() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r GetVercelSecretSyncResponse) GetJSON403() *struct {
+	Details    interface{}                                      `json:"details,omitempty"`
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r GetVercelSecretSyncResponse) GetJSON404() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r GetVercelSecretSyncResponse) GetJSON422() *struct {
+	Error      string                                           `json:"error"`
+	Message    interface{}                                      `json:"message,omitempty"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r GetVercelSecretSyncResponse) GetJSON500() *struct {
+	Error      string                                           `json:"error"`
+	Message    string                                           `json:"message"`
+	ReqId      string                                           `json:"reqId"`
+	StatusCode GetVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r GetVercelSecretSyncResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r GetVercelSecretSyncResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetVercelSecretSyncResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r GetVercelSecretSyncResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
+type SyncVercelSecretSyncResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		SecretSync struct {
+			Connection struct {
+				App  SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+				Id   openapi_types.UUID                                             `json:"id"`
+				Name string                                                         `json:"name"`
+			} `json:"connection"`
+			ConnectionId      openapi_types.UUID                                                   `json:"connectionId"`
+			CreatedAt         time.Time                                                            `json:"createdAt"`
+			Description       *string                                                              `json:"description,omitempty"`
+			Destination       SyncVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+			DestinationConfig SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+			Environment       *struct {
+				Id   openapi_types.UUID `json:"id"`
+				Name string             `json:"name"`
+				Slug string             `json:"slug"`
+			} `json:"environment"`
+			Folder *struct {
+				Id   string `json:"id"`
+				Path string `json:"path"`
+			} `json:"folder"`
+			FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+			Id                openapi_types.UUID  `json:"id"`
+			ImportStatus      *string             `json:"importStatus,omitempty"`
+			IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+			LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+			LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+			LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+			LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+			LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+			LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+			LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+			LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+			LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
+			LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+			Name              string              `json:"name"`
+			ProjectId         string              `json:"projectId"`
+			RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+			// SyncOptions Optional parameters to modify how secrets are synced.
+			SyncOptions struct {
+				// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+				DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+				// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+				IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+				// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+				InitialSyncBehavior SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+				// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+				KeySchema *string `json:"keySchema,omitempty"`
+			} `json:"syncOptions"`
+			SyncStatus *string   `json:"syncStatus,omitempty"`
+			UpdatedAt  time.Time `json:"updatedAt"`
+			Version    *float32  `json:"version,omitempty"`
+		} `json:"secretSync"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                                       `json:"details,omitempty"`
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                            `json:"error"`
+		Message    interface{}                                       `json:"message,omitempty"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                            `json:"error"`
+		Message    string                                            `json:"message"`
+		ReqId      string                                            `json:"reqId"`
+		StatusCode SyncVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r SyncVercelSecretSyncResponse) GetJSON200() *struct {
+	SecretSync struct {
+		Connection struct {
+			App  SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+			Id   openapi_types.UUID                                             `json:"id"`
+			Name string                                                         `json:"name"`
+		} `json:"connection"`
+		ConnectionId      openapi_types.UUID                                                   `json:"connectionId"`
+		CreatedAt         time.Time                                                            `json:"createdAt"`
+		Description       *string                                                              `json:"description,omitempty"`
+		Destination       SyncVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+		DestinationConfig SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+		Environment       *struct {
+			Id   openapi_types.UUID `json:"id"`
+			Name string             `json:"name"`
+			Slug string             `json:"slug"`
+		} `json:"environment"`
+		Folder *struct {
+			Id   string `json:"id"`
+			Path string `json:"path"`
+		} `json:"folder"`
+		FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+		Id                openapi_types.UUID  `json:"id"`
+		ImportStatus      *string             `json:"importStatus,omitempty"`
+		IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+		LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+		LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+		LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+		LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+		LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+		LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+		LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+		LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+		LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
+		LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+		Name              string              `json:"name"`
+		ProjectId         string              `json:"projectId"`
+		RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+		// SyncOptions Optional parameters to modify how secrets are synced.
+		SyncOptions struct {
+			// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+			DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+			// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+			IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+			// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+			InitialSyncBehavior SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+			// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+			KeySchema *string `json:"keySchema,omitempty"`
+		} `json:"syncOptions"`
+		SyncStatus *string   `json:"syncStatus,omitempty"`
+		UpdatedAt  time.Time `json:"updatedAt"`
+		Version    *float32  `json:"version,omitempty"`
+	} `json:"secretSync"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r SyncVercelSecretSyncResponse) GetJSON400() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r SyncVercelSecretSyncResponse) GetJSON401() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r SyncVercelSecretSyncResponse) GetJSON403() *struct {
+	Details    interface{}                                       `json:"details,omitempty"`
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r SyncVercelSecretSyncResponse) GetJSON404() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r SyncVercelSecretSyncResponse) GetJSON422() *struct {
+	Error      string                                            `json:"error"`
+	Message    interface{}                                       `json:"message,omitempty"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r SyncVercelSecretSyncResponse) GetJSON500() *struct {
+	Error      string                                            `json:"error"`
+	Message    string                                            `json:"message"`
+	ReqId      string                                            `json:"reqId"`
+	StatusCode SyncVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r SyncVercelSecretSyncResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r SyncVercelSecretSyncResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SyncVercelSecretSyncResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r SyncVercelSecretSyncResponse) ContentType() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Header.Get("Content-Type")
 	}
@@ -222440,6 +228153,175 @@ func (r DeleteServiceTokenResponse) ContentType() string {
 	return ""
 }
 
+type DeleteUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *struct {
+		User struct {
+			AuthMethods     *[]string          `json:"authMethods,omitempty"`
+			Email           *string            `json:"email,omitempty"`
+			FirstName       *string            `json:"firstName,omitempty"`
+			Id              openapi_types.UUID `json:"id"`
+			IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+			LastName        *string            `json:"lastName,omitempty"`
+			PublicKey       *string            `json:"publicKey,omitempty"`
+			Username        string             `json:"username"`
+		} `json:"user"`
+	}
+	// JSON400 the response for an HTTP 400 `application/json` response
+	JSON400 *struct {
+		Details    interface{}                             `json:"details,omitempty"`
+		Error      string                                  `json:"error"`
+		Message    string                                  `json:"message"`
+		ReqId      string                                  `json:"reqId"`
+		StatusCode DeleteUser400JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON401 the response for an HTTP 401 `application/json` response
+	JSON401 *struct {
+		Error      string                                  `json:"error"`
+		Message    string                                  `json:"message"`
+		ReqId      string                                  `json:"reqId"`
+		StatusCode DeleteUser401JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON403 the response for an HTTP 403 `application/json` response
+	JSON403 *struct {
+		Details    interface{}                             `json:"details,omitempty"`
+		Error      string                                  `json:"error"`
+		Message    string                                  `json:"message"`
+		ReqId      string                                  `json:"reqId"`
+		StatusCode DeleteUser403JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON404 the response for an HTTP 404 `application/json` response
+	JSON404 *struct {
+		Error      string                                  `json:"error"`
+		Message    string                                  `json:"message"`
+		ReqId      string                                  `json:"reqId"`
+		StatusCode DeleteUser404JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON422 the response for an HTTP 422 `application/json` response
+	JSON422 *struct {
+		Error      string                                  `json:"error"`
+		Message    interface{}                             `json:"message,omitempty"`
+		ReqId      string                                  `json:"reqId"`
+		StatusCode DeleteUser422JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+	// JSON500 the response for an HTTP 500 `application/json` response
+	JSON500 *struct {
+		Error      string                                  `json:"error"`
+		Message    string                                  `json:"message"`
+		ReqId      string                                  `json:"reqId"`
+		StatusCode DeleteUser500JSONResponseBodyStatusCode `json:"statusCode"`
+	}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r DeleteUserResponse) GetJSON200() *struct {
+	User struct {
+		AuthMethods     *[]string          `json:"authMethods,omitempty"`
+		Email           *string            `json:"email,omitempty"`
+		FirstName       *string            `json:"firstName,omitempty"`
+		Id              openapi_types.UUID `json:"id"`
+		IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+		LastName        *string            `json:"lastName,omitempty"`
+		PublicKey       *string            `json:"publicKey,omitempty"`
+		Username        string             `json:"username"`
+	} `json:"user"`
+} {
+	return r.JSON200
+}
+
+// GetJSON400 returns the response for an HTTP 400 `application/json` response
+func (r DeleteUserResponse) GetJSON400() *struct {
+	Details    interface{}                             `json:"details,omitempty"`
+	Error      string                                  `json:"error"`
+	Message    string                                  `json:"message"`
+	ReqId      string                                  `json:"reqId"`
+	StatusCode DeleteUser400JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON400
+}
+
+// GetJSON401 returns the response for an HTTP 401 `application/json` response
+func (r DeleteUserResponse) GetJSON401() *struct {
+	Error      string                                  `json:"error"`
+	Message    string                                  `json:"message"`
+	ReqId      string                                  `json:"reqId"`
+	StatusCode DeleteUser401JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON401
+}
+
+// GetJSON403 returns the response for an HTTP 403 `application/json` response
+func (r DeleteUserResponse) GetJSON403() *struct {
+	Details    interface{}                             `json:"details,omitempty"`
+	Error      string                                  `json:"error"`
+	Message    string                                  `json:"message"`
+	ReqId      string                                  `json:"reqId"`
+	StatusCode DeleteUser403JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON403
+}
+
+// GetJSON404 returns the response for an HTTP 404 `application/json` response
+func (r DeleteUserResponse) GetJSON404() *struct {
+	Error      string                                  `json:"error"`
+	Message    string                                  `json:"message"`
+	ReqId      string                                  `json:"reqId"`
+	StatusCode DeleteUser404JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON404
+}
+
+// GetJSON422 returns the response for an HTTP 422 `application/json` response
+func (r DeleteUserResponse) GetJSON422() *struct {
+	Error      string                                  `json:"error"`
+	Message    interface{}                             `json:"message,omitempty"`
+	ReqId      string                                  `json:"reqId"`
+	StatusCode DeleteUser422JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON422
+}
+
+// GetJSON500 returns the response for an HTTP 500 `application/json` response
+func (r DeleteUserResponse) GetJSON500() *struct {
+	Error      string                                  `json:"error"`
+	Message    string                                  `json:"message"`
+	ReqId      string                                  `json:"reqId"`
+	StatusCode DeleteUser500JSONResponseBodyStatusCode `json:"statusCode"`
+} {
+	return r.JSON500
+}
+
+// GetBody returns the raw response body bytes
+func (r DeleteUserResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteUserResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r DeleteUserResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type GetCurrentUserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -227621,6 +233503,58 @@ func (c *ClientWithResponses) UpdatePostgresAppConnectionWithResponse(ctx contex
 	return ParseUpdatePostgresAppConnectionResponse(rsp)
 }
 
+// CreateServiceNowAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/servicenow (the `CreateServiceNowAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a ServiceNow Connection.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateServiceNowAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateServiceNowAppConnectionResponse, error) {
+	rsp, err := c.CreateServiceNowAppConnectionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateServiceNowAppConnectionResponse(rsp)
+}
+
+// CreateServiceNowAppConnectionWithResponse performs a POST /api/v1/app-connections/servicenow (the `CreateServiceNowAppConnection` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create a ServiceNow Connection.
+func (c *ClientWithResponses) CreateServiceNowAppConnectionWithResponse(ctx context.Context, body CreateServiceNowAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateServiceNowAppConnectionResponse, error) {
+	rsp, err := c.CreateServiceNowAppConnection(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateServiceNowAppConnectionResponse(rsp)
+}
+
+// CreateVercelAppConnectionWithBodyWithResponse performs a POST /api/v1/app-connections/vercel (the `CreateVercelAppConnection` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a Vercel Connection.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateVercelAppConnectionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVercelAppConnectionResponse, error) {
+	rsp, err := c.CreateVercelAppConnectionWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateVercelAppConnectionResponse(rsp)
+}
+
+// CreateVercelAppConnectionWithResponse performs a POST /api/v1/app-connections/vercel (the `CreateVercelAppConnection` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create a Vercel Connection.
+func (c *ClientWithResponses) CreateVercelAppConnectionWithResponse(ctx context.Context, body CreateVercelAppConnectionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVercelAppConnectionResponse, error) {
+	rsp, err := c.CreateVercelAppConnection(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateVercelAppConnectionResponse(rsp)
+}
+
 // RefreshAuthTokenWithResponse performs a POST /api/v1/auth/token (the `RefreshAuthToken` operationId) request.
 //
 // Returns a wrapper object for the known response body format(s).
@@ -227850,6 +233784,32 @@ func (c *ClientWithResponses) ListProjectSecretsOverviewWithResponse(ctx context
 		return nil, err
 	}
 	return ParseListProjectSecretsOverviewResponse(rsp)
+}
+
+// HandleDelegatedApprovalCallbackWithBodyWithResponse performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request,
+// with any type of body and a specified content type.
+//
+// Receive a decision notification from a delegated approval system.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) HandleDelegatedApprovalCallbackWithBodyWithResponse(ctx context.Context, params *HandleDelegatedApprovalCallbackParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*HandleDelegatedApprovalCallbackResponse, error) {
+	rsp, err := c.HandleDelegatedApprovalCallbackWithBody(ctx, params, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseHandleDelegatedApprovalCallbackResponse(rsp)
+}
+
+// HandleDelegatedApprovalCallbackWithResponse performs a POST /api/v1/delegated-approvals/callback (the `HandleDelegatedApprovalCallback` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Receive a decision notification from a delegated approval system.
+func (c *ClientWithResponses) HandleDelegatedApprovalCallbackWithResponse(ctx context.Context, params *HandleDelegatedApprovalCallbackParams, body HandleDelegatedApprovalCallbackJSONRequestBody, reqEditors ...RequestEditorFn) (*HandleDelegatedApprovalCallbackResponse, error) {
+	rsp, err := c.HandleDelegatedApprovalCallback(ctx, params, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseHandleDelegatedApprovalCallbackResponse(rsp)
 }
 
 // ListDynamicSecretsWithResponse performs a GET /api/v1/dynamic-secrets (the `ListDynamicSecrets` operationId) request.
@@ -232075,6 +238035,58 @@ func (c *ClientWithResponses) CreateOciVaultSecretSyncWithResponse(ctx context.C
 	return ParseCreateOciVaultSecretSyncResponse(rsp)
 }
 
+// CreateVercelSecretSyncWithBodyWithResponse performs a POST /api/v1/secret-syncs/vercel (the `CreateVercelSecretSync` operationId) request,
+// with any type of body and a specified content type.
+//
+// Create a Vercel Sync for the specified project environment.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) CreateVercelSecretSyncWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVercelSecretSyncResponse, error) {
+	rsp, err := c.CreateVercelSecretSyncWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateVercelSecretSyncResponse(rsp)
+}
+
+// CreateVercelSecretSyncWithResponse performs a POST /api/v1/secret-syncs/vercel (the `CreateVercelSecretSync` operationId) request.
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Create a Vercel Sync for the specified project environment.
+func (c *ClientWithResponses) CreateVercelSecretSyncWithResponse(ctx context.Context, body CreateVercelSecretSyncJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVercelSecretSyncResponse, error) {
+	rsp, err := c.CreateVercelSecretSync(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateVercelSecretSyncResponse(rsp)
+}
+
+// GetVercelSecretSyncWithResponse performs a GET /api/v1/secret-syncs/vercel/{syncId} (the `GetVercelSecretSync` operationId) request.
+//
+// Get the specified Vercel Sync by ID.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) GetVercelSecretSyncWithResponse(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetVercelSecretSyncResponse, error) {
+	rsp, err := c.GetVercelSecretSync(ctx, syncId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetVercelSecretSyncResponse(rsp)
+}
+
+// SyncVercelSecretSyncWithResponse performs a POST /api/v1/secret-syncs/vercel/{syncId}/sync-secrets (the `SyncVercelSecretSync` operationId) request.
+//
+// Trigger a sync for the specified Vercel Sync.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) SyncVercelSecretSyncWithResponse(ctx context.Context, syncId openapi_types.UUID, reqEditors ...RequestEditorFn) (*SyncVercelSecretSyncResponse, error) {
+	rsp, err := c.SyncVercelSecretSync(ctx, syncId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSyncVercelSecretSyncResponse(rsp)
+}
+
 // ListSecretValidationRulesWithResponse performs a GET /api/v1/secret-validation-rules (the `ListSecretValidationRules` operationId) request.
 //
 // List every Secret Validation Rule in the specified project, of any type.
@@ -233867,6 +239879,17 @@ func (c *ClientWithResponses) DeleteServiceTokenWithResponse(ctx context.Context
 	return ParseDeleteServiceTokenResponse(rsp)
 }
 
+// DeleteUserWithResponse performs a DELETE /api/v2/users/me (the `DeleteUser` operationId) request.
+//
+// Returns a wrapper object for the known response body format(s).
+func (c *ClientWithResponses) DeleteUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error) {
+	rsp, err := c.DeleteUser(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteUserResponse(rsp)
+}
+
 // GetCurrentUserWithResponse performs a GET /api/v2/users/me (the `GetCurrentUser` operationId) request.
 //
 // Retrieve the current user on the request.
@@ -234535,7 +240558,14 @@ func ParseListAccessApprovalPoliciesResponse(rsp *http.Response) (*ListAccessApp
 					Id   *string                                                             `json:"id,omitempty"`
 					Type ListAccessApprovalPolicies200JSONResponseBodyApprovalsBypassersType `json:"type"`
 				} `json:"bypassers"`
-				CreatedAt        time.Time          `json:"createdAt"`
+				CreatedAt         time.Time `json:"createdAt"`
+				DelegatedApproval *struct {
+					// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+					ConnectionId openapi_types.UUID `json:"connectionId"`
+
+					// Type The delegated approval system that reviews requests made against this policy.
+					Type ListAccessApprovalPolicies200JSONResponseBodyApprovalsDelegatedApprovalType `json:"type"`
+				} `json:"delegatedApproval,omitempty"`
 				DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
 				EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
 				EnvId            openapi_types.UUID `json:"envId"`
@@ -234659,14 +240689,21 @@ func ParseCreateAccessApprovalPolicyResponse(rsp *http.Response) (*CreateAccessA
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Approval struct {
-				AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-				Approvals                  *float32           `json:"approvals,omitempty"`
-				BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-				CreatedAt                  time.Time          `json:"createdAt"`
-				DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-				EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-				EnvId                      openapi_types.UUID `json:"envId"`
-				Environment                struct {
+				AllowedSelfApprovals       *bool     `json:"allowedSelfApprovals,omitempty"`
+				Approvals                  *float32  `json:"approvals,omitempty"`
+				BypassForMachineIdentities *bool     `json:"bypassForMachineIdentities,omitempty"`
+				CreatedAt                  time.Time `json:"createdAt"`
+				DelegatedApproval          *struct {
+					// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+					ConnectionId openapi_types.UUID `json:"connectionId"`
+
+					// Type The delegated approval system that reviews requests made against this policy.
+					Type CreateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+				} `json:"delegatedApproval,omitempty"`
+				DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
+				EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
+				EnvId            openapi_types.UUID `json:"envId"`
+				Environment      struct {
 					Id   string `json:"id"`
 					Name string `json:"name"`
 					Slug string `json:"slug"`
@@ -234886,14 +240923,21 @@ func ParseDeleteAccessApprovalPolicyResponse(rsp *http.Response) (*DeleteAccessA
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Approval struct {
-				AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-				Approvals                  *float32           `json:"approvals,omitempty"`
-				BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-				CreatedAt                  time.Time          `json:"createdAt"`
-				DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-				EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-				EnvId                      openapi_types.UUID `json:"envId"`
-				Environment                struct {
+				AllowedSelfApprovals       *bool     `json:"allowedSelfApprovals,omitempty"`
+				Approvals                  *float32  `json:"approvals,omitempty"`
+				BypassForMachineIdentities *bool     `json:"bypassForMachineIdentities,omitempty"`
+				CreatedAt                  time.Time `json:"createdAt"`
+				DelegatedApproval          *struct {
+					// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+					ConnectionId openapi_types.UUID `json:"connectionId"`
+
+					// Type The delegated approval system that reviews requests made against this policy.
+					Type DeleteAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+				} `json:"delegatedApproval,omitempty"`
+				DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
+				EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
+				EnvId            openapi_types.UUID `json:"envId"`
+				Environment      struct {
 					Id   string `json:"id"`
 					Name string `json:"name"`
 					Slug string `json:"slug"`
@@ -235026,7 +241070,14 @@ func ParseGetAccessApprovalPolicyResponse(rsp *http.Response) (*GetAccessApprova
 					Name *string                                                         `json:"name,omitempty"`
 					Type GetAccessApprovalPolicy200JSONResponseBodyApprovalBypassersType `json:"type"`
 				} `json:"bypassers,omitempty"`
-				CreatedAt        time.Time          `json:"createdAt"`
+				CreatedAt         time.Time `json:"createdAt"`
+				DelegatedApproval *struct {
+					// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+					ConnectionId openapi_types.UUID `json:"connectionId"`
+
+					// Type The delegated approval system that reviews requests made against this policy.
+					Type GetAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+				} `json:"delegatedApproval,omitempty"`
 				DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
 				EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
 				EnvId            openapi_types.UUID `json:"envId"`
@@ -235150,14 +241201,21 @@ func ParseUpdateAccessApprovalPolicyResponse(rsp *http.Response) (*UpdateAccessA
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest struct {
 			Approval struct {
-				AllowedSelfApprovals       *bool              `json:"allowedSelfApprovals,omitempty"`
-				Approvals                  *float32           `json:"approvals,omitempty"`
-				BypassForMachineIdentities *bool              `json:"bypassForMachineIdentities,omitempty"`
-				CreatedAt                  time.Time          `json:"createdAt"`
-				DeletedAt                  *time.Time         `json:"deletedAt,omitempty"`
-				EnforcementLevel           *string            `json:"enforcementLevel,omitempty"`
-				EnvId                      openapi_types.UUID `json:"envId"`
-				Environment                struct {
+				AllowedSelfApprovals       *bool     `json:"allowedSelfApprovals,omitempty"`
+				Approvals                  *float32  `json:"approvals,omitempty"`
+				BypassForMachineIdentities *bool     `json:"bypassForMachineIdentities,omitempty"`
+				CreatedAt                  time.Time `json:"createdAt"`
+				DelegatedApproval          *struct {
+					// ConnectionId The ID of the App Connection used to reach the delegated approval system.
+					ConnectionId openapi_types.UUID `json:"connectionId"`
+
+					// Type The delegated approval system that reviews requests made against this policy.
+					Type UpdateAccessApprovalPolicy200JSONResponseBodyApprovalDelegatedApprovalType `json:"type"`
+				} `json:"delegatedApproval,omitempty"`
+				DeletedAt        *time.Time         `json:"deletedAt,omitempty"`
+				EnforcementLevel *string            `json:"enforcementLevel,omitempty"`
+				EnvId            openapi_types.UUID `json:"envId"`
+				Environment      struct {
 					Id   string `json:"id"`
 					Name string `json:"name"`
 					Slug string `json:"slug"`
@@ -235283,19 +241341,29 @@ func ParseListAccessApprovalRequestsResponse(rsp *http.Response) (*ListAccessApp
 					UserId    string  `json:"userId"`
 					Username  string  `json:"username"`
 				} `json:"approvedByUser"`
-				ApprovedByUserId *openapi_types.UUID `json:"approvedByUserId,omitempty"`
-				BypassReason     *string             `json:"bypassReason,omitempty"`
-				CreatedAt        time.Time           `json:"createdAt"`
-				EditNote         *string             `json:"editNote,omitempty"`
-				EditedByUserId   *openapi_types.UUID `json:"editedByUserId,omitempty"`
-				EnvironmentName  string              `json:"environmentName"`
-				ExpiresAt        *time.Time          `json:"expiresAt,omitempty"`
-				Id               openapi_types.UUID  `json:"id"`
-				IsApproved       bool                `json:"isApproved"`
-				IsTemporary      bool                `json:"isTemporary"`
-				Note             *string             `json:"note,omitempty"`
-				Permissions      interface{}         `json:"permissions,omitempty"`
-				Policy           struct {
+				ApprovedByUserId  *openapi_types.UUID `json:"approvedByUserId,omitempty"`
+				BypassReason      *string             `json:"bypassReason,omitempty"`
+				CreatedAt         time.Time           `json:"createdAt"`
+				DelegatedApproval *struct {
+					// Provider How the delegated approval system identifies this request to its own users, when it reported that.
+					Provider *ListAccessApprovalRequests200JSONResponseBody_Requests_DelegatedApproval_Provider `json:"provider"`
+
+					// Status Where the request stands in the delegated approval system that reviews it.
+					Status ListAccessApprovalRequests200JSONResponseBodyRequestsDelegatedApprovalStatus `json:"status"`
+
+					// StatusReason Why the request is not progressing in, or could not be completed by, the delegated approval system, when that is the case.
+					StatusReason *string `json:"statusReason"`
+				} `json:"delegatedApproval,omitempty"`
+				EditNote        *string             `json:"editNote,omitempty"`
+				EditedByUserId  *openapi_types.UUID `json:"editedByUserId,omitempty"`
+				EnvironmentName string              `json:"environmentName"`
+				ExpiresAt       *time.Time          `json:"expiresAt,omitempty"`
+				Id              openapi_types.UUID  `json:"id"`
+				IsApproved      bool                `json:"isApproved"`
+				IsTemporary     bool                `json:"isTemporary"`
+				Note            *string             `json:"note,omitempty"`
+				Permissions     interface{}         `json:"permissions,omitempty"`
+				Policy          struct {
 					AllowedSelfApprovals bool    `json:"allowedSelfApprovals"`
 					Approvals            float32 `json:"approvals"`
 					Approvers            []struct {
@@ -235306,7 +241374,11 @@ func ParseListAccessApprovalRequestsResponse(rsp *http.Response) (*ListAccessApp
 						UserId                *string  `json:"userId,omitempty"`
 						Username              *string  `json:"username,omitempty"`
 					} `json:"approvers"`
-					Bypassers             []string   `json:"bypassers"`
+					Bypassers         []string `json:"bypassers"`
+					DelegatedApproval *struct {
+						// Type The delegated approval system that reviews requests made against this policy.
+						Type ListAccessApprovalRequests200JSONResponseBodyRequestsPolicyDelegatedApprovalType `json:"type"`
+					} `json:"delegatedApproval,omitempty"`
 					DeletedAt             *time.Time `json:"deletedAt,omitempty"`
 					EnforcementLevel      string     `json:"enforcementLevel"`
 					EnvId                 string     `json:"envId"`
@@ -238845,6 +244917,210 @@ func ParseUpdatePostgresAppConnectionResponse(rsp *http.Response) (*UpdatePostgr
 	return response, nil
 }
 
+// ParseCreateServiceNowAppConnectionResponse parses an HTTP response from a CreateServiceNowAppConnectionWithResponse call
+func ParseCreateServiceNowAppConnectionResponse(rsp *http.Response) (*CreateServiceNowAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateServiceNowAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection CreateServiceNowAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                `json:"details,omitempty"`
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateServiceNowAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateServiceNowAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                `json:"details,omitempty"`
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateServiceNowAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateServiceNowAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    interface{}                                                `json:"message,omitempty"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateServiceNowAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                     `json:"error"`
+			Message    string                                                     `json:"message"`
+			ReqId      string                                                     `json:"reqId"`
+			StatusCode CreateServiceNowAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateVercelAppConnectionResponse parses an HTTP response from a CreateVercelAppConnectionWithResponse call
+func ParseCreateVercelAppConnectionResponse(rsp *http.Response) (*CreateVercelAppConnectionResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateVercelAppConnectionResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			AppConnection CreateVercelAppConnection200JSONResponseBody_AppConnection `json:"appConnection"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateVercelAppConnection400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateVercelAppConnection401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                            `json:"details,omitempty"`
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateVercelAppConnection403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateVercelAppConnection404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    interface{}                                            `json:"message,omitempty"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateVercelAppConnection422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                 `json:"error"`
+			Message    string                                                 `json:"message"`
+			ReqId      string                                                 `json:"reqId"`
+			StatusCode CreateVercelAppConnection500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseRefreshAuthTokenResponse parses an HTTP response from a RefreshAuthTokenWithResponse call
 func ParseRefreshAuthTokenResponse(rsp *http.Response) (*RefreshAuthTokenResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -240418,15 +246694,16 @@ func ParseDeepSearchSecretsResponse(rsp *http.Response) (*DeepSearchSecretsRespo
 					Key   string  `json:"key"`
 					Value *string `json:"value,omitempty"`
 				} `json:"metadata,omitempty"`
-				Name             string              `json:"name"`
-				Path             string              `json:"path"`
-				ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-				Status           *string             `json:"status,omitempty"`
-				StatusDetails    *string             `json:"statusDetails,omitempty"`
-				Type             string              `json:"type"`
-				UpdatedAt        time.Time           `json:"updatedAt"`
-				UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-				Version          float32             `json:"version"`
+				Name              string              `json:"name"`
+				Path              string              `json:"path"`
+				ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+				RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+				Status            *string             `json:"status,omitempty"`
+				StatusDetails     *string             `json:"statusDetails,omitempty"`
+				Type              string              `json:"type"`
+				UpdatedAt         time.Time           `json:"updatedAt"`
+				UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+				Version           float32             `json:"version"`
 			} `json:"dynamicSecrets,omitempty"`
 			Folders *[]struct {
 				CreatedAt          time.Time           `json:"createdAt"`
@@ -240601,14 +246878,15 @@ func ParseListProjectSecretsDetailsResponse(rsp *http.Response) (*ListProjectSec
 					Key   string  `json:"key"`
 					Value *string `json:"value,omitempty"`
 				} `json:"metadata,omitempty"`
-				Name             string              `json:"name"`
-				ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-				Status           *string             `json:"status,omitempty"`
-				StatusDetails    *string             `json:"statusDetails,omitempty"`
-				Type             string              `json:"type"`
-				UpdatedAt        time.Time           `json:"updatedAt"`
-				UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-				Version          float32             `json:"version"`
+				Name              string              `json:"name"`
+				ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+				RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+				Status            *string             `json:"status,omitempty"`
+				StatusDetails     *string             `json:"statusDetails,omitempty"`
+				Type              string              `json:"type"`
+				UpdatedAt         time.Time           `json:"updatedAt"`
+				UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+				Version           float32             `json:"version"`
 			} `json:"dynamicSecrets,omitempty"`
 			Folders *[]struct {
 				CreatedAt          time.Time           `json:"createdAt"`
@@ -240897,14 +247175,15 @@ func ParseListProjectSecretsOverviewResponse(rsp *http.Response) (*ListProjectSe
 					Key   string  `json:"key"`
 					Value *string `json:"value,omitempty"`
 				} `json:"metadata,omitempty"`
-				Name             string              `json:"name"`
-				ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-				Status           *string             `json:"status,omitempty"`
-				StatusDetails    *string             `json:"statusDetails,omitempty"`
-				Type             string              `json:"type"`
-				UpdatedAt        time.Time           `json:"updatedAt"`
-				UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-				Version          float32             `json:"version"`
+				Name              string              `json:"name"`
+				ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+				RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+				Status            *string             `json:"status,omitempty"`
+				StatusDetails     *string             `json:"statusDetails,omitempty"`
+				Type              string              `json:"type"`
+				UpdatedAt         time.Time           `json:"updatedAt"`
+				UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+				Version           float32             `json:"version"`
 			} `json:"dynamicSecrets,omitempty"`
 			Folders *[]struct {
 				CreatedAt          time.Time           `json:"createdAt"`
@@ -241169,6 +247448,108 @@ func ParseListProjectSecretsOverviewResponse(rsp *http.Response) (*ListProjectSe
 	return response, nil
 }
 
+// ParseHandleDelegatedApprovalCallbackResponse parses an HTTP response from a HandleDelegatedApprovalCallbackWithResponse call
+func ParseHandleDelegatedApprovalCallbackResponse(rsp *http.Response) (*HandleDelegatedApprovalCallbackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &HandleDelegatedApprovalCallbackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Message string `json:"message"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                                  `json:"details,omitempty"`
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode HandleDelegatedApprovalCallback400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode HandleDelegatedApprovalCallback401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                                  `json:"details,omitempty"`
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode HandleDelegatedApprovalCallback403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode HandleDelegatedApprovalCallback404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    interface{}                                                  `json:"message,omitempty"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode HandleDelegatedApprovalCallback422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                                       `json:"error"`
+			Message    string                                                       `json:"message"`
+			ReqId      string                                                       `json:"reqId"`
+			StatusCode HandleDelegatedApprovalCallback500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListDynamicSecretsResponse parses an HTTP response from a ListDynamicSecretsWithResponse call
 func ParseListDynamicSecretsResponse(rsp *http.Response) (*ListDynamicSecretsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -241198,14 +247579,15 @@ func ParseListDynamicSecretsResponse(rsp *http.Response) (*ListDynamicSecretsRes
 					Key   string  `json:"key"`
 					Value *string `json:"value,omitempty"`
 				} `json:"metadata,omitempty"`
-				Name             string              `json:"name"`
-				ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-				Status           *string             `json:"status,omitempty"`
-				StatusDetails    *string             `json:"statusDetails,omitempty"`
-				Type             string              `json:"type"`
-				UpdatedAt        time.Time           `json:"updatedAt"`
-				UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-				Version          float32             `json:"version"`
+				Name              string              `json:"name"`
+				ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+				RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+				Status            *string             `json:"status,omitempty"`
+				StatusDetails     *string             `json:"statusDetails,omitempty"`
+				Type              string              `json:"type"`
+				UpdatedAt         time.Time           `json:"updatedAt"`
+				UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+				Version           float32             `json:"version"`
 			} `json:"dynamicSecrets"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -241322,14 +247704,15 @@ func ParseCreateDynamicSecretResponse(rsp *http.Response) (*CreateDynamicSecretR
 					Key   string  `json:"key"`
 					Value *string `json:"value,omitempty"`
 				} `json:"metadata,omitempty"`
-				Name             string              `json:"name"`
-				ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-				Status           *string             `json:"status,omitempty"`
-				StatusDetails    *string             `json:"statusDetails,omitempty"`
-				Type             string              `json:"type"`
-				UpdatedAt        time.Time           `json:"updatedAt"`
-				UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-				Version          float32             `json:"version"`
+				Name              string              `json:"name"`
+				ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+				RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+				Status            *string             `json:"status,omitempty"`
+				StatusDetails     *string             `json:"statusDetails,omitempty"`
+				Type              string              `json:"type"`
+				UpdatedAt         time.Time           `json:"updatedAt"`
+				UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+				Version           float32             `json:"version"`
 			} `json:"dynamicSecret"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -241446,14 +247829,15 @@ func ParseCreateDynamicSecretLeaseResponse(rsp *http.Response) (*CreateDynamicSe
 					Key   string  `json:"key"`
 					Value *string `json:"value,omitempty"`
 				} `json:"metadata,omitempty"`
-				Name             string              `json:"name"`
-				ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-				Status           *string             `json:"status,omitempty"`
-				StatusDetails    *string             `json:"statusDetails,omitempty"`
-				Type             string              `json:"type"`
-				UpdatedAt        time.Time           `json:"updatedAt"`
-				UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-				Version          float32             `json:"version"`
+				Name              string              `json:"name"`
+				ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+				RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+				Status            *string             `json:"status,omitempty"`
+				StatusDetails     *string             `json:"statusDetails,omitempty"`
+				Type              string              `json:"type"`
+				UpdatedAt         time.Time           `json:"updatedAt"`
+				UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+				Version           float32             `json:"version"`
 			} `json:"dynamicSecret"`
 			Lease struct {
 				Config           interface{}        `json:"config,omitempty"`
@@ -241697,14 +248081,15 @@ func ParseGetDynamicSecretLeaseResponse(rsp *http.Response) (*GetDynamicSecretLe
 						Key   string  `json:"key"`
 						Value *string `json:"value,omitempty"`
 					} `json:"metadata,omitempty"`
-					Name             string              `json:"name"`
-					ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-					Status           *string             `json:"status,omitempty"`
-					StatusDetails    *string             `json:"statusDetails,omitempty"`
-					Type             string              `json:"type"`
-					UpdatedAt        time.Time           `json:"updatedAt"`
-					UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-					Version          float32             `json:"version"`
+					Name              string              `json:"name"`
+					ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+					RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+					Status            *string             `json:"status,omitempty"`
+					StatusDetails     *string             `json:"statusDetails,omitempty"`
+					Type              string              `json:"type"`
+					UpdatedAt         time.Time           `json:"updatedAt"`
+					UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+					Version           float32             `json:"version"`
 				} `json:"dynamicSecret"`
 				DynamicSecretId  openapi_types.UUID `json:"dynamicSecretId"`
 				ExpireAt         time.Time          `json:"expireAt"`
@@ -241942,14 +248327,15 @@ func ParseDeleteDynamicSecretResponse(rsp *http.Response) (*DeleteDynamicSecretR
 					Key   string  `json:"key"`
 					Value *string `json:"value,omitempty"`
 				} `json:"metadata,omitempty"`
-				Name             string              `json:"name"`
-				ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-				Status           *string             `json:"status,omitempty"`
-				StatusDetails    *string             `json:"statusDetails,omitempty"`
-				Type             string              `json:"type"`
-				UpdatedAt        time.Time           `json:"updatedAt"`
-				UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-				Version          float32             `json:"version"`
+				Name              string              `json:"name"`
+				ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+				RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+				Status            *string             `json:"status,omitempty"`
+				StatusDetails     *string             `json:"statusDetails,omitempty"`
+				Type              string              `json:"type"`
+				UpdatedAt         time.Time           `json:"updatedAt"`
+				UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+				Version           float32             `json:"version"`
 			} `json:"dynamicSecret"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -242066,14 +248452,15 @@ func ParseGetDynamicSecretResponse(rsp *http.Response) (*GetDynamicSecretRespons
 					Key   string  `json:"key"`
 					Value *string `json:"value,omitempty"`
 				} `json:"metadata,omitempty"`
-				Name             string              `json:"name"`
-				ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-				Status           *string             `json:"status,omitempty"`
-				StatusDetails    *string             `json:"statusDetails,omitempty"`
-				Type             string              `json:"type"`
-				UpdatedAt        time.Time           `json:"updatedAt"`
-				UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-				Version          float32             `json:"version"`
+				Name              string              `json:"name"`
+				ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+				RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+				Status            *string             `json:"status,omitempty"`
+				StatusDetails     *string             `json:"statusDetails,omitempty"`
+				Type              string              `json:"type"`
+				UpdatedAt         time.Time           `json:"updatedAt"`
+				UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+				Version           float32             `json:"version"`
 			} `json:"dynamicSecret"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -242190,14 +248577,15 @@ func ParseUpdateDynamicSecretResponse(rsp *http.Response) (*UpdateDynamicSecretR
 					Key   string  `json:"key"`
 					Value *string `json:"value,omitempty"`
 				} `json:"metadata,omitempty"`
-				Name             string              `json:"name"`
-				ProjectGatewayId *openapi_types.UUID `json:"projectGatewayId,omitempty"`
-				Status           *string             `json:"status,omitempty"`
-				StatusDetails    *string             `json:"statusDetails,omitempty"`
-				Type             string              `json:"type"`
-				UpdatedAt        time.Time           `json:"updatedAt"`
-				UsernameTemplate *string             `json:"usernameTemplate,omitempty"`
-				Version          float32             `json:"version"`
+				Name              string              `json:"name"`
+				ProjectGatewayId  *openapi_types.UUID `json:"projectGatewayId,omitempty"`
+				RevocationFailing *bool               `json:"revocationFailing,omitempty"`
+				Status            *string             `json:"status,omitempty"`
+				StatusDetails     *string             `json:"statusDetails,omitempty"`
+				Type              string              `json:"type"`
+				UpdatedAt         time.Time           `json:"updatedAt"`
+				UsernameTemplate  *string             `json:"usernameTemplate,omitempty"`
+				Version           float32             `json:"version"`
 			} `json:"dynamicSecret"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
@@ -266164,6 +272552,7 @@ func ParseListAwsParameterStoreSecretSyncsResponse(rsp *http.Response) (*ListAws
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -266338,6 +272727,7 @@ func ParseCreateAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*Create
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -266720,6 +273110,7 @@ func ParseGetAwsParameterStoreSecretSyncByNameResponse(rsp *http.Response) (*Get
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -266894,6 +273285,7 @@ func ParseDeleteAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*Delete
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -267068,6 +273460,7 @@ func ParseGetAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*GetAwsPar
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -267242,6 +273635,7 @@ func ParseUpdateAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*Update
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -267416,6 +273810,7 @@ func ParseImportAwsParameterStoreSecretSyncSecretsResponse(rsp *http.Response) (
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -267590,6 +273985,7 @@ func ParseRemoveAwsParameterStoreSecretSyncSecretsResponse(rsp *http.Response) (
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -267764,6 +274160,7 @@ func ParseSyncAwsParameterStoreSecretSyncResponse(rsp *http.Response) (*SyncAwsP
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -267932,6 +274329,7 @@ func ParseListAwsSecretsManagerSecretSyncsResponse(rsp *http.Response) (*ListAws
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -268100,6 +274498,7 @@ func ParseCreateAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*Create
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -268476,6 +274875,7 @@ func ParseGetAwsSecretsManagerSecretSyncByNameResponse(rsp *http.Response) (*Get
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -268644,6 +275044,7 @@ func ParseDeleteAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*Delete
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -268812,6 +275213,7 @@ func ParseGetAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*GetAwsSec
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -268980,6 +275382,7 @@ func ParseUpdateAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*Update
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -269148,6 +275551,7 @@ func ParseImportAwsSecretsManagerSecretSyncSecretsResponse(rsp *http.Response) (
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -269316,6 +275720,7 @@ func ParseRemoveAwsSecretsManagerSecretSyncSecretsResponse(rsp *http.Response) (
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -269484,6 +275889,7 @@ func ParseSyncAwsSecretsManagerSecretSyncResponse(rsp *http.Response) (*SyncAwsS
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -269661,6 +276067,7 @@ func ParseCreateChefSecretSyncResponse(rsp *http.Response) (*CreateChefSecretSyn
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -269817,6 +276224,7 @@ func ParseListGitHubSecretSyncsResponse(rsp *http.Response) (*ListGitHubSecretSy
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -269973,6 +276381,7 @@ func ParseCreateGitHubSecretSyncResponse(rsp *http.Response) (*CreateGitHubSecre
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -270337,6 +276746,7 @@ func ParseGetGitHubSecretSyncByNameResponse(rsp *http.Response) (*GetGitHubSecre
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -270493,6 +276903,7 @@ func ParseDeleteGitHubSecretSyncResponse(rsp *http.Response) (*DeleteGitHubSecre
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -270649,6 +277060,7 @@ func ParseGetGitHubSecretSyncResponse(rsp *http.Response) (*GetGitHubSecretSyncR
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -270805,6 +277217,7 @@ func ParseUpdateGitHubSecretSyncResponse(rsp *http.Response) (*UpdateGitHubSecre
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -270961,6 +277374,7 @@ func ParseImportGitHubSecretSyncSecretsResponse(rsp *http.Response) (*ImportGitH
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -271117,6 +277531,7 @@ func ParseRemoveGitHubSecretSyncSecretsResponse(rsp *http.Response) (*RemoveGitH
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -271273,6 +277688,7 @@ func ParseSyncGitHubSecretSyncResponse(rsp *http.Response) (*SyncGitHubSecretSyn
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -271438,6 +277854,7 @@ func ParseCreateOciVaultSecretSyncResponse(rsp *http.Response) (*CreateOciVaultS
 				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
 				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
 				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
 				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
 				Name              string              `json:"name"`
 				ProjectId         string              `json:"projectId"`
@@ -271535,6 +277952,477 @@ func ParseCreateOciVaultSecretSyncResponse(rsp *http.Response) (*CreateOciVaultS
 			Message    string                                                `json:"message"`
 			ReqId      string                                                `json:"reqId"`
 			StatusCode CreateOciVaultSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateVercelSecretSyncResponse parses an HTTP response from a CreateVercelSecretSyncWithResponse call
+func ParseCreateVercelSecretSyncResponse(rsp *http.Response) (*CreateVercelSecretSyncResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateVercelSecretSyncResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			SecretSync struct {
+				Connection struct {
+					App  CreateVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+					Id   openapi_types.UUID                                               `json:"id"`
+					Name string                                                           `json:"name"`
+				} `json:"connection"`
+				ConnectionId      openapi_types.UUID                                                     `json:"connectionId"`
+				CreatedAt         time.Time                                                              `json:"createdAt"`
+				Description       *string                                                                `json:"description,omitempty"`
+				Destination       CreateVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+				DestinationConfig CreateVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+				Environment       *struct {
+					Id   openapi_types.UUID `json:"id"`
+					Name string             `json:"name"`
+					Slug string             `json:"slug"`
+				} `json:"environment"`
+				Folder *struct {
+					Id   string `json:"id"`
+					Path string `json:"path"`
+				} `json:"folder"`
+				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                openapi_types.UUID  `json:"id"`
+				ImportStatus      *string             `json:"importStatus,omitempty"`
+				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name              string              `json:"name"`
+				ProjectId         string              `json:"projectId"`
+				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+				// SyncOptions Optional parameters to modify how secrets are synced.
+				SyncOptions struct {
+					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+					InitialSyncBehavior CreateVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+					// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+					KeySchema *string `json:"keySchema,omitempty"`
+				} `json:"syncOptions"`
+				SyncStatus *string   `json:"syncStatus,omitempty"`
+				UpdatedAt  time.Time `json:"updatedAt"`
+				Version    *float32  `json:"version,omitempty"`
+			} `json:"secretSync"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                         `json:"details,omitempty"`
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    interface{}                                         `json:"message,omitempty"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                              `json:"error"`
+			Message    string                                              `json:"message"`
+			ReqId      string                                              `json:"reqId"`
+			StatusCode CreateVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetVercelSecretSyncResponse parses an HTTP response from a GetVercelSecretSyncWithResponse call
+func ParseGetVercelSecretSyncResponse(rsp *http.Response) (*GetVercelSecretSyncResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetVercelSecretSyncResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			SecretSync struct {
+				Connection struct {
+					App  GetVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+					Id   openapi_types.UUID                                            `json:"id"`
+					Name string                                                        `json:"name"`
+				} `json:"connection"`
+				ConnectionId      openapi_types.UUID                                                  `json:"connectionId"`
+				CreatedAt         time.Time                                                           `json:"createdAt"`
+				Description       *string                                                             `json:"description,omitempty"`
+				Destination       GetVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+				DestinationConfig GetVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+				Environment       *struct {
+					Id   openapi_types.UUID `json:"id"`
+					Name string             `json:"name"`
+					Slug string             `json:"slug"`
+				} `json:"environment"`
+				Folder *struct {
+					Id   string `json:"id"`
+					Path string `json:"path"`
+				} `json:"folder"`
+				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                openapi_types.UUID  `json:"id"`
+				ImportStatus      *string             `json:"importStatus,omitempty"`
+				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name              string              `json:"name"`
+				ProjectId         string              `json:"projectId"`
+				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+				// SyncOptions Optional parameters to modify how secrets are synced.
+				SyncOptions struct {
+					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+					InitialSyncBehavior GetVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+					// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+					KeySchema *string `json:"keySchema,omitempty"`
+				} `json:"syncOptions"`
+				SyncStatus *string   `json:"syncStatus,omitempty"`
+				UpdatedAt  time.Time `json:"updatedAt"`
+				Version    *float32  `json:"version,omitempty"`
+			} `json:"secretSync"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                      `json:"details,omitempty"`
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    interface{}                                      `json:"message,omitempty"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                           `json:"error"`
+			Message    string                                           `json:"message"`
+			ReqId      string                                           `json:"reqId"`
+			StatusCode GetVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSyncVercelSecretSyncResponse parses an HTTP response from a SyncVercelSecretSyncWithResponse call
+func ParseSyncVercelSecretSyncResponse(rsp *http.Response) (*SyncVercelSecretSyncResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SyncVercelSecretSyncResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			SecretSync struct {
+				Connection struct {
+					App  SyncVercelSecretSync200JSONResponseBodySecretSyncConnectionApp `json:"app"`
+					Id   openapi_types.UUID                                             `json:"id"`
+					Name string                                                         `json:"name"`
+				} `json:"connection"`
+				ConnectionId      openapi_types.UUID                                                   `json:"connectionId"`
+				CreatedAt         time.Time                                                            `json:"createdAt"`
+				Description       *string                                                              `json:"description,omitempty"`
+				Destination       SyncVercelSecretSync200JSONResponseBodySecretSyncDestination         `json:"destination"`
+				DestinationConfig SyncVercelSecretSync200JSONResponseBody_SecretSync_DestinationConfig `json:"destinationConfig"`
+				Environment       *struct {
+					Id   openapi_types.UUID `json:"id"`
+					Name string             `json:"name"`
+					Slug string             `json:"slug"`
+				} `json:"environment"`
+				Folder *struct {
+					Id   string `json:"id"`
+					Path string `json:"path"`
+				} `json:"folder"`
+				FolderId          *openapi_types.UUID `json:"folderId,omitempty"`
+				Id                openapi_types.UUID  `json:"id"`
+				ImportStatus      *string             `json:"importStatus,omitempty"`
+				IsAutoSyncEnabled *bool               `json:"isAutoSyncEnabled,omitempty"`
+				LastImportJobId   *string             `json:"lastImportJobId,omitempty"`
+				LastImportMessage *string             `json:"lastImportMessage,omitempty"`
+				LastImportedAt    *time.Time          `json:"lastImportedAt,omitempty"`
+				LastRemoveJobId   *string             `json:"lastRemoveJobId,omitempty"`
+				LastRemoveMessage *string             `json:"lastRemoveMessage,omitempty"`
+				LastRemovedAt     *time.Time          `json:"lastRemovedAt,omitempty"`
+				LastSyncJobId     *string             `json:"lastSyncJobId,omitempty"`
+				LastSyncMessage   *string             `json:"lastSyncMessage,omitempty"`
+				LastSyncResult    *string             `json:"lastSyncResult,omitempty"`
+				LastSyncedAt      *time.Time          `json:"lastSyncedAt,omitempty"`
+				Name              string              `json:"name"`
+				ProjectId         string              `json:"projectId"`
+				RemoveStatus      *string             `json:"removeStatus,omitempty"`
+
+				// SyncOptions Optional parameters to modify how secrets are synced.
+				SyncOptions struct {
+					// DisableSecretDeletion Enable this flag to prevent removal of secrets from the Vercel destination when syncing.
+					DisableSecretDeletion *bool `json:"disableSecretDeletion,omitempty"`
+
+					// IncludeAllSubFolders Whether to sync secrets from folders beneath the source path as well.
+					IncludeAllSubFolders *bool `json:"includeAllSubFolders,omitempty"`
+
+					// InitialSyncBehavior Specify how Infisical should resolve the initial sync to the Vercel destination.
+					InitialSyncBehavior SyncVercelSecretSync200JSONResponseBodySecretSyncSyncOptionsInitialSyncBehavior `json:"initialSyncBehavior"`
+
+					// KeySchema Specify the format to use for structuring secret keys in the Vercel destination.
+					KeySchema *string `json:"keySchema,omitempty"`
+				} `json:"syncOptions"`
+				SyncStatus *string   `json:"syncStatus,omitempty"`
+				UpdatedAt  time.Time `json:"updatedAt"`
+				Version    *float32  `json:"version,omitempty"`
+			} `json:"secretSync"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncVercelSecretSync400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncVercelSecretSync401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                                       `json:"details,omitempty"`
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncVercelSecretSync403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncVercelSecretSync404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    interface{}                                       `json:"message,omitempty"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncVercelSecretSync422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                            `json:"error"`
+			Message    string                                            `json:"message"`
+			ReqId      string                                            `json:"reqId"`
+			StatusCode SyncVercelSecretSync500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
@@ -284378,6 +291266,117 @@ func ParseDeleteServiceTokenResponse(rsp *http.Response) (*DeleteServiceTokenRes
 			Message    string                                          `json:"message"`
 			ReqId      string                                          `json:"reqId"`
 			StatusCode DeleteServiceToken500JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteUserResponse parses an HTTP response from a DeleteUserWithResponse call
+func ParseDeleteUserResponse(rsp *http.Response) (*DeleteUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			User struct {
+				AuthMethods     *[]string          `json:"authMethods,omitempty"`
+				Email           *string            `json:"email,omitempty"`
+				FirstName       *string            `json:"firstName,omitempty"`
+				Id              openapi_types.UUID `json:"id"`
+				IsEmailVerified *bool              `json:"isEmailVerified,omitempty"`
+				LastName        *string            `json:"lastName,omitempty"`
+				PublicKey       *string            `json:"publicKey,omitempty"`
+				Username        string             `json:"username"`
+			} `json:"user"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest struct {
+			Details    interface{}                             `json:"details,omitempty"`
+			Error      string                                  `json:"error"`
+			Message    string                                  `json:"message"`
+			ReqId      string                                  `json:"reqId"`
+			StatusCode DeleteUser400JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest struct {
+			Error      string                                  `json:"error"`
+			Message    string                                  `json:"message"`
+			ReqId      string                                  `json:"reqId"`
+			StatusCode DeleteUser401JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 403:
+		var dest struct {
+			Details    interface{}                             `json:"details,omitempty"`
+			Error      string                                  `json:"error"`
+			Message    string                                  `json:"message"`
+			ReqId      string                                  `json:"reqId"`
+			StatusCode DeleteUser403JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON403 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Error      string                                  `json:"error"`
+			Message    string                                  `json:"message"`
+			ReqId      string                                  `json:"reqId"`
+			StatusCode DeleteUser404JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 422:
+		var dest struct {
+			Error      string                                  `json:"error"`
+			Message    interface{}                             `json:"message,omitempty"`
+			ReqId      string                                  `json:"reqId"`
+			StatusCode DeleteUser422JSONResponseBodyStatusCode `json:"statusCode"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON422 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest struct {
+			Error      string                                  `json:"error"`
+			Message    string                                  `json:"message"`
+			ReqId      string                                  `json:"reqId"`
+			StatusCode DeleteUser500JSONResponseBodyStatusCode `json:"statusCode"`
 		}
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err

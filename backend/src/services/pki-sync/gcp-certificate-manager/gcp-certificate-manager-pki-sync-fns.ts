@@ -3,9 +3,9 @@ import RE2 from "re2";
 
 import { TCertificateSyncs } from "@app/db/schemas";
 import { logger } from "@app/lib/logger";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 
 import { PkiSyncError } from "../pki-sync-errors";
 import { TCertificateMap, TPkiSyncSyncResult, TPkiSyncWithCredentials } from "../pki-sync-types";

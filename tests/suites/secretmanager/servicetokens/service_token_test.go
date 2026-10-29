@@ -1,8 +1,6 @@
-package access_test
+package servicetokens_test
 
 import (
-	"bytes"
-	"encoding/json"
 	"net/http"
 	"slices"
 	"testing"
@@ -11,64 +9,8 @@ import (
 	"github.com/Infisical/infisical/tests/fixture"
 	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
-	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/stretchr/testify/require"
 )
-
-type tokenScope struct {
-	Environment string `json:"environment"`
-	SecretPath  string `json:"secretPath"`
-}
-
-type tokenOptions struct {
-	scopes      []tokenScope
-	permissions []string
-	expiresIn   *int
-}
-
-// requestServiceToken asks for a service token as creator. The key material is
-// opaque to the server on a project that is not end-to-end encrypted.
-func requestServiceToken(t *testing.T, creator *harness.Principal, proj *fixture.Project, opts tokenOptions) *api.CreateServiceTokenResponse {
-	t.Helper()
-	raw, err := json.Marshal(map[string]any{
-		"name":         "token",
-		"workspaceId":  proj.ID,
-		"scopes":       opts.scopes,
-		"permissions":  opts.permissions,
-		"expiresIn":    opts.expiresIn,
-		"encryptedKey": "unused",
-		"iv":           "unused",
-		"tag":          "unused",
-	})
-	require.NoError(t, err)
-	res, err := creator.API.CreateServiceTokenWithBodyWithResponse(t.Context(), "application/json", bytes.NewReader(raw))
-	require.NoError(t, err)
-	return res
-}
-
-func newServiceToken(t *testing.T, proj *fixture.Project, opts tokenOptions) *api.ClientWithResponses {
-	t.Helper()
-	res := requestServiceToken(t, proj.Tenant().Admin, proj, opts)
-	require.NotNilf(t, res.JSON200, "creating a service token returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	return proj.Tenant().Client(t, res.JSON200.ServiceToken)
-}
-
-func serviceTokenCount(t *testing.T, proj *fixture.Project) int {
-	t.Helper()
-	res, err := proj.Tenant().Admin.API.ListProjectServiceTokensWithResponse(t.Context(), proj.ID)
-	require.NoError(t, err)
-	require.NotNilf(t, res.JSON200, "listing service tokens returned %d: %s", res.StatusCode(), apierr.Body(res.Body))
-	return len(res.JSON200.ServiceTokenData)
-}
-
-func valuesAt(t *testing.T, proj *fixture.Project, secretPath string) map[string]string {
-	t.Helper()
-	values := map[string]string{}
-	for _, s := range secretmanager.ListSecrets(t, proj, "dev", secretmanager.WithPath(secretPath)) {
-		values[s.Key] = s.Value
-	}
-	return values
-}
 
 func TestServiceToken_Scope(t *testing.T) {
 	t.Parallel()

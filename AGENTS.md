@@ -158,6 +158,97 @@ requests' evidence and claimed under an advisory lock in the auto-approve transa
 stored evidence holds data fetched from that service, so responses return only its outcome (`autoApproval`),
 never `autoApprovalEvidence`.
 
+A policy on the global approval system can hand its requests to a delegated approval system (ServiceNow)
+through `backend/src/services/delegated-approval/`, which owns the `delegated_approval_policies` and
+`delegated_approval_requests` rows. Secret access policies opt in with `delegatedApproval: { type, connectionId }`
+on create and update (`secret-access-approval-global-policy-bridge-service.ts`). A delegated policy has no
+Infisical approvers, cannot use break glass (soft enforcement or bypassers) or self approval, cannot be updated
+while it has pending requests, and a policy on the legacy approval system can never be delegated. Keep those
+rules in `assertDelegatedApprovalPolicyConstraints` when another policy type opts in. Only secret access
+policies may opt in today: `assertPolicyTypeSupportsDelegatedApproval` refuses the rest, and secret change
+policies return it as a 400 rather than dropping the field.
+
+Delivery to the delegated system is asynchronous and goes through the event outbox (see `backend/AGENTS.md`).
+`delegatedApprovalService.createRequest` writes the `delegated_approval_requests` row, stamped with the policy's
+provider as `providerType` so `(providerRequestId, providerType)` can be unique, and emits
+`delegated-approval.request.dispatch-requested` (`delegated-approval-events.ts`) in the caller's transaction, so
+the dispatch is exactly as durable as the request; never enqueue it after commit. The
+`delegated-approval-dispatch` consumer (`delegated-approval/dispatch/delegated-approval-dispatch-consumer.ts`)
+calls the provider inline and moves the row `pending_dispatch` → `waiting_approval` (storing the provider's
+record id in `providerRequestId`) or `failed_dispatch` with a `statusReason` a user can read. A transient
+failure returns `Retry`, so the outbox backs off and tries again (up to `MAX_OUTBOX_ATTEMPTS`), and the reason
+text promises that retry. The outbox flags the last attempt (`TEvent.isFinalAttempt`), and a transient failure
+on it closes the request instead: the delegated row goes `failed` with a reason that says so, the approval
+request goes `cancelled`, and the consumer returns `Failed`. A terminal failure the consumer raises itself (an
+`UnrecoverableError`: SITE_URL unset, the app connection gone, the policy no longer delegated) stays
+`failed_dispatch` on every attempt, because an admin can fix the cause and resend. A user resends a
+`failed_dispatch` request with `POST /api/v1/access-approvals/requests/:requestId/retry-delegated-dispatch`. The
+product's bridge checks who may retry, and `delegatedApprovalService.retryDispatch` checks the request can be
+retried. A resend supersedes the event still in the outbox rather than running beside it: the row stores the
+live event id in `dispatchEventId`, and a resend writes a new random one (only while the row is
+`failed_dispatch`) and emits the event under it in one transaction. The consumer marks any event whose id no
+longer matches delivered without calling the provider or writing the row, so an older event's last attempt
+can never close a request the user resent, and concurrent resends call the provider once. A batch dispatches up to 10 different requests at once;
+events for one request stay serial. A second event for a request that was already delivered is marked delivered
+without calling the provider. A delegated request has
+no Infisical approvers, so `POST /api/v1/access-approvals/requests/:requestId/cancel-delegated-dispatch` is the only way to close
+one from Infisical: the requester, or anyone who can edit the policy, sets it `cancelled`, which is also how a
+policy blocked by pending requests is freed for editing. Every provider implements `TDelegatedApprovalProvider` against the same
+`TDelegatedApprovalDispatchInput` and registers in `DELEGATED_APPROVAL_PROVIDER_MAP`
+(`delegated-approval/providers/<name>/`); a new policy type adds an arm to `TDelegatedApprovalDispatchDetails` and a
+builder in `DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP` rather than branching in a provider. The consumer
+reads from the primary, never checks the license, and treats bullmq's `UnrecoverableError` as the terminal failure
+signal, returning `Failed` for it and `Retry` for anything else until the last attempt. The callback contract (token issuance now, the inbound route and approve / reject later) is its own
+module, `backend/src/services/delegated-approval-callback/`, so the delegated approval module never grows a
+callback branch. A request gets exactly one callback token for its whole life: it is random, prefixed `inf_ext_`,
+issued on the first dispatch attempt, and stored in `encryptedCallbackToken` under the SecretManager KMS key of
+the request's project (`getOrIssueCallbackToken` resolves the project from the delegated request itself, since
+the inbound route knows only that row) so every retry resends the same value. Never send a provider a token that
+differs from the one stored for the request; the provider keeps the first token it was given and cannot be told
+another, so a mismatch is unrecoverable. The provider calls `POST /api/v1/delegated-approvals/callback` (unauthenticated, IP rate limited)
+with the token in the `Infisical-Approval-Token` header and a body naming the event and the provider's record id;
+the body carries no decision, which a later worker reads back from the provider. The route finds the row by
+`providerRequestId` and checks the token. Only a callback that starts a read-back counts in `callbackAttempts`,
+so the limit bounds read-backs rather than repeats; on the sixth such callback it sets the row `failed` with a
+readable `statusReason` and cancels the attached approval request in the claim's transaction, so the policy is
+freed and the UI stops offering Cancel. That transaction locks the approval request before it claims, the same
+order the decision consumer and cancel take, or failing the request inside it would invert their lock order. A
+refused callback is never counted: the limit closes the request, so counting it would let anyone who knows the
+record id cancel the request, and the token is 256 random bits, so there is nothing to brute force. Every other
+refusal (no row for the record id, bad or missing token, request not `waiting_approval`)
+gets one neutral 403 while the reason goes to the log. An accepted callback only emits an outbox event, and
+only when it wins `claimDecisionRead`: a conditional update of `decisionReadRequestedAt`, in the emit's
+transaction, that one of any number of concurrent callbacks wins. A repeat while a read-back is still in
+flight gets the same 200, emits nothing and is not counted. The last read-back attempt clears
+`decisionReadRequestedAt`, so a callback after the outbox gives up claims immediately. A claim whose worker
+died before that write stays until it is older than `DELEGATED_APPROVAL_DECISION_READ_CLAIM_TTL_MS`
+(70 minutes), which is what lets a fresh notification start one then. The event's `type` is the body's event
+and its id is derived (uuid v5) from the delegated request id plus the attempt count. The
+`delegated-approval-decision` consumer (`backend/src/services/delegated-approval-decision/`, a thin outbox
+adapter over `delegatedApprovalDecisionService.applyDecision` that, like dispatch, reads up to 10 different
+requests at once and one request's events serially) then reads the decision back through the
+policy's app connection: `TDelegatedApprovalProvider.fetchDecision` returns `pending` or a decision with
+the permissions the provider holds, and the consumer answers `Retry` for `pending` (on the last attempt, `Failed`
+with the request left open, `decisionReadRequestedAt` cleared, and a `statusReason` saying Infisical stopped
+checking and the callback has to be sent again), compares the approved
+permissions with the ones it dispatched after both go through `normalizeDelegatedApprovalPermissions` (set
+comparison: padding, order, duplicates and case never count as a change), and finalizes in one transaction
+that locks the approval request, moves the delegated row `waiting_approval` → `approved` / `rejected`, and
+runs the policy type's `postApprovalTxRoutine` from `approvalResources`. A mismatch, a record for another
+request, or any other `UnrecoverableError` goes through `failDelegatedApprovalRequest`: the delegated row
+becomes `failed` with a readable `statusReason`, the approval request is cancelled, and nothing can retry
+it. A request whose requester was deleted (`requesterId` is set null) or is no longer a member of the
+project, directly or through a group (`membershipDAL.isUserProjectMember`), takes the same path before the
+decision is read back. The secret access `postApprovalTxRoutine` refuses a non-member too, on both approval
+paths: removing a member reaps only the privileges that already exist, so one written afterwards would take
+effect if the user were ever added back. Every outcome is audited as
+`ACCESS_APPROVAL_REQUEST_DELEGATED_DECISION` with the `PLATFORM` actor, and
+product notifications (the access request webhook) go through `decisionNotifiers`, never through the
+consumer itself. A new delegated policy type adds its `postApprovalTxRoutine` and decision notifier in
+`delegatedApprovalDecisionMapsFactory`, the same way dispatch details get a builder in
+`DELEGATED_APPROVAL_DISPATCH_DETAILS_BUILDER_MAP`. ServiceNow stamps an immutable `decision` on its record before it posts the callback, so
+the provider reads that field alone and ignores `state`.
+
 ### Object Storage
 
 New product files go to S3 through `backend/src/services/object-storage/`, not a product's own S3 client (PAM
@@ -208,7 +299,7 @@ When building frontend UI, follow [DESIGN.md](DESIGN.md) for the v3 design syste
 
 Before changing a shared frontend component's lifecycle, read the [shared component lifecycle ledger](frontend/src/components/COMPONENT_LIFECYCLE.md) for current deprecations, blockers, and replacement decisions.
 
-Pickers for entities a user may need to create first (app connections, gateways, and similar) must offer an inline "Create new X" row, gated on the create permission, so the user never has to leave the flow. Build them with the v3 `Combobox` and its `creation` prop, which renders that row; `Combobox` replaces both the deprecated `FilterableSelect` and `CreatableSelect`. For app connections, use `creation.mode = "dialog"` and have `renderForm` render `AppConnectionForm` with the app preset, selecting the new connection and calling `complete` in its `onComplete`, and route `onDismiss` and the form's cancel through `useDiscardChangesGuard` (see `CaInstallCertModal/useConnectionCreation.tsx`). A v2 `Modal` parent sits at `z-[60]`, above v3 overlays, so migrate it to the v3 `Dialog` when it hosts one (see `CaInstallCertModal/CaInstallCertModal.tsx`).
+Pickers for entities a user may need to create first (app connections, gateways, and similar) must offer an inline "Create new X" row, gated on the create permission, so the user never has to leave the flow. Build them with the v3 `Combobox` and its `creation` prop, which renders that row; `Combobox` replaces both the deprecated `FilterableSelect` and `CreatableSelect`. For app connections, use `creation.mode = "dialog"` and have `renderForm` render `AppConnectionForm` with the app preset, selecting the new connection and calling `complete` in its `onComplete`, and route `onDismiss` and the form's cancel through `useDiscardChangesGuard` (see `components/app-connections/useConnectionCreation.tsx`). A v2 `Modal` parent sits at `z-[60]`, above v3 overlays, so migrate it to the v3 `Dialog` when it hosts one (see `CaInstallCertModal/CaInstallCertModal.tsx`).
 
 ## Issue and PR Guidelines
 

@@ -7,6 +7,7 @@ import (
 	"github.com/Infisical/infisical/tests/clients/api"
 	"github.com/Infisical/infisical/tests/fakes/license"
 	"github.com/Infisical/infisical/tests/fixture"
+	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/Infisical/infisical/tests/internal/apierr"
 	"github.com/Infisical/infisical/tests/internal/spec"
@@ -449,5 +450,28 @@ func TestAccessApprovalPolicy_Delete(t *testing.T) {
 		removed, err := g.tn.Admin.API.DeleteEnvironmentWithResponse(t.Context(), g.proj.ID, envID, hard)
 		require.NoError(t, err)
 		require.Equalf(t, http.StatusOK, removed.StatusCode(), "deleting the environment returned %s", apierr.Body(removed.Body))
+	})
+
+	t.Run("should delete a folder the policy covers and keep the policy on its path", func(t *testing.T) {
+		t.Parallel()
+		spec.Why(t, `Today only secret change policies block a folder delete. An access policy matches
+			by path, not by folder, so it outlives the folder and guards a folder made again at the path.`)
+
+		// Setup
+		g := newGuarded(t)
+		folderID := secretmanager.FolderID(t, g.proj, "dev", "/", guardedPath[1:])
+
+		// Action
+		res, err := g.tn.Admin.API.DeleteSecretFolderWithResponse(t.Context(), folderID, api.DeleteSecretFolderJSONRequestBody{
+			ProjectId: g.proj.ID, Environment: "dev", Path: new("/"), ForceDelete: new(true),
+		})
+
+		// Assert
+		require.NoError(t, err)
+		require.Equalf(t, http.StatusOK, res.StatusCode(), "deleting the folder returned %s", apierr.Body(res.Body))
+		require.Equal(t, []string{g.policyID}, policyIDs(t, g.proj))
+		policy, status := getPolicy(t, g.proj, g.policyID)
+		require.Equal(t, http.StatusOK, status)
+		require.Equal(t, guardedPath, policy.SecretPath)
 	})
 }

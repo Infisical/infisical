@@ -10,7 +10,7 @@ import AgentVaultSessionLogsCorsRule from "/snippets/app-connections/aws/agent-v
 
 A session log is a record of every request an agent makes during a [session](/documentation/platform/agent-vault/sessions): the method, host, path, status code, whether the proxy attached a credential, and for an [MCP server](/documentation/platform/agent-vault/mcp-servers), the tool the agent called. The [proxy](/documentation/platform/agent-vault/proxies) adds every request it receives to the session log, including requests to hosts that no [access bundle](/documentation/platform/agent-vault/access-bundles) covers.
 
-The proxy encrypts the records before they leave your network, and Infisical stores them for you. If you self-host Infisical, your server administrator [sets up where Infisical stores them](/self-hosting/guides/session-log-storage).
+The proxy encrypts the records before they leave your network, and Infisical stores them for you. If you self-host Infisical, session logs need an enterprise license, and your server administrator [sets up where Infisical stores them](/self-hosting/guides/session-log-storage).
 
 ## Viewing session logs
 
