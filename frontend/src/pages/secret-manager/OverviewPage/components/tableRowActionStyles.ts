@@ -32,3 +32,9 @@ export const TABLE_ROW_NAME_COLUMN_CLASS_NAME =
 export const TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME = `${TABLE_ROW_NAME_COLUMN_CLASS_NAME} pl-1`;
 
 export const TABLE_ROW_NAME_CELL_COLUMN_CLASS_NAME = TABLE_ROW_NAME_HEADER_COLUMN_CLASS_NAME;
+
+export const TABLE_BODY_ROW_FILTER_CLASS_NAME =
+  "[&>tr>td>*:not([data-table-row-filter-contents])]:transition-[filter] [&>tr>td>*:not([data-table-row-filter-contents])]:duration-200 motion-reduce:[&>tr>td>*:not([data-table-row-filter-contents])]:transition-none [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:transition-[filter] [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:duration-200 motion-reduce:[&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:transition-none [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:transition-[filter] [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:duration-200 motion-reduce:[&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:transition-none [@media(hover:hover)]:[&>tr:hover>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:!filter-none";
+
+export const TABLE_BODY_ROW_FILTER_DIMMED_CLASS_NAME =
+  "[&>tr>td>*:not([data-table-row-filter-contents])]:filter-[opacity(40%)] [&>tr>td>[data-table-row-filter-contents]>*:not([data-table-row-filter-positioner])]:filter-[opacity(40%)] [&>tr>td>[data-table-row-filter-contents]>[data-table-row-filter-positioner]>*]:filter-[opacity(40%)]";

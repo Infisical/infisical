@@ -56,6 +56,8 @@ import { useOverviewTelemetry } from "../../OverviewTelemetry";
 import { pendingActionBorderClass, pendingActionRowClass } from "../pendingActionStyles";
 import { EnvironmentStatus, ResourceEnvironmentStatusCell } from "../ResourceEnvironmentStatusCell";
 import {
+  TABLE_BODY_ROW_FILTER_CLASS_NAME,
+  TABLE_BODY_ROW_FILTER_DIMMED_CLASS_NAME,
   TABLE_ROW_ACTION_BAR_CLASS_NAME,
   TABLE_ROW_ACTION_BUTTON_CLASS_NAME,
   TABLE_ROW_ACTIVE_FILTER_CLASS_NAME,
@@ -169,6 +171,16 @@ export const SecretTableRow = ({
   const [isSecNameCopied, setIsSecNameCopied] = useToggle(false);
   const [creatingOverrideEnvs, setCreatingOverrideEnvs] = useState<Set<string>>(new Set());
   const [expandedTableSort, setExpandedTableSort] = useState<ExpandedTableSort | null>(null);
+  const [activeEnvSlugs, setActiveEnvSlugs] = useState<Set<string>>(new Set());
+
+  const setEnvActive = (slug: string, isActive: boolean) =>
+    setActiveEnvSlugs((prev) => {
+      if (prev.has(slug) === isActive) return prev;
+      const next = new Set(prev);
+      if (isActive) next.add(slug);
+      else next.delete(slug);
+      return next;
+    });
 
   const isSingleEnvView = environments.length === 1;
   const isRowActive = isSingleEnvView
@@ -728,7 +740,12 @@ export const SecretTableRow = ({
                     </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody
+                  className={twMerge(
+                    TABLE_BODY_ROW_FILTER_CLASS_NAME,
+                    activeEnvSlugs.size > 0 && TABLE_BODY_ROW_FILTER_DIMMED_CLASS_NAME
+                  )}
+                >
                   {sortedEnvironments.map(({ name, slug }) => {
                     const secret = getSecretByKey(slug, secretKey);
                     const isCreatable = !secret;
@@ -742,7 +759,12 @@ export const SecretTableRow = ({
 
                     return (
                       <Fragment key={`secret-expanded-${slug}-${secretKey}`}>
-                        <TableRow className="group hover:z-10">
+                        <TableRow
+                          className={twMerge(
+                            "group hover:z-10",
+                            activeEnvSlugs.has(slug) && TABLE_ROW_ACTIVE_FILTER_CLASS_NAME
+                          )}
+                        >
                           <TableCell
                             aria-hidden="true"
                             className={twMerge(
@@ -834,6 +856,7 @@ export const SecretTableRow = ({
                                 : undefined
                             }
                             onAccessInsightsUpgrade={onAccessInsightsUpgrade}
+                            onExpandedChange={(isActive) => setEnvActive(slug, isActive)}
                           />
                         </TableRow>
                         {showOverrideRow && (
