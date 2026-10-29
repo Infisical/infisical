@@ -164,6 +164,8 @@ export type TPkiInstallationCert = {
   status?: string | null;
   friendlyName?: string | null;
   fingerprintSha256?: string | null;
+  altNames?: string | null;
+  applicationId?: string | null;
 };
 
 export type TPkiDiscoveryScan = {

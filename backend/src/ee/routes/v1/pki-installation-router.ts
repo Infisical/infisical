@@ -109,6 +109,8 @@ export const registerPkiInstallationRouter = async (server: FastifyZodProvider) 
                 status: z.string().nullable().optional(),
                 friendlyName: z.string().nullable().optional(),
                 fingerprintSha256: z.string().nullable().optional(),
+                altNames: z.string().nullable().optional(),
+                applicationId: z.string().uuid().nullable().optional(),
                 subjectOrganization: z.string().nullable().optional(),
                 subjectOrganizationalUnit: z.string().nullable().optional(),
                 subjectCountry: z.string().nullable().optional(),

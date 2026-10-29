@@ -1,7 +1,10 @@
 /* eslint-disable no-nested-ternary */
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
+import { subject } from "@casl/ability";
 import { format } from "date-fns";
+import { BoxIcon, EyeIcon, FileOutputIcon, MoreHorizontalIcon } from "lucide-react";
 
+import { createNotification } from "@app/components/notifications";
 import { truncateSerialNumber } from "@app/components/utilities/serialNumberUtils";
 import {
   Badge,
@@ -10,10 +13,15 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  IconButton,
   RowLink,
   Table,
   TableBody,
@@ -22,10 +30,22 @@ import {
   TableHeader,
   TableRow
 } from "@app/components/v3";
-import { useProject } from "@app/context";
+import {
+  ProjectPermissionCertificateActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import { getInstancePinningLink } from "@app/helpers/project";
-import { TPkiInstallationCert } from "@app/hooks/api";
+import { TPkiInstallationCert, useDownloadCertPkcs12 } from "@app/hooks/api";
+import { usePopUp } from "@app/hooks/usePopUp";
 
+import { AssignCertificateToApplicationModal } from "../../CertificatesPage/components/AssignCertificateToApplicationModal";
+import { CertificateCertModal } from "../../CertificatesPage/components/CertificateCertModal";
+import {
+  CertificateExportModal,
+  ExportOptions
+} from "../../CertificatesPage/components/CertificateExportModal";
 import { getCertValidUntilBadgeDetails } from "../../CertificatesPage/components/CertificatesTable.utils";
 
 type Props = {
@@ -35,6 +55,50 @@ type Props = {
 
 export const InstallationCertificatesSection = ({ certificates, emptyState }: Props) => {
   const { currentProject } = useProject();
+  const { permission, hasProjectRole } = useProjectPermission();
+  const { mutateAsync: downloadCertPkcs12 } = useDownloadCertPkcs12();
+  const [assignTargetId, setAssignTargetId] = useState<string | null>(null);
+
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+    "certificateCert",
+    "certificateExport"
+  ] as const);
+
+  const handleCertificateExport = async (
+    exportFormat: "pem" | "pkcs12",
+    { certificateId, serialNumber }: { certificateId: string; serialNumber: string },
+    options?: ExportOptions
+  ) => {
+    if (exportFormat === "pem") {
+      handlePopUpOpen("certificateCert", { serialNumber });
+      return;
+    }
+
+    if (!options?.pkcs12?.password || !options?.pkcs12?.alias) {
+      createNotification({
+        text: "Password and alias are required for PKCS12 export",
+        type: "error"
+      });
+      return;
+    }
+
+    try {
+      await downloadCertPkcs12({
+        certificateId,
+        password: options.pkcs12.password,
+        alias: options.pkcs12.alias
+      });
+      createNotification({
+        text: "PKCS12 certificate downloaded successfully",
+        type: "success"
+      });
+    } catch (error: unknown) {
+      createNotification({
+        text: error instanceof Error ? error.message : "Failed to download PKCS12 certificate",
+        type: "error"
+      });
+    }
+  };
 
   return (
     <Card>
@@ -61,6 +125,7 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
                 <TableHead>Serial Number</TableHead>
                 <TableHead>Expires</TableHead>
                 <TableHead>Last Seen</TableHead>
+                <TableHead className="w-5" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -68,9 +133,18 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
                 const expiryDetails = cert.notAfter
                   ? getCertValidUntilBadgeDetails(cert.notAfter)
                   : null;
+                const canReadCertificate = permission.can(
+                  ProjectPermissionCertificateActions.Read,
+                  subject(ProjectPermissionSub.Certificates, {
+                    commonName: cert.commonName ?? undefined,
+                    altNames: cert.altNames?.split(",").map((s) => s.trim()),
+                    serialNumber: cert.serialNumber ?? undefined,
+                    friendlyName: cert.friendlyName ?? undefined
+                  })
+                );
 
                 return (
-                  <TableRow key={cert.id} linked>
+                  <TableRow key={cert.certificateId} linked>
                     <TableCell>
                       <RowLink
                         {...getInstancePinningLink(
@@ -100,6 +174,58 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
                         ? format(new Date(cert.lastSeenAt), "MMM dd, yyyy HH:mm")
                         : "-"}
                     </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <IconButton
+                            variant="ghost"
+                            size="xs"
+                            aria-label="Certificate options"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreHorizontalIcon />
+                          </IconButton>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" sideOffset={2}>
+                          <DropdownMenuItem
+                            isDisabled={!canReadCertificate}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePopUpOpen("certificateExport", {
+                                certificateId: cert.certificateId,
+                                serialNumber: cert.serialNumber
+                              });
+                            }}
+                          >
+                            <FileOutputIcon />
+                            Export Certificate
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            isDisabled={!canReadCertificate || !cert.serialNumber}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePopUpOpen("certificateCert", {
+                                serialNumber: cert.serialNumber
+                              });
+                            }}
+                          >
+                            <EyeIcon />
+                            View Details
+                          </DropdownMenuItem>
+                          {hasProjectRole("admin") && !cert.applicationId && (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAssignTargetId(cert.certificateId);
+                              }}
+                            >
+                              <BoxIcon />
+                              Assign to Application
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -107,6 +233,19 @@ export const InstallationCertificatesSection = ({ certificates, emptyState }: Pr
           </Table>
         )}
       </CardContent>
+      <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CertificateExportModal
+        popUp={popUp}
+        handlePopUpToggle={handlePopUpToggle}
+        onFormatSelected={handleCertificateExport}
+      />
+      {assignTargetId ? (
+        <AssignCertificateToApplicationModal
+          isOpen={Boolean(assignTargetId)}
+          onClose={() => setAssignTargetId(null)}
+          certificateId={assignTargetId}
+        />
+      ) : null}
     </Card>
   );
 };
