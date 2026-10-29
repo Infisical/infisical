@@ -13,8 +13,8 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 
-import { isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
+import { isCertChainValid } from "../certificate/certificate-fns";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
 import { getProjectKmsCertificateKeyId } from "../project/project-fns";

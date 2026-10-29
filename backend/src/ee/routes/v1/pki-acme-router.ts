@@ -61,7 +61,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
 
   server.addContentTypeParser("application/jose+json", { parseAs: "string" }, (_, body, done) => {
     try {
-      const strBody = body instanceof Buffer ? body.toString() : body;
+      const strBody = typeof body === "string" ? body : body.toString();
       if (!strBody) {
         done(null, undefined);
       }

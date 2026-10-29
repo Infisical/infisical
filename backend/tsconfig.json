@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "module": "commonjs",
+    "module": "esnext",
     "allowJs": true,
     "resolveJsonModule": true,
     "types": ["vitest/globals"],
@@ -14,18 +14,18 @@
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "moduleResolution": "Node",
+    "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "incremental": true,
     "tsBuildInfoFile": "./.cache/tsconfig.tsbuildinfo",
-    "baseUrl": ".",
     "paths": {
       "@app/*": ["./src/*"],
-      "@bdd_routes/*": ["./src/server/routes/bdd/*"]
+      "@bdd_routes/*": ["./src/server/routes/bdd/*"],
+      "e2e-test/*": ["./e2e-test/*"]
     },
     "jsx": "react-jsx"
   },
-  "include": ["src/**/*", "scripts/**/*", "e2e-test/**/*", "./.eslintrc.js"],
+  "include": ["src/**/*", "scripts/**/*", "e2e-test/**/*"],
   "exclude": ["node_modules"]
 }

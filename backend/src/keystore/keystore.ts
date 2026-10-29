@@ -82,6 +82,8 @@ export const KeyStorePrefixes = {
   SecretRotationLock: (rotationId: string) => `secret-rotation-v2-mutex-${rotationId}` as const,
   StripeConnectionRefreshLock: (connectionId: string) => `stripe-connection-refresh-mutex-${connectionId}` as const,
   PamAccountRotationLock: (accountId: string) => `pam-account-rotation-mutex-${accountId}` as const,
+  OidcIssuerKeyRotationLock: (orgId: string) => `oidc-issuer-key-rotation-mutex-${orgId}` as const,
+  OidcIssuerJwks: (orgId: string) => `oidc-issuer-jwks:${orgId}` as const,
   SecretScanningFullScanLease: (resourceId: string) => `secret-scanning-v2-full-scan-lease-${resourceId}` as const,
   SecretScanningDataSourceLock: (dataSourceId: string) =>
     `secret-scanning-v2-data-source-mutex-${dataSourceId}` as const,
@@ -325,7 +327,8 @@ export const KeyStoreTtls = {
   SecretReplicationSuccessInSeconds: 10,
   NativeIntegrationDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
   LegacyPkiDeprecationNoticeInSeconds: 3888000, // 45 days - outlives one monthly cycle
-  WorkerHeartbeatInSeconds: 300 // 5 minutes - tolerates several missed 60s beats
+  WorkerHeartbeatInSeconds: 300, // 5 minutes - tolerates several missed 60s beats
+  OidcIssuerJwksInSeconds: 600 // 10 minutes
 };
 
 type TDeleteItems = {

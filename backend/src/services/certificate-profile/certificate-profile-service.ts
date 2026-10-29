@@ -24,10 +24,6 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ConflictError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
-import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
-import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { CertStatus } from "../certificate/certificate-types";
 import type { TCaKeySourceServiceFactory } from "../certificate-authority/ca-key-source/ca-key-source-service";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
@@ -52,6 +48,10 @@ import { isSignatureAlgorithmCompatibleWithCaKey } from "../certificate-common/c
 import { TCertificatePolicyDALFactory } from "../certificate-policy/certificate-policy-dal";
 import { TCertificatePolicyServiceFactory } from "../certificate-policy/certificate-policy-service";
 import { TCertificateRequest } from "../certificate-policy/certificate-policy-types";
+import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
+import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
+import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { CertStatus } from "../certificate/certificate-types";
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import {

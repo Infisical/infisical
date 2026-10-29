@@ -160,9 +160,12 @@ const stripPropertyDeep = (schema: FreeformRecord, propertyName: string): Freefo
   if (result.items) {
     result.items = stripPropertyDeep(result.items, propertyName);
   }
-  if (Array.isArray(result.allOf)) result.allOf = result.allOf.map((s: FreeformRecord) => stripPropertyDeep(s, propertyName));
-  if (Array.isArray(result.oneOf)) result.oneOf = result.oneOf.map((s: FreeformRecord) => stripPropertyDeep(s, propertyName));
-  if (Array.isArray(result.anyOf)) result.anyOf = result.anyOf.map((s: FreeformRecord) => stripPropertyDeep(s, propertyName));
+  if (Array.isArray(result.allOf))
+    result.allOf = result.allOf.map((s: FreeformRecord) => stripPropertyDeep(s, propertyName));
+  if (Array.isArray(result.oneOf))
+    result.oneOf = result.oneOf.map((s: FreeformRecord) => stripPropertyDeep(s, propertyName));
+  if (Array.isArray(result.anyOf))
+    result.anyOf = result.anyOf.map((s: FreeformRecord) => stripPropertyDeep(s, propertyName));
 
   return result;
 };
@@ -185,7 +188,13 @@ function resolveSchema(maybeSchema: ZodAny | { properties: ZodAny }): Pick<ZodAn
   throw new Error(`Invalid schema passed: ${JSON.stringify(maybeSchema)}`);
 }
 
-export const createJsonSchemaTransform = ({ skipList, full = false }: { skipList: readonly string[]; full?: boolean }) => {
+export const createJsonSchemaTransform = ({
+  skipList,
+  full = false
+}: {
+  skipList: readonly string[];
+  full?: boolean;
+}) => {
   return ({ schema = {}, url }: { schema: Schema; url: string }) => {
     if (!schema) {
       return {
