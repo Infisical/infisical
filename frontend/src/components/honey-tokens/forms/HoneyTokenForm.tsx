@@ -14,9 +14,9 @@ import { TDashboardHoneyToken } from "@app/hooks/api/honeyTokens/types";
 import { ProjectEnv } from "@app/hooks/api/projects/types";
 import { fetchProjectSecrets } from "@app/hooks/api/secrets/queries";
 
-import { HoneyTokenMappingFields } from "./HoneyTokenMappingFields/HoneyTokenMappingFields";
 import { HoneyTokenConfigurationFields } from "./HoneyTokenConfigurationFields";
 import { HoneyTokenDetailsFields } from "./HoneyTokenDetailsFields";
+import { HoneyTokenMappingFields } from "./HoneyTokenMappingFields/HoneyTokenMappingFields";
 import { HoneyTokenFormSchema, THoneyTokenForm } from "./schemas";
 
 type Props = {

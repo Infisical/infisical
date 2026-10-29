@@ -200,8 +200,8 @@ export const CertificateRequestsSection = ({
     () =>
       Boolean(
         appliedFilters.status ||
-          appliedProfileIds.length ||
-          appliedMetadataFilters.some((m) => m.key.trim())
+        appliedProfileIds.length ||
+        appliedMetadataFilters.some((m) => m.key.trim())
       ),
     [appliedFilters.status, appliedProfileIds.length, appliedMetadataFilters]
   );

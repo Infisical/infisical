@@ -418,8 +418,8 @@ export const ServiceSheet = ({
 
   const hasAdvancedError = Boolean(
     errors.customHeaders ||
-      errors.substitutions ||
-      (isMcp && (errors.headerName || errors.headerPrefix))
+    errors.substitutions ||
+    (isMcp && (errors.headerName || errors.headerPrefix))
   );
 
   useEffect(() => {

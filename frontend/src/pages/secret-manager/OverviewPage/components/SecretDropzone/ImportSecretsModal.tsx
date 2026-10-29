@@ -265,7 +265,7 @@ const ImportSecretsContent = ({
   const hasNestedErrors = Boolean(nestedImport?.errors.length);
   const areAllFoldersCollapsed = Boolean(
     nestedImport?.folderPaths.length &&
-      nestedImport.folderPaths.every((path) => collapsedFolders.has(path))
+    nestedImport.folderPaths.every((path) => collapsedFolders.has(path))
   );
 
   const toggleFolder = (path: string) => {

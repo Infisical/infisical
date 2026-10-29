@@ -27,7 +27,6 @@ import {
 import { TPkiSyncFilters } from "@app/hooks/api/pkiSyncs/types";
 
 import { CertificateManagementModal } from "../CertificateManagementModal";
-import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import {
   buildOrderNameMap,
   getPkiSyncCertificateCap,
@@ -41,6 +40,7 @@ import {
   PkiSyncMatchedCertificatesTable,
   TMatchedCertificateRow
 } from "./PkiSyncMatchedCertificatesTable";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 const MATCHED_PAGE_SIZE = 20;
 

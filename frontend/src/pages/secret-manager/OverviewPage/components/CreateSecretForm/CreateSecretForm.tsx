@@ -288,7 +288,7 @@ export const CreateSecretForm = ({
   const hasValueChanges = Boolean(dirtyFields.secrets?.[0]?.value || hasEditedHiddenValue);
   const hasEditChanges = Boolean(
     hasValueChanges ||
-      Object.keys(dirtyFields.secrets?.[0] ?? {}).some((field) => field !== "value")
+    Object.keys(dirtyFields.secrets?.[0] ?? {}).some((field) => field !== "value")
   );
   const onEditDirtyChange = editSecret?.onDirtyChange;
 
@@ -1036,7 +1036,7 @@ export const CreateSecretForm = ({
                                             checked={switchField.value}
                                             disabled={Boolean(
                                               currentProject?.enforceEncryptedSecretManagerSecretMetadata ||
-                                                (editSecret && isEditReadOnly)
+                                              (editSecret && isEditReadOnly)
                                             )}
                                             onCheckedChange={switchField.onChange}
                                           />

@@ -128,8 +128,8 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   const [isEnterpriseEnabled, setIsEnterpriseEnabled] = useState(() =>
     Boolean(
       appConnection?.credentials &&
-        "host" in appConnection.credentials &&
-        appConnection.credentials.host
+      "host" in appConnection.credentials &&
+      appConnection.credentials.host
     )
   );
 

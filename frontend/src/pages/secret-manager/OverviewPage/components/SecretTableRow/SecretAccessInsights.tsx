@@ -721,19 +721,17 @@ export function SecretAccessInsights({ secretKey, environment, secretPath }: Pro
           inheritedActions: identityInheritedActions
         };
       }),
-      ...secretAccessList.groups.map(
-        (group): AccessRow => ({
-          type: "group",
-          entry: group,
-          linkTo: `${baseUrl}/groups/$groupId`,
-          linkParams: {
-            orgId: currentOrg.id,
-            projectId: currentProject.id,
-            groupId: group.id
-          },
-          canEdit: false
-        })
-      )
+      ...secretAccessList.groups.map((group): AccessRow => ({
+        type: "group",
+        entry: group,
+        linkTo: `${baseUrl}/groups/$groupId`,
+        linkParams: {
+          orgId: currentOrg.id,
+          projectId: currentProject.id,
+          groupId: group.id
+        },
+        canEdit: false
+      }))
     ];
   }, [secretAccessList, permission, currentOrg.id, currentProject, setEditingPrivilege]);
 

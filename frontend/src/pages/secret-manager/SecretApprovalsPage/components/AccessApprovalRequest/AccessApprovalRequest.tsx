@@ -106,13 +106,13 @@ import { EnforcementLevel } from "@app/hooks/api/policies/enums";
 import { queryClient } from "@app/hooks/api/reactQuery";
 import { ApprovalStatus, TWorkspaceUser } from "@app/hooks/api/types";
 
-import { RequestAccessModal } from "./components/RequestAccessModal";
-import { ReviewAccessRequestModal } from "./components/ReviewAccessModal";
 import {
   formatAccessDuration,
   getAccessRequestState,
   parseAccessDurationMs
 } from "./AccessApprovalRequest.utils";
+import { RequestAccessModal } from "./components/RequestAccessModal";
+import { ReviewAccessRequestModal } from "./components/ReviewAccessModal";
 
 enum AccessRequestOrderBy {
   Duration = "duration",
@@ -591,9 +591,9 @@ export const AccessApprovalRequest = ({
 
   const isFiltered = Boolean(
     search ||
-      validEnvFilter ||
-      validRequestedByFilter ||
-      (statusFilter === "close" && closedRequestFilters.length < CLOSED_REQUEST_FILTERS.length)
+    validEnvFilter ||
+    validRequestedByFilter ||
+    (statusFilter === "close" && closedRequestFilters.length < CLOSED_REQUEST_FILTERS.length)
   );
 
   useEffect(() => {

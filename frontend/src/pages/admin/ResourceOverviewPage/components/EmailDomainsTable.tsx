@@ -220,7 +220,7 @@ export const EmailDomainsTable = () => {
   const { mutateAsync: deleteEmailDomain } = useAdminDeleteEmailDomain();
 
   const handleDelete = async () => {
-    const { emailDomainId } = popUp?.deleteEmailDomain?.data as {
+    const { emailDomainId } = popUp.deleteEmailDomain.data as {
       emailDomainId: string;
     };
     await deleteEmailDomain(emailDomainId);
