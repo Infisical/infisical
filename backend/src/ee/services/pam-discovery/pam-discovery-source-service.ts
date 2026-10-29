@@ -18,6 +18,10 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
+import {
+  ROTATION_STATUS,
+  TPamAccountRotationServiceFactory
+} from "../pam-account-rotation/pam-account-rotation-service";
 import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
 import { TPamAccountServiceFactory } from "../pam-account/pam-account-service";
 import { PamAccountType, PamPostgresAuthMethod, PamProductRole, PamSshAuthMethod } from "../pam/pam-enums";
@@ -60,6 +64,7 @@ type TPamDiscoverySourceServiceFactoryDep = {
   pamAccountDependencyDAL: TPamAccountDependencyDALFactory;
   pamAccountDAL: Pick<TPamAccountDALFactory, "findById" | "findByIdWithDetails">;
   pamAccountService: Pick<TPamAccountServiceFactory, "create">;
+  pamAccountRotationService: Pick<TPamAccountRotationServiceFactory, "setRotationAccount" | "rotateNow">;
   permissionService: Pick<
     TPermissionServiceFactory,
     "getProjectPermission" | "getResourcePermission" | "getOrgPermission"
@@ -82,6 +87,8 @@ const MAX_SCAN_DURATION_MS = 45 * 60 * 1000;
 
 // bound concurrent discovered-account upserts so a large result set can't exhaust the DB connection pool
 const DISCOVERED_UPSERT_CONCURRENCY = 8;
+
+const IMPORT_ROTATION_CONCURRENCY = 5;
 
 const withScanTimeout = async <T>(scan: Promise<T>, controller: AbortController, timeoutMs: number): Promise<T> => {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -114,6 +121,7 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     pamAccountDependencyDAL,
     pamAccountDAL,
     pamAccountService,
+    pamAccountRotationService,
     permissionService,
     kmsService,
     gatewayV2Service,
@@ -735,7 +743,14 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     }));
   };
 
-  const importAccounts = async ({ projectId, sourceId, folderId, accounts, ...ctx }: TImportDiscoveredDTO) => {
+  const importAccounts = async ({
+    projectId,
+    sourceId,
+    folderId,
+    accounts,
+    auditLogInfo,
+    ...ctx
+  }: TImportDiscoveredDTO) => {
     await verifyAdmin(projectId, ctx);
     const source = await pamDiscoverySourceDAL.findById(sourceId);
     if (!source || source.projectId !== projectId) {
@@ -743,6 +758,48 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
     }
 
     const { decryptor } = await getProjectCipher(projectId);
+    const rotationLimit = pLimit(IMPORT_ROTATION_CONCURRENCY);
+
+    const rotateImported = async (accountId: string, accountType: string, rotationAccountId: string) => {
+      try {
+        await pamAccountRotationService.setRotationAccount({ accountId, rotationAccountId, projectId, ...ctx });
+      } catch (err) {
+        return {
+          rotationStatus: ROTATION_STATUS.Failed,
+          rotationMessage: err instanceof Error ? err.message : "Failed to set the rotation account"
+        };
+      }
+      await auditLogService.createAuditLog({
+        ...auditLogInfo,
+        orgId: ctx.actorOrgId,
+        projectId,
+        event: { type: EventType.PAM_ACCOUNT_SET_ROTATION_ACCOUNT, metadata: { accountId, rotationAccountId } }
+      });
+
+      const { rotationStatus, message } = await pamAccountRotationService
+        .rotateNow({ accountId, projectId, ...ctx })
+        .catch((err: unknown) => ({
+          rotationStatus: ROTATION_STATUS.Failed,
+          message: err instanceof Error ? err.message : "Rotation failed"
+        }));
+      await auditLogService.createAuditLog({
+        ...auditLogInfo,
+        orgId: ctx.actorOrgId,
+        projectId,
+        event: {
+          type: EventType.PAM_ACCOUNT_ROTATE_CREDENTIALS,
+          metadata: {
+            accountId,
+            accountType,
+            rotationStatus,
+            manual: true,
+            rotationAccountId,
+            ...(message ? { message } : {})
+          }
+        }
+      });
+      return { rotationAccountId, rotationStatus, rotationMessage: message };
+    };
 
     const results = await Promise.all(
       accounts.map(async (item) => {
@@ -785,11 +842,18 @@ export const pamDiscoverySourceServiceFactory = (deps: TPamDiscoverySourceServic
           // Flip this account's staged dependencies onto the managed account so they're rotation-eligible
           // immediately, without waiting for the next scan.
           await pamAccountDependencyDAL.backfillImported(discovered.id, account.id);
+
+          // runs after the backfill so the rotation's dependency sync pushes the new password to them
+          const { rotationAccountId } = item;
+          const rotation = rotationAccountId
+            ? await rotationLimit(() => rotateImported(account.id, discovered.accountType, rotationAccountId))
+            : {};
           return {
             discoveredAccountId: item.discoveredAccountId,
             status: PamDiscoveryImportStatus.Imported,
             accountId: account.id,
-            name: item.name ?? discovered.name
+            name: item.name ?? discovered.name,
+            ...rotation
           };
         } catch (err) {
           return {

@@ -1,3 +1,4 @@
+import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 
 import { PamAccountType } from "../pam/pam-enums";
@@ -103,7 +104,8 @@ export type TImportDiscoveredDTO = {
   projectId: string;
   sourceId: string;
   folderId: string;
-  accounts: { discoveredAccountId: string; templateId: string; name?: string }[];
+  accounts: { discoveredAccountId: string; templateId: string; name?: string; rotationAccountId?: string }[];
+  auditLogInfo: AuditLogInfo;
 } & TActorContext;
 
 export type TListAccountDependenciesDTO = {

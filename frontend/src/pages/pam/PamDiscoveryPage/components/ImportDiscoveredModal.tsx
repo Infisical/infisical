@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogFooter,
@@ -15,12 +16,17 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
+  SelectValue,
+  Toggle
 } from "@app/components/v3";
 import {
+  isRotatablePamAccountType,
+  PamAccountAccessibilityIssue,
   PamAccountType,
+  PamRotationStatus,
   TPamDiscoveredAccount,
   useImportPamDiscoveredAccounts,
+  useListPamAccounts,
   useListPamAccountTemplates,
   useListPamFolders,
   usePamAccountTypeMap
@@ -30,6 +36,7 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   sourceId: string;
+  credentialAccountId?: string;
   accounts: TPamDiscoveredAccount[];
   onImported: () => void;
 };
@@ -38,26 +45,53 @@ export const ImportDiscoveredModal = ({
   isOpen,
   onOpenChange,
   sourceId,
+  credentialAccountId,
   accounts,
   onImported
 }: Props) => {
   const [folderId, setFolderId] = useState("");
 
   const [templateByType, setTemplateByType] = useState<Record<string, string>>({});
+  const [rotateOnImport, setRotateOnImport] = useState(false);
+  // null is a cleared selection; a type with no entry falls back to the source's credential account
+  const [rotationAccountByType, setRotationAccountByType] = useState<Record<string, string | null>>(
+    {}
+  );
 
   const importAccounts = useImportPamDiscoveredAccounts();
   const { data: folders = [] } = useListPamFolders();
   const { data: templates = [] } = useListPamAccountTemplates();
+  const { data: pamAccounts = [] } = useListPamAccounts();
   const { map: accountTypeMap } = usePamAccountTypeMap();
 
   const accountTypes = useMemo(
     () => Array.from(new Set(accounts.map((a) => a.accountType))),
     [accounts]
   );
+  const rotatableTypes = accountTypes.filter(isRotatablePamAccountType);
+  const isRotating = rotateOnImport && rotatableTypes.length > 0;
+
+  // a rotation account authenticates with its own stored password, so one without it can't rotate
+  const rotationCandidates = (type: string) =>
+    pamAccounts.filter(
+      (a) =>
+        a.accountType === type &&
+        !a.accessibilityIssues.includes(PamAccountAccessibilityIssue.NoCredential)
+    );
+
+  const rotationAccountIdFor = (type: string) => {
+    const selected = rotationAccountByType[type];
+    if (selected !== undefined) return selected;
+    return rotationCandidates(type).some((a) => a.id === credentialAccountId)
+      ? (credentialAccountId ?? null)
+      : null;
+  };
 
   const reset = () => {
     setFolderId("");
     setTemplateByType({});
+    setRotateOnImport(false);
+    setRotationAccountByType({});
   };
 
   const handleImport = () => {
@@ -65,18 +99,32 @@ export const ImportDiscoveredModal = ({
       {
         sourceId,
         folderId,
-        accounts: accounts.map((a) => ({
-          discoveredAccountId: a.id,
-          templateId: templateByType[a.accountType]
-        }))
+        accounts: accounts.map((a) => {
+          const rotationAccountId =
+            isRotating && isRotatablePamAccountType(a.accountType)
+              ? rotationAccountIdFor(a.accountType)
+              : null;
+          return {
+            discoveredAccountId: a.id,
+            templateId: templateByType[a.accountType],
+            ...(rotationAccountId ? { rotationAccountId } : {})
+          };
+        })
       },
       {
         onSuccess: (results) => {
           const imported = results.filter((r) => r.status === "imported").length;
           const failed = results.length - imported;
+          const rotationFailures = results.filter(
+            (r) => r.rotationStatus === PamRotationStatus.Failed
+          );
+          const rotationNote =
+            rotationFailures.length > 0
+              ? `. ${rotationFailures.length} could not be rotated: ${rotationFailures[0].rotationMessage}`
+              : "";
           createNotification({
-            type: failed > 0 ? "info" : "success",
-            text: `Imported ${imported} account${imported === 1 ? "" : "s"}${failed > 0 ? `, ${failed} failed` : ""}`
+            type: failed > 0 || rotationFailures.length > 0 ? "info" : "success",
+            text: `Imported ${imported} account${imported === 1 ? "" : "s"}${failed > 0 ? `, ${failed} failed` : ""}${rotationNote}`
           });
           reset();
           onImported();
@@ -144,8 +192,55 @@ export const ImportDiscoveredModal = ({
             );
           })}
 
+          {rotatableTypes.length > 0 && (
+            <Field>
+              <div className="flex items-center justify-between gap-4">
+                <FieldLabel htmlFor="rotate-on-import" className="mb-0">
+                  Rotate account passwords on import
+                </FieldLabel>
+                <Toggle
+                  id="rotate-on-import"
+                  variant="pam"
+                  checked={rotateOnImport}
+                  onCheckedChange={setRotateOnImport}
+                />
+              </div>
+            </Field>
+          )}
+
+          {isRotating &&
+            rotatableTypes.map((type) => {
+              const typeName = accountTypeMap[type as PamAccountType]?.name ?? type;
+              const candidates = rotationCandidates(type);
+              const selectedId = rotationAccountIdFor(type);
+              return (
+                <Field key={`rotation-${type}`}>
+                  <FieldLabel htmlFor={`rotation-account-${type}`}>
+                    {typeName} Rotation Account
+                  </FieldLabel>
+                  <FieldContent>
+                    <Combobox
+                      id={`rotation-account-${type}`}
+                      value={candidates.find((a) => a.id === selectedId) ?? null}
+                      onValueChange={(val) =>
+                        setRotationAccountByType((prev) => ({ ...prev, [type]: val?.id ?? null }))
+                      }
+                      options={candidates}
+                      getOptionValue={(a) => a.id}
+                      getOptionLabel={(a) =>
+                        a.folderName ? `${a.folderName} / ${a.name}` : a.name
+                      }
+                      placeholder={`Select a ${typeName} account`}
+                    />
+                  </FieldContent>
+                </Field>
+              );
+            })}
+
           <p className="text-xs text-muted">
-            Imported accounts come in without a credential and stay unusable until one is added.
+            {isRotating
+              ? "A rotation account can only rotate accounts on its own host or domain. Accounts with no rotation account come in without a credential."
+              : `Imported accounts come in without a credential and stay unusable until one is added${rotatableTypes.length > 0 ? " or their password is rotated" : ""}.`}
           </p>
         </div>
 

@@ -128,7 +128,12 @@ export type TTriggerPamDiscoveryScanDTO = { sourceId: string; discoveryType: Pam
 export type TImportPamDiscoveredAccountsDTO = {
   sourceId: string;
   folderId: string;
-  accounts: { discoveredAccountId: string; templateId: string; name?: string }[];
+  accounts: {
+    discoveredAccountId: string;
+    templateId: string;
+    name?: string;
+    rotationAccountId?: string;
+  }[];
 };
 
 export type TImportPamDiscoveredAccountResult = {
@@ -136,6 +141,9 @@ export type TImportPamDiscoveredAccountResult = {
   status: string;
   accountId?: string;
   message?: string;
+  rotationAccountId?: string;
+  rotationStatus?: PamRotationStatus;
+  rotationMessage?: string;
 };
 
 export type PamFolderPermissionSet = [

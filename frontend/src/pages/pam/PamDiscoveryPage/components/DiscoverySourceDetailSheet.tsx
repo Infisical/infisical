@@ -913,6 +913,7 @@ export const DiscoverySourceDetailSheet = ({ isOpen, sourceId, onOpenChange }: P
           isOpen={isImportOpen}
           onOpenChange={setIsImportOpen}
           sourceId={sourceId}
+          credentialAccountId={source?.credentialAccountId}
           accounts={selectedAccounts}
           onImported={() => setSelected({})}
         />

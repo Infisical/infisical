@@ -4255,24 +4255,6 @@ export const registerRoutes = async (
   const pamDiscoveredAccountDAL = pamDiscoveredAccountDALFactory(db);
   const pamAccountDependencyDAL = pamAccountDependencyDALFactory(db);
 
-  const pamDiscoveryService = pamDiscoverySourceServiceFactory({
-    orgDAL,
-    pamDiscoverySourceDAL,
-    pamDiscoverySourceRunDAL,
-    pamDiscoveredAccountDAL,
-    pamAccountDependencyDAL,
-    pamAccountDAL,
-    pamAccountService,
-    permissionService,
-    kmsService,
-    gatewayV2DAL,
-    gatewayV2Service,
-    gatewayPoolService,
-    queueService,
-    cronJob,
-    auditLogService
-  });
-
   const pamAccountRotationService = pamAccountRotationServiceFactory({
     pamAccountDAL,
     permissionService,
@@ -4285,6 +4267,25 @@ export const registerRoutes = async (
     pamAccountDependencyDAL,
     pamDiscoverySourceDAL,
     projectDAL
+  });
+
+  const pamDiscoveryService = pamDiscoverySourceServiceFactory({
+    orgDAL,
+    pamDiscoverySourceDAL,
+    pamDiscoverySourceRunDAL,
+    pamDiscoveredAccountDAL,
+    pamAccountDependencyDAL,
+    pamAccountDAL,
+    pamAccountService,
+    pamAccountRotationService,
+    permissionService,
+    kmsService,
+    gatewayV2DAL,
+    gatewayV2Service,
+    gatewayPoolService,
+    queueService,
+    cronJob,
+    auditLogService
   });
 
   const pamAccountHeartbeatService = pamAccountHeartbeatServiceFactory({
