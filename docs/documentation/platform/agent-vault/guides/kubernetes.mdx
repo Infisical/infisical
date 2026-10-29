@@ -37,7 +37,7 @@ flowchart LR
 | Agent pods | A namespace for agents, one pod per agent run | Only the session token for that run |
 | Your orchestrator | Outside the agents namespace | A [machine identity](/documentation/platform/identities/machine-identities) that creates a session for each agent run |
 
-You need an orchestrator: a program that starts each agent run. It can be a script, a job in your CI pipeline or job runner, or a Kubernetes controller. If you don't have one yet, the [setup guide](/documentation/platform/agent-vault/guides/kubernetes-setup#step-5-run-an-agent) includes a script you can start from.
+You need an orchestrator: a program that starts each agent run. It can be a script, a job in your CI pipeline or job runner, or a Kubernetes controller.
 
 For each agent run, your orchestrator does the following:
 
