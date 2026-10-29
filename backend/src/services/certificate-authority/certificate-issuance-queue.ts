@@ -897,8 +897,13 @@ export const certificateIssuanceQueueFactory = ({
         };
 
         const digicertResult =
-          externalConfiguration?.reissue && renewalOfOrderId !== undefined
-            ? await digicertFns.reissueCertificate({ ...digicertRequest, orderId: renewalOfOrderId })
+          externalConfiguration?.reissue && renewalOfOrderId !== undefined && originalCertificateId
+            ? await digicertFns.reissueCertificate({
+                ...digicertRequest,
+                orderId: renewalOfOrderId,
+                ttl,
+                originalCertificateId
+              })
             : await digicertFns.orderCertificate({
                 ...digicertRequest,
                 ttl,

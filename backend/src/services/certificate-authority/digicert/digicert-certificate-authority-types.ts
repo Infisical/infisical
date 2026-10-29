@@ -38,6 +38,7 @@ export type TReissueOrderRequest = {
     csr: string;
     signature_hash?: string;
   };
+  cert_validity?: { days: number };
   dcv_method?: "dns-txt-token";
   skip_approval?: boolean;
 };

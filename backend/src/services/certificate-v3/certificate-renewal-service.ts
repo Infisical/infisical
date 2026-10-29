@@ -67,7 +67,8 @@ import {
 } from "../certificate-common/certificate-issuance-utils";
 import {
   assertCanEditCertificate,
-  assertCanEditCertificateResult
+  assertCanEditCertificateResult,
+  assertCanRevokeCertificate
 } from "../certificate-common/certificate-permission-fns";
 import { TCertificateQuotaDeps } from "../certificate-common/certificate-quota-fns";
 import { buildCertificateQuotaKey } from "../certificate-common/certificate-quota-key";
@@ -1166,6 +1167,39 @@ export const certificateRenewalServiceFactory = ({
         });
 
         changedAttributes = buildRenewalAuditChanges(replayedRequest, { ...certificateRequest, validity: { ttl } });
+
+        if (externalConfiguration?.reissue && !internal) {
+          const requestedNames = new Set(
+            [
+              certificateRequest.commonName,
+              ...(certificateRequest.subjectAlternativeNames ?? []).map((san) => san.value)
+            ]
+              .filter(Boolean)
+              .map((name) => (name as string).trim().toLowerCase())
+          );
+          const isRemovingName = [originalCert.commonName, ...(originalCert.altNames?.split(",") ?? [])]
+            .filter(Boolean)
+            .some((name) => !requestedNames.has((name as string).trim().toLowerCase()));
+          if (isRemovingName) {
+            try {
+              await assertCanRevokeCertificate({
+                certificate: originalCert,
+                ...actorCtx,
+                permissionService,
+                resourceMetadataDAL,
+                tx
+              });
+            } catch (error) {
+              if (error instanceof ForbiddenError) {
+                throw new ForbiddenRequestError({
+                  message:
+                    "Removing or changing a name on a reissue revokes this certificate, which requires permission to revoke it."
+                });
+              }
+              throw error;
+            }
+          }
+        }
 
         if (renewalAuth?.projectPermission) {
           assertCanEditCertificateResult({

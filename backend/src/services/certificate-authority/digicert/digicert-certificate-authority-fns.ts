@@ -89,6 +89,8 @@ const assertPurposeMatchesProduct = (purpose: DigiCertCaPurpose | undefined, pro
   }
 };
 
+const DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS = 199;
+
 const TTL_RE2 = new RE2("^(\\d+)([dhm])$");
 const parseTtlToDays = (ttl: string): number => {
   const match = ttl.match(TTL_RE2);
@@ -527,10 +529,14 @@ export const DigiCertCertificateAuthorityFns = ({
     altNames = [],
     signatureAlgorithm,
     keyAlgorithm = CertKeyAlgorithm.RSA_2048,
-    csr
+    csr,
+    ttl,
+    originalCertificateId
   }: {
     caId: string;
     orderId: number;
+    ttl: string;
+    originalCertificateId: string;
     commonName: string;
     altNames?: string[];
     signatureAlgorithm?: string;
@@ -559,6 +565,17 @@ export const DigiCertCertificateAuthorityFns = ({
     }
     const previousCertificateId = order.certificate.id;
 
+    const originalCertificate = await certificateDAL.findById(originalCertificateId);
+    const originalMetadata = DigiCertExternalMetadataSchema.safeParse(originalCertificate?.externalMetadata);
+    if (originalCertificate && originalMetadata.success && !originalMetadata.data.certificateId) {
+      const previousSerialNumber = await $getCertificateSerialNumber(client, previousCertificateId);
+      if (previousSerialNumber === originalCertificate.serialNumber.toLowerCase()) {
+        await certificateDAL.updateById(originalCertificate.id, {
+          externalMetadata: { ...originalMetadata.data, certificateId: previousCertificateId }
+        });
+      }
+    }
+
     const { certificate, privateKeyPem } = await $buildCertificatePayload({
       caId,
       commonName,
@@ -568,7 +585,12 @@ export const DigiCertCertificateAuthorityFns = ({
       csr
     });
 
-    const reissuePayload: TReissueOrderRequest = { certificate, dcv_method: "dns-txt-token", skip_approval: true };
+    const reissuePayload: TReissueOrderRequest = {
+      certificate,
+      cert_validity: { days: Math.min(parseTtlToDays(ttl), DIGICERT_MAX_CERTIFICATE_VALIDITY_DAYS) },
+      dcv_method: "dns-txt-token",
+      skip_approval: true
+    };
     const reissueResponse = await client.reissueOrder(orderId, reissuePayload);
     const immediateCertificateId =
       reissueResponse.certificate_id && reissueResponse.certificate_id !== previousCertificateId

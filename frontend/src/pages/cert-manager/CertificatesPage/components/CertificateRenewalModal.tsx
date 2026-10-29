@@ -727,13 +727,13 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
       isOpen={isOpen}
       onOpenChange={(open) => (open ? handlePopUpToggle("renewCertificate", true) : closeWizard())}
       icon={<RefreshCw className="h-5 w-5" />}
-      title={isReissuing ? "Reissue certificate" : "Renew certificate"}
+      title={isReissuing ? "Reissue Certificate" : "Renew Certificate"}
       description={certificate?.commonName || certificate?.friendlyName || "Certificate"}
       steps={steps}
       activeStep={step}
       onStepChange={setStep}
       docsHref={PkiDocsUrls.applications.certificateRenewal}
-      submitLabel={isReissuing ? "Reissue certificate" : "Renew certificate"}
+      submitLabel={isReissuing ? "Reissue Certificate" : "Renew Certificate"}
       onSubmit={handleSubmit(onFormSubmit, onFormInvalid)}
       onBack={goBack}
       onContinue={goNext}
@@ -762,7 +762,8 @@ export const CertificateRenewalModal = ({ popUp, applicationName, handlePopUpTog
                     {
                       value: DigiCertOrderChoice.Reissue,
                       label: "Reissue the existing order",
-                      description: "Issues the certificate on the same DigiCert order."
+                      description:
+                        "Issues the certificate on the same DigiCert order. Removing or changing a name revokes the current certificate within 72 hours."
                     }
                   ]}
                 />
