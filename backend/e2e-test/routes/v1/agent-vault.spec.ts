@@ -4546,6 +4546,7 @@ describe("Agent Vault V1 Router", async () => {
     type TMissing = { missingAccessBundles: { id: string; name: string }[] };
     type TDelegationDetail = TMissing & {
       scope: string;
+      updatedAt: string;
       users: (TMissing & { id: string; addedAt: string })[];
       groups: (TMissing & { id: string; addedAt: string })[];
     };
@@ -5203,6 +5204,17 @@ describe("Agent Vault V1 Router", async () => {
         expect(await available()).toEqual([carol.userId]);
         expect(await available("&actorType=group")).toEqual([]);
 
+        // An identity that isn't in Agent Vault has no candidates to offer, the same 404 as its other subject routes.
+        const unknown = await inject("GET", `${delegationUrl(crypto.randomUUID())}/subjects/available`);
+        expect(unknown.statusCode).toBe(404);
+        expect(unknown.json().message).toContain("is not a member of Agent Vault");
+
+        // updatedAt moves only when someone is added or taken out, so a client can cache the delegation off it.
+        const savedAt = (now.json().delegation as TDelegationDetail).updatedAt;
+        const again = await inject("POST", subjectsUrl, { userIds: [alice.userId] });
+        expect(again.statusCode).toBe(200);
+        expect((again.json().delegation as TDelegationDetail).updatedAt).toBe(savedAt);
+
         const stranger = await inject("POST", subjectsUrl, { userIds: [outsider.userId] });
         expect(stranger.statusCode).toBe(400);
         expect(stranger.json().message).toContain("are not members of Agent Vault");
@@ -5212,6 +5224,9 @@ describe("Agent Vault V1 Router", async () => {
         const lessAlice = await inject("DELETE", subjectsUrl, { userIds: [alice.userId, carol.userId] });
         expect(lessAlice.statusCode).toBe(200);
         expect(named(lessAlice)).toEqual({ users: [bob.userId], groups: [group.id] });
+        expect(new Date((lessAlice.json().delegation as TDelegationDetail).updatedAt).getTime()).toBeGreaterThan(
+          new Date(savedAt).getTime()
+        );
         const emptied = await inject("DELETE", subjectsUrl, { userIds: [bob.userId], groupIds: [group.id] });
         expect(emptied.statusCode).toBe(200);
         expect(emptied.json().delegation).toBeNull();

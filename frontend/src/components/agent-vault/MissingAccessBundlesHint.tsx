@@ -1,7 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { PackageIcon } from "lucide-react";
 
-import { Badge, HoverCard, HoverCardContent, HoverCardTrigger } from "@app/components/v3";
+import {
+  Badge,
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  ScrollableContent
+} from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { TAgentVaultMissingAccessBundle } from "@app/hooks/api/agentVault/types";
 
@@ -35,7 +41,17 @@ export const MissingAccessBundlesHint = ({ bundles, machineIdentityName, onBehal
           <p className="text-xs text-muted">
             {`Sessions on behalf of ${onBehalfOf} can't use these access bundles, because "${machineIdentityName}" isn't granted them.`}
           </p>
-          <div className="flex flex-wrap gap-1.5">
+          {/* An all-members delegation can miss every bundle in a large org; scrolling keeps each one a link. The card
+              portals outside the sheet, whose scroll lock would otherwise swallow the wheel. */}
+          <ScrollableContent
+            aria-label="Excluded access bundles"
+            edgeBehavior="fade"
+            outline={false}
+            maxHeight="12rem"
+            className="overscroll-contain"
+            contentClassName="flex flex-wrap gap-1.5"
+            onWheel={(event) => event.stopPropagation()}
+          >
             {bundles.map((bundle) => (
               <Badge key={bundle.id} variant="neutral" iconPosition="left" asChild>
                 <Link
@@ -47,7 +63,7 @@ export const MissingAccessBundlesHint = ({ bundles, machineIdentityName, onBehal
                 </Link>
               </Badge>
             ))}
-          </div>
+          </ScrollableContent>
           <p className="text-xs text-muted">
             {`To include one, grant it to "${machineIdentityName}" from the bundle's Manage Access.`}
           </p>

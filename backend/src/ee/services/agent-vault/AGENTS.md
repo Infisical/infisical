@@ -183,7 +183,9 @@ is one `agent_vault_delegations` row per identity, with a scope of `all-members`
   the next save replaces the row instead of reviving it.
 - **A save locks parent rows, then memberships, then the delegation**, in the order deleting or removing them does:
   `FOR KEY SHARE` on the identity, users and groups, then the memberships `FOR SHARE` in id order. Changing the order
-  brings back deadlocks with identity deletion and with removal from Agent Vault.
+  brings back deadlocks with identity deletion and with removal from Agent Vault. A remove or delete, which names no
+  new subjects, still takes the identity's membership before the delegation row for the same reason. Every write locks
+  the delegation row before reading or replacing it, and `updatedAt` moves only on a save or a real add or remove.
 - **Delegation routes take no `AuthMode.OAUTH`.** The admin check reads the role, which a delegated token's scopes
   don't narrow, and a delegation lets an identity act as other users.
 

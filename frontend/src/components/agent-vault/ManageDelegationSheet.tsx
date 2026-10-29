@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import {
-  BotIcon,
   ChevronDownIcon,
   FilterIcon,
   SearchIcon,
@@ -505,10 +504,6 @@ const ManageDelegationContent = ({
           Manage Delegation
           <DocumentationLinkBadge href={AgentVaultDocsUrls.sessionsOnBehalfOfUsers} />
         </SheetTitle>
-        <div className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-neutral/5 px-3 py-2 text-xs">
-          <BotIcon className="size-3.5 shrink-0 text-muted" />
-          <span className="truncate text-foreground">{identity.name}</span>
-        </div>
       </SheetHeader>
 
       <div className="thin-scrollbar flex-1 space-y-4 overflow-y-auto p-4">

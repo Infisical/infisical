@@ -34,7 +34,8 @@ type TAgentVaultDelegationServiceFactoryDep = {
   agentVaultDelegationDAL: Pick<
     TAgentVaultDelegationDALFactory,
     | "upsertScope"
-    | "createSelectedOrLock"
+    | "insertSelectedIfMissing"
+    | "markChanged"
     | "insertSubjectsSkippingNamed"
     | "deleteIfNamesNoOne"
     | "lockForIdentity"
@@ -108,15 +109,26 @@ export const agentVaultDelegationServiceFactory = ({
   };
 
   // Project-scoped, so an identity from another org is a 404 like one that doesn't exist.
+  const notInAgentVault = (machineIdentityId: string) =>
+    new NotFoundError({
+      message: `Machine identity with ID '${machineIdentityId}' is not a member of Agent Vault. Add it under Access Control first.`
+    });
   const requireIdentityMembership = (memberships: TLockedMembership[], machineIdentityId: string) => {
     const identityMembership = memberships.find((row) => row.actorIdentityId === machineIdentityId);
-    if (!identityMembership) {
-      throw new NotFoundError({
-        message: `Machine identity with ID '${machineIdentityId}' is not a member of Agent Vault. Add it under Access Control first.`
-      });
-    }
+    if (!identityMembership) throw notInAgentVault(machineIdentityId);
     return identityMembership;
   };
+
+  // Removing the identity from Agent Vault deletes its membership, then cascades to the delegation and its subjects.
+  // A write that changes only the delegation still takes the membership first, so the two lock in the same order.
+  const lockIdentityMembership = async (projectId: string, machineIdentityId: string, tx: Knex) =>
+    requireIdentityMembership(
+      await agentVaultDelegationDAL.lockMemberships(
+        { projectId, identityId: machineIdentityId, userIds: [], groupIds: [] },
+        tx
+      ),
+      machineIdentityId
+    );
 
   const notFound = (machineIdentityId: string) =>
     new NotFoundError({
@@ -354,6 +366,8 @@ export const agentVaultDelegationServiceFactory = ({
         tx
       );
 
+      // Locked first, so a remove of the last subject still in flight is waited for and its emptied row replaced.
+      await agentVaultDelegationDAL.lockForIdentity({ projectId, identityId: machineIdentityId }, tx);
       await agentVaultDelegationDAL.deleteIfNamesNoOne({ projectId, identityId: machineIdentityId }, tx);
       const row = await agentVaultDelegationDAL.upsertScope(
         { projectId, identityId: machineIdentityId, membershipId: identityMembership.id, scope },
@@ -417,17 +431,20 @@ export const agentVaultDelegationServiceFactory = ({
       refuseAllMembers(current?.scope);
 
       await agentVaultDelegationDAL.deleteIfNamesNoOne({ projectId, identityId: machineIdentityId }, tx);
-      // With no row there was nothing to lock above, so a save can have created one since: checked again here.
-      const row = await agentVaultDelegationDAL.createSelectedOrLock(
+      await agentVaultDelegationDAL.insertSelectedIfMissing(
         { projectId, identityId: machineIdentityId, membershipId: identityMembership.id },
         tx
       );
+      // With no row there was nothing to lock above, so a save can have created one since: locked and checked again.
+      const row = await agentVaultDelegationDAL.lockForIdentity({ projectId, identityId: machineIdentityId }, tx);
+      if (!row) throw notFound(machineIdentityId);
       refuseAllMembers(row.scope);
 
       const added = await agentVaultDelegationDAL.insertSubjectsSkippingNamed(
         { delegationId: row.id, membershipIds: membershipIdsNaming(memberships, userIds, groupIds) },
         tx
       );
+      if (added) await agentVaultDelegationDAL.markChanged(row.id, tx);
       // Read in the transaction because the replica may not have the write yet.
       const {
         delegations: [written]
@@ -451,6 +468,7 @@ export const agentVaultDelegationServiceFactory = ({
     await checkIdentityPermission({ projectId, ctx, machineIdentityId }, ProjectPermissionIdentityActions.Edit);
 
     const changed = await agentVaultDelegationDAL.transaction(async (tx) => {
+      await lockIdentityMembership(projectId, machineIdentityId, tx);
       const current = await agentVaultDelegationDAL.lockForIdentity({ projectId, identityId: machineIdentityId }, tx);
       const viewNow = async () =>
         (await agentVaultDelegationDAL.findViews({ projectId, identityIds: [machineIdentityId] }, tx)).delegations[0];
@@ -466,6 +484,7 @@ export const agentVaultDelegationServiceFactory = ({
         { delegationId: current.id, userIds, groupIds },
         tx
       );
+      if (removed) await agentVaultDelegationDAL.markChanged(current.id, tx);
       return { before, after: (await viewNow()) ?? null, isChanged: removed > 0 };
     });
     if (!changed) throw notFound(machineIdentityId);
@@ -484,6 +503,13 @@ export const agentVaultDelegationServiceFactory = ({
   }: TListAvailableDelegationSubjectsDTO) => {
     await checkIdentityPermission({ projectId, ctx, machineIdentityId }, ProjectPermissionIdentityActions.Read);
 
+    const [identityMembership] = await membershipDAL.find({
+      scope: AccessScope.Project,
+      scopeProjectId: projectId,
+      actorIdentityId: machineIdentityId
+    });
+    if (!identityMembership) throw notInAgentVault(machineIdentityId);
+
     const delegation = await agentVaultDelegationDAL.findForIdentity({ projectId, identityId: machineIdentityId });
     return agentVaultMemberDAL.findProductMembers({
       projectId,
@@ -500,6 +526,9 @@ export const agentVaultDelegationServiceFactory = ({
     await checkIdentityPermission({ projectId, ctx, machineIdentityId }, ProjectPermissionIdentityActions.Edit);
 
     const deleted = await agentVaultDelegationDAL.transaction(async (tx) => {
+      await lockIdentityMembership(projectId, machineIdentityId, tx);
+      // Locked before the read, so the audit entry lists exactly who the delete removed.
+      await agentVaultDelegationDAL.lockForIdentity({ projectId, identityId: machineIdentityId }, tx);
       const {
         delegations: [delegation]
       } = await agentVaultDelegationDAL.findViews({ projectId, identityIds: [machineIdentityId] }, tx);

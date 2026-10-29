@@ -69,21 +69,28 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
     }
   };
 
-  // Creates a selected delegation, or locks the one already there and returns it with its scope unchanged. The conflict
-  // waits for a save still writing the row, so the returned scope is the committed one.
-  const createSelectedOrLock = async (
+  // Creates a selected delegation if the identity has none. One a concurrent save is still writing is waited for and
+  // left as it is, so the caller locks and reads the row afterwards to see its committed scope.
+  const insertSelectedIfMissing = async (
     { projectId, identityId, membershipId }: { projectId: string; identityId: string; membershipId: string },
     tx: Knex
-  ): Promise<TAgentVaultDelegations> => {
+  ) => {
     try {
-      const [row] = (await tx(TableName.AgentVaultDelegation)
+      await tx(TableName.AgentVaultDelegation)
         .insert({ projectId, identityId, membershipId, scope: AgentVaultDelegationScope.Selected })
         .onConflict(["identityId", "projectId"])
-        .merge({ membershipId })
-        .returning("*")) as TAgentVaultDelegations[];
-      return row;
+        .ignore();
     } catch (error) {
-      throw new DatabaseError({ error, name: "Create or lock Agent Vault delegation" });
+      throw new DatabaseError({ error, name: "Create Agent Vault delegation" });
+    }
+  };
+
+  // Adding or removing subjects writes only the subject rows, so this is what moves the delegation's updatedAt.
+  const markChanged = async (delegationId: string, tx: Knex) => {
+    try {
+      await tx.raw(`UPDATE ?? SET "updatedAt" = now() WHERE id = ?`, [TableName.AgentVaultDelegation, delegationId]);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Mark Agent Vault delegation changed" });
     }
   };
 
@@ -360,7 +367,8 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
   return {
     ...orm,
     upsertScope,
-    createSelectedOrLock,
+    insertSelectedIfMissing,
+    markChanged,
     insertSubjectsSkippingNamed,
     deleteIfNamesNoOne,
     lockForIdentity,
