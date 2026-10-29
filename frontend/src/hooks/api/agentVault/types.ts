@@ -630,6 +630,11 @@ export type TAgentVaultSkill = TAgentVaultSkillSummary & {
   accessBundles: { id: string; name: string }[];
 };
 
+export type TAgentVaultSkillDetail = TAgentVaultSkill & {
+  /** The files of the latest version. */
+  files: TAgentVaultSkillFile[];
+};
+
 export type TListAgentVaultSkillsDTO = {
   search?: string;
   /** Exact name. */
@@ -667,7 +672,7 @@ export type TCreateAgentVaultSkillDTO = {
   files: TAgentVaultSkillFile[];
 };
 
-export type TPublishAgentVaultSkillVersionDTO = TCreateAgentVaultSkillDTO & {
+export type TUpdateAgentVaultSkillDTO = TCreateAgentVaultSkillDTO & {
   skillId: string;
   /** The version the files were edited from. The server refuses the save when a newer one was published since. */
   baseVersion?: number;

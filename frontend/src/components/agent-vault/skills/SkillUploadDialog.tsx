@@ -32,7 +32,7 @@ import { useDiscardChangesGuard } from "@app/hooks";
 import {
   SkillVersionConflictError,
   useGetAgentVaultSkillVersion,
-  usePublishAgentVaultSkillVersion
+  useUpdateAgentVaultSkill
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultSkill, TAgentVaultSkillFile } from "@app/hooks/api/agentVault/types";
 
@@ -63,7 +63,7 @@ type Props = {
 );
 
 export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad }: Props) => {
-  const publishVersion = usePublishAgentVaultSkillVersion();
+  const updateSkill = useUpdateAgentVaultSkill();
   const latest = useGetAgentVaultSkillVersion(
     isOpen && skill ? skill.id : "",
     skill?.latestVersion
@@ -139,7 +139,7 @@ export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad
         skill: saved,
         version,
         unchanged
-      } = await publishVersion.mutateAsync({
+      } = await updateSkill.mutateAsync({
         skillId: skill.id,
         files: filesToPublish,
         ...(conflictVersion === null && latest.data && { baseVersion: latest.data.version })
@@ -165,7 +165,7 @@ export const SkillUploadDialog = ({ isOpen, onOpenChange, skill, onSaved, onLoad
   const uploadedPaths = new Set(upload.status === "ready" ? upload.files.map((f) => f.path) : []);
   const hasLatestError = Boolean(skill) && latest.isError;
   const isWaitingForLatest = Boolean(skill) && !latest.data;
-  const { isPending } = publishVersion;
+  const { isPending } = updateSkill;
 
   return (
     <>

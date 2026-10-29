@@ -4562,7 +4562,7 @@
                       "api-reference/endpoints/agent-vault-skills/delete",
                       "api-reference/endpoints/agent-vault-skills/list-versions",
                       "api-reference/endpoints/agent-vault-skills/get-version",
-                      "api-reference/endpoints/agent-vault-skills/publish-version",
+                      "api-reference/endpoints/agent-vault-skills/update",
                       "api-reference/endpoints/agent-vault-skills/restore-version",
                       "api-reference/endpoints/agent-vault-skills/list-bundle-skills",
                       "api-reference/endpoints/agent-vault-skills/add",

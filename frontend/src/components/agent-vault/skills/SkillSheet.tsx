@@ -57,8 +57,8 @@ import {
   SkillVersionConflictError,
   useGetAgentVaultSkill,
   useGetAgentVaultSkillVersion,
-  usePublishAgentVaultSkillVersion,
-  useRestoreAgentVaultSkillVersion
+  useRestoreAgentVaultSkillVersion,
+  useUpdateAgentVaultSkill
 } from "@app/hooks/api/agentVault";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { useAgentVaultSheetState } from "@app/hooks/useAgentVaultSheetState";
@@ -83,14 +83,14 @@ type TSkillDialog = "history" | "upload" | "delete" | "save";
 type TSkillSheetBodyProps = {
   shownSkillId: string;
   closeSheet: () => Promise<void>;
-  publishVersion: ReturnType<typeof usePublishAgentVaultSkillVersion>;
+  updateSkill: ReturnType<typeof useUpdateAgentVaultSkill>;
   registerRequestClose: (requestClose: () => void) => void;
 };
 
 const SkillSheetBody = ({
   shownSkillId,
   closeSheet,
-  publishVersion,
+  updateSkill,
   registerRequestClose
 }: TSkillSheetBodyProps) => {
   const queryClient = useQueryClient();
@@ -122,13 +122,19 @@ const SkillSheetBody = ({
   // The latest version a refused save reported, shown before the refetched skill arrives.
   const [conflictVersion, setConflictVersion] = useState<number | null>(null);
 
-  const version = viewedVersion ?? skill?.latestVersion;
+  // The skill carries the latest version's files, so only an older version is fetched on its own.
+  const olderVersionNumber =
+    viewedVersion !== null && viewedVersion !== skill?.latestVersion ? viewedVersion : undefined;
   const {
-    data: versionData,
+    data: olderVersionData,
     error: versionError,
     isFetching: isVersionFetching,
     refetch: refetchVersion
-  } = useGetAgentVaultSkillVersion(shownSkillId, version);
+  } = useGetAgentVaultSkillVersion(shownSkillId, olderVersionNumber);
+  const versionData = useMemo(() => {
+    if (olderVersionNumber !== undefined) return olderVersionData;
+    return skill && { version: skill.latestVersion, files: skill.files };
+  }, [olderVersionNumber, olderVersionData, skill]);
   const restoreVersion = useRestoreAgentVaultSkillVersion();
 
   const original = useMemo(() => toDraftFiles(versionData?.files ?? []), [versionData]);
@@ -210,7 +216,7 @@ const SkillSheetBody = ({
         skill: saved,
         version: published,
         unchanged
-      } = await publishVersion.mutateAsync({
+      } = await updateSkill.mutateAsync({
         skillId: skill.id,
         files: fromDraftFiles(edit.draft),
         ...(newerVersion === null && { baseVersion: edit.baseVersion })
@@ -417,8 +423,8 @@ const SkillSheetBody = ({
               <AlertDescription className="flex flex-wrap items-center gap-2">
                 <span className="flex-1">
                   You are viewing v{viewedVersion}
-                  {versionData &&
-                    `, published ${format(new Date(versionData.createdAt), "MMM d, yyyy h:mm a")}`}
+                  {olderVersionData &&
+                    `, published ${format(new Date(olderVersionData.createdAt), "MMM d, yyyy h:mm a")}`}
                   . Agents get v{skill.latestVersion}.
                 </span>
                 <Button variant="outline" size="xs" onClick={() => setViewedVersion(null)}>
@@ -449,7 +455,7 @@ const SkillSheetBody = ({
             <Button
               variant="ghost"
               onClick={requestStopEditing}
-              isDisabled={!hasChanges || publishVersion.isPending}
+              isDisabled={!hasChanges || updateSkill.isPending}
             >
               Discard
             </Button>
@@ -480,7 +486,7 @@ const SkillSheetBody = ({
               isOpen={dialog === "history"}
               onOpenChange={(open) => setDialog(open ? "history" : null)}
               skill={skill}
-              viewedVersion={version ?? skill.latestVersion}
+              viewedVersion={viewedVersion ?? skill.latestVersion}
               canRollBack={canEdit}
               onView={(next) => setViewedVersion(next === skill.latestVersion ? null : next)}
               onRolledBack={() => setViewedVersion(null)}
@@ -503,7 +509,7 @@ const SkillSheetBody = ({
             nextVersion={skill.latestVersion + 1}
             newerVersion={newerVersion}
             changes={lastReviewChangesRef.current}
-            isPending={publishVersion.isPending}
+            isPending={updateSkill.isPending}
             onSave={handleSave}
           />
         </>
@@ -548,7 +554,7 @@ export const SkillSheet = () => {
   if (skillId) lastSkillIdRef.current = skillId;
   const shownSkillId = skillId ?? lastSkillIdRef.current ?? "";
 
-  const publishVersion = usePublishAgentVaultSkillVersion();
+  const updateSkill = useUpdateAgentVaultSkill();
   const requestCloseRef = useRef<() => void>(closeSheet);
 
   return (
@@ -556,7 +562,7 @@ export const SkillSheet = () => {
       <SheetContent
         size="wide"
         className="flex h-full max-h-full w-full flex-col gap-y-0"
-        isPending={publishVersion.isPending}
+        isPending={updateSkill.isPending}
         onOpenAutoFocus={(event) => event.preventDefault()}
         onEscapeKeyDown={handleSkillEditorEscape}
       >
@@ -564,7 +570,7 @@ export const SkillSheet = () => {
           key={shownSkillId}
           shownSkillId={shownSkillId}
           closeSheet={closeSheet}
-          publishVersion={publishVersion}
+          updateSkill={updateSkill}
           registerRequestClose={(requestClose) => {
             requestCloseRef.current = requestClose;
           }}

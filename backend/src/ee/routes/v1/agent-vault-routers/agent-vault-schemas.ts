@@ -806,7 +806,7 @@ export const AgentVaultSkillUploadSchema = z.object({
     .describe(AGENT_VAULT.SKILL.files)
 });
 
-export const AgentVaultSkillPublishSchema = AgentVaultSkillUploadSchema.extend({
+export const AgentVaultSkillUpdateSchema = AgentVaultSkillUploadSchema.extend({
   baseVersion: z.number().int().positive().optional().describe(AGENT_VAULT.SKILL.baseVersion)
 });
 

@@ -4924,7 +4924,7 @@ describe("Agent Vault V1 Router", async () => {
       return JSON.parse(res.payload) as { skill: TSkill; version: TSkillVersion };
     };
 
-    const publish = (skillId: string, files: TFile[]) => inject("POST", `${skillsUrl}/${skillId}/versions`, { files });
+    const publish = (skillId: string, files: TFile[]) => inject("PATCH", `${skillsUrl}/${skillId}`, { files });
 
     const sessionSkillsUrl = "/api/v1/agent-vault/session/skills";
 
@@ -4977,7 +4977,8 @@ describe("Agent Vault V1 Router", async () => {
 
       const detail = await inject("GET", `${skillsUrl}/${skill.id}`);
       expect(JSON.parse(detail.payload).skill).toMatchObject({
-        accessBundles: [{ id: bundle.id, name: bundle.name }]
+        accessBundles: [{ id: bundle.id, name: bundle.name }],
+        files: skillFiles("crud-skill", "Reviews code")
       });
 
       const files = await inject("GET", `${skillsUrl}/${skill.id}/versions/1`);
@@ -5086,7 +5087,7 @@ describe("Agent Vault V1 Router", async () => {
           ).statusCode
         ).toBe(200);
 
-        const calls: [string, "GET" | "POST" | "DELETE", string, number, Record<string, unknown>?][] = [
+        const calls: [string, "GET" | "POST" | "PATCH" | "DELETE", string, number, Record<string, unknown>?][] = [
           ["list", "GET", skillsUrl, 200],
           ["get", "GET", `${skillsUrl}/${skill.id}`, 200],
           ["get unreachable", "GET", `${skillsUrl}/${hidden.id}`, 404],
@@ -5098,7 +5099,7 @@ describe("Agent Vault V1 Router", async () => {
           ["unreachable bundle skills", "GET", bundleSkillsUrl(other.id), 404],
           ["create", "POST", skillsUrl, 403, { files: skillFiles("member-made") }],
           ["delete", "DELETE", `${skillsUrl}/${skill.id}`, 403],
-          ["publish", "POST", `${skillsUrl}/${skill.id}/versions`, 403, { files: skillFiles("member-reader", "x") }],
+          ["update", "PATCH", `${skillsUrl}/${skill.id}`, 403, { files: skillFiles("member-reader", "x") }],
           ["restore", "POST", `${skillsUrl}/${skill.id}/versions/1/restore`, 403],
           ["add", "POST", bundleSkillsUrl(granted.id), 403, { skillId: skill.id }],
           ["remove", "DELETE", `${bundleSkillsUrl(granted.id)}/${skill.id}`, 403]
@@ -5120,9 +5121,10 @@ describe("Agent Vault V1 Router", async () => {
         expect(listed.skills[0].accessBundles).toHaveLength(1);
 
         const detail = JSON.parse((await member.as("GET", `${skillsUrl}/${skill.id}`)).payload) as {
-          skill: TListedSkill;
+          skill: TListedSkill & { files: TFile[] };
         };
         expect(detail.skill.accessBundles).toEqual([{ id: granted.id, name: granted.name }]);
+        expect(detail.skill).toMatchObject({ latestVersion: 2, files: skillFiles("member-reader", "Second.") });
 
         const unreachable = await member.as("GET", bundleSkillsUrl(other.id));
         expect(JSON.parse(unreachable.payload).message).toBe(`Access bundle with ID '${other.id}' not found`);
@@ -5250,7 +5252,39 @@ describe("Agent Vault V1 Router", async () => {
       );
     });
 
-    test("publishing the same content is a no-op, and a new name in SKILL.md renames the skill", async () => {
+    test("getting a skill returns its latest files and records a version view, and the old publish route is gone", async () => {
+      const { skill } = await createSkill("latest-files-skill", "First.");
+      const second = skillFiles("latest-files-skill", "Second.", [
+        { path: "scripts/run.sh", mode: "0755", contentBase64: Buffer.from("echo hi\n").toString("base64") }
+      ]);
+      expect((await publish(skill.id, second)).statusCode).toBe(200);
+
+      const auditLogs = recordAuditLogs();
+      try {
+        const detail = await inject("GET", `${skillsUrl}/${skill.id}`);
+        expect(detail.statusCode).toBe(200);
+        const { skill: got } = JSON.parse(detail.payload) as { skill: TListedSkill & { files: TFile[] } };
+        expect(got).toMatchObject({ latestVersion: 2, description: "Second." });
+        expect(got.files).toEqual(second);
+        expect(auditLogs).toHaveBeenCalledWith(
+          expect.objectContaining({
+            event: {
+              type: "agent-vault-skill-version-view",
+              metadata: { skillId: skill.id, skillName: "latest-files-skill", version: 2 }
+            }
+          })
+        );
+      } finally {
+        auditLogs.mockRestore();
+      }
+
+      const listed = JSON.parse((await inject("GET", skillsUrl)).payload) as { skills: Record<string, unknown>[] };
+      expect(listed.skills[0]).not.toHaveProperty("files");
+
+      expect((await inject("POST", `${skillsUrl}/${skill.id}/versions`, { files: second })).statusCode).toBe(404);
+    });
+
+    test("updating with the same content is a no-op, and a new name in SKILL.md renames the skill", async () => {
       const { skill, version } = await createSkill("publish-skill");
 
       const same = await publish(skill.id, skillFiles("publish-skill"));
@@ -5701,12 +5735,12 @@ describe("Agent Vault V1 Router", async () => {
       });
     });
 
-    test("a publish with a stale baseVersion is refused, and one with the latest or none goes through", async () => {
+    test("an update with a stale baseVersion is refused, and one with the latest or none goes through", async () => {
       const { skill } = await createSkill("base-version-skill");
-      const versionsUrl = `${skillsUrl}/${skill.id}/versions`;
+      const skillUrl = `${skillsUrl}/${skill.id}`;
       expect((await publish(skill.id, skillFiles("base-version-skill", "Second."))).statusCode).toBe(200);
 
-      const stale = await inject("POST", versionsUrl, {
+      const stale = await inject("PATCH", skillUrl, {
         files: skillFiles("base-version-skill", "Stale."),
         baseVersion: 1
       });
@@ -5716,7 +5750,7 @@ describe("Agent Vault V1 Router", async () => {
       );
       expect(await testDb("agent_vault_skill_versions").where({ skillId: skill.id })).toHaveLength(2);
 
-      const current = await inject("POST", versionsUrl, {
+      const current = await inject("PATCH", skillUrl, {
         files: skillFiles("base-version-skill", "Third."),
         baseVersion: 2
       });

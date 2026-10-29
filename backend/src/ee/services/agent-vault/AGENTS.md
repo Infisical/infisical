@@ -336,7 +336,9 @@ starts, the CLI fetches the session's skills from Infisical once, with the sessi
 There are no live updates: a running agent keeps what it got until it restarts, and nothing on the server removes
 an installed copy.
 
-- **The name comes from the latest version's `SKILL.md`.** A publish whose `SKILL.md` names something else renames
+- **Files change through `PATCH /skills/:skillId`** (`updateSkill`), which saves them as a new version; there is no
+  `POST /skills/:skillId/versions`. The version routes are only list, get one, and restore.
+- **The name comes from the latest version's `SKILL.md`.** An update whose `SKILL.md` names something else renames
   the skill in the same transaction (409 if the name is taken) and writes an `agent-vault-skill-rename` audit event
   beside the version event. A restore never renames: if the old `SKILL.md` names something else, only the value on
   its top-level `name:` line is rewritten to the current name (`replaceSkillHeaderName`) and the files are
@@ -355,15 +357,16 @@ an installed copy.
 - **A version's `sha256` is over the canonical JSON** (files sorted by UTF-8 path bytes, which is Go's string
   order, `{ path, mode, contentBase64 }`, content re-encoded). The CLI recomputes it from the files and refuses a
   mismatch, so the serialization is a contract with the CLI.
-- Files are one sealed blob per version (project `SecretManager` key), encrypted before the transaction. Publish
-  and restore lock the skill row, so version numbers are unique, the unchanged check is authoritative, and a
-  publish racing a delete gets a 404. A publish may send `baseVersion`, the version its edits started from; if the
+- Files are one sealed blob per version (project `SecretManager` key), encrypted before the transaction. Update
+  and restore lock the skill row, so version numbers are unique, the unchanged check is authoritative, and an
+  update racing a delete gets a 404. An update may send `baseVersion`, the version its edits started from; if the
   latest version under the lock is a different one, it is a 409 so a stale editor can't silently overwrite a newer
-  version (an unchanged publish still answers `unchanged: true`). Restore takes no base. The newest 20 versions
-  are kept. A publish or a restore whose files match the
+  version (an unchanged update still answers `unchanged: true`). Restore takes no base. The newest 20 versions
+  are kept. An update or a restore whose files match the
   latest version writes nothing and answers `unchanged: true` with that version, and records no audit or PostHog event.
 - Reading one version's files (`GET /skills/:skillId/versions/:version`) writes an `agent-vault-skill-version-view`
-  audit event (data-access class); the list routes write none.
+  audit event (data-access class). So does `GET /skills/:skillId`, which returns the latest version's files with the
+  skill (for that version); the list routes return no files and write none.
 - **`GET /session/skills`** returns the latest files of every skill on the session's reachable bundles (the same
   intersection as the services), sorted by name, read from the primary. The proxy is not involved: the CLI calls it
   with `Authorization: Bearer agv_...` and no other credential, so `inject-identity` skips the path and the route
@@ -377,7 +380,7 @@ an installed copy.
 - Skills use the `agent-vault-skills` CASL subject. Members keep CASL `Read`, narrowed by reachability
   (`getAgentVaultReachability`): they see only skills in a bundle they can reach, each with only those
   bundles, and only the latest version's files. Anything else, an unreachable bundle's skill list included, is a 404.
-  Listing versions checks `Edit`, so it is admin only. Creating, publishing, restoring and deleting are admin only. Adding a skill to a bundle or removing it needs `Edit` on access bundles and `Read` on skills, and a
+  Listing versions checks `Edit`, so it is admin only. Creating, updating, restoring and deleting are admin only. Adding a skill to a bundle or removing it needs `Edit` on access bundles and `Read` on skills, and a
   bundle holds at most 25 skills (`AGENT_VAULT_MAX_SKILLS_PER_BUNDLE`, checked under the bundle lock). Agent Vault
   holds at most 250 skills (`AGENT_VAULT_MAX_SKILLS`, checked under a per-project advisory lock on create).
 

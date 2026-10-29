@@ -38,9 +38,9 @@ import {
   TBundleSkillsDTO,
   TCreateSkillDTO,
   TListSkillsDTO,
-  TPublishSkillVersionDTO,
   TSkillByIdDTO,
-  TSkillVersionDTO
+  TSkillVersionDTO,
+  TUpdateSkillDTO
 } from "./agent-vault-skill-types";
 import { TAgentVaultSkillVersionDALFactory, TAgentVaultSkillVersionRow } from "./agent-vault-skill-version-dal";
 
@@ -274,7 +274,7 @@ export const agentVaultSkillServiceFactory = ({
     }
   };
 
-  const publishVersion = async ({ skillId, files, baseVersion, ...scoped }: TPublishSkillVersionDTO) => {
+  const updateSkill = async ({ skillId, files, baseVersion, ...scoped }: TUpdateSkillDTO) => {
     await $authorize(scoped, ProjectPermissionAgentVaultSkillActions.Edit);
 
     const skill = await $findSkill({ skillId, projectId: scoped.projectId });
@@ -431,7 +431,11 @@ export const agentVaultSkillServiceFactory = ({
     const skill = await $findSkill({ skillId, projectId: scoped.projectId });
     const accessBundles = await agentVaultSkillBundleDAL.findBundlesForSkill(skill.id, accessBundleIds);
     if (accessBundleIds && !accessBundles.length) throw skillNotFound(skillId);
-    return { skill: { ...projectSkill(skill), accessBundles } };
+    const latest = await $findVersion({ skill, version: skill.latestVersion });
+
+    const { decryptor } = await getProjectCipher(scoped.projectId);
+    const files = deserializeSkillFiles(decryptor({ cipherTextBlob: latest.encryptedFiles }));
+    return { skill: { ...projectSkill(skill), accessBundles, files }, version: latest.version };
   };
 
   // Version history is for the people who can publish and restore, so it checks Edit rather than Read.
@@ -579,7 +583,7 @@ export const agentVaultSkillServiceFactory = ({
 
   return {
     createSkill,
-    publishVersion,
+    updateSkill,
     restoreVersion,
     listSkills,
     getSkill,

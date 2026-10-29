@@ -4700,16 +4700,17 @@ export const AGENT_VAULT = {
       "The file's path inside the skill folder, using `/` between folders. No leading `/`, and no `.` or `..` parts. At most 255 characters, and each file or folder name at most 255 bytes.",
     fileMode: "The file's permissions: `0644` for a regular file, `0755` for one that can be run.",
     fileContent: "The file's content, encoded as base64.",
+    latestFiles: "The files of the latest version.",
     versionId: "The ID of the version.",
     version: "The version number. Versions count up from 1, and the newest 20 are kept.",
     sha256: "The SHA-256 digest of the version's files, as hex.",
     sizeBytes: "The total size of the version's files in bytes.",
     fileCount: "How many files the version has.",
-    versionCreatedAt: "When the version was published.",
+    versionCreatedAt: "When the version was saved.",
     unchanged:
       "True if the files match the latest version, in which case no new version was made and that version is returned.",
     baseVersion:
-      "The version these files were edited from. If a newer version has been published since, nothing is published and the request fails with 409. Omit it to publish regardless.",
+      "The version these files were edited from. If a newer version has been saved since, nothing is saved and the request fails with 409. Omit it to update regardless.",
     restoreUnchanged:
       "True if the version being restored has the same files as the latest version, in which case no new version was made and the latest version is returned.",
     addSkillId: "The ID of the skill to add to the access bundle.",

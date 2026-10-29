@@ -18,8 +18,9 @@ import { actorContext } from "./agent-vault-router-fns";
 import {
   agentVaultListQuery,
   AgentVaultSkillDetailSchema,
+  AgentVaultSkillFilesResponseSchema,
   AgentVaultSkillSchema,
-  AgentVaultSkillPublishSchema,
+  AgentVaultSkillUpdateSchema,
   AgentVaultSkillUploadSchema,
   AgentVaultSkillVersionParamSchema,
   AgentVaultSkillVersionSchema,
@@ -122,35 +123,20 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       hide: false,
       operationId: "getAgentVaultSkill",
       description:
-        "Get a skill in Agent Vault and the access bundles it is in. A member can get only a skill on an access bundle they have been granted.",
+        "Get a skill in Agent Vault, the access bundles it is in, and the files of its latest version. A member can get only a skill on an access bundle they have been granted.",
       tags: [ApiDocsTags.AgentVaultSkills],
       params: SkillIdParamsSchema,
-      response: { 200: z.object({ skill: AgentVaultSkillDetailSchema }) }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
-    handler: async (req) =>
-      server.services.agentVaultSkill.getSkill({
-        projectId: req.internalAgentVaultProjectId,
-        ctx: actorContext(req),
-        skillId: req.params.skillId
-      })
-  });
-
-  server.route({
-    method: "DELETE",
-    url: "/:skillId",
-    config: { rateLimit: writeLimit },
-    schema: {
-      hide: false,
-      operationId: "deleteAgentVaultSkill",
-      description: "Delete a skill from Agent Vault. It is removed from every access bundle.",
-      tags: [ApiDocsTags.AgentVaultSkills],
-      params: SkillIdParamsSchema,
-      response: { 200: z.object({ skill: AgentVaultSkillSchema }) }
+      response: {
+        200: z.object({
+          skill: AgentVaultSkillDetailSchema.extend({
+            files: AgentVaultSkillFilesResponseSchema.describe(AGENT_VAULT.SKILL.latestFiles)
+          })
+        })
+      }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { skill, removedFromBundles } = await server.services.agentVaultSkill.deleteSkill({
+      const { skill, version } = await server.services.agentVaultSkill.getSkill({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         skillId: req.params.skillId
@@ -161,18 +147,9 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
         orgId: req.permission.orgId,
         projectId: req.internalAgentVaultProjectId,
         event: {
-          type: EventType.AGENT_VAULT_SKILL_DELETE,
-          metadata: {
-            skillId: skill.id,
-            skillName: skill.name,
-            removedFromBundles: removedFromBundles.map((bundle) => ({ id: bundle.id, name: bundle.name }))
-          }
+          type: EventType.AGENT_VAULT_SKILL_VERSION_VIEW,
+          metadata: { skillId: skill.id, skillName: skill.name, version }
         }
-      });
-
-      emitAgentVaultTelemetry(server.services.telemetry, req, {
-        event: PostHogEventTypes.AgentVaultSkillDeleted,
-        properties: { skillId: skill.id, removedBundleCount: removedFromBundles.length }
       });
 
       return { skill };
@@ -180,18 +157,18 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
   });
 
   server.route({
-    method: "POST",
-    url: "/:skillId/versions",
+    method: "PATCH",
+    url: "/:skillId",
     bodyLimit: AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT,
     config: { rateLimit: writeLimit },
     schema: {
       hide: false,
-      operationId: "createAgentVaultSkillVersion",
+      operationId: "updateAgentVaultSkill",
       description:
-        "Publish a new version of a skill. If the `name` in SKILL.md differs from the skill's name, the skill is renamed, unless another skill already has that name. If the files match the latest version, nothing is published and that version is returned.",
+        "Update a skill's files. Each change is saved as a new version; if the files match the latest version, nothing is saved and that version is returned. If the `name` in SKILL.md differs, the skill is renamed, unless another skill already has that name.",
       tags: [ApiDocsTags.AgentVaultSkills],
       params: SkillIdParamsSchema,
-      body: AgentVaultSkillPublishSchema,
+      body: AgentVaultSkillUpdateSchema,
       response: {
         200: z.object({
           skill: AgentVaultSkillSchema,
@@ -202,7 +179,7 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req) => {
-      const { skill, version, unchanged, previousName } = await server.services.agentVaultSkill.publishVersion({
+      const { skill, version, unchanged, previousName } = await server.services.agentVaultSkill.updateSkill({
         projectId: req.internalAgentVaultProjectId,
         ctx: actorContext(req),
         skillId: req.params.skillId,
@@ -246,6 +223,49 @@ export const registerAgentVaultSkillRouter = async (server: FastifyZodProvider) 
       }
 
       return { skill, version, unchanged };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:skillId",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: false,
+      operationId: "deleteAgentVaultSkill",
+      description: "Delete a skill from Agent Vault. It is removed from every access bundle.",
+      tags: [ApiDocsTags.AgentVaultSkills],
+      params: SkillIdParamsSchema,
+      response: { 200: z.object({ skill: AgentVaultSkillSchema }) }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) => {
+      const { skill, removedFromBundles } = await server.services.agentVaultSkill.deleteSkill({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        skillId: req.params.skillId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.internalAgentVaultProjectId,
+        event: {
+          type: EventType.AGENT_VAULT_SKILL_DELETE,
+          metadata: {
+            skillId: skill.id,
+            skillName: skill.name,
+            removedFromBundles: removedFromBundles.map((bundle) => ({ id: bundle.id, name: bundle.name }))
+          }
+        }
+      });
+
+      emitAgentVaultTelemetry(server.services.telemetry, req, {
+        event: PostHogEventTypes.AgentVaultSkillDeleted,
+        properties: { skillId: skill.id, removedBundleCount: removedFromBundles.length }
+      });
+
+      return { skill };
     }
   });
 

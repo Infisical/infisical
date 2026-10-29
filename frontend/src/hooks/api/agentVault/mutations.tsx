@@ -37,13 +37,13 @@ import {
   TCreateAgentVaultSkillDTO,
   TCreateAgentVaultVariableDTO,
   TDeleteAgentVaultPersonalValuesDTO,
-  TPublishAgentVaultSkillVersionDTO,
   TSetAgentVaultPersonalValuesDTO,
   TUpdateAgentVaultAccessBundleDTO,
   TUpdateAgentVaultMemberRolesDTO,
   TUpdateAgentVaultServiceDTO,
   TUpdateAgentVaultSessionLabelDTO,
   TUpdateAgentVaultSessionLogSettingsDTO,
+  TUpdateAgentVaultSkillDTO,
   TUpdateAgentVaultVariableDTO
 } from "./types";
 
@@ -631,17 +631,17 @@ export class SkillVersionConflictError extends Error {
 
 const STALE_BASE_VERSION_RE = /^Version (\d+) was published after you opened this skill\./;
 
-export const usePublishAgentVaultSkillVersion = () => {
+export const useUpdateAgentVaultSkill = () => {
   const { currentOrg } = useOrganization();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ skillId, ...params }: TPublishAgentVaultSkillVersionDTO) => {
+    mutationFn: async ({ skillId, ...params }: TUpdateAgentVaultSkillDTO) => {
       try {
-        const { data } = await apiRequest.post<{
+        const { data } = await apiRequest.patch<{
           skill: TAgentVaultSkillSummary;
           version: TAgentVaultSkillVersion;
           unchanged: boolean;
-        }>(`/api/v1/agent-vault/skills/${skillId}/versions`, params);
+        }>(`/api/v1/agent-vault/skills/${skillId}`, params);
         return data;
       } catch (error) {
         const message: unknown = axios.isAxiosError(error)

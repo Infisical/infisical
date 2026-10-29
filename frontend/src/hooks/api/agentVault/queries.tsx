@@ -46,7 +46,7 @@ import {
   TAgentVaultSessionLogReadCheck,
   TAgentVaultSessionLogSettingsState,
   TAgentVaultSessionLogTailPage,
-  TAgentVaultSkill,
+  TAgentVaultSkillDetail,
   TAgentVaultSkillPage,
   TAgentVaultSkillVersion,
   TAgentVaultSkillVersionWithFiles,
@@ -736,7 +736,7 @@ export const useGetAgentVaultSkill = (skillId: string) => {
   return useQuery({
     queryKey: agentVaultKeys.skill(currentOrg.id, skillId),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ skill: TAgentVaultSkill }>(
+      const { data } = await apiRequest.get<{ skill: TAgentVaultSkillDetail }>(
         `/api/v1/agent-vault/skills/${skillId}`
       );
       return data.skill;
