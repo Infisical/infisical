@@ -853,7 +853,7 @@ export const secretScanningV2QueueServiceFactory = ({
       }
 
       let findingsPayload: TFindingsPayload;
-      let pullRequestCheckResult: TPullRequestCheckRunResult | undefined;
+      let pullRequestCommitCounts: { scannedCommitCount: number; totalCommitCount: number } | undefined;
 
       if (pullRequestScan) {
         const { findings, scannedCommitCount, totalCommitCount } = await scanGitHubPullRequest({
@@ -863,8 +863,7 @@ export const secretScanningV2QueueServiceFactory = ({
         });
 
         findingsPayload = findings;
-        // Judged on every finding in the pull request's commits, including ones an earlier push scan already saved.
-        pullRequestCheckResult = getPullRequestScanCheckRunResult({ findings, scannedCommitCount, totalCommitCount });
+        pullRequestCommitCounts = { scannedCommitCount, totalCommitCount };
       } else {
         findingsPayload = await factory.getDiffScanFindingsPayload({
           dataSource: {
@@ -898,7 +897,18 @@ export const secretScanningV2QueueServiceFactory = ({
           { id: scanId, status: SecretScanningScanStatus.Scanning },
           {
             status: SecretScanningScanStatus.Completed,
-            completedAt: new Date()
+            completedAt: new Date(),
+            ...(pullRequestScan
+              ? {
+                  metadata: {
+                    pullRequestNumber: pullRequestScan.pullRequest.number,
+                    baseSha: pullRequestScan.pullRequest.baseSha,
+                    headSha: pullRequestScan.pullRequest.headSha,
+                    checkRunId: pullRequestScan.checkRunId,
+                    findingIds: findings.map((finding) => finding.id)
+                  } satisfies TGitHubPullRequestScanMetadata
+                }
+              : {})
           },
           tx
         );
@@ -913,7 +923,13 @@ export const secretScanningV2QueueServiceFactory = ({
         return;
       }
 
-      if (pullRequestCheckResult) await reportPullRequestCheck(pullRequestCheckResult);
+      // Judged on every finding in the pull request's commits, including ones an earlier push scan saved first; the
+      // upsert returns those rows with the status they were triaged to, so skipped findings don't fail the check.
+      if (pullRequestCommitCounts) {
+        await reportPullRequestCheck(
+          getPullRequestScanCheckRunResult({ findings: allFindings, ...pullRequestCommitCounts })
+        );
+      }
 
       const newFindings = allFindings.filter((finding) => finding.scanId === scanId);
 
@@ -1400,6 +1416,7 @@ export const secretScanningV2QueueServiceFactory = ({
 
   const githubPullRequestEvents = githubPullRequestEventsFactory({
     secretScanningV2DAL,
+    auditLogService,
     discoverResource,
     queuePullRequestScan
   });

@@ -55,4 +55,11 @@ export type TQueueGitHubPullRequestEvent = {
   | { event: GitHubPullRequestEvent.PullRequest; pullRequest: TGitHubPullRequestScanPayload["pullRequest"] }
   | { event: GitHubPullRequestEvent.CheckRunRerequested; checkRunId: number; externalId: string | null }
   | { event: GitHubPullRequestEvent.CheckSuiteRerequested; checkSuiteId: number }
+  | {
+      event: GitHubPullRequestEvent.CheckRunRequestedAction;
+      checkRunId: number;
+      externalId: string | null;
+      action: string;
+      sender: { id: number; login: string };
+    }
 );

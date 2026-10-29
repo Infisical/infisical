@@ -1,4 +1,5 @@
 import {
+  CheckRunRequestedActionEvent,
   CheckRunRerequestedEvent,
   CheckSuiteRerequestedEvent,
   PullRequestOpenedEvent,
@@ -150,11 +151,38 @@ export const githubSecretScanningService = (
     );
   };
 
+  const handleCheckRunRequestedActionEvent = async (payload: CheckRunRequestedActionEvent, deliveryId: string) => {
+    const { check_run: checkRun, installation, repository, requested_action: requestedAction, sender } = payload;
+
+    if (!installation || !requestedAction.identifier) {
+      logger.warn(
+        `secretScanningV2CheckRunEvent: GitHub - Insufficient data [repository=${repository.full_name}] [checkRunId=${checkRun.id}]`
+      );
+      return;
+    }
+
+    if (String(checkRun.app.id) !== getConfig().INF_APP_CONNECTION_GITHUB_RADAR_APP_ID) return;
+
+    await secretScanningV2Queue.queueGitHubPullRequestEvent(
+      {
+        event: GitHubPullRequestEvent.CheckRunRequestedAction,
+        installationId: installation.id,
+        repository: { id: repository.id, full_name: repository.full_name },
+        checkRunId: checkRun.id,
+        externalId: checkRun.external_id,
+        action: requestedAction.identifier,
+        sender: { id: sender.id, login: sender.login }
+      },
+      deliveryId
+    );
+  };
+
   return {
     handlePushEvent,
     handlePullRequestEvent,
     handleCheckRunRerequestedEvent,
     handleCheckSuiteRerequestedEvent,
+    handleCheckRunRequestedActionEvent,
     handleInstallationDeletedEvent
   };
 };

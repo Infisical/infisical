@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { SecretScanningFindingSeverity } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  SecretScanningFindingSeverity,
+  SecretScanningFindingStatus
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import { TFindingsPayload } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-types";
 
 import {
@@ -34,7 +37,7 @@ const makeFinding = (index: number): TFindingsPayload[number] => ({
   severity: SecretScanningFindingSeverity.High,
   fingerprint: `abc123:config|${index}.ts:github-pat:${index + 1}:4`,
   details: {
-    description: "GitHub Personal Access Token",
+    description: "GitHub Personal Access Token.",
     startLine: index + 1,
     endLine: index + 1,
     startColumn: 4,
@@ -103,6 +106,38 @@ describe("getPullRequestScanCheckRunResult", () => {
     expect(result.summary).not.toContain(SECRET_VALUE);
   });
 
+  test("passes when every finding was marked as a false positive or ignored", () => {
+    const result = getPullRequestScanCheckRunResult({
+      findings: [
+        { ...makeFinding(0), status: SecretScanningFindingStatus.FalsePositive },
+        { ...makeFinding(1), status: SecretScanningFindingStatus.Ignore }
+      ],
+      scannedCommitCount: 1,
+      totalCommitCount: 1
+    });
+
+    expect(result.conclusion).toBe("success");
+    expect(result.title).toBe("2 secret(s) skipped");
+    expect(result.offerSkipActions).toBeFalsy();
+  });
+
+  test("still fails on findings that were resolved or not triaged, and offers the skip actions", () => {
+    const result = getPullRequestScanCheckRunResult({
+      findings: [
+        { ...makeFinding(0), status: SecretScanningFindingStatus.FalsePositive },
+        { ...makeFinding(1), status: SecretScanningFindingStatus.Resolved },
+        { ...makeFinding(2), status: SecretScanningFindingStatus.Unresolved }
+      ],
+      scannedCommitCount: 1,
+      totalCommitCount: 1
+    });
+
+    expect(result.conclusion).toBe("failure");
+    expect(result.title).toBe("2 secret(s) found");
+    expect(result.summary).toContain("1 more secret(s) were marked as false positives or ignored");
+    expect(result.offerSkipActions).toBe(true);
+  });
+
   test("caps the summary table and says how many findings it shows", () => {
     const findings = Array.from({ length: 60 }, (_, index) => makeFinding(index));
     const result = getPullRequestScanCheckRunResult({ findings, scannedCommitCount: 1, totalCommitCount: 1 });
@@ -142,6 +177,12 @@ describe("completePullRequestCheckRun", () => {
     expect(second.output.annotations).toHaveLength(50);
     expect(second.conclusion).toBeUndefined();
     expect(third.output.annotations).toHaveLength(20);
+    expect(first.actions.map((action: { identifier: string }) => action.identifier)).toEqual([
+      SecretScanningFindingStatus.FalsePositive,
+      SecretScanningFindingStatus.Ignore
+    ]);
+    expect(second.actions).toBeUndefined();
+    expect(first.output.annotations[0].message).toBe("GitHub Personal Access Token. Found in commit abc123d.");
     expect(JSON.stringify(checksUpdate.mock.calls)).not.toContain(SECRET_VALUE);
   });
 
@@ -155,5 +196,6 @@ describe("completePullRequestCheckRun", () => {
 
     expect(checksUpdate).toHaveBeenCalledTimes(1);
     expect(checksUpdate.mock.calls[0][0]).toMatchObject({ conclusion: "success", output: { annotations: [] } });
+    expect(checksUpdate.mock.calls[0][0].actions).toBeUndefined();
   });
 });

@@ -1,6 +1,9 @@
 import { ProbotOctokit } from "probot";
 
-import { SecretScanningFindingSeverity } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
+import {
+  SecretScanningFindingSeverity,
+  SecretScanningFindingStatus
+} from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-enums";
 import {
   convertPatchLineToFileLineNumber,
   replaceNonChangesWithNewlines,
@@ -44,11 +47,32 @@ type TPullRequestCheckRunTarget = {
   checkRunId: number;
 };
 
+// The statuses a pull request check can be skipped with; each is offered as a button on a failing check, and its
+// value is the button's identifier (GitHub allows 20 characters for a label or identifier, 40 for a description).
+export const PULL_REQUEST_CHECK_SKIP_ACTIONS = {
+  [SecretScanningFindingStatus.FalsePositive]: {
+    label: "Skip: False positive",
+    description: "Mark the findings as false positives"
+  },
+  [SecretScanningFindingStatus.Ignore]: {
+    label: "Skip: Ignore",
+    description: "Ignore the findings"
+  }
+} as const;
+
+export type TPullRequestCheckSkipStatus = keyof typeof PULL_REQUEST_CHECK_SKIP_ACTIONS;
+
+export const isPullRequestCheckSkipStatus = (
+  status: string | null | undefined
+): status is TPullRequestCheckSkipStatus =>
+  Boolean(status) && Object.keys(PULL_REQUEST_CHECK_SKIP_ACTIONS).includes(status as string);
+
 export type TPullRequestCheckRunResult = {
   conclusion: "success" | "failure" | "neutral" | "cancelled" | "timed_out";
   title: string;
   summary: string;
   findings?: TFindingsPayload;
+  offerSkipActions?: boolean;
 };
 
 export const getGitHubRadarInstallationOctokit = (installationId: string) => {
@@ -311,17 +335,17 @@ const toCheckRunAnnotations = (findings: TFindingsPayload) =>
     end_line: endLine,
     annotation_level: "failure" as const,
     title: `Secret detected: ${rule}`,
-    message: `${description}. Found in commit ${commit.slice(0, 7)}.`
+    message: `${description.replace(/\.+$/, "")}. Found in commit ${commit.slice(0, 7)}.`
   }));
 
 const escapeMarkdownTableCell = (value: string) => value.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 
 export const getPullRequestScanCheckRunResult = ({
-  findings,
+  findings: allFindings,
   scannedCommitCount,
   totalCommitCount
 }: {
-  findings: TFindingsPayload;
+  findings: (TFindingsPayload[number] & { status?: string | null })[];
   scannedCommitCount: number;
   totalCommitCount: number;
 }): TPullRequestCheckRunResult => {
@@ -329,6 +353,22 @@ export const getPullRequestScanCheckRunResult = ({
     scannedCommitCount < totalCommitCount
       ? `This pull request has ${totalCommitCount} commits. Infisical scanned the first ${scannedCommitCount}; later commits were not scanned.`
       : "";
+
+  const findings = allFindings.filter((finding) => !isPullRequestCheckSkipStatus(finding.status));
+  const skippedCount = allFindings.length - findings.length;
+
+  if (!findings.length && skippedCount) {
+    return {
+      conclusion: truncationNote ? "neutral" : "success",
+      title: `${skippedCount} secret(s) skipped`,
+      summary: [
+        `Found ${skippedCount} secret(s) in the commits of this pull request, all marked as false positives or ignored in Infisical.`,
+        truncationNote
+      ]
+        .filter(Boolean)
+        .join("\n\n")
+    };
+  }
 
   if (!findings.length) {
     if (truncationNote) {
@@ -357,7 +397,8 @@ export const getPullRequestScanCheckRunResult = ({
 
   const summary = [
     `Found ${findings.length} secret(s) in the commits of this pull request. Rotate each secret, then remove it from the pull request's history.`,
-    "If a finding is a false positive, add it to the allowlist in your Infisical secret scanning configuration, then re-run this check.",
+    "If the findings are false positives or safe to ignore, use Skip: False positive or Skip: Ignore above to mark them in Infisical and re-run this check. To stop a value from being reported anywhere, add it to the allowlist in your Infisical secret scanning configuration.",
+    skippedCount ? `${skippedCount} more secret(s) were marked as false positives or ignored in Infisical.` : "",
     truncationNote,
     table,
     findings.length > CHECK_RUN_MAX_SUMMARY_FINDINGS
@@ -371,7 +412,8 @@ export const getPullRequestScanCheckRunResult = ({
     conclusion: "failure",
     title: `${findings.length} secret(s) found`,
     summary,
-    findings
+    findings,
+    offerSkipActions: true
   };
 };
 
@@ -411,7 +453,16 @@ export const completePullRequestCheckRun = async ({
     status: "completed",
     conclusion: result.conclusion,
     completed_at: new Date().toISOString(),
-    output: { title: result.title, summary: result.summary, annotations: firstBatch }
+    output: { title: result.title, summary: result.summary, annotations: firstBatch },
+    ...(result.offerSkipActions
+      ? {
+          actions: Object.entries(PULL_REQUEST_CHECK_SKIP_ACTIONS).map(([identifier, action]) => ({
+            identifier,
+            label: action.label,
+            description: action.description
+          }))
+        }
+      : {})
   });
 
   // Annotations sent in later updates are appended to the ones already on the check run.
