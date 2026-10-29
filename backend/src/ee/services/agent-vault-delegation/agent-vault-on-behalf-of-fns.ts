@@ -11,8 +11,8 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
-import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TOnBehalfOfUser } from "../agent-vault-session/agent-vault-session-types";
+import { getAgentVaultReachability } from "../agent-vault/agent-vault-permission";
 import { TAgentVaultDelegationDALFactory } from "./agent-vault-delegation-dal";
 
 export type TOnBehalfOfDeps = {

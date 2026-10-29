@@ -2,6 +2,7 @@ import * as x509 from "@peculiar/x509";
 
 import { KeyStorePrefixes } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
+import { asNonSharedBuffer } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
@@ -140,7 +141,7 @@ export const intuneDelegatedHandler = (deps: TScepValidationHandlerDeps): IScepV
 
     reportIssued: async (ctx) => {
       const { serviceUri, intuneToken } = await resolveIntune(ctx.validationConnectionId);
-      const cert = new x509.X509Certificate(ctx.certificateDer);
+      const cert = new x509.X509Certificate(asNonSharedBuffer(ctx.certificateDer));
 
       await intuneSendSuccessNotification({
         intuneAccessToken: intuneToken,

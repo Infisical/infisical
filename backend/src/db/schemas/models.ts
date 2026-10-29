@@ -161,6 +161,7 @@ export enum TableName {
   DynamicSecretLease = "dynamic_secret_leases",
   SecretV2 = "secrets_v2",
   SecretReferenceV2 = "secret_references_v2",
+  SecretReadActivity = "secret_read_activity",
   SecretVersionV2 = "secret_versions_v2",
   SecretApprovalRequestSecretV2 = "secret_approval_requests_secrets_v2",
   SecretApprovalRequestSecretTagV2 = "secret_approval_request_secret_tags_v2",
@@ -337,6 +338,8 @@ export enum TableName {
   ApprovalRequestApprovals = "approval_request_approvals",
   ApprovalRequestGrants = "approval_request_grants",
   SecretChangeRequests = "secret_change_requests",
+  DelegatedApprovalPolicies = "delegated_approval_policies",
+  DelegatedApprovalRequests = "delegated_approval_requests",
 
   // Code Signing
   PkiSigners = "pki_signers",

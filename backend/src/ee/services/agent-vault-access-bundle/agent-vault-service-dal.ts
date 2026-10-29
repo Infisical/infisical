@@ -5,8 +5,8 @@ import { TableName, TAgentVaultServices } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-import { AgentVaultCredentialType, AgentVaultOauthStatus } from "../agent-vault/agent-vault-enums";
 import { MAX_OAUTH_SCOPES } from "../agent-vault-oauth/agent-vault-oauth-discovery-fns";
+import { AgentVaultCredentialType, AgentVaultOauthStatus } from "../agent-vault/agent-vault-enums";
 
 export type TAgentVaultServiceDALFactory = ReturnType<typeof agentVaultServiceDALFactory>;
 

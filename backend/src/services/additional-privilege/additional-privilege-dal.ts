@@ -134,19 +134,33 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
     return Boolean(result);
   };
 
+  // Without an actor, returns the folder grants of every user and identity in the project.
   const findFolderScopedPrivileges = async (
     {
       projectId,
       actorId,
       actorType
-    }: { projectId: string; actorId: string; actorType: ActorType.USER | ActorType.IDENTITY },
+    }: { projectId: string; actorId?: string; actorType?: ActorType.USER | ActorType.IDENTITY },
     tx?: Knex
   ) => {
     const docs = await (tx || db)(TableName.AdditionalPrivilege)
       .where({ projectId })
       .whereNotNull("folderId")
-      .where(actorType === ActorType.IDENTITY ? { actorIdentityId: actorId } : { actorUserId: actorId })
-      .select("id", "name", "folderId", "role", "isTemporary", "temporaryAccessEndTime");
+      .where((qb) => {
+        if (actorId) {
+          void qb.where(actorType === ActorType.IDENTITY ? { actorIdentityId: actorId } : { actorUserId: actorId });
+        }
+      })
+      .select(
+        "id",
+        "name",
+        "folderId",
+        "role",
+        "isTemporary",
+        "temporaryAccessEndTime",
+        "actorUserId",
+        "actorIdentityId"
+      );
 
     return docs as {
       id: string;
@@ -155,6 +169,8 @@ export const additionalPrivilegeDALFactory = (db: TDbClient) => {
       role: string | null;
       isTemporary: boolean;
       temporaryAccessEndTime: Date | null;
+      actorUserId: string | null;
+      actorIdentityId: string | null;
     }[];
   };
 

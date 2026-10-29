@@ -1,9 +1,5 @@
 import AgentIntroNote from "/snippets/agent-vault/slots/AgentIntroNote.mdx";
 import AgentPrereqLine from "/snippets/agent-vault/slots/AgentPrereqLine.mdx";
-import ServicePrereqLine from "/snippets/agent-vault/slots/ServicePrereqLine.mdx";
-import ServiceTemplatePick from "/snippets/agent-vault/slots/ServiceTemplatePick.mdx";
-import ServiceTemplatePickNote from "/snippets/agent-vault/slots/ServiceTemplatePickNote.mdx";
-import ServiceCredentialLine from "/snippets/agent-vault/slots/ServiceCredentialLine.mdx";
 import AgentLaunchCommand from "/snippets/agent-vault/slots/AgentLaunchCommand.mdx";
 import ServiceVerifyIntro from "/snippets/agent-vault/slots/ServiceVerifyIntro.mdx";
 import ServiceVerifyProse from "/snippets/agent-vault/slots/ServiceVerifyProse.mdx";
@@ -11,64 +7,26 @@ import ServiceVerifyCurl from "/snippets/agent-vault/slots/ServiceVerifyCurl.mdx
 import ServiceCheckCallout from "/snippets/agent-vault/slots/ServiceCheckCallout.mdx";
 import SeparateMachinesNote from "/snippets/agent-vault/SeparateMachinesNote.mdx";
 
-This quickstart guide walks you through using Agent Vault to launch an agent that makes authenticated API calls without needing an actual token.
+This guide walks you through using Agent Vault to launch an agent that calls HTTP APIs and MCP servers without having access to their credentials.
 
 <AgentIntroNote />
 
 ## Prerequisites
 
 <ul>
-  <li>An Infisical organization where you're an Agent Vault admin</li>
+  <li>An Infisical organization where you're an [Agent Vault admin](/documentation/platform/agent-vault/access-control#product-membership)</li>
+  <li>An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each API the agent calls (see the [quickstart](/documentation/platform/agent-vault/quickstart))</li>
   <li>The [Infisical CLI](/cli/install) installed on the host that will run the Agent Vault proxy and on the host that will run the agent</li>
   <AgentPrereqLine />
-  <ServicePrereqLine />
 </ul>
 
 <SeparateMachinesNote />
 
 ## Step 1: Set up in Infisical
 
-### Create an access bundle
-
-First, create an [access bundle](/documentation/platform/agent-vault/access-bundles) that defines which APIs ([services](/documentation/platform/agent-vault/services)) the agent can access.
-
-<Steps>
-  <Step>
-    In Infisical, open **Agent Vault** from the product switcher and go to **Access Bundles**.
-  </Step>
-  <Step>
-    Select **Create Access Bundle**. Give the access bundle a **Name**, then select **Create Access Bundle**.
-
-    <Frame>
-      <img src="/images/platform/agent-vault/access-bundle-create.png" alt="The Create Access Bundle dialog with code-review entered as the name" />
-    </Frame>
-  </Step>
-  <Step>
-    Select the access bundle you just created, then select **Add Service**.
-
-    <ServiceTemplatePick />
-
-    <Frame>
-      <img src="/images/platform/agent-vault/service-template-picker.png" alt="The Choose a template panel with GitHub among the available services" />
-    </Frame>
-
-    <ServiceTemplatePickNote />
-  </Step>
-  <Step>
-    <ServiceCredentialLine />
-  </Step>
-  <Step>
-    Once you've configured the service, select **Add Service**.
-  </Step>
-</Steps>
-
-<Tip>
-  You can repeat these steps to add as many more services as you like to the access bundle. To give the agent a remote MCP server, such as Linear's or Notion's, [add an MCP server](/documentation/platform/agent-vault/mcp-servers#add-an-mcp-server).
-</Tip>
-
 ### Create a proxy
 
-Next, create a [proxy](/documentation/platform/agent-vault/proxies) to intercept API calls from your agent.
+First, create a [proxy](/documentation/platform/agent-vault/proxies) to intercept API calls from your agent.
 
 <Steps>
   <Step>

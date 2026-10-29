@@ -29,6 +29,26 @@ import { TMembershipDALFactory } from "@app/services/membership/membership-dal";
 import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import {
+  findCallerDelegation,
+  resolveOnBehalfOfUser,
+  TOnBehalfOfDeps
+} from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
+import { TAgentVaultMemberDALFactory } from "../agent-vault-member/agent-vault-member-dal";
+import {
+  checkOauthClaimUnderLock,
+  checkOauthServerUnderLock,
+  OAUTH_SERVER_URL_NEEDS_AUTHORIZATION_MESSAGE,
+  TAgentVaultOauthServiceFactory
+} from "../agent-vault-oauth/agent-vault-oauth-service";
+import { AGENT_VAULT_OAUTH_HEADER_NAME, TAgentVaultOauthConfig } from "../agent-vault-oauth/agent-vault-oauth-types";
+import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
+import {
+  clearPersonalValuesAfterRevoke,
+  sameMemberProvidedFields
+} from "../agent-vault-personal-value/agent-vault-personal-value-fns";
+import { TAgentVaultPersonalValueServiceFactory } from "../agent-vault-personal-value/agent-vault-personal-value-service";
+import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
+import {
   agentVaultActorKey,
   resolveAgentVaultActorNames,
   TAgentVaultActorName,
@@ -69,26 +89,6 @@ import {
   toStoredVariableReferences,
   toVariableReference
 } from "../agent-vault/agent-vault-variable-fns";
-import {
-  findCallerDelegation,
-  resolveOnBehalfOfUser,
-  TOnBehalfOfDeps
-} from "../agent-vault-delegation/agent-vault-on-behalf-of-fns";
-import { TAgentVaultMemberDALFactory } from "../agent-vault-member/agent-vault-member-dal";
-import {
-  checkOauthClaimUnderLock,
-  checkOauthServerUnderLock,
-  OAUTH_SERVER_URL_NEEDS_AUTHORIZATION_MESSAGE,
-  TAgentVaultOauthServiceFactory
-} from "../agent-vault-oauth/agent-vault-oauth-service";
-import { AGENT_VAULT_OAUTH_HEADER_NAME, TAgentVaultOauthConfig } from "../agent-vault-oauth/agent-vault-oauth-types";
-import { TAgentVaultPersonalValueDALFactory } from "../agent-vault-personal-value/agent-vault-personal-value-dal";
-import {
-  clearPersonalValuesAfterRevoke,
-  sameMemberProvidedFields
-} from "../agent-vault-personal-value/agent-vault-personal-value-fns";
-import { TAgentVaultPersonalValueServiceFactory } from "../agent-vault-personal-value/agent-vault-personal-value-service";
-import { TAgentVaultVariableDALFactory } from "../agent-vault-variable/agent-vault-variable-dal";
 import {
   TAgentVaultAccessBundleActorRef,
   TAgentVaultAccessBundleDALFactory,

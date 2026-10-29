@@ -1,5 +1,6 @@
 import { TGenericPermission } from "@app/lib/types";
 
+import { TOnBehalfOfUser } from "../agent-vault-session/agent-vault-session-types";
 import {
   AgentVaultCredentialType,
   AgentVaultHttpMethod,
@@ -9,7 +10,6 @@ import {
   AgentVaultSubstitutionSurface,
   AgentVaultVariableReferenceField
 } from "../agent-vault/agent-vault-enums";
-import { TOnBehalfOfUser } from "../agent-vault-session/agent-vault-session-types";
 import { TAgentVaultAccessBundleOrderBy } from "./agent-vault-access-bundle-dal";
 
 export type TAgentVaultBearerMemberField = AgentVaultVariableReferenceField.CredentialValue;

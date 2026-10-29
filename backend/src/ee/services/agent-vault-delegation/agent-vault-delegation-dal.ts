@@ -142,28 +142,26 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
         addedAt: Date;
       }[];
 
-      const delegations = rows.map(
-        (row): TAgentVaultDelegationView => ({
-          id: row.id,
-          machineIdentity: { id: row.identityId, name: row.identityName },
-          scope: row.scope as AgentVaultDelegationScope,
-          users: subjects
-            .filter((subject) => subject.delegationId === row.id && subject.userId && subject.username)
-            .map((subject) => ({
-              id: subject.userId!,
-              username: subject.username!,
-              email: subject.email,
-              firstName: subject.firstName,
-              lastName: subject.lastName,
-              addedAt: subject.addedAt
-            })),
-          groups: subjects
-            .filter((subject) => subject.delegationId === row.id && subject.groupId && subject.groupName)
-            .map((subject) => ({ id: subject.groupId!, name: subject.groupName!, addedAt: subject.addedAt })),
-          createdAt: row.createdAt,
-          updatedAt: row.updatedAt
-        })
-      );
+      const delegations = rows.map((row): TAgentVaultDelegationView => ({
+        id: row.id,
+        machineIdentity: { id: row.identityId, name: row.identityName },
+        scope: row.scope as AgentVaultDelegationScope,
+        users: subjects
+          .filter((subject) => subject.delegationId === row.id && subject.userId && subject.username)
+          .map((subject) => ({
+            id: subject.userId!,
+            username: subject.username!,
+            email: subject.email,
+            firstName: subject.firstName,
+            lastName: subject.lastName,
+            addedAt: subject.addedAt
+          })),
+        groups: subjects
+          .filter((subject) => subject.delegationId === row.id && subject.groupId && subject.groupName)
+          .map((subject) => ({ id: subject.groupId!, name: subject.groupName!, addedAt: subject.addedAt })),
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt
+      }));
 
       return { delegations, totalCount };
     } catch (error) {

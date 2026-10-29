@@ -6,9 +6,9 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs } from "@app/queue";
 
 import { ActorType } from "../auth/auth-type";
-import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { CERTIFICATE_RENEWAL_CONFIG } from "../certificate-common/certificate-constants";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
+import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateV3ServiceFactory } from "./certificate-v3-service";
 
 type TCertificateV3QueueServiceFactoryDep = {

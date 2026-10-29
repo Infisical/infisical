@@ -11,6 +11,8 @@ import {
 } from "@app/components/v3";
 import { getDiscoveryDocsUrl, PKI_DISCOVERY_TYPE_MAP } from "@app/helpers/pkiDiscovery";
 import { useCreatePkiDiscovery, useUpdatePkiDiscovery } from "@app/hooks/api";
+import { AppConnection } from "@app/hooks/api/appConnections/enums";
+import { GatewayCapability } from "@app/hooks/api/gateways-v2/types";
 import {
   PkiDiscoveryType,
   TPkiDiscovery,
@@ -25,10 +27,11 @@ import {
 } from "./discovery-job-form-schema";
 import { DiscoveryDetailsFields } from "./DiscoveryDetailsFields";
 import { DiscoveryReviewFields } from "./DiscoveryReviewFields";
+import { HostConnectionsFields } from "./HostConnectionsFields";
 import { LinuxServerFoldersFields } from "./LinuxServerFoldersFields";
-import { LinuxServerHostsFields } from "./LinuxServerHostsFields";
 import { LinuxServerOptionsFields } from "./LinuxServerOptionsFields";
 import { NetworkTargetFields } from "./NetworkTargetFields";
+import { WindowsServerStoresFields } from "./WindowsServerStoresFields";
 
 type Props = {
   discoveryType: PkiDiscoveryType;
@@ -43,7 +46,9 @@ type Props = {
 enum DiscoveryJobStep {
   Targets = "targets",
   Hosts = "hosts",
+  WindowsHosts = "windows-hosts",
   Folders = "folders",
+  Stores = "stores",
   Options = "options",
   Details = "details",
   Review = "review"
@@ -66,6 +71,20 @@ const STEP_META: Record<
     subtitle: "Pick the SSH connections for the servers to scan.",
     rightDescription:
       "Each SSH connection is one server. The scan runs from the gateway on that connection.\n\nOnly SSH connections that use a gateway can be selected."
+  },
+  [DiscoveryJobStep.WindowsHosts]: {
+    name: "Hosts",
+    short: "Servers to scan",
+    subtitle: "Pick the Windows (WinRM) connections for the servers to scan.",
+    rightDescription:
+      "Each Windows (WinRM) connection is one server. The scan runs from the gateway on that connection.\n\nOnly connections that use a gateway can be selected."
+  },
+  [DiscoveryJobStep.Stores]: {
+    name: "Stores",
+    short: "Stores and CA certificates",
+    subtitle: "Choose the certificate stores to read and what to import.",
+    rightDescription:
+      "The scan reads the Local Machine certificate stores. Private keys aren't read or imported; the installation only records whether a certificate has one.\n\nStores the connection's account can't open are listed in the scan."
   },
   [DiscoveryJobStep.Folders]: {
     name: "Where to Look",
@@ -98,24 +117,44 @@ const STEP_META: Record<
 const STEP_FIELDS: Record<DiscoveryJobStep, FieldPath<TDiscoveryJobForm>[]> = {
   [DiscoveryJobStep.Targets]: ["targets", "ports", "gatewayId", "gatewayPoolId"],
   [DiscoveryJobStep.Hosts]: ["connections"],
+  [DiscoveryJobStep.WindowsHosts]: ["connections"],
   [DiscoveryJobStep.Folders]: ["searchFolderPaths", "skipFolderPaths"],
+  [DiscoveryJobStep.Stores]: ["certificateStores", "importStandaloneCaCertificates"],
   [DiscoveryJobStep.Options]: ["maxFolderDepth", "importStandaloneCaCertificates"],
   [DiscoveryJobStep.Details]: ["name", "description", "isAutoScanEnabled", "scanIntervalDays"],
   [DiscoveryJobStep.Review]: []
 };
 
-const getSteps = (type: PkiDiscoveryType): DiscoveryJobStep[] =>
-  type === PkiDiscoveryType.LinuxServer
-    ? [
+const getSteps = (type: PkiDiscoveryType): DiscoveryJobStep[] => {
+  switch (type) {
+    case PkiDiscoveryType.LinuxServer:
+      return [
         DiscoveryJobStep.Hosts,
         DiscoveryJobStep.Folders,
         DiscoveryJobStep.Options,
         DiscoveryJobStep.Details,
         DiscoveryJobStep.Review
-      ]
-    : [DiscoveryJobStep.Targets, DiscoveryJobStep.Details, DiscoveryJobStep.Review];
+      ];
+    case PkiDiscoveryType.WindowsServer:
+      return [
+        DiscoveryJobStep.WindowsHosts,
+        DiscoveryJobStep.Stores,
+        DiscoveryJobStep.Details,
+        DiscoveryJobStep.Review
+      ];
+    default:
+      return [DiscoveryJobStep.Targets, DiscoveryJobStep.Details, DiscoveryJobStep.Review];
+  }
+};
 
 const buildTargetConfig = (form: TDiscoveryJobForm): TPkiDiscoveryTargetConfig => {
+  if (form.discoveryType === PkiDiscoveryType.WindowsServer) {
+    return {
+      connectionIds: form.connections.map((c) => c.id),
+      certificateStores: form.certificateStores,
+      importStandaloneCaCertificates: form.importStandaloneCaCertificates
+    };
+  }
   if (form.discoveryType === PkiDiscoveryType.LinuxServer) {
     return {
       connectionIds: form.connections.map((c) => c.id),
@@ -273,7 +312,21 @@ export const DiscoveryJobForm = ({
               <p className="mt-1 text-sm text-muted">{currentStep.subtitle}</p>
             </div>
             {currentKey === DiscoveryJobStep.Targets && <NetworkTargetFields />}
-            {currentKey === DiscoveryJobStep.Hosts && <LinuxServerHostsFields />}
+            {currentKey === DiscoveryJobStep.Hosts && (
+              <HostConnectionsFields
+                app={AppConnection.SSH}
+                connectionLabel="SSH"
+                capability={GatewayCapability.CertificateScan}
+              />
+            )}
+            {currentKey === DiscoveryJobStep.WindowsHosts && (
+              <HostConnectionsFields
+                app={AppConnection.WinRM}
+                connectionLabel="Windows (WinRM)"
+                capability={GatewayCapability.WindowsCertificateScan}
+              />
+            )}
+            {currentKey === DiscoveryJobStep.Stores && <WindowsServerStoresFields />}
             {currentKey === DiscoveryJobStep.Folders && <LinuxServerFoldersFields />}
             {currentKey === DiscoveryJobStep.Options && <LinuxServerOptionsFields />}
             {currentKey === DiscoveryJobStep.Details && <DiscoveryDetailsFields />}
@@ -299,39 +352,65 @@ export const DiscoveryJobForm = ({
         </div>
       </FormProvider>
 
-      <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-6 py-4">
-        <span className="text-xs text-muted">{footerStatus}</span>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border px-6 py-4">
         {isEditing ? (
-          <div className="flex items-center gap-3">
-            <Button type="button" variant="outline" onClick={onCancel} isDisabled={isPending}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="project"
-              onClick={submitForm}
-              isPending={isPending}
-              isDisabled={!formState.isDirty || isPending}
-            >
-              Save Changes
-            </Button>
-          </div>
+          <>
+            <div className="flex items-center gap-3">
+              <Button type="button" variant="outline" onClick={onCancel} isDisabled={isPending}>
+                Cancel
+              </Button>
+              <span className="text-xs text-muted">{footerStatus}</span>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <span className="hidden text-xs text-muted sm:inline">
+                Step {stepIndex + 1} of {steps.length}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStepIndex((prev) => prev - 1)}
+                isDisabled={stepIndex === 0}
+              >
+                Back
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStepIndex((prev) => prev + 1)}
+                isDisabled={isFinalStep}
+              >
+                Next
+              </Button>
+              <Button
+                type="button"
+                variant="project"
+                onClick={submitForm}
+                isPending={isPending}
+                isDisabled={!formState.isDirty || isPending}
+              >
+                Save Changes
+              </Button>
+            </div>
+          </>
         ) : (
-          <div className="flex items-center gap-3">
-            <Button type="button" variant="outline" onClick={handleBack} isDisabled={isPending}>
-              {stepIndex === 0 ? "Cancel" : "Back"}
-            </Button>
-            <Button
-              type="button"
-              variant="project"
-              onClick={handleNext}
-              isPending={isFinalStep && isPending}
-              isDisabled={isFinalStep && isPending}
-            >
-              {!isFinalStep && "Continue"}
-              {isFinalStep && "Create Job"}
-            </Button>
-          </div>
+          <>
+            <span className="text-xs text-muted">{footerStatus}</span>
+            <div className="flex items-center gap-3">
+              <Button type="button" variant="outline" onClick={handleBack} isDisabled={isPending}>
+                {stepIndex === 0 ? "Cancel" : "Back"}
+              </Button>
+              <Button
+                type="button"
+                variant="project"
+                onClick={handleNext}
+                isPending={isFinalStep && isPending}
+                isDisabled={isFinalStep && isPending}
+              >
+                {!isFinalStep && "Continue"}
+                {isFinalStep && "Create Job"}
+              </Button>
+            </div>
+          </>
         )}
       </div>
     </form>

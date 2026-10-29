@@ -20,6 +20,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     },
     schema: {
       hide: false,
+      operationId: "createDynamicSecretLease",
       tags: [ApiDocsTags.DynamicSecrets],
       body: z.object({
         dynamicSecretName: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.CREATE.dynamicSecretName).toLowerCase(),
@@ -107,6 +108,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     },
     schema: {
       hide: false,
+      operationId: "revokeDynamicSecretLease",
       tags: [ApiDocsTags.DynamicSecrets],
       params: z.object({
         leaseId: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.DELETE.leaseId)
@@ -188,6 +190,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     },
     schema: {
       hide: false,
+      operationId: "renewDynamicSecretLease",
       tags: [ApiDocsTags.DynamicSecrets],
       params: z.object({
         leaseId: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.RENEW.leaseId)
@@ -280,6 +283,7 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
     },
     schema: {
       hide: false,
+      operationId: "getDynamicSecretLease",
       tags: [ApiDocsTags.DynamicSecrets],
       params: z.object({
         leaseId: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.GET_BY_LEASEID.leaseId)
