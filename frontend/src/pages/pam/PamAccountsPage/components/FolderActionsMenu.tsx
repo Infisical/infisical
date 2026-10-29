@@ -20,6 +20,7 @@ import {
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
+import { CopyIdMenuItem } from "../../components/CopyIdMenuItem";
 import { PAM_FOLDER_TABS } from "../../components/pamResourceTabs";
 
 type Props = {
@@ -76,6 +77,7 @@ export const FolderActionsMenu = ({
         </IconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+        <CopyIdMenuItem id={folder.id} />
         <Tooltip>
           <TooltipTrigger asChild>
             <div>

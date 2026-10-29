@@ -101,6 +101,7 @@ export const FolderAccountRow = ({
       }
       actions={
         <AccountActionsMenu
+          accountId={account.id}
           can={can}
           accountType={accountType}
           isAccessible={account.isAccessible}

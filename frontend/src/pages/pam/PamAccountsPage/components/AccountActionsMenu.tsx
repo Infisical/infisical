@@ -19,9 +19,11 @@ import {
 } from "@app/hooks/api/pam";
 import { PamSheetTab } from "@app/hooks/usePamSheetState";
 
+import { CopyIdMenuItem } from "../../components/CopyIdMenuItem";
 import { PAM_ACCOUNT_TABS } from "../../components/pamResourceTabs";
 
 type Props = {
+  accountId: string;
   can: (action: PamResourcePermissionActions) => boolean;
   accountType: PamAccountType;
   isAccessible: boolean;
@@ -39,6 +41,7 @@ type Props = {
 };
 
 export const AccountActionsMenu = ({
+  accountId,
   can,
   accountType,
   isAccessible,
@@ -103,6 +106,7 @@ export const AccountActionsMenu = ({
         </IconButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+        <CopyIdMenuItem id={accountId} />
         {needsApproval ? (
           <Tooltip>
             <TooltipTrigger asChild>
