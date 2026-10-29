@@ -267,6 +267,9 @@ export const certificateRenewalServiceFactory = ({
     },
     tx: Knex
   ) => {
+    const lockedOriginalCert = await certificateDAL.findByIdForUpdate(originalCert.id, tx);
+    if (lockedOriginalCert) assertCertificateNotDeleted(lockedOriginalCert);
+
     const renewalUpdate: {
       profileId?: string | null;
       renewedFromCertificateId?: string;
@@ -594,8 +597,6 @@ export const certificateRenewalServiceFactory = ({
       throw new NotFoundError({ message: "Certificate not found" });
     }
 
-    assertCertificateNotDeleted(originalCert);
-
     if (!originalCert.profileId) {
       throw new ForbiddenRequestError({
         message:
@@ -623,7 +624,12 @@ export const certificateRenewalServiceFactory = ({
     const originalCsr =
       !certificateSecret && keySource === CertificateRenewalKeySource.Reuse ? originatingRequest.csr : null;
 
-    if (keySource === CertificateRenewalKeySource.Reuse && !certificateSecret && !originalCsr) {
+    if (
+      !originalCert.deletedAt &&
+      keySource === CertificateRenewalKeySource.Reuse &&
+      !certificateSecret &&
+      !originalCsr
+    ) {
       throw new BadRequestError({
         message:
           "This certificate's key pair cannot be reused because Infisical holds neither its private key nor the signing request it was issued from. Renew with a new key pair, or for a CA-issued certificate supply a CSR generated from the existing key."
@@ -1123,6 +1129,8 @@ export const certificateRenewalServiceFactory = ({
         const renewalAuth = internal
           ? undefined
           : await $authorizeRenewal({ originalCert, profile, actorCtx, isEditingCertificate }, tx);
+
+        assertCertificateNotDeleted(originalCert);
 
         const { issuerType, ca, caType, policy } = await $resolveRenewalIssuer(
           {

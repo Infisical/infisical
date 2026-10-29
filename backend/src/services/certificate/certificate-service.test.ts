@@ -65,6 +65,7 @@ const buildService = () => {
     },
     pkiApplicationDAL: { findById: vi.fn() },
     pkiSyncDAL: { find: vi.fn().mockResolvedValue([]) },
+    certificateRequestDAL: { update: vi.fn().mockResolvedValue([]) },
     pkiSyncQueue: {},
     auditLogService: { createAuditLog: vi.fn() },
     usageMeteringService: { emitForProject: vi.fn() }

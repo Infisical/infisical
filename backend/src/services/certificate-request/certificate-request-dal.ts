@@ -10,8 +10,8 @@ import {
   type ProcessedPermissionRules
 } from "@app/lib/knex/permission-filter-utils";
 import { ApprovalRequestStatus } from "@app/services/approval-policy/approval-policy-enums";
-import { CertStatus } from "@app/services/certificate/certificate-types";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 import { applyMetadataFilter } from "@app/services/resource-metadata/resource-metadata-fns";
 
 import { CertificateRequestStatus } from "./certificate-request-types";

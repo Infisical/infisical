@@ -3967,6 +3967,7 @@ export const registerRoutes = async (
     usageCounterDAL,
     keyStore,
     certificateDAL,
+    certificateRequestDAL,
     certificateBodyDAL,
     certificateSecretDAL,
     certificateAuthorityDAL,

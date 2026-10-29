@@ -541,7 +541,7 @@ const Page = () => {
       />
       <ConfirmationAlertDialog
         isOpen={popUp.deleteCertificate.isOpen}
-        title={`Delete certificate ${displayName}?`}
+        title={`Delete Certificate ${displayName}?`}
         description={getCertificateDeletionWarning(
           certificate,
           supportsRevocation,

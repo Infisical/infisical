@@ -43,6 +43,7 @@ import {
 import { TCertificatePolicyServiceFactory } from "@app/services/certificate-policy/certificate-policy-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
+import { TCertificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import {
   CertificateApplicationAlertEvent,
@@ -160,6 +161,7 @@ type TCertificateServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getResourcePermission">;
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId" | "delete">;
+  certificateRequestDAL: Pick<TCertificateRequestDALFactory, "update">;
   signerDAL: Pick<TSignerDALFactory, "findOne">;
   userDAL: Pick<TUserDALFactory, "findById">;
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -197,6 +199,7 @@ export const certificateServiceFactory = ({
   kmsService,
   permissionService,
   certificateSyncDAL,
+  certificateRequestDAL,
   auditLogService,
   pkiSyncDAL,
   pkiSyncQueue,
@@ -595,6 +598,7 @@ export const certificateServiceFactory = ({
 
       await certificateBodyDAL.delete({ certId: cert.id }, tx);
       await certificateSecretDAL.delete({ certId: cert.id }, tx);
+      await certificateRequestDAL.update({ certificateId: cert.id }, { encryptedPrivateKey: null }, tx);
       await pkiCollectionItemDAL.delete({ certId: cert.id }, tx);
       const removedSyncLinks = await certificateSyncDAL.delete({ certificateId: cert.id }, tx);
 

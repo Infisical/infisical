@@ -89,7 +89,7 @@ type TPkiScepServiceFactoryDep = {
   scepEnrollmentConfigDAL: Pick<TScepEnrollmentConfigDALFactory, "findById">;
   scepDynamicChallengeDAL: TScepDynamicChallengeDALFactory;
   scepTransactionDAL: TScepTransactionDALFactory;
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "transaction" | "primaryNode">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
   certificateRequestDAL: Pick<TCertificateRequestDALFactory, "findById" | "find">;
@@ -669,7 +669,10 @@ export const pkiScepServiceFactory = ({
 
     const storedSignerCert =
       isValidSigner && signerCertObj
-        ? await certificateDAL.findOne({ serialNumber: signerCertObj.serialNumber, caId: profile.caId! })
+        ? await certificateDAL.findOne(
+            { serialNumber: signerCertObj.serialNumber, caId: profile.caId! },
+            certificateDAL.primaryNode()
+          )
         : null;
 
     const certRequests =

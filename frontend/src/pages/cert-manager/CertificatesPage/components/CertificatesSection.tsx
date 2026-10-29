@@ -234,7 +234,7 @@ export const CertificatesSection = ({
         />
         <ConfirmationAlertDialog
           isOpen={popUp.deleteCertificate.isOpen}
-          title={`Delete certificate ${
+          title={`Delete Certificate ${
             (popUp?.deleteCertificate?.data as { commonName: string })?.commonName || ""
           }?`}
           description={getCertificateDeletionWarning(
