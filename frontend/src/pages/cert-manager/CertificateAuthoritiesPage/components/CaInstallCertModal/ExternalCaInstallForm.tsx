@@ -60,7 +60,10 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
   const isPathLengthLocked = typeof storedPathLength === "number" && storedPathLength >= 0;
   const [selectedPathLength, setSelectedPathLength] = useState("-1");
   const maxPathLength = isPathLengthLocked ? String(storedPathLength) : selectedPathLength;
-  const { data: csr } = useGetCaCsr(caId, Number(maxPathLength));
+  const { data: csr } = useGetCaCsr(
+    caId,
+    isPathLengthLocked ? undefined : Number(selectedPathLength)
+  );
   const { mutateAsync: importCaCertificate } = useImportCaCertificate();
 
   useEffect(() => {
