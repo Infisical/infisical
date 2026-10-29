@@ -855,6 +855,7 @@ export const agentVaultProxyServiceFactory = ({
       hostPattern: row.hostPattern,
       allowedMethods: row.allowedMethods,
       allowedPathPrefixes: row.allowedPathPrefixes,
+      allowedTools: row.allowedTools,
       credential: refreshedCredentials.get(row.id) ?? $decryptCredential(row, decryptor),
       customHeaders: customHeaderRows
         .filter((header) => header.serviceId === row.id)

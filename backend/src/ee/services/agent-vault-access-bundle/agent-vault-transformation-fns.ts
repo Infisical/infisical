@@ -34,17 +34,17 @@ const isUnchanged = (stored: Record<string, unknown>, columns: Record<string, un
  * hand-written call edit one row without first fetching the service for its ids. Ids are claimed in a first
  * pass, or swapping two rows' names would let the second claim the row the first was already given.
  */
-export const planTransformationDiff = <TRow extends TStoredRow, TColumns>({
+export const matchTransformationRows = <TRow extends TStoredRow>({
   existing,
   incoming,
   naturalKeyOfRow,
   subject
 }: {
   existing: TRow[];
-  incoming: TTransformationWrite<TColumns>[];
+  incoming: { id?: string; naturalKey: string }[];
   naturalKeyOfRow: (row: TRow) => string;
   subject: string;
-}): TTransformationPlan<TColumns> => {
+}): (TRow | undefined)[] => {
   const byId = new Map(existing.map((row) => [row.id, row]));
   const claimed = new Set<string>();
   const resolved = new Array<TRow | undefined>(incoming.length);
@@ -73,9 +73,25 @@ export const planTransformationDiff = <TRow extends TStoredRow, TColumns>({
     const stored = byKey.get(row.naturalKey);
     if (!stored) return;
     byKey.delete(row.naturalKey);
-    claimed.add(stored.id);
     resolved[index] = stored;
   });
+
+  return resolved;
+};
+
+export const planTransformationDiff = <TRow extends TStoredRow, TColumns>({
+  existing,
+  incoming,
+  naturalKeyOfRow,
+  subject
+}: {
+  existing: TRow[];
+  incoming: TTransformationWrite<TColumns>[];
+  naturalKeyOfRow: (row: TRow) => string;
+  subject: string;
+}): TTransformationPlan<TColumns> => {
+  const resolved = matchTransformationRows({ existing, incoming, naturalKeyOfRow, subject });
+  const claimed = new Set(resolved.flatMap((row) => (row ? [row.id] : [])));
 
   const plan: TTransformationPlan<TColumns> = { creates: [], updates: [], deleteIds: [] };
 

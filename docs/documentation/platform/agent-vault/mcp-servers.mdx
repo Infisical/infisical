@@ -30,6 +30,9 @@ You add the MCP server to your agent with its real URL and no credentials. When 
     On the **Credential** step, pick a **Credential Type** and set up the [credential](#credential-types). Select **Continue**.
   </Step>
   <Step>
+    On the **Tools** step, choose which of the server's [tools agents can call](#allowed-tools). Select **Continue**.
+  </Step>
+  <Step>
     On the **Review** step, select **Add Service**. The service appears in the bundle's list with the type **MCP Server**.
   </Step>
 </Steps>
@@ -89,6 +92,26 @@ If the MCP server needs another header besides the credential, such as an organi
 </Steps>
 
 Infisical won't save a custom header with the same name as the credential's header, which is `Authorization` unless you changed a Bearer token's **Header Name**. Infisical also won't save a header that the proxy sets itself, such as `Host` or `Content-Length`.
+
+## Allowed tools
+
+By default, agents can call every tool the MCP server offers. To keep agents away from tools they shouldn't use, such as tools that delete data, allow only the tools you select. The list applies to every session that uses the service.
+
+<Steps>
+  <Step>
+    On the **Tools** step, select **Selected tools**.
+  </Step>
+  <Step>
+    Infisical loads the server's list of tools with the service's credential. Select the tools agents can call.
+  </Step>
+  <Step>
+    To allow a tool that the list doesn't include, such as a tool the credential lacks the scope for, type its exact name in the search field and press Enter.
+  </Step>
+</Steps>
+
+When an agent calls a tool you didn't allow, the proxy refuses the call and doesn't send it to the server. The agent gets an error that names the tool, and the call appears in the [session's logs](/documentation/platform/agent-vault/session-logs) as blocked. The proxy also leaves the tools you didn't allow out of the list of tools the server returns to the agent.
+
+The proxy picks up a changed list within its [poll interval](/documentation/platform/agent-vault/proxies#poll-interval) (60 seconds by default) and refuses calls to the tools you removed from then on. Most agents fetch the list of tools only when they connect, so a running agent shows the new list after you restart it or reconnect the MCP server. To allow every tool again, edit the service and select **All tools**.
 
 ## Connect your agent
 
@@ -153,8 +176,8 @@ Infisical won't save a custom header with the same name as the credential's head
 
 - **Remote servers only:** An MCP service covers MCP servers that the agent reaches over HTTPS. A local MCP server that the agent starts as a process isn't an MCP service, but you can add [HTTP services](/documentation/platform/agent-vault/http-apis) for the APIs that the local server calls
 - **No OAuth on private networks:** Infisical connects to the MCP server and to the provider to set up OAuth and refresh the access token, so if either one is on a private network, use a [Bearer token](#bearer-token) instead, or set [`ALLOW_INTERNAL_IP_CONNECTIONS`](/self-hosting/configuration/envars#param-allow-internal-ip-connections) to `true` if you self-host Infisical on that network
-- **No tool filtering:** The agent can call every tool the server offers to the credential, so limit what the agent can do through the credential's own permissions
 - **No connectors that run in a vendor's cloud:** Custom connectors in claude.ai or ChatGPT connect from the vendor's servers, so their traffic never reaches your proxy
+- **Refusals on the SSE transport:** An agent built on the Python MCP SDK that connects over the SSE transport gets no error when it calls a tool you didn't allow, and waits until the call times out. Use the Streamable HTTP transport if the server supports it
 - **No WebSocket transports:** The proxy doesn't support [WebSocket connections](/documentation/platform/agent-vault/proxies#supported-connections)
 
 ## Troubleshooting
@@ -172,6 +195,9 @@ Infisical won't save a custom header with the same name as the credential's head
 
     - `SITE_URL` is set to the URL you use to open Infisical
     - `SITE_URL` uses `https://` (providers such as Linear refuse a redirect URI on plain `http://` unless the host is `localhost`)
+  </Accordion>
+  <Accordion title="The tools don't load">
+    If Infisical can't get the server's list of tools, the **Tools** step shows the reason, such as a credential the server rejected or a server on a private network. You can still add tools by typing their names in the search field.
   </Accordion>
   <Accordion title="The agent asks you to sign in to the MCP server">
     The request reached the server without a credential. Check that:

@@ -22,6 +22,7 @@ import {
   AgentVaultActorRefSchema,
   AgentVaultCreatedMemberSchema,
   AgentVaultCreateServiceBodySchema,
+  AgentVaultListMcpToolsBodySchema,
   agentVaultListQuery,
   AgentVaultMemberIdsSchema,
   AgentVaultMemberRevokeIdsSchema,
@@ -335,6 +336,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
               service.credential.type === AgentVaultCredentialType.OAuth ? service.credential.grantedScopes : undefined,
             allowedMethods: service.allowedMethods,
             allowedPathPrefixes: service.allowedPathPrefixes,
+            allowedTools: service.allowedTools,
             memberProvidedFields:
               service.credential.type === AgentVaultCredentialType.Bearer ||
               service.credential.type === AgentVaultCredentialType.Basic
@@ -357,6 +359,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           hostPatternCount: parseHostPatterns(service.hostPattern).patterns.length,
           allowedMethodCount: service.allowedMethods?.length ?? 0,
           allowedPathPrefixCount: service.allowedPathPrefixes?.length ?? 0,
+          allowedToolCount: service.allowedTools?.length ?? 0,
           customHeaderCount: service.customHeaders.length,
           substitutionCount: service.substitutions.length,
           variableReferenceCount: service.variableReferences.length
@@ -433,6 +436,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
                 : undefined,
             allowedMethods: update.allowedMethods,
             allowedPathPrefixes: update.allowedPathPrefixes,
+            allowedTools: update.allowedTools,
             // The setting after the update, present whenever the update touched the credential.
             memberProvidedFields:
               req.body.credential &&
@@ -469,6 +473,7 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
           hostPatternCount: parseHostPatterns(service.hostPattern).patterns.length,
           allowedMethodCount: service.allowedMethods?.length ?? 0,
           allowedPathPrefixCount: service.allowedPathPrefixes?.length ?? 0,
+          allowedToolCount: service.allowedTools?.length ?? 0,
           customHeaderCount: service.customHeaders.length,
           substitutionCount: service.substitutions.length,
           variableReferenceCount: service.variableReferences.length
@@ -477,6 +482,42 @@ export const registerAgentVaultAccessBundleRouter = async (server: FastifyZodPro
 
       return { service };
     }
+  });
+
+  // An action route rather than a GET on the service: on create there is no service yet, and the body carries a
+  // credential, which can't go in a query string.
+  server.route({
+    method: "POST",
+    url: "/:accessBundleId/mcp-tools/list",
+    config: { rateLimit: writeLimit },
+    schema: {
+      hide: true,
+      operationId: "listAgentVaultMcpTools",
+      description: "List the tools an MCP server offers, to choose which ones a service allows",
+      tags: [ApiDocsTags.AgentVaultAccessBundles],
+      params: z.object({
+        accessBundleId: z.string().uuid().describe(AGENT_VAULT.ACCESS_BUNDLE.accessBundleId)
+      }),
+      body: AgentVaultListMcpToolsBodySchema,
+      response: {
+        200: z.object({
+          tools: z
+            .object({
+              name: z.string().describe(AGENT_VAULT.SERVICE.mcpToolName),
+              description: z.string().nullable().describe(AGENT_VAULT.SERVICE.mcpToolDescription)
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
+    handler: async (req) =>
+      server.services.agentVaultAccessBundle.listMcpTools({
+        projectId: req.internalAgentVaultProjectId,
+        ctx: actorContext(req),
+        accessBundleId: req.params.accessBundleId,
+        ...req.body
+      })
   });
 
   server.route({

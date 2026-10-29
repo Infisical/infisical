@@ -187,6 +187,12 @@ The proxy also returns a 403 for:
 - A request that breaks the service's [method or path rules](/documentation/platform/agent-vault/http-apis#methods-and-paths), under either traffic policy
 - A request to a service that needs the session owner's [personal values](/documentation/platform/agent-vault/access-bundles#set-up-your-personal-values), before they set them up
 
+For an [MCP service that allows only some tools](/documentation/platform/agent-vault/mcp-servers#allowed-tools), the proxy also blocks:
+
+- A call to a tool the service doesn't allow. An agent on the Streamable HTTP transport gets an MCP error that names the tool, and any other agent, such as one on the SSE transport, gets a 403 with the same message
+- A request the proxy can't read to check which tools it calls, such as a compressed body or JSON that isn't a valid MCP message. The proxy also blocks a request with a body that isn't a `POST`. The agent gets a 400
+- A request with a body larger than 32 MiB. The agent gets a 413
+
 ### Exceptions
 
 Exceptions allow your agents to access hosts that aren't covered by any service in an access bundle, even when your proxy uses **Access bundle hosts only**. Use exceptions for hosts every agent needs, such as a package registry or a documentation site.

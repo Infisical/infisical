@@ -83,6 +83,7 @@ export type TResolvedService = {
   hostPattern: string;
   allowedMethods: string[] | null;
   allowedPathPrefixes: string[] | null;
+  allowedTools: string[] | null;
   credential:
     | {
         type: AgentVaultCredentialType.Bearer;

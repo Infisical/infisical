@@ -16,9 +16,11 @@ import {
 } from "@app/hooks/api/agentVault";
 import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 
+import { ExpandableValueList } from "./ExpandableValueList";
 import {
   CREDENTIAL_LABELS,
   isAllMethods,
+  McpToolScope,
   oauthStatusLabel,
   SURFACE_LABELS,
   TRANSPORT_LABELS,
@@ -72,6 +74,7 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
   const isMcp = form.serviceType === AgentVaultServiceType.Mcp;
   const isBasic = form.credentialType === AgentVaultCredentialType.Basic;
   const isOAuth = form.credentialType === AgentVaultCredentialType.OAuth;
+  const isAllTools = form.toolScope === McpToolScope.All;
   const secretLabel = isBasic ? "Password" : "Token";
   const sends = credentialPreview(form);
 
@@ -207,6 +210,20 @@ export const ReviewFields = ({ isUpdate, service, storedType, storedMemberFields
           </div>
         )}
       </DetailGroup>
+
+      {isMcp && (
+        <DetailGroup>
+          <DetailGroupHeader className="border-b border-border pb-2">Tools</DetailGroupHeader>
+          <Detail className="w-full min-w-0">
+            <DetailLabel>
+              {isAllTools ? "Allowed" : `Allowed (${form.allowedTools.length})`}
+            </DetailLabel>
+            <DetailValue>
+              {isAllTools ? "All" : <ExpandableValueList values={form.allowedTools} />}
+            </DetailValue>
+          </Detail>
+        </DetailGroup>
+      )}
     </div>
   );
 };

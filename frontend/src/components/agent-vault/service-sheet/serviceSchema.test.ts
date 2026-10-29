@@ -11,6 +11,8 @@ import { TAgentVaultService } from "@app/hooks/api/agentVault/types";
 import {
   buildServiceSchema,
   isOAuthAuthorizationMissing,
+  MAX_ALLOWED_TOOLS,
+  McpToolScope,
   newOAuthAuthorizationId,
   OAUTH_CLIENT_VARIABLES_MESSAGE,
   oauthStatusLabel,
@@ -29,6 +31,8 @@ const mcpForm = (overrides: Partial<TServiceForm> = {}): TServiceForm => ({
   hosts: [],
   hostDraft: "",
   pathDraft: "",
+  toolScope: McpToolScope.All,
+  allowedTools: [],
   credentialType: AgentVaultCredentialType.OAuth,
   headerName: "Authorization",
   headerPrefix: "Bearer",
@@ -56,6 +60,7 @@ const storedOAuthService = (serverUrl = SERVER_URL) =>
     transport: AgentVaultMcpTransport.StreamableHttp,
     allowedMethods: null,
     allowedPathPrefixes: null,
+    allowedTools: null,
     credential: {
       type: AgentVaultCredentialType.OAuth,
       status: AgentVaultOauthStatus.NeedsReauthorization,
@@ -317,6 +322,62 @@ describe("buildServiceSchema with OAuth", () => {
     );
     expect(clash.error?.issues.map((issue) => issue.path.join("."))).toEqual([
       "customHeaders.0.name"
+    ]);
+  });
+});
+
+describe("buildServiceSchema with allowed tools", () => {
+  const authorized = { oauthAuthorizationId: "auth-1", oauthAuthorizedUrl: SERVER_URL };
+  const toolIssues = (overrides: Partial<TServiceForm>) =>
+    buildServiceSchema()
+      .safeParse(mcpForm({ ...authorized, toolScope: McpToolScope.Selected, ...overrides }))
+      .error?.issues.map(({ path, message }) => [path.join("."), message]) ?? [];
+
+  it("accepts all tools with nothing selected, and keeps picks made before switching to all", () => {
+    expect(buildServiceSchema().safeParse(mcpForm(authorized)).success).toBe(true);
+    expect(
+      buildServiceSchema().safeParse(mcpForm({ ...authorized, allowedTools: [" bad name"] }))
+        .success
+    ).toBe(true);
+  });
+
+  it("accepts any selected tool name, case-sensitive", () => {
+    expect(
+      toolIssues({
+        allowedTools: [
+          "read_file",
+          "Read_File",
+          "github:issues/create.v2-beta",
+          "query+sum",
+          "read file"
+        ]
+      })
+    ).toEqual([]);
+  });
+
+  it("requires at least one selected tool", () => {
+    expect(toolIssues({ allowedTools: [] })).toEqual([
+      ["allowedTools", "Select at least one tool, or allow all tools."]
+    ]);
+  });
+
+  it("refuses untrimmed names, control characters, names over 128 characters, and duplicates", () => {
+    expect(
+      toolIssues({
+        allowedTools: [" read_file", "a".repeat(129), "read\u0000file", "ok", "ok"]
+      }).map(([path]) => path)
+    ).toEqual(["allowedTools", "allowedTools", "allowedTools", "allowedTools"]);
+    expect(toolIssues({ allowedTools: ["ok", "ok"] })).toEqual([
+      ["allowedTools", '"ok" is listed twice.']
+    ]);
+    expect(toolIssues({ allowedTools: ["a".repeat(128)] })).toEqual([]);
+  });
+
+  it("caps the list at the API's limit", () => {
+    const names = (count: number) => Array.from({ length: count }, (_, index) => `tool_${index}`);
+    expect(toolIssues({ allowedTools: names(MAX_ALLOWED_TOOLS) })).toEqual([]);
+    expect(toolIssues({ allowedTools: names(MAX_ALLOWED_TOOLS + 1) })).toEqual([
+      ["allowedTools", `You can select at most ${MAX_ALLOWED_TOOLS} tools.`]
     ]);
   });
 });
