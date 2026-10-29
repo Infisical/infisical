@@ -969,12 +969,18 @@ export const projectServiceFactory = ({
       // Revoking a lease that expired while the project was deleted fails because the project can't be
       // resolved, and its retries may have run out, so queue those revocations again. They're queued
       // before the restore so a queue failure leaves the project deleted and the restore retryable, and
-      // delayed so they run after it commits.
+      // delayed so they run after it commits. Their own job id keeps an older retry, which stops the job
+      // under the lease id when it gives up, from cancelling them.
       const expiredLeases = await dynamicSecretLeaseDAL.findExpiredByProjectId(project.id);
       const revokeAt = new Date(Date.now() + 60_000);
       await Promise.all(
         expiredLeases.map((lease) =>
-          dynamicSecretQueueService.setLeaseRevocation(lease.id, lease.dynamicSecretId, revokeAt)
+          dynamicSecretQueueService.setLeaseRevocation(
+            lease.id,
+            lease.dynamicSecretId,
+            revokeAt,
+            `${lease.id}-restore`
+          )
         )
       );
 

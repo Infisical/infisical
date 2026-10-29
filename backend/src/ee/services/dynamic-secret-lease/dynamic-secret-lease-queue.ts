@@ -40,7 +40,7 @@ type TDynamicSecretLeaseQueueServiceFactoryDep = {
 
 export type TDynamicSecretLeaseQueueServiceFactory = {
   pruneDynamicSecret: (dynamicSecretCfgId: string) => Promise<void>;
-  setLeaseRevocation: (leaseId: string, dynamicSecretId: string, expiryAt: Date) => Promise<void>;
+  setLeaseRevocation: (leaseId: string, dynamicSecretId: string, expiryAt: Date, jobId?: string) => Promise<void>;
   unsetLeaseRevocation: (leaseId: string) => Promise<void>;
   queueFailedRevocation: (leaseId: string, dynamicSecretId: string) => Promise<void>;
 };
@@ -74,13 +74,13 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
     );
   };
 
-  const setLeaseRevocation = async (leaseId: string, dynamicSecretId: string, expiryAt: Date) => {
+  const setLeaseRevocation = async (leaseId: string, dynamicSecretId: string, expiryAt: Date, jobId = leaseId) => {
     await queueService.queue(
       QueueName.DynamicSecretRevocation,
       QueueJobs.DynamicSecretRevocation,
       { leaseId, dynamicSecretId },
       {
-        jobId: leaseId,
+        jobId,
         delay: Number(expiryAt) - Date.now(),
         attempts: 3,
         backoff: {
