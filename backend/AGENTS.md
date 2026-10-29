@@ -1216,11 +1216,11 @@ The issuer URL and each consumer's `sub` format are one-way doors: customers cop
   route. The 24h lead makes a stale set safe. Empty sets are never cached, in Redis or over HTTP.
 - **Fresh keys are read on the primary.** Signing and the JWKS a rotation caches pass a `tx` to
   `getPublicKey` and `signWithKmsKey`, because a read replica may not have a key created moments earlier.
-- **Every signed token is audit logged** (`issue-oidc-token`) inside `signToken`, so a new consumer gets it
-  for free and never logs on its own.
-- **Connections sign for their own ID only.** The subject is `getAppConnectionOidcSubject(connection.id)`,
-  built server-side from the connection row, and the token is only ever sent to the provider's token
-  endpoint, never returned to a caller. Never let a caller choose the ID: a deleted connection's ID would
+- **Every signed token is audit logged** (`issue-oidc-token`, with the connection's ID and name) inside
+  `signToken`, so a new consumer gets it for free and never logs on its own.
+- **Connections sign for their own ID only.** `signToken` takes the connection, not a subject, and builds
+  `app-connection:<id>` itself, and the token is only ever sent to the provider's token endpoint, never
+  returned to a caller. Never let a caller choose the ID: a deleted connection's ID would
   regain whatever the provider still trusts. So the connection is created first, without a token exchange,
   and reconnecting verifies it once the customer has added the federated credential. The Azure Key Vault
   `managed-identity` method is the reference consumer: copy its `getManagedIdentityAccessToken`, which

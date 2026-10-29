@@ -13,6 +13,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsKeyUsage } from "@app/services/kms/kms-types";
 
 import {
+  getAppConnectionOidcSubject,
   getKeyRotationPlan,
   getSigningKey,
   OIDC_ISSUER_KEY_NAME_PREFIX,
@@ -168,7 +169,9 @@ export const oidcIssuerServiceFactory = ({
     return signingKey;
   };
 
-  const signToken = async ({ orgId, projectId, subject, audience }: TSignOidcIssuerTokenDTO) => {
+  // Takes the connection rather than a subject, so a caller can only ever sign for a real connection
+  const signToken = async ({ appConnection, audience }: TSignOidcIssuerTokenDTO) => {
+    const { orgId } = appConnection;
     const issuer = $getIssuerUrl(orgId);
     const { id: kmsId } = await $getSigningKey(orgId);
 
@@ -181,18 +184,17 @@ export const oidcIssuerServiceFactory = ({
     );
 
     const iat = Math.floor(Date.now() / 1000);
-    const jti = crypto.nativeCrypto.randomUUID();
 
     const token = await signJwt({
       kid,
       claims: {
         iss: issuer,
-        sub: subject,
+        sub: getAppConnectionOidcSubject(appConnection.id),
         aud: audience,
         iat,
         nbf: iat,
         exp: iat + TOKEN_TTL_SECONDS,
-        jti
+        jti: crypto.nativeCrypto.randomUUID()
       },
       sign: async (data) =>
         (await sign({ data, signingAlgorithm: SigningAlgorithm.RSASSA_PKCS1_V1_5_SHA_256, isDigest: false })).signature
@@ -200,9 +202,12 @@ export const oidcIssuerServiceFactory = ({
 
     await auditLogService.createAuditLog({
       orgId,
-      projectId: projectId ?? undefined,
+      projectId: appConnection.projectId ?? undefined,
       actor: { type: ActorType.PLATFORM, metadata: {} },
-      event: { type: EventType.ISSUE_OIDC_TOKEN, metadata: { subject, audience, tokenId: jti } }
+      event: {
+        type: EventType.ISSUE_OIDC_TOKEN,
+        metadata: { connectionId: appConnection.id, connectionName: appConnection.name, audience }
+      }
     });
 
     return token;

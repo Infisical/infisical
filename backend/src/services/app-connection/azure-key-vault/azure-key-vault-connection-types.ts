@@ -27,7 +27,7 @@ export type TAzureKeyVaultConnectionConfig = DiscriminativePick<
 > & {
   orgId: string;
   projectId?: string | null;
-  connectionId?: string;
+  connection?: { id: string; name: string };
 };
 
 export type ExchangeCodeAzureResponse = {

@@ -949,7 +949,7 @@ export const appConnectionServiceFactory = ({
             app,
             orgId: actor.orgId,
             projectId: appConnection.projectId,
-            connectionId: appConnection.id,
+            connection: { id: appConnection.id, name: appConnection.name },
             version: appConnection.version,
             credentials: credentialsToValidate,
             method,

@@ -7870,9 +7870,9 @@ interface OauthClientTokenExchangeEvent {
 interface IssueOidcTokenEvent {
   type: EventType.ISSUE_OIDC_TOKEN;
   metadata: {
-    subject: string;
+    connectionId: string;
+    connectionName: string;
     audience: string;
-    tokenId: string;
   };
 }
 

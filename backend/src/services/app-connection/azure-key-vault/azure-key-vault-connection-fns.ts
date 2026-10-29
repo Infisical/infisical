@@ -21,8 +21,8 @@ import {
 } from "@app/services/app-connection/app-connection-fns";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
-import { getAppConnectionOidcSubject } from "@app/services/oidc-issuer/oidc-issuer-fns";
 import { TOidcIssuerServiceFactory } from "@app/services/oidc-issuer/oidc-issuer-service";
+import { TSignOidcIssuerTokenDTO } from "@app/services/oidc-issuer/oidc-issuer-types";
 
 import { TAppConnectionDALFactory } from "../app-connection-dal";
 import { AppConnection } from "../app-connection-enums";
@@ -42,18 +42,14 @@ const AZURE_FEDERATED_TOKEN_AUDIENCE = "api://AzureADTokenExchange";
 
 const getManagedIdentityAccessToken = async (
   {
-    orgId,
-    projectId,
-    connectionId,
+    appConnection,
     tenantId,
     clientId
-  }: { orgId: string; projectId?: string | null; connectionId: string; tenantId: string; clientId: string },
+  }: { appConnection: TSignOidcIssuerTokenDTO["appConnection"]; tenantId: string; clientId: string },
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
   const clientAssertion = await oidcIssuerService.signToken({
-    orgId,
-    projectId,
-    subject: getAppConnectionOidcSubject(connectionId),
+    appConnection,
     audience: AZURE_FEDERATED_TOKEN_AUDIENCE
   });
 
@@ -357,9 +353,7 @@ export const getAzureConnectionAccessToken = async (
 
       const managedIdentityToken = await getManagedIdentityAccessToken(
         {
-          orgId: appConnection.orgId,
-          projectId: appConnection.projectId,
-          connectionId: appConnection.id,
+          appConnection,
           tenantId: managedIdentityCredentials.tenantId,
           clientId: managedIdentityCredentials.clientId
         },
@@ -406,7 +400,7 @@ export const validateAzureKeyVaultConnectionCredentials = async (
   config: TAzureKeyVaultConnectionConfig,
   oidcIssuerService: Pick<TOidcIssuerServiceFactory, "signToken">
 ) => {
-  const { credentials: inputCredentials, method, orgId, projectId, connectionId } = config;
+  const { credentials: inputCredentials, method, orgId, projectId, connection } = config;
 
   const { INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_ID, INF_APP_CONNECTION_AZURE_KEY_VAULT_CLIENT_SECRET, SITE_URL } =
     getConfig();
@@ -569,16 +563,14 @@ export const validateAzureKeyVaultConnectionCredentials = async (
         clientId: string;
       };
 
-      // A new connection has no ID yet, so Azure cannot trust its subject. Reconnecting verifies it once the
-      // customer has added the federated credential.
-      if (!connectionId) return { tenantId: managedIdentityTenantId, clientId: managedIdentityClientId };
+      // A new connection has no ID yet, so Azure cannot trust its subject. Verifying it after create runs the
+      // exchange once the customer has added the federated credential.
+      if (!connection) return { tenantId: managedIdentityTenantId, clientId: managedIdentityClientId };
 
       try {
         const managedIdentityToken = await getManagedIdentityAccessToken(
           {
-            orgId,
-            projectId,
-            connectionId,
+            appConnection: { ...connection, orgId, projectId },
             tenantId: managedIdentityTenantId,
             clientId: managedIdentityClientId
           },

@@ -1,6 +1,4 @@
 export type TSignOidcIssuerTokenDTO = {
-  orgId: string;
-  projectId?: string | null;
-  subject: string;
+  appConnection: { id: string; name: string; orgId: string; projectId?: string | null };
   audience: string;
 };
