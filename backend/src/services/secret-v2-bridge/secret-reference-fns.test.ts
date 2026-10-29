@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import { describe, expect, it, vi } from "vitest";
 
 import { ClientClosedRequestError } from "@app/lib/errors";
@@ -215,5 +217,68 @@ describe("getAllSecretReferences", () => {
     [`\${a + b}`]
   ])("does not treat %s as a reference", (value) => {
     expect(getAllSecretReferences(value)).toEqual({ localReferences: [], nestedReferences: [] });
+  });
+});
+
+describe("expandSecretReferencesFactory with references across folders", () => {
+  const folderSecrets: Record<string, Record<string, string>> = {
+    [`prod:${path.join("/", "app")}`]: { USER: "app-user" },
+    [`prod:${path.join("/", "db")}`]: { URL: `db://\${USER}`, USER: "db-user" },
+    [`prod:${path.join("/", "cache")}`]: { URL: `cache://\${USER}`, USER: "cache-user" }
+  };
+
+  const makeFactory = () => {
+    const findBySecretPath = vi
+      .fn<Args["folderDAL"]["findBySecretPath"]>()
+      .mockImplementation(async (_projectId, environment, secretPath) =>
+        folderSecrets[`${environment}:${secretPath}`]
+          ? ({ id: `${environment}:${secretPath}` } as Awaited<ReturnType<Args["folderDAL"]["findBySecretPath"]>>)
+          : undefined
+      );
+    const findByFolderId = vi.fn<Args["secretDAL"]["findByFolderId"]>().mockImplementation(async ({ folderId }) =>
+      Object.entries(folderSecrets[folderId] ?? {}).map(
+        ([key, value]) =>
+          ({
+            key,
+            encryptedValue: Buffer.from(value),
+            tags: [],
+            userId: null
+          }) as unknown as Awaited<ReturnType<Args["secretDAL"]["findByFolderId"]>>[number]
+      )
+    );
+    return expandSecretReferencesFactory({
+      projectId: "project",
+      folderDAL: { findBySecretPath },
+      secretDAL: { findByFolderId },
+      decryptSecretValue: (value) => value?.toString(),
+      canExpandValue: vi.fn(() => true)
+    });
+  };
+
+  const expandInApp = (value: string) =>
+    makeFactory().expandSecretReferences({
+      secretKey: "ROOT",
+      value,
+      environment: "prod",
+      secretPath: path.join("/", "app")
+    });
+
+  it("resolves a relative reference inside each referenced secret against that secret's own folder", async () => {
+    expect(await expandInApp(`\${prod.db.URL} \${prod.cache.URL}`)).toBe("db://db-user cache://cache-user");
+  });
+
+  it("does not resolve a nested relative reference against the folder of the secret being read", async () => {
+    expect(await expandInApp(`\${prod.db.URL} \${USER}`)).toBe("db://db-user app-user");
+    expect(await expandInApp(`\${USER} \${prod.db.URL}`)).toBe("app-user db://db-user");
+  });
+
+  it("returns the same value from the reference tree", async () => {
+    const { expandedValue } = await makeFactory().getExpandedSecretStackTrace({
+      secretKey: "ROOT",
+      value: `\${prod.db.URL} \${prod.cache.URL}`,
+      environment: "prod",
+      secretPath: path.join("/", "app")
+    });
+    expect(expandedValue).toBe("db://db-user cache://cache-user");
   });
 });
