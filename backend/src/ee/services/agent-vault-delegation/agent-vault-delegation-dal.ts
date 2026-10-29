@@ -164,11 +164,10 @@ export const agentVaultDelegationDALFactory = (db: TDbClient) => {
       limit,
       offset = 0
     }: { projectId: string; identityIds?: string[]; limit?: number; offset?: number },
-    tx?: Knex,
-    { readFromPrimary = false }: { readFromPrimary?: boolean } = {}
+    tx?: Knex
   ): Promise<{ delegations: TAgentVaultDelegationView[]; totalCount: number }> => {
     try {
-      const conn = tx || (readFromPrimary ? db : db.replicaNode());
+      const conn = tx || db.replicaNode();
       const filtered = () => {
         const query = conn(TableName.AgentVaultDelegation).where(
           `${TableName.AgentVaultDelegation}.projectId`,

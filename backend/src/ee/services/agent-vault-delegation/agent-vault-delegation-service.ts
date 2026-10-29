@@ -404,7 +404,7 @@ export const agentVaultDelegationServiceFactory = ({
       }
     };
 
-    const isChanged = await agentVaultDelegationDAL.transaction(async (tx) => {
+    const { delegation, isChanged } = await agentVaultDelegationDAL.transaction(async (tx) => {
       // The same order a save takes them in: memberships, then the delegation row.
       const memberships = await agentVaultDelegationDAL.lockMemberships(
         { projectId, identityId: machineIdentityId, userIds, groupIds },
@@ -428,17 +428,12 @@ export const agentVaultDelegationServiceFactory = ({
         { delegationId: row.id, membershipIds: membershipIdsNaming(memberships, userIds, groupIds) },
         tx
       );
-      return added > 0;
+      // Read in the transaction because the replica may not have the write yet.
+      const {
+        delegations: [written]
+      } = await agentVaultDelegationDAL.findViews({ projectId, identityIds: [machineIdentityId] }, tx);
+      return { delegation: written, isChanged: added > 0 };
     });
-
-    // Read after commit so the lock isn't held for the whole list, and from the primary, which already has the write.
-    const {
-      delegations: [delegation]
-    } = await agentVaultDelegationDAL.findViews({ projectId, identityIds: [machineIdentityId] }, undefined, {
-      readFromPrimary: true
-    });
-    // Only a concurrent delete between the commit and this read leaves nothing to return.
-    if (!delegation) throw notFound(machineIdentityId);
 
     // isChanged lets the caller audit only a real change: naming users and groups already in it writes nothing.
     return { delegation, isChanged };
