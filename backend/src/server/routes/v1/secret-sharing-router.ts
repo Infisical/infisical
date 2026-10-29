@@ -5,6 +5,7 @@ import { z } from "zod";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SECRET_SHARING } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { unique } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -26,6 +27,10 @@ import { SanitizedSecretSharingSchema } from "../sanitizedSchemas";
 
 const ALLOWED_IMAGE_CONTENT_TYPES = ["image/png", "image/jpeg"];
 const MAX_IMAGE_SIZE = 1 * 1024 * 1024; // 1MB
+
+// Keeps resource ids out of analytics (ANALYTICS.md) while a share's events still correlate.
+const getAnonymousShareDistinctId = (sharedSecretId: string) =>
+  `anonymous-${crypto.nativeCrypto.createHash("sha256").update(sharedSecretId).digest("hex")}`;
 
 export const registerSecretSharingRouter = async (server: FastifyZodProvider) => {
   // Allow multipart file uploads
@@ -167,16 +172,15 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SharedSecretViewed,
-        distinctId: req.permission?.id ? getTelemetryDistinctId(req) : `anonymous-${req.params.id}`,
+        distinctId: req.permission?.id ? getTelemetryDistinctId(req) : getAnonymousShareDistinctId(sharedSecret.id),
         // Suppress person-record creation for unauthenticated viewers — the
-        // `anonymous-<shareId>` distinctId is synthesised per share and has
+        // `anonymous-<share hash>` distinctId is synthesised per share and has
         // no continuity with any real user or identity, so creating a
         // PostHog person for it inflates the person count without adding
         // any analytical value.
         anonymous: !req.permission?.id,
         organizationId: sharedSecret.orgId ?? undefined,
         properties: {
-          sharedSecretId: req.params.id,
           accessType: sharedSecret.accessType as SecretSharingAccessType
         }
       });
@@ -247,7 +251,7 @@ export const registerSecretSharingRouter = async (server: FastifyZodProvider) =>
 
       await server.services.telemetry.sendPostHogEvents({
         event: PostHogEventTypes.SecretShared,
-        distinctId: `anonymous-${sharedSecret.id}`,
+        distinctId: getAnonymousShareDistinctId(sharedSecret.id),
         // The public share endpoint is unauthenticated and the distinctId
         // is unique per share, so creating a PostHog person for each share
         // would inflate the person count by one record per share forever.
