@@ -990,17 +990,6 @@ export const CreateProfileForm = ({
     if (selectedStepIndex > 0) setSelectedStepIndex((prev) => prev - 1);
   };
 
-  const goToStep = async (index: number) => {
-    if (index > selectedStepIndex && !(await isStepValid(selectedStepIndex))) {
-      createNotification({
-        text: "Please fix the highlighted fields before continuing.",
-        type: "error"
-      });
-      return;
-    }
-    setSelectedStepIndex(index);
-  };
-
   const handleClose = () => {
     onCancel();
   };
@@ -1111,11 +1100,7 @@ export const CreateProfileForm = ({
               onStepChange={(i) => {
                 if (isSubmitting || isPolicySubmitting || isPolicyWizardOpen || savedProfile)
                   return;
-                if (isEdit) {
-                  goToStep(i);
-                  return;
-                }
-                if (i < selectedStepIndex) setSelectedStepIndex(i);
+                if (isEdit || i < selectedStepIndex) setSelectedStepIndex(i);
               }}
               nonLinear={Boolean(isEdit)}
             >
