@@ -59,6 +59,8 @@ const MISSING_PATCH_MAX_FILE_BYTES = 10 * 1024 * 1024;
 const CHECK_RUN_ANNOTATIONS_PER_REQUEST = 50;
 const CHECK_RUN_MAX_ANNOTATIONS = 500;
 const CHECK_RUN_MAX_SUMMARY_FINDINGS = 50;
+// GitHub rejects a check run update whose summary is longer than this, which would leave the check running.
+const CHECK_RUN_MAX_SUMMARY_LENGTH = 65_535;
 
 type TGitHubOctokit = InstanceType<typeof ProbotOctokit>;
 
@@ -640,10 +642,23 @@ export const getPullRequestScanCheckRunResult = ({
     };
   }
 
-  const table = [
-    "| Infisical ID | Status | Secret | Commit | File | |",
-    "| --- | --- | --- | --- | --- | --- |",
-    ...findings.slice(0, CHECK_RUN_MAX_SUMMARY_FINDINGS).flatMap((finding) => {
+  const intro = [
+    `Found ${findings.length} secret(s) in the commits of this pull request. Rotate each secret, then remove it from the pull request's history.`,
+    "If the findings are false positives or safe to ignore, use Skip: False positive or Skip: Ignore above to mark them in Infisical and re-run this check. To stop a value from being reported anywhere, add it to the allowlist in your Infisical secret scanning configuration.",
+    skippedCount ? `${skippedCount} more secret(s) were marked as false positives or ignored in Infisical.` : "",
+    truncationNote
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  const tableHeader = ["| Infisical ID | Status | Secret | Commit | File | |", "| --- | --- | --- | --- | --- | --- |"];
+  const getShownNote = (shownCount: number) => `Showing ${shownCount} of ${findings.length} findings.`;
+  // Reserves room for the note at its longest, since the shown count never has more digits than the total.
+  let remainingLength =
+    CHECK_RUN_MAX_SUMMARY_LENGTH - [intro, tableHeader.join("\n"), getShownNote(findings.length)].join("\n\n").length;
+
+  const toRows = (withLinks: boolean) =>
+    findings.slice(0, CHECK_RUN_MAX_SUMMARY_FINDINGS).flatMap((finding) => {
       const details = FindingLocationSchema.safeParse(finding.details);
       if (!details.success) return [];
 
@@ -651,27 +666,32 @@ export const getPullRequestScanCheckRunResult = ({
       const shortId = finding.id ? finding.id.slice(0, 8) : "";
 
       const cells = [
-        shortId && findingsUrl ? `[${shortId}](${toMarkdownUrl(findingsUrl)})` : shortId,
+        withLinks && shortId && findingsUrl ? `[${shortId}](${toMarkdownUrl(findingsUrl)})` : shortId,
         toStatusLabel(finding.status),
         escapeMarkdownTableCell(finding.rule),
         commit.slice(0, 7),
         escapeMarkdownTableCell(`${file}:${startLine}`),
-        link ? `[View secret](${toMarkdownUrl(link)})` : ""
+        withLinks && link ? `[View secret](${toMarkdownUrl(link)})` : ""
       ];
 
-      return [`| ${cells.join(" | ")} |`];
-    })
-  ].join("\n");
+      return [`\n| ${cells.join(" | ")} |`];
+    });
+
+  // Listing every finding matters more than the links, so all rows lose their links before any row is left out.
+  const linkedRows = toRows(true);
+  const candidateRows = linkedRows.join("").length <= remainingLength ? linkedRows : toRows(false);
+
+  const rows: string[] = [];
+  for (const row of candidateRows) {
+    if (row.length > remainingLength) break;
+    rows.push(row);
+    remainingLength -= row.length;
+  }
 
   const summary = [
-    `Found ${findings.length} secret(s) in the commits of this pull request. Rotate each secret, then remove it from the pull request's history.`,
-    "If the findings are false positives or safe to ignore, use Skip: False positive or Skip: Ignore above to mark them in Infisical and re-run this check. To stop a value from being reported anywhere, add it to the allowlist in your Infisical secret scanning configuration.",
-    skippedCount ? `${skippedCount} more secret(s) were marked as false positives or ignored in Infisical.` : "",
-    truncationNote,
-    table,
-    findings.length > CHECK_RUN_MAX_SUMMARY_FINDINGS
-      ? `Showing ${CHECK_RUN_MAX_SUMMARY_FINDINGS} of ${findings.length} findings.`
-      : ""
+    intro,
+    tableHeader.join("\n") + rows.join(""),
+    rows.length < findings.length ? getShownNote(rows.length) : ""
   ]
     .filter(Boolean)
     .join("\n\n");

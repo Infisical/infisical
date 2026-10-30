@@ -138,6 +138,56 @@ describe("getPullRequestScanCheckRunResult", () => {
     expect(result.summary).toContain("1 more secret(s) were marked as false positives or ignored");
     expect(result.offerSkipActions).toBe(true);
   });
+
+  const makeLongPathFindings = (count: number, pathLength: number) =>
+    Array.from({ length: count }, (_, index) => {
+      const finding = makeFinding(index);
+      const file = `${"d/".repeat(pathLength / 2)}${index}.ts`;
+      return {
+        ...finding,
+        id: `${index}`.padStart(8, "0").concat("-0000-4000-8000-000000000000"),
+        details: { ...(finding.details as object), file, link: `https://github.com/acme/api/blob/abc123/${file}#L1` }
+      };
+    });
+
+  test("drops the links to keep every finding listed within GitHub's summary length limit", () => {
+    const result = getPullRequestScanCheckRunResult({
+      findings: makeLongPathFindings(50, 600),
+      scannedCommitCount: 1,
+      totalCommitCount: 1,
+      findingsUrl: "https://app.infisical.com/organizations/org/secret-scanning/findings?resourceId=r"
+    });
+
+    expect(result.summary.length).toBeLessThanOrEqual(65_535);
+    expect(result.summary.match(/^\| \d{8} \| Unresolved /gm)).toHaveLength(50);
+    expect(result.summary).not.toContain("](");
+    expect(result.summary).not.toContain("Showing");
+  });
+
+  test("keeps the links when the full table fits", () => {
+    const result = getPullRequestScanCheckRunResult({
+      findings: makeLongPathFindings(50, 100),
+      scannedCommitCount: 1,
+      totalCommitCount: 1,
+      findingsUrl: "https://app.infisical.com/organizations/org/secret-scanning/findings?resourceId=r"
+    });
+
+    expect(result.summary.match(/\[View secret\]/g)).toHaveLength(50);
+  });
+
+  test("stops the table and says how many findings it shows once rows no longer fit", () => {
+    const result = getPullRequestScanCheckRunResult({
+      findings: makeLongPathFindings(50, 3000),
+      scannedCommitCount: 1,
+      totalCommitCount: 1
+    });
+
+    const shownCount = Number(result.summary.match(/Showing (\d+) of 50 findings\./)?.[1]);
+    expect(result.summary.length).toBeLessThanOrEqual(65_535);
+    expect(shownCount).toBeGreaterThan(0);
+    expect(shownCount).toBeLessThan(50);
+    expect(result.summary.match(/^\| \d{8} \|/gm)).toHaveLength(shownCount);
+  });
 });
 
 describe("completePullRequestCheckRun", () => {
