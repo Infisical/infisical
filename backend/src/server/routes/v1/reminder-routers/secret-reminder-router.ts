@@ -19,6 +19,7 @@ export const registerSecretReminderRouter = async (server: FastifyZodProvider) =
       rateLimit: writeLimit
     },
     schema: {
+      operationId: "createSecretReminder",
       params: z.object({
         secretId: z.string().uuid()
       }),

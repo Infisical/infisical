@@ -297,6 +297,11 @@ export const injectIdentity = fp(
         return;
       }
 
+      // Authenticated on the route by an Agent Vault session token, which is not a JWT.
+      if (pathname === "/api/v1/agent-vault/session/skills") {
+        return;
+      }
+
       // Authentication is handled on a route-level here.
       if (pathname.startsWith("/api/v1/workflow-integrations/microsoft-teams/message-endpoint")) {
         return;

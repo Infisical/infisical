@@ -104,7 +104,6 @@ export const LogsTable = ({ filter, refetchInterval, timezone }: Props) => {
             ))}
           {isPending &&
             Array.from({ length: 8 }).map((_, i) => (
-              // eslint-disable-next-line react/no-array-index-key
               <TableRow key={`logs-skeleton-${i + 1}`}>
                 <TableCell>
                   <Skeleton className="h-4 w-full" />

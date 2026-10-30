@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/Infisical/infisical/tests/fixture"
+	"github.com/Infisical/infisical/tests/fixture/secretmanager"
 	"github.com/Infisical/infisical/tests/harness"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +19,7 @@ func TestSecret_DashboardList(t *testing.T) {
 		// Setup
 		tn := h.NewTenant(t)
 		proj := fixture.NewProject(t, tn, fixture.WithProjectType("secret-manager"))
-		plain, billing := newTag(t, proj, "plain"), newTag(t, proj, "billing")
+		plain, billing := secretmanager.CreateTag(t, proj, "plain"), secretmanager.CreateTag(t, proj, "billing")
 		newTaggedSecret(t, proj, "BILLING_KEY", plain)
 		newTaggedSecret(t, proj, "OTHER_KEY", plain, billing)
 

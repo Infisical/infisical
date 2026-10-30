@@ -1200,6 +1200,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           hasOriginatingRequest: z.boolean().describe(CERTIFICATES.RENEWAL_PREVIEW.hasOriginatingRequest),
+          hasOriginatingCsr: z.boolean().describe(CERTIFICATES.RENEWAL_PREVIEW.hasOriginatingCsr),
           request: z
             .object({
               commonName: z.string().optional(),

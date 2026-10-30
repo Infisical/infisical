@@ -27,10 +27,10 @@ export const useCertificateHoldingSyncs = ({
     permission.can(ProjectPermissionPkiSyncActions.Read, ProjectPermissionSub.PkiSyncs) ||
     Boolean(
       applicationId &&
-        appPermissionData?.permission?.can(
-          PkiApplicationResourceActions.Read,
-          PkiApplicationResourceSub.PkiSyncs
-        )
+      appPermissionData?.permission?.can(
+        PkiApplicationResourceActions.Read,
+        PkiApplicationResourceSub.PkiSyncs
+      )
     );
 
   const projectId = currentProject?.id || "";

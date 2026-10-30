@@ -387,7 +387,7 @@ export const ConditionsFields = ({
                 ? [
                     ...new Set(
                       condition.operator === PermissionConditionOperators.$IN ||
-                      condition.operator === PermissionConditionOperators.$ALL
+                        condition.operator === PermissionConditionOperators.$ALL
                         ? condition.rhs.split(",")
                         : [condition.rhs]
                     )

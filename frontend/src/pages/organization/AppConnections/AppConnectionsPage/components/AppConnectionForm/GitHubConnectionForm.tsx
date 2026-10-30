@@ -128,8 +128,8 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
   const [isEnterpriseEnabled, setIsEnterpriseEnabled] = useState(() =>
     Boolean(
       appConnection?.credentials &&
-        "host" in appConnection.credentials &&
-        appConnection.credentials.host
+      "host" in appConnection.credentials &&
+      appConnection.credentials.host
     )
   );
 
@@ -253,7 +253,6 @@ export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Pro
       localStorage.removeItem(GITHUB_CONNECTION_FORM_STORAGE_KEY);
     }
     // run once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Resolve the pending (newly created) app to the loaded list, then select it.
