@@ -24,6 +24,9 @@ export type TOauthHttpClient = {
 
 const TIMEOUT_MS = 10_000;
 
+export const MCP_PROTOCOL_VERSION = "2025-06-18";
+export const MCP_CLIENT_INFO = { name: "Infisical Agent Vault", version: "1.0.0" };
+
 // Also bounds what the HTTP client's own timeout doesn't cover, such as resolving and validating the host.
 export const withTimeout = <T>(promise: Promise<T>, ms: number) => {
   let timer: NodeJS.Timeout | undefined;
@@ -36,7 +39,7 @@ export const withTimeout = <T>(promise: Promise<T>, ms: number) => {
 };
 const MAX_BODY_BYTES = 1024 * 1024;
 
-const headerValue = (value: unknown): string => {
+export const headerValue = (value: unknown): string => {
   if (Array.isArray(value)) return value.join(", ");
   return typeof value === "string" ? value : "";
 };
@@ -104,9 +107,9 @@ export const agentVaultOauthHttpClient: TOauthHttpClient = {
         id: 1,
         method: "initialize",
         params: {
-          protocolVersion: "2025-06-18",
+          protocolVersion: MCP_PROTOCOL_VERSION,
           capabilities: {},
-          clientInfo: { name: "Infisical Agent Vault", version: "1.0.0" }
+          clientInfo: MCP_CLIENT_INFO
         }
       }),
       {

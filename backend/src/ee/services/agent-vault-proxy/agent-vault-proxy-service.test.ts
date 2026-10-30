@@ -45,6 +45,7 @@ const serviceRow = (overrides: Partial<TResolveServiceRow> = {}): TResolveServic
   encryptedCredential: Buffer.from(JSON.stringify({ accessToken: "snapshot-access" })),
   allowedMethods: null,
   allowedPathPrefixes: null,
+  allowedTools: null,
   memberProvidedFields: null,
   position: 0,
   ...overrides
@@ -267,6 +268,18 @@ describe("resolve's lazy refresh", () => {
     const { services } = await resolve(service);
     expect(services[0].credential).toMatchObject({ value: `oauth-${reference}` });
     expect(services[1].credential).toMatchObject({ value: "bearer-expanded" });
+  });
+
+  test("sends each service's allowed tools, and null for one that allows every tool", async () => {
+    const { service } = setup(
+      async () => refreshed,
+      [
+        serviceRow({ allowedTools: ["read_file", "search"] }),
+        serviceRow({ id: "55555555-5555-4555-8555-555555555555", allowedTools: null })
+      ]
+    );
+    const { services } = await resolve(service);
+    expect(services.map((resolved) => resolved.allowedTools)).toEqual([["read_file", "search"], null]);
   });
 
   test("an OAuth token is always sent as Authorization: Bearer, whatever its config holds", async () => {

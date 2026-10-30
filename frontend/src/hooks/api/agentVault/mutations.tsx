@@ -14,6 +14,7 @@ import {
   TAgentVaultActorRef,
   TAgentVaultBundleSkill,
   TAgentVaultGrantedMember,
+  TAgentVaultMcpTool,
   TAgentVaultMemberWriteResult,
   TAgentVaultMintedSession,
   TAgentVaultOauthAuthorization,
@@ -37,6 +38,7 @@ import {
   TCreateAgentVaultSkillDTO,
   TCreateAgentVaultVariableDTO,
   TDeleteAgentVaultPersonalValuesDTO,
+  TListAgentVaultMcpToolsDTO,
   TSetAgentVaultPersonalValuesDTO,
   TUpdateAgentVaultAccessBundleDTO,
   TUpdateAgentVaultMemberRolesDTO,
@@ -526,6 +528,20 @@ export const useCompleteAgentVaultOauthAuthorization = () =>
         params
       );
       return data.authorization;
+    }
+  });
+
+// A read, but its body can carry a credential, and it only runs when the admin asks.
+export const useListAgentVaultMcpTools = () =>
+  useMutation({
+    // The Tools step shows the server's failure in place.
+    meta: { skipErrorToast: true },
+    mutationFn: async ({ accessBundleId, ...params }: TListAgentVaultMcpToolsDTO) => {
+      const { data } = await apiRequest.post<{ tools: TAgentVaultMcpTool[] }>(
+        `/api/v1/agent-vault/access-bundles/${accessBundleId}/mcp-tools/list`,
+        params
+      );
+      return data.tools;
     }
   });
 

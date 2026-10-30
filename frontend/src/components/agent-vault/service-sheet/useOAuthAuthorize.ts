@@ -23,7 +23,7 @@ type TOAuthAuthorizeState =
   | { status: "authorized" }
   | { status: "failed"; message: string };
 
-const serverMessage = (error: unknown) => {
+export const serverMessage = (error: unknown) => {
   if (!axios.isAxiosError<{ message?: unknown }>(error)) return null;
   const message = error.response?.data?.message;
   return typeof message === "string" ? message : null;

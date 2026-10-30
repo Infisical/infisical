@@ -65,6 +65,7 @@ import { CredentialFields } from "./CredentialFields";
 import { DetailsFields } from "./DetailsFields";
 import { McpCredentialFields } from "./McpCredentialFields";
 import { McpDetailsFields } from "./McpDetailsFields";
+import { McpToolsFields, TLoadedMcpTools } from "./McpToolsFields";
 import { ReviewFields } from "./ReviewFields";
 import { buildCreateServiceRequest, buildUpdateServiceRequest } from "./serviceRequest";
 import {
@@ -73,6 +74,7 @@ import {
   HTTP_METHODS,
   isOAuthAuthorizationMissing,
   MCP_SERVICE_STEP_FIELDS,
+  McpToolScope,
   SERVICE_STEP_FIELDS,
   SERVICE_TYPE_LABELS,
   ServiceStep,
@@ -96,6 +98,8 @@ const BLANK_SERVICE_FORM: TServiceForm = {
   hosts: [],
   hostDraft: "",
   pathDraft: "",
+  toolScope: McpToolScope.All,
+  allowedTools: [],
   credentialType: AgentVaultCredentialType.Passthrough,
   headerName: "Authorization",
   headerPrefix: "Bearer",
@@ -400,6 +404,8 @@ export const ServiceSheet = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const [openItem, setOpenItem] = useState(ADVANCED_ITEM);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  // Held here rather than in the Tools step, so going to Review and back doesn't drop the list.
+  const [loadedTools, setLoadedTools] = useState<TLoadedMcpTools | null>(null);
   // The stand-in for formState.submitCount, which only counts handleSubmit and so never moves for a
   // wizard that gates its steps with trigger. Without it a second Continue reveals nothing, because
   // the errors it finds are the ones already there.
@@ -443,6 +449,7 @@ export const ServiceSheet = ({
 
     setStep(0);
     setTemplate(null);
+    setLoadedTools(null);
     setOpenItem(service?.type === AgentVaultServiceType.Mcp ? "" : ADVANCED_ITEM);
 
     if (service?.type === AgentVaultServiceType.Mcp) {
@@ -453,6 +460,8 @@ export const ServiceSheet = ({
         name: service.name,
         serverUrl: service.serverUrl,
         transport: service.transport,
+        toolScope: service.allowedTools ? McpToolScope.Selected : McpToolScope.All,
+        allowedTools: service.allowedTools ?? [],
         credentialType: isBearer ? AgentVaultCredentialType.Bearer : AgentVaultCredentialType.OAuth,
         headerName: isBearer ? credential.headerName : "Authorization",
         headerPrefix: isBearer ? credential.headerPrefix : "Bearer",
@@ -628,6 +637,7 @@ export const ServiceSheet = ({
           transport: ServiceStep.Details,
           allowedMethods: ServiceStep.Details,
           allowedPathPrefixes: ServiceStep.Details,
+          allowedTools: ServiceStep.Tools,
           credential: ServiceStep.Credential,
           customHeaders: ServiceStep.Credential,
           substitutions: ServiceStep.Credential
@@ -856,6 +866,14 @@ export const ServiceSheet = ({
                         <TransformationsFields openItem={openItem} onOpenChange={setOpenItem} />
                       </div>
                     </ServiceVariablesContext.Provider>
+                  )}
+                  {current.step === ServiceStep.Tools && (
+                    <McpToolsFields
+                      accessBundleId={accessBundleId}
+                      serviceId={service?.id}
+                      loaded={loadedTools}
+                      onLoaded={setLoadedTools}
+                    />
                   )}
                   {current.step === ServiceStep.Review && (
                     <ReviewFields
