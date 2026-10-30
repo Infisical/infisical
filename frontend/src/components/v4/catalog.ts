@@ -10,6 +10,8 @@ import { codeBlockDefinition } from "./contracts/code-block";
 import { comboboxDefinition } from "./contracts/combobox";
 import { coverDefinition } from "./contracts/cover";
 import { dataGridDefinition } from "./contracts/data-grid";
+import { detailDefinition } from "./contracts/detail";
+import { documentationLinkBadgeDefinition } from "./contracts/documentation-link-badge";
 import { fileTreeDefinition } from "./contracts/file-tree";
 import { filterBarDefinition } from "./contracts/filter-bar";
 import { floatingActionBarDefinition } from "./contracts/floating-action-bar";
@@ -24,6 +26,8 @@ import { multiSelectDefinition } from "./contracts/multi-select";
 import { multiStepDefinition } from "./contracts/multi-step";
 import { pageHeaderDefinition } from "./contracts/page-header";
 import { paginationDefinition } from "./contracts/pagination";
+import { providerIconDefinition } from "./contracts/provider-icon";
+import { rowLinkDefinition } from "./contracts/row-link";
 import { sensitiveEditorDefinition } from "./contracts/sensitive-editor";
 import { settingsCardDefinition } from "./contracts/settings-card";
 import { sidebarDefinition } from "./contracts/sidebar";
@@ -45,6 +49,8 @@ export const componentCatalog: readonly ComponentDefinition[] = [
   comboboxDefinition,
   coverDefinition,
   dataGridDefinition,
+  detailDefinition,
+  documentationLinkBadgeDefinition,
   fileTreeDefinition,
   filterBarDefinition,
   floatingActionBarDefinition,
@@ -60,6 +66,8 @@ export const componentCatalog: readonly ComponentDefinition[] = [
   multiStepDefinition,
   pageHeaderDefinition,
   paginationDefinition,
+  providerIconDefinition,
+  rowLinkDefinition,
   sensitiveEditorDefinition,
   settingsCardDefinition,
   sidebarDefinition,

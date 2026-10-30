@@ -1,0 +1,33 @@
+.badge {
+  text-decoration: none;
+}
+.badge:hover {
+  background-image: linear-gradient(var(--v4-action-ghost-hover), var(--v4-action-ghost-hover));
+}
+.minified {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--v4-size-badge);
+  height: var(--v4-size-badge);
+  color: var(--v4-info);
+}
+.minified:hover {
+  background: var(--v4-action-ghost-hover);
+}
+.minified > svg {
+  width: var(--v4-size-icon-sm);
+  height: var(--v4-size-icon-sm);
+  stroke-width: var(--v4-stroke-icon);
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

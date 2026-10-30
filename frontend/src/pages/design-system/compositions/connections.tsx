@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 
-import { useV4Theme } from "@app/components/v4/scope";
 import { Banner } from "@app/components/v4/ui/alert";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
@@ -22,6 +21,7 @@ import { Inline, Stack } from "@app/components/v4/ui/layout";
 import { DataList, List, ListRow, ListSection } from "@app/components/v4/ui/list";
 import { MultiStep } from "@app/components/v4/ui/multi-step";
 import { PageHeader } from "@app/components/v4/ui/page-header";
+import { ProviderIcon } from "@app/components/v4/ui/provider-icon";
 import { Select } from "@app/components/v4/ui/select";
 import { Tabs } from "@app/components/v4/ui/tabs";
 import { Textarea } from "@app/components/v4/ui/textarea";
@@ -30,14 +30,10 @@ import { Shell, useCrumbs, usePagedRows } from "./shared";
 
 type AppId = "aws" | "github" | "vercel" | "gcp" | "azure-key-vault" | "databricks";
 type Method = { value: string; label: string; fields: { label: string; secret?: boolean }[] };
-const apps: Record<
-  AppId,
-  { name: string; image: string; onLight?: string; category: string; methods: Method[] }
-> = {
+const apps: Record<AppId, { name: string; image: string; category: string; methods: Method[] }> = {
   aws: {
     name: "AWS",
     image: "Amazon Web Services.png",
-    onLight: "Amazon Web Services.on-light.png",
     category: "Cloud",
     methods: [
       { value: "assume-role", label: "Assume role", fields: [{ label: "Role ARN" }] },
@@ -51,7 +47,6 @@ const apps: Record<
   github: {
     name: "GitHub",
     image: "GitHub.png",
-    onLight: "GitHub.on-light.png",
     category: "Source control",
     methods: [
       { value: "app", label: "GitHub App", fields: [{ label: "Installation ID" }] },
@@ -116,16 +111,10 @@ const popular: AppId[] = ["aws", "github", "vercel", "gcp"];
 const appIds = Object.keys(apps) as AppId[];
 
 const AppLogo = ({ app, size = "sm" }: { app: AppId; size?: "sm" | "md" }) => {
-  const theme = useV4Theme();
-  const { image, onLight, name } = apps[app];
+  const { image, name } = apps[app];
   return (
     <Media size={size}>
-      <img
-        src={`/images/integrations/${theme === "dark" ? image : (onLight ?? image)}`}
-        alt={`${name} logo`}
-        width={size === "sm" ? 16 : 20}
-        height={size === "sm" ? 16 : 20}
-      />
+      <ProviderIcon icon={image} alt={`${name} logo`} size={size === "sm" ? "md" : "lg"} />
     </Media>
   );
 };

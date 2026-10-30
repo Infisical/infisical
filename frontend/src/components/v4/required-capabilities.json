@@ -442,6 +442,15 @@
       ]
     },
     {
+      "id": "detail",
+      "name": "Detail",
+      "kind": "component",
+      "exports": ["Detail", "DetailLabel", "DetailValue", "DetailGroup", "DetailGroupHeader"],
+      "variants": ["grouped with header", "header action", "loose"],
+      "behavior": "Label over value as dl/dt/dd per pair; values hold any node and wrap long identifiers; headers interleave with details",
+      "acceptance": ["Valid dl outside a group", "Header action outside the heading", "Long values wrap"]
+    },
+    {
       "id": "dialog",
       "name": "Dialog",
       "kind": "component",
@@ -461,6 +470,15 @@
         "Removed trigger safe restore",
         "Long content body scroll"
       ]
+    },
+    {
+      "id": "documentation-link-badge",
+      "name": "DocumentationLinkBadge",
+      "kind": "component",
+      "exports": ["DocumentationLinkBadge"],
+      "variants": ["default", "minified"],
+      "behavior": "Info Badge link that owns its label, target _blank, rel noopener noreferrer and tooltip",
+      "acceptance": ["Safe rel", "Name says it opens in a new tab"]
     },
     {
       "id": "dropdown-menu",
@@ -886,6 +904,15 @@
       ]
     },
     {
+      "id": "provider-icon",
+      "name": "ProviderIcon",
+      "kind": "component",
+      "exports": ["ProviderIcon"],
+      "variants": ["sm/md/lg/xl", "light/dark counterpart", "fallback"],
+      "behavior": "Main's integration logo filenames, swapped for the scope theme, sized by icon tokens, with a glyph fallback",
+      "acceptance": ["Theme counterpart resolves", "Missing file keeps the size"]
+    },
+    {
       "id": "radio-group",
       "name": "RadioGroup",
       "kind": "component",
@@ -898,6 +925,15 @@
         "Required submit",
         "Disabled skipped"
       ]
+    },
+    {
+      "id": "row-link",
+      "name": "RowLink",
+      "kind": "component",
+      "exports": ["RowLink"],
+      "variants": ["DataTable row", "Card", "disabled"],
+      "behavior": "Typed TanStack route link whose ::after covers its row or Card while inner controls stay clickable",
+      "acceptance": ["Real href", "Row actions keep their click", "Disabled has no href"]
     },
     {
       "id": "scroll-area",
