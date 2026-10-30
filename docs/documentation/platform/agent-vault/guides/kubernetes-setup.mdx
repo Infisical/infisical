@@ -406,7 +406,7 @@ While an agent runs, check its traffic as a cluster admin. Replace `<run-id>` wi
 kubectl -n agents exec agent-<run-id> -- infisical agent-vault run -- \
   curl -s -o /dev/null -w '%{http_code}\n' https://<api-host>
 
-# Not in the access bundle: the proxy refuses it with 403
+# Not in the access bundle: returns 200 without a credential, or 403 under Access bundle hosts only
 kubectl -n agents exec agent-<run-id> -- infisical agent-vault run -- \
   curl -s -o /dev/null -w '%{http_code}\n' https://example.com
 
@@ -422,7 +422,7 @@ In Agent Vault, find the session under **Sessions** > **All Sessions** by its la
 
 ## Security considerations
 
-- **Hosts through the proxy:** agent pods can only connect to the proxy and DNS, and with **Access bundle hosts only**, the proxy forwards requests only to hosts that services in the session's access bundle cover and to the proxy's exceptions
+- **Hosts through the proxy:** agent pods can only connect to the proxy and DNS, but under the default [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), **Any host**, the proxy forwards their requests to any host its network policy allows (to allow only the hosts that services in the session's access bundle cover, set the traffic policy to **Access bundle hosts only** and add any other hosts the agents need to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions))
 - **DNS:** agent pods still need DNS to find the proxy, and DNS lookups can carry data out of the pod, so a network policy doesn't close every channel
 - **APIs that echo requests:** if an endpoint returns the request's headers in its response, such as an echo or debug endpoint, the response exposes the credential that the proxy attached, so limit each service to the [methods and paths](/documentation/platform/agent-vault/http-apis#methods-and-paths) the agent needs
 - **Revoking a session:** the proxy stops attaching credentials for a revoked session within one [poll interval](/documentation/platform/agent-vault/proxies#poll-interval)

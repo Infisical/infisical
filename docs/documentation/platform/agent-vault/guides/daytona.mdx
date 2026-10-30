@@ -1076,7 +1076,7 @@ To check which requests the agent made, [view the session's logs](/documentation
 
 ### Network access from the agent's sandbox
 
-The agent's sandbox can only connect to the proxy's address on the network between the two sandboxes. With the **Access bundle hosts only** traffic policy, the agent can reach two kinds of hosts through the proxy: the hosts of the services in the session's access bundle, and the proxy's exceptions.
+The agent's sandbox can only connect to the proxy's address on the network between the two sandboxes. Under the default [traffic policy](/documentation/platform/agent-vault/proxies#traffic-policy), **Any host**, the proxy forwards the agent's requests to any host on the internet. To allow only the hosts of the services in the session's access bundle, set the traffic policy to **Access bundle hosts only**, and add any other hosts the agent needs, such as `registry.npmjs.org`, to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions).
 
 ### Compromised sandboxes
 
@@ -1096,7 +1096,7 @@ Each proxy's sandbox holds a copy of the proxy token. If you think someone took 
     The session expired or was revoked. Set the session's `ttl` a few minutes longer than the proxy sandbox's time to live, so the session lasts as long as the sandboxes can run.
   </Accordion>
   <Accordion title="Requests to a host fail with a 403 from the start">
-    The proxy's traffic policy blocks hosts that no service in the access bundle covers. Add a service for the host, or add the host to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions).
+    If the proxy's traffic policy is **Access bundle hosts only**, the proxy blocks hosts that no service in the access bundle covers. Add a service for the host, or add the host to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions).
   </Accordion>
 </AccordionGroup>
 
