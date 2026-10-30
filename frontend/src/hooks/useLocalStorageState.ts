@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 
 type SetStateAction<T> = T | ((prevState: T) => T);
 
@@ -21,19 +21,6 @@ const getLocalStorageItem = (key: string): string | null => {
   return window.localStorage.getItem(key);
 };
 
-const useLocalStorageSubscribe = (callback: (e: StorageEvent) => void) => {
-  // Only react to same-tab storage events (manually dispatched, storageArea is null).
-  // Ignore cross-tab native storage events (storageArea is set) to prevent
-  // other tabs from updating this tab's state.
-  const handler = (e: StorageEvent) => {
-    if (!e.storageArea) {
-      callback(e);
-    }
-  };
-  window.addEventListener("storage", handler);
-  return () => window.removeEventListener("storage", handler);
-};
-
 const getLocalStorageServerSnapshot = (): never => {
   throw Error("useLocalStorage is a client-only hook");
 };
@@ -42,11 +29,31 @@ export const useLocalStorageState = <T>(
   key: string,
   initialValue: T
 ): [T, (value: SetStateAction<T>) => void] => {
-  const getSnapshot = () => getLocalStorageItem(key);
+  // localStorage is read once per key and then only updated by same-tab writes, so a value
+  // another tab writes never reaches this tab's state, not even on a later re-render.
+  const snapshot = useRef<{ key: string; value: string | null } | null>(null);
+  if (snapshot.current?.key !== key) {
+    snapshot.current = { key, value: getLocalStorageItem(key) };
+  }
+
+  const subscribe = useCallback(
+    (callback: () => void) => {
+      // Same-tab events are dispatched manually and have no storageArea; native events from
+      // other tabs do.
+      const handler = (e: StorageEvent) => {
+        if (e.storageArea || e.key !== key) return;
+        snapshot.current = { key, value: e.newValue };
+        callback();
+      };
+      window.addEventListener("storage", handler);
+      return () => window.removeEventListener("storage", handler);
+    },
+    [key]
+  );
 
   const store = useSyncExternalStore(
-    useLocalStorageSubscribe,
-    getSnapshot,
+    subscribe,
+    () => snapshot.current?.value ?? null,
     getLocalStorageServerSnapshot
   );
 
