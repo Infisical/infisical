@@ -395,7 +395,7 @@ done
 exit "$EXIT_CODE"
 ```
 
-Your own orchestrator can make the same [create](/api-reference/endpoints/agent-vault-sessions/create) and [revoke](/api-reference/endpoints/agent-vault-sessions/revoke) calls in any language, as in [Create sessions with the API](/documentation/platform/agent-vault/sessions-api).
+Your own orchestrator can make the same [login](/api-reference/endpoints/universal-auth/login), [create](/api-reference/endpoints/agent-vault-sessions/create), and [revoke](/api-reference/endpoints/agent-vault-sessions/revoke) calls in any language, as in [Create sessions with the API](/documentation/platform/agent-vault/sessions-api). For Kubernetes Auth, use the [Kubernetes Auth login](/api-reference/endpoints/kubernetes-auth/login) instead.
 
 ## Step 7: Verify it works
 
