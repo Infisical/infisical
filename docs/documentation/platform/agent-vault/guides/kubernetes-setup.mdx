@@ -18,8 +18,7 @@ This guide deploys an Agent Vault [proxy](/documentation/platform/agent-vault/pr
 - The **Admin** role in [Agent Vault](/documentation/platform/agent-vault/access-control#product-membership)
 - An [access bundle](/documentation/platform/agent-vault/access-bundles) with a service for each key the agent uses, including its model provider's key, such as **Anthropic** for Claude Code (see the [quickstart](/documentation/platform/agent-vault/quickstart))
 - A Kubernetes cluster whose network plugin enforces network policies, such as [Cilium](https://cilium.io) or [Calico](https://www.tigera.io/project-calico/)
-- An agent image that runs as a non-root user and includes the [Infisical CLI](/cli/overview)
-- [`curl`](https://curl.se), [`jq`](https://jqlang.org), and [`openssl`](https://openssl-library.org) on the machine where you run the script in Step 5
+- [`curl`](https://curl.se), [`jq`](https://jqlang.org), and [`openssl`](https://openssl-library.org) on the machine where you run the script in Step 6
 
 ## Step 1: Set up Agent Vault
 
@@ -199,7 +198,7 @@ spec:
         - port: 17323
 ```
 
-The `restricted` [Pod Security Standard](https://kubernetes.io/docs/concepts/security/pod-security-standards/) refuses pods that run as root, keep Linux capabilities, or can raise their privileges. The [agent pod](#define-the-agents-pod) in Step 5 meets it.
+The `restricted` [Pod Security Standard](https://kubernetes.io/docs/concepts/security/pod-security-standards/) refuses pods that run as root, keep Linux capabilities, or can raise their privileges. The [agent pod](#define-the-agents-pod) in Step 6 meets it.
 
 ## Step 4: Set up your orchestrator
 
@@ -240,7 +239,26 @@ rules:
     verbs: [get]
 ```
 
-## Step 5: Run an agent
+## Step 5: Build the agent's image
+
+Build an image from this Dockerfile and push it to a registry your cluster can pull from:
+
+```dockerfile
+# Dockerfile
+FROM node:24-bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
+RUN npm install -g @infisical/cli @anthropic-ai/claude-code
+USER node
+WORKDIR /home/node
+ENTRYPOINT ["infisical", "agent-vault", "run", "--telemetry=false", "--"]
+CMD ["claude", "-p", "--permission-mode", "bypassPermissions"]
+```
+
+- **The `node` user:** the `restricted` Pod Security Standard refuses pods that run as root, and Claude Code won't skip its permission prompts as root, so the agent runs as the image's `node` user
+- **The entrypoint:** `infisical agent-vault run` fetches the proxy's certificate, sets the proxy and certificate trust variables, and starts the agent's command after `--`
+- **`curl`:** the checks in [Step 7](#step-7-verify-it-works) run it in the agent's pod
+
+## Step 6: Run an agent
 
 ### Define the agent's pod
 
@@ -263,26 +281,23 @@ spec:
   activeDeadlineSeconds: 1800
   securityContext:
     runAsNonRoot: true
-    # Match the user ID that your agent's image runs as.
+    # The node user's ID in the image from Step 5.
     runAsUser: 1000
     seccompProfile:
       type: RuntimeDefault
   containers:
     - name: agent
-      # Your agent's image, with the Infisical CLI installed.
+      # The image you pushed in Step 5.
       image: <agent-image>
-      # agent-vault run fetches the proxy's certificate, sets the proxy and
-      # certificate variables, then starts the command after --. Replace
-      # <agent-command> and <argument> with your agent's command, one list item
-      # per argument, such as claude, -p, "Fix the failing test".
-      command:
-        - infisical
-        - agent-vault
-        - run
-        - --ca-file=/tmp/agent-vault-ca.pem
-        - --
-        - <agent-command>
-        - <argument>
+      # The agent's command, one list item per argument. The image's entrypoint
+      # starts it through infisical agent-vault run. Replace <prompt> with the
+      # agent's task, such as "Fix the failing test".
+      args:
+        - claude
+        - -p
+        - --permission-mode
+        - bypassPermissions
+        - <prompt>
       # INFISICAL_AGENT_VAULT_SESSION_TOKEN, which the script in the next step creates.
       envFrom:
         - secretRef:
@@ -362,17 +377,17 @@ exit "$EXIT_CODE"
 
 Your own orchestrator can make the same [create](/api-reference/endpoints/agent-vault-sessions/create) and [revoke](/api-reference/endpoints/agent-vault-sessions/revoke) calls in any language, as in [Create sessions with the API](/documentation/platform/agent-vault/sessions-api).
 
-## Step 6: Verify it works
+## Step 7: Verify it works
 
-While an agent runs, check its traffic as a cluster admin. The agent's image needs `curl`. Replace `<run-id>` with the run ID the script printed, and `<api-host>` with a host in your access bundle:
+While an agent runs, check its traffic as a cluster admin. Replace `<run-id>` with the run ID the script printed, and `<api-host>` with a host in your access bundle:
 
 ```bash
 # Through the proxy: returns the API's own status code, such as 200 or 401
-kubectl -n agents exec agent-<run-id> -- infisical agent-vault run --ca-file=/tmp/agent-vault-ca.pem -- \
+kubectl -n agents exec agent-<run-id> -- infisical agent-vault run -- \
   curl -s -o /dev/null -w '%{http_code}\n' https://<api-host>
 
 # Not in the access bundle: the proxy refuses it with 403
-kubectl -n agents exec agent-<run-id> -- infisical agent-vault run --ca-file=/tmp/agent-vault-ca.pem -- \
+kubectl -n agents exec agent-<run-id> -- infisical agent-vault run -- \
   curl -s -o /dev/null -w '%{http_code}\n' https://example.com
 
 # Around the proxy: the network policy blocks it, so curl times out
@@ -407,7 +422,7 @@ In Agent Vault, find the session under **Sessions** > **All Sessions** by its la
     Your cluster's network plugin doesn't enforce network policies, so Kubernetes accepts the policies but nothing applies them. Flannel, the default network plugin in k3s, is one example. Install a network plugin that enforces policies, such as Cilium or Calico.
   </Accordion>
   <Accordion title="Requests fail with a certificate error">
-    The agent's HTTP client doesn't trust the proxy's certificate. Check that the agent starts through `infisical agent-vault run`, as in the [pod manifest](#define-the-agents-pod), and that its HTTP client reads one of the [certificate trust](/documentation/platform/agent-vault/proxies#certificate-trust) variables.
+    The agent's HTTP client doesn't trust the proxy's certificate. Check that the agent starts through `infisical agent-vault run`, as the [image's entrypoint](#step-5-build-the-agents-image) does, and that its HTTP client reads one of the [certificate trust](/documentation/platform/agent-vault/proxies#certificate-trust) variables.
   </Accordion>
   <Accordion title="The proxy returns 403 with &quot;host blocked by policy&quot;">
     The proxy's traffic policy blocks hosts that no service in the access bundle covers. Add a service for the host, or add the host to the proxy's [exceptions](/documentation/platform/agent-vault/proxies#exceptions).

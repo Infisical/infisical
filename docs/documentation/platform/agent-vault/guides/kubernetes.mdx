@@ -68,7 +68,7 @@ For each agent run, your orchestrator does the following:
 
     - **Session tokens:** a `SandboxTemplate` serves every claim, so your orchestrator has to deliver each sandbox's session token after its claim binds
     - **Warm pools:** pods in a `SandboxWarmPool` start before any session exists, so they also get their session token after the claim binds
-    - **Network policies:** a network policy that the Agent Sandbox controller creates can allow traffic that the agents namespace's policy blocks, so turn it off or limit it to the proxy, then [check direct egress](/documentation/platform/agent-vault/guides/kubernetes-setup#step-6-verify-it-works)
+    - **Network policies:** a network policy that the Agent Sandbox controller creates can allow traffic that the agents namespace's policy blocks, so turn it off or limit it to the proxy, then [check direct egress](/documentation/platform/agent-vault/guides/kubernetes-setup#step-7-verify-it-works)
   </Accordion>
 </AccordionGroup>
 
