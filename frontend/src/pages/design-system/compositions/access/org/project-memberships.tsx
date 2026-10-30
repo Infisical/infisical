@@ -11,6 +11,7 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -47,7 +48,6 @@ import {
   projectTypeNames,
   roleName
 } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Gate, Muted, usePagedList } from "../ui";
 import { Section } from "./detail-parts";
 import {
@@ -221,7 +221,7 @@ const AddGroupProjectsSheet = ({
     matches: (project, needle) => project.name.toLowerCase().includes(needle),
     compare: (a, b) => a.name.localeCompare(b.name)
   });
-  const columns: AccessColumn<OrgProject>[] = [
+  const columns: DataTableColumn<OrgProject>[] = [
     {
       id: "name",
       header: "Project",
@@ -261,7 +261,7 @@ const AddGroupProjectsSheet = ({
               value={list.search}
               onChange={(event) => list.setSearch(event.target.value)}
             />
-            <AccessTable
+            <DataTable
               label="Projects to add"
               rows={list.pageRows}
               columns={columns}
@@ -325,12 +325,12 @@ export const ProjectMembershipsSection = ({
   const roleLabel = (row: ProjectMembershipRow) =>
     `${roleName(data.projectRoles, row.roles[0])}${row.roles.length > 1 ? ` (+${row.roles.length - 1})` : ""}`;
 
-  const columns: AccessColumn<ProjectMembershipRow>[] = [
+  const columns: DataTableColumn<ProjectMembershipRow>[] = [
     {
       id: "name",
       header: "Name",
       sortable: true,
-      width: subject === "user" ? "66%" : "33%",
+      grow: true,
       render: (row) => <span>{row.project.name}</span>
     },
     subject === "group"
@@ -407,7 +407,7 @@ export const ProjectMembershipsSection = ({
         value={list.search}
         onChange={(event) => list.setSearch(event.target.value)}
       />
-      <AccessTable
+      <DataTable
         label={`Projects for ${subjectName}`}
         rows={list.pageRows}
         columns={columns}
@@ -415,7 +415,7 @@ export const ProjectMembershipsSection = ({
         rowLabel={(row) => row.project.name}
         sort={list.sort}
         onSortChange={list.setSort}
-        onRowClick={(row) =>
+        onRowActivate={(row) =>
           row.project.id === CURRENT_PROJECT_ID
             ? openProject()
             : toast({ tone: "bad", title: "Unable to access project", description: PREVIEW_ONLY })

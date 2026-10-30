@@ -12,6 +12,7 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -43,7 +44,6 @@ import {
 
 import { useAccess } from "../context";
 import { type ProjectIdentity, type ProjectRoleGrant, roleName } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Gate, useCan } from "../ui";
 import { DurationBadge, DurationPicker, type GrantDraft, permanent } from "./temporary-access";
 
@@ -288,12 +288,12 @@ export const IdentityRoleDetailsSection = ({ membership }: { membership: Project
       </Button>
     </Gate>
   );
-  const columns: AccessColumn<ProjectRoleGrant>[] = [
-    { id: "role", header: "Role", width: "50%", render: (grant) => <span>{nameOf(grant)}</span> },
+  const columns: DataTableColumn<ProjectRoleGrant>[] = [
+    { id: "role", header: "Role", grow: true, render: (grant) => <span>{nameOf(grant)}</span> },
     {
       id: "duration",
       header: "Duration",
-      width: "50%",
+      grow: true,
       render: (grant) => <DurationBadge grant={grant} />
     },
     {
@@ -338,13 +338,13 @@ export const IdentityRoleDetailsSection = ({ membership }: { membership: Project
         action={hasRoles ? editButton("outline") : undefined}
       >
         {hasRoles ? (
-          <AccessTable
+          <DataTable
             label="Project roles"
             rows={membership.roles}
             columns={columns}
             getRowId={(grant) => grant.id}
             rowLabel={nameOf}
-            onRowClick={(grant) => {
+            onRowActivate={(grant) => {
               const role = data.projectRoles.find((item) => item.slug === grant.role);
               if (role)
                 navigate({ detail: { kind: "project-role", id: role.id, label: role.name } });

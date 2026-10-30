@@ -14,6 +14,7 @@ import {
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -38,7 +39,6 @@ import { Select } from "@app/components/v4/ui/select";
 
 import { useAccess } from "../context";
 import { displayName, type GroupRef, type OrgMember, roleName, SELF_USER_ID } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Gate, useCan, usePagedList } from "../ui";
 import { roleOptions } from "./create-identity-sheet";
 import {
@@ -156,7 +156,7 @@ const UserGroupsSection = ({ member }: { member: OrgMember }) => {
     matches: (group, needle) => group.name.toLowerCase().includes(needle),
     compare: (a, b) => a.name.localeCompare(b.name)
   });
-  const columns: AccessColumn<GroupRef>[] = [
+  const columns: DataTableColumn<GroupRef>[] = [
     { id: "name", header: "Name", sortable: true, render: (group) => <span>{group.name}</span> },
     {
       id: "actions",
@@ -192,7 +192,7 @@ const UserGroupsSection = ({ member }: { member: OrgMember }) => {
         value={list.search}
         onChange={(event) => list.setSearch(event.target.value)}
       />
-      <AccessTable
+      <DataTable
         label={`Groups for ${member.user.username}`}
         rows={list.pageRows}
         columns={columns}

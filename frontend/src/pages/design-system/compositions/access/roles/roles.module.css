@@ -472,7 +472,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.matrixCheck,
+.legendCheck {
+  display: inline-flex;
+  pointer-events: none;
+}
 .matrixCell {
   display: inline-flex;
   align-items: center;
@@ -492,6 +495,9 @@
 .mark:focus-visible {
   outline: var(--v4-size-focus-ring) solid var(--v4-focus-ring);
   outline-offset: calc(var(--v4-size-focus-ring) * -1);
+}
+.tipText {
+  white-space: normal;
 }
 .legendAbsent {
   display: inline-flex;

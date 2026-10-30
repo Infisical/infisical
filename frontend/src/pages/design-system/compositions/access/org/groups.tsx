@@ -12,6 +12,7 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +26,6 @@ import { Select } from "@app/components/v4/ui/select";
 
 import { useAccess } from "../context";
 import { type OrgGroup, roleName } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Gate, ListToolbar, useCan, usePagedList } from "../ui";
 import { GroupDialog, setGroupRole } from "./group-dialog";
 import { reapGroup } from "./memberships";
@@ -61,19 +61,19 @@ export const OrgGroupsTab = () => {
   const openDetail = (group: OrgGroup) =>
     navigate({ detail: { kind: "org-group", id: group.id, label: group.name } });
 
-  const columns: AccessColumn<OrgGroup>[] = [
+  const columns: DataTableColumn<OrgGroup>[] = [
     {
       id: "name",
       header: "Name",
       sortable: true,
-      width: "33%",
+      grow: true,
       render: (group) => <span>{group.name}</span>
     },
     {
       id: "slug",
       header: "Slug",
       sortable: true,
-      width: "33%",
+      grow: true,
       render: (group) => <span>{group.slug}</span>
     },
     {
@@ -182,16 +182,17 @@ export const OrgGroupsTab = () => {
         </Gate>
       </div>
       <Stack gap={8}>
-        <AccessTable
+        <DataTable
           label="Organization groups"
           rows={list.pageRows}
           columns={columns}
           getRowId={(group) => group.id}
           rowLabel={(group) => group.name}
-          loading={loading ? 10 : undefined}
+          loading={loading}
+          loadingRows={10}
           sort={list.sort}
           onSortChange={list.setSort}
-          onRowClick={openDetail}
+          onRowActivate={openDetail}
           empty={
             searching || roleFilter.length ? (
               <EmptyState

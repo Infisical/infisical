@@ -14,6 +14,7 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +31,6 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { useAccess } from "../context";
 import type { OrgGroup } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { ListToolbar, useCan, usePagedList } from "../ui";
 import { GroupRoles } from "./group-roles";
 
@@ -188,12 +188,11 @@ const GroupMembersTable = ({ group }: { group: OrgGroup }) => {
     compare: (a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase())
   });
 
-  const columns: AccessColumn<Member>[] = [
+  const columns: DataTableColumn<Member>[] = [
     {
       id: "type",
       header: "Member type",
       width: 40,
-      skeleton: 16,
       render: (member) => (
         <span className={styles.memberIcon}>
           <Icon name={member.type === "users" ? "user" : "machine"} />
@@ -204,7 +203,7 @@ const GroupMembersTable = ({ group }: { group: OrgGroup }) => {
       id: "name",
       header: "Name",
       sortable: true,
-      width: "50%",
+      grow: true,
       render: (member) => (
         <span>
           {member.name}
@@ -268,13 +267,14 @@ const GroupMembersTable = ({ group }: { group: OrgGroup }) => {
         }}
       />
       <Stack gap={8}>
-        <AccessTable
+        <DataTable
           label="Group members"
           rows={list.pageRows}
           columns={columns}
           getRowId={(member) => `${member.type}-${member.id}`}
           rowLabel={(member) => member.email ?? member.name}
-          loading={loading ? 5 : undefined}
+          loading={loading}
+          loadingRows={5}
           sort={list.sort}
           onSortChange={list.setSort}
           empty={

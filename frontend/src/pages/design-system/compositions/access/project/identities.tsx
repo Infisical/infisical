@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { UserRoundXIcon } from "lucide-react";
 
 import { Button } from "@app/components/v4/ui/button";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +18,6 @@ import { Stack } from "@app/components/v4/ui/layout";
 
 import { useAccess } from "../context";
 import { authMethodNames } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Gate, ListToolbar, RoleBadges, useCan, usePagedList } from "../ui";
 import { AddProjectIdentitySheet } from "./identity-add-sheet";
 import { useAuthMethodFlows } from "./identity-auth";
@@ -80,18 +80,18 @@ export const ProjectIdentitiesTab = () => {
       }
     });
 
-  const columns: AccessColumn<ProjectIdentityRow>[] = [
+  const columns: DataTableColumn<ProjectIdentityRow>[] = [
     {
       id: "name",
       header: "Name",
       sortable: true,
-      width: "25%",
+      grow: true,
       render: (row) => <span>{row.identity.name}</span>
     },
     {
       id: "role",
       header: "Project role",
-      width: "25%",
+      grow: true,
       render: (row) => <RoleBadges roles={row.membership.roles} catalog={data.projectRoles} />
     },
     {
@@ -214,16 +214,17 @@ export const ProjectIdentitiesTab = () => {
         </Gate>
       </div>
       <Stack gap={8}>
-        <AccessTable
+        <DataTable
           label="Project machine identities"
           rows={list.pageRows}
           columns={columns}
           getRowId={(row) => row.identity.id}
           rowLabel={(row) => row.identity.name}
-          loading={loading ? 10 : undefined}
+          loading={loading}
+          loadingRows={10}
           sort={list.sort}
           onSortChange={list.setSort}
-          onRowClick={openDetail}
+          onRowActivate={openDetail}
           empty={
             searching ? (
               <EmptyState

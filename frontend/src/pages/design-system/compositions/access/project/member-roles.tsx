@@ -20,6 +20,7 @@ import {
   CardHeader,
   CardTitle
 } from "@app/components/v4/ui/card";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -51,7 +52,6 @@ import {
 
 import { useAccess } from "../context";
 import { type ProjectMember, type ProjectRoleGrant, roleName } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Gate, useCan } from "../ui";
 import { DurationBadge, DurationPicker, type GrantDraft, permanent } from "./temporary-access";
 
@@ -280,11 +280,11 @@ export const MemberRolesSection = ({
     </Gate>
   );
 
-  const columns: AccessColumn<ProjectRoleGrant>[] = [
+  const columns: DataTableColumn<ProjectRoleGrant>[] = [
     {
       id: "role",
       header: "Role",
-      width: "50%",
+      grow: true,
       render: (grant) => <span>{roleName(catalog, grant.role)}</span>
     },
     {
@@ -322,7 +322,7 @@ export const MemberRolesSection = ({
                 </DropdownMenuContent>
               </DropdownMenu>
             )
-          } satisfies AccessColumn<ProjectRoleGrant>
+          } satisfies DataTableColumn<ProjectRoleGrant>
         ])
   ];
 
@@ -341,13 +341,13 @@ export const MemberRolesSection = ({
         </CardHeader>
         <CardContent>
           {member.roles.length ? (
-            <AccessTable
+            <DataTable
               label="Project roles"
               rows={member.roles}
               columns={columns}
               getRowId={(grant) => grant.id}
               rowLabel={(grant) => roleName(catalog, grant.role)}
-              onRowClick={(grant) => {
+              onRowActivate={(grant) => {
                 const role = catalog.find((item) => item.slug === grant.role);
                 if (role)
                   navigate({ detail: { kind: "project-role", id: role.id, label: role.name } });

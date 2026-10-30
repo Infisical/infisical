@@ -13,6 +13,7 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -30,14 +31,13 @@ import {
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
-import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
+import { DetailLayout, Stack, Inline } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
 import { MultiSelect } from "@app/components/v4/ui/multi-select";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 
 import { useAccess } from "../context";
 import { type AccessData, displayName, type OrgGroup } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Gate, ListToolbar, Muted, useCan, usePagedList } from "../ui";
 import { BackButton, CopyButton, Section, Value } from "./detail-parts";
 import { GroupDialog } from "./group-dialog";
@@ -239,14 +239,14 @@ const GroupMembersSection = ({ group }: { group: OrgGroup }) => {
       </Button>
     </Gate>
   );
-  const columns: AccessColumn<MemberRow>[] = [
+  const columns: DataTableColumn<MemberRow>[] = [
     {
       id: "name",
       header: "Name",
       sortable: true,
-      width: "66%",
+      grow: true,
       render: (row) => (
-        <>
+        <Inline gap={8} wrap={false}>
           <span
             className={css.typeIcon}
             role="img"
@@ -256,7 +256,7 @@ const GroupMembersSection = ({ group }: { group: OrgGroup }) => {
           </span>
           <span>{row.name}</span>
           {row.email && <Muted>{`(${row.email})`}</Muted>}
-        </>
+        </Inline>
       )
     },
     { id: "added", header: "Added on", render: (row) => row.addedOn },
@@ -310,7 +310,7 @@ const GroupMembersSection = ({ group }: { group: OrgGroup }) => {
           }
         }}
       />
-      <AccessTable
+      <DataTable
         label={`Members of ${group.name}`}
         rows={list.pageRows}
         columns={columns}

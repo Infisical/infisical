@@ -14,6 +14,7 @@ import {
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -32,7 +33,7 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { DetailLayout, Stack } from "@app/components/v4/ui/layout";
+import { DetailLayout, Stack, Inline } from "@app/components/v4/ui/layout";
 import { DataList } from "@app/components/v4/ui/list";
 import { PageHeader } from "@app/components/v4/ui/page-header";
 import { Select } from "@app/components/v4/ui/select";
@@ -40,7 +41,6 @@ import { Switch } from "@app/components/v4/ui/switch";
 
 import { useAccess } from "../context";
 import { type AuthMethod, authMethodNames, type OrgIdentity, roleName } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Gate, useCan } from "../ui";
 import {
   AUTH_METHOD_ORDER,
@@ -200,15 +200,15 @@ export const OrgIdentityDetail = ({ id }: { id: string }) => {
     </Gate>
   );
 
-  const authColumns: AccessColumn<AuthMethod>[] = [
+  const authColumns: DataTableColumn<AuthMethod>[] = [
     {
       id: "method",
       header: "Auth method",
       render: (method) => (
-        <>
+        <Inline gap={8} wrap={false}>
           <span>{authMethodNames[method]}</span>
           {locked.includes(method) && <LockBadge label="Auth method has active lockouts" />}
-        </>
+        </Inline>
       )
     },
     {
@@ -366,13 +366,13 @@ export const OrgIdentityDetail = ({ id }: { id: string }) => {
                   : undefined
               }
             >
-              <AccessTable
+              <DataTable
                 label={`Auth methods for ${identity.name}`}
                 rows={identity.authMethods}
                 columns={authColumns}
                 getRowId={(method) => method}
                 rowLabel={(method) => authMethodNames[method]}
-                onRowClick={setAuthView}
+                onRowActivate={setAuthView}
                 empty={
                   <EmptyState
                     size="sm"

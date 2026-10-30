@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { UserRoundXIcon } from "lucide-react";
 
 import { Button } from "@app/components/v4/ui/button";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +15,6 @@ import { Stack } from "@app/components/v4/ui/layout";
 
 import { useAccess } from "../context";
 import type { OrgGroup, ProjectGroup } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Gate, ListToolbar, useCan, usePagedList } from "../ui";
 import { RemoveGroupDialog } from "./group-detail";
 import { GroupModal } from "./group-modal";
@@ -49,12 +49,12 @@ export const ProjectGroupsTab = () => {
     compare: (a, b) => a.group.name.toLowerCase().localeCompare(b.group.name.toLowerCase())
   });
 
-  const columns: AccessColumn<Row>[] = [
+  const columns: DataTableColumn<Row>[] = [
     {
       id: "name",
       header: "Name",
       sortable: true,
-      width: "33%",
+      grow: true,
       render: (row) => <span>{row.group.name}</span>
     },
     {
@@ -117,16 +117,17 @@ export const ProjectGroupsTab = () => {
         </Gate>
       </div>
       <Stack gap={8}>
-        <AccessTable
+        <DataTable
           label="Project groups"
           rows={list.pageRows}
           columns={columns}
           getRowId={(row) => row.groupId}
           rowLabel={(row) => row.group.name}
-          loading={loading ? 10 : undefined}
+          loading={loading}
+          loadingRows={10}
           sort={list.sort}
           onSortChange={list.setSort}
-          onRowClick={(row) =>
+          onRowActivate={(row) =>
             navigate({ detail: { kind: "project-group", id: row.groupId, label: row.group.name } })
           }
           empty={

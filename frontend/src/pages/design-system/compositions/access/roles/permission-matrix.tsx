@@ -7,7 +7,7 @@ import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-tabl
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Stack, Inline } from "@app/components/v4/ui/layout";
 import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v4/ui/popover";
 import { Tabs } from "@app/components/v4/ui/tabs";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
@@ -149,7 +149,7 @@ const PartialHint = ({
     items.map((action) => action.label).join(", ");
   const text = `Allowed everywhere: ${list(allowed)}. Not allowed: ${list(actions.filter((action) => !granted.includes(action.value)))}.`;
   return (
-    <Tooltip content={text}>
+    <Tooltip content={<span className={styles.tipText}>{text}</span>}>
       <button type="button" className={styles.mark} data-tone="partial" aria-label={text}>
         <Icon icon={InfoIcon} size={14} />
       </button>
@@ -265,7 +265,7 @@ export const PermissionMatrix = (props: MatrixProps) => {
       grow: true,
       text: (config) => config.title,
       render: (config) => (
-        <>
+        <Inline gap={8} wrap={false}>
           <span className={styles.matrixTitle}>{config.title}</span>
           {errors?.[config.subject] && (
             <Tooltip content="A rule on this policy needs attention. Edit rules to fix it.">
@@ -274,7 +274,7 @@ export const PermissionMatrix = (props: MatrixProps) => {
               </span>
             </Tooltip>
           )}
-        </>
+        </Inline>
       )
     },
     ...VERBS.filter((verb) => verb.id !== "other").map(
@@ -387,14 +387,14 @@ export const PermissionMatrix = (props: MatrixProps) => {
       />
       <ul className={styles.legend} aria-label="Matrix legend">
         <li>
-          <span className={styles.matrixCheck} aria-hidden>
-            <Checkbox checked disabled tabIndex={-1} />
+          <span className={styles.legendCheck} aria-hidden inert>
+            <Checkbox checked tabIndex={-1} />
           </span>
           Allowed everywhere
         </li>
         <li>
-          <span className={styles.matrixCheck} aria-hidden>
-            <Checkbox checked="indeterminate" disabled tabIndex={-1} />
+          <span className={styles.legendCheck} aria-hidden inert>
+            <Checkbox checked="indeterminate" tabIndex={-1} />
           </span>
           Some actions in the column allowed everywhere
         </li>

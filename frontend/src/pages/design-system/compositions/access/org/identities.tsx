@@ -13,6 +13,7 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +32,6 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { useAccess } from "../context";
 import { type AuthMethod, authMethodNames, type OrgIdentity, roleName } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Gate, Muted, useCan, usePagedList } from "../ui";
 import {
   AuthMethodFormSheet,
@@ -105,25 +105,25 @@ export const OrgIdentitiesTab = () => {
           detail: { kind: "org-identity", id: identity.id, label: identity.name, mono: true }
         });
 
-  const columns: AccessColumn<OrgIdentity>[] = [
+  const columns: DataTableColumn<OrgIdentity>[] = [
     {
       id: "name",
       header: "Name",
       sortable: true,
-      width: "25%",
+      grow: true,
       render: (identity) => <span>{identity.name}</span>
     },
     {
       id: "role",
       header: "Role",
       sortable: true,
-      width: "25%",
+      grow: true,
       render: (identity) => <Badge tone="soft">{roleName(data.orgRoles, identity.role)}</Badge>
     },
     {
       id: "managedBy",
       header: "Managed by",
-      width: "25%",
+      grow: true,
       render: (identity) =>
         identity.managedByProject ? (
           <Badge tone="outline">
@@ -288,16 +288,17 @@ export const OrgIdentitiesTab = () => {
           </Gate>
         </div>
         <Stack gap={8}>
-          <AccessTable
+          <DataTable
             label="Organization machine identities"
             rows={list.pageRows}
             columns={columns}
             getRowId={(identity) => identity.id}
             rowLabel={(identity) => identity.name}
-            loading={loading ? 10 : undefined}
+            loading={loading}
+            loadingRows={10}
             sort={list.sort}
             onSortChange={list.setSort}
-            onRowClick={openDetail}
+            onRowActivate={openDetail}
             empty={
               <EmptyState
                 size="sm"

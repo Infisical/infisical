@@ -13,6 +13,7 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -31,12 +32,11 @@ import { EmptyState } from "@app/components/v4/ui/empty";
 import { Field } from "@app/components/v4/ui/field";
 import { Icon } from "@app/components/v4/ui/icon";
 import { Input } from "@app/components/v4/ui/input";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Stack, Inline } from "@app/components/v4/ui/layout";
 import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { useAccess } from "../context";
 import type { Role } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Gate, ListToolbar, useCan, usePagedList } from "../ui";
 import { slugify } from "./group-dialog";
 
@@ -172,14 +172,14 @@ export const OrgRolesTab = () => {
   const openRole = (role: Role) =>
     navigate({ detail: { kind: "org-role", id: role.id, label: role.name } });
 
-  const columns: AccessColumn<Role>[] = [
+  const columns: DataTableColumn<Role>[] = [
     {
       id: "name",
       header: "Name",
       sortable: true,
-      width: "33%",
+      grow: true,
       render: (role) => (
-        <>
+        <Inline gap={8} wrap={false}>
           <span>{role.name}</span>
           {role.slug === data.defaultOrgRole && (
             <Tooltip
@@ -188,14 +188,14 @@ export const OrgRolesTab = () => {
               <Badge tone="info">Default</Badge>
             </Tooltip>
           )}
-        </>
+        </Inline>
       )
     },
     {
       id: "slug",
       header: "Slug",
       sortable: true,
-      width: "33%",
+      grow: true,
       render: (role) => <span>{role.slug}</span>
     },
     {
@@ -286,16 +286,17 @@ export const OrgRolesTab = () => {
         </Gate>
       </div>
       <Stack gap={8}>
-        <AccessTable
+        <DataTable
           label="Organization roles"
           rows={list.pageRows}
           columns={columns}
           getRowId={(role) => role.id}
           rowLabel={(role) => role.name}
-          loading={loading ? 10 : undefined}
+          loading={loading}
+          loadingRows={10}
           sort={list.sort}
           onSortChange={list.setSort}
-          onRowClick={openRole}
+          onRowActivate={openRole}
           empty={
             data.orgRoles.length ? (
               <EmptyState

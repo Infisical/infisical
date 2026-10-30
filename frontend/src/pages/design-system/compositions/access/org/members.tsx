@@ -13,6 +13,7 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +23,7 @@ import {
 import { EmptyState } from "@app/components/v4/ui/empty";
 import { FloatingActionBar } from "@app/components/v4/ui/floating-action-bar";
 import { Icon } from "@app/components/v4/ui/icon";
-import { Stack } from "@app/components/v4/ui/layout";
+import { Stack, Inline } from "@app/components/v4/ui/layout";
 import { Popover, PopoverContent, PopoverTrigger } from "@app/components/v4/ui/popover";
 import { Select } from "@app/components/v4/ui/select";
 import { Separator } from "@app/components/v4/ui/separator";
@@ -30,13 +31,10 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { useAccess } from "../context";
 import { displayName, type OrgMember, type Role, roleName, SELF_USER_ID } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { FabDock, Gate, ListToolbar, Muted, useCan, usePagedList } from "../ui";
 import { InviteUsersSheet } from "./invite-users-sheet";
 
 import styles from "../access.module.css";
-
-const GROUP_ONLY = "Access is managed through groups";
 
 const usernameOf = (member: OrgMember) => member.user.username;
 
@@ -162,15 +160,17 @@ export const OrgMembersTab = () => {
       )
     }));
 
-  const columns: AccessColumn<OrgMember>[] = [
+  const columns: DataTableColumn<OrgMember>[] = [
     {
       id: "name",
       header: "Name",
       sortable: true,
-      width: "25%",
+      grow: true,
       render: (member) => (
-        <>
+        <Inline gap={8} wrap={false}>
           <span>{displayName(member.user) ?? <Muted>-</Muted>}</span>
+          {member.membership?.isActive === false && <Badge>Deactivated</Badge>}
+          {!member.membership && <Badge>Group access only</Badge>}
           {member.user.superAdmin && (
             <Tooltip content="Server admin">
               <Badge tone="info">
@@ -188,14 +188,14 @@ export const OrgMembersTab = () => {
               </button>
             </Tooltip>
           )}
-        </>
+        </Inline>
       )
     },
     {
       id: "username",
       header: "Username",
       sortable: true,
-      width: "33%",
+      grow: true,
       render: (member) => <span>{usernameOf(member)}</span>
     },
     {
@@ -409,17 +409,17 @@ export const OrgMembersTab = () => {
         </Gate>
       </div>
       <Stack gap={8}>
-        <AccessTable
+        <DataTable
           label="Organization users"
           rows={list.pageRows}
           columns={columns}
           getRowId={(member) => member.membership?.id ?? member.user.id}
           rowLabel={usernameOf}
-          loading={loading ? 10 : undefined}
+          loading={loading}
+          loadingRows={10}
           sort={list.sort}
           onSortChange={list.setSort}
-          isMuted={(member) => member.membership?.isActive === false}
-          onRowClick={(member) =>
+          onRowActivate={(member) =>
             member.membership &&
             navigate({
               detail: {
@@ -429,11 +429,10 @@ export const OrgMembersTab = () => {
               }
             })
           }
-          selection={{
-            selected,
-            onChange: setSelected,
-            blockedReason: (member) => (member.membership ? undefined : GROUP_ONLY)
-          }}
+          selectable
+          selectedIds={selected}
+          onSelectionChange={setSelected}
+          isSelectable={(member) => Boolean(member.membership)}
           empty={
             searching ? (
               <EmptyState

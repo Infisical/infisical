@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { InfoIcon, UserXIcon } from "lucide-react";
 
 import { Button } from "@app/components/v4/ui/button";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +16,6 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { useAccess } from "../context";
 import { displayName, type OrgUser, type ProjectMember, SELF_USER_ID } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Gate, ListToolbar, Muted, RoleBadges, useCan, usePagedList } from "../ui";
 import { AddMemberDialog } from "./member-add-dialog";
 import { AssumePrivilegesDialog, RemoveMemberDialog } from "./member-dialogs";
@@ -89,19 +89,19 @@ export const ProjectMembersTab = () => {
       }
     });
 
-  const columns: AccessColumn<Row>[] = [
+  const columns: DataTableColumn<Row>[] = [
     {
       id: "name",
       header: "Name",
       sortable: true,
-      width: "33%",
+      grow: true,
       render: (member) => <span>{displayName(member.user) ?? <Muted>-</Muted>}</span>
     },
     {
       id: "email",
       header: "Email",
       sortable: true,
-      width: "33%",
+      grow: true,
       render: (member) => <span>{member.user.email}</span>
     },
     {
@@ -204,16 +204,17 @@ export const ProjectMembersTab = () => {
         </Gate>
       </div>
       <Stack gap={8}>
-        <AccessTable
+        <DataTable
           label="Project users"
           rows={list.pageRows}
           columns={columns}
           getRowId={(member) => member.id}
           rowLabel={(member) => member.user.email}
-          loading={loading ? 10 : undefined}
+          loading={loading}
+          loadingRows={10}
           sort={list.sort}
           onSortChange={list.setSort}
-          onRowClick={open}
+          onRowActivate={open}
           empty={
             searching ? (
               <EmptyState

@@ -11,6 +11,7 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@app/components/v4/ui/dialog";
 import {
   DropdownMenu,
@@ -36,7 +37,6 @@ import {
 
 import { useAccess } from "../context";
 import { type AuthTemplate, type AuthTemplateMethod, type OrgIdentity } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Gate, useCan, usePagedList } from "../ui";
 import { Section } from "./detail-parts";
 
@@ -177,7 +177,7 @@ const TemplateSheet = ({
 const UsagesDialog = ({ template, onClose }: { template?: AuthTemplate; onClose: () => void }) => {
   const { data } = useAccess();
   const rows = data.orgIdentities.filter((identity) => template?.usages.includes(identity.id));
-  const columns: AccessColumn<OrgIdentity>[] = [
+  const columns: DataTableColumn<OrgIdentity>[] = [
     { id: "name", header: "Identity name", render: (identity) => <span>{identity.name}</span> },
     { id: "id", header: "Identity ID", render: (identity) => <span>{identity.id}</span> }
   ];
@@ -187,7 +187,7 @@ const UsagesDialog = ({ template, onClose }: { template?: AuthTemplate; onClose:
         <DialogHeader>
           <DialogTitle>{`Usages for identity auth template: ${template?.name ?? ""}`}</DialogTitle>
         </DialogHeader>
-        <AccessTable
+        <DataTable
           label={`Machine identities using ${template?.name ?? "template"}`}
           rows={rows}
           columns={columns}
@@ -222,24 +222,24 @@ export const AuthTemplatesSection = () => {
         : a.name.localeCompare(b.name)
   });
   const searching = Boolean(list.search.trim());
-  const columns: AccessColumn<AuthTemplate>[] = [
+  const columns: DataTableColumn<AuthTemplate>[] = [
     {
       id: "name",
       header: "Name",
       sortable: true,
-      width: "25%",
+      grow: true,
       render: (template) => <span>{template.name}</span>
     },
     {
       id: "method",
       header: "Method",
       sortable: true,
-      width: "25%",
+      grow: true,
       render: (template) => (
-        <>
+        <Inline gap={8} wrap={false}>
           <Icon name={template.method === "kubernetes" ? "apps" : "key"} />
           <span>{methodOf(template.method).label}</span>
-        </>
+        </Inline>
       )
     },
     {
@@ -310,13 +310,14 @@ export const AuthTemplatesSection = () => {
             onChange={(event) => list.setSearch(event.target.value)}
           />
           <Stack gap={8}>
-            <AccessTable
+            <DataTable
               label="Machine identity auth templates"
               rows={list.pageRows}
               columns={columns}
               getRowId={(template) => template.id}
               rowLabel={(template) => template.name}
-              loading={loading ? 3 : undefined}
+              loading={loading}
+              loadingRows={3}
               sort={list.sort}
               onSortChange={list.setSort}
               empty={

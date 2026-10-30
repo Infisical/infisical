@@ -13,6 +13,7 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Badge } from "@app/components/v4/ui/badge";
 import { Button } from "@app/components/v4/ui/button";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +26,6 @@ import { Stack } from "@app/components/v4/ui/layout";
 
 import { useAccess } from "../context";
 import type { ServiceToken } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Gate, ListToolbar, Muted, useCan, usePagedList } from "../ui";
 import { ServiceTokenCreateSheet } from "./service-token-create-sheet";
 
@@ -60,7 +60,7 @@ export const ServiceTokensTab = () => {
     }
   });
 
-  const columns: AccessColumn<ServiceToken>[] = [
+  const columns: DataTableColumn<ServiceToken>[] = [
     {
       id: "name",
       header: "Name",
@@ -143,13 +143,14 @@ export const ServiceTokensTab = () => {
         </Gate>
       </div>
       <Stack gap={8}>
-        <AccessTable
+        <DataTable
           label="Service tokens"
           rows={list.pageRows}
           columns={columns}
           getRowId={(token) => token.id}
           rowLabel={(token) => token.name}
-          loading={loading ? 10 : undefined}
+          loading={loading}
+          loadingRows={10}
           sort={list.sort}
           onSortChange={list.setSort}
           empty={

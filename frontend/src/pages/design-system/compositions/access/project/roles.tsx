@@ -12,6 +12,7 @@ import {
   AlertDialogTitle
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,7 +25,6 @@ import { Stack } from "@app/components/v4/ui/layout";
 
 import { useAccess } from "../context";
 import type { Role } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Gate, ListToolbar, useCan, usePagedList } from "../ui";
 import { RoleListRoleSheet, type RoleSheetMode } from "./role-list-role-sheet";
 
@@ -63,19 +63,19 @@ export const ProjectRolesTab = () => {
     }
   });
 
-  const columns: AccessColumn<Role>[] = [
+  const columns: DataTableColumn<Role>[] = [
     {
       id: "name",
       header: "Name",
       sortable: true,
-      width: "33%",
+      grow: true,
       render: (role) => <span>{role.name}</span>
     },
     {
       id: "slug",
       header: "Slug",
       sortable: true,
-      width: "33%",
+      grow: true,
       render: (role) => <span>{role.slug}</span>
     },
     {
@@ -155,16 +155,17 @@ export const ProjectRolesTab = () => {
         </Gate>
       </div>
       <Stack gap={8}>
-        <AccessTable
+        <DataTable
           label="Project roles"
           rows={list.pageRows}
           columns={columns}
           getRowId={(role) => role.id}
           rowLabel={(role) => role.name}
-          loading={loading ? 10 : undefined}
+          loading={loading}
+          loadingRows={10}
           sort={list.sort}
           onSortChange={list.setSort}
-          onRowClick={openRole}
+          onRowActivate={openRole}
           empty={
             data.projectRoles.length ? (
               <EmptyState

@@ -18,9 +18,10 @@ import { Tooltip } from "@app/components/v4/ui/tooltip";
 
 import { type Action, type Subject, useAccess } from "./context";
 import { isExpired, type ProjectRoleGrant, type Role, roleName, type Scope } from "./model";
-import type { Sort } from "./table";
 
 import styles from "./access.module.css";
+
+export type Sort = { columnId: string; direction: "asc" | "desc" };
 
 export const RESTRICTED = "Access restricted";
 

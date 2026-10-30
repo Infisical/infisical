@@ -1,36 +1,5 @@
-.cell {
-  display: flex;
-  align-items: center;
-  gap: var(--v4-space-8);
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-}
-.cell > :where(span, p) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.linkedRow {
-  cursor: pointer;
-  --overlay-hover: var(--v4-opacity-hover);
-}
-:global(.v4[data-theme="dark"]) .linkedRow {
-  --overlay-hover: var(--v4-opacity-hover-dark);
-}
-.linkedRow:not([data-state="selected"]):hover {
-  background: color-mix(in oklab, var(--v4-ink) var(--overlay-hover), transparent);
-}
-tr[data-muted] .cell {
-  color: var(--v4-muted);
-}
 .blockedCheck {
   display: inline-flex;
-}
-.skeletonEnd {
-  margin-inline-start: auto;
-}
-.emptyCell {
-  padding-block: var(--v4-space-32);
 }
 .muted {
   color: var(--v4-muted);

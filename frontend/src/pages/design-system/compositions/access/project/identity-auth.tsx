@@ -13,6 +13,7 @@ import {
 } from "@app/components/v4/ui/alert-dialog";
 import { Button } from "@app/components/v4/ui/button";
 import { Card } from "@app/components/v4/ui/card";
+import { DataTable, type DataTableColumn } from "@app/components/v4/ui/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,7 +38,6 @@ import { Snippet } from "@app/components/v4/ui/snippet";
 
 import { useAccess } from "../context";
 import { type AuthMethod, authMethodNames, type OrgIdentity } from "../model";
-import { type AccessColumn, AccessTable } from "../table";
 import { Gate, useCan } from "../ui";
 import { LockedBadge, lockedMethods } from "./identity-common";
 
@@ -341,15 +341,15 @@ export const ProjectIdentityAuthSection = ({ identity }: { identity: OrgIdentity
       </Button>
     </Gate>
   );
-  const columns: AccessColumn<AuthMethod>[] = [
+  const columns: DataTableColumn<AuthMethod>[] = [
     {
       id: "method",
       header: "Auth method",
       render: (method) => (
-        <>
+        <Inline gap={8} wrap={false}>
           <span>{authMethodNames[method]}</span>
           {locked.includes(method) && <LockedBadge label={ACTIVE_LOCKOUTS} />}
-        </>
+        </Inline>
       )
     },
     {
@@ -398,13 +398,13 @@ export const ProjectIdentityAuthSection = ({ identity }: { identity: OrgIdentity
         }
       >
         {identity.authMethods.length > 0 ? (
-          <AccessTable
+          <DataTable
             label="Auth methods"
             rows={identity.authMethods}
             columns={columns}
             getRowId={(method) => method}
             rowLabel={(method) => authMethodNames[method]}
-            onRowClick={flows.view}
+            onRowActivate={flows.view}
           />
         ) : (
           <EmptyState
