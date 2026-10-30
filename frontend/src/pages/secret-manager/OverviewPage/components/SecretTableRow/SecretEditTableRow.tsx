@@ -93,7 +93,10 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useDiscardChangesGuard, usePopUp, useTimedReset, useToggle } from "@app/hooks";
 import { useUpdateSecretV3 } from "@app/hooks/api";
-import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
+import {
+  fetchSecretKeyExistingEnvironments,
+  useGetSecretValue
+} from "@app/hooks/api/dashboard/queries";
 import { Reminder } from "@app/hooks/api/reminders/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
@@ -500,6 +503,38 @@ export const SecretEditTableRow = ({
   const serializedMetadata = JSON.stringify(watchedMetadata);
   const batchAutoApplyTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const applyBatchEditsRef = useRef<() => void>(undefined);
+  const keyCheckRef = useRef<{ key: string; exists?: boolean; promise: Promise<void> }>(undefined);
+
+  useEffect(() => {
+    if (!isSingleEnvView || !watchedKey || watchedKey === secretName) {
+      keyCheckRef.current = undefined;
+      return undefined;
+    }
+
+    let isCancelled = false;
+    const check: { key: string; exists?: boolean; promise: Promise<void> } = {
+      key: watchedKey,
+      promise: Promise.resolve()
+    };
+    check.promise = new Promise<void>((resolve) => {
+      setTimeout(resolve, 500);
+    }).then(async () => {
+      if (isCancelled) return;
+      const existingEnvironments = await fetchSecretKeyExistingEnvironments({
+        projectId: currentProject.id,
+        environments: [environment],
+        secretPath,
+        secretKey: check.key
+      }).catch(() => []);
+      check.exists = existingEnvironments.length > 0;
+      if (!isCancelled) applyBatchEditsRef.current?.();
+    });
+    keyCheckRef.current = check;
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [watchedKey, secretName, isSingleEnvView, currentProject.id, environment, secretPath]);
   const lastAppliedRef = useRef<{
     value: unknown;
     key: unknown;
@@ -611,6 +646,7 @@ export const SecretEditTableRow = ({
 
       // Check for key rename conflicts before applying (read store snapshot, no subscription)
       let effectiveKeyDirty = isKeyDirty;
+      let isKeyCheckPending = false;
       if (isKeyDirty) {
         const { existingSecretKeys, pendingChanges: pc } = batchStore.getState();
         const newKey = watchedKey as string;
@@ -625,6 +661,9 @@ export const SecretEditTableRow = ({
               s.newSecretName !== key
           );
 
+        const keyCheck = keyCheckRef.current;
+        isKeyCheckPending = keyCheck?.key !== newKey || keyCheck.exists === undefined;
+
         const isTaken =
           (existingSecretKeys.has(newKey) && !isServerKeyFreed(newKey)) ||
           pc.secrets.some(
@@ -636,12 +675,16 @@ export const SecretEditTableRow = ({
                 : s.secretKey === newKey) ||
                 // Also check if a create uses this key
                 (s.type === PendingAction.Create && s.secretKey === newKey))
-          );
+          ) ||
+          (keyCheck?.key === newKey && keyCheck.exists === true && !isServerKeyFreed(newKey));
         if (isTaken) {
           createNotification({
             type: "error",
             text: "A secret with this name already exists"
           });
+          effectiveKeyDirty = false;
+          isKeyCheckPending = false;
+        } else if (isKeyCheckPending) {
           effectiveKeyDirty = false;
         }
       }
@@ -655,7 +698,7 @@ export const SecretEditTableRow = ({
         !isTagsDirty &&
         !isMetadataDirty
       ) {
-        if (isKeyDirty) {
+        if (isKeyDirty && !isKeyCheckPending) {
           // Key conflicted — reset form key back to original so the input updates.
           // Update lastAppliedRef first so the effect doesn't re-trigger on the reset.
           lastAppliedRef.current = {
@@ -709,7 +752,8 @@ export const SecretEditTableRow = ({
       }
 
       // Reset form to mark as clean (like SecretDashboardPage's auto-save)
-      const resetKey = effectiveKeyDirty ? watchedKey || secretName : secretName;
+      const resetKey =
+        effectiveKeyDirty || isKeyCheckPending ? watchedKey || secretName : secretName;
       reset({
         value: watchedValue,
         ...(isSingleEnvView
@@ -736,6 +780,13 @@ export const SecretEditTableRow = ({
 
   const savePendingRow = async (knownPendingChangeId?: string) => {
     if (!onPendingSave) return;
+    let keyCheck = keyCheckRef.current;
+    while (keyCheck && keyCheck.exists === undefined) {
+      // eslint-disable-next-line no-await-in-loop
+      await keyCheck.promise;
+      if (keyCheckRef.current === keyCheck) break;
+      keyCheck = keyCheckRef.current;
+    }
     const pendingChangeId = knownPendingChangeId ?? findPendingChangeId();
     if (batchAutoApplyTimer.current) {
       clearTimeout(batchAutoApplyTimer.current);

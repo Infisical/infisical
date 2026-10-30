@@ -237,6 +237,13 @@ export type TSearchSecretsByMetadataResponse = {
   searchLimit: number;
 };
 
+export type TGetSecretKeyExistsDTO = {
+  projectId: string;
+  environments: string[];
+  secretPath: string;
+  secretKey: string;
+};
+
 export type TGetDashboardProjectSecretsByKeys = {
   projectId: string;
   secretPath: string;

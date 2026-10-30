@@ -1601,6 +1601,14 @@ export const SECRET_IMPORTS = {
 } as const;
 
 export const DASHBOARD = {
+  SECRET_KEY_EXISTS: {
+    projectId: "The ID of the project to check.",
+    environments: "A comma-separated list of environment slugs to check.",
+    secretPath: "The path of the folder to check in each environment.",
+    secretKey: "The secret name to look for.",
+    existingEnvironments:
+      "The environments where a shared secret with this name exists and the caller can describe it. Environments without the folder are omitted."
+  },
   SECRET_METADATA_SEARCH: {
     searchLimit: "The candidate limit applied independently to plaintext matches and encrypted metadata candidates.",
     tags: "The tags attached to the secret, including each tag's ID and slug."

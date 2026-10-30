@@ -21,6 +21,7 @@ import {
   TGetDashboardProjectSecretsDetailsDTO,
   TGetDashboardProjectSecretsOverviewDTO,
   TGetDashboardProjectSecretsQuickSearchDTO,
+  TGetSecretKeyExistsDTO,
   TGetSecretMetadataDTO,
   TGetSecretValueDTO,
   TSearchSecretsByMetadataDTO,
@@ -123,6 +124,17 @@ export const fetchSecretMetadata = async (params: TGetSecretMetadataDTO, signal?
     { params, signal }
   );
   return data;
+};
+
+export const fetchSecretKeyExistingEnvironments = async ({
+  environments,
+  ...params
+}: TGetSecretKeyExistsDTO) => {
+  const { data } = await apiRequest.get<{ existingEnvironments: string[] }>(
+    "/api/v1/dashboard/secret-key-exists",
+    { params: { ...params, environments: encodeURIComponent(environments.join(",")) } }
+  );
+  return data.existingEnvironments;
 };
 
 export const fetchProjectSecretsOverview = async ({

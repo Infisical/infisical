@@ -4588,6 +4588,24 @@ const OverviewPageContent = () => {
                                   isDirectSave
                                 );
                               }}
+                              onQueuedSecretConflict={(draft) => {
+                                const pendingCreate = batchStoreApi
+                                  .getState()
+                                  .pendingChanges.secrets.find(
+                                    (change) =>
+                                      change.type === PendingAction.Create &&
+                                      change.secretKey === draft.key &&
+                                      change.secretValue === draft.value &&
+                                      (change.secretComment ?? "") === draft.comment
+                                  );
+                                if (!pendingCreate || !singleVisibleEnv) return false;
+                                removePendingChange(pendingCreate.id, "secret", {
+                                  projectId,
+                                  environment: singleVisibleEnv.slug,
+                                  secretPath
+                                });
+                                return true;
+                              }}
                               onPasteSecrets={(env) => {
                                 overviewTelemetry.flow({
                                   action: "import",

@@ -65,7 +65,7 @@ import { TSecretTagDALFactory } from "../secret-tag/secret-tag-dal";
 import { getAllSecretReferences } from "../secret-v2-bridge/secret-reference-fns";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { TSecretV2BridgeServiceFactory } from "../secret-v2-bridge/secret-v2-bridge-service";
-import { TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
+import { TGetSecretKeyEnvironmentsDTO, TGetSecretReferencesTreeDTO } from "../secret-v2-bridge/secret-v2-bridge-types";
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretDALFactory } from "./secret-dal";
 import {
@@ -1328,6 +1328,16 @@ export const secretServiceFactory = ({
     });
 
     return secrets;
+  };
+
+  const getSecretKeyEnvironments = async (dto: TGetSecretKeyEnvironmentsDTO) => {
+    const { shouldUseSecretV2Bridge } = await projectBotService.getBotKey(dto.projectId);
+    if (!shouldUseSecretV2Bridge)
+      throw new BadRequestError({
+        message: "Project version does not support checking secret names"
+      });
+
+    return secretV2BridgeService.getSecretKeyEnvironments(dto);
   };
 
   const getSecretReferenceTree = async (dto: TGetSecretReferencesTreeDTO) => {
@@ -4063,6 +4073,7 @@ export const secretServiceFactory = ({
     getSecretsCount,
     getSecretsCountMultiEnv,
     getSecretsRawMultiEnv,
+    getSecretKeyEnvironments,
     getSecretReferenceTree,
     getSecretsRawByFolderMappings,
     getSecretAccessList,
