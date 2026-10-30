@@ -1,6 +1,7 @@
 import { type ComponentType, lazy, Suspense } from "react";
 
 import { ComparisonSlider } from "./comparison-slider";
+import { AccessComparison } from "./compositions/access/views";
 import { SecretsScenarios } from "./compositions/secrets-scenarios";
 import { PageHeading } from "./doc-parts";
 import { type ComparisonPage, comparisonPages } from "./navigation";
@@ -53,11 +54,9 @@ export const ComparisonPageView = ({ page }: { page: ComparisonPage }) => {
         through it.
       </p>
       <Suspense fallback={<p role="status">Loading the v4 page</p>}>
-        {entry.screen === "secrets" ? (
-          <SecretsScenarios>{comparison}</SecretsScenarios>
-        ) : (
-          comparison
-        )}
+        {entry.screen === "secrets" && <SecretsScenarios>{comparison}</SecretsScenarios>}
+        {entry.screen === "access" && <AccessComparison After={Screen} />}
+        {entry.screen !== "secrets" && entry.screen !== "access" && comparison}
       </Suspense>
     </div>
   );
