@@ -23,9 +23,12 @@ const SAML_MFA_ATTRIBUTE_VALUES = ["mfa", "http://schemas.microsoft.com/claims/m
 const MAX_SIGNAL_VALUES = 50;
 const MAX_SIGNAL_VALUE_LENGTH = 512;
 
+// `evidence` is what matched the accepted values and decided `verified`; `received` is everything the IdP sent in
+// the fields that were read, so an admin can see why a login was not trusted and which value to accept.
 export type TIdpMfaSignal = {
   verified: boolean;
   evidence: string[];
+  received: string[];
 };
 
 export type TSamlMfaSignalConfig = {
@@ -75,23 +78,29 @@ export const matchIdpMfaSignal = (input: TIdpMfaSignalInput): TIdpMfaSignal => {
     const claimName = input.config?.mfaClaimName?.trim() || DEFAULT_MFA_CLAIM_NAME;
     const claimKey = findKey(input.claims, claimName);
     const accepted = [...DEFAULT_OIDC_MFA_CLAIM_VALUES, ...(input.config?.mfaAmrValues ?? [])];
-    const evidence = claimKey ? matchingValues(toStringList(input.claims[claimKey]), accepted) : [];
-    return { verified: evidence.length > 0, evidence };
+    const received = claimKey ? toStringList(input.claims[claimKey]) : [];
+    const evidence = matchingValues(received, accepted);
+    return { verified: evidence.length > 0, evidence, received };
   }
 
   const acceptedContexts = [...DEFAULT_SAML_MFA_AUTHN_CONTEXTS, ...(input.config?.mfaAuthnContexts ?? [])];
-  const evidence = matchingValues(toStringList(input.authnContextClassRefs), acceptedContexts);
+  const receivedContexts = toStringList(input.authnContextClassRefs);
+  const evidence = matchingValues(receivedContexts, acceptedContexts);
 
   const attributes = input.attributes ?? {};
   const attributeName = input.config?.mfaSignalAttribute?.trim() || DEFAULT_MFA_CLAIM_NAME;
   const attributeKey = findKey(attributes, attributeName);
-  if (attributeKey) {
-    matchingValues(toStringList(attributes[attributeKey]), SAML_MFA_ATTRIBUTE_VALUES).forEach((value) => {
-      evidence.push(`${attributeKey}=${value}`);
-    });
-  }
+  const receivedAttributeValues = attributeKey ? toStringList(attributes[attributeKey]) : [];
+  matchingValues(receivedAttributeValues, SAML_MFA_ATTRIBUTE_VALUES).forEach((value) => {
+    evidence.push(`${attributeKey}=${value}`);
+  });
 
-  return { verified: evidence.length > 0, evidence };
+  const received = [...receivedContexts, ...receivedAttributeValues.map((value) => `${attributeKey}=${value}`)].slice(
+    0,
+    MAX_SIGNAL_VALUES
+  );
+
+  return { verified: evidence.length > 0, evidence, received };
 };
 
 // node-saml parses with xml2js explicitArray and explicitCharkey: every child is an array, a text node is

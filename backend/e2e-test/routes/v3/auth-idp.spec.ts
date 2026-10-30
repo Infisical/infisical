@@ -81,7 +81,7 @@ describe("Auth IdP Service-Level Tests", () => {
 
     test("a SAML login carries the verdict on its session, and only when the IdP signalled MFA", async () => {
       const { externalId, email } = await makeAcceptedSsoUser(UserAliasType.SAML);
-      const login = (idpMfa?: { verified: boolean; evidence: string[] }) =>
+      const login = (idpMfa?: { verified: boolean; evidence: string[]; received: string[] }) =>
         getServices().saml.samlLogin({
           externalId,
           email,
@@ -94,14 +94,19 @@ describe("Auth IdP Service-Level Tests", () => {
           idpMfa
         });
 
-      expect(sessionClaims(await login({ verified: true, evidence: ["amr=mfa"] })).idpMfaOrgId).toBe(TEST_ORG_ID);
-      expect(sessionClaims(await login({ verified: false, evidence: [] })).idpMfaOrgId).toBeUndefined();
+      expect(
+        sessionClaims(await login({ verified: true, evidence: ["amr=mfa"], received: ["amr=pwd", "amr=mfa"] }))
+          .idpMfaOrgId
+      ).toBe(TEST_ORG_ID);
+      expect(
+        sessionClaims(await login({ verified: false, evidence: [], received: ["amr=pwd"] })).idpMfaOrgId
+      ).toBeUndefined();
       expect(sessionClaims(await login()).idpMfaOrgId).toBeUndefined();
     });
 
     test("an OIDC login carries the verdict on its session, and only when the IdP signalled MFA", async () => {
       const { externalId, email } = await makeAcceptedSsoUser(UserAliasType.OIDC);
-      const login = (idpMfa?: { verified: boolean; evidence: string[] }) =>
+      const login = (idpMfa?: { verified: boolean; evidence: string[]; received: string[] }) =>
         getServices().oidc.oidcLogin({
           externalId,
           email,
@@ -113,7 +118,9 @@ describe("Auth IdP Service-Level Tests", () => {
           idpMfa
         });
 
-      expect(sessionClaims(await login({ verified: true, evidence: ["mfa"] })).idpMfaOrgId).toBe(TEST_ORG_ID);
+      expect(
+        sessionClaims(await login({ verified: true, evidence: ["mfa"], received: ["pwd", "mfa"] })).idpMfaOrgId
+      ).toBe(TEST_ORG_ID);
       expect(sessionClaims(await login()).idpMfaOrgId).toBeUndefined();
     });
   });
