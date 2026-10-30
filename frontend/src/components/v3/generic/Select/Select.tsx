@@ -6,6 +6,7 @@ import { twMerge } from "tailwind-merge";
 
 import { cn } from "../../utils";
 import { useOverlayPopupRegistration } from "../../utils/overlay-layer";
+import { useScrollEdges } from "../../utils/useScrollEdges";
 
 const SelectPopupContext = React.createContext<{
   open: boolean;
@@ -141,6 +142,29 @@ const SelectTrigger = React.forwardRef<
 });
 SelectTrigger.displayName = "SelectTrigger";
 
+// Radix decides whether to show scroll buttons with an exact pixel comparison, so subpixel
+// rounding (e.g. browser zoom) can leave a down arrow on a list that has nothing to scroll.
+function SelectViewport({
+  position,
+  children
+}: Pick<React.ComponentProps<typeof SelectPrimitive.Content>, "position" | "children">) {
+  const { scrollEdges, setViewportRef } = useScrollEdges<HTMLDivElement>("vertical");
+
+  return (
+    <>
+      <SelectScrollUpButton className={cn(!scrollEdges.start && "hidden")} />
+      <SelectPrimitive.Viewport
+        ref={setViewportRef}
+        data-position={position}
+        className="p-1 data-[position=popper]:min-h-(--radix-select-trigger-height) data-[position=popper]:w-full data-[position=popper]:min-w-(--radix-select-trigger-width)"
+      >
+        {children}
+      </SelectPrimitive.Viewport>
+      <SelectScrollDownButton className={cn(!scrollEdges.end && "hidden")} />
+    </>
+  );
+}
+
 function SelectContent({
   className,
   children,
@@ -193,17 +217,7 @@ function SelectContent({
         }}
         {...props}
       >
-        <SelectScrollUpButton />
-        <SelectPrimitive.Viewport
-          data-position={position}
-          className={cn(
-            "p-1 data-[position=popper]:min-h-(--radix-select-trigger-height) data-[position=popper]:w-full data-[position=popper]:min-w-(--radix-select-trigger-width)",
-            position === "popper" && ""
-          )}
-        >
-          {children}
-        </SelectPrimitive.Viewport>
-        <SelectScrollDownButton />
+        <SelectViewport position={position}>{children}</SelectViewport>
       </SelectPrimitive.Content>
     </SelectPrimitive.Portal>
   );
