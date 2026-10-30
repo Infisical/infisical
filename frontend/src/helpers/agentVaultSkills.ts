@@ -300,6 +300,33 @@ export const getSkillParentPath = (path: string) => {
   return slash === -1 ? "" : path.slice(0, slash);
 };
 
+/**
+ * The skill path a relative link in `fromPath` points at, the way an agent reading the folder would follow it.
+ * A leading slash means the skill's root. Null for a link to a heading only, or one that climbs out of the skill.
+ */
+export const resolveSkillLinkPath = (fromPath: string, href: string): string | null => {
+  const [target] = href.split(/[?#]/);
+  if (!target) return null;
+  let decoded = target;
+  try {
+    decoded = decodeURIComponent(target);
+  } catch {
+    // A stray % is part of the name.
+  }
+  const segments = decoded.startsWith("/")
+    ? []
+    : getSkillParentPath(fromPath).split("/").filter(Boolean);
+  for (const segment of decoded.split("/")) {
+    if (segment === "..") {
+      if (segments.length === 0) return null;
+      segments.pop();
+    } else if (segment !== "" && segment !== ".") {
+      segments.push(segment);
+    }
+  }
+  return segments.length ? segments.join("/") : null;
+};
+
 export const getSkillBaseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 
 const isSameOrInside = (path: string, folder: string) =>

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
+import { createNotification } from "@app/components/notifications";
 import {
   Badge,
   Button,
@@ -45,6 +46,7 @@ import {
   joinSkillPath,
   newDraftFile,
   removeSkillPath,
+  resolveSkillLinkPath,
   renameSkillFolders,
   renameSkillPaths,
   SKILL_MAX_FILES,
@@ -197,6 +199,16 @@ export const SkillFilesEditor = ({
   const paths = useMemo(() => files.map((file) => file.path), [files]);
   const folderPaths = useMemo(() => getSkillFolders(paths, emptyFolders), [paths, emptyFolders]);
   const selected = files.find((file) => file.path === selectedPath) ?? files[0];
+
+  const openLinkedFile = (href: string) => {
+    if (!selected || href.startsWith("#")) return;
+    const target = resolveSkillLinkPath(selected.path, href);
+    if (target && files.some((file) => file.path === target)) {
+      onSelect(target);
+      return;
+    }
+    createNotification({ text: `${target ?? href} isn't a file in this skill.`, type: "info" });
+  };
   const isMarkdown = selected ? isMarkdownPath(selected.path) : false;
   const canPreview = isMarkdown && selected?.text !== null;
   const showRendered = canPreview && view === "preview";
@@ -541,7 +553,7 @@ export const SkillFilesEditor = ({
                   {rendered.frontmatter}
                 </pre>
               )}
-              <Markdown>{rendered.body}</Markdown>
+              <Markdown onRelativeLinkClick={openLinkedFile}>{rendered.body}</Markdown>
             </div>
           )}
           {/* Stays mounted while hidden, so each file keeps its undo history for as long as the editor is open. */}
