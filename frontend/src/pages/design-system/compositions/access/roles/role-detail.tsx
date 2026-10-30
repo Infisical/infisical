@@ -30,6 +30,11 @@ import { Skeleton } from "@app/components/v4/ui/skeleton";
 import { useAccess } from "../context";
 import type { AccessData, Role, Scope } from "../model";
 import { Gate, RESTRICTED, useCan } from "../ui";
+import { usePolicyLayout } from "./layouts/context";
+import { MasterDetail } from "./layouts/master-detail";
+import { PermissionMatrix } from "./layouts/matrix";
+import { RuleTable } from "./layouts/rule-table";
+import type { LayoutProps } from "./layouts/shared";
 import {
   emptyRule,
   hasPolicies,
@@ -119,6 +124,7 @@ const renameSlug = (data: AccessData, scope: Scope, from: string, to: string): A
 const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
   const { data, update, saved, toast, navigate, startsWith, loading } = useAccess();
   const can = useCan(scope);
+  const layout = usePolicyLayout();
   const roles = data[rolesKey(scope)];
   const role = roles.find((item) => item.id === id);
   const stored = data.rolePermissions[id] ?? {};
@@ -307,6 +313,39 @@ const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
     );
 
   const builtInNote = isCustom ? undefined : BUILT_IN;
+  const importMenu = scope === "project" && (
+    <Gate allowed={editable} reason={reason}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="outline" iconRight="chev-down" disabled={!editable}>
+            Import
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem disabled={!editable} onSelect={() => setOverlay("template")}>
+            <Icon icon={LayersIcon} />
+            Add from template
+          </DropdownMenuItem>
+          {VAULT_CONNECTIONS.length > 0 && (
+            <DropdownMenuItem disabled={!editable} onSelect={() => setOverlay("vault")}>
+              <Icon name="download" />
+              Add from HashiCorp Vault
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </Gate>
+  );
+  const layoutProps: LayoutProps = {
+    scope,
+    draft,
+    subjects,
+    editable,
+    reason,
+    errors,
+    onChange: (next) => change(next),
+    initialSubject: startsWith("conditions") ? "secrets" : undefined
+  };
 
   return (
     <Stack gap={24}>
@@ -389,13 +428,17 @@ const RoleDetail = ({ scope, id }: { scope: Scope; id: string }) => {
                 Save
               </Button>
             </Gate>
-            {scope === "org" && <span className={styles.actionDivider} />}
-            {addPolicies}
+            {layout === "accordion" && scope === "org" && <span className={styles.actionDivider} />}
+            {layout === "accordion" ? addPolicies : importMenu}
           </div>
         </header>
         <div className={styles.panelBody}>
           {loading && <Skeleton lines={3} height={48} />}
+          {!loading && layout === "matrix" && <PermissionMatrix {...layoutProps} />}
+          {!loading && layout === "master" && <MasterDetail {...layoutProps} />}
+          {!loading && layout === "rules" && <RuleTable {...layoutProps} />}
           {!loading &&
+            layout === "accordion" &&
             (hasPolicies(draft) ? (
               <div className={styles.policies}>
                 <Accordion type="multiple" value={open} onValueChange={setOpen}>

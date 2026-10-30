@@ -5,6 +5,7 @@ import { Select } from "@app/components/v4/ui/select";
 import { ComparisonSlider } from "../../comparison-slider";
 import type { AccessStart } from "./context";
 import { type Scenario, scenarios } from "./model";
+import { type PolicyLayout, PolicyLayoutContext, policyLayouts } from "./roles/layouts/context";
 
 export type AccessView = {
   value: string;
@@ -239,6 +240,16 @@ export const accessViews: AccessView[] = [
     }
   },
   {
+    value: "proj-role-large",
+    label: "Project: Role editor, large role",
+    start: {
+      nav: {
+        scope: "project",
+        detail: { kind: "project-role", id: "p-platform-operator", label: "Platform operator" }
+      }
+    }
+  },
+  {
     value: "proj-role-conditions",
     label: "Project: Role editor, conditions",
     start: {
@@ -297,9 +308,13 @@ const shots = import.meta.glob<string>("../../assets/comparisons/access/*.webp",
 const shot = (view: string, theme: "light" | "dark") =>
   shots[`../../assets/comparisons/access/${view}-${theme}.webp`];
 
+const roleViews = (view: AccessView) =>
+  view.start.nav?.detail?.kind === "org-role" || view.start.nav?.detail?.kind === "project-role";
+
 export function AccessComparison({ After }: { After: React.ComponentType }) {
   const [viewId, setViewId] = useState(accessViews[0].value);
   const [scenario, setScenario] = useState<Scenario>("default");
+  const [layout, setLayout] = useState<PolicyLayout>("accordion");
   const view = accessViews.find((item) => item.value === viewId) ?? accessViews[0];
   const effective = view.scenario ?? scenario;
   const context = useMemo(() => ({ view, scenario: effective }), [view, effective]);
@@ -325,16 +340,28 @@ export function AccessComparison({ After }: { After: React.ComponentType }) {
             onChange={(value) => setScenario(value as Scenario)}
           />
         </div>
+        <span className="text-muted-foreground text-sm">Policy editor</span>
+        <div style={{ width: 240 }}>
+          <Select
+            label="Policy editor layout"
+            value={layout}
+            disabled={!roleViews(view)}
+            options={policyLayouts}
+            onChange={(value) => setLayout(value as PolicyLayout)}
+          />
+        </div>
         <span className="text-muted-foreground text-xs">
           Changes stay in this preview. No requests are sent.
         </span>
       </div>
-      <ComparisonSlider
-        key={view.value}
-        title={`Access control, ${view.label}`}
-        before={{ light: shot(view.value, "light"), dark: shot(view.value, "dark") }}
-        After={After}
-      />
+      <PolicyLayoutContext.Provider value={layout}>
+        <ComparisonSlider
+          key={view.value}
+          title={`Access control, ${view.label}`}
+          before={{ light: shot(view.value, "light"), dark: shot(view.value, "dark") }}
+          After={After}
+        />
+      </PolicyLayoutContext.Provider>
     </AccessViewContext.Provider>
   );
 }

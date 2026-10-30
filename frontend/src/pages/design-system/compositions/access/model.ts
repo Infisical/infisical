@@ -100,6 +100,13 @@ export const projectRoles: Role[] = [
     name: "Deploy bot reviewer",
     builtIn: false,
     description: "Reviews production API secrets used by the deploy bot"
+  },
+  {
+    id: "p-platform-operator",
+    slug: "platform-operator",
+    name: "Platform operator",
+    builtIn: false,
+    description: "Runs day-to-day secret operations, without PCI production values"
   }
 ];
 

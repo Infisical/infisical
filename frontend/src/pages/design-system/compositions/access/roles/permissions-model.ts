@@ -106,6 +106,39 @@ export const seedRolePermissions = (): Record<string, RolePermissions> => ({
       )
     ],
     environments: [rule(["read"])]
+  },
+  "p-platform-operator": {
+    secrets: [
+      rule(["describeSecret", "readValue", "create", "edit", "delete"]),
+      rule(
+        ["readValue"],
+        [
+          { lhs: "environment", operator: "$eq", rhs: "prod" },
+          { lhs: "secretPath", operator: "$glob", rhs: "/pci/**" }
+        ],
+        true
+      )
+    ],
+    "secret-folders": [
+      rule(["create", "edit", "delete"], [{ lhs: "environment", operator: "$neq", rhs: "prod" }])
+    ],
+    "secret-imports": [rule(["read", "create"])],
+    "dynamic-secrets": [
+      rule(["lease"]),
+      rule(["read-root-credential"], [{ lhs: "environment", operator: "$eq", rhs: "staging" }])
+    ],
+    environments: [rule(["read", "create", "edit"])],
+    integrations: [rule(["read"])],
+    "secret-syncs": [
+      rule(["read", "sync-secrets"], [{ lhs: "environment", operator: "$in", rhs: "dev,staging" }])
+    ],
+    "secret-rotation": [rule(["read", "rotate-secrets"])],
+    tags: [rule(["read", "create", "edit", "delete"])],
+    webhooks: [rule(["read", "create"])],
+    "service-tokens": [rule(["read"])],
+    "audit-logs": [rule(["read"])],
+    member: [rule(["read"])],
+    commits: [rule(["read"])]
   }
 });
 
