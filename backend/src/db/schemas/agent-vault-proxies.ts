@@ -24,7 +24,8 @@ export const AgentVaultProxiesSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   rootCaCertificate: z.string().nullable().optional(),
-  encryptedRootCaPrivateKey: zodBuffer.nullable().optional()
+  encryptedRootCaPrivateKey: zodBuffer.nullable().optional(),
+  description: z.string().nullable().optional()
 });
 
 export type TAgentVaultProxies = z.infer<typeof AgentVaultProxiesSchema>;

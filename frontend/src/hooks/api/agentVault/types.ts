@@ -282,6 +282,7 @@ export type TAgentVaultMintedSession = {
 export type TAgentVaultProxy = {
   id: string;
   name: string;
+  description: string | null;
   heartbeat: string | null;
   isHealthy: boolean;
   rootCaFingerprint: string | null;
@@ -415,6 +416,15 @@ export type TAgentVaultProxySettingsDTO = {
   trafficPolicy?: AgentVaultTrafficPolicy;
   allowedHosts?: string | null;
   pollInterval?: number;
+};
+
+export type TCreateAgentVaultProxyDTO = TAgentVaultProxySettingsDTO & {
+  description?: string;
+};
+
+export type TUpdateAgentVaultProxyDTO = Partial<TAgentVaultProxySettingsDTO> & {
+  proxyId: string;
+  description?: string | null;
 };
 
 export type TAgentVaultSessionLogExternalStorage = {

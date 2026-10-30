@@ -265,6 +265,8 @@ export const AgentVaultProxiesPage = () => {
             <TableHeader>
               <TableRow>
                 <TableHead
+                  isTruncatable
+                  className="w-2/5"
                   sortDirection={sortColumn === SortColumn.Name ? sortDirection : "none"}
                   onSortChange={(direction) => handleSort(SortColumn.Name, direction)}
                 >
@@ -312,7 +314,21 @@ export const AgentVaultProxiesPage = () => {
               {!isPending &&
                 displayed.map((proxy) => (
                   <TableRow key={proxy.id}>
-                    <TableCell>{proxy.name}</TableCell>
+                    <TableCell isTruncatable className="min-w-64">
+                      <div className="flex items-center gap-2.5">
+                        <span className="truncate" title={proxy.name}>
+                          {proxy.name}
+                        </span>
+                        {proxy.description && (
+                          <span
+                            className="min-w-0 flex-1 truncate text-sm text-muted"
+                            title={proxy.description}
+                          >
+                            {proxy.description}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <ProxyStatusBadge proxy={proxy} />
                     </TableCell>

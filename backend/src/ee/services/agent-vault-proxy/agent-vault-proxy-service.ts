@@ -181,6 +181,7 @@ export const agentVaultProxyServiceFactory = ({
   const toMemberView = (proxy: TAgentVaultProxies) => ({
     id: proxy.id,
     name: proxy.name,
+    description: proxy.description ?? null,
     heartbeat: proxy.heartbeat ?? null,
     isHealthy: isHealthy(proxy),
     rootCaFingerprint: proxy.rootCaFingerprint ?? null,
@@ -307,7 +308,7 @@ export const agentVaultProxyServiceFactory = ({
   const $signProxyToken = (proxyId: string, orgId: string, tokenVersion: number) =>
     mintAgentVaultProxyJwt({ agentVaultProxyId: proxyId, orgId, tokenVersion, accessTokenTTL: 0 });
 
-  const createProxy = async ({ projectId, ctx, name, ...settings }: TCreateProxyDTO) => {
+  const createProxy = async ({ projectId, ctx, name, description, ...settings }: TCreateProxyDTO) => {
     await $authorize({ projectId, ctx }, ProjectPermissionAgentVaultProxyActions.Create);
 
     const existing = await agentVaultProxyDAL.findOne({ projectId, name });
@@ -332,6 +333,7 @@ export const agentVaultProxyServiceFactory = ({
           {
             projectId,
             name,
+            description,
             trafficPolicy: settings.trafficPolicy ?? AgentVaultTrafficPolicy.AnyHost,
             allowedHosts: settings.allowedHosts ?? null,
             pollInterval: settings.pollInterval ?? 60,
