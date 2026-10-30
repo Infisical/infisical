@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import {
   BanIcon,
   CheckIcon,
@@ -16,9 +17,10 @@ export type EnvironmentStatus = "present" | "missing" | "empty" | "imported" | "
 type Props = {
   status: EnvironmentStatus;
   hasOverride?: boolean;
+  children?: ReactNode;
 };
 
-export const ResourceEnvironmentStatusCell = ({ status, hasOverride }: Props) => {
+export const ResourceEnvironmentStatusCell = ({ status, hasOverride, children }: Props) => {
   let tooltipContent: string;
   let Icon: LucideIcon;
   let iconClassName: string;
@@ -56,7 +58,8 @@ export const ResourceEnvironmentStatusCell = ({ status, hasOverride }: Props) =>
   return (
     <TableCell
       className={twMerge(
-        "relative border-r text-center last:border-r-0",
+        "relative border-r last:border-r-0",
+        hasOverride && "pr-7",
         status === "present" && "text-success",
         status === "empty" && "text-warning",
         status === "missing" && "text-danger",
@@ -74,12 +77,15 @@ export const ResourceEnvironmentStatusCell = ({ status, hasOverride }: Props) =>
           <TooltipContent>Has personal override</TooltipContent>
         </Tooltip>
       )}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Icon className={twMerge(iconClassName, "inline-block")} />
-        </TooltipTrigger>
-        <TooltipContent>{tooltipContent}</TooltipContent>
-      </Tooltip>
+      <div className="flex items-center justify-between gap-2">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Icon className={twMerge(iconClassName, "size-4 shrink-0")} />
+          </TooltipTrigger>
+          <TooltipContent>{tooltipContent}</TooltipContent>
+        </Tooltip>
+        {children}
+      </div>
     </TableCell>
   );
 };

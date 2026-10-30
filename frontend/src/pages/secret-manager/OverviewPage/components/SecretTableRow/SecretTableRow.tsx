@@ -2,8 +2,10 @@ import { Fragment, useEffect, useState } from "react";
 import { subject } from "@casl/ability";
 import {
   BanIcon,
+  BellIcon,
   ChevronDownIcon,
   ClipboardCheckIcon,
+  CodeXmlIcon,
   CopyIcon,
   EditIcon,
   EyeIcon,
@@ -12,9 +14,10 @@ import {
   HexagonIcon,
   ImportIcon,
   KeyIcon,
+  MessageSquareIcon,
   RefreshCcwIcon,
   RefreshCwIcon,
-  StickyNoteIcon
+  TagsIcon
 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
@@ -309,30 +312,66 @@ export const SecretTableRow = ({
   const sortedEnvironments = [...environments];
 
   const canReadTags = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
-  const annotatedEnvironmentNames = isSingleEnvView
-    ? []
-    : environments
-        .filter(({ slug }) => {
-          const secret = getSecretByKey(slug, secretKey);
-          if (!secret) return false;
-          const canDescribeSecret = hasSecretReadValueOrDescribePermission(
-            permission,
-            ProjectPermissionSecretActions.DescribeSecret,
-            {
-              environment: slug,
-              secretPath,
-              secretName: secretKey,
-              secretTags: secret.tags?.map(({ slug: tagSlug }) => tagSlug) ?? []
-            }
-          );
-          return Boolean(
-            (secret.comment && canDescribeSecret && !secret.revokedProjectFolderGrant) ||
-            (canReadTags && secret.tags?.length) ||
-            secret.reminder ||
-            secret.secretMetadata?.length
-          );
-        })
-        .map(({ name }) => name);
+  const renderEnvironmentAnnotations = (slug: string) => {
+    const secret = getSecretByKey(slug, secretKey);
+    if (!secret) return null;
+    const canDescribeSecret = hasSecretReadValueOrDescribePermission(
+      permission,
+      ProjectPermissionSecretActions.DescribeSecret,
+      {
+        environment: slug,
+        secretPath,
+        secretName: secretKey,
+        secretTags: secret.tags?.map(({ slug: tagSlug }) => tagSlug) ?? []
+      }
+    );
+    const comment =
+      canDescribeSecret && !secret.revokedProjectFolderGrant ? secret.comment : undefined;
+    const tagSlugs = canReadTags ? (secret.tags?.map(({ slug: tagSlug }) => tagSlug) ?? []) : [];
+    const metadataCount = secret.secretMetadata?.length ?? 0;
+    if (!comment && !tagSlugs.length && !secret.reminder && !metadataCount) return null;
+
+    return (
+      <span className="flex shrink-0 items-center gap-1.5 text-muted">
+        {comment && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <MessageSquareIcon className="size-3.5" />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-72">
+              <p className="line-clamp-2 break-words whitespace-pre-wrap">{comment}</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {tagSlugs.length > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <TagsIcon className="size-3.5" />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-72 break-words">{tagSlugs.join(", ")}</TooltipContent>
+          </Tooltip>
+        )}
+        {secret.reminder && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <BellIcon className="size-3.5" />
+            </TooltipTrigger>
+            <TooltipContent>Rotation reminder</TooltipContent>
+          </Tooltip>
+        )}
+        {metadataCount > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <CodeXmlIcon className="size-3.5" />
+            </TooltipTrigger>
+            <TooltipContent>
+              {metadataCount} metadata {metadataCount === 1 ? "entry" : "entries"}
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </span>
+    );
+  };
 
   if (expandedTableSort) {
     sortedEnvironments.sort((a, b) => {
@@ -515,18 +554,6 @@ export const SecretTableRow = ({
                       {secretKey}
                     </TooltipContent>
                   </Tooltip>
-                  {!isExpanded && annotatedEnvironmentNames.length > 0 && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="flex shrink-0 items-center text-muted">
-                          <StickyNoteIcon className="size-3.5" />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        Annotated in {annotatedEnvironmentNames.join(", ")}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
                   {!isExpanded &&
                     environments.some(
                       ({ slug }) => getSecretByKey(slug, secretKey)?.revokedProjectFolderGrant
@@ -612,7 +639,9 @@ export const SecretTableRow = ({
                 key={`sec-overview-${slug}-${i + 1}-value`}
                 status={status}
                 hasOverride={Boolean(secret?.idOverride)}
-              />
+              >
+                {renderEnvironmentAnnotations(slug)}
+              </ResourceEnvironmentStatusCell>
             );
           })}
       </TableRow>
