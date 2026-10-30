@@ -331,6 +331,10 @@ This script is a minimal orchestrator that runs one agent with its own session. 
 set -euo pipefail
 
 INFISICAL_URL=https://app.infisical.com
+# Logs in with Universal Auth. For Kubernetes Auth, call
+# /api/v1/auth/kubernetes-auth/login with {"identityId", "jwt"} instead, where
+# jwt is your orchestrator's service account token. The identity's allowed
+# namespaces must include the orchestrator's namespace.
 ACCESS_TOKEN=$(curl -fsS -X POST "$INFISICAL_URL/api/v1/auth/universal-auth/login" \
   -H "Content-Type: application/json" \
   -d "{\"clientId\": \"$INFISICAL_UNIVERSAL_AUTH_CLIENT_ID\", \"clientSecret\": \"$INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET\"}" \
@@ -363,12 +367,23 @@ echo "$SESSION" | jq -r '"INFISICAL_AGENT_VAULT_SESSION_TOKEN=" + .session.token
   | kubectl -n agents create secret generic "agent-$RUN_ID" --from-env-file=/dev/stdin
 
 sed "s/<run-id>/$RUN_ID/g" agent-pod.yaml | kubectl apply -f -
-# Wait up to 2 minutes for the container to start, then follow its output until
-# the agent exits.
-if ! kubectl -n agents logs -f --pod-running-timeout=2m "agent-$RUN_ID"; then
+
+not_started() {
   echo "The agent's pod didn't start:" >&2
   kubectl -n agents get pod "agent-$RUN_ID" -o jsonpath='{.status.phase} {.status.containerStatuses[0].state.waiting.reason} {.status.containerStatuses[0].state.waiting.message}{.status.conditions[?(@.reason=="Unschedulable")].message}{"\n"}' >&2
   exit 1
+}
+# kubectl logs returns at once for a pod that isn't on a node yet, so wait for
+# the scheduler first.
+kubectl -n agents wait --for=condition=PodScheduled --timeout=2m "pod/agent-$RUN_ID" > /dev/null || not_started
+# Wait up to 2 minutes for the container to start, then follow its output until
+# the agent exits. In the background, so a canceled script cleans up right away
+# instead of after the agent exits.
+kubectl -n agents logs -f --pod-running-timeout=2m "agent-$RUN_ID" &
+if ! wait $!; then
+  # The container started, so kubectl stopped following because the script was canceled.
+  [ -z "$(kubectl -n agents get pod "agent-$RUN_ID" -o jsonpath='{.status.containerStatuses[0].state.waiting}')" ] && exit 130
+  not_started
 fi
 
 # Exit with the agent's exit code.
