@@ -158,3 +158,145 @@ export const layoutDefinition = {
     }
   ]
 } satisfies ComponentDefinition;
+
+export const detailLayoutDefinition = {
+  id: "detail-layout",
+  title: "Detail layout",
+  group: "Utilities",
+  summary:
+    "Lay out a detail page as stacked content cards with a details sidecar on the right that stacks above them in narrow containers.",
+  sourceFiles: ["src/components/v4/ui/layout.tsx", "src/components/v4/ui/detail-layout.module.css"],
+  exports: ["DetailLayout"],
+  referenceNames: ["DetailLayout", "Sidecar"],
+  related: ["layout", "card", "list", "top-bar"],
+  behavior: [
+    "DetailLayout renders two columns: children stack as the main column and aside holds the sidecar, usually one details Card with a props DataList. Both columns stack their cards at space-24, and the columns sit space-24 apart.",
+    "At size-sidecar-collapse (896px) of its own width and wider, the main column fills the space left of a size-sidecar (384px) sidecar on the right. The layout is its own container, so it answers to the width it gets inside the page gutter, not to the viewport.",
+    "Narrower than size-sidecar-collapse, the columns stack and the sidecar comes first, above the main cards, because it is the summary of the record.",
+    "In two columns the sidecar sticks below the TopBar (size-shell-bar plus space-24 inside an AppInset with a TopBar, space-24 elsewhere) while the main column scrolls, but only when the whole sidecar fits in the scroll area's visible height with space-24 to spare at the bottom. It measures itself and its scroll container whenever either resizes; a sidecar taller than that scrolls with the page, so no part of it is ever out of reach."
+  ],
+  accessibility: [
+    "The sidecar renders an aside named by asideLabel (for example Details or Certificate details), so screen reader users can jump to it as a complementary region inside the main landmark.",
+    "The sidecar comes first in the DOM, in reading and Tab order, at every width. Stacked, the visual order matches the DOM exactly. In two columns, focus moves from the page header actions at the top right into the sidecar on the right, then to the main column, and the two columns start on the same top edge, so the only reordering is the sidecar's placement to the right; no CSS order property moves content (WCAG 1.3.2 and 2.4.3).",
+    "Sticking never hides focus: the sidecar sticks only when it fits entirely in view, so a focused control inside it is never under the TopBar or below the fold."
+  ],
+  limitations: [
+    "One sidecar on the right only; there is no left placement and no width prop. Use size-sidecar as given.",
+    "The container breakpoint is written as 896px in the stylesheet because container conditions cannot read custom properties. A test fails if it drifts from size-sidecar-collapse.",
+    "Sticking needs every ancestor between the layout and its scroll container to leave overflow visible; an overflow hidden or auto wrapper in between turns it into a plain column."
+  ],
+  examples: [
+    {
+      id: "default",
+      title: "Wide and narrow containers",
+      module: "./examples/detail-layout/default.tsx",
+      states: ["default", "overflow"]
+    }
+  ],
+  coverage: [
+    {
+      axis: "container width",
+      expected: ["wide", "narrow"],
+      shown: [
+        { value: "wide", exampleId: "default", label: "Wide container, sidecar on the right" },
+        {
+          value: "narrow",
+          exampleId: "default",
+          label: "Narrow container, sidecar stacks above the main cards"
+        }
+      ]
+    },
+    {
+      axis: "sticky sidecar",
+      expected: ["fits", "taller than the scroll area"],
+      shown: [],
+      omitted: [
+        {
+          value: "fits",
+          reason:
+            "Sticking needs a scroll container taller than a docs specimen; the Machine identity and Certificate comparison pages show it, and detail-layout.test.tsx checks the measurement."
+        },
+        {
+          value: "taller than the scroll area",
+          reason:
+            "detail-layout.test.tsx checks that a sidecar taller than its scroll area does not stick."
+        }
+      ]
+    }
+  ],
+  guidance: {
+    use: [
+      "Use DetailLayout for a record's detail page: one details card that summarizes the record, beside stacked cards for its related content (auth methods, projects, subject alternative names, installations)."
+    ],
+    avoid: [
+      "Do not use it for settings pages or dashboards whose cards are peers; use Stack or Grid there."
+    ],
+    decision:
+      "Choose DetailLayout when a page pairs one summary card with stacked content cards. Choose Grid for peer cards of equal weight and Stack for a single column.",
+    rules: [
+      {
+        id: "detail-layout-sidecar-right",
+        when: "A detail page shows a details card next to stacked content cards.",
+        do: "Pass the details card as aside with an asideLabel and the content cards as children, so the sidecar sits on the right and stacks above them when narrow.",
+        avoid:
+          "Hand-build a two-column grid with a fractional details column on the left, or reorder columns with CSS order.",
+        reason:
+          "One primitive keeps the sidecar width, gap, breakpoint and reading order the same on every detail page.",
+        evidence: [
+          "src/components/v4/ui/layout.tsx",
+          "src/pages/design-system/examples/detail-layout/default.tsx"
+        ],
+        detect: {
+          by: "test",
+          test: "src/components/v4/ui/detail-layout.test.tsx",
+          how: "Render a DetailLayout and check that the named aside comes before the main column in the DOM and that the stylesheet's container breakpoint equals size-sidecar-collapse."
+        }
+      },
+      {
+        id: "detail-layout-sticky-reachable",
+        when: "The sidecar may be taller than the visible scroll area.",
+        do: "Let DetailLayout decide: it sticks only when the whole sidecar fits below the TopBar.",
+        avoid: "Force position sticky on the sidecar or cap its height with an inner scroller.",
+        reason:
+          "A sticky panel taller than the viewport hides its lower rows until the page ends, and a nested scroller traps wheel and keyboard scrolling.",
+        evidence: [
+          "src/components/v4/ui/layout.tsx",
+          "src/components/v4/ui/detail-layout.module.css"
+        ],
+        detect: {
+          by: "test",
+          test: "src/components/v4/ui/detail-layout.test.tsx",
+          how: "Give the sidecar a height under and over its scroll container's height and check data-sticky follows."
+        }
+      }
+    ],
+    states: [
+      {
+        state: "narrow",
+        guidance:
+          "Below size-sidecar-collapse the sidecar stacks above the main cards at full width."
+      },
+      {
+        state: "long",
+        guidance:
+          "A tall sidecar scrolls with the page instead of sticking; keep its card to the record's summary fields."
+      }
+    ],
+    antiSlop: [
+      {
+        do: "Keep the sidecar to one or two summary cards.",
+        avoid: "Move content lists or tables into the sidecar to balance column heights.",
+        reason: "The sidecar is the record summary; lists need the main column's width."
+      }
+    ]
+  },
+  checks: [
+    { kind: "static", command: "npm run type:check" },
+    { kind: "runtime", command: "npx vitest run src/components/v4/ui/detail-layout.test.tsx" },
+    {
+      kind: "browser",
+      command:
+        "npm run dev; open /design-system#detail-layout and /design-system#compare-identities, resize below 896px of layout width."
+    }
+  ]
+} satisfies ComponentDefinition;

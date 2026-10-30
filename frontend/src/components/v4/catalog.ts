@@ -15,7 +15,7 @@ import { floatingActionBarDefinition } from "./contracts/floating-action-bar";
 import { iconDefinition } from "./contracts/icon";
 import { jsonDefinition } from "./contracts/json";
 import { kbdDefinition } from "./contracts/kbd";
-import { layoutDefinition } from "./contracts/layout";
+import { layoutDefinition, detailLayoutDefinition } from "./contracts/layout";
 import { listDefinition } from "./contracts/list";
 import { loaderDefinition } from "./contracts/loader";
 import { middleTruncateDefinition } from "./contracts/middle-truncate";
@@ -50,6 +50,7 @@ export const componentCatalog: readonly ComponentDefinition[] = [
   jsonDefinition,
   kbdDefinition,
   layoutDefinition,
+  detailLayoutDefinition,
   listDefinition,
   loaderDefinition,
   middleTruncateDefinition,
