@@ -72,6 +72,12 @@ export const IdentityTlsCertAuthContent = ({ identityId }: ViewAuthMethodProps) 
       <IdentityAuthFieldDisplay className="col-span-2" label="Verify Client Certificate Chain">
         {data.verifyClientCertificateChain ? "Enabled" : "Disabled"}
       </IdentityAuthFieldDisplay>
+      <IdentityAuthFieldDisplay
+        className="col-span-2"
+        label="Bind Access Tokens to Client Certificate"
+      >
+        {data.bindAccessTokenToCertificate ? "Enabled" : "Disabled"}
+      </IdentityAuthFieldDisplay>
     </DetailGroup>
   );
 };

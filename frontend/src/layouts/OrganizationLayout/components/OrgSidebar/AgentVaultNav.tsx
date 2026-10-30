@@ -1,4 +1,5 @@
 import {
+  BookOpenText,
   Braces,
   FileText,
   IdCard,
@@ -54,7 +55,8 @@ export const AgentVaultNav = ({ onSubmenuOpen }: { onSubmenuOpen: (submenu: Subm
       pathSuffix: "access-bundles",
       alertVariant: needsSetup ? "warning" : undefined
     },
-    { label: "Variables", icon: Braces, pathSuffix: "variables" }
+    { label: "Variables", icon: Braces, pathSuffix: "variables" },
+    { label: "Skills", icon: BookOpenText, pathSuffix: "skills", hidden: !isAdmin }
   ];
 
   const infrastructureItems: NavItem[] = [

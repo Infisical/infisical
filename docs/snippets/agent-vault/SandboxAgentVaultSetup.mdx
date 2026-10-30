@@ -1,37 +1,5 @@
 import MachineIdentitySetup from "/snippets/agent-vault/MachineIdentitySetup.mdx";
 
-### Create an access bundle
-
-Create an [access bundle](/documentation/platform/agent-vault/access-bundles) that holds a [service](/documentation/platform/agent-vault/services) for each API the agent calls.
-
-<Steps>
-  <Step>
-    In Infisical, open **Agent Vault** from the product switcher and go to **Access Bundles**.
-  </Step>
-  <Step>
-    Select **Create Access Bundle**. Give the access bundle a **Name**, such as `sandbox-agent`, then select **Create Access Bundle**.
-  </Step>
-  <Step>
-    Select the access bundle you just created, then select **Add Service**.
-  </Step>
-  <Step>
-    On the **Choose a template** panel, pick the template for the API, such as **Anthropic** for Claude Code, or select **Custom HTTP API**.
-  </Step>
-  <Step>
-    On the **Details** step, check the hosts the service covers, or enter the API's host if you selected **Custom HTTP API**, then select **Continue**.
-  </Step>
-  <Step>
-    On the **Credential** step, paste the real API key, then select **Continue**.
-
-    <Note>
-      If the API expects the key somewhere other than a header, such as in the URL, [add a substitution](/documentation/platform/agent-vault/http-apis#add-a-substitution) instead, and have the agent send the placeholder you enter in **Replace**.
-    </Note>
-  </Step>
-  <Step>
-    On the **Review** step, select **Add Service**. Repeat from the third step for each remaining API.
-  </Step>
-</Steps>
-
 ### Create a proxy
 
 <Steps>
@@ -52,6 +20,6 @@ Create an [access bundle](/documentation/platform/agent-vault/access-bundles) th
 
 ### Create a machine identity for your code
 
-Your code creates a session for each run as a [machine identity](/documentation/platform/identities/machine-identities). Give the machine identity the **Member** role and access to only this access bundle, because an Agent Vault admin can create sessions for every access bundle.
+Your code creates a session for each run as a [machine identity](/documentation/platform/identities/machine-identities). Give the machine identity the **Member** role and access to only your access bundle, because an Agent Vault admin can create sessions for every access bundle.
 
 <MachineIdentitySetup />

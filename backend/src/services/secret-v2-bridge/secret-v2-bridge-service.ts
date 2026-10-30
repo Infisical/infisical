@@ -1358,6 +1358,7 @@ export const secretV2BridgeServiceFactory = ({
       throwOnMissingReadValuePermission = true,
       ifNoneMatch,
       abortSignal,
+      onSecretReferenced,
       ...params
     } = dto;
 
@@ -1456,10 +1457,16 @@ export const secretV2BridgeServiceFactory = ({
         // Decrypted bytes are the exact serialized payload the miss path hashed, so hashing them reproduces
         // the same ETag without re-serializing the object.
         const cachedEtag = `"${generateCacheKeyFromBuffer(cachedSecrets)}"`;
-        const { secrets, imports = [] } = JSON.parse(cachedSecrets.toString("utf8")) as {
+        const {
+          secrets,
+          imports = [],
+          referencedSecretIds: cachedReferencedSecretIds = []
+        } = JSON.parse(cachedSecrets.toString("utf8")) as {
           secrets: typeof decryptedSecrets;
           imports: typeof importedSecrets;
+          referencedSecretIds?: string[];
         };
+        cachedReferencedSecretIds.forEach((secretId) => onSecretReferenced?.(secretId));
         // Parsed array is owned here, so rehydrate dates in place instead of cloning every secret.
         for (const secret of secrets) {
           secret.createdAt = new Date(secret.createdAt);
@@ -1639,6 +1646,17 @@ export const secretV2BridgeServiceFactory = ({
 
     // note(daniel):  when in relative mode, direct secret references also resolve through imported secrets.
     // wrap secretDAL with import-aware fetch so the expander sees the full merged view.
+    // A read that expands references with the reader's personal overrides keeps the ids its references resolved to,
+    // since matching a reference by key would credit the shared secret an override replaced. They are cached with
+    // the result, as a cache hit expands nothing. Every other read caches exactly what it did before.
+    const referencedSecretIds = new Set<string>();
+    const collectReferencedSecrets = expandPersonalOverrides
+      ? (_secret: unknown, secretIds: string[]) => secretIds.forEach((secretId) => referencedSecretIds.add(secretId))
+      : undefined;
+    const withReferencedSecretIds = <T extends object>(payload: T) =>
+      referencedSecretIds.size ? { ...payload, referencedSecretIds: [...referencedSecretIds].sort() } : payload;
+    const reportReferencedSecrets = () => referencedSecretIds.forEach((secretId) => onSecretReferenced?.(secretId));
+
     const mainExpanderSecretDAL =
       secretImportReferencesBehavior === SecretImportReferencesBehavior.Relative
         ? { findByFolderId: createFetchFolderSecretsWithImports({ projectId, secretDAL, secretImportDAL, folderDAL }) }
@@ -1670,6 +1688,7 @@ export const secretV2BridgeServiceFactory = ({
       // mainExpanderSecretDAL may be import-aware in relative mode. Keep cross-project
       // reads on the raw DAL so source imports are not resolved through this target project.
       crossProjectSecretDAL: secretDAL,
+      onSecretExpanded: collectReferencedSecrets,
       abortSignal
     });
 
@@ -1690,7 +1709,7 @@ export const secretV2BridgeServiceFactory = ({
 
     if (!includeImports) {
       const payload = { secrets: decryptedSecrets, imports: [] };
-      const serializedPayload = Buffer.from(JSON.stringify(payload));
+      const serializedPayload = Buffer.from(JSON.stringify(withReferencedSecretIds(payload)));
       const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
       const encryptedUpdatedCachedSecrets = secretManagerEncryptor({ plainText: serializedPayload }).cipherTextBlob;
       const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
@@ -1702,6 +1721,7 @@ export const secretV2BridgeServiceFactory = ({
       recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
       await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
       await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
+      reportReferencedSecrets();
       return { ...payload, etag: computedEtag };
     }
 
@@ -1726,6 +1746,7 @@ export const secretV2BridgeServiceFactory = ({
           secretTags: expandSecretTags
         }),
       userId: expandPersonalOverrides ? actorId : undefined,
+      onSecretExpanded: collectReferencedSecrets,
       abortSignal
     });
 
@@ -1785,7 +1806,7 @@ export const secretV2BridgeServiceFactory = ({
     });
 
     const payload = { secrets: decryptedSecrets, imports: importedSecrets };
-    const serializedPayload = Buffer.from(JSON.stringify(payload));
+    const serializedPayload = Buffer.from(JSON.stringify(withReferencedSecretIds(payload)));
     const computedEtag = `"${generateCacheKeyFromBuffer(serializedPayload)}"`;
     const encryptedUpdatedCachedSecrets = secretManagerEncryptor({ plainText: serializedPayload }).cipherTextBlob;
     const cacheBytes = encryptedUpdatedCachedSecrets.byteLength;
@@ -1797,6 +1818,7 @@ export const secretV2BridgeServiceFactory = ({
     recordSecretCacheAccessMetric(SecretCacheAccessResult.MISS, { hasIfNoneMatch, etagMissReason });
     await keyStore.hashSet(etagRedisKey, etagField, computedEtag);
     await keyStore.setExpiry(etagRedisKey, KeyStoreTtls.SecretEtagInSeconds);
+    reportReferencedSecrets();
     return { ...payload, etag: computedEtag };
   };
 
@@ -1891,7 +1913,8 @@ export const secretV2BridgeServiceFactory = ({
     viewSecretValue,
     includeImports,
     expandSecretReferences: shouldExpandSecretReferences,
-    expandPersonalOverrides
+    expandPersonalOverrides,
+    onSecretReferenced
   }: TGetASecretDTO) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -1976,6 +1999,7 @@ export const secretV2BridgeServiceFactory = ({
 
     // this will throw if the user doesn't have read value permission no matter what
     // because if its an expansion, it will fully depend on the value.
+    const referencedSecretIdsByLocation = new Map<string, string[]>();
     const { expandSecretReferences } = expandSecretReferencesFactory({
       projectId,
       folderDAL,
@@ -1994,8 +2018,17 @@ export const secretV2BridgeServiceFactory = ({
       orgDAL,
       projectFolderGrantDAL,
       projectDAL,
-      kmsService
+      kmsService,
+      onSecretExpanded: onSecretReferenced
+        ? ({ environment: expandedEnvironment, secretPath: expandedPath, secretKey }, secretIds) =>
+            referencedSecretIdsByLocation.set(`${expandedEnvironment}:${expandedPath}:${secretKey}`, secretIds)
+        : undefined
     });
+    // The imports expand every imported secret, so only the references of the secret returned are passed on.
+    const reportReferencesOf = (secretEnvironment: string, secretPath: string, secretKey: string) =>
+      referencedSecretIdsByLocation
+        .get(`${secretEnvironment}:${secretPath}:${secretKey}`)
+        ?.forEach((secretId) => onSecretReferenced?.(secretId));
 
     // now if secret is not found
     // then search for imported secrets
@@ -2061,6 +2094,7 @@ export const secretV2BridgeServiceFactory = ({
               secretValueHidden = false;
             }
 
+            reportReferencesOf(importedSecrets[i].environment, importedSecrets[i].secretPath, secretName);
             return reshapeBridgeSecret(
               projectId,
               importedSecrets[i].environment,
@@ -2115,6 +2149,7 @@ export const secretV2BridgeServiceFactory = ({
       secretValueHidden = false;
     }
 
+    reportReferencesOf(environment, path, secret.key);
     return reshapeBridgeSecret(
       projectId,
       environment,

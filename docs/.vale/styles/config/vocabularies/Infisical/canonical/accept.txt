@@ -112,6 +112,10 @@ SecretProviderClass
 CustomResourceDefinition
 Kubebuilder
 Kyverno
+gVisor
+Kata
+containerd
+RuntimeClass
 minikube
 Traefik
 Bitnami
@@ -689,3 +693,6 @@ snowsql
 
 # --- Surfaced by the Stripe API key rotation pages ---
 Stripe
+
+# --- Surfaced by the Agent Vault Docker guide ---
+gVisor

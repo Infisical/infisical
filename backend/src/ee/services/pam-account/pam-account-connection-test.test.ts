@@ -1,8 +1,9 @@
 import { describe, expect, test } from "vitest";
 
-import { PamAccountType, PamSshAuthMethod } from "../pam/pam-enums";
+import { GcpServiceAccountAuthMethod, PamAccountType, PamSshAuthMethod } from "../pam/pam-enums";
 import {
   buildGatewayConnectionTest,
+  CLOUD_CONNECTION_VALIDATORS,
   ORACLE_MAX_PASSWORD_LENGTH,
   TestConnectionMode,
   testVerifiesCredential
@@ -346,5 +347,17 @@ describe("buildGatewayConnectionTest: ClickHouse", () => {
     );
 
     expect(testVerifiesCredential(result!.request)).toBe(true);
+  });
+});
+
+describe("CLOUD_CONNECTION_VALIDATORS: GCP service account", () => {
+  test("impersonation requires the org's service account ID suffix", async () => {
+    await expect(
+      CLOUD_CONNECTION_VALIDATORS[PamAccountType.GcpServiceAccount]!({
+        connectionDetails: { serviceAccountEmail: "deploy-bot@my-project.iam.gserviceaccount.com" },
+        credentials: { authMethod: GcpServiceAccountAuthMethod.Impersonation },
+        orgId: ORG_ID
+      })
+    ).rejects.toThrow('end with "11111111-1111"');
   });
 });

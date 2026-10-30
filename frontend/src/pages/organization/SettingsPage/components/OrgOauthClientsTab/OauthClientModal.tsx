@@ -229,7 +229,6 @@ export const OauthClientModal = ({ popUp, handlePopUpClose, onCreated }: Props) 
       tokenExchangeAudience: client?.tokenExchangeAudience ?? "",
       tokenExchangeIdpSatisfiesMfa: client?.tokenExchangeIdpSatisfiesMfa ?? false
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSheetOpen]);
 
   const { mutateAsync: createOauthClient, isPending: isCreating } = useCreateOauthClient();

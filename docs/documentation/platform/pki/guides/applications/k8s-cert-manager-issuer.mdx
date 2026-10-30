@@ -14,7 +14,7 @@ Issue TLS certificates to your Kubernetes workloads using [cert-manager](https:/
 
 ## When to use the Infisical Issuer instead of ACME
 
-- You want to authenticate with a [machine identity](/documentation/platform/identities/machine-identities) ([Universal Auth](/documentation/platform/identities/universal-auth) or [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth)) rather than ACME/EAB credentials.
+- You want to authenticate with a [machine identity](/documentation/platform/identities/machine-identities) ([Universal Auth](/documentation/platform/identities/universal-auth), [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) or [TLS Certificate Auth](/documentation/platform/identities/tls-cert-auth)) rather than ACME/EAB credentials.
 - You want the **CA chain populated** in the Secret's `ca.crt` automatically (with the ACME issuer this isn't automatic and needs extra setup such as [trust-manager](https://cert-manager.io/docs/trust/trust-manager/)).
 - You don't want ACME domain-ownership challenges (HTTP-01/DNS-01).
 - You're issuing workload identity certificates (for example `spiffe://` URIs for service meshes).
@@ -42,6 +42,7 @@ Throughout this guide, replace `<namespace>` with the namespace where your workl
 
     - **Universal Auth**: use the identity's **Client ID** and **Client Secret**.
     - **Kubernetes Auth**: the controller mints a short-lived token for a Kubernetes service account and presents it to Infisical. Configure it on the identity first, and note its **Identity ID**.
+    - **TLS Certificate Auth**: the controller logs in with a client certificate and presents it on every API call. Configure it on the identity first, and note its **Identity ID**. Enable **Bind Access Tokens to Client Certificate** on the identity to make a leaked token unusable without the certificate's private key.
   </Step>
 
   <Step title="Install cert-manager">
@@ -137,6 +138,24 @@ Throughout this guide, replace `<namespace>` with the namespace where your workl
 
         The service account's name and namespace must be allowed by the identity's [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) configuration in Infisical (and the audience there must match), otherwise issuance fails authentication.
       </Tab>
+      <Tab title="TLS Certificate Auth">
+        Store the machine identity's **Identity ID** in a generic Secret, and the client certificate and private key in a `kubernetes.io/tls` Secret:
+
+        ```bash
+        kubectl create secret generic infisical-identity \
+          --namespace <namespace> \
+          --from-literal=identityId=<machine_identity_id>
+
+        kubectl create secret tls infisical-client-cert \
+          --namespace <namespace> \
+          --cert=client.crt \
+          --key=client.key
+        ```
+
+        The certificate must be accepted by the identity's [TLS Certificate Auth](/documentation/platform/identities/tls-cert-auth) configuration in Infisical. `tls.crt` can also hold intermediates after the leaf.
+
+        The certificate Secret can be managed by cert-manager itself. When the certificate in the Secret changes, the controller logs in again with the new certificate before its next API call.
+      </Tab>
     </Tabs>
   </Step>
 
@@ -197,6 +216,38 @@ Throughout this guide, replace `<namespace>` with the namespace where your workl
                 name: infisical-issuer-auth
                 namespace: <namespace>
         ```
+      </Tab>
+      <Tab title="TLS Certificate Auth">
+        ```yaml issuer-infisical.yaml expandable
+        apiVersion: infisical-issuer.infisical.com/v1alpha1
+        kind: Issuer
+        metadata:
+          name: infisical-issuer
+          namespace: <namespace>
+        spec:
+          url: https://infisical.example.com
+          application: <application_name>
+          profile: <profile_name>
+          authentication:
+            method: tlsCert
+            tlsCert:
+              # Secret holding the machine identity ID
+              identityIdRef:
+                name: infisical-identity
+                namespace: <namespace>
+                key: identityId
+              # Client certificate and private key presented to Infisical
+              clientCertificateRef:
+                name: infisical-client-cert
+                namespace: <namespace>
+                key: tls.crt
+              clientKeyRef:
+                name: infisical-client-cert
+                namespace: <namespace>
+                key: tls.key
+        ```
+
+        `url` must use `https://`, since the client certificate is presented over TLS. On Infisical Cloud, set `url` to port `8443`, for example `https://app.infisical.com:8443`. On a self-hosted instance, the proxy in front of Infisical must forward the client certificate on every API request. See [Security requirements for self-hosted deployments](/documentation/platform/identities/tls-cert-auth#security-requirements-for-self-hosted-deployments).
       </Tab>
     </Tabs>
 
@@ -312,10 +363,11 @@ Throughout this guide, replace `<namespace>` with the namespace where your workl
 
 <AccordionGroup>
   <Accordion title="Which authentication method should I use?">
-    Both authenticate as an Infisical machine identity:
+    All three authenticate as an Infisical machine identity:
 
     - **Universal Auth** is the simplest: store a Client ID and Client Secret in a Secret. Good for any cluster.
     - **Kubernetes Auth** avoids storing a long-lived secret: the controller mints a short-lived token for a Kubernetes service account, and Infisical validates it against your cluster. Prefer this when you want to bind issuance to a service account rather than a static secret. It requires configuring [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) on the identity first.
+    - **TLS Certificate Auth** authenticates with a client certificate. With **Bind Access Tokens to Client Certificate** enabled on the identity, a leaked access token is unusable without the certificate's private key. It requires configuring [TLS Certificate Auth](/documentation/platform/identities/tls-cert-auth) on the identity, and a proxy in front of Infisical that forwards the client certificate on every API request.
   </Accordion>
 
   <Accordion title="Why is my certificate duration different from what I requested?">

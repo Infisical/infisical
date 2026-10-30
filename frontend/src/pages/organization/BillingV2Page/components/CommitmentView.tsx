@@ -124,7 +124,6 @@ export const CommitmentView = ({
       preview.mutate({ orgId, commitmentChanges: changes });
     }, 500);
     return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, changesKey]);
 
   // Current annual commitment total (committed × annual rate) and the current monthly on-demand spend,

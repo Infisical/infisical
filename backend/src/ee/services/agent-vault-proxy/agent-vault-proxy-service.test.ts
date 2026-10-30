@@ -70,7 +70,7 @@ const setup = (
     agentVaultProxyDAL: {
       findByIdWithOrg: async () => ({ projectId: PROJECT_ID, orgId: "org-1", pollInterval: 60 })
     } as never,
-    agentVaultResolveDAL: { findResolvableServices: async () => rows },
+    agentVaultResolveDAL: { findResolvableServices: async () => rows, findSessionSkills: async () => [] },
     agentVaultServiceCustomHeaderDAL: { findByServiceIds: async () => [] },
     agentVaultServiceSubstitutionDAL: { findByServiceIds: async () => [] },
     agentVaultVariableDAL: { findValuesForResolve: async () => variables },
@@ -85,6 +85,8 @@ const setup = (
     },
     membershipDAL: { findResourceMembershipsForActor: async () => [] },
     orgDAL: { findEffectiveOrgMembership: async () => ({ isActive: true }) as never },
+    projectDAL: { findById: async () => ({ id: PROJECT_ID, orgId: "org-1" }) as never },
+    userDAL: { findById: async () => undefined as never },
     permissionService: {
       getProjectPermission: async () =>
         ({

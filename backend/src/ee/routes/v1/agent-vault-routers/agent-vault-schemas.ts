@@ -3,6 +3,11 @@ import { z } from "zod";
 import { ProjectMembershipRole } from "@app/db/schemas";
 import { AGENT_VAULT_MAX_GRANTEES } from "@app/ee/services/agent-vault-access-bundle/agent-vault-access-bundle-service";
 import {
+  AGENT_VAULT_SKILL_MAX_PATH_LENGTH,
+  AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT
+} from "@app/ee/services/agent-vault-skill/agent-vault-skill-fns";
+import { AgentVaultSkillFileMode } from "@app/ee/services/agent-vault-skill/agent-vault-skill-types";
+import {
   AGENT_VAULT_NO_CONTROL_CHARS_MESSAGE,
   AGENT_VAULT_NO_CONTROL_CHARS_RE
 } from "@app/ee/services/agent-vault/agent-vault-credential-schemas";
@@ -783,3 +788,79 @@ export const AgentVaultCreatedMemberSchema = z.discriminatedUnion("type", [
   actorRefSchemas.machineIdentity.extend({ grantedAt: grantedAtSchema }),
   actorRefSchemas.group.extend({ grantedAt: grantedAtSchema })
 ]);
+
+// Paths and limits are checked in the service, so a bad file gets a 400 that names it. These are outer bounds.
+const AgentVaultSkillFileSchema = z.object({
+  path: z.string().min(1).max(AGENT_VAULT_SKILL_MAX_PATH_LENGTH).describe(AGENT_VAULT.SKILL.filePath),
+  mode: z.nativeEnum(AgentVaultSkillFileMode).describe(AGENT_VAULT.SKILL.fileMode),
+  contentBase64: z.string().max(AGENT_VAULT_SKILL_UPLOAD_BODY_LIMIT).describe(AGENT_VAULT.SKILL.fileContent)
+});
+
+// The service refuses more than AGENT_VAULT_SKILL_MAX_FILES with a 400 that says so; a schema failure would be a 422.
+const AGENT_VAULT_SKILL_UPLOAD_MAX_FILES = 1000;
+
+export const AgentVaultSkillUploadSchema = z.object({
+  files: AgentVaultSkillFileSchema.array()
+    .min(1, "Upload at least SKILL.md")
+    .max(AGENT_VAULT_SKILL_UPLOAD_MAX_FILES)
+    .describe(AGENT_VAULT.SKILL.files)
+});
+
+export const AgentVaultSkillUpdateSchema = AgentVaultSkillUploadSchema.extend({
+  baseVersion: z.number().int().positive().optional().describe(AGENT_VAULT.SKILL.baseVersion)
+});
+
+export const AgentVaultSkillVersionParamSchema = z.coerce
+  .number()
+  .int()
+  .min(1)
+  .max(2147483647)
+  .describe(AGENT_VAULT.SKILL.version);
+
+export const AgentVaultSkillSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.SKILL.skillId),
+  name: z.string().describe(AGENT_VAULT.SKILL.name),
+  description: z.string().describe(AGENT_VAULT.SKILL.description),
+  latestVersion: z.number().describe(AGENT_VAULT.SKILL.latestVersion),
+  createdAt: z.date().describe(AGENT_VAULT.SKILL.createdAt),
+  updatedAt: z.date().describe(AGENT_VAULT.SKILL.updatedAt)
+});
+
+export const AgentVaultSkillDetailSchema = AgentVaultSkillSchema.extend({
+  accessBundles: z
+    .object({
+      id: z.string().uuid().describe(AGENT_VAULT.SKILL.accessBundleId),
+      name: z.string().describe(AGENT_VAULT.SKILL.accessBundleName)
+    })
+    .array()
+    .describe(AGENT_VAULT.SKILL.accessBundles)
+});
+
+export const AgentVaultSkillVersionSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.SKILL.versionId),
+  version: z.number().describe(AGENT_VAULT.SKILL.version),
+  sha256: z.string().describe(AGENT_VAULT.SKILL.sha256),
+  sizeBytes: z.number().describe(AGENT_VAULT.SKILL.sizeBytes),
+  fileCount: z.number().describe(AGENT_VAULT.SKILL.fileCount),
+  createdAt: z.date().describe(AGENT_VAULT.SKILL.versionCreatedAt)
+});
+
+export const AgentVaultSkillFilesResponseSchema = z
+  .object({
+    path: z.string().describe(AGENT_VAULT.SKILL.filePath),
+    mode: z.nativeEnum(AgentVaultSkillFileMode).describe(AGENT_VAULT.SKILL.fileMode),
+    contentBase64: z.string().describe(AGENT_VAULT.SKILL.fileContent)
+  })
+  .array()
+  .describe(AGENT_VAULT.SKILL.files);
+
+export const AgentVaultSkillVersionWithFilesSchema = AgentVaultSkillVersionSchema.extend({
+  files: AgentVaultSkillFilesResponseSchema
+});
+
+export const AgentVaultBundleSkillSchema = z.object({
+  id: z.string().uuid().describe(AGENT_VAULT.SKILL.skillId),
+  name: z.string().describe(AGENT_VAULT.SKILL.name),
+  description: z.string().describe(AGENT_VAULT.SKILL.description),
+  latestVersion: z.number().describe(AGENT_VAULT.SKILL.latestVersion)
+});
