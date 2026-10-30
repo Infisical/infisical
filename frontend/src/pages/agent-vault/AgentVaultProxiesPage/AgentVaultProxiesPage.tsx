@@ -1,5 +1,4 @@
 import { ReactNode, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { format } from "date-fns";
 import {
@@ -60,7 +59,7 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
-import { useOrganization, useProjectPermission } from "@app/context";
+import { useProjectPermission } from "@app/context";
 import { downloadTxtFile } from "@app/helpers/download";
 import {
   getUserTablePreference,
@@ -69,7 +68,6 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { useResetPageHelper } from "@app/hooks";
 import {
-  agentVaultKeys,
   AgentVaultTrafficPolicy,
   fetchAgentVaultProxyCa,
   useDeleteAgentVaultProxy,
@@ -145,16 +143,11 @@ const truncateFingerprint = (fingerprint: string) =>
 export const AgentVaultProxiesPage = () => {
   const { hasProjectRole } = useProjectPermission();
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);
-  const { currentOrg } = useOrganization();
-  const queryClient = useQueryClient();
-
-  // Fetched on click rather than with the list: the certificate is only needed when someone asks for it.
+  // Asked of the server on every click, never cached: the CA changes on rotation, and only the server can
+  // refuse a proxy that serves its own CA.
   const downloadProxyCa = async (proxy: TAgentVaultProxy) => {
     try {
-      const ca = await queryClient.fetchQuery({
-        queryKey: agentVaultKeys.proxyCa(currentOrg.id, proxy.id),
-        queryFn: () => fetchAgentVaultProxyCa(proxy.id)
-      });
+      const ca = await fetchAgentVaultProxyCa(proxy.id);
       downloadTxtFile(`${proxy.name}-ca.pem`, ca.certificate);
     } catch (error) {
       const message = axios.isAxiosError<{ message?: string }>(error)

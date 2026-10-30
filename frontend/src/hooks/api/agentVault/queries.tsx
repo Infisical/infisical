@@ -102,8 +102,6 @@ export const agentVaultKeys = {
   proxies: (orgId: string) => [...agentVaultKeys.all(orgId), "proxies"] as const,
   proxyList: (orgId: string, params?: TListAgentVaultProxiesDTO) =>
     [...agentVaultKeys.proxies(orgId), params] as const,
-  proxyCa: (orgId: string, proxyId: string) =>
-    [...agentVaultKeys.proxies(orgId), proxyId, "ca"] as const,
   accessBundleMembers: (orgId: string, accessBundleId: string) =>
     [...agentVaultKeys.accessBundle(orgId, accessBundleId), "members"] as const,
   accessBundleMemberList: (

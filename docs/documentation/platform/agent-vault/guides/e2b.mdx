@@ -59,6 +59,7 @@ One proxy serves every sandbox, so you set it up once.
 - An [E2B](https://e2b.dev) account with [bring your own proxy](https://e2b.dev/docs/network/byop) turned on (E2B lists it as a private beta, so you may need to ask E2B to turn it on), and an [E2B API key](https://e2b.dev/docs/api-key) in the `E2B_API_KEY` environment variable on the machine that runs your code
 - The E2B SDK version 2.57.0 or later for your language: [Python](https://pypi.org/project/e2b/) (with [`requests`](https://pypi.org/project/requests/)) or [TypeScript](https://www.npmjs.com/package/e2b)
 - A Linux machine or Kubernetes cluster to run the proxy, reachable from the internet, with a DNS name that points to it
+- For the systemd setup, the [Infisical CLI](/cli/overview) installed on that machine
 
 ## Step 1: Set up Agent Vault
 
@@ -488,8 +489,8 @@ The proxy token is only on the proxy's machine. If you think someone took contro
 ## Troubleshooting
 
 <AccordionGroup>
-  <Accordion title="Requests reach the API, but without a credential">
-    E2B sent the proxy an IP address instead of a hostname, so no service matched the request. E2B only sends hostnames for traffic that a domain entry allows, so create the sandbox with `allow_out` set to `["*"]` and `deny_out` set to `["0.0.0.0/0"]`, as the function in [Step 4](#step-4-run-a-command-in-a-sandbox) does.
+  <Accordion title="Requests fail with a certificate error, or reach the API without a credential">
+    E2B sent the proxy an IP address instead of a hostname, so HTTPS requests fail with a certificate error and no service matches. E2B only sends hostnames for traffic that a domain entry allows, so create the sandbox with `allow_out` set to `["*"]` and `deny_out` set to `["0.0.0.0/0"]`, as the function in [Step 4](#step-4-run-a-command-in-a-sandbox) does.
   </Accordion>
   <Accordion title="Connections from the sandbox fail right away">
     The proxy refused the connection before any request. Check the proxy's log for one of these lines:
