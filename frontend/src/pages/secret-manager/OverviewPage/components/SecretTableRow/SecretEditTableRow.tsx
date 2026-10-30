@@ -431,15 +431,19 @@ export const SecretEditTableRow = ({
   useEffect(() => {
     if (!isSingleEnvView || hasPendingChange) return;
 
+    const newTags = tags?.map((t) => ({ id: t.id, slug: t.slug })) ?? [];
+    if (!getFieldState("tags").isDirty) {
+      setValue("tags", newTags, { shouldDirty: false });
+    }
+    originalTagsRef.current = newTags;
     originalCommentRef.current = comment ?? "";
-    originalTagsRef.current = tags?.map((t) => ({ id: t.id, slug: t.slug })) ?? [];
     originalMetadataRef.current =
       secretMetadata?.map((m) => ({
         key: m.key,
         value: m.value,
         isEncrypted: m.isEncrypted ?? false
       })) ?? [];
-  }, [comment, tags, secretMetadata, isSingleEnvView, hasPendingChange]);
+  }, [comment, tags, secretMetadata, isSingleEnvView, hasPendingChange, setValue, getFieldState]);
 
   useLayoutEffect(() => {
     commentDragStart.current = undefined;
