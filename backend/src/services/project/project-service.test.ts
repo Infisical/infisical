@@ -177,3 +177,22 @@ describe("secret scanning project uniqueness", () => {
     );
   });
 });
+
+describe("org-scoped product projects", () => {
+  test.each([ProjectType.PAM, ProjectType.AgentVault])("rejects creating %s projects directly", async (type) => {
+    const { service, projectDAL } = setup();
+
+    await expect(
+      service.createProject({
+        actor: ActorType.USER,
+        actorId: "user",
+        actorOrgId: "root",
+        actorAuthMethod: null,
+        projectName: "Managed",
+        type
+      })
+    ).rejects.toThrow(BadRequestError);
+
+    expect(projectDAL.transaction).not.toHaveBeenCalled();
+  });
+});
