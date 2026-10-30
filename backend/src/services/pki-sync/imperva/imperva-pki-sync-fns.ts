@@ -484,9 +484,9 @@ export const impervaPkiSyncFactory = ({
           }
         }
 
-        // A failed upload leaves the previous certificate serving, and clearing its slot would
-        // take the website off TLS.
-        if (canRemoveCertificates && failedUploads.length === 0) {
+        // A failed upload, or one Imperva took but will not serve, leaves the previous certificate
+        // in place. Clearing its slot would take the website off TLS.
+        if (canRemoveCertificates && failedUploads.length === 0 && undeployedCertificates.length === 0) {
           const cleanup = await removeOrphanedSlots({
             pkiSync,
             makeRequest,

@@ -313,7 +313,7 @@ describe("Imperva slot ownership", () => {
 });
 
 describe("Imperva deployment mismatch", () => {
-  test("reports the certificate as not deployed instead of succeeded", async () => {
+  test("keeps the serving certificate when Imperva will not serve the new one", async () => {
     const { impervaPkiSyncFactory } = await import("./imperva-pki-sync-fns");
 
     impervaRequest.mockReset();
@@ -321,17 +321,21 @@ describe("Imperva deployment mismatch", () => {
       const { method } = args as TRecordedRequest;
       if (method === "GET") {
         return Promise.resolve({
-          data: [{ authType: ImpervaCertificateAuthType.Rsa, customCertificateDetails: { hasMismatchSite: true } }]
+          data: [{ authType: ImpervaCertificateAuthType.Ecc, customCertificateDetails: { hasMismatchSite: true } }]
         });
       }
       return Promise.resolve({});
     });
 
+    const removeCertificates = vi.fn();
     const updateById = vi.fn();
     const factory = impervaPkiSyncFactory({
       certificateSyncDAL: {
-        findByPkiSyncId: vi.fn().mockResolvedValue([]),
-        removeCertificates: vi.fn(),
+        // The RSA slot Imperva is still serving from.
+        findByPkiSyncId: vi
+          .fn()
+          .mockResolvedValue([{ id: "row-0", certificateId: "cert-old", externalIdentifier: "111:RSA" }]),
+        removeCertificates,
         addCertificates: vi.fn(),
         findByPkiSyncAndCertificate: vi.fn().mockResolvedValue({ id: "row-1" }),
         updateById,
@@ -351,9 +355,16 @@ describe("Imperva deployment mismatch", () => {
         syncOptions: { canRemoveCertificates: true },
         connection: { credentials: { apiId: "id", apiKey: "key" }, gatewayId: null, gatewayPoolId: null }
       } as never,
-      { leaf: { cert: RSA_CERT_PEM, privateKey: "key", certificateId: "cert-1" } } as never
+      { leaf: { cert: EC_CERT_PEM, privateKey: "key", certificateId: "cert-1" } } as never
     );
 
+    const deletes = impervaRequest.mock.calls
+      .map((call) => call[0] as TRecordedRequest)
+      .filter((req) => req.method === "DELETE");
+
+    expect(deletes).toHaveLength(0);
+    expect(removeCertificates).not.toHaveBeenCalled();
+    expect(result.removed).toBeUndefined();
     expect(result.details?.failedUploads).toEqual([
       { name: "leaf", error: expect.stringContaining("does not cover every managed domain") as unknown as string }
     ]);
