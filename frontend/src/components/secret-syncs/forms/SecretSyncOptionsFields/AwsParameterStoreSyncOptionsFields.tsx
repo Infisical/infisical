@@ -175,7 +175,14 @@ export const AwsParameterStoreSyncOptionsFields = () => {
                   <Combobox
                     isLoading={isKmsKeysPending && Boolean(connectionId && region)}
                     isDisabled={!connectionId}
-                    value={kmsKeys.find((org) => org.alias === value) ?? null}
+                    value={
+                      value
+                        ? (kmsKeys.find((kmsKey) => kmsKey.alias === value) ?? {
+                            alias: value,
+                            id: value
+                          })
+                        : null
+                    }
                     onValueChange={(option) => onChange(option.alias ?? null)}
                     onClear={() => onChange(undefined)}
                     clearAriaLabel="Clear KMS key"
@@ -184,6 +191,11 @@ export const AwsParameterStoreSyncOptionsFields = () => {
                       inputValue ? "No KMS keys match your search." : "No KMS keys found."
                     }
                     options={kmsKeys}
+                    creation={{
+                      onCreate: (inputValue) => onChange(inputValue.trim()),
+                      formatLabel: (inputValue) => `Use "${inputValue}"`,
+                      isDuplicate: (inputValue, option) => option.alias === inputValue
+                    }}
                     placeholder="Leave blank to use default KMS key"
                     searchPlaceholder="Search KMS keys..."
                     searchAriaLabel="Search KMS keys"
@@ -194,7 +206,8 @@ export const AwsParameterStoreSyncOptionsFields = () => {
                     modal
                   />
                   <FieldDescription>
-                    Custom keys require <span className="font-mono">kms:ListAliases</span>,{" "}
+                    Select an alias or enter a key ID or ARN. Custom keys require{" "}
+                    <span className="font-mono">kms:ListAliases</span>,{" "}
                     <span className="font-mono">kms:DescribeKey</span>,{" "}
                     <span className="font-mono">kms:Encrypt</span>, and{" "}
                     <span className="font-mono">kms:Decrypt</span> on the selected IAM role.
