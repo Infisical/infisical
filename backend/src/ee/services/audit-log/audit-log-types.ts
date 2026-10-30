@@ -5949,6 +5949,8 @@ interface ProjectDeleteEvent {
     // true: actor soft-deleted the project (marked for deletion).
     // false: the async cleanup worker hard-deleted an expired soft-deleted project.
     softDelete?: boolean;
+    // true: deleted without a restore window (Delete Now, or a project type that has none).
+    hardDelete?: boolean;
     deleteAfter?: Date | null;
   };
 }

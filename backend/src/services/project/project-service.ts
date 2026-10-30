@@ -906,7 +906,7 @@ export const projectServiceFactory = ({
       usageMeteringService.emit(project.orgId, SecretIdentities.key);
       usageMeteringService.emit(project.orgId, PamIdentities.key);
       usageMeteringService.emit(project.orgId, AgentVaultIdentities.key);
-      return { ...softDeletedProject, slug: project.slug };
+      return { ...softDeletedProject, slug: project.slug, hardDelete: !hasGracePeriod };
     } finally {
       await lock.release();
     }

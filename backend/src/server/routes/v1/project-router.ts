@@ -496,6 +496,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
             id: project.id,
             name: project.name,
             softDelete: true,
+            hardDelete: project.hardDelete,
             deleteAfter: project.deleteAfter
           }
         }
@@ -597,6 +598,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
             id: project.id,
             name: project.name,
             softDelete: true,
+            hardDelete: true,
             deleteAfter: project.deleteAfter
           }
         }
