@@ -27,10 +27,13 @@ const getLocalStorageServerSnapshot = (): never => {
 
 export const useLocalStorageState = <T>(
   key: string,
-  initialValue: T
+  initialValue: T,
+  { tabLocal = false }: { tabLocal?: boolean } = {}
 ): [T, (value: SetStateAction<T>) => void] => {
-  // localStorage is read once per key and then only updated by same-tab writes, so a value
-  // another tab writes never reaches this tab's state, not even on a later re-render.
+  // With tabLocal, localStorage is read once per key and then only followed for same-tab writes,
+  // so another tab's write never reaches this tab, not even on a later re-render. It is opt-in
+  // because a functional update then starts from this tab's copy, and for a value that holds
+  // entries from several tabs (a map keyed by org) the write would drop the other tabs' entries.
   const snapshot = useRef<{ key: string; value: string | null } | null>(null);
   if (snapshot.current?.key !== key) {
     snapshot.current = { key, value: getLocalStorageItem(key) };
@@ -53,7 +56,7 @@ export const useLocalStorageState = <T>(
 
   const store = useSyncExternalStore(
     subscribe,
-    () => snapshot.current?.value ?? null,
+    () => (tabLocal ? (snapshot.current?.value ?? null) : getLocalStorageItem(key)),
     getLocalStorageServerSnapshot
   );
 
