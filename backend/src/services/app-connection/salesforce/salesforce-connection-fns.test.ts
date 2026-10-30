@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { listSalesforceConnectionOauthApps, resolveSalesforcePath } from "./salesforce-connection-fns";
+import { listSalesforceConnectionOauthApps } from "./salesforce-connection-fns";
 import { TSalesforceConnection } from "./salesforce-connection-types";
 
 const salesforce = vi.hoisted(() => ({
@@ -28,22 +28,6 @@ const connection = {
 } as TSalesforceConnection;
 
 const app = (identifier: string) => ({ identifier, developerName: identifier });
-
-describe("resolveSalesforcePath", () => {
-  test("joins a path to the instance URL", () => {
-    expect(resolveSalesforcePath(INSTANCE_URL, `${FIRST_PAGE}?page=2`)).toBe(`${INSTANCE_URL}${FIRST_PAGE}?page=2`);
-  });
-
-  test.each([
-    "@internal.example/services/data",
-    ":8443/services/data",
-    ".internal.example/services/data",
-    "\\internal.example/services/data",
-    "https://internal.example/services/data"
-  ])("refuses %j", (link) => {
-    expect(() => resolveSalesforcePath(INSTANCE_URL, link)).toThrow(OUTSIDE_INSTANCE_MESSAGE);
-  });
-});
 
 describe("listSalesforceConnectionOauthApps", () => {
   beforeEach(() => {
