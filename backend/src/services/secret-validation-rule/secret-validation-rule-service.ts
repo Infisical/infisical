@@ -271,7 +271,9 @@ export const secretValidationRuleServiceFactory = ({
     const { valueConstraints } = config as TStaticSecretsRuleConfig;
 
     if (!valueConstraints || !Object.values(valueConstraints).some((constraint) => constraint !== undefined)) {
-      throw new BadRequestError({ message: "This rule does not constrain secret values, so there is nothing to generate." });
+      throw new BadRequestError({
+        message: "This rule does not constrain secret values, so there is nothing to generate."
+      });
     }
 
     return generateValue(valueConstraints);

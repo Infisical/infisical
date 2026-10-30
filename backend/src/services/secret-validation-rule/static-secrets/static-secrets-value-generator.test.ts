@@ -26,7 +26,10 @@ describe("generateStaticSecretValue", () => {
   });
 
   test.each([
-    ["an anchored regex combined with a prefix and suffix", { regexPattern: "^[A-Z]{16}$", requiredPrefix: "pre_", requiredSuffix: "_end" }],
+    [
+      "an anchored regex combined with a prefix and suffix",
+      { regexPattern: "^[A-Z]{16}$", requiredPrefix: "pre_", requiredSuffix: "_end" }
+    ],
     ["a leading inline flag", { regexPattern: "(?i)^[a-z]{16}$" }],
     ["a unicode brace escape RE2 reads differently", { regexPattern: "^\\u{41}$" }],
     ["a prefix and suffix longer than the maximum", { requiredPrefix: "pre_", requiredSuffix: "_end", maxLength: 4 }],

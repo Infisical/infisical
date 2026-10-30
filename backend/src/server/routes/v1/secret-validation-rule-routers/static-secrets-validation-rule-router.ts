@@ -36,7 +36,7 @@ export const registerStaticSecretsValidationRuleRouter = async (server: FastifyZ
       params: z.object({
         ruleId: z.string().uuid().describe(SecretValidationRules.GENERATE_STATIC_SECRET_VALUE.ruleId)
       }),
-      response: { 201: z.object({ value: z.string() }) }
+      response: { 200: z.object({ value: z.string() }) }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.OAUTH]),
     handler: async (req, res) => {

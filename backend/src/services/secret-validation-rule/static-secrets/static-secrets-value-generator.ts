@@ -20,7 +20,7 @@ const randomString = (length: number) => {
 
 const buildRegexGenerator = (regexPattern: string) => {
   try {
-    const generator = new RandExp(new RegExp(regexPattern));
+    const generator = new RandExp(regexPattern);
     generator.randInt = (min: number, max: number) => crypto.randomInt(min, max + 1);
     return generator;
   } catch {
