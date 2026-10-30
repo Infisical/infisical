@@ -278,8 +278,32 @@ describe("scanGitHubCommitsAndGetFindings", () => {
 
     expect(getCommit).toHaveBeenCalledTimes(3);
     expect(getCommit).toHaveBeenLastCalledWith(expect.objectContaining({ page: 3, per_page: 100 }));
-    expect(scanContents).toHaveBeenCalledTimes(1);
     expect(scannedContents()).toHaveLength(205);
+  });
+
+  test("scans files in batches of 50 and maps a later batch's finding back to its file", async () => {
+    const secondCommit = { ...commit, sha: "d".repeat(40), authorName: "b" };
+    const getCommit = vi
+      .fn()
+      .mockImplementation(({ ref }: { ref: string }) =>
+        Promise.resolve({ data: { files: makeFiles(30, ref === commit.sha ? 0 : 30) } })
+      );
+    scanContents
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { index: 2, finding: { RuleID: "rule", StartLine: 2, EndLine: 2, StartColumn: 2, EndColumn: 4 } }
+      ]);
+
+    const findings = await scanGitHubCommitsAndGetFindings({
+      octokit: asOctokit(getCommit),
+      repositoryFullName: "acme/api",
+      resourceName: "acme/api",
+      commits: [commit, secondCommit]
+    });
+
+    expect(scanContents.mock.calls.map(([contents]) => contents.length)).toEqual([50, 10]);
+    expect(findings).toHaveLength(1);
+    expect(findings[0].fingerprint).toBe(`${secondCommit.sha}:file-52.txt:rule:1:1`);
   });
 
   test("fails a scan that requires every file when a commit has more files than GitHub lists", async () => {

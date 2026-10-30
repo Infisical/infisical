@@ -55,6 +55,8 @@ const COMMIT_FILES_PER_PAGE = 100;
 const COMMIT_MAX_LISTED_FILES = 3000;
 // A file whose patch GitHub leaves out is fetched whole to rebuild it, so its size is capped.
 const MISSING_PATCH_MAX_FILE_BYTES = 10 * 1024 * 1024;
+// Files are scanned in batches as they are fetched, so a large scan never holds every patch in memory at once.
+const SCAN_BATCH_MAX_FILES = 50;
 // GitHub rejects a check run update carrying more than 50 annotations; more are sent as further updates.
 const CHECK_RUN_ANNOTATIONS_PER_REQUEST = 50;
 const CHECK_RUN_MAX_ANNOTATIONS = 500;
@@ -71,6 +73,8 @@ type TGitHubCommitToScan = {
   date: string;
   message: string;
 };
+
+type TGitHubFileToScan = { commit: TGitHubCommitToScan; filename: string; patch: string };
 
 type TPullRequestCheckRunTarget = {
   installationId: string;
@@ -248,6 +252,52 @@ const buildMissingGitHubPatch = async (
   return buildPatchFromContents(before, after);
 };
 
+const scanGitHubFilesAndGetFindings = async (
+  files: TGitHubFileToScan[],
+  resourceName: string,
+  configPath?: string
+): Promise<TFindingsPayload> => {
+  const findings = await scanContentsAndGetFindings(
+    files,
+    ({ patch }) => replaceNonChangesWithNewlines(patch),
+    configPath
+  );
+
+  const allFindings: SecretMatch[] = findings.map(({ item: { commit, filename, patch }, finding }) => {
+    const startLine = convertPatchLineToFileLineNumber(patch, finding.StartLine);
+    const endLine =
+      finding.StartLine === finding.EndLine ? startLine : convertPatchLineToFileLineNumber(patch, finding.EndLine);
+    const startColumn = finding.StartColumn - 1; // subtract 1 for +
+    const endColumn = finding.EndColumn - 1; // subtract 1 for +
+
+    return {
+      ...finding,
+      StartLine: startLine,
+      EndLine: endLine,
+      StartColumn: startColumn,
+      EndColumn: endColumn,
+      File: filename,
+      Commit: commit.sha,
+      Author: commit.authorName,
+      Email: commit.authorEmail,
+      Message: commit.message,
+      Fingerprint: `${commit.sha}:${filename}:${finding.RuleID}:${startLine}:${startColumn}`,
+      Date: commit.date,
+      Attributes: {
+        ...finding.Attributes,
+        url: `https://github.com/${resourceName}/blob/${commit.sha}/${filename}#L${startLine}`
+      }
+    };
+  });
+
+  return allFindings.map((finding) => ({
+    details: toFindingDetails(finding),
+    fingerprint: finding.Fingerprint,
+    severity: SecretScanningFindingSeverity.High,
+    rule: finding.RuleID
+  }));
+};
+
 /**
  * A commit that changes more files than GitHub lists can't be fully scanned from the API. A pull request check passes
  * `requireCompleteCommits` so it fails rather than passing on part of the commit; a push scan scans what it can. The
@@ -270,7 +320,8 @@ export const scanGitHubCommitsAndGetFindings = async ({
 }): Promise<TFindingsPayload> => {
   const { owner, repo } = splitRepositoryFullName(repositoryFullName);
 
-  const filesToScan: { commit: TGitHubCommitToScan; filename: string; patch: string }[] = [];
+  const filesToScan: TGitHubFileToScan[] = [];
+  const findings: TFindingsPayload = [];
 
   for (const commit of commits) {
     // eslint-disable-next-line no-await-in-loop
@@ -325,49 +376,20 @@ export const scanGitHubCommitsAndGetFindings = async ({
         }
       }
 
-      if (patch) filesToScan.push({ commit, filename: file.filename, patch });
+      if (patch) {
+        filesToScan.push({ commit, filename: file.filename, patch });
+
+        if (filesToScan.length >= SCAN_BATCH_MAX_FILES) {
+          // eslint-disable-next-line no-await-in-loop
+          findings.push(...(await scanGitHubFilesAndGetFindings(filesToScan.splice(0), resourceName, configPath)));
+        }
+      }
     }
   }
 
-  const findings = await scanContentsAndGetFindings(
-    filesToScan,
-    ({ patch }) => replaceNonChangesWithNewlines(patch),
-    configPath
-  );
+  findings.push(...(await scanGitHubFilesAndGetFindings(filesToScan, resourceName, configPath)));
 
-  const allFindings: SecretMatch[] = findings.map(({ item: { commit, filename, patch }, finding }) => {
-    const startLine = convertPatchLineToFileLineNumber(patch, finding.StartLine);
-    const endLine =
-      finding.StartLine === finding.EndLine ? startLine : convertPatchLineToFileLineNumber(patch, finding.EndLine);
-    const startColumn = finding.StartColumn - 1; // subtract 1 for +
-    const endColumn = finding.EndColumn - 1; // subtract 1 for +
-
-    return {
-      ...finding,
-      StartLine: startLine,
-      EndLine: endLine,
-      StartColumn: startColumn,
-      EndColumn: endColumn,
-      File: filename,
-      Commit: commit.sha,
-      Author: commit.authorName,
-      Email: commit.authorEmail,
-      Message: commit.message,
-      Fingerprint: `${commit.sha}:${filename}:${finding.RuleID}:${startLine}:${startColumn}`,
-      Date: commit.date,
-      Attributes: {
-        ...finding.Attributes,
-        url: `https://github.com/${resourceName}/blob/${commit.sha}/${filename}#L${startLine}`
-      }
-    };
-  });
-
-  return allFindings.map((finding) => ({
-    details: toFindingDetails(finding),
-    fingerprint: finding.Fingerprint,
-    severity: SecretScanningFindingSeverity.High,
-    rule: finding.RuleID
-  }));
+  return findings;
 };
 
 // Compares against the exact head the check was created for, so commits pushed after it are left to their own check.
