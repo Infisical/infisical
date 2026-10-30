@@ -38,6 +38,11 @@ export type TAzureKeyVaultConnection = TRootAppConnection & { app: AppConnection
         credentials: {
           clientId: string;
           tenantId: string;
+          federatedCredential?: {
+            issuerUrl: string | null;
+            subjectIdentifier: string;
+            audience: string;
+          };
         };
       }
   );

@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Info } from "lucide-react";
+import { Info, KeyRoundIcon } from "lucide-react";
 import { z } from "zod";
 
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -21,12 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
   SheetFooter,
+  TextArea,
   Tooltip,
   TooltipContent,
   TooltipTrigger
 } from "@app/components/v3";
 import { GatewayPicker } from "@app/components/v3/platform/GatewayPicker";
-import { useOrganization, useSubscription } from "@app/context";
+import { useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -38,13 +39,13 @@ import {
 } from "@app/helpers/appConnections";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useScopeVariant } from "@app/hooks";
-import { useGetOidcIssuerUrl } from "@app/hooks/api";
 import { useGetAppConnectionOption } from "@app/hooks/api/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   AzureKeyVaultConnectionMethod,
   TAzureKeyVaultConnection
 } from "@app/hooks/api/appConnections/types/azure-key-vault-connection";
+import { ScopeVariant } from "@app/hooks/useScopeVariant";
 
 import { AzureKeyVaultFormData } from "../../../OauthCallbackPage/OauthCallbackPage.types";
 import { useAppConnectionForm, useAppConnectionFormDirtyState } from "./AppConnectionFormContext";
@@ -111,25 +112,33 @@ const formSchema = z.discriminatedUnion("method", [
   managedIdentitySchema
 ]);
 
-// Entra only accepts federated tokens with this audience
-const AZURE_FEDERATED_TOKEN_AUDIENCE = "api://AzureADTokenExchange";
+// Marks the value generated for this connection, in the scope's color like its buttons
+const GENERATED_VALUE_BORDER: Record<ScopeVariant, string> = {
+  org: "border-org/25",
+  project: "border-project/25",
+  "sub-org": "border-sub-org/25",
+  av: "border-product-av/30",
+  ss: "border-product-ss/30"
+};
 
 const CopyableValue = ({
   label,
   value,
-  placeholder
+  className
 }: {
   label: string;
-  value?: string;
-  placeholder?: string;
+  value: string;
+  className?: string;
 }) => (
-  <div className="flex flex-col gap-1">
+  <div className="flex flex-col gap-1.5">
     <span className="text-xs text-accent">{label}</span>
-    <div className="flex items-center gap-2 rounded-md border border-border bg-container p-2">
-      <p className={`grow font-mono text-sm break-all ${value ? "text-foreground" : "text-muted"}`}>
-        {value ?? placeholder}
-      </p>
-      {value && <CopyButton value={value} ariaLabel={`Copy ${label}`} />}
+    <div
+      className={`flex items-start gap-2 rounded-md border bg-container py-2 pr-2 pl-3 ${className ?? "border-border"}`}
+    >
+      <code className="min-w-0 grow font-mono text-xs leading-5 break-all text-foreground">
+        {value}
+      </code>
+      <CopyButton value={value} ariaLabel={`Copy ${label}`} />
     </div>
   </div>
 );
@@ -228,6 +237,7 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
   const isUpdate = Boolean(appConnection);
   const { onCancel } = useAppConnectionForm();
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [hasVerifyFailed, setHasVerifyFailed] = useState(false);
 
   const {
     option: { oauthClientId },
@@ -258,11 +268,11 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
   const gatewayPoolId = watch("gatewayPoolId");
 
   const { subscription } = useSubscription();
-  const { currentOrg } = useOrganization();
 
-  const { data: issuerUrl } = useGetOidcIssuerUrl(currentOrg.id, {
-    enabled: selectedMethod === AzureKeyVaultConnectionMethod.ManagedIdentity
-  });
+  const federatedCredential =
+    appConnection?.method === AzureKeyVaultConnectionMethod.ManagedIdentity
+      ? appConnection.credentials.federatedCredential
+      : undefined;
 
   const onSubmitHandler = async (formData: FormData) => {
     const state = crypto.randomBytes(16).toString("hex");
@@ -288,8 +298,20 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
         await onSubmit(formData);
         break;
       case AzureKeyVaultConnectionMethod.Certificate:
-      case AzureKeyVaultConnectionMethod.ManagedIdentity:
         await onSubmit(formData);
+        break;
+      case AzureKeyVaultConnectionMethod.ManagedIdentity:
+        if (!isUpdate) {
+          await onSubmit(formData);
+          break;
+        }
+        setHasVerifyFailed(false);
+        try {
+          await onSubmit(formData);
+        } catch {
+          // The request's error toast already explains the failure
+          setHasVerifyFailed(true);
+        }
         break;
       default:
         throw new Error(`Unhandled Azure Connection method: ${(formData as FormData).method}`);
@@ -315,15 +337,41 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
 
   const methodDetails = getAppConnectionMethodDetails(selectedMethod);
 
+  const isManagedIdentity = selectedMethod === AzureKeyVaultConnectionMethod.ManagedIdentity;
+  // Azure needs the connection ID in the subject, so a new connection is created from the federated credential step
+  const isConfiguringManagedIdentity = isManagedIdentity && !isUpdate;
+
   let submitLabel = isUpdate ? "Reconnect to Azure" : "Connect to Azure";
-  if (selectedMethod === AzureKeyVaultConnectionMethod.ManagedIdentity) {
-    submitLabel = isUpdate ? "Verify Connection" : "Create Connection";
+  if (isManagedIdentity) {
+    submitLabel = hasVerifyFailed ? "Retry Verification" : "Verify Connection";
   }
 
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmitHandler)}>
         {!isUpdate && <GenericAppConnectionsFields />}
+        {appConnection && isManagedIdentity && (
+          <>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="app-connection-name">Name</FieldLabel>
+              <Input id="app-connection-name" value={appConnection.name} readOnly disabled />
+            </Field>
+            <Field className="mb-4">
+              <FieldLabel htmlFor="app-connection-description">
+                Description <span className="text-muted">(optional)</span>
+              </FieldLabel>
+              <TextArea
+                id="app-connection-description"
+                className="resize-none"
+                rows={2}
+                placeholder="Connection description..."
+                value={appConnection.description ?? ""}
+                readOnly
+                disabled
+              />
+            </Field>
+          </>
+        )}
 
         <Controller
           name="method"
@@ -361,6 +409,11 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                   })}
                 </SelectContent>
               </Select>
+              {isUpdate && isManagedIdentity && (
+                <FieldDescription>
+                  Name and method are fixed once the connection is created.
+                </FieldDescription>
+              )}
               <FieldError>
                 {!isLoading && isMissingConfig
                   ? `Environment variables have not been configured. ${
@@ -660,6 +713,10 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                   </FieldLabel>
                   <Input
                     {...field}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      setHasVerifyFailed(false);
+                    }}
                     id="credentials.tenantId"
                     placeholder="00000000-0000-0000-0000-000000000000"
                     isError={Boolean(error)}
@@ -676,6 +733,10 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                   <FieldLabel htmlFor="credentials.clientId">Client ID</FieldLabel>
                   <Input
                     {...field}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      setHasVerifyFailed(false);
+                    }}
                     id="credentials.clientId"
                     placeholder="00000000-0000-0000-0000-000000000000"
                     isError={Boolean(error)}
@@ -687,38 +748,69 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
                 </Field>
               )}
             />
-            <Field className="mb-4">
-              <FieldLabel>Federated Credential</FieldLabel>
-              <FieldDescription>
-                {appConnection
-                  ? "Add these values to a federated credential on the managed identity, with the Other issuer scenario, then select Verify Connection."
-                  : "The subject is filled in once you create the connection. Then add these values to a federated credential on the managed identity, with the Other issuer scenario."}
-              </FieldDescription>
-              {issuerUrl && <CopyableValue label="Issuer" value={issuerUrl} />}
-              <CopyableValue
-                label="Subject Identifier"
-                value={appConnection && `app-connection:${appConnection.id}`}
-                placeholder="app-connection:<connection ID>"
-              />
-              <CopyableValue label="Audience" value={AZURE_FEDERATED_TOKEN_AUDIENCE} />
-            </Field>
+            <div className="mb-4 flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+              <span className="text-sm font-medium">Federated Credential</span>
+              {isUpdate ? (
+                <>
+                  <p className="text-xs leading-normal text-accent">
+                    Add these values to the managed identity in Azure, then verify the connection.
+                  </p>
+                  {federatedCredential?.issuerUrl && (
+                    <CopyableValue label="Issuer" value={federatedCredential.issuerUrl} />
+                  )}
+                  {federatedCredential && (
+                    <>
+                      <CopyableValue
+                        label="Subject Identifier"
+                        value={federatedCredential.subjectIdentifier}
+                        className={GENERATED_VALUE_BORDER[scopeVariant]}
+                      />
+                      <CopyableValue label="Audience" value={federatedCredential.audience} />
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="text-xs leading-normal text-accent">
+                    The subject identifier includes the connection ID, so Infisical creates the
+                    connection first. Configure the federated credential to generate it.
+                  </p>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant={scopeVariant}
+                    isPending={isSubmitting}
+                    isDisabled={isSubmitting}
+                  >
+                    <KeyRoundIcon />
+                    {isSubmitting ? "Creating Connection" : "Configure Federated Credential"}
+                  </Button>
+                </>
+              )}
+            </div>
           </>
         )}
 
         <SheetFooter className="sticky bottom-0 -mx-4 items-center border-t bg-popover">
-          <Button
-            type="submit"
-            variant={scopeVariant}
-            isPending={isSubmitting || isRedirecting}
-            isDisabled={
-              isSubmitting ||
-              (!isUpdate && !isDirty && selectedMethod !== AzureKeyVaultConnectionMethod.OAuth) ||
-              isMissingConfig ||
-              isRedirecting
-            }
-          >
-            {submitLabel}
-          </Button>
+          {isConfiguringManagedIdentity ? (
+            <Button variant={scopeVariant} isDisabled>
+              Create Connection
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              variant={scopeVariant}
+              isPending={isSubmitting || isRedirecting}
+              isDisabled={
+                isSubmitting ||
+                (!isUpdate && !isDirty && selectedMethod !== AzureKeyVaultConnectionMethod.OAuth) ||
+                isMissingConfig ||
+                isRedirecting
+              }
+            >
+              {submitLabel}
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -727,6 +819,9 @@ export const AzureKeyVaultConnectionForm = ({ appConnection, onSubmit, projectId
           >
             Cancel
           </Button>
+          {isConfiguringManagedIdentity && (
+            <span className="text-xs text-muted">Configure the federated credential first.</span>
+          )}
         </SheetFooter>
       </form>
     </FormProvider>
