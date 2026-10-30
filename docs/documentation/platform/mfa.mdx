@@ -19,7 +19,7 @@ You can use any mobile authenticator app (Authy, Google Authenticator, Duo, etc.
 
 ## MFA for SSO logins
 
-If your organization enforces MFA and your users sign in through [SAML or OIDC SSO](/documentation/platform/sso/overview), you can let the MFA they completed at your identity provider count, so Infisical doesn't prompt them again. Password and LDAP logins are always prompted, so a break-glass account keeps Infisical MFA. The setting only covers the MFA your organization enforces. A user who turned on MFA for their own account is still prompted.
+If your organization enforces MFA and your users sign in through [SAML or OIDC SSO](/documentation/platform/sso/overview), you can let the MFA they completed at your identity provider count, so Infisical doesn't prompt them again. Password, LDAP, and Google, GitHub, or GitLab logins are always prompted, so a break-glass account keeps Infisical MFA. The setting only takes effect while your organization enforces MFA, and then it also covers users who turned on MFA for their own account.
 
 Infisical trusts a login only if the identity provider's signed response says MFA was completed:
 

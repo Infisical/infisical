@@ -3731,7 +3731,7 @@ interface OrgAdminBypassSSOEvent {
   metadata: Record<string, string>; // no metadata yet
 }
 
-type TMfaSatisfiedBy = "not-required" | "infisical" | "idp";
+export type TMfaSatisfiedBy = "not-required" | "infisical" | "idp";
 
 interface UserLoginEvent {
   type: EventType.USER_LOGIN;

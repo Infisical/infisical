@@ -187,8 +187,6 @@ type Props = {
   hideDelete?: boolean;
 };
 
-// Labels read as the provider's console names them, with the generic SAML term in parentheses when the
-// provider's label hides it.
 const withHint = (label: string, hint?: string) => (hint ? `${label} (${hint})` : label);
 
 export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelete }: Props) => {

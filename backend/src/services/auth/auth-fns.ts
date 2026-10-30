@@ -100,15 +100,11 @@ export const isMfaProofAccepted = (proven: string | null | undefined, acceptedMe
 
 export const extractBearerToken = (token?: string): string => {
   if (!token) {
-    throw new UnauthorizedError({
-      message: "Missing Authorization Header in the request header."
-    });
+    throw new UnauthorizedError({ message: "Missing Authorization Header in the request header." });
   }
   const [authTokenType, authTokenValue] = token.split(" ", 2) as [string, string];
   if (!authTokenType) {
-    throw new UnauthorizedError({
-      message: "Missing Authorization Header in the request header."
-    });
+    throw new UnauthorizedError({ message: "Missing Authorization Header in the request header." });
   }
   if (authTokenType.toLowerCase() !== "bearer") {
     throw new UnauthorizedError({

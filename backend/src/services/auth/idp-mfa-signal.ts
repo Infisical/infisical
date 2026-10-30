@@ -1,15 +1,15 @@
 // "amr" is the OIDC Core claim name. SAML has no standard attribute name, so the Okta convention is the default.
-export const DEFAULT_MFA_CLAIM_NAME = "amr";
+const DEFAULT_MFA_CLAIM_NAME = "amr";
 
 // RFC 8176 value for a completed multi-factor login; Okta, Entra ID, Auth0, Google and Duo all emit it.
-export const DEFAULT_OIDC_MFA_CLAIM_VALUES = ["mfa"];
+const DEFAULT_OIDC_MFA_CLAIM_VALUES = ["mfa"];
 
 // Only classes whose definition asserts two factors: SmartcardPKI is a card plus a PIN and TimeSyncToken a
 // PIN plus a token code, alongside MobileTwoFactorContract, the REFEDS MFA profile and Entra ID's
 // satisfied-MFA class. Possession-only classes such as Smartcard and SoftwarePKI, and single-factor ones such
 // as PasswordProtectedTransport and MobileTwoFactorUnregistered, are deliberately absent; an org that knows
 // its IdP only issues them after MFA adds them to `mfaAuthnContexts`.
-export const DEFAULT_SAML_MFA_AUTHN_CONTEXTS = [
+const DEFAULT_SAML_MFA_AUTHN_CONTEXTS = [
   "urn:oasis:names:tc:SAML:2.0:ac:classes:MobileTwoFactorContract",
   "urn:oasis:names:tc:SAML:2.0:ac:classes:TimeSyncToken",
   "urn:oasis:names:tc:SAML:2.0:ac:classes:SmartcardPKI",
@@ -32,17 +32,17 @@ export type TIdpMfaSignal = {
   received: string[];
 };
 
-export type TSamlMfaSignalConfig = {
+type TSamlMfaSignalConfig = {
   mfaSignalAttribute?: string | null;
   mfaAuthnContexts?: string[] | null;
 };
 
-export type TOidcMfaSignalConfig = {
+type TOidcMfaSignalConfig = {
   mfaClaimName?: string | null;
   mfaAmrValues?: string[] | null;
 };
 
-export type TIdpMfaSignalInput =
+type TIdpMfaSignalInput =
   | {
       kind: "saml";
       authnContextClassRefs: string[];

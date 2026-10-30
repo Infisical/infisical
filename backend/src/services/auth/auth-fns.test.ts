@@ -15,24 +15,16 @@ describe("OAuth login method policy", () => {
     [AuthMethod.GITLAB, LoginMethod.GITLAB]
   ] as const)("allows %s when it is enabled", (authMethod, loginMethod) => {
     expect(isOAuthLoginMethodDisabled(authMethod, [loginMethod])).toBe(false);
-    expect(() =>
-      assertOAuthLoginMethodEnabled({
-        authMethod,
-        enabledLoginMethods: [loginMethod]
-      })
-    ).not.toThrow();
+    expect(() => assertOAuthLoginMethodEnabled({ authMethod, enabledLoginMethods: [loginMethod] })).not.toThrow();
   });
 
   test.each([AuthMethod.GOOGLE, AuthMethod.GITHUB, AuthMethod.GITLAB] as const)(
     "rejects disabled %s login before a user exists",
     (authMethod) => {
       expect(isOAuthLoginMethodDisabled(authMethod, [LoginMethod.EMAIL])).toBe(true);
-      expect(() =>
-        assertOAuthLoginMethodEnabled({
-          authMethod,
-          enabledLoginMethods: [LoginMethod.EMAIL]
-        })
-      ).toThrow(/disabled by administrator/);
+      expect(() => assertOAuthLoginMethodEnabled({ authMethod, enabledLoginMethods: [LoginMethod.EMAIL] })).toThrow(
+        /disabled by administrator/
+      );
     }
   );
 
@@ -48,10 +40,7 @@ describe("OAuth login method policy", () => {
 
   test("treats an unset allowlist as all methods enabled", () => {
     expect(() =>
-      assertOAuthLoginMethodEnabled({
-        authMethod: AuthMethod.GOOGLE,
-        enabledLoginMethods: null
-      })
+      assertOAuthLoginMethodEnabled({ authMethod: AuthMethod.GOOGLE, enabledLoginMethods: null })
     ).not.toThrow();
   });
 });

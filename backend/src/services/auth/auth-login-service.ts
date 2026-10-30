@@ -8,7 +8,7 @@ import {
   TUsers,
   UserDeviceSchema
 } from "@app/db/schemas";
-import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
+import { EventType, TAuditLogServiceFactory, TMfaSatisfiedBy } from "@app/ee/services/audit-log/audit-log-types";
 import { OrgPermissionSsoActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -1331,7 +1331,7 @@ export const authLoginServiceFactory = ({
     }
 
     const { isMfaRequired, requiredMfaMethod } = getRequiredMfaMethod(rootOrg, user);
-    // The MFA policy belongs to the root org, so switching between it and its sub-orgs is not a change.
+    // The MFA policy belongs to the root org, so moving between a root org and its sub-orgs is not a change.
     const hasOrganizationChanged = actorRootOrgId ? actorRootOrgId !== rootOrg.id : false;
     const hasMfaMethodChanged = mfaMethod !== requiredMfaMethod;
     // Checked on every selection so turning the trust off applies at the next switch. While the org enforces
@@ -1371,7 +1371,7 @@ export const authLoginServiceFactory = ({
       idpMfaOrgId
     });
 
-    let mfaSatisfiedBy: "not-required" | "infisical" | "idp" = "infisical";
+    let mfaSatisfiedBy: TMfaSatisfiedBy = "infisical";
     if (!isMfaRequired) mfaSatisfiedBy = "not-required";
     else if (isMfaSatisfiedByIdp) mfaSatisfiedBy = "idp";
 
