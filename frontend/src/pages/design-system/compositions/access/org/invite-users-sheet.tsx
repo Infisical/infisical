@@ -122,7 +122,7 @@ export const InviteUsersSheet = ({
         onOpenChange(next);
       }}
     >
-      <SheetContent>
+      <SheetContent onOpenAutoFocus={(event) => event.preventDefault()}>
         <SheetHeader>
           <SheetTitle>Invite others to Acme Corp</SheetTitle>
           <SheetDescription>
